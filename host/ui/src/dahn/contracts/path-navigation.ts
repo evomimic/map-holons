@@ -63,7 +63,11 @@ export interface PathFocus {
 
 /** The selected Path Inspector renders a topology without reconstructing Nodes. */
 export interface PathNavigation {
-  subscribe(render: (occurrences: readonly PathOccurrence[], focus: PathFocus, destination?: PathDestination) => void): () => void;
+  subscribe(render: (occurrences: readonly PathOccurrence[], focus: PathFocus | undefined, destination?: PathDestination) => void): () => void;
   restore(occurrenceId: string): void;
+  /** Removes presentation lineage, never semantic Holons or transaction state. */
+  close(occurrenceId: string): void;
+  /** Closes one owning Node's collection presentation and all its member lineages. */
+  closeCollection(ownerId: string, affordance: CollectionAffordance): void;
   dispose(): void;
 }

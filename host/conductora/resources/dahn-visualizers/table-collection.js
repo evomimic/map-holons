@@ -1,7 +1,4 @@
 export const TABLE_COLLECTION_VISUALIZER_TAG = 'map-table-collection-visualizer';
-function valueTypeOf(value) {
-    return Object.keys(value)[0];
-}
 function formatStaticValue(value) {
     if (value === null) return "n/a";
     const payload = Object.values(value)[0];
@@ -33,9 +30,7 @@ function assertPresentation(presentation) {
         if (column.values.length !== presentation.rowIds.length) {
             throw new Error(`Column '${column.id}' has ${column.values.length} values for ${presentation.rowIds.length} rows.`);
         }
-        if (column.values.some((value) => value !== null && (column.valueType !== "AnyBaseValue" && valueTypeOf(value) !== column.valueType))) {
-            throw new Error(`Column '${column.id}' contains values outside ${column.valueType}.`);
-        }
+
     }
 }
 /** Read-only collection renderer with occurrence-local selection and inspection intent. */
@@ -119,26 +114,13 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.observer?.disconnect();
         this.table = undefined;
         this.replaceChildren();
-        let keyed = false;
-        try {
-            keyed = await collection.elementType.hasInstanceKey();
-        } catch (error) {
-            // Classification anchors such as DeclaredRelationshipType are not
-            // the describing HolonTypes of their members and may have no key rule.
-            // Only that declared-target case falls back to concrete member types.
-            if (error?.code !== 'DOMAIN_ERROR' || error.variant !== 'NoEffectiveKeyRule') throw error;
+        // Read existing keys; construction rules do not govern collection presentation.
+        const keys = new Map();
+        for (const member of collection) {
+            if (generation !== this.generation) return;
+            keys.set(member, await member.key());
         }
-        // Broad relationship targets (for example Owns) may declare a keyless
-        // baseline while the concrete member types define instance keys.
-        if (!keyed) {
-            for (const member of collection) {
-                if (generation !== this.generation) return;
-                if (await (await member.holonDescriptor()).hasInstanceKey()) {
-                    keyed = true;
-                    break;
-                }
-            }
-        }
+        const keyed = [...keys.values()].some(key => key !== null);
         const members = new Map();
         const columns = [];
         for (const property of await collection.elementType.instanceProperties()) {
@@ -160,11 +142,10 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             rowIds.push(rowId);
             members.set(rowId, member);
             for (const column of columns) {
-                if (column.id === 'Key' && keyed) {
-                    const key = await member.key();
-                    column.values.push(key === null ? null : { StringValue: key });
-                } else if (identityOnly) {
-                    columns[0].values.push({ StringValue: (await member.key()) ?? await member.versionedKey() });
+                if (column.id === 'Key') {
+                    const key = keys.get(member);
+                    const value = key ?? (identityOnly ? await member.versionedKey() : null);
+                    column.values.push(value === null ? null : { StringValue: value });
                 } else column.values.push(await member.propertyValue(column.id));
             }
         }
@@ -185,11 +166,12 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         cells.forEach(row => row.forEach(cell => cell.hidden = false));
         const widths = cells[0]?.map(cell => cell.offsetWidth) ?? [];
         const available = this.viewport.clientWidth;
+        // The disclosure occupies its own row, so it consumes no column width.
         const overflowing = widths.reduce((sum, width) => sum + width, 0) > available;
         this.more.hidden = !overflowing || this.expanded;
         let count = widths.length;
         if (overflowing && !this.expanded) {
-            const budget = Math.max(0, available - this.more.offsetWidth);
+            const budget = Math.max(0, available);
             let used = 0; count = 0;
             for (const width of widths) { if (used + width > budget) break; used += width; count++; }
             // Preserve a readable first column even when it alone exceeds the allocation.
@@ -200,7 +182,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.viewport.style.overflowX = this.expanded ? 'auto' : 'hidden';
         if (!this.expanded && widths.length && count === 1) {
             cells.forEach(row => { if (row[0]) row[0].style.maxWidth = `${Math.max(0, available)}px`; });
-        } else cells.forEach(row => { if (row[0]) row[0].style.maxWidth = ''; });
+        } else cells.forEach(row => { if (row[0]) row[0].style.maxWidth = '32rem'; });
     }
     setContext(context) {
         const presentation = context.collectionPresentation;
@@ -281,6 +263,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             header.style.color = 'var(--dahn-table-header-text-color)';
             header.style.padding = 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)';
             header.style.whiteSpace = 'nowrap';
+            header.style.maxWidth = '32rem';
             Object.assign(header.style, { position: 'sticky', top: '0', zIndex: '2' });
             if (column.id === 'Key') Object.assign(header.style, { left: '0', zIndex: '3' });
             headerRow.append(header);
@@ -326,11 +309,12 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 const cell = document.createElement('td');
                 cell.dataset['columnId'] = column.id;
                 cell.textContent = formatStaticValue(column.values[rowIndex]);
+                cell.title = cell.textContent;
                 cell.style.borderBottom =
                     'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
                 cell.style.borderRight = cell.style.borderBottom;
                 cell.style.padding = 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)';
-                Object.assign(cell.style, { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+                Object.assign(cell.style, { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '32rem' });
                 if (column.id === 'Key') Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
                 row.append(cell);
             }

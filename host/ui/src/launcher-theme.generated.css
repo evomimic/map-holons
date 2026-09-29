@@ -1,4 +1,4 @@
-/* Generated from MAP.BootstrapTheme. Run npm run map-schema:bootstrap-bundle. */
+/* Generated from Demo1.DeepOceanTheme. Run npm run map-schema:bootstrap-bundle. */
 :root {
   --dahn-action-corner-radius: 0.5rem;
   --dahn-action-hover-surface-background: #2d5967;
@@ -19,6 +19,8 @@
   --dahn-collection-header-surface-background: #1d3449;
   --dahn-collection-heading-font-size: 1rem;
   --dahn-collection-heading-font-weight: 400;
+  --dahn-collection-navigation-surface-background: #234757;
+  --dahn-collection-navigation-text-color: #e6faf6;
   --dahn-collection-surface-background: #152638;
   --dahn-collection-text-color: #e6edf5;
   --dahn-control-gap: 0.5rem;
@@ -46,6 +48,8 @@
   --dahn-properties-row-gap: 0;
   --dahn-property-column-gap: 1rem;
   --dahn-property-name-min-width: 8rem;
+  --dahn-relationship-navigation-surface-background: #234757;
+  --dahn-relationship-navigation-text-color: #e6faf6;
   --dahn-slot-border-color: #31465b;
   --dahn-slot-border-style: solid;
   --dahn-slot-border-width: 1px;
@@ -57,4 +61,6 @@
   --dahn-table-header-font-weight: 700;
   --dahn-table-header-surface-background: #1d3449;
   --dahn-table-header-text-color: #ffffff;
+  --dahn-view-control-surface-background: #234757;
+  --dahn-view-control-text-color: #e6faf6;
 }

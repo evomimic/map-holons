@@ -132,7 +132,7 @@ holon CanvasVisualizer.HolonType {
 instance MAP.BootstrapCanvas {
   type Canvas.HolonType
   relationships {
-    UsesMetaDesignSystem -> MAP.BootstrapMetaDesignSystem
+    UsesMetaDesignSystem -> Demo1.MetaDesignSystem
     ContainsVisualizer -> MAP.BootstrapCanvasVisualizer
   }
 }
@@ -141,6 +141,8 @@ instance MAP.BootstrapCanvasVisualizer {
   type CanvasVisualizer.HolonType
   relationships {
     ConsumesDesignToken -> [
+      ViewControlSurfaceBackground.DesignToken,
+      ViewControlTextColor.DesignToken,
       MutedTextColor.DesignToken,
       CanvasContentMinHeight.DesignToken,
       CanvasFontFamily.DesignToken,
@@ -177,6 +179,8 @@ instance HolonInspector.NodeVisualizer {
   type NodeVisualizer.HolonType
   relationships {
     ConsumesDesignToken -> [
+      RelationshipNavigationSurfaceBackground.DesignToken,
+      RelationshipNavigationTextColor.DesignToken,
       ActionCornerRadius.DesignToken,
       ActionHoverSurfaceBackground.DesignToken,
       ActionPaddingBlock.DesignToken,
@@ -268,7 +272,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:90ed7f6b76b6ca7e3addccbfee68de1cfd5d09af53abd7594a59e061990eca71"
+  VisualizerArtifactDigest "sha256:c4ff4411594b8ba357c8379c2b9dd2636dadd48c2c317647dbc3af2506fb53f8"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -313,6 +317,8 @@ instance PathInspector.RootedNavigationVisualizer {
   type RootedNavigationVisualizer.HolonType
   relationships {
     ConsumesDesignToken -> [
+      ViewControlSurfaceBackground.DesignToken,
+      ViewControlTextColor.DesignToken,
       ActionPaddingBlock.DesignToken,
       ActionPaddingInline.DesignToken,
       ActionSurfaceBackground.DesignToken,
@@ -343,7 +349,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:8e4c9ef4f7bace153e1fae0deeea916b25bfa47828e81e905172a2fe9ee162f8"
+  VisualizerArtifactDigest "sha256:9e57ef3bf7daa35821cb9165266f89a7917d86d451c31679f534d3c6ec253fec"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -421,7 +427,7 @@ instance DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.properties"
-  VisualizerArtifactDigest "sha256:1d3419a1aa834c31704ae76ea1830d32f912bd6a6b6647b81b45a331069e019b"
+  VisualizerArtifactDigest "sha256:f2038d8b3b8942f91d2e73575a01d17d644dbddcd6e4c813fae623eaf8c58eea"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

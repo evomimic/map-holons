@@ -13,7 +13,7 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
-use type_names::{CoreOperatorTypeName, CoreValueTypeName, ToOperatorName};
+use type_names::{CoreOperatorTypeName, ToOperatorName};
 
 /// Runtime wrapper for value-type descriptors.
 ///
@@ -38,7 +38,7 @@ impl ValueDescriptor {
 
     /// Validates a runtime value against this descriptor's semantic value kind.
     pub fn is_valid(&self, value: &BaseValue) -> Result<(), HolonError> {
-        match self.resolved_value_kind()? {
+        match self.value_kind()? {
             ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => {
                 IntegerValueDescriptor::from_holon(self.holon.clone()).is_valid(value)
             }
@@ -129,7 +129,7 @@ impl ValueDescriptor {
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
-        let value_kind = self.resolved_value_kind()?;
+        let value_kind = self.value_kind()?;
         if let ValueDescriptorKind::Unsupported(found) = value_kind {
             return Err(self.wrong_value_kind(found));
         }
@@ -166,81 +166,51 @@ impl ValueDescriptor {
         }
     }
 
-    /// Classifies native representation without executing configured constraints.
-    ///
-    /// Specific native families take precedence over the catch-all base-value
-    /// family. Type names are used only in the unsupported-kind diagnostic,
-    /// never to select a family.
-    /// Reuse the same roots throughout one pass over an unchanged schema snapshot.
-    pub fn value_kind(
-        &self,
-        roots: &super::ResolvedValueTypeRoots,
-    ) -> Result<ValueDescriptorKind, HolonError> {
-        self.value_kind_with_reader(roots, &super::CurrentDescriptorReader)
+    /// Classifies representation from the nearest local Instance TypeKind anchor.
+    /// No canonical-key lookup or instance-value validation is performed.
+    pub fn value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
+        self.value_kind_with_reader(&super::CurrentDescriptorReader)
     }
 
-    /// Resolves native kind using the assessment's selected lineage content.
+    /// Uses the selected schema view for every step, including prospective replacements.
     pub fn value_kind_with_reader<R: super::DescriptorReader>(
         &self,
-        roots: &super::ResolvedValueTypeRoots,
         reader: &R,
     ) -> Result<ValueDescriptorKind, R::Error> {
-        crate::reference_layer::assert_reference_transaction_compatible(
-            &self.holon,
-            &roots.context,
-        )?;
-        for (root, kind) in &roots.families {
-            if super::equals_or_extends_with_reader(&self.holon, root, reader)? {
-                return Ok(kind.clone());
-            }
-        }
-        Ok(ValueDescriptorKind::Unsupported(
-            TypeHeader::new(&reader.select(&self.holon)?).type_name()?.to_string(),
-        ))
-    }
-
-    /// Classifies the declared representation without inspecting an instance value.
-    pub fn is_array(&self) -> Result<bool, HolonError> {
-        // Layout classification needs only the nearest local kind anchor. Do not
-        // resolve every native family or inspect an array's ElementValueType.
-        for ancestor in crate::descriptors::inheritance::walk_extends_chain(&self.holon) {
+        use BaseValueKind::*;
+        for ancestor in super::inheritance::walk_extends_chain_with_reader(&self.holon, reader) {
             let ancestor = ancestor?;
             let header = TypeHeader::new(&ancestor);
             if !header.defines_instance_type_kind()? {
                 continue;
             }
             let name = header.type_name()?;
-            if [CoreValueTypeName::ValueArrayValueType, CoreValueTypeName::MapValueArrayType]
-                .iter()
-                .any(|kind| kind.as_value_name() == name)
-            {
-                return Ok(true);
-            }
-            if [
-                CoreValueTypeName::ValueType,
-                CoreValueTypeName::StringValueType,
-                CoreValueTypeName::IntegerValueType,
-                CoreValueTypeName::BooleanValueType,
-                CoreValueTypeName::BytesValueType,
-                CoreValueTypeName::EnumValueType,
-                CoreValueTypeName::MapEnumValueType,
-                CoreValueTypeName::EnumVariantValueType,
-                CoreValueTypeName::MapEnumVariantValueType,
-            ]
-            .iter()
-            .any(|kind| kind.as_value_name() == name)
-            {
-                return Ok(false);
-            }
-            return Err(self.wrong_value_kind(name.to_string()));
+            return Ok(match name.0.as_str() {
+                "StringValueType" => ValueDescriptorKind::BaseValue(String),
+                "IntegerValueType" => ValueDescriptorKind::BaseValue(Integer),
+                "BooleanValueType" => ValueDescriptorKind::BaseValue(Boolean),
+                "BytesValueType" => ValueDescriptorKind::BaseValue(Bytes),
+                "EnumValueType" | "MapEnumValueType" => ValueDescriptorKind::BaseValue(Enum),
+                "BaseValueValueType" | "ValueType" => ValueDescriptorKind::AnyBaseValue,
+                "ValueArrayValueType" | "MapValueArrayType" => ValueDescriptorKind::ValueArray,
+                _ => ValueDescriptorKind::Unsupported(name.to_string()),
+            });
         }
-        Err(self.wrong_value_kind("No instance TypeKind anchor".into()))
+        Err(self.wrong_value_kind("No instance TypeKind anchor".into()).into())
     }
 
-    /// Existing one-off operations resolve through their already-bound transaction.
-    fn resolved_value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
-        let context = self.holon.resolution_context()?;
-        self.value_kind(&super::ResolvedValueTypeRoots::resolve(&context)?)
+    /// Classifies the declared representation without inspecting an instance value.
+    pub fn is_array(&self) -> Result<bool, HolonError> {
+        match self.value_kind()? {
+            ValueDescriptorKind::ValueArray => Ok(true),
+            ValueDescriptorKind::Unsupported(found)
+                if matches!(found.as_str(), "EnumVariantValueType" | "MapEnumVariantValueType") =>
+            {
+                Ok(false)
+            }
+            ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
+            _ => Ok(false),
+        }
     }
 
     fn validate_boolean(&self, value: &BaseValue) -> Result<(), HolonError> {
@@ -410,8 +380,7 @@ mod tests {
         Ok(())
     }
 
-    // Existing dispatch fixtures now extend actual canonical identities. A matching
-    // TypeName alone must no longer grant native representation semantics.
+    // Dispatch fixtures explicitly declare local kind anchors and derived types.
     fn build_context() -> Arc<TransactionContext> {
         let context = test_support::build_context();
         for name in [
@@ -423,13 +392,14 @@ mod tests {
             "BaseValueValueType",
             "ValueArrayValueType",
         ] {
-            let root = test_support::new_descriptor_holon(
+            let mut root = test_support::new_descriptor_holon(
                 &context,
                 &format!("{name}.ValueType"),
                 name,
                 "Value",
             )
             .unwrap();
+            root.with_property_value("DefinesInstanceTypeKind", true).unwrap();
             context.mutation().stage_new_holon(root).unwrap();
         }
         context
@@ -442,38 +412,98 @@ mod tests {
         kind: &str,
     ) -> Result<TransientReference, HolonError> {
         let mut holon = test_support::new_descriptor_holon(context, key, type_name, kind)?;
+        holon.with_property_value("DefinesInstanceTypeKind", false)?;
         if let Ok(root) = context
             .lookup()
             .get_staged_holon_by_base_key(&MapString(format!("{type_name}.ValueType")))
         {
             holon.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        } else {
+            holon.with_property_value("DefinesInstanceTypeKind", true)?;
         }
         Ok(holon)
     }
 
     #[test]
-    fn value_kind_uses_family_identity_for_every_representation() -> Result<(), HolonError> {
-        let context = build_context();
-        let roots = super::super::ResolvedValueTypeRoots::resolve(&context)?;
-        for (root, expected) in &roots.families {
-            assert_eq!(ValueDescriptor::from_holon(root.clone()).value_kind(&roots)?, *expected);
-
+    fn value_kind_uses_nearest_anchor_without_saved_lookups() -> Result<(), HolonError> {
+        let context = test_support::build_context();
+        for (name, expected) in [
+            ("StringValueType", ValueDescriptorKind::BaseValue(BaseValueKind::String)),
+            ("IntegerValueType", ValueDescriptorKind::BaseValue(BaseValueKind::Integer)),
+            ("BooleanValueType", ValueDescriptorKind::BaseValue(BaseValueKind::Boolean)),
+            ("BytesValueType", ValueDescriptorKind::BaseValue(BaseValueKind::Bytes)),
+            ("EnumValueType", ValueDescriptorKind::BaseValue(BaseValueKind::Enum)),
+            ("MapEnumValueType", ValueDescriptorKind::BaseValue(BaseValueKind::Enum)),
+            ("ValueType", ValueDescriptorKind::AnyBaseValue),
+            ("ValueArrayValueType", ValueDescriptorKind::ValueArray),
+            ("MapValueArrayType", ValueDescriptorKind::ValueArray),
+        ] {
+            let mut anchor = test_support::new_descriptor_holon(&context, name, name, "Value")?;
+            anchor.with_property_value("DefinesInstanceTypeKind", true)?;
             let mut child = test_support::new_descriptor_holon(
                 &context,
-                &format!("child-{}", root.reference_id_string()),
-                "UnrelatedDisplayName",
+                &format!("child-{name}"),
+                "Custom",
                 "Value",
             )?;
-            child.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.clone()])?;
-            assert_eq!(ValueDescriptor::from_holon(child.into()).value_kind(&roots)?, *expected);
+            child.with_property_value("DefinesInstanceTypeKind", false)?;
+            child.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.into()])?;
+            let descriptor = ValueDescriptor::from_holon(child.clone().into());
+            assert_eq!(descriptor.value_kind()?, expected);
+            child.with_property_value("DefinesInstanceTypeKind", true)?;
+            assert_eq!(descriptor.value_kind()?, ValueDescriptorKind::Unsupported("Custom".into()));
         }
+        Ok(())
+    }
 
-        // A same-named impostor has no relationship to the resolved canonical root.
-        let impostor =
-            test_support::new_descriptor_holon(&context, "impostor", "StringValueType", "Value")?;
+    #[test]
+    fn value_kind_reads_replacement_anchor_and_propagates_reader_errors() -> Result<(), HolonError>
+    {
+        struct Reader {
+            original: HolonReference,
+            replacement: HolonReference,
+            fail: bool,
+        }
+        impl super::super::DescriptorReader for Reader {
+            type Error = HolonError;
+            fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
+                if reference == &self.original {
+                    if self.fail {
+                        return Err(HolonError::InvalidState("blocked replacement".into()));
+                    }
+                    return Ok(self.replacement.clone());
+                }
+                Ok(reference.clone())
+            }
+            fn operational_error(error: &HolonError) -> Option<&HolonError> {
+                Some(error)
+            }
+        }
+        let context = test_support::build_context();
+        let mut anchor =
+            test_support::new_descriptor_holon(&context, "anchor", "StringValueType", "Value")?;
+        anchor.with_property_value("DefinesInstanceTypeKind", true)?;
+        let mut replacement = test_support::new_descriptor_holon(
+            &context,
+            "replacement",
+            "IntegerValueType",
+            "Value",
+        )?;
+        replacement.with_property_value("DefinesInstanceTypeKind", true)?;
+        let mut child = test_support::new_descriptor_holon(&context, "child", "Custom", "Value")?;
+        child.with_property_value("DefinesInstanceTypeKind", false)?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.clone().into()])?;
+        let descriptor = ValueDescriptor::from_holon(child.into());
+        let mut reader =
+            Reader { original: anchor.into(), replacement: replacement.into(), fail: false };
+        assert_eq!(descriptor.value_kind()?, ValueDescriptorKind::BaseValue(BaseValueKind::String));
         assert_eq!(
-            ValueDescriptor::from_holon(impostor.into()).value_kind(&roots)?,
-            ValueDescriptorKind::Unsupported("StringValueType".into())
+            descriptor.value_kind_with_reader(&reader)?,
+            ValueDescriptorKind::BaseValue(BaseValueKind::Integer)
+        );
+        reader.fail = true;
+        assert!(
+            matches!(descriptor.value_kind_with_reader(&reader), Err(HolonError::InvalidState(message)) if message == "blocked replacement")
         );
         Ok(())
     }
@@ -481,33 +511,25 @@ mod tests {
     #[test]
     fn value_kind_is_independent_of_enum_membership_and_constraints() -> Result<(), HolonError> {
         let context = build_context();
-        let roots = super::super::ResolvedValueTypeRoots::resolve(&context)?;
         let mut value =
             new_descriptor_holon(&context, "enum-without-variants", "EnumValueType", "Value")?;
         let constraint = test_support::new_test_holon(&context, "unsupported-constraint")?;
         value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![constraint.into()])?;
         assert_eq!(
-            ValueDescriptor::from_holon(value.into()).value_kind(&roots)?,
+            ValueDescriptor::from_holon(value.into()).value_kind()?,
             ValueDescriptorKind::BaseValue(BaseValueKind::Enum)
         );
         Ok(())
     }
 
     #[test]
-    fn value_kind_rejects_foreign_transactions_and_broken_lineages() -> Result<(), HolonError> {
-        let context = build_context();
-        let roots = super::super::ResolvedValueTypeRoots::resolve(&context)?;
-        let foreign_context = build_context();
-        let foreign =
-            new_descriptor_holon(&foreign_context, "foreign", "StringValueType", "Value")?;
-        assert!(matches!(
-            ValueDescriptor::from_holon(foreign.into()).value_kind(&roots),
-            Err(HolonError::CrossTransactionReference { .. })
-        ));
+    fn value_kind_rejects_cycles_before_an_anchor() -> Result<(), HolonError> {
+        let context = test_support::build_context();
         let mut cycle = test_support::new_descriptor_holon(&context, "cycle", "Cycle", "Value")?;
+        cycle.with_property_value("DefinesInstanceTypeKind", false)?;
         cycle.add_related_holons(CoreRelationshipTypeName::Extends, vec![(&cycle).into()])?;
         assert!(matches!(
-            ValueDescriptor::from_holon(cycle.into()).value_kind(&roots),
+            ValueDescriptor::from_holon(cycle.into()).value_kind(),
             Err(HolonError::CyclicExtends { .. })
         ));
         Ok(())
@@ -626,6 +648,7 @@ mod tests {
         let parent = new_descriptor_holon(&context, "integer-parent", "IntegerValueType", "Value")?;
         let mut child =
             new_descriptor_holon(&context, "integer-child", "CustomIntegerValueType", "Value")?;
+        child.with_property_value("DefinesInstanceTypeKind", false)?;
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
 
         let descriptor = ValueDescriptor::from_holon(child.into());
@@ -662,6 +685,7 @@ mod tests {
             CoreRelationshipTypeName::AffordsOperator,
             vec![equals.clone().into()],
         )?;
+        child.with_property_value("DefinesInstanceTypeKind", false)?;
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
 
         let descriptor = ValueDescriptor::from_holon(child.into());
@@ -747,6 +771,7 @@ mod tests {
             CoreRelationshipTypeName::AffordsOperator,
             vec![duplicate_parent.into()],
         )?;
+        child.with_property_value("DefinesInstanceTypeKind", false)?;
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
         child.add_related_holons(
             CoreRelationshipTypeName::AffordsOperator,
@@ -780,6 +805,7 @@ mod tests {
             CoreRelationshipTypeName::AffordsOperator,
             vec![duplicate_parent.into()],
         )?;
+        child.with_property_value("DefinesInstanceTypeKind", false)?;
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
         child.add_related_holons(
             CoreRelationshipTypeName::AffordsOperator,
@@ -966,6 +992,7 @@ mod tests {
         let red = new_descriptor_holon(&context, "red", "Red", "EnumVariant")?;
         let blue = new_descriptor_holon(&context, "blue", "Blue", "EnumVariant")?;
         let mut color = new_descriptor_holon(&context, "color", "ColorValueType", "Value")?;
+        color.with_property_value("DefinesInstanceTypeKind", false)?;
         color.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
         color.add_related_holons(
             CoreRelationshipTypeName::Variants,

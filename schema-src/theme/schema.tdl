@@ -17,7 +17,10 @@ holon Theme.HolonType {
     plural: "Themes"
   }
   relationships {
-    InstanceProperties -> ThemeName.PropertyType
+    InstanceProperties -> [
+      ThemeName.PropertyType,
+      ThemeDescription.PropertyType
+    ]
     InstanceRelationships -> [
       (Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType),
       (Theme.HolonType)-[HasThemeTokenAssignment]->(ThemeTokenAssignment.HolonType),
@@ -251,80 +254,87 @@ instance ThemeCompleteDesignTokenCoverage.ValidationRule {
   rule_of "MAP Theme Schema-v0.1.0"
 }
 
-// The initial Theme is a core presentation realization. A Dancer may offer it
-// in a HolonSpace, but neither its identity nor its values belong to an app.
-instance MAP.BootstrapTheme {
+// Demonstration identity is independent of how the Theme is loaded.
+// Other demonstration themes may realize the same MetaDesignSystem contract.
+instance Demo1.DeepOceanTheme {
   type Theme.HolonType
-  ThemeName "MAP Bootstrap Theme"
+  ThemeName "Demo 1 — Deep Ocean"
+  ThemeDescription "A demonstration theme for exploring DAHN features. Deep Ocean is calm, orderly, and utilitarian, with limited visual differentiation between kinds of controls. Layered navy surfaces, muted teal actions, seafoam focus accents, softly rounded corners, and system sans-serif typography provide a consistent setting for feature demonstrations rather than an optimized human experience."
   relationships {
-    ForMetaDesignSystem -> MAP.BootstrapMetaDesignSystem
+    ForMetaDesignSystem -> Demo1.MetaDesignSystem
     HasThemeTokenAssignment -> [
-      BootstrapThemePanelSurfaceBackground,
-      BootstrapThemePanelCornerRadius,
-      BootstrapThemeMutedTextColor,
-      BootstrapThemeNodeHeadingFontSize,
-      BootstrapThemeControlGap,
-      BootstrapThemeFocusRingColor,
-      BootstrapThemeFocusRingWidth,
+      Demo1.DeepOceanTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment,
+      Demo1.DeepOceanTheme.CollectionNavigationTextColor.ThemeTokenAssignment,
+      Demo1.DeepOceanTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment,
+      Demo1.DeepOceanTheme.RelationshipNavigationTextColor.ThemeTokenAssignment,
+      Demo1.DeepOceanTheme.ViewControlSurfaceBackground.ThemeTokenAssignment,
+      Demo1.DeepOceanTheme.ViewControlTextColor.ThemeTokenAssignment,
+      Demo1.DeepOceanThemePanelSurfaceBackground,
+      Demo1.DeepOceanThemePanelCornerRadius,
+      Demo1.DeepOceanThemeMutedTextColor,
+      Demo1.DeepOceanThemeNodeHeadingFontSize,
+      Demo1.DeepOceanThemeControlGap,
+      Demo1.DeepOceanThemeFocusRingColor,
+      Demo1.DeepOceanThemeFocusRingWidth,
 
-      BootstrapThemeLauncherSurfaceBackground,
-      BootstrapThemeLauncherTextColor,
-      BootstrapThemeLauncherPadding,
-      BootstrapThemeLauncherPhaseGap,
-      BootstrapThemeLauncherIndicatorSize,
-      BootstrapThemeLauncherIndicatorColor,
-      BootstrapThemeLauncherIndicatorWidth,
-      BootstrapThemeLauncherIndicatorDuration,
-      BootstrapThemeLauncherDismissDuration,
-      BootstrapThemeActionSurfaceBackground,
-      BootstrapThemeActionHoverSurfaceBackground,
-      BootstrapThemeActionTextColor,
-      BootstrapThemeActionPaddingBlock,
-      BootstrapThemeActionPaddingInline,
-      BootstrapThemeActionCornerRadius,
+      Demo1.DeepOceanThemeLauncherSurfaceBackground,
+      Demo1.DeepOceanThemeLauncherTextColor,
+      Demo1.DeepOceanThemeLauncherPadding,
+      Demo1.DeepOceanThemeLauncherPhaseGap,
+      Demo1.DeepOceanThemeLauncherIndicatorSize,
+      Demo1.DeepOceanThemeLauncherIndicatorColor,
+      Demo1.DeepOceanThemeLauncherIndicatorWidth,
+      Demo1.DeepOceanThemeLauncherIndicatorDuration,
+      Demo1.DeepOceanThemeLauncherDismissDuration,
+      Demo1.DeepOceanThemeActionSurfaceBackground,
+      Demo1.DeepOceanThemeActionHoverSurfaceBackground,
+      Demo1.DeepOceanThemeActionTextColor,
+      Demo1.DeepOceanThemeActionPaddingBlock,
+      Demo1.DeepOceanThemeActionPaddingInline,
+      Demo1.DeepOceanThemeActionCornerRadius,
 
-      BootstrapThemeCanvasFontFamily,
-      BootstrapThemeCanvasFontSize,
-      BootstrapThemeCanvasFontWeight,
-      BootstrapThemeCanvasLineHeight,
-      BootstrapThemeCanvasHeadingFontWeight,
-      BootstrapThemeCanvasContentMinHeight,
-      BootstrapThemePropertiesDisclosureFocusColor,
-      BootstrapThemeSlotBorderColor,
-      BootstrapThemeSlotBorderWidth,
-      BootstrapThemeSlotBorderStyle,
-      BootstrapThemeSlotPadding,
-      BootstrapThemeInspectorRailWidth,
-      BootstrapThemeInspectorContentMinHeight,
-      BootstrapThemePropertiesHeadingGap,
-      BootstrapThemePropertiesRowGap,
-      BootstrapThemePropertiesHeadingFontSize,
-      BootstrapThemePropertiesHeadingFontWeight,
-      BootstrapThemePropertyColumnGap,
-      BootstrapThemePropertyNameMinWidth,
-      BootstrapThemeTableCellBorderStyle,
-      BootstrapThemeCollectionHeadingFontSize,
-      BootstrapThemeCollectionHeadingFontWeight,
-      BootstrapThemeTableHeaderFontWeight,
+      Demo1.DeepOceanThemeCanvasFontFamily,
+      Demo1.DeepOceanThemeCanvasFontSize,
+      Demo1.DeepOceanThemeCanvasFontWeight,
+      Demo1.DeepOceanThemeCanvasLineHeight,
+      Demo1.DeepOceanThemeCanvasHeadingFontWeight,
+      Demo1.DeepOceanThemeCanvasContentMinHeight,
+      Demo1.DeepOceanThemePropertiesDisclosureFocusColor,
+      Demo1.DeepOceanThemeSlotBorderColor,
+      Demo1.DeepOceanThemeSlotBorderWidth,
+      Demo1.DeepOceanThemeSlotBorderStyle,
+      Demo1.DeepOceanThemeSlotPadding,
+      Demo1.DeepOceanThemeInspectorRailWidth,
+      Demo1.DeepOceanThemeInspectorContentMinHeight,
+      Demo1.DeepOceanThemePropertiesHeadingGap,
+      Demo1.DeepOceanThemePropertiesRowGap,
+      Demo1.DeepOceanThemePropertiesHeadingFontSize,
+      Demo1.DeepOceanThemePropertiesHeadingFontWeight,
+      Demo1.DeepOceanThemePropertyColumnGap,
+      Demo1.DeepOceanThemePropertyNameMinWidth,
+      Demo1.DeepOceanThemeTableCellBorderStyle,
+      Demo1.DeepOceanThemeCollectionHeadingFontSize,
+      Demo1.DeepOceanThemeCollectionHeadingFontWeight,
+      Demo1.DeepOceanThemeTableHeaderFontWeight,
 
-      BootstrapThemeCanvasGap,
-      BootstrapThemeCanvasPadding,
-      BootstrapThemeCanvasSurfaceBackground,
-      BootstrapThemeCanvasTextColor,
-      BootstrapThemeCollectionSurfaceBackground,
-      BootstrapThemeCollectionTextColor,
-      BootstrapThemeCollectionHeaderSurfaceBackground,
-      BootstrapThemeTableHeaderSurfaceBackground,
-      BootstrapThemeTableHeaderTextColor,
-      BootstrapThemeTableCellBorderColor,
-      BootstrapThemeTableCellBorderWidth,
-      BootstrapThemeTableCellPadding
+      Demo1.DeepOceanThemeCanvasGap,
+      Demo1.DeepOceanThemeCanvasPadding,
+      Demo1.DeepOceanThemeCanvasSurfaceBackground,
+      Demo1.DeepOceanThemeCanvasTextColor,
+      Demo1.DeepOceanThemeCollectionSurfaceBackground,
+      Demo1.DeepOceanThemeCollectionTextColor,
+      Demo1.DeepOceanThemeCollectionHeaderSurfaceBackground,
+      Demo1.DeepOceanThemeTableHeaderSurfaceBackground,
+      Demo1.DeepOceanThemeTableHeaderTextColor,
+      Demo1.DeepOceanThemeTableCellBorderColor,
+      Demo1.DeepOceanThemeTableCellBorderWidth,
+      Demo1.DeepOceanThemeTableCellPadding
     ]
     OfferedByHolonSpace -> MAP.CoreSchemaSpace
   }
 }
 
-instance BootstrapThemeCanvasGap {
+instance Demo1.DeepOceanThemeCanvasGap {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1rem"
   relationships {
@@ -332,7 +342,7 @@ instance BootstrapThemeCanvasGap {
   }
 }
 
-instance BootstrapThemeCanvasPadding {
+instance Demo1.DeepOceanThemeCanvasPadding {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1.5rem"
   relationships {
@@ -340,7 +350,7 @@ instance BootstrapThemeCanvasPadding {
   }
 }
 
-instance BootstrapThemeCanvasSurfaceBackground {
+instance Demo1.DeepOceanThemeCanvasSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#0c1724"
   relationships {
@@ -348,7 +358,7 @@ instance BootstrapThemeCanvasSurfaceBackground {
   }
 }
 
-instance BootstrapThemeCanvasTextColor {
+instance Demo1.DeepOceanThemeCanvasTextColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#e6edf5"
   relationships {
@@ -356,7 +366,7 @@ instance BootstrapThemeCanvasTextColor {
   }
 }
 
-instance BootstrapThemeCollectionSurfaceBackground {
+instance Demo1.DeepOceanThemeCollectionSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#152638"
   relationships {
@@ -364,7 +374,7 @@ instance BootstrapThemeCollectionSurfaceBackground {
   }
 }
 
-instance BootstrapThemeCollectionTextColor {
+instance Demo1.DeepOceanThemeCollectionTextColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#e6edf5"
   relationships {
@@ -372,7 +382,7 @@ instance BootstrapThemeCollectionTextColor {
   }
 }
 
-instance BootstrapThemeCollectionHeaderSurfaceBackground {
+instance Demo1.DeepOceanThemeCollectionHeaderSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#1d3449"
   relationships {
@@ -380,7 +390,7 @@ instance BootstrapThemeCollectionHeaderSurfaceBackground {
   }
 }
 
-instance BootstrapThemeTableHeaderSurfaceBackground {
+instance Demo1.DeepOceanThemeTableHeaderSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#1d3449"
   relationships {
@@ -388,7 +398,7 @@ instance BootstrapThemeTableHeaderSurfaceBackground {
   }
 }
 
-instance BootstrapThemeTableHeaderTextColor {
+instance Demo1.DeepOceanThemeTableHeaderTextColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#ffffff"
   relationships {
@@ -396,7 +406,7 @@ instance BootstrapThemeTableHeaderTextColor {
   }
 }
 
-instance BootstrapThemeTableCellBorderColor {
+instance Demo1.DeepOceanThemeTableCellBorderColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#31465b"
   relationships {
@@ -404,7 +414,7 @@ instance BootstrapThemeTableCellBorderColor {
   }
 }
 
-instance BootstrapThemeTableCellBorderWidth {
+instance Demo1.DeepOceanThemeTableCellBorderWidth {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1px"
   relationships {
@@ -412,7 +422,7 @@ instance BootstrapThemeTableCellBorderWidth {
   }
 }
 
-instance BootstrapThemeTableCellPadding {
+instance Demo1.DeepOceanThemeTableCellPadding {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.75rem"
   relationships {
@@ -420,7 +430,7 @@ instance BootstrapThemeTableCellPadding {
   }
 }
 
-instance BootstrapThemeCanvasFontFamily {
+instance Demo1.DeepOceanThemeCanvasFontFamily {
   type ThemeTokenAssignment.HolonType
   PresentationValue "system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
   relationships {
@@ -428,7 +438,7 @@ instance BootstrapThemeCanvasFontFamily {
   }
 }
 
-instance BootstrapThemeCanvasFontSize {
+instance Demo1.DeepOceanThemeCanvasFontSize {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.9375rem"
   relationships {
@@ -436,7 +446,7 @@ instance BootstrapThemeCanvasFontSize {
   }
 }
 
-instance BootstrapThemeCanvasFontWeight {
+instance Demo1.DeepOceanThemeCanvasFontWeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "400"
   relationships {
@@ -444,7 +454,7 @@ instance BootstrapThemeCanvasFontWeight {
   }
 }
 
-instance BootstrapThemeCanvasLineHeight {
+instance Demo1.DeepOceanThemeCanvasLineHeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1.5rem"
   relationships {
@@ -452,7 +462,7 @@ instance BootstrapThemeCanvasLineHeight {
   }
 }
 
-instance BootstrapThemeCanvasHeadingFontWeight {
+instance Demo1.DeepOceanThemeCanvasHeadingFontWeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "600"
   relationships {
@@ -460,7 +470,7 @@ instance BootstrapThemeCanvasHeadingFontWeight {
   }
 }
 
-instance BootstrapThemeCanvasContentMinHeight {
+instance Demo1.DeepOceanThemeCanvasContentMinHeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "12rem"
   relationships {
@@ -468,7 +478,7 @@ instance BootstrapThemeCanvasContentMinHeight {
   }
 }
 
-instance BootstrapThemeSlotBorderColor {
+instance Demo1.DeepOceanThemeSlotBorderColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#31465b"
   relationships {
@@ -476,7 +486,7 @@ instance BootstrapThemeSlotBorderColor {
   }
 }
 
-instance BootstrapThemeSlotBorderWidth {
+instance Demo1.DeepOceanThemeSlotBorderWidth {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1px"
   relationships {
@@ -484,7 +494,7 @@ instance BootstrapThemeSlotBorderWidth {
   }
 }
 
-instance BootstrapThemeSlotBorderStyle {
+instance Demo1.DeepOceanThemeSlotBorderStyle {
   type ThemeTokenAssignment.HolonType
   PresentationValue "solid"
   relationships {
@@ -492,7 +502,7 @@ instance BootstrapThemeSlotBorderStyle {
   }
 }
 
-instance BootstrapThemeSlotPadding {
+instance Demo1.DeepOceanThemeSlotPadding {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1rem"
   relationships {
@@ -500,7 +510,7 @@ instance BootstrapThemeSlotPadding {
   }
 }
 
-instance BootstrapThemeInspectorRailWidth {
+instance Demo1.DeepOceanThemeInspectorRailWidth {
   type ThemeTokenAssignment.HolonType
   PresentationValue "14rem"
   relationships {
@@ -508,7 +518,7 @@ instance BootstrapThemeInspectorRailWidth {
   }
 }
 
-instance BootstrapThemeInspectorContentMinHeight {
+instance Demo1.DeepOceanThemeInspectorContentMinHeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "12rem"
   relationships {
@@ -516,7 +526,7 @@ instance BootstrapThemeInspectorContentMinHeight {
   }
 }
 
-instance BootstrapThemePropertiesHeadingGap {
+instance Demo1.DeepOceanThemePropertiesHeadingGap {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.75rem"
   relationships {
@@ -524,7 +534,7 @@ instance BootstrapThemePropertiesHeadingGap {
   }
 }
 
-instance BootstrapThemePropertiesRowGap {
+instance Demo1.DeepOceanThemePropertiesRowGap {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0"
   relationships {
@@ -532,7 +542,7 @@ instance BootstrapThemePropertiesRowGap {
   }
 }
 
-instance BootstrapThemePropertiesHeadingFontSize {
+instance Demo1.DeepOceanThemePropertiesHeadingFontSize {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.9rem"
   relationships {
@@ -540,7 +550,7 @@ instance BootstrapThemePropertiesHeadingFontSize {
   }
 }
 
-instance BootstrapThemePropertiesHeadingFontWeight {
+instance Demo1.DeepOceanThemePropertiesHeadingFontWeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "400"
   relationships {
@@ -548,7 +558,7 @@ instance BootstrapThemePropertiesHeadingFontWeight {
   }
 }
 
-instance BootstrapThemePropertyColumnGap {
+instance Demo1.DeepOceanThemePropertyColumnGap {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1rem"
   relationships {
@@ -556,7 +566,7 @@ instance BootstrapThemePropertyColumnGap {
   }
 }
 
-instance BootstrapThemePropertyNameMinWidth {
+instance Demo1.DeepOceanThemePropertyNameMinWidth {
   type ThemeTokenAssignment.HolonType
   PresentationValue "8rem"
   relationships {
@@ -564,7 +574,7 @@ instance BootstrapThemePropertyNameMinWidth {
   }
 }
 
-instance BootstrapThemeTableCellBorderStyle {
+instance Demo1.DeepOceanThemeTableCellBorderStyle {
   type ThemeTokenAssignment.HolonType
   PresentationValue "solid"
   relationships {
@@ -572,7 +582,7 @@ instance BootstrapThemeTableCellBorderStyle {
   }
 }
 
-instance BootstrapThemeCollectionHeadingFontSize {
+instance Demo1.DeepOceanThemeCollectionHeadingFontSize {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1rem"
   relationships {
@@ -580,7 +590,7 @@ instance BootstrapThemeCollectionHeadingFontSize {
   }
 }
 
-instance BootstrapThemeCollectionHeadingFontWeight {
+instance Demo1.DeepOceanThemeCollectionHeadingFontWeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "400"
   relationships {
@@ -588,7 +598,7 @@ instance BootstrapThemeCollectionHeadingFontWeight {
   }
 }
 
-instance BootstrapThemeTableHeaderFontWeight {
+instance Demo1.DeepOceanThemeTableHeaderFontWeight {
   type ThemeTokenAssignment.HolonType
   PresentationValue "700"
   relationships {
@@ -596,7 +606,7 @@ instance BootstrapThemeTableHeaderFontWeight {
   }
 }
 
-instance BootstrapThemeLauncherSurfaceBackground {
+instance Demo1.DeepOceanThemeLauncherSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#0c1724"
   relationships {
@@ -604,7 +614,7 @@ instance BootstrapThemeLauncherSurfaceBackground {
   }
 }
 
-instance BootstrapThemeLauncherTextColor {
+instance Demo1.DeepOceanThemeLauncherTextColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#e6edf5"
   relationships {
@@ -612,7 +622,7 @@ instance BootstrapThemeLauncherTextColor {
   }
 }
 
-instance BootstrapThemeLauncherPadding {
+instance Demo1.DeepOceanThemeLauncherPadding {
   type ThemeTokenAssignment.HolonType
   PresentationValue "2rem"
   relationships {
@@ -620,7 +630,7 @@ instance BootstrapThemeLauncherPadding {
   }
 }
 
-instance BootstrapThemeLauncherPhaseGap {
+instance Demo1.DeepOceanThemeLauncherPhaseGap {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.5rem"
   relationships {
@@ -628,7 +638,7 @@ instance BootstrapThemeLauncherPhaseGap {
   }
 }
 
-instance BootstrapThemeLauncherIndicatorSize {
+instance Demo1.DeepOceanThemeLauncherIndicatorSize {
   type ThemeTokenAssignment.HolonType
   PresentationValue "4rem"
   relationships {
@@ -636,7 +646,7 @@ instance BootstrapThemeLauncherIndicatorSize {
   }
 }
 
-instance BootstrapThemeLauncherIndicatorColor {
+instance Demo1.DeepOceanThemeLauncherIndicatorColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#7de2cf"
   relationships {
@@ -644,7 +654,7 @@ instance BootstrapThemeLauncherIndicatorColor {
   }
 }
 
-instance BootstrapThemeLauncherIndicatorWidth {
+instance Demo1.DeepOceanThemeLauncherIndicatorWidth {
   type ThemeTokenAssignment.HolonType
   PresentationValue "4px"
   relationships {
@@ -652,7 +662,7 @@ instance BootstrapThemeLauncherIndicatorWidth {
   }
 }
 
-instance BootstrapThemeLauncherIndicatorDuration {
+instance Demo1.DeepOceanThemeLauncherIndicatorDuration {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1s"
   relationships {
@@ -660,7 +670,7 @@ instance BootstrapThemeLauncherIndicatorDuration {
   }
 }
 
-instance BootstrapThemeLauncherDismissDuration {
+instance Demo1.DeepOceanThemeLauncherDismissDuration {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.5s"
   relationships {
@@ -668,7 +678,7 @@ instance BootstrapThemeLauncherDismissDuration {
   }
 }
 
-instance BootstrapThemeActionSurfaceBackground {
+instance Demo1.DeepOceanThemeActionSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#234757"
   relationships {
@@ -676,7 +686,7 @@ instance BootstrapThemeActionSurfaceBackground {
   }
 }
 
-instance BootstrapThemeActionHoverSurfaceBackground {
+instance Demo1.DeepOceanThemeActionHoverSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#2d5967"
   relationships {
@@ -684,7 +694,7 @@ instance BootstrapThemeActionHoverSurfaceBackground {
   }
 }
 
-instance BootstrapThemeActionTextColor {
+instance Demo1.DeepOceanThemeActionTextColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#e6faf6"
   relationships {
@@ -692,7 +702,7 @@ instance BootstrapThemeActionTextColor {
   }
 }
 
-instance BootstrapThemeActionPaddingBlock {
+instance Demo1.DeepOceanThemeActionPaddingBlock {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.625rem"
   relationships {
@@ -700,7 +710,7 @@ instance BootstrapThemeActionPaddingBlock {
   }
 }
 
-instance BootstrapThemeActionPaddingInline {
+instance Demo1.DeepOceanThemeActionPaddingInline {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.875rem"
   relationships {
@@ -708,7 +718,7 @@ instance BootstrapThemeActionPaddingInline {
   }
 }
 
-instance BootstrapThemeActionCornerRadius {
+instance Demo1.DeepOceanThemeActionCornerRadius {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.5rem"
   relationships {
@@ -716,7 +726,7 @@ instance BootstrapThemeActionCornerRadius {
   }
 }
 
-instance BootstrapThemePropertiesDisclosureFocusColor {
+instance Demo1.DeepOceanThemePropertiesDisclosureFocusColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#7de2cf"
   relationships {
@@ -724,7 +734,7 @@ instance BootstrapThemePropertiesDisclosureFocusColor {
   }
 }
 
-instance BootstrapThemePanelSurfaceBackground {
+instance Demo1.DeepOceanThemePanelSurfaceBackground {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#152638"
   relationships {
@@ -732,7 +742,7 @@ instance BootstrapThemePanelSurfaceBackground {
   }
 }
 
-instance BootstrapThemePanelCornerRadius {
+instance Demo1.DeepOceanThemePanelCornerRadius {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.875rem"
   relationships {
@@ -740,7 +750,7 @@ instance BootstrapThemePanelCornerRadius {
   }
 }
 
-instance BootstrapThemeMutedTextColor {
+instance Demo1.DeepOceanThemeMutedTextColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#a5b7c9"
   relationships {
@@ -748,7 +758,7 @@ instance BootstrapThemeMutedTextColor {
   }
 }
 
-instance BootstrapThemeNodeHeadingFontSize {
+instance Demo1.DeepOceanThemeNodeHeadingFontSize {
   type ThemeTokenAssignment.HolonType
   PresentationValue "1.35rem"
   relationships {
@@ -756,7 +766,7 @@ instance BootstrapThemeNodeHeadingFontSize {
   }
 }
 
-instance BootstrapThemeControlGap {
+instance Demo1.DeepOceanThemeControlGap {
   type ThemeTokenAssignment.HolonType
   PresentationValue "0.5rem"
   relationships {
@@ -764,7 +774,7 @@ instance BootstrapThemeControlGap {
   }
 }
 
-instance BootstrapThemeFocusRingColor {
+instance Demo1.DeepOceanThemeFocusRingColor {
   type ThemeTokenAssignment.HolonType
   PresentationValue "#7de2cf"
   relationships {
@@ -772,10 +782,654 @@ instance BootstrapThemeFocusRingColor {
   }
 }
 
-instance BootstrapThemeFocusRingWidth {
+instance Demo1.DeepOceanThemeFocusRingWidth {
   type ThemeTokenAssignment.HolonType
   PresentationValue "2px"
   relationships {
     ForDesignToken -> FocusRingWidth.DesignToken
+  }
+}
+
+property ThemeDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Human-readable purpose and visual character of a Theme."
+    display_name: "theme_description"
+    display_plural: "theme_descriptions"
+    plural: "ThemeDescriptions"
+  }
+}
+
+// Handwritten font faces resolve locally; systems without them use the sans-serif fallback.
+instance Demo1.WarmParchmentTheme {
+  type Theme.HolonType
+  ThemeName "Demo 1 — Warm Parchment"
+  ThemeDescription "A warm, handcrafted demonstration theme for DAHN. Walnut canvas surfaces frame warm umber panels and pale parchment collections, with caramel collection headers, dark cocoa table headers, and chestnut action controls. Beige text and amber focus accents complement the browns. Legible handwritten-style system fonts, generous line spacing, and restrained but distinct borders support comfortable reading. Beige collection tabs and relationship rail buttons, muted taupe view controls, and chestnut holon actions distinguish navigation from operations."
+  relationships {
+    ForMetaDesignSystem -> Demo1.MetaDesignSystem
+    HasThemeTokenAssignment -> [
+      Demo1.WarmParchmentTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment,
+      Demo1.WarmParchmentTheme.CollectionNavigationTextColor.ThemeTokenAssignment,
+      Demo1.WarmParchmentTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment,
+      Demo1.WarmParchmentTheme.RelationshipNavigationTextColor.ThemeTokenAssignment,
+      Demo1.WarmParchmentTheme.ViewControlSurfaceBackground.ThemeTokenAssignment,
+      Demo1.WarmParchmentTheme.ViewControlTextColor.ThemeTokenAssignment,
+      Demo1.WarmParchmentThemePanelSurfaceBackground,
+      Demo1.WarmParchmentThemePanelCornerRadius,
+      Demo1.WarmParchmentThemeMutedTextColor,
+      Demo1.WarmParchmentThemeNodeHeadingFontSize,
+      Demo1.WarmParchmentThemeControlGap,
+      Demo1.WarmParchmentThemeFocusRingColor,
+      Demo1.WarmParchmentThemeFocusRingWidth,
+
+      Demo1.WarmParchmentThemeLauncherSurfaceBackground,
+      Demo1.WarmParchmentThemeLauncherTextColor,
+      Demo1.WarmParchmentThemeLauncherPadding,
+      Demo1.WarmParchmentThemeLauncherPhaseGap,
+      Demo1.WarmParchmentThemeLauncherIndicatorSize,
+      Demo1.WarmParchmentThemeLauncherIndicatorColor,
+      Demo1.WarmParchmentThemeLauncherIndicatorWidth,
+      Demo1.WarmParchmentThemeLauncherIndicatorDuration,
+      Demo1.WarmParchmentThemeLauncherDismissDuration,
+      Demo1.WarmParchmentThemeActionSurfaceBackground,
+      Demo1.WarmParchmentThemeActionHoverSurfaceBackground,
+      Demo1.WarmParchmentThemeActionTextColor,
+      Demo1.WarmParchmentThemeActionPaddingBlock,
+      Demo1.WarmParchmentThemeActionPaddingInline,
+      Demo1.WarmParchmentThemeActionCornerRadius,
+
+      Demo1.WarmParchmentThemeCanvasFontFamily,
+      Demo1.WarmParchmentThemeCanvasFontSize,
+      Demo1.WarmParchmentThemeCanvasFontWeight,
+      Demo1.WarmParchmentThemeCanvasLineHeight,
+      Demo1.WarmParchmentThemeCanvasHeadingFontWeight,
+      Demo1.WarmParchmentThemeCanvasContentMinHeight,
+      Demo1.WarmParchmentThemePropertiesDisclosureFocusColor,
+      Demo1.WarmParchmentThemeSlotBorderColor,
+      Demo1.WarmParchmentThemeSlotBorderWidth,
+      Demo1.WarmParchmentThemeSlotBorderStyle,
+      Demo1.WarmParchmentThemeSlotPadding,
+      Demo1.WarmParchmentThemeInspectorRailWidth,
+      Demo1.WarmParchmentThemeInspectorContentMinHeight,
+      Demo1.WarmParchmentThemePropertiesHeadingGap,
+      Demo1.WarmParchmentThemePropertiesRowGap,
+      Demo1.WarmParchmentThemePropertiesHeadingFontSize,
+      Demo1.WarmParchmentThemePropertiesHeadingFontWeight,
+      Demo1.WarmParchmentThemePropertyColumnGap,
+      Demo1.WarmParchmentThemePropertyNameMinWidth,
+      Demo1.WarmParchmentThemeTableCellBorderStyle,
+      Demo1.WarmParchmentThemeCollectionHeadingFontSize,
+      Demo1.WarmParchmentThemeCollectionHeadingFontWeight,
+      Demo1.WarmParchmentThemeTableHeaderFontWeight,
+
+      Demo1.WarmParchmentThemeCanvasGap,
+      Demo1.WarmParchmentThemeCanvasPadding,
+      Demo1.WarmParchmentThemeCanvasSurfaceBackground,
+      Demo1.WarmParchmentThemeCanvasTextColor,
+      Demo1.WarmParchmentThemeCollectionSurfaceBackground,
+      Demo1.WarmParchmentThemeCollectionTextColor,
+      Demo1.WarmParchmentThemeCollectionHeaderSurfaceBackground,
+      Demo1.WarmParchmentThemeTableHeaderSurfaceBackground,
+      Demo1.WarmParchmentThemeTableHeaderTextColor,
+      Demo1.WarmParchmentThemeTableCellBorderColor,
+      Demo1.WarmParchmentThemeTableCellBorderWidth,
+      Demo1.WarmParchmentThemeTableCellPadding
+    ]
+    OfferedByHolonSpace -> MAP.CoreSchemaSpace
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.25rem"
+  relationships {
+    ForDesignToken -> CanvasGap.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.5rem"
+  relationships {
+    ForDesignToken -> CanvasPadding.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#38291f"
+  relationships {
+    ForDesignToken -> CanvasSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f5ead6"
+  relationships {
+    ForDesignToken -> CanvasTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCollectionSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#fff5e3"
+  relationships {
+    ForDesignToken -> CollectionSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCollectionTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#38291f"
+  relationships {
+    ForDesignToken -> CollectionTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCollectionHeaderSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#cba675"
+  relationships {
+    ForDesignToken -> CollectionHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableHeaderSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#60412e"
+  relationships {
+    ForDesignToken -> TableHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableHeaderTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#fff5e3"
+  relationships {
+    ForDesignToken -> TableHeaderTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableCellBorderColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#b79a76"
+  relationships {
+    ForDesignToken -> TableCellBorderColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableCellBorderWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> TableCellBorderWidth.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableCellPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> TableCellPadding.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasFontFamily {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "'Chalkboard SE', 'Segoe Print', 'Comic Sans MS', system-ui, sans-serif"
+  relationships {
+    ForDesignToken -> CanvasFontFamily.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> CanvasFontSize.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "400"
+  relationships {
+    ForDesignToken -> CanvasFontWeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasLineHeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.75rem"
+  relationships {
+    ForDesignToken -> CanvasLineHeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasHeadingFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "700"
+  relationships {
+    ForDesignToken -> CanvasHeadingFontWeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCanvasContentMinHeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12rem"
+  relationships {
+    ForDesignToken -> CanvasContentMinHeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeSlotBorderColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#9a7958"
+  relationships {
+    ForDesignToken -> SlotBorderColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeSlotBorderWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2px"
+  relationships {
+    ForDesignToken -> SlotBorderWidth.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeSlotBorderStyle {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "solid"
+  relationships {
+    ForDesignToken -> SlotBorderStyle.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeSlotPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> SlotPadding.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeInspectorRailWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "15rem"
+  relationships {
+    ForDesignToken -> InspectorRailWidth.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeInspectorContentMinHeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12rem"
+  relationships {
+    ForDesignToken -> InspectorContentMinHeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertiesHeadingGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> PropertiesHeadingGap.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertiesRowGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.25rem"
+  relationships {
+    ForDesignToken -> PropertiesRowGap.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertiesHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> PropertiesHeadingFontSize.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertiesHeadingFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "700"
+  relationships {
+    ForDesignToken -> PropertiesHeadingFontWeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertyColumnGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.25rem"
+  relationships {
+    ForDesignToken -> PropertyColumnGap.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertyNameMinWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "9rem"
+  relationships {
+    ForDesignToken -> PropertyNameMinWidth.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableCellBorderStyle {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "solid"
+  relationships {
+    ForDesignToken -> TableCellBorderStyle.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCollectionHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.125rem"
+  relationships {
+    ForDesignToken -> CollectionHeadingFontSize.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeCollectionHeadingFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "700"
+  relationships {
+    ForDesignToken -> CollectionHeadingFontWeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeTableHeaderFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "700"
+  relationships {
+    ForDesignToken -> TableHeaderFontWeight.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#38291f"
+  relationships {
+    ForDesignToken -> LauncherSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f5ead6"
+  relationships {
+    ForDesignToken -> LauncherTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2rem"
+  relationships {
+    ForDesignToken -> LauncherPadding.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherPhaseGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.625rem"
+  relationships {
+    ForDesignToken -> LauncherPhaseGap.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherIndicatorSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "4rem"
+  relationships {
+    ForDesignToken -> LauncherIndicatorSize.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherIndicatorColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e5b66f"
+  relationships {
+    ForDesignToken -> LauncherIndicatorColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherIndicatorWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "4px"
+  relationships {
+    ForDesignToken -> LauncherIndicatorWidth.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherIndicatorDuration {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.2s"
+  relationships {
+    ForDesignToken -> LauncherIndicatorDuration.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeLauncherDismissDuration {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5s"
+  relationships {
+    ForDesignToken -> LauncherDismissDuration.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeActionSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#795035"
+  relationships {
+    ForDesignToken -> ActionSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeActionHoverSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#62402b"
+  relationships {
+    ForDesignToken -> ActionHoverSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeActionTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#fff5e3"
+  relationships {
+    ForDesignToken -> ActionTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeActionPaddingBlock {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.625rem"
+  relationships {
+    ForDesignToken -> ActionPaddingBlock.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeActionPaddingInline {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> ActionPaddingInline.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeActionCornerRadius {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.375rem"
+  relationships {
+    ForDesignToken -> ActionCornerRadius.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePropertiesDisclosureFocusColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e5b66f"
+  relationships {
+    ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePanelSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#503b2b"
+  relationships {
+    ForDesignToken -> PanelSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemePanelCornerRadius {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.625rem"
+  relationships {
+    ForDesignToken -> PanelCornerRadius.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeMutedTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#bca88e"
+  relationships {
+    ForDesignToken -> MutedTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeNodeHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.5rem"
+  relationships {
+    ForDesignToken -> NodeHeadingFontSize.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeControlGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.625rem"
+  relationships {
+    ForDesignToken -> ControlGap.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeFocusRingColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e5b66f"
+  relationships {
+    ForDesignToken -> FocusRingColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentThemeFocusRingWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2px"
+  relationships {
+    ForDesignToken -> FocusRingWidth.DesignToken
+  }
+}
+
+instance Demo1.DeepOceanTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#234757"
+  relationships {
+    ForDesignToken -> CollectionNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.DeepOceanTheme.CollectionNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e6faf6"
+  relationships {
+    ForDesignToken -> CollectionNavigationTextColor.DesignToken
+  }
+}
+
+instance Demo1.DeepOceanTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#234757"
+  relationships {
+    ForDesignToken -> RelationshipNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.DeepOceanTheme.RelationshipNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e6faf6"
+  relationships {
+    ForDesignToken -> RelationshipNavigationTextColor.DesignToken
+  }
+}
+
+instance Demo1.DeepOceanTheme.ViewControlSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#234757"
+  relationships {
+    ForDesignToken -> ViewControlSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.DeepOceanTheme.ViewControlTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e6faf6"
+  relationships {
+    ForDesignToken -> ViewControlTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#cba675"
+  relationships {
+    ForDesignToken -> CollectionNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentTheme.CollectionNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#38291f"
+  relationships {
+    ForDesignToken -> CollectionNavigationTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e5d1ae"
+  relationships {
+    ForDesignToken -> RelationshipNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentTheme.RelationshipNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#38291f"
+  relationships {
+    ForDesignToken -> RelationshipNavigationTextColor.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentTheme.ViewControlSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#665647"
+  relationships {
+    ForDesignToken -> ViewControlSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.WarmParchmentTheme.ViewControlTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#fff5e3"
+  relationships {
+    ForDesignToken -> ViewControlTextColor.DesignToken
   }
 }

@@ -87,6 +87,14 @@ export default class PathInspectorElement extends HTMLElement {
     this.rowAllocations = new Map();
     this.occurrences = [];
     this.focus = undefined;
+    this.emptyState = document.createElement('p');
+    this.emptyState.textContent = 'No open navigation.';
+    this.emptyState.setAttribute('role', 'status');
+    this.emptyState.dataset.pathEmpty = 'true';
+    this.emptyState.hidden = true;
+    this.emptyState.style.position = 'absolute';
+    this.emptyState.style.inset = '16px';
+    viewport.append(this.emptyState);
     this.replaceChildren(title, viewport);
     if (context.navigation) {
       this.unsubscribe = context.navigation.subscribe((occurrences, focus, destination) => this.renderPath(occurrences, focus, destination));
@@ -122,33 +130,25 @@ export default class PathInspectorElement extends HTMLElement {
       return;
     }
     const rows = [...new Set(this.occurrences.map(item => this.rowId(item)))];
-    const viewportHeight = this.viewportHeight || 640;
-    // Keep a useful collection slice and a readable detail row; deep paths scroll.
-    const partialHeight = Math.max(160, Math.min(240, viewportHeight * 0.3));
     // Status chrome remains bounded and recoverable even on a compact row.
     const statusHeights = rows.map(id => Math.max(0, ...this.occurrences.filter(item => this.rowId(item) === id).map(item => {
-      const status = this.regions.get(item.id).querySelector('[data-path-occurrence-status]');
+      const status = this.regions.get(item.id).querySelector(':scope > [data-path-occurrence-status]');
       return item.message && item.requestAxis !== 'horizontal' && item.axis !== 'horizontal' ? Math.min(64, status.scrollHeight || 32) : 0;
     })));
-    const contextHeight = rows.reduce((sum, id) => sum + (this.rowAllocations.get(id) === 'compact' ? 48 : this.rowAllocations.get(id) === 'partial' ? partialHeight : 0), 0);
     const gap = parseFloat(getComputedStyle(this.surface).rowGap) || 40;
     const extents = new Map(this.occurrences.map(item => [item.id, this.childExtents(item.element)]));
     const rowExtent = (id, kind) => Math.max(...this.occurrences.filter(item => this.rowId(item) === id).map(item => extents.get(item.id)[kind].height + this.regionInsets(item.id).height));
-    const heights = rows.map(id => this.rowAllocations.get(id) === 'compact' ? 48 : this.rowAllocations.get(id) === 'partial' ? partialHeight : Math.max(rowExtent(id, 'minimum'), Math.min(rowExtent(id, 'preferred'), viewportHeight - contextHeight - gap * (rows.length - 1) - statusHeights.reduce((sum, height) => sum + height, 0))));
+    const heights = rows.map(id => rowExtent(id, this.rowAllocations.get(id)));
     const columns = Math.max(...this.occurrences.map(item => (item.column ?? 1)));
     // Derive column policy from occurrence focus each time: inserted columns
     // must never inherit another occurrence's positional allocation state.
     const frontier = this.occurrences.find(item => item.id === this.focus?.occurrenceId) ?? this.occurrences.at(-1);
     const source = this.occurrences.find(item => item.id === (frontier.provenance?.parentOccurrenceId ?? frontier.parentOccurrenceId));
-    const viewportWidth = this.viewportWidth || this.viewport.clientWidth || 640;
     const columnGap = parseFloat(getComputedStyle(this.surface).columnGap) || 16;
-    const partialWidth = Math.max(160, Math.min(240, viewportWidth * 0.25));
     const allocations = Array.from({ length: columns }, (_, index) => index + 1 === (frontier.column ?? 1) ? 'expanded'
       : this.focus?.mode !== 'restore' && index + 1 === source?.column ? 'partial' : 'compact');
-    const contextWidth = allocations.reduce((sum, allocation) => sum + (allocation === 'compact' ? 64 : allocation === 'partial' ? partialWidth : 0), 0);
     const columnExtent = (column, kind) => Math.max(0, ...this.occurrences.filter(item => (item.column ?? 1) === column).map(item => extents.get(item.id)[kind].width + this.regionInsets(item.id).width));
-    this.columnWidths = allocations.map((allocation, index) => allocation === 'compact' ? 64 : allocation === 'partial' ? partialWidth
-      : Math.max(columnExtent(index + 1, 'minimum'), Math.min(columnExtent(index + 1, 'preferred'), viewportWidth - contextWidth - columnGap * (columns - 1))));
+    this.columnWidths = allocations.map((allocation, index) => columnExtent(index + 1, allocation));
     this.columnOffsets = this.columnWidths.map((_, index) => this.columnWidths.slice(0, index).reduce((sum, width) => sum + width, 0) + index * columnGap);
     this.columnGap = columnGap;
     this.surface.style.gridTemplateColumns = this.columnWidths.map(width => `${width}px`).join(' ');
@@ -160,10 +160,17 @@ export default class PathInspectorElement extends HTMLElement {
       region.style.gridRow = String(row + 1);
       region.style.gridColumn = String(occurrence.column ?? 1);
       region.dataset.rowAllocation = this.rowAllocations.get(this.rowId(occurrence));
-      // The selected child receives dimensions, never directives about its internals.
+      // Deliver slot states and dimensions, never instructions about child sub-regions.
       region.dataset.columnAllocation = allocations[(occurrence.column ?? 1) - 1];
       const insets = this.regionInsets(occurrence.id);
-      occurrence.element.setSpatialBudget?.({ width: Math.max(0, this.columnWidths[(occurrence.column ?? 1) - 1] - insets.width), height: Math.max(0, heights[row] - insets.height) });
+      const allocation = {
+        width: Math.max(0, this.columnWidths[(occurrence.column ?? 1) - 1] - insets.width),
+        height: Math.max(0, heights[row] - insets.height),
+        vertical: { expanded: 'full-height', partial: 'partial-height', compact: 'minimal-height' }[this.rowAllocations.get(this.rowId(occurrence))],
+        horizontal: { expanded: 'full-width', partial: 'partial-width', compact: 'minimal-width' }[allocations[(occurrence.column ?? 1) - 1]],
+      };
+      if (occurrence.element.setNodeInspectorAllocation) occurrence.element.setNodeInspectorAllocation(allocation);
+      else occurrence.element.setSpatialBudget?.({ width: allocation.width, height: allocation.height });
       this.layoutBounds.set(occurrence.id, {
         x: this.columnOffsets[(occurrence.column ?? 1) - 1],
         y: heights.slice(0, row).reduce((sum, height, index) => sum + height + statusHeights[index] + gap, 0),
@@ -173,7 +180,7 @@ export default class PathInspectorElement extends HTMLElement {
     this.renderLineage(rows, heights.map((height, index) => height + statusHeights[index]), gap, columnGap);
     const firstMeasuredLayout = !this.view.ready;
     this.view.setGeometry(Number(this.lineage.getAttribute('width')), Number(this.lineage.getAttribute('height')), this.viewportWidth || this.viewport.clientWidth, this.viewportHeight || this.viewport.clientHeight);
-    if (firstMeasuredLayout && this.view.ready) this.view.reveal(this.layoutBounds.get(frontier.id));
+    if (firstMeasuredLayout && this.view.ready) this.view.position(0, 0);
     this.updateVisibility();
   }
   renderLineage(rows, heights, rowGap, columnGap) {
@@ -213,12 +220,14 @@ export default class PathInspectorElement extends HTMLElement {
     }
   }
   renderPath(occurrences, focus, destination) {
-    const recoverFocus = this.querySelector('[data-path-destination]')?.contains(document.activeElement);
+    const recoverFocus = [...this.regions.values()].some(region => region.contains(document.activeElement));
     const all = [...occurrences, ...(destination ? [destination] : [])].sort((a, b) => a.row === undefined || b.row === undefined ? 0 : a.row - b.row || (a.column ?? 1) - (b.column ?? 1));
     occurrences = all.filter(item => !item.occluded);
     const previousIds = new Set(this.occurrences.map(item => item.id));
     const added = occurrences.filter(item => !previousIds.has(item.id));
+    const removed = [...previousIds].some(id => !occurrences.some(item => item.id === id));
     this.occurrences = occurrences;
+    this.emptyState.hidden = occurrences.length > 0;
     const rows = new Set(occurrences.map(item => this.rowId(item)));
     for (const id of this.rowAllocations.keys()) if (!rows.has(id)) this.rowAllocations.delete(id);
     for (const id of rows) if (!this.rowAllocations.has(id)) this.rowAllocations.set(id, 'expanded');
@@ -258,9 +267,23 @@ export default class PathInspectorElement extends HTMLElement {
       region.inert = !!occurrence.occluded;
       if (region.nodeElement !== occurrence.element) {
         region.nodeElement?.remove();
+        region.querySelector('[data-close-branch]')?.remove();
         region.querySelector('[data-restore-occurrence]')?.remove();
         region.nodeElement = occurrence.element;
         region.prepend(occurrence.element);
+        if (this.navigation?.close && !occurrence.cancel) {
+          if (occurrence.element.setOccurrenceClosureHandler) {
+            occurrence.element.setOccurrenceClosureHandler(() => this.navigation.close(occurrence.id));
+          } else {
+            const close = document.createElement('button');
+            close.type = 'button'; close.textContent = 'Close branch'; close.dataset.closeBranch = 'true';
+            close.addEventListener('click', () => this.navigation.close(occurrence.id));
+            region.prepend(close);
+          }
+        }
+        if (this.navigation?.closeCollection) {
+          occurrence.element.setCollectionClosureHandler?.(affordance => this.navigation.closeCollection(occurrence.id, affordance));
+        }
         if (occurrence.element.setOccurrenceRestorationHandler) {
           occurrence.element.setOccurrenceRestorationHandler(() => {
             const current = this.occurrences.find(item => item.id === occurrence.id);
@@ -282,7 +305,7 @@ export default class PathInspectorElement extends HTMLElement {
       region.tabIndex = -1;
       region.dataset.focused = String(occurrence.id === focus?.occurrenceId);
       region.setAttribute('aria-busy', String(!!occurrence.pending));
-      const status = region.querySelector('[data-path-occurrence-status]');
+      const status = region.querySelector(':scope > [data-path-occurrence-status]');
       status.hidden = !occurrence.message;
       const floatingStatus = occurrence.requestAxis === 'horizontal' || occurrence.axis === 'horizontal';
       Object.assign(status.style, { position: floatingStatus ? 'absolute' : 'static',
@@ -307,32 +330,40 @@ export default class PathInspectorElement extends HTMLElement {
       }
     });
     this.allocateRows();
-    if (recoverFocus && !this.contains(document.activeElement)) this.regions.get(focus?.occurrenceId)?.focus({ preventScroll: true });
-    if (focusChanged && frontier) {
-      const bounds = this.layoutBounds.get(frontier.id);
-      if (bounds) {
-        const approach = frontier.provenance?.kind === 'singular-relationship' || frontier.axis === 'horizontal';
-        this.view.reveal(bounds, approach ? this.columnGap + 48 : 0);
-      }
+    if (recoverFocus && !this.contains(document.activeElement)) (this.regions.get(focus?.occurrenceId) ?? this.viewport).focus({ preventScroll: true });
+    if ((focusChanged || removed) && frontier && focus?.mode === 'restore') {
+      this.view.reveal(this.layoutBounds.get(frontier.id));
     }
   }
-  /** Child extents are content budgets in unscaled CSS pixels. Missing reports
-   * retain the historical useful minimum; preference is soft, never a minimum. */
+
+  /** Negotiate only the slot contract; child sub-regions are opaque here. */
   childExtents(element) {
+    const slot = element.getNodeInspectorExtents?.();
+    if (slot) {
+      const vertical = ['minimal-height', 'partial-height', 'full-height'].map(key => slot.vertical?.[key]);
+      const horizontal = ['minimal-width', 'partial-width', 'full-width'].map(key => slot.horizontal?.[key]);
+      for (const axis of [vertical, horizontal]) {
+        if (axis.some((value, index) => !Number.isFinite(value) || value <= 0 || (index && value < axis[index - 1]))) {
+          throw new Error('Node Inspector slot extents must be positive and ordered minimal <= partial <= full.');
+        }
+      }
+      return { compact: { width: horizontal[0], height: vertical[0] }, partial: { width: horizontal[1], height: vertical[1] }, expanded: { width: horizontal[2], height: vertical[2] } };
+    }
+    // Local pending/error regions and non-Node composition placeholders.
     const report = element.getSpatialExtents?.();
     const positive = (value, fallback) => Number.isFinite(value) && value > 0 ? value : fallback;
-    const minimum = { width: positive(report?.minimum?.width, 318), height: positive(report?.minimum?.height, 318) };
-    return { minimum, preferred: {
-      width: Math.max(minimum.width, positive(report?.preferred?.width, Infinity)),
-      height: Math.max(minimum.height, positive(report?.preferred?.height, Infinity)),
+    return { compact: { width: 64, height: 48 }, partial: { width: 240, height: 260 }, expanded: {
+      width: Math.max(positive(report?.minimum?.width, 318), Math.min(positive(report?.preferred?.width, report ? Infinity : 318), this.viewportWidth || 640)),
+      height: Math.max(positive(report?.minimum?.height, 318), Math.min(positive(report?.preferred?.height, report ? Infinity : 318), this.viewportHeight || 640)),
     } };
   }
+
   regionInsets(id) {
     const style = getComputedStyle(this.regions.get(id));
     const pixels = value => parseFloat(value) || 0;
     return {
       width: pixels(style.borderLeftWidth) + pixels(style.borderRightWidth),
-      height: pixels(style.borderTopWidth) + pixels(style.borderBottomWidth) + (this.regions.get(id).querySelector('[data-restore-occurrence]')?.offsetHeight || 0),
+      height: pixels(style.borderTopWidth) + pixels(style.borderBottomWidth) + [...this.regions.get(id).querySelectorAll(':scope > [data-restore-occurrence], :scope > [data-close-branch]')].reduce((sum, button) => sum + button.offsetHeight, 0),
     };
   }
   /** Hosts delegate intent to this surface owner, never its grid implementation. */
@@ -359,7 +390,7 @@ export default class PathInspectorElement extends HTMLElement {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = label;
       button.addEventListener('click', action);
-      Object.assign(button.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+      Object.assign(button.style, { font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
       controls.append(button); this.viewButtons.push(button);
     }
     this.viewStatus = document.createElement('span');
@@ -409,8 +440,8 @@ export class SurfaceView {
     });
   }
   get ready() { return this.width > 0 && this.height > 0 && this.viewportWidth > 0 && this.viewportHeight > 0; }
-  get paddingX() { return this.viewportWidth / 2; }
-  get paddingY() { return this.viewportHeight / 2; }
+  get paddingX() { return 0; }
+  get paddingY() { return 0; }
   setGeometry(width, height, viewportWidth, viewportHeight) {
     this.width = width; this.height = height;
     this.viewportWidth = viewportWidth; this.viewportHeight = viewportHeight;
@@ -418,17 +449,17 @@ export class SurfaceView {
   }
   render() {
     Object.assign(this.surface.style, { width: `${this.width}px`, height: `${this.height}px`, left: `${this.paddingX}px`, top: `${this.paddingY}px`, transform: `scale(${this.scale})` });
-    Object.assign(this.stage.style, { width: `${this.width * this.scale + this.viewportWidth}px`, height: `${this.height * this.scale + this.viewportHeight}px` });
+    Object.assign(this.stage.style, { width: `${Math.max(this.viewportWidth, this.width * this.scale)}px`, height: `${Math.max(this.viewportHeight, this.height * this.scale)}px` });
     this.changed();
   }
   position(x, y) {
-    this.viewport.scrollLeft = Math.max(0, Math.min(x, this.width * this.scale));
-    this.viewport.scrollTop = Math.max(0, Math.min(y, this.height * this.scale));
+    this.viewport.scrollLeft = Math.max(0, Math.min(x, Math.max(0, this.width * this.scale - this.viewportWidth)));
+    this.viewport.scrollTop = Math.max(0, Math.min(y, Math.max(0, this.height * this.scale - this.viewportHeight)));
     this.changed();
   }
   pan(x, y) { this.position(this.viewport.scrollLeft + x, this.viewport.scrollTop + y); }
   fitScale() { return Math.min(1, Math.max(1, this.viewportWidth - 32) / this.width, Math.max(1, this.viewportHeight - 32) / this.height); }
-  zoom(scale, anchorX = this.paddingX, anchorY = this.paddingY) {
+  zoom(scale, anchorX = this.viewportWidth / 2, anchorY = this.viewportHeight / 2) {
     if (!this.ready || !Number.isFinite(scale) || scale <= 0) return false;
     const x = (this.viewport.scrollLeft + anchorX - this.paddingX) / this.scale;
     const y = (this.viewport.scrollTop + anchorY - this.paddingY) / this.scale;
@@ -440,13 +471,13 @@ export class SurfaceView {
   fit() {
     if (!this.ready) return false;
     this.scale = this.fitScale(); this.render();
-    this.position(this.width * this.scale / 2, this.height * this.scale / 2);
+    this.position(0, 0);
     return true;
   }
   actualSize(bounds) {
     if (!this.ready || !bounds) return false;
     this.scale = 1; this.render();
-    this.position(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    this.position(bounds.x + bounds.width / 2 - this.viewportWidth / 2, bounds.y + bounds.height / 2 - this.viewportHeight / 2);
     return true;
   }
   reveal(bounds, approach = 0) {
@@ -463,10 +494,10 @@ export class SurfaceView {
     const top = this.paddingY + bounds.y * this.scale - this.viewport.scrollTop;
     const right = left + bounds.width * this.scale, bottom = top + bounds.height * this.scale;
     const directions = [];
-    if (left < 0) directions.push('left');
-    if (right > this.viewportWidth) directions.push('right');
-    if (top < 0) directions.push('above');
-    if (bottom > this.viewportHeight) directions.push('below');
+    if (left < -1) directions.push('left');
+    if (right > this.viewportWidth + 1) directions.push('right');
+    if (top < -1) directions.push('above');
+    if (bottom > this.viewportHeight + 1) directions.push('below');
     return { directions, state: right <= 0 || bottom <= 0 || left >= this.viewportWidth || top >= this.viewportHeight ? 'outside' : directions.length ? 'partial' : 'visible' };
   }
 }

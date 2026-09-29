@@ -30,10 +30,9 @@ pub use descriptors::{
     DescribingTypeResolution, Descriptor, DescriptorKindRoots, DescriptorReader,
     EffectiveRelationshipMember, ExtendsIter, ExtendsLineageDefect, ExtendsLineageDiagnosis,
     HolonDescriptor, HolonSpaceDescriptor, PropertyDescriptor, ProspectiveDescriptorReader,
-    ProspectiveSelection, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
-    SchemaOwnershipKind, SchemaOwnershipResolution, StructuralPrerequisites, TransactionDescriptor,
-    TypeHeader, UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor,
-    ValueDescriptorKind,
+    ProspectiveSelection, RelationshipDescriptor, RelationshipDirection, SchemaOwnershipKind,
+    SchemaOwnershipResolution, StructuralPrerequisites, TransactionDescriptor, TypeHeader,
+    UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind,
 };
 pub use reference_layer::{
     assert_reference_transaction_compatible, CompletionOutcome, Divergence, EquivalenceOutcome,

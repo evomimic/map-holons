@@ -115,19 +115,19 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "01b1c6e80a5687cdaccb85d70df50d5d0ee489ff453f2e180bca138c40cd8505"
+      "sha256": "d5c632ed9afc580c77e5ca34020937945a996eca0028fbf959cfab04a01c3aad"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "834edecb3cd4b693d34a7631a365bfc9d5176c8887c8f7a15a811877ac73eaca"
+      "sha256": "3a6a4a27dcefd21db4b3974e30fba82820916ae23161c5506bc31fe72a6289cc"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "2b02526e3f30419a9b7da53c560d1e4469cf87cb95ed11dc2d42c907a4318a0e"
+      "sha256": "fb5b3690993ff0d891402f7ec76c24f452a8e452f21555f00c9b303964e33425"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "9576e72c8a23644b2f0e548ef7ab9c8914f16b5503fa5a047750277188d6b0f8"
+      "sha256": "6cf520a68082c30b498eb9066f3f9aea6947afc62e4d0f51f428573e1b09c65b"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -924,234 +924,6 @@
       "type": "MetaValueType.MetaTypeDescriptor"
     },
     {
-      "key": "BootstrapThemeActionCornerRadius",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeActionHoverSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeActionPaddingBlock",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeActionPaddingInline",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeActionSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeActionTextColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasContentMinHeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasFontFamily",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasFontSize",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasFontWeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasGap",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasHeadingFontWeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasLineHeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasPadding",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCanvasTextColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCollectionHeaderSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCollectionHeadingFontSize",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCollectionHeadingFontWeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCollectionSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeCollectionTextColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeControlGap",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeFocusRingColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeFocusRingWidth",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeInspectorContentMinHeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeInspectorRailWidth",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherDismissDuration",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherIndicatorColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherIndicatorDuration",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherIndicatorSize",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherIndicatorWidth",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherPadding",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherPhaseGap",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeLauncherTextColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeMutedTextColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeNodeHeadingFontSize",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePanelCornerRadius",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePanelSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertiesDisclosureFocusColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertiesHeadingFontSize",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertiesHeadingFontWeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertiesHeadingGap",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertiesRowGap",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertyColumnGap",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemePropertyNameMinWidth",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeSlotBorderColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeSlotBorderStyle",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeSlotBorderWidth",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeSlotPadding",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableCellBorderColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableCellBorderStyle",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableCellBorderWidth",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableCellPadding",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableHeaderFontWeight",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableHeaderSurfaceBackground",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "BootstrapThemeTableHeaderTextColor",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
       "key": "BytesLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
     },
@@ -1233,6 +1005,14 @@
     },
     {
       "key": "CollectionHeadingFontWeight.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionNavigationSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionNavigationTextColor.DesignToken",
       "type": "DesignToken.HolonType"
     },
     {
@@ -1492,6 +1272,522 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "Demo1.DeepOceanTheme",
+      "type": "Theme.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.CollectionNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.RelationshipNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.ViewControlSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.ViewControlTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasLineHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeControlGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeFocusRingColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeFocusRingWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeMutedTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeNodeHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePanelCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePanelSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableHeaderFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.MetaDesignSystem",
+      "type": "MetaDesignSystem.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme",
+      "type": "Theme.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme.CollectionNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme.RelationshipNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme.ViewControlSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentTheme.ViewControlTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasLineHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeControlGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeFocusRingColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeFocusRingWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeMutedTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeNodeHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePanelCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePanelSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableCellBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableHeaderFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "DescribedTypeRule.KeyRuleType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -1514,6 +1810,10 @@
     {
       "key": "DesignToken.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DesignTokenDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "DesignTokenName.PropertyType",
@@ -2124,14 +2424,6 @@
       "type": "CanvasVisualizer.HolonType"
     },
     {
-      "key": "MAP.BootstrapMetaDesignSystem",
-      "type": "MetaDesignSystem.HolonType"
-    },
-    {
-      "key": "MAP.BootstrapTheme",
-      "type": "Theme.HolonType"
-    },
-    {
       "key": "MAP.CoreSchemaSpace",
       "type": "HolonSpace.HolonType"
     },
@@ -2242,6 +2534,10 @@
     {
       "key": "MetaDesignSystem.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaDesignSystemDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "MetaDesignSystemName.PropertyType",
@@ -2552,6 +2848,14 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "RelationshipNavigationSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "RelationshipNavigationTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "RelationshipOccurrenceBinding.ValidationRule",
       "type": "RelationshipValidationRule.HolonType"
     },
@@ -2840,6 +3144,10 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "ThemeDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "ThemeName.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -3030,6 +3338,14 @@
     {
       "key": "Version.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ViewControlSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ViewControlTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "ViolationKind.PropertyType",

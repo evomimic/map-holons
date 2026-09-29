@@ -134,7 +134,6 @@ it('allows descriptor-authorized mixed defaults while distinguishing missing val
   const element = createTableCollectionVisualizer();
   element.setContext(context({ kind: 'holon-property-map', displayName: 'Properties', rowIds: ['a', 'b', 'c'], columns: [{ id: 'DefaultValue', displayName: 'Default Value', valueType: 'AnyBaseValue', values: [{ StringValue: 'hello' }, { IntegerValue: 3 }, null] }] }));
   expect([...element.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['hello', '3', 'n/a']);
-  expect(() => element.setContext(context({ kind: 'holon-property-map', displayName: 'Invalid', rowIds: ['a'], columns: [{ id: 'Name', displayName: 'Name', valueType: 'StringValue', values: [{ IntegerValue: 3 }] }] }))).toThrow('outside StringValue');
 });
 
 it('fits a column prefix, reveals additional columns on request, and pins Key', () => {
@@ -154,7 +153,7 @@ it('fits a column prefix, reveals additional columns on request, and pins Key', 
       header.getBoundingClientRect = () => ({ width: 50 }) as DOMRect;
     });
     document.body.append(element);
-    expect(headers.map(header => header.hidden)).toEqual([false, true, true]);
+    expect(headers.map(header => header.hidden)).toEqual([false, false, true]);
     expect(more.hidden).toBe(false);
     more.click();
     expect(headers.every(header => !header.hidden)).toBe(true);
@@ -200,7 +199,7 @@ it('retains actual handles, suppresses repeated Enter, and ignores late collecti
     setInspectHolonHandler(handler: ((reference: unknown) => void) | null): void;
   };
   const inspect = vi.fn(); element.setInspectHolonHandler(inspect);
-  const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async () => ({ StringValue: 'same' })) };
+  const member = { key: vi.fn(async () => 'same'), holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async () => ({ StringValue: 'same' })) };
   const properties = [{ isArray: async () => false, propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue' }];
   const collection = { elementType: { hasInstanceKey: async () => false, instanceProperties: async () => properties }, [Symbol.iterator]: function* () { yield member; } };
   await element.setCollection(collection, 'Current'); document.body.append(element);
@@ -208,7 +207,8 @@ it('retains actual handles, suppresses repeated Enter, and ignores late collecti
   row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', repeat: true, bubbles: true }));
   expect(inspect).toHaveBeenCalledExactlyOnceWith(member);
-  expect(member.propertyValue).toHaveBeenCalledTimes(1);
+  expect(member.key).toHaveBeenCalledTimes(1);
+  expect(member.propertyValue).not.toHaveBeenCalled();
   let finish!: (value: typeof properties) => void;
   const pending = element.setCollection({ ...collection, elementType: { hasInstanceKey: async () => false, instanceProperties: () => new Promise(resolve => { finish = resolve; }) } }, 'Obsolete');
   await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
@@ -313,4 +313,15 @@ it('shows explicit ascending and descending choices on sortable property columns
   descending!.click(); expect(rowOrder(element)).toEqual(['two', 'one']);
   expect(descending!.getAttribute('aria-pressed')).toBe('true');
   expect(ascending!.getAttribute('aria-pressed')).toBe('false');
+});
+
+
+it('does not pre-scan cell values for descriptor conformance', () => {
+  const element = createTableCollectionVisualizer();
+  const values = [{ StringValue: 'Visible' }];
+  Object.defineProperty(values, 'some', { value: () => { throw new Error('Pre-display validation scan'); } });
+  element.setContext(context({ kind: 'holon-property-map', displayName: 'Properties', rowIds: ['a'], columns: [
+    { id: 'Name', displayName: 'Name', valueType: 'StringValue', values },
+  ] }));
+  expect(element.querySelector('td')?.textContent).toBe('Visible');
 });

@@ -406,7 +406,7 @@
           "name": "UsesMetaDesignSystem",
           "target": [
             {
-              "$ref": "MAP.BootstrapMetaDesignSystem"
+              "$ref": "Demo1.MetaDesignSystem"
             }
           ]
         },
@@ -436,6 +436,12 @@
         {
           "name": "ConsumesDesignToken",
           "target": [
+            {
+              "$ref": "ViewControlSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ViewControlTextColor.DesignToken"
+            },
             {
               "$ref": "MutedTextColor.DesignToken"
             },
@@ -553,6 +559,12 @@
         {
           "name": "ConsumesDesignToken",
           "target": [
+            {
+              "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "RelationshipNavigationTextColor.DesignToken"
+            },
             {
               "$ref": "ActionCornerRadius.DesignToken"
             },
@@ -858,7 +870,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:90ed7f6b76b6ca7e3addccbfee68de1cfd5d09af53abd7594a59e061990eca71",
+        "VisualizerArtifactDigest": "sha256:c4ff4411594b8ba357c8379c2b9dd2636dadd48c2c317647dbc3af2506fb53f8",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1002,6 +1014,12 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "ViewControlSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ViewControlTextColor.DesignToken"
+            },
+            {
               "$ref": "ActionPaddingBlock.DesignToken"
             },
             {
@@ -1093,7 +1111,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:8e4c9ef4f7bace153e1fae0deeea916b25bfa47828e81e905172a2fe9ee162f8",
+        "VisualizerArtifactDigest": "sha256:9e57ef3bf7daa35821cb9165266f89a7917d86d451c31679f534d3c6ec253fec",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1352,7 +1370,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:1d3419a1aa834c31704ae76ea1830d32f912bd6a6b6647b81b45a331069e019b",
+        "VisualizerArtifactDigest": "sha256:f2038d8b3b8942f91d2e73575a01d17d644dbddcd6e4c813fae623eaf8c58eea",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

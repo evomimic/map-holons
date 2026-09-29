@@ -107,7 +107,7 @@ describe('Path Inspector visualizer artifact', () => {
     const restored = route();
     element.viewportWidth = 400;
     element.allocateRows();
-    expect(route()).not.toBe(restored);
+    expect(route()).toBe(restored);
     expect(edges()).toEqual([['space', 'theme'], ['space', 'dancer'], ['dancer', 'dance']]);
     publish([root, theme], { occurrenceId: 'theme', mode: 'restore' });
     expect(edges()).toEqual([['space', 'theme']]);
@@ -183,7 +183,7 @@ it('routes recursive horizontal and mixed lineage from provenance through displa
   const displaced = edge('b').getAttribute('d');
   element.viewportWidth = 360; element.viewportHeight = 480; element.allocateRows();
   horizontal('b', 'a', true);
-  expect(edge('b').getAttribute('d')).not.toBe(displaced);
+  expect(edge('b').getAttribute('d')).toBe(displaced);
   expect(overlay.parentElement).toBe(element.surface);
   expect(overlay.style.pointerEvents).toBe('none');
   element.viewport.scrollLeft = 300; element.viewport.scrollTop = 100;
@@ -241,7 +241,7 @@ it('derives independent column and row budgets from occurrence focus after colum
   const height = budget(c).height;
   element.viewportWidth = 1000; element.allocateRows();
   expect(budget(c).height).toBe(height);
-  expect(budget(c).width).toBeGreaterThan(width);
+  expect(budget(c).width).toBe(width);
   const focus = { occurrenceId: 'a', mode: 'restore' };
   publish([a, b, c, down], focus);
   expect(budget(a).width).toBeGreaterThan(budget(c).width);
@@ -300,8 +300,8 @@ it('preserves topology, budgets, responsive state, geometry and lineage across p
   expect(element.requestView('actual-size')).toBe(true);
   expect(element.view.scale).toBe(1);
   const bounds = element.layoutBounds.get('active');
-  expect(element.viewport.scrollLeft).toBe(bounds.x + bounds.width / 2);
-  expect(element.viewport.scrollTop).toBe(bounds.y + bounds.height / 2);
+  expect(element.viewport.scrollLeft).toBe(bounds.x + bounds.width / 2 - element.view.viewportWidth / 2);
+  expect(element.viewport.scrollTop).toBe(bounds.y + bounds.height / 2 - element.view.viewportHeight / 2);
   expect(allocate).not.toHaveBeenCalled();
   expect(f.restore).not.toHaveBeenCalled();
   expect(snapshot()).toEqual(before);
@@ -325,7 +325,7 @@ it('negotiates useful content extents with border/status chrome and updates only
   active.element.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
   // Renegotiation reaches only the immediate parent, without Canvas or selector lookup.
   budget = active.element.setSpatialBudget.mock.lastCall![0];
-  expect(budget).toEqual(next);
+  expect(budget).toEqual({ ...next });
   const calls = active.element.setSpatialBudget.mock.calls.length;
   const internal = document.createElement('div'); active.element.append(internal);
   internal.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
@@ -392,4 +392,64 @@ it('anchors zoom at the viewport center or pointer and supports viewport keyboar
   const scroll = element.viewport.scrollTop;
   element.viewport.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', cancelable: true }));
   expect(element.viewport.scrollTop).toBe(Math.max(0, scroll - 80));
+});
+
+it('reveals the mediating parent with a vertically traversed child when their useful extents exceed the viewport', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-vertical-context', class extends Path {});
+  const element = document.createElement('test-path-vertical-context') as any;
+  const node = () => Object.assign(document.createElement('section'), {
+    getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 800, 'partial-width': 200, 'minimal-width': 60 }, vertical: { 'full-height': 720, 'partial-height': 410, 'minimal-height': 40 } }),
+    setNodeInspectorAllocation: vi.fn(),
+  });
+  const root = { id: 'root', rowId: 'r0', column: 1, element: node() };
+  const child = { id: 'child', rowId: 'r1', column: 1, element: node(), provenance: { kind: 'collection-member', parentOccurrenceId: 'root' } };
+  let publish: any;
+  element.setContext({ navigation: { subscribe(render: any) { publish = render; render([root], { occurrenceId: 'root', mode: 'restore' }); return () => {}; } } });
+  element.viewportWidth = 1200; element.viewportHeight = 750;
+  const reveal = vi.spyOn(element.view, 'reveal');
+  publish([root, child], { occurrenceId: 'child', mode: 'traverse' });
+  const parentBounds = element.layoutBounds.get('root');
+  const childBounds = element.layoutBounds.get('child');
+  expect(parentBounds.height).toBe(410);
+  expect(childBounds.height).toBe(720);
+  expect(childBounds.height).toBeGreaterThanOrEqual(560);
+  expect(reveal).not.toHaveBeenCalled();
+  expect(element.view.viewport.scrollTop).toBe(0);
+});
+
+it('allocates a different conforming Node solely through its two-axis slot contract', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-alternative-participant', class extends Path {});
+  const element = document.createElement('test-path-alternative-participant') as any;
+  const make = (id: string, row: string, column: number, parent?: string) => ({
+    id, rowId: row, column, provenance: parent ? { parentOccurrenceId: parent } : undefined,
+    element: Object.assign(document.createElement('article'), {
+      getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 600, 'partial-width': 180, 'minimal-width': 50 }, vertical: { 'full-height': 500, 'partial-height': 250, 'minimal-height': 40 } }),
+      setNodeInspectorAllocation: vi.fn(),
+    }),
+  });
+  const a = make('a', 'one', 1), b = make('b', 'one', 2, 'a'), c = make('c', 'two', 2, 'b');
+  let publish: any;
+  element.setContext({ navigation: { subscribe(render: any) { publish = render; render([a], { occurrenceId: 'a', mode: 'traverse' }); return () => {}; } } });
+  const full = a.element.setNodeInspectorAllocation.mock.lastCall![0];
+  // A substituted child's private DOM must not affect parent-owned chrome measurement.
+  const privateControl = document.createElement('button');
+  privateControl.dataset.closeBranch = 'private';
+  Object.defineProperty(privateControl, 'offsetHeight', { value: 999 });
+  a.element.append(privateControl);
+  element.allocateRows();
+  expect(a.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual(full);
+  publish([a, b], { occurrenceId: 'b', mode: 'traverse' });
+  expect(a.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual({ width: 180, height: 500, vertical: 'full-height', horizontal: 'partial-width' });
+  expect(b.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual(full);
+  publish([a, b, c], { occurrenceId: 'c', mode: 'traverse' });
+  expect(b.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual({ width: 600, height: 250, vertical: 'partial-height', horizontal: 'full-width' });
+  expect(c.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual(full);
+  const geometry = JSON.stringify([...element.layoutBounds]);
+  element.viewportWidth = 200; element.viewportHeight = 150; element.allocateRows();
+  expect(JSON.stringify([...element.layoutBounds])).toBe(geometry);
+  expect(element.viewport.scrollLeft).toBe(0); expect(element.viewport.scrollTop).toBe(0);
+  a.element.getNodeInspectorExtents = () => ({ horizontal: { 'full-width': 10, 'partial-width': 180, 'minimal-width': 50 }, vertical: { 'full-height': 500, 'partial-height': 250, 'minimal-height': 40 } });
+  expect(() => element.allocateRows()).toThrow('positive and ordered');
 });

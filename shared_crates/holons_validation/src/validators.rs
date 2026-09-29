@@ -277,8 +277,12 @@ pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
             return Ok(false);
         }
         if let Some(expected) = native_rule_kind(root.name) {
+            holons_core::reference_layer::assert_reference_transaction_compatible(
+                governing,
+                &context.context,
+            )?;
             return Ok(ValueDescriptor::from_holon(reader.select(governing)?)
-                .value_kind_with_reader(&context.roots, reader)?
+                .value_kind_with_reader(reader)?
                 == ValueDescriptorKind::BaseValue(expected));
         }
         return Ok(true);

@@ -560,7 +560,9 @@ fn binding_compatibility_uses_rule_type_lineage_and_original_declaration() -> Re
         .unwrap()
         .remove_related_holons(CoreRelationshipTypeName::DescribedBy, vec![original_family])?;
     fixture.link(rule_key, CoreRelationshipTypeName::DescribedBy, "StringRuleSubtype")?;
-    fixture.node("Derived.StringValueType")?;
+    fixture
+        .node("Derived.StringValueType")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
     fixture.link(
         "Derived.StringValueType",
         CoreRelationshipTypeName::Extends,

@@ -1,3 +1,4 @@
+import { createCanvasThemeMenu, type CanvasThemeChoice } from '../themes/canvas-theme-menu';
 import { renderVisualizerRegion, unavailableVisualizerRegion } from '../runtime/visualizer-region';
 import type { CanvasApi, SurfaceViewRequest, VisualizerMountPlan } from '../contracts/canvas';
 import type { VisualizerContext, VisualizerElement } from '../contracts/visualizers';
@@ -19,6 +20,7 @@ export interface ThemeResolver {
 export class DomCanvas implements CanvasApi {
   private mountedVisualizers: Array<HTMLElement & Partial<VisualizerElement>> = [];
   private readonly root: HTMLDivElement;
+  private readonly actionBar: HTMLElement;
   private readonly primarySlot: HTMLDivElement;
   private readonly hostedDancerRegion: HTMLElement;
   private readonly awaitingHomeDancer: HTMLParagraphElement;
@@ -34,14 +36,15 @@ export class DomCanvas implements CanvasApi {
     this.hostedDancerRegion = parts.hostedDancerRegion;
     this.awaitingHomeDancer = parts.awaitingHomeDancer;
     const viewControls = document.createElement('div');
+    this.actionBar = viewControls;
     viewControls.setAttribute('role', 'group');
-    viewControls.setAttribute('aria-label', 'Canvas view');
-    Object.assign(viewControls.style, { display: 'flex', gap: 'var(--dahn-control-gap)' });
+    viewControls.setAttribute('aria-label', 'Canvas actions');
+    Object.assign(viewControls.style, { display: 'flex', gap: 'var(--dahn-control-gap)', alignItems: 'center', flexWrap: 'wrap' });
     for (const [request, label] of [['zoom-to-fit', 'Zoom to Fit'], ['actual-size', 'Actual Size']] as const) {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = label;
-      Object.assign(button.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+      Object.assign(button.style, { font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
       button.addEventListener('click', () => this.requestView(request));
       viewControls.append(button);
     }
@@ -109,6 +112,13 @@ export class DomCanvas implements CanvasApi {
   /** Each composition owner forwards only to its own selected child. */
   requestView(request: SurfaceViewRequest): boolean {
     return this.mountedVisualizers.some(element => element.requestView?.(request) === true);
+  }
+
+  configureThemeMenu(current: DahnTheme, discover: () => Promise<CanvasThemeChoice[]>, onSelected: (theme: DahnTheme) => void): void {
+    this.actionBar.append(createCanvasThemeMenu(current, discover, theme => {
+      this.setTheme(theme);
+      onSelected(theme);
+    }));
   }
 
   setTheme(theme: DahnTheme): void {
