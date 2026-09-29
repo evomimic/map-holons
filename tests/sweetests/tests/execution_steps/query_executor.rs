@@ -1,6 +1,8 @@
-//! Executor for `DanceTestStep::ExecuteQuery` (QRY1 #655 scaffold, QRY2 #715 operators).
+//! Executor for `DanceTestStep::ExecuteQuery` (QRY1 #655 scaffold, QRY2 #715
+//! operators, QRY4a #755 transient definitions and invocation bindings).
 //!
-//! Drives a committed `Query` definition through the descriptor-backed Query
+//! Drives a `Query` definition — committed, or a transient graph that is never
+//! staged — through the descriptor-backed Query
 //! runtime, either directly (`QueryReference::begin_execution` / `run`) or
 //! through the narrow `QueryDance` branch of `execute_dance_v2`
 //! (`TransactionAction::DanceV2`), and asserts the step's expectation. Every
@@ -15,6 +17,11 @@
 //! described by `HolonCollection.HolonType` whose `CollectionMembers` are the
 //! resolved references (`build_input_collection`) — the caller-side boundary
 //! from #655 — and the runtime links `Input` to that same holon by identity.
+//!
+//! Bindings: invocation-level parameter bindings go to `begin_execution` on the
+//! direct route and to `QueryDanceRequest.RequestParameters` on the Dance
+//! route. Their resolution is not implemented, so a nonempty list must be
+//! refused before any runtime record exists.
 
 use std::sync::Arc;
 
@@ -43,15 +50,19 @@ pub async fn execute_query(
     query: TestReference,
     input: QueryInputSpec,
     route: QueryRoute,
+    bindings: Vec<TestReference>,
     expectation: QueryExpectation,
 ) {
     info!("--- TEST STEP: Execute query via {route:?} ---");
     let context = state.context();
 
-    // Tokens come from `LookupSavedHolonByKey`, which records the resolved
-    // SmartReference under the token's expected snapshot.
+    // A committed definition's token comes from `LookupSavedHolonByKey` (a
+    // SmartReference); a transient definition's token resolves to the
+    // TransientReference minted by its `NewHolon` step.
     let query_reference =
         state.resolve_execution_reference(&context, ResolveBy::Expected, &query).unwrap();
+    let bindings =
+        state.resolve_execution_references(&context, ResolveBy::Expected, &bindings).unwrap();
     let resolved_input = match &input {
         QueryInputSpec::None => ResolvedInput::None,
         QueryInputSpec::Collection(members) => ResolvedInput::Collection(
@@ -64,7 +75,9 @@ pub async fn execute_query(
     let expected = ResolvedExpectation::resolve(state, &context, expectation);
 
     match route {
-        QueryRoute::Direct => execute_direct(&context, query_reference, resolved_input, expected),
+        QueryRoute::Direct => {
+            execute_direct(&context, query_reference, resolved_input, bindings, expected)
+        }
         QueryRoute::QueryDance => {
             let members = match resolved_input {
                 ResolvedInput::None => None,
@@ -74,7 +87,7 @@ pub async fn execute_query(
                      collection-shaped"
                 ),
             };
-            execute_query_dance(state, &context, query_reference, members, expected).await
+            execute_query_dance(state, &context, query_reference, members, bindings, expected).await
         }
     }
 }
@@ -127,10 +140,11 @@ fn execute_direct(
     context: &Arc<TransactionContext>,
     query_reference: HolonReference,
     input: ResolvedInput,
+    bindings: Vec<HolonReference>,
     expected: ResolvedExpectation,
 ) {
     let query = QueryReference::new(query_reference.clone())
-        .expect("committed Query holon should wrap as a QueryReference");
+        .expect("Query definition holon should wrap as a QueryReference");
     let root_expression =
         single_related(&query_reference, QueryRelationshipTypeName::RootExpression);
     let space = affording_space(context);
@@ -162,10 +176,13 @@ fn execute_direct(
             .expect("harness collection holon should wrap as a HolonCollectionReference")
     });
 
-    // begin_execution enforces the root input contract before any record exists.
+    // begin_execution refuses bindings and enforces the root input contract
+    // before any record exists. The single-holon convenience builds its input
+    // collection first, so the record count is only comparable without it.
+    let transients_before = context.lookup().transient_count().unwrap();
     let begun = match single_source.clone() {
-        Some(source) => query.begin_execution_for_holon(context, focal_space, source, Vec::new()),
-        None => query.begin_execution(context, focal_space, collection_input, Vec::new()),
+        Some(source) => query.begin_execution_for_holon(context, focal_space, source, bindings),
+        None => query.begin_execution(context, focal_space, collection_input, bindings),
     };
     let execution = match begun {
         Ok(execution) => execution,
@@ -176,9 +193,17 @@ fn execute_direct(
                 expected.expected_error(),
                 "query (direct): begin_execution failed unexpectedly: {error:?}"
             );
+            if single_source.is_none() {
+                assert_eq!(
+                    context.lookup().transient_count().unwrap(),
+                    transients_before,
+                    "a refused begin_execution creates no ExecutionInstance or \
+                     QueryExpressionExecution record"
+                );
+            }
             assert_no_runtime_state(&query_reference, "Query");
             assert_no_runtime_state(&root_expression, "root QueryExpression");
-            info!("Success! begin_execution rejected the input contract violation");
+            info!("Success! begin_execution refused the invocation before creating records");
             return;
         }
     };
@@ -292,9 +317,11 @@ async fn execute_query_dance(
     context: &Arc<TransactionContext>,
     query_reference: HolonReference,
     input_members: Option<Vec<HolonReference>>,
+    bindings: Vec<HolonReference>,
     expected: ResolvedExpectation,
 ) {
-    // Request: RequestedQuery + (optionally) the InitialInput collection holon.
+    // Request: RequestedQuery + (optionally) the InitialInput collection holon
+    // and the RequestParameters bindings.
     let mut request =
         context.mutation().new_holon(Some(MapString("query-dance-request".to_string()))).unwrap();
     request
@@ -312,6 +339,11 @@ async fn execute_query_dance(
                 QueryDanceRelationshipTypeName::InitialInput,
                 vec![collection.into()],
             )
+            .unwrap();
+    }
+    if !bindings.is_empty() {
+        request
+            .add_related_holons(QueryDanceRelationshipTypeName::RequestParameters, bindings)
             .unwrap();
     }
 

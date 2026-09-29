@@ -213,6 +213,9 @@ pub enum DanceTestStep {
         query: TestReference,
         input: QueryInputSpec,
         route: QueryRoute,
+        /// Invocation-level parameter bindings: passed to `begin_execution` on
+        /// the direct route and as `RequestParameters` on the QueryDance route.
+        bindings: Vec<TestReference>,
         expectation: QueryExpectation,
         description: String,
     },

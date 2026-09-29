@@ -2687,6 +2687,761 @@
           ]
         }
       ]
+    },
+    {
+      "key": "OrderBy.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "OrderBy",
+        "TypeNamePlural": "OrderByExpressions",
+        "DisplayName": "Order By",
+        "DisplayNamePlural": "Order By Expressions",
+        "Description": "Collection transformation that returns the input occurrences stably sorted by one through five ordered OrderBySpecs. It neither deduplicates nor projects."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(OrderBy.HolonType)-[OrderBySpecs]->(OrderBySpec.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OrderBySpec.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "OrderBySpec",
+        "TypeNamePlural": "OrderBySpecs",
+        "DisplayName": "Order By Spec",
+        "DisplayNamePlural": "Order By Specs",
+        "Description": "One sort key of an OrderBy: the PropertyType descriptor to sort by, its direction, and where members missing that value are placed."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "SortDirection.PropertyType"
+            },
+            {
+              "$ref": "NullPlacement.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Skip.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Skip",
+        "TypeNamePlural": "SkipExpressions",
+        "DisplayName": "Skip",
+        "DisplayNamePlural": "Skip Expressions",
+        "Description": "Collection transformation that removes the first SkipCount occurrences and preserves the order of the rest."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "SkipCount.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Limit.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Limit",
+        "TypeNamePlural": "LimitExpressions",
+        "DisplayName": "Limit",
+        "DisplayNamePlural": "Limit Expressions",
+        "Description": "Collection transformation that retains at most LimitCount leading occurrences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "LimitCount.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SortDirection.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SortDirection",
+        "TypeNamePlural": "SortDirections",
+        "DisplayName": "Sort Direction",
+        "DisplayNamePlural": "Sort Directions",
+        "Description": "Direction in which an OrderBySpec orders present values. Evaluation resolves an absent value to the descriptor default without writing it.",
+        "IsValueRequired": true,
+        "DefaultValue": "Ascending"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "QuerySortDirection.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NullPlacement.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "NullPlacement",
+        "TypeNamePlural": "NullPlacements",
+        "DisplayName": "Null Placement",
+        "DisplayNamePlural": "Null Placements",
+        "Description": "Placement of members missing the sorted value, independent of SortDirection. Evaluation resolves an absent value to the descriptor default without writing it.",
+        "IsValueRequired": true,
+        "DefaultValue": "Missing-Last"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "QueryNullPlacement.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SkipCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SkipCount",
+        "TypeNamePlural": "SkipCounts",
+        "DisplayName": "Skip Count",
+        "DisplayNamePlural": "Skip Counts",
+        "Description": "Nonnegative number of leading occurrences a Skip removes. No default.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LimitCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LimitCount",
+        "TypeNamePlural": "LimitCounts",
+        "DisplayName": "Limit Count",
+        "DisplayNamePlural": "Limit Counts",
+        "Description": "Nonnegative maximum number of occurrences a Limit retains. No default.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QuerySortDirection.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "QuerySortDirection",
+        "TypeNamePlural": "QuerySortDirections",
+        "DisplayName": "Query Sort Direction",
+        "DisplayNamePlural": "Query Sort Directions",
+        "Description": "Direction in which an OrderBySpec orders present values."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "QuerySortDirection.MapEnumValueType.Ascending"
+            },
+            {
+              "$ref": "QuerySortDirection.MapEnumValueType.Descending"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QuerySortDirection.MapEnumValueType.Ascending",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Ascending",
+        "DisplayName": "Ascending",
+        "Description": "Smaller present values sort first."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QuerySortDirection.MapEnumValueType.Descending",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Descending",
+        "DisplayName": "Descending",
+        "Description": "Larger present values sort first."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryNullPlacement.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "QueryNullPlacement",
+        "TypeNamePlural": "QueryNullPlacements",
+        "DisplayName": "Query Null Placement",
+        "DisplayNamePlural": "Query Null Placements",
+        "Description": "Placement of members missing an OrderBySpec's value, independent of direction."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "QueryNullPlacement.MapEnumValueType.Missing-First"
+            },
+            {
+              "$ref": "QueryNullPlacement.MapEnumValueType.Missing-Last"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryNullPlacement.MapEnumValueType.Missing-First",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Missing-First",
+        "DisplayName": "Missing First",
+        "Description": "Members missing the value sort before every present value."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryNullPlacement.MapEnumValueType.Missing-Last",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Missing-Last",
+        "DisplayName": "Missing Last",
+        "Description": "Members missing the value sort after every present value."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OneToFive.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType",
+      "properties": {
+        "Minimum": 1,
+        "Maximum": 5,
+        "ConstraintName": "OneToFive"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OrderBy.HolonType)-[OrderBySpecs]->(OrderBySpec.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OrderBySpecs",
+        "TypeNamePlural": "OrderBySpecs",
+        "DisplayName": "Order By Specs",
+        "DisplayNamePlural": "Order By Specs",
+        "Description": "Ordered sort keys of an OrderBy; target order is sort precedence.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OrderBy.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OrderBySpec.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(OrderBySpec.HolonType)-[OrderBySpecForExpressions]->(OrderBy.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneToFive.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OrderBySpec.HolonType)-[OrderBySpecForExpressions]->(OrderBy.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OrderBySpecForExpressions",
+        "TypeNamePlural": "OrderBySpecForExpressions",
+        "DisplayName": "Order By Spec For Expressions",
+        "DisplayNamePlural": "Order By Spec For Expressions",
+        "Description": "Inverse of OrderBySpecs.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OrderBySpec.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OrderBy.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Property",
+        "TypeNamePlural": "Properties",
+        "DisplayName": "Property",
+        "DisplayNamePlural": "Properties",
+        "Description": "The PropertyType descriptor an OrderBySpec sorts by, matched by descriptor identity rather than name.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OrderBySpec.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(PropertyType.TypeDescriptor)-[PropertyForOrderBySpecs]->(OrderBySpec.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType.TypeDescriptor)-[PropertyForOrderBySpecs]->(OrderBySpec.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PropertyForOrderBySpecs",
+        "TypeNamePlural": "PropertyForOrderBySpecs",
+        "DisplayName": "Property For Order By Specs",
+        "DisplayNamePlural": "Property For Order By Specs",
+        "Description": "Inverse of Property.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OrderBySpec.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

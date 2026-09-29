@@ -1,4 +1,5 @@
-//! QueryCore — descriptor-backed Query runtime (QRY1 scaffold + QRY2 operators).
+//! QueryCore — descriptor-backed Query runtime (QRY1 scaffold, QRY2 navigation,
+//! QRY4a pagination).
 //!
 //! This module is the internal direct-execution seam for a reusable `Query`
 //! definition. It owns the definition/runtime boundary:
@@ -11,21 +12,25 @@
 //!   caller-supplied input;
 //! - `Pending -> Running -> Complete | Failed` status progression;
 //! - execution of the root expression and each `Next` successor in turn —
-//!   `SeedHolons` (root only) and `Expand` — with `HolonError::NotImplemented`
-//!   for every other concrete kind.
+//!   `SeedHolons` (root only), `Expand`, `Skip`, and `Limit` — with
+//!   `HolonError::NotImplemented` for every other concrete kind.
 //!
 //! Focal space is invocation context, not definition state: it is recorded only
 //! on the transient `ExecutionInstance`. Nothing is ever written onto the
-//! reusable Query or QueryExpression definitions. Parameter bindings are
-//! accepted and discarded (QRY3). The legacy `query.rs` compatibility surface is
-//! untouched and lives beside this module.
+//! reusable Query or QueryExpression definitions, which may themselves be
+//! transient: a caller can author and run a query graph without staging or
+//! committing it. Separate invocation parameter bindings are not supported yet
+//! (QRY6): a nonempty binding list is refused before any runtime record exists.
+//! The legacy `query.rs` compatibility surface is untouched and lives beside
+//! this module.
 //!
 //! Input contract: the schema leaves `QueryExpressionExecution.Input` optional
 //! because the abstract `QueryExpression` cannot know whether its root is a
 //! source or a transform. The runtime enforces the operator-specific rule in
 //! [`QueryReference::begin_execution`]: a root `SeedHolons` accepts no input (a
 //! supplied collection is a contract error, not an ignored operand); a root
-//! `Expand` requires exactly one `HolonCollectionReference`. When present, the
+//! transform (`Expand`, `Skip`, `Limit`) requires exactly one
+//! `HolonCollectionReference`. When present, the
 //! caller's collection holon is linked as `Input` by identity; it is never copied.
 //!
 //! Read boundary: operators resolve the requested relationship through the
@@ -51,6 +56,7 @@ use type_names::{
     CoreRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName, ToRelationshipName,
 };
 
+use super::pagination;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::descriptors::resolve_core_descriptor;
 use crate::reference_layer::{HolonReference, ReadableHolon, TransientReference, WritableHolon};
@@ -61,6 +67,8 @@ const HOLON_COLLECTION_TYPE_NAME: &str = "HolonCollection";
 const HOLON_SPACE_TYPE_NAME: &str = "HolonSpace";
 const SEED_HOLONS_TYPE_NAME: &str = "SeedHolons";
 const EXPAND_TYPE_NAME: &str = "Expand";
+const SKIP_TYPE_NAME: &str = "Skip";
+const LIMIT_TYPE_NAME: &str = "Limit";
 const EXECUTION_INSTANCE_DESCRIPTOR_KEY: &str = "ExecutionInstance.HolonType";
 const QUERY_EXPRESSION_EXECUTION_DESCRIPTOR_KEY: &str = "QueryExpressionExecution.HolonType";
 const HOLON_COLLECTION_DESCRIPTOR_KEY: &str = "HolonCollection.HolonType";
@@ -136,7 +144,11 @@ impl QueryReference {
     /// only. `input` is the caller's explicit collection holon, linked as `Input`
     /// by identity when the root expression takes one (see the module docs for the
     /// per-kind contract). `bindings` are invocation-level `QueryParameterBinding`
-    /// references; they are accepted and discarded (QRY3 owns their semantics).
+    /// references. Their resolution is not implemented (QRY6), so a nonempty list
+    /// is refused with `HolonError::NotImplemented` as the first operation —
+    /// before root/input validation and before any runtime record is created.
+    /// This is the single refusal point: the single-holon helper and the
+    /// QueryDance adapter forward their bindings here. An empty list proceeds.
     /// Both records start `Pending`.
     pub fn begin_execution(
         &self,
@@ -145,7 +157,12 @@ impl QueryReference {
         input: Option<HolonCollectionReference>,
         bindings: Vec<HolonReference>,
     ) -> Result<QueryExecution, HolonError> {
-        let _ = bindings; // carried unresolved; not recorded anywhere yet
+        if !bindings.is_empty() {
+            return Err(HolonError::NotImplemented(format!(
+                "query invocation parameter bindings ({} supplied)",
+                bindings.len()
+            )));
+        }
         let root_expression = exactly_one(&self.0, QueryRelationshipTypeName::RootExpression)?;
         let root_kind = ExpressionKind::classify(&root_expression)?;
         let input = root_kind.validate_root_input(&root_expression, input)?;
@@ -307,13 +324,20 @@ impl QueryExecution {
             let members = match &kind {
                 ExpressionKind::SeedHolons => seed_holons(&self.instance.clone().into())?,
                 ExpressionKind::Expand => {
-                    // Root: the caller's collection. Non-root: the predecessor's
-                    // result, linked when this record was created.
-                    let input = HolonCollectionReference(exactly_one(
-                        &self.executions[step].clone().into(),
-                        QueryRelationshipTypeName::Input,
-                    )?);
+                    let input = self.step_input(step)?;
                     expand(&input.members()?, &expansion_name(&expression)?)?
+                }
+                // The count is read before the input, so an invalid count fails
+                // even for an empty collection.
+                ExpressionKind::Skip => {
+                    let count =
+                        pagination::read_count(&expression, QueryPropertyTypeName::SkipCount)?;
+                    pagination::skip(&self.step_input(step)?.members()?, count)
+                }
+                ExpressionKind::Limit => {
+                    let count =
+                        pagination::read_count(&expression, QueryPropertyTypeName::LimitCount)?;
+                    pagination::limit(&self.step_input(step)?.members()?, count)
                 }
                 ExpressionKind::Unsupported(type_name) => {
                     return Err(HolonError::NotImplemented(format!(
@@ -367,6 +391,16 @@ impl QueryExecution {
             expression = next;
         }
     }
+
+    /// The `Input` collection of a transform step. Root: the caller's
+    /// collection. Non-root: the predecessor's result, linked when this record
+    /// was created.
+    fn step_input(&self, step: usize) -> Result<HolonCollectionReference, HolonError> {
+        Ok(HolonCollectionReference(exactly_one(
+            &self.executions[step].clone().into(),
+            QueryRelationshipTypeName::Input,
+        )?))
+    }
 }
 
 /// Concrete expression kinds the runtime recognizes, read from the root
@@ -375,6 +409,8 @@ impl QueryExecution {
 enum ExpressionKind {
     SeedHolons,
     Expand,
+    Skip,
+    Limit,
     Unsupported(String),
 }
 
@@ -384,6 +420,8 @@ impl ExpressionKind {
         Ok(match type_name.as_str() {
             SEED_HOLONS_TYPE_NAME => Self::SeedHolons,
             EXPAND_TYPE_NAME => Self::Expand,
+            SKIP_TYPE_NAME => Self::Skip,
+            LIMIT_TYPE_NAME => Self::Limit,
             _ => Self::Unsupported(type_name),
         })
     }
@@ -400,10 +438,14 @@ impl ExpressionKind {
             (Self::SeedHolons, Some(_)) => Err(HolonError::InvalidParameter(
                 "SeedHolons is a source expression and accepts no input collection".to_string(),
             )),
-            (Self::Expand, None) => Err(HolonError::MissingRequiredRelationship {
-                relationship: QueryRelationshipTypeName::Input.to_relationship_name().to_string(),
-                descriptor: expression.summarize()?,
-            }),
+            (Self::Expand | Self::Skip | Self::Limit, None) => {
+                Err(HolonError::MissingRequiredRelationship {
+                    relationship: QueryRelationshipTypeName::Input
+                        .to_relationship_name()
+                        .to_string(),
+                    descriptor: expression.summarize()?,
+                })
+            }
             (_, input) => Ok(input),
         }
     }
@@ -1702,5 +1744,252 @@ mod tests {
         for (status, variant) in expected {
             assert_eq!(status.as_enum_value().0 .0, variant);
         }
+    }
+
+    // ---- QRY4a pagination and invocation bindings --------------------------
+
+    impl Fixture {
+        /// A `Skip` or `Limit` definition; `count` of `None` leaves it unset.
+        fn paginate(&self, key: &str, type_name: &str, count: Option<i64>) -> TransientReference {
+            let mut expression = self.described(key, type_name);
+            let property = match type_name {
+                SKIP_TYPE_NAME => QueryPropertyTypeName::SkipCount,
+                LIMIT_TYPE_NAME => QueryPropertyTypeName::LimitCount,
+                other => panic!("not a pagination kind: {other}"),
+            };
+            if let Some(count) = count {
+                expression.with_property_value(property, MapInteger(count)).unwrap();
+            }
+            expression
+        }
+    }
+
+    /// Runs `root` over a collection of the given saved holons and returns the
+    /// execution instance plus the result members.
+    fn run_over(
+        fixture: &Fixture,
+        root: &TransientReference,
+        sources: &[u8],
+    ) -> (HolonReference, Result<Vec<HolonReference>, HolonError>) {
+        let query = fixture.query_with_root(root);
+        let input = fixture.collection_of("paging-input", sources);
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+        let members = execution.run().and_then(|result| {
+            related_members(
+                result.as_holon_reference(),
+                CoreRelationshipTypeName::CollectionMembers,
+            )
+        });
+        (instance, members)
+    }
+
+    #[test]
+    fn expand_skip_limit_chain_pages_the_expanded_sequence() {
+        let fixture = build_fixture();
+        // Expand(AuthoredBy) over [20, 30] is [24, 29, 24, 29, 24]; Skip 1 then
+        // Limit 3 keeps [29, 24, 29] — order and duplicates preserved.
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        let mut skip = fixture.paginate("skip", SKIP_TYPE_NAME, Some(1));
+        let limit = fixture.paginate("limit", LIMIT_TYPE_NAME, Some(3));
+        chain(&mut expand, &skip);
+        chain(&mut skip, &limit);
+
+        let (instance, members) = run_over(&fixture, &expand, &[20, 30]);
+        assert_eq!(ids_of(&members.unwrap()), vec![id(29), id(24), id(29)]);
+
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 3, "one record per step");
+        for pair in records.windows(2) {
+            let result = exactly_one(&pair[0], QueryRelationshipTypeName::Result).unwrap();
+            let input = exactly_one(&pair[1], QueryRelationshipTypeName::Input).unwrap();
+            assert_eq!(input.reference_id_string(), result.reference_id_string());
+        }
+        for record in &records {
+            assert_eq!(
+                record.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+                Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value()))
+            );
+        }
+    }
+
+    #[test]
+    fn authored_order_decides_the_page() {
+        let fixture = build_fixture();
+        // Limit 2 then Skip 1 over [10, 11, 12, 11] keeps [11]; the reverse
+        // order (Skip 1 then Limit 2) keeps [11, 12].
+        let mut limit = fixture.paginate("limit", LIMIT_TYPE_NAME, Some(2));
+        let skip = fixture.paginate("skip", SKIP_TYPE_NAME, Some(1));
+        chain(&mut limit, &skip);
+        let (_, members) = run_over(&fixture, &limit, &[10, 11, 12, 11]);
+        assert_eq!(ids_of(&members.unwrap()), vec![id(11)]);
+
+        let fixture = build_fixture();
+        let mut skip = fixture.paginate("skip", SKIP_TYPE_NAME, Some(1));
+        let limit = fixture.paginate("limit", LIMIT_TYPE_NAME, Some(2));
+        chain(&mut skip, &limit);
+        let (_, members) = run_over(&fixture, &skip, &[10, 11, 12, 11]);
+        assert_eq!(ids_of(&members.unwrap()), vec![id(11), id(12)]);
+    }
+
+    #[test]
+    fn pagination_count_boundaries() {
+        let sources = [10, 11, 12, 11];
+        let cases: [(&str, i64, Vec<u8>); 6] = [
+            (SKIP_TYPE_NAME, 0, vec![10, 11, 12, 11]),
+            (SKIP_TYPE_NAME, 4, vec![]),
+            (SKIP_TYPE_NAME, i64::MAX, vec![]),
+            (LIMIT_TYPE_NAME, 0, vec![]),
+            (LIMIT_TYPE_NAME, 4, vec![10, 11, 12, 11]),
+            (LIMIT_TYPE_NAME, i64::MAX, vec![10, 11, 12, 11]),
+        ];
+        for (type_name, count, expected) in cases {
+            let fixture = build_fixture();
+            let root = fixture.paginate("page", type_name, Some(count));
+            let (_, members) = run_over(&fixture, &root, &sources);
+            let expected: Vec<HolonId> = expected.into_iter().map(id).collect();
+            assert_eq!(ids_of(&members.unwrap()), expected, "{type_name} {count}");
+        }
+    }
+
+    #[test]
+    fn pagination_roots_require_input() {
+        for type_name in [SKIP_TYPE_NAME, LIMIT_TYPE_NAME] {
+            let fixture = build_fixture();
+            let root = fixture.paginate("page", type_name, Some(1));
+            let query = fixture.query_with_root(&root);
+            let error = query
+                .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+                .unwrap_err();
+            assert!(
+                matches!(&error, HolonError::MissingRequiredRelationship { relationship, .. }
+                    if relationship == "Input"),
+                "{type_name}: unexpected error: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_counts_fail_even_on_empty_input() {
+        let cases = [
+            (SKIP_TYPE_NAME, None, "missing"),
+            (LIMIT_TYPE_NAME, None, "missing"),
+            (SKIP_TYPE_NAME, Some(-1), "negative"),
+            (LIMIT_TYPE_NAME, Some(-1), "negative"),
+        ];
+        for (type_name, count, label) in cases {
+            let fixture = build_fixture();
+            let root = fixture.paginate("page", type_name, count);
+            let (instance, members) = run_over(&fixture, &root, &[]);
+            let error = members.unwrap_err();
+            match label {
+                "missing" => assert!(
+                    matches!(&error, HolonError::EmptyField(name)
+                        if name == &format!("{type_name}Count")),
+                    "{type_name} {label}: unexpected error: {error:?}"
+                ),
+                _ => assert!(
+                    matches!(error, HolonError::InvalidParameter(_)),
+                    "{type_name} {label}: unexpected error: {error:?}"
+                ),
+            }
+            let records =
+                related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions)
+                    .unwrap();
+            assert_eq!(
+                records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+                Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+            );
+            assert!(related_members(&records[0], QueryRelationshipTypeName::Result)
+                .unwrap()
+                .is_empty());
+        }
+    }
+
+    #[test]
+    fn a_count_is_required_only_by_its_own_kind() {
+        let fixture = build_fixture();
+        // A Skip carrying LimitCount (and no SkipCount) still lacks SkipCount;
+        // an Expand needs neither count.
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        let mut skip = fixture.described("skip", SKIP_TYPE_NAME);
+        skip.with_property_value(QueryPropertyTypeName::LimitCount, MapInteger(1)).unwrap();
+        chain(&mut expand, &skip);
+
+        let (instance, members) = run_over(&fixture, &expand, &[20]);
+        let error = members.unwrap_err();
+        assert!(
+            matches!(&error, HolonError::EmptyField(name) if name == "SkipCount"),
+            "unexpected error: {error:?}"
+        );
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 2);
+        assert_eq!(
+            records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value())),
+            "the Expand that needs no count completes"
+        );
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+    }
+
+    /// No runtime record exists under the fixed record keys.
+    fn assert_no_runtime_records(fixture: &Fixture) {
+        for key in
+            [EXECUTION_INSTANCE_KEY.to_string(), format!("{QUERY_EXPRESSION_EXECUTION_KEY}-0")]
+        {
+            assert!(
+                fixture
+                    .context
+                    .lookup()
+                    .get_transient_holon_by_base_key(&MapString(key.clone()))
+                    .is_err(),
+                "{key} must not be created for a refused invocation"
+            );
+        }
+    }
+
+    #[test]
+    fn nonempty_bindings_are_refused_before_any_validation_or_record() {
+        let fixture = build_fixture();
+        // An Expand root with no input would otherwise fail root-input
+        // validation; the binding refusal must come first.
+        let expand = fixture.expand("expand", "AuthoredBy");
+        let query = fixture.query_with_root(&expand);
+        let before = fixture.context.lookup().transient_count().unwrap();
+
+        let error = query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, vec![fixture.saved(10)])
+            .unwrap_err();
+        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+        assert_eq!(
+            fixture.context.lookup().transient_count().unwrap(),
+            before,
+            "a refused invocation creates no transient holon at all"
+        );
+        assert_no_runtime_records(&fixture);
+    }
+
+    #[test]
+    fn single_holon_convenience_delegates_binding_refusal() {
+        let fixture = build_fixture();
+        let expand = fixture.expand("expand", "AuthoredBy");
+        let query = fixture.query_with_root(&expand);
+
+        let error = query
+            .begin_execution_for_holon(
+                &fixture.context,
+                fixture.focal_space(),
+                fixture.saved(20),
+                vec![fixture.saved(10)],
+            )
+            .unwrap_err();
+        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+        assert_no_runtime_records(&fixture);
     }
 }
