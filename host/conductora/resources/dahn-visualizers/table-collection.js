@@ -183,13 +183,13 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         if (!this.table || !this.isConnected) return;
         const cells = [...this.table.rows].map(row => [...row.cells]);
         cells.forEach(row => row.forEach(cell => cell.hidden = false));
-        const widths = cells[0]?.map(cell => cell.getBoundingClientRect().width) ?? [];
+        const widths = cells[0]?.map(cell => cell.offsetWidth) ?? [];
         const available = this.viewport.clientWidth;
         const overflowing = widths.reduce((sum, width) => sum + width, 0) > available;
         this.more.hidden = !overflowing || this.expanded;
         let count = widths.length;
         if (overflowing && !this.expanded) {
-            const budget = Math.max(0, available - this.more.getBoundingClientRect().width);
+            const budget = Math.max(0, available - this.more.offsetWidth);
             let used = 0; count = 0;
             for (const width of widths) { if (used + width > budget) break; used += width; count++; }
             // Preserve a readable first column even when it alone exceeds the allocation.

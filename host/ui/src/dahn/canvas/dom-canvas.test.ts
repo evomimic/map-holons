@@ -215,3 +215,36 @@ it('keeps Canvas chrome and successful mounts when another visualizer fails', as
   expect(container.querySelector('test-healthy-sibling')?.getAttribute('data-context-applied')).toBe('true');
   diagnostic.mockRestore();
 });
+
+it('delegates Canvas view requests through a nested composition owner to the selected surface', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { resolve } = await import('node:path');
+  const source = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/path-inspector.js'), 'utf8');
+  const { default: Path } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+  customElements.define('test-nested-surface', class extends Path {});
+  const surface = document.createElement('test-nested-surface') as any;
+  surface.setContext({ childVisualizers: new Map([['root-node', document.createElement('div')]]) });
+  surface.viewportWidth = 200; surface.viewportHeight = 160; surface.allocateRows();
+  const delegate = vi.fn((request: 'zoom-to-fit' | 'actual-size') => surface.requestView(request));
+  customElements.define('test-view-composition', class extends HTMLElement {
+    setContext() { this.append(surface); }
+    requestView = delegate;
+  });
+  const registry = new DefaultVisualizerRegistry();
+  registry.register({ id: 'nested', displayName: 'Nested', version: '1', componentTag: 'test-view-composition', supportedTargets: [], load: async () => {} });
+  const container = document.createElement('div');
+  const canvas = new DomCanvas(container, registry, () => ({}) as VisualizerContext);
+  await canvas.mountVisualizers([{ visualizerId: 'nested', slot: 'primary', target: { reference: {} } as DahnTarget }]);
+  const allocate = vi.spyOn(surface, 'allocateRows');
+  const chrome = container.querySelector<HTMLElement>('[data-dahn-canvas-chrome]')!;
+  [...chrome.querySelectorAll('button')].find(button => button.textContent === 'Zoom to Fit')!.click();
+  expect(delegate).toHaveBeenLastCalledWith('zoom-to-fit');
+  expect(surface.view.scale).toBeLessThan(1);
+  expect(canvas.requestView('actual-size')).toBe(true);
+  expect(surface.view.scale).toBe(1);
+  expect(allocate).not.toHaveBeenCalled();
+  expect(chrome.closest('[data-path-inspector-surface]')).toBeNull();
+  canvas.clear();
+  expect(canvas.requestView('zoom-to-fit')).toBe(false);
+  expect(delegate).toHaveBeenCalledTimes(2);
+});

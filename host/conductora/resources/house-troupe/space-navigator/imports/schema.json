@@ -262,7 +262,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:88de6a38bc6af2894e9a6a679a93e24f2ddb56ffcf54e88542b26d0b63bd71e7",
+        "VisualizerArtifactDigest": "sha256:f24c6f8a3fa522b8201a3f694b97ff9e23ded51fc3efc21c7450515e8d4b1cca",
         "VisualizerImplementationKey": "dahn.table-collection",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

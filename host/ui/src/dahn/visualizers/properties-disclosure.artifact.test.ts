@@ -32,9 +32,13 @@ async function fixture(heights: number[], initialHeight: number) {
   Object.defineProperty(element, 'clientHeight', { get: () => height });
   element.style.gap = '4px';
   const footer = element.querySelector('footer')!;
-  vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() => rect(30));
+  Object.defineProperty(footer, 'offsetHeight', { get: () => 30 });
+  vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() => rect(15));
   const rows = [...element.querySelectorAll<HTMLElement>('[data-dahn-property-slot]')];
-  rows.forEach((row, index) => vi.spyOn(row, 'getBoundingClientRect').mockImplementation(() => rect(heights[index])));
+  rows.forEach((row, index) => {
+    Object.defineProperty(row, 'offsetHeight', { get: () => heights[index] });
+    vi.spyOn(row, 'getBoundingClientRect').mockImplementation(() => rect(heights[index] / 2));
+  });
   element.querySelector<HTMLElement>('[data-dahn-properties-rows]')!.style.gap = '5px';
   document.body.append(element); flush();
   return {

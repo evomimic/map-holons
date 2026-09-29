@@ -3,7 +3,7 @@ import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances, RelationshipAffordance } from './affordances';
 import type { ActionNode } from './actions';
-import type { CanvasApi } from './canvas';
+import type { CanvasApi, SurfaceViewRequest } from './canvas';
 import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
@@ -140,8 +140,21 @@ export interface VisualizerElement extends HTMLElement {
   setContext(context: VisualizerContext): void;
   /** Reflects active and attempted singular navigation without rebuilding the Node. */
   setSingularNavigationState?(state: SingularNavigationState): void;
+  /** Content extents in unscaled CSS pixels. Preferred sizes are soft targets.
+   * Dispatch a bubbling dahn-spatial-extents-changed event from this element
+   * when the report changes; the immediate parent decides reallocation.
+   */
+  getSpatialExtents?(): SpatialExtents;
+  /** Handle locally or delegate to an immediate composed child's surface. */
+  requestView?(request: SurfaceViewRequest): boolean;
   /** Parent-owned external dimensions; the selected child owns responsive thresholds. */
   setSpatialBudget?(budget: { width?: number; height: number }): void;
   /** Semantic request to restore the containing occurrence, independent of child layout. */
   setOccurrenceRestorationHandler?(handler: () => void): void;
+}
+
+/** Selected-child participation report; this is presentation, not selection metadata. */
+export interface SpatialExtents {
+  minimum: { width: number; height: number };
+  preferred?: { width: number; height: number };
 }

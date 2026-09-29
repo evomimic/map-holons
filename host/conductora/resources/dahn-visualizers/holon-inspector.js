@@ -8,6 +8,10 @@ export default class HolonInspectorElement extends HTMLElement {
     }
   }
   setOccurrenceRestorationHandler(handler) { this.restoreOccurrence = handler; }
+  // Useful uncompressed content size; the parent still owns the granted budget.
+  getSpatialExtents() {
+    return { minimum: { width: 480, height: 400 }, preferred: { width: 800, height: 720 } };
+  }
   setSpatialBudget(budget) {
     this.allocatedHeight = budget.height;
     this.allocatedWidth = budget.width;
@@ -448,7 +452,7 @@ function horizontalOverflow(host, controls, label) {
     const eligible = controls.filter(control => control.dataset.discoveryHidden !== 'true');
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    const widths = eligible.map(control => control.getBoundingClientRect().width);
+    const widths = eligible.map(control => control.offsetWidth);
     const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, widths.length - 1) * gap;
     const overflow = total > width;
     const setMoreLabel = selected => {
@@ -458,7 +462,7 @@ function horizontalOverflow(host, controls, label) {
       more.title = selected ? selected.title || selected.textContent : label;
     };
     const fittingCount = () => {
-      const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;
+      const budget = overflow ? Math.max(0, width - more.offsetWidth - gap) : width;
       let count = 0, used = 0;
       for (const value of widths) {
         const next = used + (count ? gap : 0) + value;
@@ -513,11 +517,11 @@ function verticalOverflow(host, controls) {
     const style = getComputedStyle(host);
     const available = Math.max(0, host.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0));
     const gap = parseFloat(getComputedStyle(rows).rowGap) || 0;
-    const heights = eligible.map(control => control.getBoundingClientRect().height);
+    const heights = eligible.map(control => control.offsetHeight);
     const total = heights.reduce((a, b) => a + b, 0) + Math.max(0, heights.length - 1) * gap;
     const overflowing = total > available;
     if (!overflowing) expanded = false;
-    const budget = overflowing ? Math.max(0, available - more.getBoundingClientRect().height - (parseFloat(style.rowGap) || 0)) : available;
+    const budget = overflowing ? Math.max(0, available - more.offsetHeight - (parseFloat(style.rowGap) || 0)) : available;
     let count = 0, used = 0;
     for (const height of heights) { const next = used + (count ? gap : 0) + height; if (next > budget) break; used = next; count++; }
     eligible.forEach((control, index) => {

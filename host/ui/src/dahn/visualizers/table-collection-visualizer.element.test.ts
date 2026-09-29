@@ -146,9 +146,13 @@ it('fits a column prefix, reveals additional columns on request, and pins Key', 
     const viewport = element.querySelector<HTMLElement>('[data-table-collection=viewport]')!;
     Object.defineProperty(viewport, 'clientWidth', { value: 200 });
     const more = element.querySelector<HTMLButtonElement>('[data-table-collection=more]')!;
-    more.getBoundingClientRect = () => ({ width: 70 }) as DOMRect;
+    Object.defineProperty(more, 'offsetWidth', { value: 70 });
+    more.getBoundingClientRect = () => ({ width: 35 }) as DOMRect;
     const headers = [...element.querySelectorAll('th')];
-    headers.forEach(header => header.getBoundingClientRect = () => ({ width: 100 }) as DOMRect);
+    headers.forEach(header => {
+      Object.defineProperty(header, 'offsetWidth', { value: 100 });
+      header.getBoundingClientRect = () => ({ width: 50 }) as DOMRect;
+    });
     document.body.append(element);
     expect(headers.map(header => header.hidden)).toEqual([false, true, true]);
     expect(more.hidden).toBe(false);

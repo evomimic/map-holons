@@ -159,7 +159,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(f.path()[2].id).not.toBe(f.path()[0].id);
     expect(f.path()[2].provenance?.parentOccurrenceId).toBe(child.id);
     expect(f.element.querySelectorAll('[data-path-occurrence]')).toHaveLength(3);
-    expect((f.element.querySelector('[data-path-inspector-viewport]') as HTMLElement).style.overflowY).toBe('auto');
+    expect((f.element.querySelector('[data-path-inspector-viewport]') as HTMLElement).style.overflowY).toBe('scroll');
   });
 
   it('replaces leaves, retains traversed paths, and restores matching members without reselection', async () => {
@@ -701,12 +701,12 @@ it('validates horizontal existence before changing allocation, then paints the f
   const f = await fixture(); const root = f.path()[0]; const a = await right(f, root);
   const gate = deferred<ReturnType<typeof collection>>();
   const paint = deferred<void>(); vi.mocked(destinationPaint).mockImplementationOnce(() => paint.promise);
-  const viewport = f.element.querySelector<HTMLElement>('[data-path-inspector-viewport]')!;
-  const previousColumns = viewport.style.gridTemplateColumns;
+  const surface = f.element.querySelector<HTMLElement>('[data-path-inspector-surface]')!;
+  const previousColumns = surface.style.gridTemplateColumns;
   f.a.relatedHolons.mockReturnValueOnce(gate.promise);
   rail(a.element).click();
   expect(f.destination()).toBeUndefined();
-  expect(viewport.style.gridTemplateColumns).toBe(previousColumns);
+  expect(surface.style.gridTemplateColumns).toBe(previousColumns);
   expect(f.path()).toHaveLength(2);
   gate.resolve(collection([f.b]));
   await vi.waitFor(() => expect(f.destination()).toBeDefined());
@@ -723,16 +723,16 @@ it('validates horizontal existence before changing allocation, then paints the f
   await vi.waitFor(() => expect(f.path()).toHaveLength(3));
   expect(f.path()[2].element.parentElement).toBe(pending);
   expect(f.path()[2].id).toBe(destination.id);
-  expect(viewport.style.gridTemplateColumns).not.toBe(previousColumns);
-  const columns = viewport.style.gridTemplateColumns;
+  expect(surface.style.gridTemplateColumns).not.toBe(previousColumns);
+  const columns = surface.style.gridTemplateColumns;
   const empty = deferred<ReturnType<typeof collection>>();
   f.a.relatedHolons.mockReturnValueOnce(empty.promise);
   rail(a.element, 1).click();
   expect(f.destination()).toBeUndefined();
-  expect(viewport.style.gridTemplateColumns).toBe(columns);
+  expect(surface.style.gridTemplateColumns).toBe(columns);
   empty.resolve(collection([]));
   await vi.waitFor(() => expect(a.pending).toBe(false));
-  expect(viewport.style.gridTemplateColumns).toBe(columns);
+  expect(surface.style.gridTemplateColumns).toBe(columns);
   expect(a.message).toContain('no target');
 });
 
@@ -843,12 +843,12 @@ it.each(['empty', 'invalid', 'failure'])('keeps an existing horizontal destinati
   f.selectVisualizer.mockRejectedValueOnce(new Error('selection unavailable'));
   await right(f, root);
   const destination = f.destination()!;
-  const geometry = f.element.querySelector<HTMLElement>('[data-path-inspector-viewport]')!.style.cssText;
+  const geometry = f.element.querySelector<HTMLElement>('[data-path-inspector-surface]')!.style.cssText;
   if (outcome === 'failure') f.rootSubject.relatedHolons.mockRejectedValueOnce(new Error('offline'));
   else f.rootSubject.relatedHolons.mockResolvedValueOnce(collection(outcome === 'empty' ? [] : [f.a, f.b]));
   await right(f, root, 1);
   expect(f.destination()).toBe(destination);
-  expect(f.element.querySelector<HTMLElement>('[data-path-inspector-viewport]')!.style.cssText).toBe(geometry);
+  expect(f.element.querySelector<HTMLElement>('[data-path-inspector-surface]')!.style.cssText).toBe(geometry);
   destination.cancel();
   expect(f.destination()).toBeUndefined();
   expect(f.path()).toHaveLength(1);

@@ -114,10 +114,10 @@ function horizontalOverflow(host, controls, label) {
   const fit = () => {
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    const widths = controls.map(control => control.getBoundingClientRect().width);
+    const widths = controls.map(control => control.offsetWidth);
     const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, widths.length - 1) * gap;
     const overflow = total > width;
-    const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;
+    const budget = overflow ? Math.max(0, width - more.offsetWidth - gap) : width;
     let count = 0, used = 0;
     for (const value of widths) {
       const next = used + (count ? gap : 0) + value;
