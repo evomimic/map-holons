@@ -1,5 +1,5 @@
 //! QueryCore — descriptor-backed Query runtime (QRY1 scaffold, QRY2 navigation,
-//! QRY4a pagination).
+//! QRY4a ordering and pagination).
 //!
 //! This module is the internal direct-execution seam for a reusable `Query`
 //! definition. It owns the definition/runtime boundary:
@@ -12,7 +12,7 @@
 //!   caller-supplied input;
 //! - `Pending -> Running -> Complete | Failed` status progression;
 //! - execution of the root expression and each `Next` successor in turn —
-//!   `SeedHolons` (root only), `Expand`, `Skip`, and `Limit` — with
+//!   `SeedHolons` (root only), `Expand`, `OrderBy`, `Skip`, and `Limit` — with
 //!   `HolonError::NotImplemented` for every other concrete kind.
 //!
 //! Focal space is invocation context, not definition state: it is recorded only
@@ -29,7 +29,7 @@
 //! source or a transform. The runtime enforces the operator-specific rule in
 //! [`QueryReference::begin_execution`]: a root `SeedHolons` accepts no input (a
 //! supplied collection is a contract error, not an ignored operand); a root
-//! transform (`Expand`, `Skip`, `Limit`) requires exactly one
+//! transform (`Expand`, `OrderBy`, `Skip`, `Limit`) requires exactly one
 //! `HolonCollectionReference`. When present, the
 //! caller's collection holon is linked as `Input` by identity; it is never copied.
 //!
@@ -56,7 +56,7 @@ use type_names::{
     CoreRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName, ToRelationshipName,
 };
 
-use super::pagination;
+use super::{order_by, pagination};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::descriptors::resolve_core_descriptor;
 use crate::reference_layer::{HolonReference, ReadableHolon, TransientReference, WritableHolon};
@@ -67,6 +67,7 @@ const HOLON_COLLECTION_TYPE_NAME: &str = "HolonCollection";
 const HOLON_SPACE_TYPE_NAME: &str = "HolonSpace";
 const SEED_HOLONS_TYPE_NAME: &str = "SeedHolons";
 const EXPAND_TYPE_NAME: &str = "Expand";
+const ORDER_BY_TYPE_NAME: &str = "OrderBy";
 const SKIP_TYPE_NAME: &str = "Skip";
 const LIMIT_TYPE_NAME: &str = "Limit";
 const EXECUTION_INSTANCE_DESCRIPTOR_KEY: &str = "ExecutionInstance.HolonType";
@@ -327,6 +328,12 @@ impl QueryExecution {
                     let input = self.step_input(step)?;
                     expand(&input.members()?, &expansion_name(&expression)?)?
                 }
+                // Specs are validated before any member is read, so an invalid
+                // spec fails even for an empty collection.
+                ExpressionKind::OrderBy => {
+                    let members = self.step_input(step)?.members()?;
+                    order_by::order_by(&context, &expression, &members)?
+                }
                 // The count is read before the input, so an invalid count fails
                 // even for an empty collection.
                 ExpressionKind::Skip => {
@@ -409,6 +416,7 @@ impl QueryExecution {
 enum ExpressionKind {
     SeedHolons,
     Expand,
+    OrderBy,
     Skip,
     Limit,
     Unsupported(String),
@@ -420,6 +428,7 @@ impl ExpressionKind {
         Ok(match type_name.as_str() {
             SEED_HOLONS_TYPE_NAME => Self::SeedHolons,
             EXPAND_TYPE_NAME => Self::Expand,
+            ORDER_BY_TYPE_NAME => Self::OrderBy,
             SKIP_TYPE_NAME => Self::Skip,
             LIMIT_TYPE_NAME => Self::Limit,
             _ => Self::Unsupported(type_name),
@@ -438,7 +447,7 @@ impl ExpressionKind {
             (Self::SeedHolons, Some(_)) => Err(HolonError::InvalidParameter(
                 "SeedHolons is a source expression and accepts no input collection".to_string(),
             )),
-            (Self::Expand | Self::Skip | Self::Limit, None) => {
+            (Self::Expand | Self::OrderBy | Self::Skip | Self::Limit, None) => {
                 Err(HolonError::MissingRequiredRelationship {
                     relationship: QueryRelationshipTypeName::Input
                         .to_relationship_name()
@@ -598,7 +607,10 @@ fn set_status(record: &mut TransientReference, status: ExecutionStatus) -> Resul
     Ok(())
 }
 
-fn require_described_as(holon: &HolonReference, expected: &str) -> Result<(), HolonError> {
+pub(crate) fn require_described_as(
+    holon: &HolonReference,
+    expected: &str,
+) -> Result<(), HolonError> {
     let found = holon.holon_descriptor()?.header().type_name()?;
     if found.0 != expected {
         return Err(HolonError::WrongDescriptorKind {
@@ -1973,6 +1985,57 @@ mod tests {
             "a refused invocation creates no transient holon at all"
         );
         assert_no_runtime_records(&fixture);
+    }
+
+    /// An `OrderBy` definition relating `spec_count` spec holons.
+    fn order_by_with_specs(fixture: &Fixture, spec_count: usize) -> TransientReference {
+        let mut expression = fixture.described("order-by", ORDER_BY_TYPE_NAME);
+        let specs: Vec<HolonReference> = (0..spec_count)
+            .map(|index| fixture.described(&format!("spec-{index}"), "OrderBySpec").into())
+            .collect();
+        if !specs.is_empty() {
+            expression.add_related_holons(QueryRelationshipTypeName::OrderBySpecs, specs).unwrap();
+        }
+        expression
+    }
+
+    #[test]
+    fn order_by_spec_count_is_validated_even_for_empty_input() {
+        for spec_count in [0, 6] {
+            let fixture = build_fixture();
+            let root = order_by_with_specs(&fixture, spec_count);
+            let (instance, members) = run_over(&fixture, &root, &[]);
+            let error = members.unwrap_err();
+            assert!(
+                matches!(error, HolonError::InvalidParameter(_)),
+                "{spec_count} specs: unexpected error: {error:?}"
+            );
+            let records =
+                related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions)
+                    .unwrap();
+            assert_eq!(
+                records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+                Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+            );
+            assert!(related_members(&records[0], QueryRelationshipTypeName::Result)
+                .unwrap()
+                .is_empty());
+        }
+    }
+
+    #[test]
+    fn order_by_root_requires_input() {
+        let fixture = build_fixture();
+        let root = order_by_with_specs(&fixture, 1);
+        let query = fixture.query_with_root(&root);
+        let error = query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::MissingRequiredRelationship { relationship, .. }
+                if relationship == "Input"),
+            "unexpected error: {error:?}"
+        );
     }
 
     #[test]
