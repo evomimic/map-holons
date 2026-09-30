@@ -1,5 +1,6 @@
 import type { DahnTheme } from './themes';
 import type { DahnTarget } from './targets';
+import type { ContextHandle } from './context-host';
 
 /**
  * Phase 0 canvas descriptor. The runtime currently supports a single visible
@@ -23,6 +24,8 @@ export interface VisualizerMountPlan {
  * Minimal canvas API for Phase 0.
  */
 export interface CanvasApi {
+  /** Parent authority, when hosted in a top-level experiential context. */
+  readonly context?: ContextHandle;
   mountVisualizers(plan: VisualizerMountPlan[]): Promise<void>;
   clear(): void;
   /** False means no mounted surface accepted the request or geometry is unavailable. */
