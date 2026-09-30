@@ -48,8 +48,7 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::descriptors::{
     equals_or_extends, resolve_core_descriptor, same_definition, Descriptor, EffectiveValue,
     EnumValueDescriptor, HolonDescriptor, IntegerValueDescriptor, OperatorDescriptor,
-    PropertyDescriptor, ResolvedValueTypeRoots, StringValueDescriptor, ValueDescriptor,
-    ValueDescriptorKind,
+    PropertyDescriptor, StringValueDescriptor, ValueDescriptor, ValueDescriptorKind,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -150,14 +149,12 @@ fn read_sort_keys(
     }
 
     let property_type_root = resolve_core_descriptor(context, PROPERTY_TYPE_DESCRIPTOR_KEY)?;
-    let value_roots = ResolvedValueTypeRoots::resolve(context)?;
-    specs.iter().map(|spec| read_sort_key(spec, &property_type_root, &value_roots)).collect()
+    specs.iter().map(|spec| read_sort_key(spec, &property_type_root)).collect()
 }
 
 fn read_sort_key(
     spec: &HolonReference,
     property_type_root: &HolonReference,
-    value_roots: &ResolvedValueTypeRoots,
 ) -> Result<SortKey, HolonError> {
     require_described_as(spec, ORDER_BY_SPEC_TYPE_NAME)?;
 
@@ -182,7 +179,7 @@ fn read_sort_key(
     Ok(SortKey {
         property_name: property.property_name()?,
         required: property.is_required()?,
-        domain: KeyDomain::resolve(&property.value_type()?, value_roots)?,
+        domain: KeyDomain::resolve(&property.value_type()?)?,
         property,
         rule: KeyRule { direction, placement },
     })
@@ -239,11 +236,8 @@ enum KeyDomain {
 }
 
 impl KeyDomain {
-    fn resolve(
-        value_type: &ValueDescriptor,
-        roots: &ResolvedValueTypeRoots,
-    ) -> Result<Self, HolonError> {
-        let kind = value_type.value_kind(roots)?;
+    fn resolve(value_type: &ValueDescriptor) -> Result<Self, HolonError> {
+        let kind = value_type.value_kind()?;
         let holon = value_type.holon().clone();
         match kind {
             ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => Ok(Self::Integer {
