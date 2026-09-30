@@ -5,6 +5,21 @@ use core_types::{HolonError, PropertyName};
 use std::collections::HashSet;
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToPropertyName};
 
+/// A property value resolved without writing, tagged by where it came from.
+///
+/// Returned by [`PropertyDescriptor::effective_value`]. The provenance lets a
+/// caller validate an authored value strictly while accepting the descriptor's
+/// own representation of its `DefaultValue` (the loader stores enum defaults as
+/// variant-name tokens).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EffectiveValue {
+    /// The holon's stored value; the default was never consulted.
+    Authored(BaseValue),
+    /// The descriptor-defined default, resolved because no value is stored. It
+    /// is not written to the holon.
+    Default(BaseValue),
+}
+
 /// Runtime wrapper for property descriptors.
 ///
 /// This wrapper exposes property descriptor fields through the shared descriptor kernel.
@@ -41,6 +56,30 @@ impl PropertyDescriptor {
             CoreRelationshipTypeName::ValueType,
         )?;
         Ok(ValueDescriptor::from_holon(value_type))
+    }
+
+    /// Resolves this property's effective value on `holon` without modifying it.
+    ///
+    /// Reads the stored value first. `Some` is returned as
+    /// [`EffectiveValue::Authored`] without consulting any default; only an
+    /// absent value resolves the descriptor's effective `DefaultValue`, returned
+    /// as [`EffectiveValue::Default`]. A read error propagates immediately and
+    /// never falls back to the default. `Ok(None)` means neither exists.
+    ///
+    /// This is the read-only counterpart of [`WritableHolon::populate_defaults`]:
+    /// it never writes, so evaluating caller-owned arguments (e.g. a transient
+    /// query definition) leaves them unchanged, and ordinary `property_value`
+    /// reads keep their stored-value semantics. Validating the returned value
+    /// against the property's value type is the caller's decision.
+    pub fn effective_value<H>(&self, holon: &H) -> Result<Option<EffectiveValue>, HolonError>
+    where
+        H: ReadableHolon + ?Sized,
+    {
+        let property_name = self.property_name()?;
+        if let Some(value) = holon.property_value(&property_name)? {
+            return Ok(Some(EffectiveValue::Authored(value)));
+        }
+        Ok(self.effective_default_value()?.map(EffectiveValue::Default))
     }
 
     /// Populates this descriptor's effective default only when the target has
@@ -355,6 +394,89 @@ mod tests {
         }
         assert_eq!(source.property_value("Enabled")?, None);
         assert_eq!(clone_source.property_value("Enabled")?, None);
+        Ok(())
+    }
+
+    /// A descriptor-backed holon with property `Mode` (default `Fast`) and an
+    /// optional authored value.
+    fn mode_fixture(
+        authored: Option<&str>,
+    ) -> Result<(PropertyDescriptor, crate::reference_layer::TransientReference), HolonError> {
+        let context = build_context();
+        let mut property = new_descriptor_holon(&context, "mode", "Mode", "Property")?;
+        property
+            .with_property_value(CorePropertyTypeName::IsValueRequired, true)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, "Fast")?;
+        let mut holon = new_test_holon(&context, "moded")?;
+        if let Some(value) = authored {
+            holon.with_property_value("Mode", value)?;
+        }
+        Ok((PropertyDescriptor::from_holon(property.into()), holon))
+    }
+
+    #[test]
+    fn effective_value_prefers_the_authored_value() -> Result<(), HolonError> {
+        let (descriptor, holon) = mode_fixture(Some("Slow"))?;
+        assert_eq!(
+            descriptor.effective_value(&holon)?,
+            Some(EffectiveValue::Authored(BaseValue::StringValue(MapString("Slow".into()))))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn effective_value_resolves_an_absent_value_to_the_default_without_writing(
+    ) -> Result<(), HolonError> {
+        let (descriptor, holon) = mode_fixture(None)?;
+        let before = holon.into_model()?;
+
+        assert_eq!(
+            descriptor.effective_value(&holon)?,
+            Some(EffectiveValue::Default(BaseValue::StringValue(MapString("Fast".into()))))
+        );
+        assert_eq!(holon.property_value("Mode")?, None, "the default is not materialized");
+        assert_eq!(holon.into_model()?, before, "the holon is unchanged");
+        Ok(())
+    }
+
+    #[test]
+    fn effective_value_without_a_value_or_default_is_none() -> Result<(), HolonError> {
+        let context = build_context();
+        let property = new_descriptor_holon(&context, "note", "Note", "Property")?;
+        let holon = new_test_holon(&context, "noteless")?;
+        assert_eq!(PropertyDescriptor::from_holon(property.into()).effective_value(&holon)?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn effective_value_consults_the_default_only_when_the_value_is_absent() -> Result<(), HolonError>
+    {
+        // No local DefaultValue and two Extends targets: any default lookup
+        // fails. An authored value must succeed without reaching it, even one
+        // that is not valid for the property; only absence reaches the lookup.
+        let context = build_context();
+        let parent_a = new_descriptor_holon(&context, "parent-a", "ParentA", "Property")?;
+        let parent_b = new_descriptor_holon(&context, "parent-b", "ParentB", "Property")?;
+        let mut property = new_descriptor_holon(&context, "mode", "Mode", "Property")?;
+        property.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![parent_a.into(), parent_b.into()],
+        )?;
+        let descriptor = PropertyDescriptor::from_holon(property.into());
+        assert!(
+            descriptor.effective_default_value().is_err(),
+            "precondition: the default lookup itself fails"
+        );
+
+        let mut authored = new_test_holon(&context, "authored")?;
+        authored.with_property_value("Mode", 42_i64)?;
+        assert_eq!(
+            descriptor.effective_value(&authored)?,
+            Some(EffectiveValue::Authored(BaseValue::IntegerValue(base_types::MapInteger(42))))
+        );
+
+        let absent = new_test_holon(&context, "absent")?;
+        assert!(descriptor.effective_value(&absent).is_err(), "absence reaches the lookup");
         Ok(())
     }
 
