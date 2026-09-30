@@ -115,7 +115,13 @@ pub(crate) fn base_value_kind_matches(
         ValidationInvocation::Value { binding, subject, context } => (
             binding,
             subject.path,
-            subject.descriptor.value_kind(&context.roots)?,
+            {
+                holons_core::reference_layer::assert_reference_transaction_compatible(
+                    subject.descriptor.holon(),
+                    &context.context,
+                )?;
+                subject.descriptor.value_kind()?
+            },
             subject.value.kind(),
             subject.descriptor.holon().reference_id_string(),
         ),

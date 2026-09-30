@@ -2,9 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{
-    resolve_core_descriptor, HolonReference, ResolvedValueTypeRoots, UniversalDescriptorContract,
-};
+use holons_core::{resolve_core_descriptor, HolonReference, UniversalDescriptorContract};
 use type_names::CoreValidationRuleName;
 
 /// Immutable execution dependencies for one holon-validation pass.
@@ -34,7 +32,7 @@ pub struct PropertyValidationContext<'a> {
 /// compatibility rules. They reference schema definitions, never containing subject
 /// holons, properties, or Nursery state; they provide no upward subject navigation.
 pub struct ValueValidationContext {
-    pub(crate) roots: ResolvedValueTypeRoots,
+    pub(crate) context: Arc<TransactionContext>,
     pub(crate) bindings: BindingRoots,
 }
 
@@ -62,17 +60,14 @@ impl ValueValidationContext {
         reader: &holons_core::ProspectiveDescriptorReader,
     ) -> Result<Self, holons_core::AssessmentReadError> {
         Ok(Self {
-            roots: ResolvedValueTypeRoots::resolve_with_reader(context, reader)?,
+            context: Arc::clone(context),
             bindings: BindingRoots::resolve_in_view(context, reader)?,
         })
     }
 
     /// Resolves immutable anchors for a standalone value or property pass.
     pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Ok(Self {
-            roots: ResolvedValueTypeRoots::resolve(context)?,
-            bindings: BindingRoots::resolve(context)?,
-        })
+        Ok(Self { context: Arc::clone(context), bindings: BindingRoots::resolve(context)? })
     }
 }
 

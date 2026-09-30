@@ -8,6 +8,8 @@ const implementations = [
   ['PathInspectorTypeScript.VisualizerImplementation', 'path-inspector.js'],
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
   ['TableCollectionTypeScript.VisualizerImplementation', 'table-collection.js'],
+  ['GenericActionsTypeScript.VisualizerImplementation', 'actions.js'],
+  ['DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation', 'properties.js'],
 ];
 
 describe('registered navigation artifact integrity', () => {

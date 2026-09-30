@@ -16,7 +16,10 @@ holon MetaDesignSystem.HolonType {
     plural: "MetaDesignSystems"
   }
   relationships {
-    InstanceProperties -> MetaDesignSystemName.PropertyType
+    InstanceProperties -> [
+      MetaDesignSystemName.PropertyType,
+      MetaDesignSystemDescription.PropertyType
+    ]
     InstanceRelationships -> (MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)
   }
 }
@@ -34,13 +37,20 @@ property MetaDesignSystemName.PropertyType {
   }
 }
 
-// The sole bootstrap MDS is a real MAP instance. It supplies the complete
-// token vocabulary used by the initial Canvas and Theme selectors.
-instance MAP.BootstrapMetaDesignSystem {
+// Demonstration themes share this vocabulary independently of their visual style
+// or inclusion in a schema load.
+instance Demo1.MetaDesignSystem {
   type MetaDesignSystem.HolonType
-  MetaDesignSystemName "MAP Bootstrap Meta Design System"
+  MetaDesignSystemName "Demo 1 Meta Design System v0.1.0"
+  MetaDesignSystemDescription "A shared semantic design-token vocabulary for demonstrating DAHN presentation features across canvases, panels, collections, inspectors, actions, and launcher feedback. Deep Ocean and other compatible demonstration themes assign values to this same contract, allowing visual variation without changing token roles. The vocabulary supports feature exploration rather than prescribing an optimized human experience."
   relationships {
     DefinesDesignToken -> [
+      CollectionNavigationSurfaceBackground.DesignToken,
+      CollectionNavigationTextColor.DesignToken,
+      RelationshipNavigationSurfaceBackground.DesignToken,
+      RelationshipNavigationTextColor.DesignToken,
+      ViewControlSurfaceBackground.DesignToken,
+      ViewControlTextColor.DesignToken,
       PanelSurfaceBackground.DesignToken,
       PanelCornerRadius.DesignToken,
       MutedTextColor.DesignToken,
@@ -137,5 +147,18 @@ inverse relationship (DesignToken.HolonType)-[DefinedByMetaDesignSystem]->(MetaD
     display_name: "Defined By Meta Design System"
     display_plural: "Defined By Meta Design System Relationships"
     plural: "DefinedByMetaDesignSystemRelationships"
+  }
+}
+
+property MetaDesignSystemDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Human-readable purpose and scope of a semantic design-token vocabulary."
+    display_name: "meta_design_system_description"
+    display_plural: "meta_design_system_descriptions"
+    plural: "MetaDesignSystemDescriptions"
   }
 }

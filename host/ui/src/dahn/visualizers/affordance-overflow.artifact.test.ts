@@ -12,7 +12,11 @@ beforeEach(() => {
 });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const flush = () => callbacks.splice(0).forEach(cb => cb(0));
-const measure = (element: Element, width: number, height = 30) => vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ width, height, left: 0, top: 0, bottom: height } as DOMRect);
+const measure = (element: Element, width: number, height = 30) => {
+  Object.defineProperty(element, 'offsetWidth', { configurable: true, get: () => width });
+  Object.defineProperty(element, 'offsetHeight', { configurable: true, get: () => height });
+  return vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ width: width / 2, height: height / 2, left: 0, top: 0, bottom: height / 2 } as DOMRect);
+};
 async function artifact(name: string) {
   const source = await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8');
   const module = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);

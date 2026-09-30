@@ -5,7 +5,7 @@ import { classifyNodeAffordances } from '../map-adapter/classify-node-affordance
 import { DahnHolonView } from '../map-adapter/dahn-holon-view';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import { renderVisualizerRegion } from './visualizer-region';
-import { TRAVERSE_RELATIONSHIP_EVENT, type VisualizerContext, type TraverseRelationshipIntent } from '../contracts/visualizers';
+import { TRAVERSE_RELATIONSHIP_EVENT, type VisualizerContext, type VisualizerElement, type TraverseRelationshipIntent } from '../contracts/visualizers';
 import type { CanvasApi } from '../contracts/canvas';
 import type { DahnTheme } from '../contracts/themes';
 import type { HolonReference, MapTransaction } from '../deps';
@@ -38,6 +38,11 @@ export async function realizeNode(
     !(nodeImplementation.prototype instanceof HTMLElement)
   ) {
     throw new Error('Selected Node implementation does not export an HTMLElement constructor.');
+  }
+  const nodePrototype = nodeImplementation.prototype as VisualizerElement;
+  if (typeof nodePrototype.getNodeInspectorExtents !== 'function'
+    || typeof nodePrototype.setNodeInspectorAllocation !== 'function') {
+    throw new Error('Selected Node does not fulfill the Node Inspector slot compression contract.');
   }
   const nodeTag = defineCustomElementOnce(
     'map-selected-node-visualizer',

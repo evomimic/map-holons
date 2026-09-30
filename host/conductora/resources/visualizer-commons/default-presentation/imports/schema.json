@@ -28,12 +28,31 @@
       "key": "DAHN.DefaultMetaDesignSystem",
       "type": "MetaDesignSystem.HolonType",
       "properties": {
+        "MetaDesignSystemDescription": "A reusable presentation vocabulary supplied by the default Visualizer Commons for canvases, inspectors, collections, actions, and launcher feedback. Compatible themes assign values to the same semantic roles independently of Dancer identity.",
         "MetaDesignSystemName": "DAHN.DefaultMetaDesignSystem-v0.1.0"
       },
       "relationships": [
         {
           "name": "DefinesDesignToken",
           "target": [
+            {
+              "$ref": "CollectionNavigationSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CollectionNavigationTextColor.DesignToken"
+            },
+            {
+              "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "RelationshipNavigationTextColor.DesignToken"
+            },
+            {
+              "$ref": "ViewControlSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ViewControlTextColor.DesignToken"
+            },
             {
               "$ref": "PanelSurfaceBackground.DesignToken"
             },
@@ -213,6 +232,7 @@
       "key": "DAHN.DefaultTheme",
       "type": "Theme.HolonType",
       "properties": {
+        "ThemeDescription": "The default Visualizer Commons theme, providing a complete set of presentation values for its companion MetaDesignSystem across canvas content, controls, and launcher feedback.",
         "ThemeName": "DAHN.DefaultTheme"
       },
       "relationships": [
@@ -227,6 +247,24 @@
         {
           "name": "HasThemeTokenAssignment",
           "target": [
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionNavigationTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.RelationshipNavigationTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ViewControlSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ViewControlTextColor.ThemeTokenAssignment"
+            },
             {
               "$ref": "DAHN.DefaultTheme.PanelSurfaceBackground.ThemeTokenAssignment"
             },
@@ -1366,6 +1404,108 @@
           "target": [
             {
               "$ref": "FocusRingWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#245878"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionNavigationSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionNavigationTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#245878"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.RelationshipNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "RelationshipNavigationTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ViewControlSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#245878"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ViewControlSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ViewControlTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ViewControlTextColor.DesignToken"
             }
           ]
         }

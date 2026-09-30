@@ -2,6 +2,8 @@ let nextPropertiesId = 0;
 
 export default class PropertyMapVisualizerElement extends HTMLElement {
   static compositionSlots = { property: 'DefaultPropertyMapVisualizer.PropertySlot' };
+  // PropertyMap slot report: intrinsic content height at the granted width.
+  getPreferredContentHeight() { return this.preferredContentHeight; }
   expanded = false;
   frame = null;
 
@@ -19,6 +21,7 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
     this.disconnectedCallback();
     this.expanded = false;
     this.layoutState = null;
+    this.preferredContentHeight = undefined;
     this.dataset.dahnProperties = 'true';
     Object.assign(this.style, {
       display: 'flex', flexDirection: 'column', position: 'relative',
@@ -143,11 +146,15 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
     const { list, properties, footer, button, label, chevron } = this.parts;
     const gap = parseFloat(getComputedStyle(this).rowGap) || 0;
     const rowGap = parseFloat(getComputedStyle(properties).rowGap) || 0;
-    const heights = this.rows.map(row => row.getBoundingClientRect().height);
+    const heights = this.rows.map(row => row.offsetHeight);
     const available = Math.max(0, this.clientHeight);
-    const total = heights.reduce((sum, height) => sum + height, 0) + Math.max(0, heights.length - 1) * rowGap;
+    const total = heights.length ? heights.reduce((sum, height) => sum + height, 0) + Math.max(0, heights.length - 1) * rowGap : properties.scrollHeight;
+    if (this.clientWidth > 0 && this.preferredContentHeight !== total) {
+      this.preferredContentHeight = total;
+      this.dispatchEvent(new CustomEvent('dahn-content-extent-changed', { bubbles: true }));
+    }
     const overflowing = total > available;
-    const budget = overflowing ? Math.max(0, available - footer.getBoundingClientRect().height - gap) : available;
+    const budget = overflowing ? Math.max(0, available - footer.offsetHeight - gap) : available;
     let count = 0;
     let used = 0;
     for (const height of heights) {
@@ -159,7 +166,7 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
     if (!overflowing) {
       this.expanded = false;
     }
-    const compact = overflowing && this.clientHeight < footer.getBoundingClientRect().height + gap;
+    const compact = overflowing && this.clientHeight < footer.offsetHeight + gap;
     const layoutState = `${count}:${overflowing}:${compact}:${this.expanded}`;
     if (this.layoutState === layoutState) return;
     this.layoutState = layoutState;

@@ -63,7 +63,7 @@ fn handle_read(
             use holons_core::descriptors::ValueDescriptorKind;
             let kind = holons_core::descriptors::PropertyDescriptor::from_holon(target)
                 .value_type()?
-                .value_kind(&holons_core::descriptors::ResolvedValueTypeRoots::resolve(context)?)?;
+                .value_kind()?;
             let name = match kind {
                 ValueDescriptorKind::BaseValue(kind) => format!("{kind}Value"),
                 ValueDescriptorKind::AnyBaseValue => "AnyBaseValue".into(),

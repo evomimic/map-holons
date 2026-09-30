@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+afterEach(() => document.body.replaceChildren());
 
 type PathInspectorElement = HTMLElement & {
   setContext(context: { title?: string; childVisualizers?: ReadonlyMap<string, HTMLElement> }): void;
@@ -57,21 +59,21 @@ describe('Path Inspector visualizer artifact', () => {
     } } });
     const viewport = element.querySelector('[data-path-inspector-viewport]');
     const region = element.querySelector('[data-path-occurrence="retained"]');
-    region.scrollIntoView = vi.fn();
+    const reveal = vi.spyOn(element.view, 'reveal');
     const focus = { occurrenceId: 'retained', mode: 'restore' };
     publish([root, active, retained], focus);
     expect(region.dataset.focused).toBe('true');
     expect(region.style.gridRow).toBe('2');
     expect(region.style.gridColumn).toBe('2');
     expect(retained.element.parentElement).toBe(region);
-    expect(region.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(reveal).toHaveBeenCalledTimes(1);
     expect(element.querySelector('[data-path-occurrence="root"]').dataset.rowAllocation).toBe('compact');
     publish([root, { ...active, pending: true }, retained], focus);
-    expect(region.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(reveal).toHaveBeenCalledTimes(1);
     element.viewportWidth = 240;
     element.allocateRows();
-    expect(viewport.style.overflowX).toBe('auto');
-    expect(viewport.style.gridTemplateColumns).toBe('64px 320px');
+    expect(viewport.style.overflowX).toBe('scroll');
+    expect(element.surface.style.gridTemplateColumns).toBe('64px 318px');
     expect(retained.element.parentElement).toBe(region);
   });
   it('draws lineage from recorded parents across sparse columns and reallocates connectors without replacing Nodes', async () => {
@@ -105,7 +107,7 @@ describe('Path Inspector visualizer artifact', () => {
     const restored = route();
     element.viewportWidth = 400;
     element.allocateRows();
-    expect(route()).not.toBe(restored);
+    expect(route()).toBe(restored);
     expect(edges()).toEqual([['space', 'theme'], ['space', 'dancer'], ['dancer', 'dance']]);
     publish([root, theme], { occurrenceId: 'theme', mode: 'restore' });
     expect(edges()).toEqual([['space', 'theme']]);
@@ -181,8 +183,8 @@ it('routes recursive horizontal and mixed lineage from provenance through displa
   const displaced = edge('b').getAttribute('d');
   element.viewportWidth = 360; element.viewportHeight = 480; element.allocateRows();
   horizontal('b', 'a', true);
-  expect(edge('b').getAttribute('d')).not.toBe(displaced);
-  expect(overlay.parentElement).toBe(element.viewport);
+  expect(edge('b').getAttribute('d')).toBe(displaced);
+  expect(overlay.parentElement).toBe(element.surface);
   expect(overlay.style.pointerEvents).toBe('none');
   element.viewport.scrollLeft = 300; element.viewport.scrollTop = 100;
   element.viewport.dispatchEvent(new Event('scroll'));
@@ -201,22 +203,16 @@ it('keeps the incoming horizontal connector inside the viewport when focusing a 
   element.setContext({ navigation: { subscribe(render: typeof publish) {
     publish = render; render([root], { occurrenceId: 'root', mode: 'restore' }); return () => {};
   } } });
-  // Model the browser's nearest alignment: a viewport-wide child hides its
-  // incoming connector just to the left of the new scroll position.
-  const previousScrollIntoView = Element.prototype.scrollIntoView;
-  Element.prototype.scrollIntoView = function (this: HTMLElement) {
-    element.viewport.scrollLeft = this.dataset.pathOccurrence === 'child' ? 656 : 0;
-  };
-  try {
-    publish([root, child], { occurrenceId: 'child', mode: 'traverse' });
-    expect(element.viewport.scrollLeft).toBeLessThan(640);
-    expect(element.viewport.scrollLeft).toBeGreaterThan(0);
-    const scroll = element.viewport.scrollLeft;
-    publish([root, child], element.focus);
-    expect(element.viewport.scrollLeft).toBe(scroll);
-    publish([root, child], { occurrenceId: 'root', mode: 'restore' });
-    expect(element.viewport.scrollLeft).toBe(0);
-  } finally { Element.prototype.scrollIntoView = previousScrollIntoView; }
+  element.viewportWidth = 640; element.viewportHeight = 480; element.allocateRows();
+  publish([root, child], { occurrenceId: 'child', mode: 'traverse' });
+  const childBounds = element.layoutBounds.get('child');
+  const childLeft = element.view.paddingX + childBounds.x * element.view.scale - element.viewport.scrollLeft;
+  expect(childLeft).toBeGreaterThanOrEqual(element.columnGap + 48);
+  const scroll = element.viewport.scrollLeft;
+  publish([root, child], element.focus);
+  expect(element.viewport.scrollLeft).toBe(scroll);
+  publish([root, child], { occurrenceId: 'root', mode: 'restore' });
+  expect(element.view.visibility(element.layoutBounds.get('root')).directions).not.toContain('left');
 });
 
 it('derives independent column and row budgets from occurrence focus after column insertion', async () => {
@@ -245,7 +241,7 @@ it('derives independent column and row budgets from occurrence focus after colum
   const height = budget(c).height;
   element.viewportWidth = 1000; element.allocateRows();
   expect(budget(c).height).toBe(height);
-  expect(budget(c).width).toBeGreaterThan(width);
+  expect(budget(c).width).toBe(width);
   const focus = { occurrenceId: 'a', mode: 'restore' };
   publish([a, b, c, down], focus);
   expect(budget(a).width).toBeGreaterThan(budget(c).width);
@@ -258,4 +254,202 @@ it('derives independent column and row budgets from occurrence focus after colum
   expect(budget(a).width).toBeGreaterThan(budget(b).width);
   expect(a.element.parentElement?.dataset.pathOccurrence).toBe('a');
   expect(b.provenance?.parentOccurrenceId).toBe('a');
+});
+
+async function surfaceFixture() {
+  const Path = await loadPathInspector();
+  const tag = `test-surface-${++surfaceNumber}`;
+  customElements.define(tag, class extends Path {});
+  const element = document.createElement(tag) as any;
+  const child = (minimum = { width: 500, height: 400 }) => Object.assign(document.createElement('section'), {
+    getSpatialExtents: vi.fn(() => ({ minimum, preferred: { width: 700, height: 600 } })),
+    setSpatialBudget: vi.fn(), setOccurrenceRestorationHandler: vi.fn(),
+  });
+  const root = { id: 'root', rowId: 'first', column: 1, element: child() };
+  const active = { id: 'active', rowId: 'second', column: 2, element: child(), provenance: { kind: 'singular-relationship', parentOccurrenceId: 'root' } };
+  const retained = { id: 'retained', rowId: 'third', column: 3, element: child(), provenance: { parentOccurrenceId: 'root' } };
+  const items = [root, active, retained];
+  const focus = { occurrenceId: active.id, mode: 'traverse' };
+  let publish: (items: any[], focus?: any) => void = () => {};
+  const restore = vi.fn();
+  element.setContext({ navigation: { restore, dispose: vi.fn(), subscribe(render: typeof publish) { publish = render; render(items, focus); return () => {}; } } });
+  document.body.append(element);
+  element.viewportWidth = 280; element.viewportHeight = 220; element.allocateRows();
+  return { element, root, active, retained, items, focus, publish, restore };
+}
+let surfaceNumber = 0;
+
+it('preserves topology, budgets, responsive state, geometry and lineage across pan, 50% zoom, fit and actual size', async () => {
+  const f = await surfaceFixture();
+  const { element } = f;
+  const selection = document.createElement('input'); selection.value = 'local selection';
+  f.active.element.append(selection);
+  const snapshot = () => ({
+    geometry: [...element.layoutBounds], rows: [...element.rowAllocations],
+    columns: element.surface.style.gridTemplateColumns,
+    lineage: element.lineage.innerHTML, focus: element.focus,
+    parentage: f.items.map(item => item.provenance),
+    budgets: f.items.map(item => item.element.setSpatialBudget.mock.lastCall![0]),
+  });
+  const before = snapshot();
+  const allocate = vi.spyOn(element, 'allocateRows');
+  expect(element.view.zoom(0.5)).toBe(true);
+  element.view.pan(140, 120);
+  expect(element.requestView('zoom-to-fit')).toBe(true);
+  for (const bounds of element.layoutBounds.values()) expect(element.view.visibility(bounds).state).toBe('visible');
+  expect(element.requestView('actual-size')).toBe(true);
+  expect(element.view.scale).toBe(1);
+  const bounds = element.layoutBounds.get('active');
+  expect(element.viewport.scrollLeft).toBe(bounds.x + bounds.width / 2 - element.view.viewportWidth / 2);
+  expect(element.viewport.scrollTop).toBe(bounds.y + bounds.height / 2 - element.view.viewportHeight / 2);
+  expect(allocate).not.toHaveBeenCalled();
+  expect(f.restore).not.toHaveBeenCalled();
+  expect(snapshot()).toEqual(before);
+  expect(selection.value).toBe('local selection');
+  expect(element.lineage.parentElement).toBe(element.surface);
+  expect(element.querySelector('[data-path-inspector-title]').closest('[data-path-inspector-surface]')).toBeNull();
+});
+
+it('negotiates useful content extents with border/status chrome and updates only on child reports', async () => {
+  const { element, active, items, focus, publish } = await surfaceFixture();
+  const region = element.regions.get(active.id);
+  region.style.border = '3px solid black';
+  const status = region.querySelector('[data-path-occurrence-status]');
+  Object.defineProperty(status, 'scrollHeight', { value: 42 });
+  publish(items.map(item => item === active ? { ...item, message: 'Opening child', requestAxis: 'vertical' } : item), focus);
+  let budget = active.element.setSpatialBudget.mock.lastCall![0];
+  expect(budget).toEqual({ width: 500, height: 400 });
+  expect(element.layoutBounds.get(active.id)).toMatchObject({ width: 506, height: 448 });
+  const next = { width: 620, height: 520 };
+  active.element.getSpatialExtents.mockReturnValue({ minimum: next, preferred: next });
+  active.element.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
+  // Renegotiation reaches only the immediate parent, without Canvas or selector lookup.
+  budget = active.element.setSpatialBudget.mock.lastCall![0];
+  expect(budget).toEqual({ ...next });
+  const calls = active.element.setSpatialBudget.mock.calls.length;
+  const internal = document.createElement('div'); active.element.append(internal);
+  internal.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
+  expect(active.element.setSpatialBudget).toHaveBeenCalledTimes(calls);
+});
+
+it('uses preferred extents when granted space permits, and preserves whole row and column budgets', async () => {
+  const { element, active, items, focus, publish } = await surfaceFixture();
+  const peer = { ...active, id: 'peer', column: 3, element: Object.assign(document.createElement('div'), {
+    getSpatialExtents: () => ({ minimum: { width: 600, height: 550 }, preferred: { width: 900, height: 800 } }),
+    setSpatialBudget: vi.fn(), setOccurrenceRestorationHandler: vi.fn(),
+  }) };
+  publish([...items, peer], focus);
+  expect(active.element.setSpatialBudget.mock.lastCall![0].height).toBe(550);
+  expect(peer.element.setSpatialBudget.mock.lastCall![0].height).toBe(550);
+  element.viewportWidth = 1600; element.viewportHeight = 1400; element.allocateRows();
+  expect(active.element.setSpatialBudget.mock.lastCall![0]).toEqual({ width: 700, height: 800 });
+});
+
+it('keeps clipping distinct from retained-alternative occlusion and restores distant content by view alone', async () => {
+  const { element, retained, items, focus, publish } = await surfaceFixture();
+  const hidden = { ...retained, id: 'occluded', occluded: true, column: 100, element: document.createElement('div') };
+  publish([...items, hidden], focus);
+  const width = element.view.width;
+  const bounds = element.layoutBounds.get('retained');
+  element.view.actualSize(bounds);
+  expect(element.regions.get('retained').dataset.viewportVisibility).toBe('visible');
+  expect(element.regions.get('root').dataset.viewportVisibility).toBe('outside');
+  expect(element.regions.get('occluded').style.display).toBe('none');
+  expect(element.layoutBounds.has('occluded')).toBe(false);
+  expect(element.view.width).toBe(width);
+  expect(element.querySelector('[data-navigation-view-status]').textContent).toContain('More content');
+  element.requestView('zoom-to-fit');
+  expect(element.regions.get('root').dataset.viewportVisibility).toBe('visible');
+  expect(hidden.occluded).toBe(true);
+});
+
+it('defers view requests without geometry and clears stale extent after empty topology', async () => {
+  const { element, publish } = await surfaceFixture();
+  element.viewportWidth = 0; element.viewportHeight = 0; element.allocateRows();
+  expect(element.requestView('zoom-to-fit')).toBe(false);
+  const before = element.surface.style.transform;
+  expect(element.view.zoom(NaN)).toBe(false);
+  expect(element.surface.style.transform).toBe(before);
+  publish([]);
+  expect(element.lineage.childElementCount).toBe(0);
+  expect(element.layoutBounds.size).toBe(0);
+  expect(element.view.width).toBe(0);
+  expect(element.requestView('actual-size')).toBe(false);
+  expect(element.viewButtons.every((button: HTMLButtonElement) => button.disabled)).toBe(true);
+});
+
+it('anchors zoom at the viewport center or pointer and supports viewport keyboard panning', async () => {
+  const { element } = await surfaceFixture();
+  element.requestView('actual-size');
+  const anchor = { x: 110, y: 90 };
+  const coordinate = () => ({
+    x: (element.viewport.scrollLeft + anchor.x - element.view.paddingX) / element.view.scale,
+    y: (element.viewport.scrollTop + anchor.y - element.view.paddingY) / element.view.scale,
+  });
+  const before = coordinate();
+  element.view.zoom(0.5, anchor.x, anchor.y);
+  expect(coordinate()).toEqual(before);
+  const scroll = element.viewport.scrollTop;
+  element.viewport.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', cancelable: true }));
+  expect(element.viewport.scrollTop).toBe(Math.max(0, scroll - 80));
+});
+
+it('reveals the mediating parent with a vertically traversed child when their useful extents exceed the viewport', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-vertical-context', class extends Path {});
+  const element = document.createElement('test-path-vertical-context') as any;
+  const node = () => Object.assign(document.createElement('section'), {
+    getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 800, 'partial-width': 200, 'minimal-width': 60 }, vertical: { 'full-height': 720, 'partial-height': 410, 'minimal-height': 40 } }),
+    setNodeInspectorAllocation: vi.fn(),
+  });
+  const root = { id: 'root', rowId: 'r0', column: 1, element: node() };
+  const child = { id: 'child', rowId: 'r1', column: 1, element: node(), provenance: { kind: 'collection-member', parentOccurrenceId: 'root' } };
+  let publish: any;
+  element.setContext({ navigation: { subscribe(render: any) { publish = render; render([root], { occurrenceId: 'root', mode: 'restore' }); return () => {}; } } });
+  element.viewportWidth = 1200; element.viewportHeight = 750;
+  const reveal = vi.spyOn(element.view, 'reveal');
+  publish([root, child], { occurrenceId: 'child', mode: 'traverse' });
+  const parentBounds = element.layoutBounds.get('root');
+  const childBounds = element.layoutBounds.get('child');
+  expect(parentBounds.height).toBe(410);
+  expect(childBounds.height).toBe(720);
+  expect(childBounds.height).toBeGreaterThanOrEqual(560);
+  expect(reveal).not.toHaveBeenCalled();
+  expect(element.view.viewport.scrollTop).toBe(0);
+});
+
+it('allocates a different conforming Node solely through its two-axis slot contract', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-alternative-participant', class extends Path {});
+  const element = document.createElement('test-path-alternative-participant') as any;
+  const make = (id: string, row: string, column: number, parent?: string) => ({
+    id, rowId: row, column, provenance: parent ? { parentOccurrenceId: parent } : undefined,
+    element: Object.assign(document.createElement('article'), {
+      getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 600, 'partial-width': 180, 'minimal-width': 50 }, vertical: { 'full-height': 500, 'partial-height': 250, 'minimal-height': 40 } }),
+      setNodeInspectorAllocation: vi.fn(),
+    }),
+  });
+  const a = make('a', 'one', 1), b = make('b', 'one', 2, 'a'), c = make('c', 'two', 2, 'b');
+  let publish: any;
+  element.setContext({ navigation: { subscribe(render: any) { publish = render; render([a], { occurrenceId: 'a', mode: 'traverse' }); return () => {}; } } });
+  const full = a.element.setNodeInspectorAllocation.mock.lastCall![0];
+  // A substituted child's private DOM must not affect parent-owned chrome measurement.
+  const privateControl = document.createElement('button');
+  privateControl.dataset.closeBranch = 'private';
+  Object.defineProperty(privateControl, 'offsetHeight', { value: 999 });
+  a.element.append(privateControl);
+  element.allocateRows();
+  expect(a.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual(full);
+  publish([a, b], { occurrenceId: 'b', mode: 'traverse' });
+  expect(a.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual({ width: 180, height: 500, vertical: 'full-height', horizontal: 'partial-width' });
+  expect(b.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual(full);
+  publish([a, b, c], { occurrenceId: 'c', mode: 'traverse' });
+  expect(b.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual({ width: 600, height: 250, vertical: 'partial-height', horizontal: 'full-width' });
+  expect(c.element.setNodeInspectorAllocation.mock.lastCall![0]).toEqual(full);
+  const geometry = JSON.stringify([...element.layoutBounds]);
+  element.viewportWidth = 200; element.viewportHeight = 150; element.allocateRows();
+  expect(JSON.stringify([...element.layoutBounds])).toBe(geometry);
+  expect(element.viewport.scrollLeft).toBe(0); expect(element.viewport.scrollTop).toBe(0);
+  a.element.getNodeInspectorExtents = () => ({ horizontal: { 'full-width': 10, 'partial-width': 180, 'minimal-width': 50 }, vertical: { 'full-height': 500, 'partial-height': 250, 'minimal-height': 40 } });
+  expect(() => element.allocateRows()).toThrow('positive and ordered');
 });

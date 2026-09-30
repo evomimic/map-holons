@@ -256,6 +256,20 @@ impl Fixture {
         node.with_property_value("TypeName", key)?
             .with_property_value("IsAbstractType", false)?
             .with_property_value("IsValueRequired", false)?;
+        if [
+            "StringValueType.ValueType",
+            "IntegerValueType.ValueType",
+            "BooleanValueType.ValueType",
+            "BytesValueType.ValueType",
+            "EnumValueType.ValueType",
+            "BaseValueValueType.ValueType",
+            "ValueArrayValueType.ValueType",
+        ]
+        .contains(&key)
+        {
+            node.with_property_value("TypeName", key.split('.').next().unwrap())?
+                .with_property_value("DefinesInstanceTypeKind", true)?;
+        }
         // Stage before adding describing types, keeping fixture construction separate
         // from input completion and the report-only behavior under test.
         let node: HolonReference = self.context.mutation().stage_new_holon(node)?.into();

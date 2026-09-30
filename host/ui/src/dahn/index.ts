@@ -1,6 +1,7 @@
 export type { ActionNode } from './contracts/actions';
 export type {
   CanvasApi,
+  SurfaceViewRequest,
   CanvasDescriptor,
   VisualizerMountPlan,
 } from './contracts/canvas';
@@ -23,6 +24,7 @@ export type {
 } from './contracts/table-presentation';
 export type {
   VisualizerContext,
+  SpatialExtents,
   VisualizerDefinition,
   VisualizerElement,
   VisualizerTargetRule,

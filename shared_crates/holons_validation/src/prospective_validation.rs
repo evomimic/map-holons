@@ -357,8 +357,12 @@ fn assess_property(
             packages,
         )?;
         subject_constraints(descriptor.holon(), &path, reader, collector, packages)?;
+        holons_core::reference_layer::assert_reference_transaction_compatible(
+            descriptor.holon(),
+            &values.context,
+        )?;
         let facts = PreparedRuleSubject::Value {
-            expected: descriptor.value_kind_with_reader(&values.roots, reader)?,
+            expected: descriptor.value_kind_with_reader(reader)?,
             actual: value.kind(),
             descriptor_identity: descriptor.holon().reference_id_string(),
         };

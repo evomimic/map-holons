@@ -219,6 +219,13 @@ async fn reads_actual_default_values_with_different_scalar_types() {
     graph.edge(3, "InstanceProperties", &[4]);
     graph.property(4, "TypeName", BaseValue::StringValue("DefaultValue".into()));
     graph.edge(4, "ValueType", &[35]);
+    // Persisted value descriptors carry completed local flags and an explicit anchor lineage.
+    graph.property(35, "DefinesInstanceTypeKind", BaseValue::BooleanValue(false.into()));
+    graph.property(35, "TypeName", BaseValue::StringValue("BaseValueValueType".into()));
+    graph.edge(35, "Extends", &[38]);
+    graph.property(38, "DefinesInstanceTypeKind", BaseValue::BooleanValue(true.into()));
+    graph.property(38, "IsAbstractType", BaseValue::BooleanValue(true.into()));
+    graph.property(38, "TypeName", BaseValue::StringValue("ValueType".into()));
     graph.edge(1, "ValueType", &[30]);
     graph.edge(2, "ValueType", &[31]);
     graph.property(1, "DefaultValue", BaseValue::StringValue("text".into()));

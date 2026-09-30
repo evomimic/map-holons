@@ -16,7 +16,7 @@ const importer = (source: string) => import(`data:text/javascript;base64,${Buffe
 const wait = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 const property = (name: string, kind = 'StringValue', array = false) => ({ propertyName: async () => name, displayName: async () => `${name} heading`, valueKind: async () => kind, isArray: async () => array });
 function collection(count: number) {
-  const members = Array.from({ length: count }, (_, index) => ({ holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
+  const members = Array.from({ length: count }, (_, index) => ({ key: async () => `row-${index}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
   return { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
@@ -145,7 +145,7 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
   expect(node.parentElement).toBe(path.querySelector('[data-path-inspector-root-node]'));
   expect(path.querySelectorAll('[data-dahn-holon-inspector]')).toHaveLength(1);
   expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
-  expect(members[1].propertyValue).toHaveBeenCalledTimes(2);
+  expect(members[1].propertyValue).toHaveBeenCalledTimes(1);
 
   const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
   const updates: CollectionUpdate[] = [];
@@ -186,11 +186,11 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
   const element = updates.at(-1)!.content!;
   document.body.append(element);
   expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
-  expect([...element.querySelectorAll('tbody td')].map(cell => cell.textContent)).toEqual(keys);
+  expect([...element.querySelectorAll('tbody td')].map(cell => cell.textContent)).toEqual([...keys].sort());
   expect(element.textContent).not.toContain('No items');
   const inspect = vi.fn(); element.addEventListener('dahn-inspect-holon', inspect);
   element.querySelector('tbody tr')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-  expect(inspect.mock.calls[0][0].detail.reference).toBe(members[0]);
+  expect(inspect.mock.calls[0][0].detail.reference).toBe(members[keys.indexOf([...keys].sort()[0])]);
 });
 
 it.each([1])('renders the identity-only projection for %i members, including an unkeyed holon', async count => {
@@ -218,9 +218,9 @@ it('restores independent tab sorts after fresh projection and keeps sorted activ
   };
   const first = await activate(a);
   const sort = (element: HTMLElement) => element.querySelector<HTMLButtonElement>('th[data-column-id="Key"] button')!.click();
-  sort(first); sort(first);
+  sort(first);
   expect(first.querySelector('tbody td')?.textContent).toBe('row-1');
-  const second = await activate(b); sort(second);
+  const second = await activate(b); sort(second); sort(second);
   const restored = await activate(a);
   expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(3);
   expect(restored).not.toBe(first);
@@ -238,7 +238,7 @@ it('restores independent tab sorts after fresh projection and keeps sorted activ
   const other = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
   other.activate(a, 'slot', publish);
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
-  expect(updates.at(-1)!.content!.querySelector('[aria-sort]')).toBeNull();
+  expect(updates.at(-1)!.content!.querySelector('[aria-sort]')?.getAttribute('aria-sort')).toBe('ascending');
   f.activation.dispose(); other.dispose();
 });
 
@@ -299,20 +299,26 @@ it('renders InstanceRelationships when its classification anchor has no instance
   expect(table.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
 });
 
-it.each(['declared-malformed', 'concrete-missing'])('does not hide a %s key-policy failure', async failure => {
+it('reads 57 existing keys without inspecting key rules or member descriptors', async () => {
   const f = fixture();
-  const missing = () => Object.assign(new Error('Missing concrete key rule'), { code: 'DOMAIN_ERROR', variant: 'NoEffectiveKeyRule' });
-  const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => { throw missing(); } }) };
-  f.owner.describedRelatedHolons.mockResolvedValue({ length: 1, elementType: {
-    hasInstanceKey: async () => {
-      if (failure === 'declared-malformed') throw new Error('Malformed declared key rule');
-      return false;
-    },
-    instanceProperties: async () => [],
-  }, [Symbol.iterator]: () => [member][Symbol.iterator]() } as never);
-  const publish = vi.fn(); f.activation.activate(tab('InstanceRelationships'), 'slot', publish);
-  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('error'));
-  expect(publish.mock.lastCall![0].message).toContain(failure === 'declared-malformed' ? 'Malformed declared key rule' : 'Missing concrete key rule');
+  const forbidden = vi.fn(async () => { throw new Error('Key construction policy must not be consulted'); });
+  const members = Array.from({ length: 57 }, (_, index) => ({
+    key: vi.fn(async () => index === 0 ? null : `token-${String(57 - index).padStart(2, '0')}`),
+    holonDescriptor: forbidden,
+    propertyValue: vi.fn(async () => ({ StringValue: 'Token' })),
+  }));
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 57, elementType: {
+    hasInstanceKey: forbidden, instanceProperties: async () => [property('Name')],
+  }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
+  const publish = vi.fn(); f.activation.activate(tab('Defines Design Token'), 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
+  const table = publish.mock.lastCall![0].content as HTMLElement;
+  const cells = [...table.querySelectorAll('td[data-column-id="Key"]')];
+  expect(cells).toHaveLength(57);
+  expect(cells[0].textContent).toBe('token-01');
+  expect(cells.at(-1)!.textContent).toBe('n/a');
+  expect(forbidden).not.toHaveBeenCalled();
+  for (const member of members) expect(member.key).toHaveBeenCalledTimes(1);
 });
 
 it.each(['empty', 'failed'])('keeps the live collection and member binding during %s preflight', async outcome => {
@@ -371,4 +377,21 @@ it('does not strand an opening collection when a newer attempt proves empty', as
   await vi.waitFor(() => expect(b.at(-1)?.state).toBe('empty'));
   expect(a.at(-1)?.state).toBe('loaded');
   expect(b.every(update => update.placement === 'source')).toBe(true);
+});
+
+it('closes collection presentation without disposing activation and rejects late completion', async () => {
+  const f = fixture(true), a = tab('A'), publish = vi.fn();
+  let finish!: (value: ReturnType<typeof collection>) => void;
+  f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  f.activation.activate(a, 'slot', publish); await wait();
+  f.activation.close(a);
+  expect(publish.mock.lastCall?.[0].state).toBe('unresolved');
+  finish(collection(2)); await wait();
+  expect(publish.mock.calls.some(([update]) => update.content)).toBe(false);
+  f.activation.activate(a, 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
+  const content = publish.mock.lastCall![0].content;
+  expect(f.activation.sourceAffordance(content)).toBe(a);
+  f.activation.close(a);
+  expect(f.activation.sourceAffordance(content)).toBeUndefined();
 });

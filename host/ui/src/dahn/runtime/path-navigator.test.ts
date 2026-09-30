@@ -159,7 +159,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(f.path()[2].id).not.toBe(f.path()[0].id);
     expect(f.path()[2].provenance?.parentOccurrenceId).toBe(child.id);
     expect(f.element.querySelectorAll('[data-path-occurrence]')).toHaveLength(3);
-    expect((f.element.querySelector('[data-path-inspector-viewport]') as HTMLElement).style.overflowY).toBe('auto');
+    expect((f.element.querySelector('[data-path-inspector-viewport]') as HTMLElement).style.overflowY).toBe('scroll');
   });
 
   it('replaces leaves, retains traversed paths, and restores matching members without reselection', async () => {
@@ -701,12 +701,12 @@ it('validates horizontal existence before changing allocation, then paints the f
   const f = await fixture(); const root = f.path()[0]; const a = await right(f, root);
   const gate = deferred<ReturnType<typeof collection>>();
   const paint = deferred<void>(); vi.mocked(destinationPaint).mockImplementationOnce(() => paint.promise);
-  const viewport = f.element.querySelector<HTMLElement>('[data-path-inspector-viewport]')!;
-  const previousColumns = viewport.style.gridTemplateColumns;
+  const surface = f.element.querySelector<HTMLElement>('[data-path-inspector-surface]')!;
+  const previousColumns = surface.style.gridTemplateColumns;
   f.a.relatedHolons.mockReturnValueOnce(gate.promise);
   rail(a.element).click();
   expect(f.destination()).toBeUndefined();
-  expect(viewport.style.gridTemplateColumns).toBe(previousColumns);
+  expect(surface.style.gridTemplateColumns).toBe(previousColumns);
   expect(f.path()).toHaveLength(2);
   gate.resolve(collection([f.b]));
   await vi.waitFor(() => expect(f.destination()).toBeDefined());
@@ -723,16 +723,16 @@ it('validates horizontal existence before changing allocation, then paints the f
   await vi.waitFor(() => expect(f.path()).toHaveLength(3));
   expect(f.path()[2].element.parentElement).toBe(pending);
   expect(f.path()[2].id).toBe(destination.id);
-  expect(viewport.style.gridTemplateColumns).not.toBe(previousColumns);
-  const columns = viewport.style.gridTemplateColumns;
+  expect(surface.style.gridTemplateColumns).not.toBe(previousColumns);
+  const columns = surface.style.gridTemplateColumns;
   const empty = deferred<ReturnType<typeof collection>>();
   f.a.relatedHolons.mockReturnValueOnce(empty.promise);
   rail(a.element, 1).click();
   expect(f.destination()).toBeUndefined();
-  expect(viewport.style.gridTemplateColumns).toBe(columns);
+  expect(surface.style.gridTemplateColumns).toBe(columns);
   empty.resolve(collection([]));
   await vi.waitFor(() => expect(a.pending).toBe(false));
-  expect(viewport.style.gridTemplateColumns).toBe(columns);
+  expect(surface.style.gridTemplateColumns).toBe(columns);
   expect(a.message).toContain('no target');
 });
 
@@ -750,7 +750,7 @@ it('retains the real table sort through traversal, two-axis allocation and resto
   f.navigation.restore(root.id);
   expect(f.path().map(item => ({ id: item.id, provenance: item.provenance }))).toEqual(retained);
   expect(root.element.querySelector('table')).toBe(table);
-  expect(root.element.querySelector('th')?.getAttribute('aria-sort')).toBe('descending');
+  expect(root.element.querySelector('th[data-column-id="Name"]')?.getAttribute('aria-sort')).toBe('descending');
   expect([...table!.querySelectorAll<HTMLElement>('tbody tr')].map(row => row.dataset.rowId)).toEqual(ids);
   expect(root.element.querySelector('[data-table-collection="sort-status"]')?.textContent).toBe('Sorted by Name, descending');
 });
@@ -843,12 +843,12 @@ it.each(['empty', 'invalid', 'failure'])('keeps an existing horizontal destinati
   f.selectVisualizer.mockRejectedValueOnce(new Error('selection unavailable'));
   await right(f, root);
   const destination = f.destination()!;
-  const geometry = f.element.querySelector<HTMLElement>('[data-path-inspector-viewport]')!.style.cssText;
+  const geometry = f.element.querySelector<HTMLElement>('[data-path-inspector-surface]')!.style.cssText;
   if (outcome === 'failure') f.rootSubject.relatedHolons.mockRejectedValueOnce(new Error('offline'));
   else f.rootSubject.relatedHolons.mockResolvedValueOnce(collection(outcome === 'empty' ? [] : [f.a, f.b]));
   await right(f, root, 1);
   expect(f.destination()).toBe(destination);
-  expect(f.element.querySelector<HTMLElement>('[data-path-inspector-viewport]')!.style.cssText).toBe(geometry);
+  expect(f.element.querySelector<HTMLElement>('[data-path-inspector-surface]')!.style.cssText).toBe(geometry);
   destination.cancel();
   expect(f.destination()).toBeUndefined();
   expect(f.path()).toHaveLength(1);
@@ -944,4 +944,232 @@ it('discards a late horizontal candidate when a newer member navigation supersed
   expect(f.path()[1].subject).toBe(f.b);
   expect(f.path()[1].provenance?.kind).toBe('collection-member');
   expect(f.element.querySelectorAll('[data-lineage-child]')).toHaveLength(1);
+});
+
+describe('occurrence branch closure', () => {
+  it('closes C–D while preserving A–B and B–E–F, including repeated semantic Holons', async () => {
+    const f = await fixture(); const a = f.path()[0];
+    const b = await right(f, a), c = await right(f, b), d = await right(f, c);
+    const e = await right(f, b, 1), leaf = await right(f, e);
+    expect(c.subject).toBe(leaf.subject);
+    const survivors = [a, b, e, leaf];
+    const provenance = survivors.map(item => item.provenance);
+    const focus = (f.element as any).focus;
+    const removedBindings = vi.spyOn((c as any).node.collectionActivation, 'dispose');
+    f.navigation.close(c.id);
+    expect(f.path().map(item => item.id).sort()).toEqual(survivors.map(item => item.id).sort());
+    expect(survivors.map(item => item.provenance)).toEqual(provenance);
+    expect(survivors.every(item => item.element.isConnected)).toBe(true);
+    expect(c.element.isConnected).toBe(false); expect(d.element.isConnected).toBe(false);
+    expect(removedBindings).toHaveBeenCalled();
+    expect((f.element as any).focus).toBe(focus);
+    expect(f.element.querySelectorAll('[data-lineage-child]')).toHaveLength(3);
+    f.navigation.close(c.id);
+    expect(f.path()).toHaveLength(4);
+  });
+
+  it('recovers removed focus to its nearest ancestor, reclaims bands and preserves view scale', async () => {
+    const f = await fixture(); const a = f.path()[0]; const b = await right(f, a), c = await right(f, b);
+    const path = f.element as any;
+    path.viewportWidth = 600; path.viewportHeight = 500; path.allocateRows(); path.view.zoom(0.5);
+    const width = path.view.width;
+    const close = b.element.querySelector<HTMLButtonElement>('[data-close-occurrence]')!;
+    close.focus(); close.click();
+    expect(f.path()).toEqual([a]);
+    expect(path.focus.occurrenceId).toBe(a.id);
+    expect(path.view.scale).toBe(0.5);
+    expect(path.view.width).toBeLessThan(width);
+    expect(document.activeElement).toBe(a.element.parentElement);
+    expect(path.lineage.childElementCount).toBe(0);
+    expect(c.element.isConnected).toBe(false);
+  });
+
+  it('closes the root to an empty live context without changing external staged state or Undo history', async () => {
+    const f = await fixture(); await right(f, f.path()[0]);
+    const external = { nursery: ['staged'], undo: ['edit'], participation: ['root'], abandoned: false };
+    const forbidden = vi.fn(() => { external.nursery = []; external.undo = []; external.abandoned = true; });
+    Object.assign(f.transaction, { abandon: forbidden, commit: forbidden, undo: forbidden, redo: forbidden, external });
+    const { semanticWork } = await import('./semantic-work');
+    const revision = semanticWork(f.transaction).revision;
+    let last: unknown;
+    const unsubscribe = f.navigation.subscribe((path, focus) => { last = { path, focus }; });
+    const close = f.root.element.querySelector<HTMLButtonElement>('[data-close-occurrence]')!;
+    close.focus(); close.click();
+    expect(last).toEqual({ path: [], focus: undefined });
+    expect(f.element.isConnected).toBe(true);
+    expect(f.element.querySelector<HTMLElement>('[data-path-empty]')?.hidden).toBe(false);
+    expect((f.element as any).view.width).toBe(0);
+    expect(document.activeElement).toBe((f.element as any).viewport);
+    expect(forbidden).not.toHaveBeenCalled();
+    expect(external).toEqual({ nursery: ['staged'], undo: ['edit'], participation: ['root'], abandoned: false });
+    expect(semanticWork(f.transaction).revision).toBe(revision);
+    let lateSnapshot: unknown;
+    f.navigation.subscribe(path => { lateSnapshot = path; });
+    expect(lateSnapshot).toEqual([]);
+    f.navigation.restore('missing'); f.navigation.close('missing'); unsubscribe();
+  });
+
+  it('closes only a member lineage, then all retained members of one collection, and permits reopening', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    const rows = await openCollection(root.element); activate(rows[0]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const first = f.path()[1]; await right(f, first);
+    activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    const second = f.path().find(item => item.provenance?.kind === 'collection-member' && item.subject === f.b)!;
+    await right(f, second);
+    const collectionId = (first.provenance as any).collectionOccurrenceId;
+    const otherRows = await openCollection(root.element, 1); activate(otherRows[2]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(6));
+    const other = f.path().find(item => item.provenance?.kind === 'collection-member' && item.provenance.collectionOccurrenceId !== collectionId)!;
+    f.navigation.close(first.id);
+    expect(f.path()).toHaveLength(4);
+    expect(other.element.isConnected).toBe(true);
+    f.navigation.closeCollection(root.id, first.provenance!.affordance);
+    expect(f.path().map(item => item.id)).toEqual([root.id, other.id]);
+    expect(other.element.isConnected).toBe(true);
+    // Closing an inactive collection does not clear the current other collection.
+    expect(root.element.querySelector('table')).not.toBeNull();
+    await openCollection(root.element, 0);
+    expect(root.element.querySelector('[data-close-collection]')).toBeNull();
+    f.navigation.closeCollection(root.id, first.provenance!.affordance);
+    expect(root.element.querySelector('table')).toBeNull();
+    expect(root.element.querySelectorAll('[role=tab][aria-selected=true]')).toHaveLength(0);
+    // Traverse the other leaf so normal replacement retains its branch on reopening.
+    await right(f, other);
+    const freshRows = await openCollection(root.element, 0); activate(freshRows[0]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    const fresh = f.path().find(item => item.subject === f.a)!;
+    expect((fresh.provenance as any).collectionOccurrenceId).not.toBe(collectionId);
+  });
+
+  it.each(['check', 'paint', 'realize'])('rejects late horizontal results after closing their owner during %s', async phase => {
+    const f = await fixture(); const root = f.path()[0];
+    const gate = deferred<void>();
+    if (phase === 'check') f.rootSubject.relatedHolons.mockImplementationOnce(async () => { await gate.promise; return collection([f.a]); });
+    if (phase === 'paint') vi.mocked(destinationPaint).mockImplementationOnce(() => gate.promise);
+    if (phase === 'realize') {
+      const original = f.realize.getMockImplementation()!;
+      f.realize.mockImplementationOnce(async (...args) => { await gate.promise; return original(...args); });
+    }
+    rail(root.element).click();
+    if (phase === 'check') await vi.waitFor(() => expect(root.pending).toBe(true));
+    if (phase === 'paint') await vi.waitFor(() => expect(f.destination()).toBeDefined());
+    if (phase === 'realize') await vi.waitFor(() => expect(f.realize).toHaveBeenCalledTimes(2));
+    f.navigation.close(root.id); gate.resolve();
+    const { semanticWork } = await import('./semantic-work');
+    await semanticWork(f.transaction).realize(async () => {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await semanticWork(f.transaction).realize(async () => {});
+    expect(f.path()).toEqual([]); expect(f.destination()).toBeUndefined();
+    expect((f.element as any).focus).toBeUndefined();
+    expect(f.element.querySelectorAll('[data-path-occurrence]')).toHaveLength(0);
+  });
+
+  it('preserves an unrelated pending destination when another branch closes', async () => {
+    const f = await fixture(); const root = f.path()[0]; const a = await right(f, root); await right(f, a);
+    const b = await right(f, root, 1);
+    const gate = deferred<void>(); vi.mocked(destinationPaint).mockImplementationOnce(() => gate.promise);
+    rail(b.element).click(); await vi.waitFor(() => expect(f.destination()).toBeDefined());
+    const destination = f.destination()!;
+    f.navigation.close(a.id);
+    expect(f.destination()).toBe(destination);
+    gate.resolve(); await vi.waitFor(() => expect(f.destination()).toBeUndefined());
+    expect(f.path()).toHaveLength(3);
+    expect(f.path().find(item => item.id === destination.id)?.provenance?.parentOccurrenceId).toBe(b.id);
+    expect(new Set(f.path().map(item => item.column))).toEqual(new Set([1, 2, 3]));
+  });
+
+  it('invalidates pending member realization when its mediating collection closes', async () => {
+    const f = await fixture(); const root = f.path()[0]; const rows = await openCollection(root.element);
+    const gate = deferred<void>(); vi.mocked(destinationPaint).mockImplementationOnce(() => gate.promise);
+    activate(rows[0]); await vi.waitFor(() => expect(f.destination()).toBeDefined());
+    f.navigation.closeCollection(root.id, (root.element as any).activeCollection);
+    gate.resolve();
+    const { semanticWork } = await import('./semantic-work');
+    await semanticWork(f.transaction).realize(async () => {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await semanticWork(f.transaction).realize(async () => {});
+    expect(f.path()).toEqual([root]); expect(f.destination()).toBeUndefined();
+    expect(nodeSelections(f)).toHaveLength(0);
+    expect(root.element.querySelector('table')).toBeNull();
+  });
+});
+
+it('retires retryable destinations and their stale retry callbacks when their ancestor closes', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  f.selectVisualizer.mockRejectedValueOnce(new Error('unavailable'));
+  await right(f, root);
+  const retry = f.destination()!.retry!;
+  expect(retry).toBeTypeOf('function');
+  const calls = f.selectVisualizer.mock.calls.length;
+  f.navigation.close(root.id);
+  retry();
+  await Promise.resolve();
+  expect(f.path()).toEqual([]);
+  expect(f.destination()).toBeUndefined();
+  expect(f.selectVisualizer).toHaveBeenCalledTimes(calls);
+});
+
+it('retains a previously traversed occurrence after its descendants are explicitly closed', async () => {
+  const f = await fixture(); const root = f.path()[0]; const b = await right(f, root), c = await right(f, b);
+  f.navigation.close(c.id);
+  const alternative = await right(f, root, 1);
+  expect(f.path().map(item => item.id).sort()).toEqual([root.id, b.id, alternative.id].sort());
+  expect(b.element.isConnected).toBe(true);
+});
+
+it('switches a singular button by inserting above the retained horizontal chain with both parent arrows', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const first = await right(f, root);
+  const onward = await right(f, first);
+  const previousIds = [first.id, onward.id];
+  const second = await right(f, root, 1);
+  expect((second as any).row).toBe((root as any).row);
+  expect((first as any).row).toBe((root as any).row + 1);
+  expect((onward as any).row).toBe((first as any).row);
+  expect([first.id, onward.id]).toEqual(previousIds);
+  expect(first.element.isConnected && onward.element.isConnected).toBe(true);
+  const edges = [...f.element.querySelectorAll<SVGPathElement>('[data-lineage-parent]')]
+    .map(edge => [edge.dataset.lineageParent, edge.dataset.lineageChild]);
+  expect(edges).toContainEqual([root.id, first.id]);
+  expect(edges).toContainEqual([root.id, second.id]);
+  expect(edges).toContainEqual([first.id, onward.id]);
+});
+
+it('promotes retained horizontal siblings into a closed child position beside a surviving parent', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const first = await right(f, root); const descendant = await right(f, first);
+  const second = await right(f, root, 1); await right(f, second);
+  const third = await right(f, root, 2);
+  f.navigation.close(third.id);
+  expect((second as any).row).toBe((root as any).row);
+  expect(second.rowId).toBe(root.rowId);
+  f.navigation.close(second.id);
+  expect((first as any).row).toBe((root as any).row);
+  expect(first.rowId).toBe(root.rowId);
+  expect((descendant as any).row).toBe((first as any).row);
+  expect(first.provenance?.parentOccurrenceId).toBe(root.id);
+  expect(descendant.provenance?.parentOccurrenceId).toBe(first.id);
+  expect(f.element.querySelector(`[data-lineage-parent="${root.id}"][data-lineage-child="${first.id}"]`)).not.toBeNull();
+  expect(f.element.querySelector(`[data-lineage-parent="${first.id}"][data-lineage-child="${descendant.id}"]`)).not.toBeNull();
+});
+
+it('moves a surviving pending destination with its retained branch when an earlier sibling closes', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const retained = await right(f, root); await right(f, retained);
+  const top = await right(f, root, 1);
+  const gate = deferred<void>(); vi.mocked(destinationPaint).mockImplementationOnce(() => gate.promise);
+  rail(retained.element, 1).click();
+  await vi.waitFor(() => expect(f.destination()).toBeDefined());
+  const pending = f.destination()!;
+  f.navigation.close(top.id);
+  expect(f.destination()).toBe(pending);
+  expect(pending.row).toBe((root as any).row);
+  expect(retained.rowId).toBe(root.rowId);
+  gate.resolve(); await vi.waitFor(() => expect(f.destination()).toBeUndefined());
+  const completed = f.path().find(item => item.id === pending.id)!;
+  expect((completed as any).row).toBe((retained as any).row);
+  expect(completed.provenance?.parentOccurrenceId).toBe(retained.id);
+  const cells = f.path().map(item => `${(item as any).row}:${item.column}`);
+  expect(new Set(cells).size).toBe(cells.length);
 });

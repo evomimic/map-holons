@@ -243,7 +243,7 @@ mod tests {
             .mark_ready(
                 space_reference(),
                 CanvasLaunchSelection {
-                    theme_key: "MAP.BootstrapTheme".into(),
+                    theme_key: "Demo1.DeepOceanTheme".into(),
                     canvas_key: "MAP.BootstrapCanvas".into(),
                     canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
                 },
@@ -282,7 +282,7 @@ mod tests {
             .mark_ready(
                 space_reference(),
                 CanvasLaunchSelection {
-                    theme_key: "MAP.BootstrapTheme".into(),
+                    theme_key: "Demo1.DeepOceanTheme".into(),
                     canvas_key: "MAP.BootstrapCanvas".into(),
                     canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
                 },

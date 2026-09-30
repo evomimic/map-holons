@@ -1,3 +1,4 @@
+import { offeredCanvasThemes } from '../../../dahn/themes/offered-canvas-themes';
 import { realizeNode } from '../../../dahn/runtime/realize-node';
 import { PathNavigator } from '../../../dahn/runtime/path-navigator';
 import { AfterViewInit, OnDestroy, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
@@ -111,7 +112,7 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
       }
 
       profile.next('project theme');
-      const theme = await new Theme(themeHolon).toCssCustomProperties();
+      const theme = { ...await new Theme(themeHolon).toCssCustomProperties() };
       profile.next('construct Canvas');
       const registry = new DefaultVisualizerRegistry();
       let homeDancerContext: VisualizerContext | null = null;
@@ -125,9 +126,15 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
           return homeDancerContext;
         },
       );
-      // The selected Theme is projected once by the Canvas and shared by all
-      // future hosted Dancers. The Canvas remains intentionally empty here.
+      // Theme projection is shared by hosted Dancers and refreshed only on
+      // explicit selection. The Canvas remains intentionally empty here.
       canvas.setTheme(theme);
+      canvas.configureThemeMenu(theme,
+        () => offeredCanvasThemes(activeHolonSpace, themeHolon, theme.metaDesignSystemVersionedKey),
+        selected => {
+          // Existing contexts and future navigation share this session's theme identity.
+          Object.assign(theme, selected);
+        });
 
       const homeDancerSelection = session.home_dancer_selection;
       if (homeDancerSelection === null) {

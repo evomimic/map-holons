@@ -55,7 +55,7 @@ describe('Holon Inspector visualizer artifact', () => {
 
     expect(element.dataset.dahnHolonInspector).toBe('true');
     expect(element.style.display).toBe('grid');
-    expect(element.querySelector('[data-holon-inspector-title]')?.textContent).toBe('MAP.CoreSchemaSpace');
+    expect(element.querySelector('[data-holon-inspector-title] button')?.textContent).toBe('MAP.CoreSchemaSpace');
     expect(element.querySelector('[data-holon-inspector-action-bar]')).not.toBeNull();
     expect(element.querySelector('[data-holon-inspector-property-viewer]')).not.toBeNull();
     expect(element.querySelector('[data-holon-inspector-single-value-rail]')).not.toBeNull();
@@ -110,7 +110,7 @@ it('composes both axes without losing mounted state or compact restoration', asy
     for (const [width, height] of sizes) {
       element.setSpatialBudget({ width, height });
       expect(body.inert).toBe(height < 280 || width < 100);
-      expect(collections.inert).toBe(height < 80 || width < 100);
+      expect(collections.inert).toBe(height < 80 || width < 300);
       expect(element.contains(properties)).toBe(true);
       expect(element.contains(collection)).toBe(true);
       expect(input.value).toBe('retained local input');
@@ -135,20 +135,20 @@ it('uses the key and its initials at compressed extents while preserving the ful
   const Node = await loadHolonInspector();
   customElements.define('test-node-responsive-title', class extends Node {});
   const element = document.createElement('test-node-responsive-title') as any;
-  element.setContext({ title: 'Theme: MAP.BootstrapTheme', holonKey: 'MAP.BootstrapTheme' });
+  element.setContext({ title: 'Theme: Demo1.DeepOceanTheme', holonKey: 'Demo1.DeepOceanTheme' });
   const title = element.querySelector('header button');
   for (const [width, height, text] of [
-    [600, 500, 'Theme: MAP.BootstrapTheme'],
-    [180, 500, 'MAP.BootstrapTheme'],
-    [62, 500, 'MAP.BootstrapTheme'],
-    [62, 46, 'MBT'],
-    [600, 46, 'Theme: MAP.BootstrapTheme'],
-    [600, 500, 'Theme: MAP.BootstrapTheme'],
+    [600, 500, 'Theme: Demo1.DeepOceanTheme'],
+    [180, 500, 'Demo1.DeepOceanTheme'],
+    [62, 500, 'Demo1.DeepOceanTheme'],
+    [62, 46, 'DDOT'],
+    [600, 46, 'Theme: Demo1.DeepOceanTheme'],
+    [600, 500, 'Theme: Demo1.DeepOceanTheme'],
   ]) {
     element.setSpatialBudget({ width, height });
     expect(title.textContent).toBe(text);
-    expect(title.title).toBe('Theme: MAP.BootstrapTheme');
-    expect(title.getAttribute('aria-label')).toContain('Theme: MAP.BootstrapTheme');
+    expect(title.title).toBe('Theme: Demo1.DeepOceanTheme');
+    expect(title.getAttribute('aria-label')).toContain('Theme: Demo1.DeepOceanTheme');
   }
   element.setContext({ title: 'Type: alpha:Beta-key_name', holonKey: 'alpha:Beta-key_name' });
   element.setSpatialBudget({ width: 180, height: 500 });
@@ -171,4 +171,78 @@ it('shows relationship descriptions on rail buttons and collection tabs with lab
   expect(rail[0].title).toBe('The owning HolonSpace.');
   expect(rail[1].title).toBe('Author');
   expect(element.querySelector('[role="tab"]').title).toBe('Holons belonging to this collection.');
+});
+
+it('negotiates partial height from the retained collection and hides the body by allocation state, not a fixed pixel threshold', async () => {
+  const Node = await loadHolonInspector();
+  customElements.define('test-node-preserved-collection', class extends Node {});
+  const element = document.createElement('test-node-preserved-collection') as any;
+  element.setContext({ title: 'Parent' });
+  element.style.rowGap = '16px';
+  Object.defineProperty(element.titleControl.parentElement, 'offsetHeight', { value: 40 });
+  Object.defineProperty(element.collectionRegion, 'offsetHeight', { value: 360 });
+  element.setNodeInspectorAllocation({ width: 800, height: 720, vertical: 'full-height', horizontal: 'full-width' });
+  expect(element.getNodeInspectorExtents().vertical['partial-height']).toBe(416);
+  element.setNodeInspectorAllocation({ width: 800, height: 416, vertical: 'partial-height', horizontal: 'full-width' });
+  expect(element.body.style.display).toBe('none');
+  expect(element.collectionRegion.style.display).toBe('flex');
+  expect(element.getNodeInspectorExtents().vertical['partial-height']).toBe(416);
+  element.setNodeInspectorAllocation({ width: 800, height: 720, vertical: 'full-height', horizontal: 'full-width' });
+  expect(element.body.style.display).toBe('grid');
+});
+
+it('owns sub-slot visibility for all nine Node Inspector allocation combinations', async () => {
+  const Node = await loadHolonInspector();
+  customElements.define('test-node-nine-combinations', class extends Node {});
+  const element = document.createElement('test-node-nine-combinations') as any;
+  element.setContext({ title: 'Example' });
+  const extents = element.getNodeInspectorExtents();
+  for (const vertical of ['full-height', 'partial-height', 'minimal-height']) {
+    for (const horizontal of ['full-width', 'partial-width', 'minimal-width']) {
+      element.setNodeInspectorAllocation({ vertical, horizontal, width: extents.horizontal[horizontal], height: extents.vertical[vertical] });
+      expect(element.body.style.display === 'none').toBe(vertical !== 'full-height' || horizontal === 'minimal-width');
+      expect(element.collectionRegion.style.display === 'none').toBe(vertical === 'minimal-height' || horizontal !== 'full-width');
+      expect(element.propertyViewer.style.display === 'none').toBe(horizontal !== 'full-width');
+    }
+  }
+});
+
+it('reports a bounded closed-collection height and renegotiates only when the collection region opens or closes', async () => {
+  const Node = await loadHolonInspector();
+  customElements.define('test-node-collection-extents', class extends Node {});
+  const element = document.createElement('test-node-collection-extents') as any;
+  element.setContext({ title: 'Root' });
+  const changed = vi.fn(); element.addEventListener('dahn-spatial-extents-changed', changed);
+  expect(element.getNodeInspectorExtents().vertical['full-height']).toBe(480);
+  element.updateCollection({ state: 'loading' });
+  expect(element.getNodeInspectorExtents().vertical['full-height']).toBe(720);
+  expect(changed).toHaveBeenCalledTimes(1);
+  element.updateCollection({ state: 'loaded', content: document.createElement('div') });
+  element.updateCollection({ state: 'loading' });
+  expect(changed).toHaveBeenCalledTimes(1);
+  element.updateCollection({ state: 'unresolved' });
+  expect(element.getNodeInspectorExtents().vertical['full-height']).toBe(480);
+  expect(changed).toHaveBeenCalledTimes(2);
+});
+
+it('reclaims property height through the child contract without changing the Node allocation', async () => {
+  const Node = await loadHolonInspector();
+  customElements.define('test-node-reclaim-height', class extends Node {});
+  const element = document.createElement('test-node-reclaim-height') as any;
+  const properties = Object.assign(document.createElement('article'), { getPreferredContentHeight: () => 100 });
+  element.setContext({ title: 'Node', childVisualizers: new Map([['properties', properties], ['collections', document.createElement('div')]]) });
+  element.style.rowGap = '16px'; element.body.style.rowGap = '16px';
+  element.propertyViewer.style.padding = '16px';
+  Object.defineProperty(element.titleControl.parentElement, 'offsetHeight', { value: 40 });
+  Object.defineProperty(element.actionBar, 'offsetHeight', { value: 32 });
+  element.setNodeInspectorAllocation({ width: 800, height: 720, horizontal: 'full-width', vertical: 'full-height' });
+  const outerChanged = vi.fn(); element.addEventListener('dahn-spatial-extents-changed', outerChanged);
+  element.allocateInternalHeight();
+  expect(element.style.gridTemplateRows).toBe('auto 180px minmax(0, 1fr)');
+  expect(element.allocatedHeight).toBe(720);
+  expect(outerChanged).not.toHaveBeenCalled();
+  properties.getPreferredContentHeight = () => 1000;
+  element.allocateInternalHeight();
+  expect(element.style.gridTemplateRows).toBe('auto 324px minmax(0, 1fr)');
+  expect(element.allocatedHeight).toBe(720);
 });

@@ -10,8 +10,15 @@ schema "MAP Default Presentation Commons-v0.1.0" {
 instance DAHN.DefaultMetaDesignSystem {
   type MetaDesignSystem.HolonType
   MetaDesignSystemName "DAHN.DefaultMetaDesignSystem-v0.1.0"
+  MetaDesignSystemDescription "A reusable presentation vocabulary supplied by the default Visualizer Commons for canvases, inspectors, collections, actions, and launcher feedback. Compatible themes assign values to the same semantic roles independently of Dancer identity."
   relationships {
     DefinesDesignToken -> [
+      CollectionNavigationSurfaceBackground.DesignToken,
+      CollectionNavigationTextColor.DesignToken,
+      RelationshipNavigationSurfaceBackground.DesignToken,
+      RelationshipNavigationTextColor.DesignToken,
+      ViewControlSurfaceBackground.DesignToken,
+      ViewControlTextColor.DesignToken,
       PanelSurfaceBackground.DesignToken,
       PanelCornerRadius.DesignToken,
       MutedTextColor.DesignToken,
@@ -79,9 +86,16 @@ instance DAHN.DefaultMetaDesignSystem {
 instance DAHN.DefaultTheme {
   type Theme.HolonType
   ThemeName "DAHN.DefaultTheme"
+  ThemeDescription "The default Visualizer Commons theme, providing a complete set of presentation values for its companion MetaDesignSystem across canvas content, controls, and launcher feedback."
   relationships {
     ForMetaDesignSystem -> DAHN.DefaultMetaDesignSystem
     HasThemeTokenAssignment -> [
+      DAHN.DefaultTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CollectionNavigationTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.RelationshipNavigationTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ViewControlSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ViewControlTextColor.ThemeTokenAssignment,
       DAHN.DefaultTheme.PanelSurfaceBackground.ThemeTokenAssignment,
       DAHN.DefaultTheme.PanelCornerRadius.ThemeTokenAssignment,
       DAHN.DefaultTheme.MutedTextColor.ThemeTokenAssignment,
@@ -588,5 +602,53 @@ instance DAHN.DefaultTheme.FocusRingWidth.ThemeTokenAssignment {
   PresentationValue "2px"
   relationships {
     ForDesignToken -> FocusRingWidth.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#245878"
+  relationships {
+    ForDesignToken -> CollectionNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CollectionNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> CollectionNavigationTextColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#245878"
+  relationships {
+    ForDesignToken -> RelationshipNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.RelationshipNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> RelationshipNavigationTextColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ViewControlSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#245878"
+  relationships {
+    ForDesignToken -> ViewControlSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ViewControlTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> ViewControlTextColor.DesignToken
   }
 }

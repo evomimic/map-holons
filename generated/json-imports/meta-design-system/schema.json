@@ -53,6 +53,9 @@
           "target": [
             {
               "$ref": "MetaDesignSystemName.PropertyType"
+            },
+            {
+              "$ref": "MetaDesignSystemDescription.PropertyType"
             }
           ]
         },
@@ -105,15 +108,34 @@
       ]
     },
     {
-      "key": "MAP.BootstrapMetaDesignSystem",
+      "key": "Demo1.MetaDesignSystem",
       "type": "MetaDesignSystem.HolonType",
       "properties": {
-        "MetaDesignSystemName": "MAP Bootstrap Meta Design System"
+        "MetaDesignSystemDescription": "A shared semantic design-token vocabulary for demonstrating DAHN presentation features across canvases, panels, collections, inspectors, actions, and launcher feedback. Deep Ocean and other compatible demonstration themes assign values to this same contract, allowing visual variation without changing token roles. The vocabulary supports feature exploration rather than prescribing an optimized human experience.",
+        "MetaDesignSystemName": "Demo 1 Meta Design System v0.1.0"
       },
       "relationships": [
         {
           "name": "DefinesDesignToken",
           "target": [
+            {
+              "$ref": "CollectionNavigationSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CollectionNavigationTextColor.DesignToken"
+            },
+            {
+              "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "RelationshipNavigationTextColor.DesignToken"
+            },
+            {
+              "$ref": "ViewControlSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ViewControlTextColor.DesignToken"
+            },
             {
               "$ref": "PanelSurfaceBackground.DesignToken"
             },
@@ -400,6 +422,44 @@
           "target": [
             {
               "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaDesignSystemDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaDesignSystemDescription",
+        "TypeNamePlural": "MetaDesignSystemDescriptions",
+        "DisplayName": "meta_design_system_description",
+        "DisplayNamePlural": "meta_design_system_descriptions",
+        "Description": "Human-readable purpose and scope of a semantic design-token vocabulary.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         }

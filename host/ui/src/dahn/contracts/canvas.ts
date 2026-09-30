@@ -25,5 +25,10 @@ export interface VisualizerMountPlan {
 export interface CanvasApi {
   mountVisualizers(plan: VisualizerMountPlan[]): Promise<void>;
   clear(): void;
+  /** False means no mounted surface accepted the request or geometry is unavailable. */
+  requestView?(request: SurfaceViewRequest): boolean;
   setTheme(theme: DahnTheme): void;
 }
+
+/** View-only intent delegated to the owner of the active composition surface. */
+export type SurfaceViewRequest = 'zoom-to-fit' | 'actual-size';

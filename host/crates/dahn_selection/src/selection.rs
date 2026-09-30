@@ -141,7 +141,7 @@ pub fn select_bootstrap_canvas(
     context: &Arc<TransactionContext>,
 ) -> Result<BootstrapCanvasSelection, HolonError> {
     let theme = HolonReference::Smart(
-        context.lookup().get_saved_holon_by_key(&MapString::from("MAP.BootstrapTheme"))?,
+        context.lookup().get_saved_holon_by_key(&MapString::from("Demo1.DeepOceanTheme"))?,
     );
     let canvas = HolonReference::Smart(
         context.lookup().get_saved_holon_by_key(&MapString::from("MAP.BootstrapCanvas"))?,

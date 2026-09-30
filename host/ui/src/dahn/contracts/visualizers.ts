@@ -1,9 +1,10 @@
+import type { NodeInspectorParticipant } from './node-inspector-slot';
 import type { RelationshipDiscovery } from './relationship-discovery';
 import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
-import type { NodeAffordances, RelationshipAffordance } from './affordances';
+import type { NodeAffordances, RelationshipAffordance, CollectionAffordance } from './affordances';
 import type { ActionNode } from './actions';
-import type { CanvasApi } from './canvas';
+import type { CanvasApi, SurfaceViewRequest } from './canvas';
 import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
@@ -136,12 +137,33 @@ export interface VisualizerContext {
 /**
  * Common surface all DAHN visualizer elements must implement.
  */
-export interface VisualizerElement extends HTMLElement {
+export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorParticipant> {
   setContext(context: VisualizerContext): void;
   /** Reflects active and attempted singular navigation without rebuilding the Node. */
   setSingularNavigationState?(state: SingularNavigationState): void;
+  /** Content extents in unscaled CSS pixels. Preferred sizes are soft targets.
+   * Dispatch a bubbling dahn-spatial-extents-changed event from this element
+   * when the report changes; the immediate parent decides reallocation.
+   */
+  getSpatialExtents?(): SpatialExtents;
+  /** PropertyMap slot: intrinsic height at the allocated width. Notify the immediate
+   * parent with dahn-content-extent-changed when this report changes. The parent
+   * may redistribute its own budget; this does not request outer resizing. */
+  getPreferredContentHeight?(): number | undefined;
+  /** Handle locally or delegate to an immediate composed child's surface. */
+  requestView?(request: SurfaceViewRequest): boolean;
   /** Parent-owned external dimensions; the selected child owns responsive thresholds. */
   setSpatialBudget?(budget: { width?: number; height: number }): void;
   /** Semantic request to restore the containing occurrence, independent of child layout. */
   setOccurrenceRestorationHandler?(handler: () => void): void;
+  /** Parent interprets close as occurrence topology removal, not semantic deletion. */
+  setOccurrenceClosureHandler?(handler: () => void): void;
+  /** Collection identity is resolved by the owning navigation context. */
+  setCollectionClosureHandler?(handler: (affordance: CollectionAffordance) => void): void;
+}
+
+/** Selected-child participation report; this is presentation, not selection metadata. */
+export interface SpatialExtents {
+  minimum: { width: number; height: number };
+  preferred?: { width: number; height: number };
 }

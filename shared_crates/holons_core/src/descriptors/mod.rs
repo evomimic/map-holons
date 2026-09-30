@@ -4,6 +4,7 @@ pub mod command_descriptor;
 mod constraint_applicability;
 mod constraint_contributions;
 mod contract_contributions;
+mod core_descriptor_lookup;
 pub mod dance_descriptor;
 pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;
@@ -21,7 +22,6 @@ pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
-mod resolved_descriptor_roots;
 #[cfg(test)]
 mod schema_contract_tests;
 mod schema_ownership;
@@ -43,6 +43,7 @@ pub use constraint_applicability::{
 };
 pub use constraint_contributions::ConstraintContributions;
 pub use contract_contributions::ContractContributions;
+pub use core_descriptor_lookup::{resolve_core_descriptor, resolve_core_descriptor_with_reader};
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
@@ -65,9 +66,6 @@ pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::{EffectiveCardinality, RelationshipDescriptor, TargetBinding};
-pub use resolved_descriptor_roots::{
-    resolve_core_descriptor, resolve_core_descriptor_with_reader, ResolvedValueTypeRoots,
-};
 pub use schema_ownership::{
     resolve_schema_ownership, resolve_schema_ownership_with_reader, schema_components,
     schema_components_with_reader, schema_dependencies, schema_dependencies_with_reader,

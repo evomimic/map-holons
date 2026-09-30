@@ -4,7 +4,7 @@ use std::sync::Arc;
 use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::resolved_descriptor_roots::resolve_core_descriptor;
+use crate::descriptors::core_descriptor_lookup::resolve_core_descriptor;
 use crate::descriptors::{equals_or_extends, Descriptor, HolonDescriptor, TypeHeader};
 use crate::reference_layer::{assert_reference_transaction_compatible, HolonReference};
 

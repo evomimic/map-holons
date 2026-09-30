@@ -150,7 +150,7 @@ describe('bundled theme coverage', () => {
             [relationship.name, relationship.target.map(target => fixture(target.$ref))])),
       };
     };
-    const bootstrap = await new Theme(reference(fixture('MAP.BootstrapTheme'))).toCssCustomProperties();
+    const bootstrap = await new Theme(reference(fixture('Demo1.DeepOceanTheme'))).toCssCustomProperties();
     const alternate = await new Theme(reference(fixture('DAHN.DefaultTheme'))).toCssCustomProperties();
     expect(Object.keys(alternate.cssCustomProperties).sort()).toEqual(Object.keys(bootstrap.cssCustomProperties).sort());
     const css = await readFile(resolve(process.cwd(), 'ui/src/launcher-theme.generated.css'), 'utf8');

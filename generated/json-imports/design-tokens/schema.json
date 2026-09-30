@@ -22,6 +22,7 @@
       "key": "CanvasGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Space between adjacent content regions on a canvas.",
         "DesignTokenName": "CanvasGap"
       },
       "relationships": [
@@ -39,6 +40,7 @@
       "key": "CanvasPadding.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Inset between the canvas boundary and its content.",
         "DesignTokenName": "CanvasPadding"
       },
       "relationships": [
@@ -56,6 +58,7 @@
       "key": "CanvasSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color of the overall canvas surface.",
         "DesignTokenName": "CanvasSurfaceBackground"
       },
       "relationships": [
@@ -73,6 +76,7 @@
       "key": "CanvasTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Default foreground color for text on the canvas.",
         "DesignTokenName": "CanvasTextColor"
       },
       "relationships": [
@@ -90,6 +94,7 @@
       "key": "CollectionSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color of a collection content surface.",
         "DesignTokenName": "CollectionSurfaceBackground"
       },
       "relationships": [
@@ -107,6 +112,7 @@
       "key": "CollectionTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Default foreground color for collection content text.",
         "DesignTokenName": "CollectionTextColor"
       },
       "relationships": [
@@ -124,6 +130,7 @@
       "key": "CollectionHeaderSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color distinguishing a collection heading from its content.",
         "DesignTokenName": "CollectionHeaderSurfaceBackground"
       },
       "relationships": [
@@ -141,6 +148,7 @@
       "key": "TableHeaderSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color identifying the header row of a table.",
         "DesignTokenName": "TableHeaderSurfaceBackground"
       },
       "relationships": [
@@ -158,6 +166,7 @@
       "key": "TableHeaderTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Foreground color for column labels in a table header.",
         "DesignTokenName": "TableHeaderTextColor"
       },
       "relationships": [
@@ -175,6 +184,7 @@
       "key": "TableCellBorderColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Color of the boundaries separating table cells.",
         "DesignTokenName": "TableCellBorderColor"
       },
       "relationships": [
@@ -192,6 +202,7 @@
       "key": "TableCellBorderWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Thickness of the boundaries separating table cells.",
         "DesignTokenName": "TableCellBorderWidth"
       },
       "relationships": [
@@ -209,6 +220,7 @@
       "key": "TableCellPadding.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Inset between a table cell boundary and its content.",
         "DesignTokenName": "TableCellPadding"
       },
       "relationships": [
@@ -254,6 +266,9 @@
           "target": [
             {
               "$ref": "DesignTokenName.PropertyType"
+            },
+            {
+              "$ref": "DesignTokenDescription.PropertyType"
             }
           ]
         },
@@ -601,6 +616,7 @@
       "key": "CanvasFontFamily.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Default typeface family for text within a canvas.",
         "DesignTokenName": "CanvasFontFamily"
       },
       "relationships": [
@@ -618,6 +634,7 @@
       "key": "CanvasFontSize.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Default text size within a canvas.",
         "DesignTokenName": "CanvasFontSize"
       },
       "relationships": [
@@ -635,6 +652,7 @@
       "key": "CanvasFontWeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Default text weight within a canvas.",
         "DesignTokenName": "CanvasFontWeight"
       },
       "relationships": [
@@ -652,6 +670,7 @@
       "key": "CanvasLineHeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Distance between successive baselines of canvas body text.",
         "DesignTokenName": "CanvasLineHeight"
       },
       "relationships": [
@@ -669,6 +688,7 @@
       "key": "CanvasHeadingFontWeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text weight used to distinguish canvas headings.",
         "DesignTokenName": "CanvasHeadingFontWeight"
       },
       "relationships": [
@@ -686,6 +706,7 @@
       "key": "CanvasContentMinHeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Minimum vertical extent reserved for canvas content.",
         "DesignTokenName": "CanvasContentMinHeight"
       },
       "relationships": [
@@ -703,6 +724,7 @@
       "key": "SlotBorderColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Color outlining a slot that hosts visualizer content.",
         "DesignTokenName": "SlotBorderColor"
       },
       "relationships": [
@@ -720,6 +742,7 @@
       "key": "SlotBorderWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Thickness of the outline around a visualizer slot.",
         "DesignTokenName": "SlotBorderWidth"
       },
       "relationships": [
@@ -737,6 +760,7 @@
       "key": "SlotBorderStyle.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Stroke pattern of the outline around a visualizer slot.",
         "DesignTokenName": "SlotBorderStyle"
       },
       "relationships": [
@@ -754,6 +778,7 @@
       "key": "SlotPadding.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Inset between a visualizer slot boundary and its content.",
         "DesignTokenName": "SlotPadding"
       },
       "relationships": [
@@ -771,6 +796,7 @@
       "key": "InspectorRailWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Horizontal space reserved for the inspector relationship rail.",
         "DesignTokenName": "InspectorRailWidth"
       },
       "relationships": [
@@ -788,6 +814,7 @@
       "key": "InspectorContentMinHeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Minimum vertical extent reserved for inspector content.",
         "DesignTokenName": "InspectorContentMinHeight"
       },
       "relationships": [
@@ -805,6 +832,7 @@
       "key": "PropertiesHeadingGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Space separating the properties heading from its content.",
         "DesignTokenName": "PropertiesHeadingGap"
       },
       "relationships": [
@@ -822,6 +850,7 @@
       "key": "PropertiesRowGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Additional vertical space between successive property rows.",
         "DesignTokenName": "PropertiesRowGap"
       },
       "relationships": [
@@ -839,6 +868,7 @@
       "key": "PropertiesHeadingFontSize.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text size for the heading of a properties view.",
         "DesignTokenName": "PropertiesHeadingFontSize"
       },
       "relationships": [
@@ -856,6 +886,7 @@
       "key": "PropertiesHeadingFontWeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text weight for the heading of a properties view.",
         "DesignTokenName": "PropertiesHeadingFontWeight"
       },
       "relationships": [
@@ -873,6 +904,7 @@
       "key": "PropertyColumnGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Horizontal space separating property names from their values.",
         "DesignTokenName": "PropertyColumnGap"
       },
       "relationships": [
@@ -890,6 +922,7 @@
       "key": "PropertyNameMinWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Minimum horizontal space reserved for property names.",
         "DesignTokenName": "PropertyNameMinWidth"
       },
       "relationships": [
@@ -907,6 +940,7 @@
       "key": "TableCellBorderStyle.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Stroke pattern of the boundaries separating table cells.",
         "DesignTokenName": "TableCellBorderStyle"
       },
       "relationships": [
@@ -924,6 +958,7 @@
       "key": "CollectionHeadingFontSize.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text size for a collection heading.",
         "DesignTokenName": "CollectionHeadingFontSize"
       },
       "relationships": [
@@ -941,6 +976,7 @@
       "key": "CollectionHeadingFontWeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text weight for a collection heading.",
         "DesignTokenName": "CollectionHeadingFontWeight"
       },
       "relationships": [
@@ -958,6 +994,7 @@
       "key": "TableHeaderFontWeight.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text weight for column labels in a table header.",
         "DesignTokenName": "TableHeaderFontWeight"
       },
       "relationships": [
@@ -1004,6 +1041,7 @@
       "key": "LauncherSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color of the launcher surface during startup.",
         "DesignTokenName": "LauncherSurfaceBackground"
       },
       "relationships": [
@@ -1021,6 +1059,7 @@
       "key": "LauncherTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Foreground color for launcher status text.",
         "DesignTokenName": "LauncherTextColor"
       },
       "relationships": [
@@ -1038,6 +1077,7 @@
       "key": "LauncherPadding.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Inset between the launcher boundary and its content.",
         "DesignTokenName": "LauncherPadding"
       },
       "relationships": [
@@ -1055,6 +1095,7 @@
       "key": "LauncherPhaseGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Space between launcher phase status entries.",
         "DesignTokenName": "LauncherPhaseGap"
       },
       "relationships": [
@@ -1072,6 +1113,7 @@
       "key": "LauncherIndicatorSize.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Overall size of the launcher progress indicator.",
         "DesignTokenName": "LauncherIndicatorSize"
       },
       "relationships": [
@@ -1089,6 +1131,7 @@
       "key": "LauncherIndicatorColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Accent color of the launcher progress indicator.",
         "DesignTokenName": "LauncherIndicatorColor"
       },
       "relationships": [
@@ -1106,6 +1149,7 @@
       "key": "LauncherIndicatorWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Stroke thickness of the launcher progress indicator.",
         "DesignTokenName": "LauncherIndicatorWidth"
       },
       "relationships": [
@@ -1123,6 +1167,7 @@
       "key": "LauncherIndicatorDuration.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Time for one cycle of the launcher progress animation.",
         "DesignTokenName": "LauncherIndicatorDuration"
       },
       "relationships": [
@@ -1140,6 +1185,7 @@
       "key": "LauncherDismissDuration.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Time taken by the launcher dismissal transition.",
         "DesignTokenName": "LauncherDismissDuration"
       },
       "relationships": [
@@ -1157,6 +1203,7 @@
       "key": "ActionSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color of an action control in its resting state.",
         "DesignTokenName": "ActionSurfaceBackground"
       },
       "relationships": [
@@ -1174,6 +1221,7 @@
       "key": "ActionHoverSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color highlighting an action control when hovered.",
         "DesignTokenName": "ActionHoverSurfaceBackground"
       },
       "relationships": [
@@ -1191,6 +1239,7 @@
       "key": "ActionTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Foreground color for the label of an action control.",
         "DesignTokenName": "ActionTextColor"
       },
       "relationships": [
@@ -1208,6 +1257,7 @@
       "key": "ActionPaddingBlock.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Inset around action content along the block axis, usually above and below its label.",
         "DesignTokenName": "ActionPaddingBlock"
       },
       "relationships": [
@@ -1225,6 +1275,7 @@
       "key": "ActionPaddingInline.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Inset around action content along the inline axis, usually before and after its label.",
         "DesignTokenName": "ActionPaddingInline"
       },
       "relationships": [
@@ -1242,6 +1293,7 @@
       "key": "ActionCornerRadius.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Curvature of the corners of action controls.",
         "DesignTokenName": "ActionCornerRadius"
       },
       "relationships": [
@@ -1259,6 +1311,7 @@
       "key": "PropertiesDisclosureFocusColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Color identifying keyboard focus on a properties disclosure control.",
         "DesignTokenName": "PropertiesDisclosureFocusColor"
       },
       "relationships": [
@@ -1276,6 +1329,7 @@
       "key": "PanelSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Background color of panels grouping related content and controls.",
         "DesignTokenName": "PanelSurfaceBackground"
       },
       "relationships": [
@@ -1293,6 +1347,7 @@
       "key": "PanelCornerRadius.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Curvature of the corners of content panels.",
         "DesignTokenName": "PanelCornerRadius"
       },
       "relationships": [
@@ -1310,6 +1365,7 @@
       "key": "MutedTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Foreground color for secondary text with reduced visual emphasis.",
         "DesignTokenName": "MutedTextColor"
       },
       "relationships": [
@@ -1327,6 +1383,7 @@
       "key": "NodeHeadingFontSize.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Text size for the heading identifying a node.",
         "DesignTokenName": "NodeHeadingFontSize"
       },
       "relationships": [
@@ -1344,6 +1401,7 @@
       "key": "ControlGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Space between adjacent controls in a group.",
         "DesignTokenName": "ControlGap"
       },
       "relationships": [
@@ -1361,6 +1419,7 @@
       "key": "FocusRingColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Color of the outline identifying the currently focused control.",
         "DesignTokenName": "FocusRingColor"
       },
       "relationships": [
@@ -1378,6 +1437,7 @@
       "key": "FocusRingWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
+        "DesignTokenDescription": "Thickness of the outline identifying the currently focused control.",
         "DesignTokenName": "FocusRingWidth"
       },
       "relationships": [
@@ -1386,6 +1446,152 @@
           "target": [
             {
               "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DesignTokenDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DesignTokenDescription",
+        "TypeNamePlural": "DesignTokenDescriptions",
+        "DisplayName": "design_token_description",
+        "DisplayNamePlural": "design_token_descriptions",
+        "Description": "Human-readable semantic role of a DesignToken, independent of Theme values and rendering implementation.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CollectionNavigationSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Background color for multi-valued relationship collection tabs.",
+        "DesignTokenName": "CollectionNavigationSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CollectionNavigationTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Foreground color for labels on multi-valued relationship collection tabs.",
+        "DesignTokenName": "CollectionNavigationTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipNavigationSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Background color for relationship navigation controls, including collection tabs and single-valued relationship rail buttons.",
+        "DesignTokenName": "RelationshipNavigationSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipNavigationTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Foreground color for labels on relationship navigation controls, including collection tabs and single-valued relationship rail buttons.",
+        "DesignTokenName": "RelationshipNavigationTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ViewControlSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Background color for zoom and size controls.",
+        "DesignTokenName": "ViewControlSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ViewControlTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Foreground color for labels on zoom and size controls.",
+        "DesignTokenName": "ViewControlTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
             }
           ]
         }

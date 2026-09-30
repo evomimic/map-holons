@@ -1,4 +1,12 @@
 export default class HolonInspectorElement extends HTMLElement {
+  constructor() {
+    super();
+    this.addEventListener('dahn-content-extent-changed', event => {
+      if (event.target !== this.propertiesVisualizer) return;
+      event.stopPropagation();
+      this.scheduleLayout();
+    });
+  }
   static compositionSlots = { propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
@@ -8,6 +16,27 @@ export default class HolonInspectorElement extends HTMLElement {
     }
   }
   setOccurrenceRestorationHandler(handler) { this.restoreOccurrence = handler; }
+  getNodeInspectorExtents() {
+    // This realization alone knows which sub-regions survive compression.
+    if (this.body?.style.display !== 'none' && this.collectionRegion?.offsetHeight > 0) {
+      const gap = parseFloat(getComputedStyle(this).rowGap) || 0;
+      this.partialHeight = this.titleControl.parentElement.offsetHeight + gap + this.collectionRegion.offsetHeight;
+    }
+    const fullHeight = this.collectionViewer?.hidden === false ? 720 : 480;
+    return {
+      vertical: { 'full-height': fullHeight, 'partial-height': Math.min(fullHeight, Math.max(48, this.partialHeight || 360)), 'minimal-height': 48 },
+      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
+    };
+  }
+  setNodeInspectorAllocation(allocation) {
+    this.verticalState = allocation.vertical;
+    this.horizontalState = allocation.horizontal;
+    this.setSpatialBudget(allocation);
+  }
+  setOccurrenceClosureHandler(handler) {
+    this.closeOccurrence = handler;
+    if (this.closeButton) this.closeButton.hidden = !handler;
+  }
   setSpatialBudget(budget) {
     this.allocatedHeight = budget.height;
     this.allocatedWidth = budget.width;
@@ -16,13 +45,13 @@ export default class HolonInspectorElement extends HTMLElement {
   adaptBudget() {
     if (!this.body || !this.singleValueRail) return;
     const height = this.allocatedHeight ?? Infinity;
-    const compact = height < 80;
-    const partial = height < 280;
+    const compact = this.verticalState ? this.verticalState === 'minimal-height' : height < 80;
+    const partial = this.verticalState ? this.verticalState !== 'full-height' : height < 280;
     const width = this.allocatedWidth ?? Infinity;
-    const narrow = width < 300;
-    const compactWidth = width < 100;
+    const narrow = this.horizontalState ? this.horizontalState !== 'full-width' : width < 300;
+    const compactWidth = this.horizontalState ? this.horizontalState === 'minimal-width' : width < 100;
     const hideBody = partial || compactWidth;
-    const hideCollection = compact || compactWidth;
+    const hideCollection = compact || narrow;
     const active = document.activeElement;
     if ((hideBody && this.body.contains(active)) || (hideCollection && this.collectionRegion.contains(active))
       || (narrow && (this.propertyViewer.contains(active) || this.actionBar.contains(active)))) this.titleControl.focus();
@@ -47,7 +76,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.titleControl.style.overflow = 'hidden';
     this.titleControl.title = this.titleText;
     this.style.gridTemplateColumns = 'minmax(0, 1fr)';
-    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 2fr) minmax(0, 3fr)';
+    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : narrow ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 1fr) minmax(0, 1fr)';
     if (this.isConnected) this.scheduleLayout();
   }
   connectedCallback() {
@@ -68,7 +97,24 @@ export default class HolonInspectorElement extends HTMLElement {
   }
   scheduleLayout() {
     if (!this.isConnected || this.frame != null) return;
-    this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) this.layouts.forEach(layout => layout.fit()); });
+    this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) { this.layouts.forEach(layout => layout.fit()); this.allocateInternalHeight(); } });
+  }
+  allocateInternalHeight() {
+    if (!Number.isFinite(this.allocatedHeight) || this.collectionViewer.hidden || this.collectionRegion.inert || this.body.style.display === 'none') return;
+    const preferred = this.propertiesVisualizer?.getPreferredContentHeight?.();
+    if (!Number.isFinite(preferred) || preferred < 0) return;
+    const pixels = value => parseFloat(value) || 0;
+    const style = getComputedStyle(this);
+    const pane = getComputedStyle(this.propertyViewer);
+    const gap = pixels(style.rowGap);
+    const bodyGap = pixels(getComputedStyle(this.body).rowGap);
+    const available = Math.max(0, this.allocatedHeight - this.titleControl.parentElement.offsetHeight - 2 * gap);
+    const propertyChrome = pixels(pane.paddingTop) + pixels(pane.paddingBottom) + pixels(pane.borderTopWidth) + pixels(pane.borderBottomWidth);
+    const railHeight = this.railLayout?.preferredHeight() || 0;
+    const needed = Math.max(this.actionBar.offsetHeight + bodyGap + preferred + propertyChrome, railHeight);
+    // Reclaim unused space only; never take more than the ordinary body share.
+    const bodyHeight = Math.min(available / 2, Math.ceil(needed));
+    this.style.gridTemplateRows = `auto ${bodyHeight}px minmax(0, 1fr)`;
   }
   navigationControl(item, tab = false) {
     const button = document.createElement('button');
@@ -77,8 +123,8 @@ export default class HolonInspectorElement extends HTMLElement {
     Object.assign(button.style, { font: 'inherit', border: '0', color: 'var(--dahn-canvas-text-color)', background: 'transparent', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', borderRadius: 'var(--dahn-action-corner-radius)' });
     Object.assign(button.style, {
       border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
-      background: 'var(--dahn-action-surface-background)',
-      opacity: '1', color: 'var(--dahn-action-text-color)',
+      background: 'var(--dahn-relationship-navigation-surface-background)',
+      opacity: '1', color: 'var(--dahn-relationship-navigation-text-color)',
       borderRadius: tab ? 'var(--dahn-action-corner-radius) var(--dahn-action-corner-radius) 0 0' : 'var(--dahn-action-corner-radius)',
       textAlign: tab ? 'center' : 'left',
     });
@@ -93,7 +139,8 @@ export default class HolonInspectorElement extends HTMLElement {
       const activate = () => {
         if (!this.canNavigateRelationship(item)) return;
         this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => {
-          if (update.placement !== 'source') {
+          if (update.placement !== 'source' && update.state !== 'unresolved') {
+            this.activeCollection = item;
             this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
             this.collectionViewer.setAttribute('aria-labelledby', button.id);
           }
@@ -177,10 +224,21 @@ export default class HolonInspectorElement extends HTMLElement {
     }
     this.collectionStatus.hidden = true;
     const viewer = this.collectionViewer;
+    const wasOpen = !viewer.hidden;
     viewer.dataset.collectionState = update.state;
     viewer.hidden = update.state === 'unresolved';
     viewer.setAttribute('aria-busy', String(update.state === 'loading'));
-    if (viewer.hidden) return;
+    if (viewer.hidden) {
+      const recoverFocus = this.collectionRegion.contains(document.activeElement);
+      this.activeCollection = undefined;
+      viewer.replaceChildren();
+      viewer.style.display = 'none';
+      this.collectionControls.forEach((control, index) => { control.setAttribute('aria-selected', 'false'); control.tabIndex = index ? -1 : 0; });
+      this.adaptBudget();
+      if (wasOpen) this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
+      if (recoverFocus) this.titleControl.focus();
+      return;
+    }
     Object.assign(viewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
     this.adaptBudget();
     if (update.content) viewer.replaceChildren(update.content);
@@ -194,6 +252,7 @@ export default class HolonInspectorElement extends HTMLElement {
         retry.addEventListener('click', update.retry); viewer.append(retry);
       }
     }
+    if (!wasOpen) this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
     viewer.scrollTop = 0;
     viewer.scrollLeft = 0;
     this.scheduleLayout();
@@ -238,8 +297,18 @@ export default class HolonInspectorElement extends HTMLElement {
     titleControl.type = 'button';
     titleControl.textContent = this.titleText;
     Object.assign(titleControl.style, { width: '100%', height: '100%', minHeight: '40px', textAlign: 'left', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer', padding: '0 var(--dahn-slot-padding)' });
-    titleControl.addEventListener('click', () => { if ((this.allocatedHeight ?? Infinity) < 280 || (this.allocatedWidth ?? Infinity) < 300) this.restoreOccurrence?.(); });
-    title.append(titleControl);
+    titleControl.addEventListener('click', () => { if ((this.verticalState ? this.verticalState !== 'full-height' : (this.allocatedHeight ?? Infinity) < 280) || (this.horizontalState ? this.horizontalState !== 'full-width' : (this.allocatedWidth ?? Infinity) < 300)) this.restoreOccurrence?.(); });
+    title.style.display = 'flex';
+    titleControl.style.flex = '1 1 0'; titleControl.style.minWidth = '0';
+    this.closeButton = document.createElement('button');
+    this.closeButton.type = 'button'; this.closeButton.textContent = '×';
+    this.closeButton.dataset.closeOccurrence = 'true';
+    this.closeButton.setAttribute('aria-label', `Close branch: ${this.titleText}`);
+    this.closeButton.title = `Close branch: ${this.titleText}`;
+    this.closeButton.hidden = !this.closeOccurrence;
+    Object.assign(this.closeButton.style, { flex: '0 0 24px', padding: '0', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer' });
+    this.closeButton.addEventListener('click', () => this.closeOccurrence?.());
+    title.append(titleControl, this.closeButton);
 
     const actionBar = document.createElement('section');
     this.actionBar = actionBar;
@@ -273,6 +342,7 @@ export default class HolonInspectorElement extends HTMLElement {
     propertyViewer.style.display = 'flex';
     propertyViewer.style.flexDirection = 'column';
     const propertiesVisualizer = context.childVisualizers?.get('properties');
+    this.propertiesVisualizer = propertiesVisualizer;
     if (propertiesVisualizer === undefined) {
       propertyViewer.textContent = 'Property Viewer Pane';
     } else {
@@ -288,7 +358,7 @@ export default class HolonInspectorElement extends HTMLElement {
     singleValueRail.style.flexDirection = 'column';
     singleValueRail.style.gap = 'var(--dahn-canvas-gap)';
     singleValueRail.setAttribute('aria-label', 'Single-value relationships');
-    const railLayout = verticalOverflow(singleValueRail, (context.nodeAffordances?.singularRelationships ?? []).map(item => this.navigationControl(item)));
+    const railLayout = this.railLayout = verticalOverflow(singleValueRail, (context.nodeAffordances?.singularRelationships ?? []).map(item => this.navigationControl(item)));
 
     const collectionTabBar = document.createElement('nav');
     collectionTabBar.dataset.holonInspectorCollectionTabBar = 'true';
@@ -448,7 +518,7 @@ function horizontalOverflow(host, controls, label) {
     const eligible = controls.filter(control => control.dataset.discoveryHidden !== 'true');
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    const widths = eligible.map(control => control.getBoundingClientRect().width);
+    const widths = eligible.map(control => control.offsetWidth);
     const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, widths.length - 1) * gap;
     const overflow = total > width;
     const setMoreLabel = selected => {
@@ -458,7 +528,7 @@ function horizontalOverflow(host, controls, label) {
       more.title = selected ? selected.title || selected.textContent : label;
     };
     const fittingCount = () => {
-      const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;
+      const budget = overflow ? Math.max(0, width - more.offsetWidth - gap) : width;
       let count = 0, used = 0;
       for (const value of widths) {
         const next = used + (count ? gap : 0) + value;
@@ -513,11 +583,11 @@ function verticalOverflow(host, controls) {
     const style = getComputedStyle(host);
     const available = Math.max(0, host.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0));
     const gap = parseFloat(getComputedStyle(rows).rowGap) || 0;
-    const heights = eligible.map(control => control.getBoundingClientRect().height);
+    const heights = eligible.map(control => control.offsetHeight);
     const total = heights.reduce((a, b) => a + b, 0) + Math.max(0, heights.length - 1) * gap;
     const overflowing = total > available;
     if (!overflowing) expanded = false;
-    const budget = overflowing ? Math.max(0, available - more.getBoundingClientRect().height - (parseFloat(style.rowGap) || 0)) : available;
+    const budget = overflowing ? Math.max(0, available - more.offsetHeight - (parseFloat(style.rowGap) || 0)) : available;
     let count = 0, used = 0;
     for (const height of heights) { const next = used + (count ? gap : 0) + height; if (next > budget) break; used = next; count++; }
     eligible.forEach((control, index) => {
@@ -535,5 +605,9 @@ function verticalOverflow(host, controls) {
   };
   more.addEventListener('click', () => { expanded = !expanded; list.scrollTop = 0; fit(); });
   host.replaceChildren(list, more);
-  return { fit, elements: [host, more, ...controls], connect() {}, dispose() {} };
+  return { fit, preferredHeight() {
+    const eligible = controls.filter(control => control.dataset.discoveryHidden !== 'true');
+    const gap = parseFloat(getComputedStyle(rows).rowGap) || 0;
+    return eligible.reduce((sum, control) => sum + control.offsetHeight, 0) + Math.max(0, eligible.length - 1) * gap;
+  }, elements: [host, more, ...controls], connect() {}, dispose() {} };
 }

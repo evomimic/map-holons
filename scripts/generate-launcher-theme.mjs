@@ -19,7 +19,7 @@ function related(holon, name) {
 }
 // Static presentation for the launcher before persisted runtime handles exist.
 // Canvas still projects its selected, persisted Theme through the Reference Layer.
-const theme = byKey.get('MAP.BootstrapTheme');
+const theme = byKey.get('Demo1.DeepOceanTheme');
 if (!theme) throw new Error('Missing bootstrap theme');
 const values = related(theme, 'HasThemeTokenAssignment').map(assignment => {
   const targets = related(assignment, 'ForDesignToken');
@@ -32,4 +32,4 @@ const values = related(theme, 'HasThemeTokenAssignment').map(assignment => {
   return `  --dahn-${name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}: ${value};`;
 }).sort();
 await writeFile(fileURLToPath(new URL('host/ui/src/launcher-theme.generated.css', root)),
-  '/* Generated from MAP.BootstrapTheme. Run npm run map-schema:bootstrap-bundle. */\n:root {\n' + values.join('\n') + '\n}\n');
+  '/* Generated from Demo1.DeepOceanTheme. Run npm run map-schema:bootstrap-bundle. */\n:root {\n' + values.join('\n') + '\n}\n');

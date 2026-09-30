@@ -215,7 +215,7 @@ impl AppBuilder {
                         let meta_design_system =
                             holons_core::reference_layer::HolonReference::Smart(
                                 context.lookup().get_saved_holon_by_key(&MapString::from(
-                                    "MAP.BootstrapMetaDesignSystem",
+                                    "Demo1.MetaDesignSystem",
                                 ))?,
                             );
                         let home_dancer = dahn_selection::select_home_dancer(

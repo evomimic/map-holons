@@ -10,6 +10,7 @@ schema "MAP Design Tokens Schema-v0.1.0" {
 instance CanvasGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasGap"
+  DesignTokenDescription "Space between adjacent content regions on a canvas."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -18,6 +19,7 @@ instance CanvasGap.DesignToken {
 instance CanvasPadding.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasPadding"
+  DesignTokenDescription "Inset between the canvas boundary and its content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -26,6 +28,7 @@ instance CanvasPadding.DesignToken {
 instance CanvasSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasSurfaceBackground"
+  DesignTokenDescription "Background color of the overall canvas surface."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -34,6 +37,7 @@ instance CanvasSurfaceBackground.DesignToken {
 instance CanvasTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasTextColor"
+  DesignTokenDescription "Default foreground color for text on the canvas."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -42,6 +46,7 @@ instance CanvasTextColor.DesignToken {
 instance CollectionSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionSurfaceBackground"
+  DesignTokenDescription "Background color of a collection content surface."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -50,6 +55,7 @@ instance CollectionSurfaceBackground.DesignToken {
 instance CollectionTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionTextColor"
+  DesignTokenDescription "Default foreground color for collection content text."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -58,6 +64,7 @@ instance CollectionTextColor.DesignToken {
 instance CollectionHeaderSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionHeaderSurfaceBackground"
+  DesignTokenDescription "Background color distinguishing a collection heading from its content."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -66,6 +73,7 @@ instance CollectionHeaderSurfaceBackground.DesignToken {
 instance TableHeaderSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableHeaderSurfaceBackground"
+  DesignTokenDescription "Background color identifying the header row of a table."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -74,6 +82,7 @@ instance TableHeaderSurfaceBackground.DesignToken {
 instance TableHeaderTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableHeaderTextColor"
+  DesignTokenDescription "Foreground color for column labels in a table header."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -82,6 +91,7 @@ instance TableHeaderTextColor.DesignToken {
 instance TableCellBorderColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellBorderColor"
+  DesignTokenDescription "Color of the boundaries separating table cells."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -90,6 +100,7 @@ instance TableCellBorderColor.DesignToken {
 instance TableCellBorderWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellBorderWidth"
+  DesignTokenDescription "Thickness of the boundaries separating table cells."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -98,6 +109,7 @@ instance TableCellBorderWidth.DesignToken {
 instance TableCellPadding.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellPadding"
+  DesignTokenDescription "Inset between a table cell boundary and its content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -113,7 +125,10 @@ holon DesignToken.HolonType {
     plural: "DesignTokens"
   }
   relationships {
-    InstanceProperties -> DesignTokenName.PropertyType
+    InstanceProperties -> [
+      DesignTokenName.PropertyType,
+      DesignTokenDescription.PropertyType
+    ]
     InstanceRelationships -> (DesignToken.HolonType)-[HasDesignTokenType]->(DesignTokenType.ValueType)
   }
 }
@@ -235,6 +250,7 @@ inverse relationship (DesignTokenType.ValueType)-[TypesDesignToken]->(DesignToke
 instance CanvasFontFamily.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasFontFamily"
+  DesignTokenDescription "Default typeface family for text within a canvas."
   relationships {
     HasDesignTokenType -> FontFamily.DesignTokenType
   }
@@ -243,6 +259,7 @@ instance CanvasFontFamily.DesignToken {
 instance CanvasFontSize.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasFontSize"
+  DesignTokenDescription "Default text size within a canvas."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -251,6 +268,7 @@ instance CanvasFontSize.DesignToken {
 instance CanvasFontWeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasFontWeight"
+  DesignTokenDescription "Default text weight within a canvas."
   relationships {
     HasDesignTokenType -> FontWeight.DesignTokenType
   }
@@ -259,6 +277,7 @@ instance CanvasFontWeight.DesignToken {
 instance CanvasLineHeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasLineHeight"
+  DesignTokenDescription "Distance between successive baselines of canvas body text."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -267,6 +286,7 @@ instance CanvasLineHeight.DesignToken {
 instance CanvasHeadingFontWeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasHeadingFontWeight"
+  DesignTokenDescription "Text weight used to distinguish canvas headings."
   relationships {
     HasDesignTokenType -> FontWeight.DesignTokenType
   }
@@ -275,6 +295,7 @@ instance CanvasHeadingFontWeight.DesignToken {
 instance CanvasContentMinHeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasContentMinHeight"
+  DesignTokenDescription "Minimum vertical extent reserved for canvas content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -283,6 +304,7 @@ instance CanvasContentMinHeight.DesignToken {
 instance SlotBorderColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "SlotBorderColor"
+  DesignTokenDescription "Color outlining a slot that hosts visualizer content."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -291,6 +313,7 @@ instance SlotBorderColor.DesignToken {
 instance SlotBorderWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "SlotBorderWidth"
+  DesignTokenDescription "Thickness of the outline around a visualizer slot."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -299,6 +322,7 @@ instance SlotBorderWidth.DesignToken {
 instance SlotBorderStyle.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "SlotBorderStyle"
+  DesignTokenDescription "Stroke pattern of the outline around a visualizer slot."
   relationships {
     HasDesignTokenType -> StrokeStyle.DesignTokenType
   }
@@ -307,6 +331,7 @@ instance SlotBorderStyle.DesignToken {
 instance SlotPadding.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "SlotPadding"
+  DesignTokenDescription "Inset between a visualizer slot boundary and its content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -315,6 +340,7 @@ instance SlotPadding.DesignToken {
 instance InspectorRailWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "InspectorRailWidth"
+  DesignTokenDescription "Horizontal space reserved for the inspector relationship rail."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -323,6 +349,7 @@ instance InspectorRailWidth.DesignToken {
 instance InspectorContentMinHeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "InspectorContentMinHeight"
+  DesignTokenDescription "Minimum vertical extent reserved for inspector content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -331,6 +358,7 @@ instance InspectorContentMinHeight.DesignToken {
 instance PropertiesHeadingGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertiesHeadingGap"
+  DesignTokenDescription "Space separating the properties heading from its content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -339,6 +367,7 @@ instance PropertiesHeadingGap.DesignToken {
 instance PropertiesRowGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertiesRowGap"
+  DesignTokenDescription "Additional vertical space between successive property rows."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -347,6 +376,7 @@ instance PropertiesRowGap.DesignToken {
 instance PropertiesHeadingFontSize.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertiesHeadingFontSize"
+  DesignTokenDescription "Text size for the heading of a properties view."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -355,6 +385,7 @@ instance PropertiesHeadingFontSize.DesignToken {
 instance PropertiesHeadingFontWeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertiesHeadingFontWeight"
+  DesignTokenDescription "Text weight for the heading of a properties view."
   relationships {
     HasDesignTokenType -> FontWeight.DesignTokenType
   }
@@ -363,6 +394,7 @@ instance PropertiesHeadingFontWeight.DesignToken {
 instance PropertyColumnGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertyColumnGap"
+  DesignTokenDescription "Horizontal space separating property names from their values."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -371,6 +403,7 @@ instance PropertyColumnGap.DesignToken {
 instance PropertyNameMinWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertyNameMinWidth"
+  DesignTokenDescription "Minimum horizontal space reserved for property names."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -379,6 +412,7 @@ instance PropertyNameMinWidth.DesignToken {
 instance TableCellBorderStyle.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellBorderStyle"
+  DesignTokenDescription "Stroke pattern of the boundaries separating table cells."
   relationships {
     HasDesignTokenType -> StrokeStyle.DesignTokenType
   }
@@ -387,6 +421,7 @@ instance TableCellBorderStyle.DesignToken {
 instance CollectionHeadingFontSize.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionHeadingFontSize"
+  DesignTokenDescription "Text size for a collection heading."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -395,6 +430,7 @@ instance CollectionHeadingFontSize.DesignToken {
 instance CollectionHeadingFontWeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionHeadingFontWeight"
+  DesignTokenDescription "Text weight for a collection heading."
   relationships {
     HasDesignTokenType -> FontWeight.DesignTokenType
   }
@@ -403,6 +439,7 @@ instance CollectionHeadingFontWeight.DesignToken {
 instance TableHeaderFontWeight.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableHeaderFontWeight"
+  DesignTokenDescription "Text weight for column labels in a table header."
   relationships {
     HasDesignTokenType -> FontWeight.DesignTokenType
   }
@@ -422,6 +459,7 @@ value Duration.DesignTokenType {
 instance LauncherSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherSurfaceBackground"
+  DesignTokenDescription "Background color of the launcher surface during startup."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -430,6 +468,7 @@ instance LauncherSurfaceBackground.DesignToken {
 instance LauncherTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherTextColor"
+  DesignTokenDescription "Foreground color for launcher status text."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -438,6 +477,7 @@ instance LauncherTextColor.DesignToken {
 instance LauncherPadding.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherPadding"
+  DesignTokenDescription "Inset between the launcher boundary and its content."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -446,6 +486,7 @@ instance LauncherPadding.DesignToken {
 instance LauncherPhaseGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherPhaseGap"
+  DesignTokenDescription "Space between launcher phase status entries."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -454,6 +495,7 @@ instance LauncherPhaseGap.DesignToken {
 instance LauncherIndicatorSize.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherIndicatorSize"
+  DesignTokenDescription "Overall size of the launcher progress indicator."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -462,6 +504,7 @@ instance LauncherIndicatorSize.DesignToken {
 instance LauncherIndicatorColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherIndicatorColor"
+  DesignTokenDescription "Accent color of the launcher progress indicator."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -470,6 +513,7 @@ instance LauncherIndicatorColor.DesignToken {
 instance LauncherIndicatorWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherIndicatorWidth"
+  DesignTokenDescription "Stroke thickness of the launcher progress indicator."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -478,6 +522,7 @@ instance LauncherIndicatorWidth.DesignToken {
 instance LauncherIndicatorDuration.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherIndicatorDuration"
+  DesignTokenDescription "Time for one cycle of the launcher progress animation."
   relationships {
     HasDesignTokenType -> Duration.DesignTokenType
   }
@@ -486,6 +531,7 @@ instance LauncherIndicatorDuration.DesignToken {
 instance LauncherDismissDuration.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "LauncherDismissDuration"
+  DesignTokenDescription "Time taken by the launcher dismissal transition."
   relationships {
     HasDesignTokenType -> Duration.DesignTokenType
   }
@@ -494,6 +540,7 @@ instance LauncherDismissDuration.DesignToken {
 instance ActionSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ActionSurfaceBackground"
+  DesignTokenDescription "Background color of an action control in its resting state."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -502,6 +549,7 @@ instance ActionSurfaceBackground.DesignToken {
 instance ActionHoverSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ActionHoverSurfaceBackground"
+  DesignTokenDescription "Background color highlighting an action control when hovered."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -510,6 +558,7 @@ instance ActionHoverSurfaceBackground.DesignToken {
 instance ActionTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ActionTextColor"
+  DesignTokenDescription "Foreground color for the label of an action control."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -518,6 +567,7 @@ instance ActionTextColor.DesignToken {
 instance ActionPaddingBlock.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ActionPaddingBlock"
+  DesignTokenDescription "Inset around action content along the block axis, usually above and below its label."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -526,6 +576,7 @@ instance ActionPaddingBlock.DesignToken {
 instance ActionPaddingInline.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ActionPaddingInline"
+  DesignTokenDescription "Inset around action content along the inline axis, usually before and after its label."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -534,6 +585,7 @@ instance ActionPaddingInline.DesignToken {
 instance ActionCornerRadius.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ActionCornerRadius"
+  DesignTokenDescription "Curvature of the corners of action controls."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -542,6 +594,7 @@ instance ActionCornerRadius.DesignToken {
 instance PropertiesDisclosureFocusColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PropertiesDisclosureFocusColor"
+  DesignTokenDescription "Color identifying keyboard focus on a properties disclosure control."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -550,6 +603,7 @@ instance PropertiesDisclosureFocusColor.DesignToken {
 instance PanelSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PanelSurfaceBackground"
+  DesignTokenDescription "Background color of panels grouping related content and controls."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -558,6 +612,7 @@ instance PanelSurfaceBackground.DesignToken {
 instance PanelCornerRadius.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "PanelCornerRadius"
+  DesignTokenDescription "Curvature of the corners of content panels."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -566,6 +621,7 @@ instance PanelCornerRadius.DesignToken {
 instance MutedTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "MutedTextColor"
+  DesignTokenDescription "Foreground color for secondary text with reduced visual emphasis."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -574,6 +630,7 @@ instance MutedTextColor.DesignToken {
 instance NodeHeadingFontSize.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "NodeHeadingFontSize"
+  DesignTokenDescription "Text size for the heading identifying a node."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -582,6 +639,7 @@ instance NodeHeadingFontSize.DesignToken {
 instance ControlGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "ControlGap"
+  DesignTokenDescription "Space between adjacent controls in a group."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
@@ -590,6 +648,7 @@ instance ControlGap.DesignToken {
 instance FocusRingColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "FocusRingColor"
+  DesignTokenDescription "Color of the outline identifying the currently focused control."
   relationships {
     HasDesignTokenType -> Color.DesignTokenType
   }
@@ -598,7 +657,75 @@ instance FocusRingColor.DesignToken {
 instance FocusRingWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "FocusRingWidth"
+  DesignTokenDescription "Thickness of the outline identifying the currently focused control."
   relationships {
     HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+property DesignTokenDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Human-readable semantic role of a DesignToken, independent of Theme values and rendering implementation."
+    display_name: "design_token_description"
+    display_plural: "design_token_descriptions"
+    plural: "DesignTokenDescriptions"
+  }
+}
+
+instance CollectionNavigationSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionNavigationSurfaceBackground"
+  DesignTokenDescription "Background color for multi-valued relationship collection tabs."
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance CollectionNavigationTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionNavigationTextColor"
+  DesignTokenDescription "Foreground color for labels on multi-valued relationship collection tabs."
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance RelationshipNavigationSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "RelationshipNavigationSurfaceBackground"
+  DesignTokenDescription "Background color for relationship navigation controls, including collection tabs and single-valued relationship rail buttons."
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance RelationshipNavigationTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "RelationshipNavigationTextColor"
+  DesignTokenDescription "Foreground color for labels on relationship navigation controls, including collection tabs and single-valued relationship rail buttons."
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance ViewControlSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ViewControlSurfaceBackground"
+  DesignTokenDescription "Background color for zoom and size controls."
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance ViewControlTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ViewControlTextColor"
+  DesignTokenDescription "Foreground color for labels on zoom and size controls."
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
   }
 }
