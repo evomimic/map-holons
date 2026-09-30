@@ -16,6 +16,97 @@ export default class HolonInspectorElement extends HTMLElement {
     }
   }
   setOccurrenceRestorationHandler(handler) { this.restoreOccurrence = handler; }
+  setOccurrenceAttentionHandler(handler) { this.occurrenceAttention = handler; this.updateMaximizeControls(); }
+  setOccurrenceAttentionState(maximized) { this.occurrenceMaximized = maximized; this.updateMaximizeControls(); }
+  presentationButton(label, action) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('aria-label', label); button.title = label;
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('width', '18'); icon.setAttribute('height', '18');
+    icon.setAttribute('aria-hidden', 'true'); icon.setAttribute('focusable', 'false');
+    const arrows = document.createElementNS(icon.namespaceURI, 'path');
+    arrows.setAttribute('fill', 'none'); arrows.setAttribute('stroke', 'currentColor');
+    arrows.setAttribute('stroke-width', '1.8'); arrows.setAttribute('stroke-linecap', 'round'); arrows.setAttribute('stroke-linejoin', 'round');
+    icon.append(arrows); button.append(icon);
+    Object.assign(button.style, { flex: '0 0 28px', alignSelf: 'flex-start', width: '28px', height: '28px', color: 'var(--dahn-action-text-color)', background: 'transparent', border: '0', borderRadius: 'var(--dahn-action-corner-radius)', padding: '5px', cursor: 'pointer' });
+    button.addEventListener('click', () => {
+      const result = action();
+      this.presentationStatus.textContent = result.status === 'refused' || result.status === 'unsupported' ? result.reason : '';
+      this.presentationStatus.hidden = !this.presentationStatus.textContent;
+      this.updateMaximizeControls();
+      if (button.hidden) this.titleControl.focus({ preventScroll: true });
+    });
+    return button;
+  }
+  updateMaximizeControls() {
+    if (!this.inspectorMaximizeButton) return;
+    const usable = Number.isFinite(this.allocatedWidth) && this.allocatedWidth > 0 && Number.isFinite(this.allocatedHeight) && this.allocatedHeight > 0;
+    const compact = this.horizontalState && this.horizontalState !== 'full-width' || this.verticalState === 'minimal-height';
+    const update = (button, maximized, name) => {
+      const label = `${maximized ? 'Restore' : 'Maximize'} ${name}`;
+      button.setAttribute('aria-label', label); button.title = label;
+      button.setAttribute('aria-pressed', String(!!maximized));
+      button.disabled = !usable;
+      button.querySelector('path').setAttribute('d', maximized
+        ? 'M19 5l-6 6m0-5v5h5 M5 19l6-6m-5 0h5v5'
+        : 'M14 5h5v5 M19 5l-6 6 M10 19H5v-5 M5 19l6-6');
+    };
+    this.inspectorMaximizeButton.hidden = !this.occurrenceAttention || !!compact;
+    update(this.inspectorMaximizeButton, this.occurrenceMaximized, 'Inspector');
+    this.propertiesMaximizeButton.hidden = !this.propertiesVisualizer || this.maximizedRegion === 'collections';
+    update(this.propertiesMaximizeButton, this.maximizedRegion === 'properties', 'Properties');
+    this.collectionsMaximizeButton.hidden = !this.collectionViewer || this.collectionViewer.hidden || this.maximizedRegion === 'properties';
+    update(this.collectionsMaximizeButton, this.maximizedRegion === 'collections', 'Collection');
+  }
+  setContextRequestHandler(handler) { this.contextRequest = handler; }
+  requestOccurrence(operation) {
+    return this.occurrenceAttention?.(operation) ?? { status: 'unsupported', reason: 'No occurrence attention owner.' };
+  }
+  requestContext(operation) {
+    return this.contextRequest?.(operation) ?? { status: 'unsupported', reason: 'No parent context request path.' };
+  }
+  requestRegion(operation, region) {
+    if (operation === 'restore') {
+      if (!this.maximizedRegion) return { status: 'already-satisfied' };
+      this.maximizedRegion = undefined;
+    } else if (operation === 'maximize') {
+      if (!['properties', 'collections'].includes(region)) return { status: 'unsupported', reason: 'Unknown Inspector region.' };
+      if (this.maximizedRegion === region) return { status: 'already-satisfied' };
+      if (this.maximizedRegion) return { status: 'refused', reason: 'Restore the visible region before maximizing a sibling.' };
+      if (!this.body || (region === 'properties' ? !this.propertiesVisualizer : this.collectionViewer.hidden)
+        || !Number.isFinite(this.allocatedWidth) || !Number.isFinite(this.allocatedHeight)
+        || this.allocatedWidth <= 0 || this.allocatedHeight <= 0) {
+        return { status: 'refused', reason: 'Region or usable occurrence allocation is unavailable.' };
+      }
+      this.maximizedRegion = region;
+    } else return { status: 'unsupported', reason: 'Unknown region operation.' };
+    this.adaptBudget();
+    return { status: 'applied', value: undefined };
+  }
+  applyRegionMaximize() {
+    const properties = this.maximizedRegion === 'properties';
+    const collections = this.maximizedRegion === 'collections';
+    // Keep children mounted: visibility and internal allocation are presentation.
+    this.singleValueRail.style.display = this.maximizedRegion ? 'none' : 'flex';
+    this.singleValueRail.inert = !!this.maximizedRegion;
+    this.propertyViewer.style.gridRow = properties ? '1 / -1' : '2';
+    this.body.style.gridTemplateRows = properties ? 'minmax(0, 1fr)' : 'auto minmax(0, 1fr)';
+    if (!this.maximizedRegion) { delete this.dataset.maximizedRegion; return; }
+    this.dataset.maximizedRegion = this.maximizedRegion;
+    this.body.style.display = properties ? 'grid' : 'none';
+    this.body.inert = !properties;
+    this.body.style.gridTemplateColumns = 'minmax(0, 1fr)';
+    this.propertyViewer.style.display = properties ? 'flex' : 'none';
+    this.propertyViewer.inert = !properties;
+    this.actionBar.style.display = 'none'; this.actionBar.inert = true;
+    this.collectionRegion.style.display = collections ? 'flex' : 'none';
+    this.collectionRegion.inert = !collections;
+    this.style.gridTemplateRows = 'auto minmax(0, 1fr)';
+    const active = document.activeElement;
+    if (this.actionBar.contains(active) || this.singleValueRail.contains(active)
+      || (!properties && this.body.contains(active)) || (!collections && this.collectionRegion.contains(active))) this.titleControl.focus();
+  }
   getNodeInspectorExtents() {
     // This realization alone knows which sub-regions survive compression.
     if (this.body?.style.display !== 'none' && this.collectionRegion?.offsetHeight > 0) {
@@ -77,6 +168,8 @@ export default class HolonInspectorElement extends HTMLElement {
     this.titleControl.title = this.titleText;
     this.style.gridTemplateColumns = 'minmax(0, 1fr)';
     this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : narrow ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 1fr) minmax(0, 1fr)';
+    this.applyRegionMaximize();
+    this.updateMaximizeControls();
     if (this.isConnected) this.scheduleLayout();
   }
   connectedCallback() {
@@ -100,7 +193,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) { this.layouts.forEach(layout => layout.fit()); this.allocateInternalHeight(); } });
   }
   allocateInternalHeight() {
-    if (!Number.isFinite(this.allocatedHeight) || this.collectionViewer.hidden || this.collectionRegion.inert || this.body.style.display === 'none') return;
+    if (this.maximizedRegion || !Number.isFinite(this.allocatedHeight) || this.collectionViewer.hidden || this.collectionRegion.inert || this.body.style.display === 'none') return;
     const preferred = this.propertiesVisualizer?.getPreferredContentHeight?.();
     if (!Number.isFinite(preferred) || preferred < 0) return;
     const pixels = value => parseFloat(value) || 0;
@@ -111,7 +204,7 @@ export default class HolonInspectorElement extends HTMLElement {
     const available = Math.max(0, this.allocatedHeight - this.titleControl.parentElement.offsetHeight - 2 * gap);
     const propertyChrome = pixels(pane.paddingTop) + pixels(pane.paddingBottom) + pixels(pane.borderTopWidth) + pixels(pane.borderBottomWidth);
     const railHeight = this.railLayout?.preferredHeight() || 0;
-    const needed = Math.max(this.actionBar.offsetHeight + bodyGap + preferred + propertyChrome, railHeight);
+    const needed = Math.max(this.actionBar.offsetHeight + bodyGap + preferred + propertyChrome + (this.propertiesMaximizeButton.hidden ? 0 : this.propertiesMaximizeButton.offsetHeight), railHeight);
     // Reclaim unused space only; never take more than the ordinary body share.
     const bodyHeight = Math.min(available / 2, Math.ceil(needed));
     this.style.gridTemplateRows = `auto ${bodyHeight}px minmax(0, 1fr)`;
@@ -229,6 +322,7 @@ export default class HolonInspectorElement extends HTMLElement {
     viewer.hidden = update.state === 'unresolved';
     viewer.setAttribute('aria-busy', String(update.state === 'loading'));
     if (viewer.hidden) {
+      if (this.maximizedRegion === 'collections') this.maximizedRegion = undefined;
       const recoverFocus = this.collectionRegion.contains(document.activeElement);
       this.activeCollection = undefined;
       viewer.replaceChildren();
@@ -260,6 +354,7 @@ export default class HolonInspectorElement extends HTMLElement {
 
   setContext(context) {
     this.disconnectedCallback();
+    this.maximizedRegion = undefined;
     this.collectionActivation = context.collectionActivation;
     this.collectionControls = [];
     this.relationshipControls = new Map();
@@ -309,6 +404,17 @@ export default class HolonInspectorElement extends HTMLElement {
     Object.assign(this.closeButton.style, { flex: '0 0 24px', padding: '0', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer' });
     this.closeButton.addEventListener('click', () => this.closeOccurrence?.());
     title.append(titleControl, this.closeButton);
+    this.inspectorMaximizeButton = this.presentationButton('Maximize Inspector', () => this.requestOccurrence(this.occurrenceMaximized ? 'restore' : 'maximize'));
+    this.inspectorMaximizeButton.dataset.maximizeInspector = 'true';
+    this.inspectorMaximizeButton.style.alignSelf = 'center';
+    title.style.flexWrap = 'wrap';
+    title.append(this.inspectorMaximizeButton);
+    this.presentationStatus = document.createElement('span');
+    this.presentationStatus.setAttribute('role', 'status');
+    this.presentationStatus.hidden = true;
+    this.presentationStatus.style.flexBasis = '100%';
+    this.presentationStatus.style.fontSize = 'var(--dahn-canvas-font-size)';
+    title.append(this.presentationStatus);
 
     const actionBar = document.createElement('section');
     this.actionBar = actionBar;
@@ -348,6 +454,10 @@ export default class HolonInspectorElement extends HTMLElement {
     } else {
       propertyViewer.append(propertiesVisualizer);
     }
+    this.propertiesMaximizeButton = this.presentationButton('Maximize Properties', () => this.requestRegion(this.maximizedRegion === 'properties' ? 'restore' : 'maximize', 'properties'));
+    this.propertiesMaximizeButton.dataset.maximizeProperties = 'true';
+    this.propertiesMaximizeButton.style.alignSelf = 'flex-end';
+    propertyViewer.prepend(this.propertiesMaximizeButton);
 
     const singleValueRail = document.createElement('aside');
     this.singleValueRail = singleValueRail;
@@ -373,6 +483,13 @@ export default class HolonInspectorElement extends HTMLElement {
 
     const collectionRegion = document.createElement('section');
     this.collectionRegion = collectionRegion;
+    this.collectionsMaximizeButton = this.presentationButton('Maximize Collection', () => this.requestRegion(this.maximizedRegion === 'collections' ? 'restore' : 'maximize', 'collections'));
+    this.collectionsMaximizeButton.dataset.maximizeCollection = 'true';
+    collectionRegion.style.position = 'relative';
+    Object.assign(this.collectionsMaximizeButton.style, { position: 'absolute', top: '0', right: '0', zIndex: '1' });
+    collectionTabBar.style.paddingRight = '32px';
+    collectionTabBar.style.minHeight = '28px';
+    collectionRegion.append(this.collectionsMaximizeButton);
     collectionRegion.dataset.holonInspectorCollectionRegion = 'true';
     Object.assign(collectionRegion.style, { gridColumn: '1 / -1', minHeight: '0', minWidth: '0', display: 'flex', flexDirection: 'column' });
     const collectionViewer = document.createElement('section');

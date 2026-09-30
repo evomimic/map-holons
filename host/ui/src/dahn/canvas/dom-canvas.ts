@@ -9,6 +9,7 @@ import { createCanvasRoot } from './create-canvas-root';
 import type { DahnTheme } from '../contracts/themes';
 import type { DahnTarget } from '../contracts/targets';
 import type { ContextAllocation, ContextHandle } from '../contracts/context-host';
+import type { MaximizeOperation, OccurrenceAttentionRequest, PresentationRequestResult } from '../contracts/presentation';
 
 export type VisualizerContextResolver = (
   target: DahnTarget,
@@ -126,6 +127,18 @@ export class DomCanvas implements CanvasApi {
   /** Each composition owner forwards only to its own selected child. */
   requestView(request: SurfaceViewRequest): boolean {
     return this.mountedVisualizers.some(element => element.requestView?.(request) === true);
+  }
+
+  requestAttention(request: OccurrenceAttentionRequest): PresentationRequestResult {
+    if (this.disposed) return { status: 'refused', reason: 'Canvas is disposed.' };
+    const owner = this.mountedVisualizers.find(element => element === request.target || element.contains(request.target));
+    if (!owner) return { status: 'refused', reason: 'Occurrence is not mounted in this Canvas.' };
+    return owner.requestAttention?.(request) ?? { status: 'unsupported', reason: 'Composition owner does not support occurrence attention.' };
+  }
+
+  requestContext(operation: MaximizeOperation): PresentationRequestResult {
+    if (this.disposed) return { status: 'refused', reason: 'Canvas is disposed.' };
+    return this.context?.request(operation) ?? { status: 'unsupported', reason: 'Canvas has no Context Host.' };
   }
 
   configureThemeMenu(current: DahnTheme, discover: () => Promise<CanvasThemeChoice[]>, onSelected: (theme: DahnTheme) => void): void {

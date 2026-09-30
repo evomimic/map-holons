@@ -1,4 +1,5 @@
 import type { NodeInspectorParticipant } from './node-inspector-slot';
+import type { InspectorRegion, MaximizeOperation, OccurrenceAttentionRequest, PresentationRequestResult } from './presentation';
 import type { RelationshipDiscovery } from './relationship-discovery';
 import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
@@ -152,6 +153,15 @@ export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorPar
   getPreferredContentHeight?(): number | undefined;
   /** Handle locally or delegate to an immediate composed child's surface. */
   requestView?(request: SurfaceViewRequest): boolean;
+  requestRegion?(operation: MaximizeOperation, region?: InspectorRegion): PresentationRequestResult;
+  requestAttention?(request: OccurrenceAttentionRequest): PresentationRequestResult;
+  requestOccurrence?(operation: MaximizeOperation): PresentationRequestResult;
+  requestContext?(operation: MaximizeOperation): PresentationRequestResult;
+  /** Immediate owner supplies request capabilities, not mutable parent geometry. */
+  setOccurrenceAttentionHandler?(handler: (operation: MaximizeOperation) => PresentationRequestResult): void;
+  /** Owner notifications keep controls accurate across resize and navigation. */
+  setOccurrenceAttentionState?(maximized: boolean): void;
+  setContextRequestHandler?(handler: (operation: MaximizeOperation) => PresentationRequestResult): void;
   /** Parent-owned external dimensions; the selected child owns responsive thresholds. */
   setSpatialBudget?(budget: { width?: number; height: number }): void;
   /** Semantic request to restore the containing occurrence, independent of child layout. */

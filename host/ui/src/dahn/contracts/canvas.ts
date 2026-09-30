@@ -1,6 +1,7 @@
 import type { DahnTheme } from './themes';
 import type { DahnTarget } from './targets';
 import type { ContextHandle } from './context-host';
+import type { MaximizeOperation, OccurrenceAttentionRequest, PresentationRequestResult } from './presentation';
 
 /**
  * Phase 0 canvas descriptor. The runtime currently supports a single visible
@@ -30,6 +31,9 @@ export interface CanvasApi {
   clear(): void;
   /** False means no mounted surface accepted the request or geometry is unavailable. */
   requestView?(request: SurfaceViewRequest): boolean;
+  /** Delegates to the immediate composition owner without inspecting its layout. */
+  requestAttention?(request: OccurrenceAttentionRequest): PresentationRequestResult;
+  requestContext?(operation: MaximizeOperation): PresentationRequestResult;
   setTheme(theme: DahnTheme): void;
 }
 

@@ -39,6 +39,8 @@ export default class PathInspectorElement extends HTMLElement {
   }
   setContext(context) {
     this.disconnectedCallback();
+    this.attention = undefined;
+    this.canvas = context.canvas;
     this.onInspectHolon = context.onInspectHolon;
     this.onTraverseRelationship = context.onTraverseRelationship;
     this.navigation = context.navigation;
@@ -118,7 +120,76 @@ export default class PathInspectorElement extends HTMLElement {
       this.expandRow(this.rowId(occurrence));
     }
   }
+  requestContext(operation) {
+    return this.canvas?.requestContext?.(operation) ?? { status: 'unsupported', reason: 'No parent context request path.' };
+  }
+  requestAttention(request) {
+    const occurrence = this.occurrences?.find(item => item.element === request.target);
+    if (!occurrence) {
+      const owner = this.occurrences?.find(item => item.element.contains(request.target));
+      return owner?.element.requestAttention?.(request) ?? { status: 'refused', reason: 'Occurrence is not owned by this composition surface.' };
+    }
+    if (request.operation === 'restore') {
+      if (!this.attention) return { status: 'already-satisfied' };
+      if (this.attention.id !== occurrence.id) return { status: 'refused', reason: 'Another occurrence owns attention.' };
+      const baseline = this.attention.view;
+      this.clearAttentionProjection();
+      this.attention = undefined;
+      this.allocateRows();
+      this.view.scale = baseline.scale;
+      this.view.render();
+      this.view.position(baseline.x, baseline.y);
+      return { status: 'applied', value: undefined };
+    }
+    if (request.operation !== 'maximize') return { status: 'unsupported', reason: 'Unknown attention operation.' };
+    if (this.attention?.id === occurrence.id) return { status: 'already-satisfied' };
+    if (this.attention) return { status: 'refused', reason: 'Restore the visible occurrence before maximizing a sibling.' };
+    if (!this.view?.ready || occurrence.pending || occurrence.cancel) return { status: 'refused', reason: 'Occurrence or viewport is not ready.' };
+    this.attention = { id: occurrence.id, view: { scale: this.view.scale, x: this.viewport.scrollLeft, y: this.viewport.scrollTop } };
+    this.applyAttentionProjection();
+    return { status: 'applied', value: undefined };
+  }
+  clearAttentionProjection() {
+    if (!this.attention) return;
+    const region = this.regions.get(this.attention.id);
+    if (region) Object.assign(region.style, { position: 'relative', left: '', top: '', width: '', height: '', gridArea: '', boxSizing: '' });
+    for (const [id, item] of this.regions) {
+      item.style.visibility = '';
+      item.inert = !this.occurrences.some(occurrence => occurrence.id === id);
+      item.nodeElement?.setOccurrenceAttentionState?.(false);
+    }
+    this.lineage.style.visibility = '';
+    delete this.dataset.attentionOccurrence;
+  }
+  applyAttentionProjection() {
+    if (!this.attention) return;
+    const occurrence = this.occurrences.find(item => item.id === this.attention.id);
+    if (!occurrence) { this.clearAttentionProjection(); this.attention = undefined; return; }
+    const width = this.viewportWidth || this.viewport.clientWidth;
+    const height = this.viewportHeight || this.viewport.clientHeight;
+    if (!(width > 0 && height > 0)) return;
+    const region = this.regions.get(occurrence.id);
+    this.dataset.attentionOccurrence = occurrence.id;
+    occurrence.element.setOccurrenceAttentionState?.(true);
+    for (const [id, item] of this.regions) {
+      item.style.visibility = id === occurrence.id ? '' : 'hidden';
+      item.inert = id !== occurrence.id;
+      if (item.inert && item.contains(document.activeElement)) region.focus({ preventScroll: true });
+    }
+    this.lineage.style.visibility = 'hidden';
+    Object.assign(region.style, { position: 'absolute', gridArea: 'auto', left: '0', top: '0', width: `${width}px`, height: `${height}px`, boxSizing: 'border-box' });
+    const insets = this.regionInsets(occurrence.id);
+    const status = region.querySelector(':scope > [data-path-occurrence-status]');
+    const statusHeight = status.hidden || status.style.position === 'absolute' ? 0 : Math.min(64, status.scrollHeight || 32);
+    const allocation = { width: Math.max(0, width - insets.width), height: Math.max(0, height - insets.height - statusHeight), vertical: 'full-height', horizontal: 'full-width' };
+    if (occurrence.element.setNodeInspectorAllocation) occurrence.element.setNodeInspectorAllocation(allocation);
+    else occurrence.element.setSpatialBudget?.(allocation);
+    this.view.scale = 1;
+    this.view.setGeometry(width, height, width, height);
+    this.view.position(0, 0);
+  }
   allocateRows() {
+    this.clearAttentionProjection();
     if (!this.occurrences?.length) {
       this.surface.replaceChildren(this.lineage);
       this.lineage.replaceChildren();
@@ -181,6 +252,7 @@ export default class PathInspectorElement extends HTMLElement {
     const firstMeasuredLayout = !this.view.ready;
     this.view.setGeometry(Number(this.lineage.getAttribute('width')), Number(this.lineage.getAttribute('height')), this.viewportWidth || this.viewport.clientWidth, this.viewportHeight || this.viewport.clientHeight);
     if (firstMeasuredLayout && this.view.ready) this.view.position(0, 0);
+    this.applyAttentionProjection();
     this.updateVisibility();
   }
   renderLineage(rows, heights, rowGap, columnGap) {
@@ -226,6 +298,12 @@ export default class PathInspectorElement extends HTMLElement {
     const previousIds = new Set(this.occurrences.map(item => item.id));
     const added = occurrences.filter(item => !previousIds.has(item.id));
     const removed = [...previousIds].some(id => !occurrences.some(item => item.id === id));
+    // A new navigation intent or topology change ends temporary attention.
+    // Never restore a stale view over the navigation owner's new frontier.
+    if (this.attention && (added.length || removed || (focus && focus !== this.focus))) {
+      this.clearAttentionProjection();
+      this.attention = undefined;
+    }
     this.occurrences = occurrences;
     this.emptyState.hidden = occurrences.length > 0;
     const rows = new Set(occurrences.map(item => this.rowId(item)));
@@ -270,6 +348,11 @@ export default class PathInspectorElement extends HTMLElement {
         region.querySelector('[data-close-branch]')?.remove();
         region.querySelector('[data-restore-occurrence]')?.remove();
         region.nodeElement = occurrence.element;
+        occurrence.element.setOccurrenceAttentionHandler?.(operation => this.requestAttention({ operation, target: occurrence.element }));
+        occurrence.element.setContextRequestHandler?.(operation => {
+          if (!this.occurrences.some(item => item.element === occurrence.element)) return { status: 'refused', reason: 'Occurrence is no longer retained.' };
+          return this.requestContext(operation);
+        });
         region.prepend(occurrence.element);
         if (this.navigation?.close && !occurrence.cancel) {
           if (occurrence.element.setOccurrenceClosureHandler) {
@@ -371,7 +454,7 @@ export default class PathInspectorElement extends HTMLElement {
     if (request === 'zoom-to-fit') return this.view.fit();
     if (request === 'actual-size') {
       const occurrence = this.occurrences.find(item => item.id === this.focus?.occurrenceId) ?? this.occurrences.at(-1);
-      return this.view.actualSize(this.layoutBounds?.get(occurrence?.id));
+      return this.view.actualSize(this.attention ? { x: 0, y: 0, width: this.view.width, height: this.view.height } : this.layoutBounds?.get(occurrence?.id));
     }
     return false;
   }
@@ -404,7 +487,9 @@ export default class PathInspectorElement extends HTMLElement {
     if (!this.viewStatus) return;
     const directions = new Set();
     for (const [id, bounds] of this.layoutBounds ?? []) {
-      const visibility = this.view.visibility(bounds);
+      const visibility = this.attention
+        ? id === this.attention.id ? this.view.visibility({ x: 0, y: 0, width: this.view.width, height: this.view.height }) : { state: 'outside', directions: [] }
+        : this.view.visibility(bounds);
       const region = this.regions.get(id);
       region.dataset.viewportVisibility = visibility.state;
       visibility.directions.forEach(direction => directions.add(direction));
