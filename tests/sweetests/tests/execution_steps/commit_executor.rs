@@ -1,12 +1,15 @@
-use core_types::ValidationSubjectPath;
+use core_types::{TemporaryId, ValidationSubjectPath};
 use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
 use holons_test::{
+    classify, disposition_report, error_delta_report, match_saved_holons, new_error_occurrences,
     ExecutionHandle, ExecutionReference, ExpectedCommitCarrierFinding, ExpectedCommitStatus,
-    ExpectedRejectedHolon, ExpectedValidationSubject, ResolveBy, TestExecutionState, TestReference,
+    ExpectedDisposition, ExpectedRejectedHolon, ExpectedRetryParticipant,
+    ExpectedValidationSubject, ObservedCandidate, ResolveBy, ResolvedCommitCandidate,
+    TestExecutionState,
 };
 use integrity_core_types::HolonErrorKind;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use tracing::{debug, info, trace};
 
 use holons_prelude::prelude::*;
@@ -63,6 +66,17 @@ fn persistence_snapshot(
     Ok((nodes, relationships))
 }
 
+/// Pre-attempt observations for a retained Nursery entry, including excluded entries.
+/// Operational errors accumulate across attempts; expectations apply only to the new delta.
+struct CommitEntryBaseline {
+    reference: StagedReference,
+    temporary_id: TemporaryId,
+    observation: ObservedCandidate,
+    was_committed: bool,
+    errors: Vec<HolonErrorKind>,
+    expected_new_errors: Vec<HolonErrorKind>,
+}
+
 /// Dispatches a `Commit` command through the Runtime and validates the result.
 ///
 /// Asserts the `CommitRequestStatus` on the commit response against
@@ -74,7 +88,8 @@ fn persistence_snapshot(
 /// commit response holon and registers them in the test execution state.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
-    expected_tokens: Vec<TestReference>,
+    declarations: Vec<ResolvedCommitCandidate>,
+    retry_participants: Vec<ExpectedRetryParticipant>,
     expected_status: ExpectedCommitStatus,
     expected_error: Option<HolonErrorKind>,
 ) {
@@ -103,6 +118,131 @@ pub async fn execute_commit(
             )
         })
         .collect();
+
+    let mut retained: Vec<_> = staged
+        .iter()
+        .map(|reference| CommitEntryBaseline {
+            reference: reference.clone(),
+            temporary_id: reference.temporary_id(),
+            observation: ObservedCandidate {
+                identity: reference.reference_id_string(),
+                key: reference.key().expect("pre-Commit retained entry key"),
+                versioned_source_id: reference
+                    .versioned_source_id()
+                    .expect("pre-Commit retained entry source identity"),
+                staged_state: reference
+                    .staged_state()
+                    .expect("pre-Commit retained entry staged state"),
+                saved_holons_id: None,
+            },
+            was_committed: reference
+                .is_committed()
+                .expect("pre-Commit retained entry committed state"),
+            errors: reference
+                .commit_errors()
+                .expect("pre-Commit retained entry operational errors")
+                .iter()
+                .map(HolonErrorKind::from)
+                .collect(),
+            expected_new_errors: Vec::new(),
+        })
+        .collect();
+    let retained_by_id: HashMap<_, _> = retained
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| (entry.temporary_id.clone(), index))
+        .collect();
+    let mut declared_indices = Vec::new();
+    if expected_status != ExpectedCommitStatus::Rejected && expected_error.is_none() {
+        let mut declared_ids = HashSet::new();
+        for declaration in &declarations {
+            // Resolve staged tokens while the candidates are still live. Post-dispatch
+            // lookup must not depend on accepting committed handles as Staged tokens.
+            let reference = state
+                .resolve_execution_reference(
+                    &context,
+                    ResolveBy::Expected,
+                    &declaration.staged_token,
+                )
+                .expect("declared Commit candidate must resolve before dispatch");
+            let HolonReference::Staged(reference) = reference else {
+                panic!(
+                    "declared Commit candidate {} must resolve to a staged handle",
+                    declaration.staged_token
+                )
+            };
+            assert_eq!(
+                reference.tx_id(),
+                context.tx_id(),
+                "Commit candidate belongs to the active transaction"
+            );
+            let temporary_id = reference.temporary_id();
+            assert!(
+                declared_ids.insert(temporary_id.clone()),
+                "Duplicate declared Commit candidate {}",
+                reference.reference_id_string()
+            );
+            let index = *retained_by_id.get(&temporary_id).unwrap_or_else(|| {
+                panic!(
+                    "Declared Commit candidate {} is absent from the Nursery",
+                    reference.reference_id_string()
+                )
+            });
+            retained[index].expected_new_errors = declaration.expected_new_errors.clone();
+            declared_indices.push(index);
+        }
+        let live_ids: HashSet<_> =
+            candidates.iter().map(|candidate| candidate.temporary_id()).collect();
+        assert_eq!(
+            declared_ids, live_ids,
+            "Declared Commit candidates must cover the live Pass 1 workset exactly before dispatch"
+        );
+
+        let mut retry_indices = HashSet::new();
+        for participant in &retry_participants {
+            let reference = state
+                .resolve_execution_reference(&context, ResolveBy::Expected, &participant.token)
+                .expect("Commit relationship retry token must remain resolvable");
+            let HolonReference::Smart(_) = &reference else {
+                panic!(
+                    "Commit retry participant {} must resolve to a saved handle",
+                    participant.token
+                )
+            };
+            let HolonId::Local(saved_id) =
+                reference.holon_id().expect("retry participant identity")
+            else {
+                panic!(
+                    "Commit retry participant {} must have a local saved identity",
+                    participant.token
+                )
+            };
+            let claimants: Vec<_> = retained
+                .iter()
+                .enumerate()
+                .filter(|(_, entry)| {
+                    entry.was_committed
+                        && entry.observation.staged_state
+                            == StagedState::Committed(saved_id.clone())
+                })
+                .map(|(index, _)| index)
+                .collect();
+            assert_eq!(claimants.len(), 1,
+                "Commit retry participant {} with saved identity {:?} must identify exactly one retained committed entry; claimants: {:?}",
+                participant.token, saved_id, claimants.iter().map(|index| &retained[*index].observation.identity).collect::<Vec<_>>());
+            let index = claimants[0];
+            assert!(
+                retry_indices.insert(index),
+                "Duplicate Commit retry participant {}",
+                participant.token
+            );
+            assert!(
+                !declared_indices.contains(&index),
+                "Commit retry participants must be separate from live candidates"
+            );
+            retained[index].expected_new_errors = participant.expected_new_errors.clone();
+        }
+    }
 
     // 1. BUILD — transaction commit command
     let command = MapCommand::Transaction(TransactionCommand {
@@ -221,6 +361,8 @@ pub async fn execute_commit(
             let committed_refs_guard = committed_references.read().unwrap();
             let commit_count: MapInteger = committed_refs_guard.get_count();
             debug!("Discovered {:?} committed holons", commit_count.0);
+            let saved_refs = committed_refs_guard.get_members().to_vec();
+            drop(committed_refs_guard);
 
             if expected_status == ExpectedCommitStatus::Rejected {
                 assert_eq!(commit_count.0, 0, "rejection must not save holons");
@@ -250,43 +392,114 @@ pub async fn execute_commit(
                 );
                 return;
             }
+            let saved_ids: Vec<_> = saved_refs
+                .iter()
+                .map(|reference| match reference.holon_id().expect("SavedHolons member identity") {
+                    HolonId::Local(id) => id,
+                    other => {
+                        panic!("SavedHolons member must have a local saved identity, got {other:?}")
+                    }
+                })
+                .collect();
+            // Declaration order pairs observations[i] with declarations[i]; the indices
+            // returned by match_saved_holons address both arrays in saved-result order.
+            let mut observations: Vec<_> = declared_indices
+                .iter()
+                .map(|index| {
+                    let entry = &retained[*index];
+                    let mut observed = entry.observation.clone();
+                    observed.staged_state =
+                        entry.reference.staged_state().expect("post-Commit staged state");
+                    observed
+                })
+                .collect();
+            let matched_indices = match_saved_holons(&mut observations, &saved_ids)
+                .unwrap_or_else(|report| panic!("{report}"));
+            let rows: Vec<_> = declarations
+                .iter()
+                .zip(&observations)
+                .map(|(declaration, observed)| {
+                    (
+                        observed.identity.clone(),
+                        observed.key.clone(),
+                        declaration.disposition,
+                        classify(observed),
+                    )
+                })
+                .collect();
+            if let Some(report) = disposition_report(&rows) {
+                panic!("{report}");
+            }
             assert_eq!(
                 commit_count.0 as usize,
-                expected_tokens.len(),
-                "SavedHolons matches the fixture workset"
+                declarations
+                    .iter()
+                    .filter(|declaration| declaration.disposition != ExpectedDisposition::NoAction)
+                    .count(),
+                "SavedHolons matches the declared saved workset"
             );
 
-            // 5. RECORD — register committed holons so tokens become resolvable
-            let holon_collection =
-                committed_references.read().expect("Failed to read committed holons");
-
-            // Temporary key-based matching: source token (expected) → resulting reference (actual)
-            // TODO: solve or migrate issue 352
-            let mut index: usize = 0;
-            let mut keyed_index = BTreeMap::new();
-            for token in &expected_tokens {
-                let key = token.expected_reference().clone().key().unwrap().expect(
-                    "For these testing purposes, source token (TestReference) must have a key",
-                );
-                keyed_index.insert(key, index);
-                index += 1;
-            }
-            for holon_reference in holon_collection.get_members() {
-                let source_index = keyed_index
-                    .get(
-                        &holon_reference.key().unwrap().expect(
-                            "For these testing purposes, resulting reference (HolonReference) must have a key",
-                        ),
+            // Baseline every retained entry: Pass 2 can append errors to previously
+            // committed entries even when this attempt has no live node candidates.
+            let error_rows: Vec<_> = retained
+                .iter()
+                .map(|entry| {
+                    let after: Vec<_> = entry
+                        .reference
+                        .commit_errors()
+                        .expect("post-Commit retained entry operational errors")
+                        .iter()
+                        .map(HolonErrorKind::from)
+                        .collect();
+                    (
+                        entry.observation.identity.clone(),
+                        entry.expected_new_errors.clone(),
+                        new_error_occurrences(&entry.errors, &after),
                     )
-                    .expect("Expected source token to be indexed by key");
-                let token = &expected_tokens[*source_index];
-                let execution_handle = ExecutionHandle::from(holon_reference.clone());
-                let execution_reference =
-                    ExecutionReference::from_token_execution(token, execution_handle);
+                })
+                .collect();
+            if let Some(report) = error_delta_report(&error_rows) {
+                panic!("{report}");
+            }
+
+            // Bind saved results by identity, and unchanged updates directly to their
+            // saved sources. Retained relationship retries keep their existing mappings.
+            for (reference, index) in saved_refs.into_iter().zip(matched_indices) {
+                let token = &declarations[index].result_token;
+                let execution_reference = ExecutionReference::from_token_execution(
+                    token,
+                    ExecutionHandle::from(reference),
+                );
                 state.record(token, execution_reference).unwrap();
             }
+            for (declaration, observed) in declarations.iter().zip(&observations) {
+                if declaration.disposition == ExpectedDisposition::NoAction {
+                    let source_id = HolonId::Local(
+                        observed
+                            .versioned_source_id
+                            .clone()
+                            .expect("classified NoAction candidate has a saved source"),
+                    );
+                    let reference = match &observed.key {
+                        Some(key) => HolonReference::smart_with_key(
+                            context.space_read_handle(),
+                            source_id,
+                            key.clone(),
+                        ),
+                        None => {
+                            HolonReference::smart_from_id(context.space_read_handle(), source_id)
+                        }
+                    };
+                    let token = &declaration.result_token;
+                    let execution_reference = ExecutionReference::from_token_execution(
+                        token,
+                        ExecutionHandle::from(reference),
+                    );
+                    state.record(token, execution_reference).unwrap();
+                }
+            }
 
-            trace!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
+            trace!("Commit complete: {} holons committed", commit_count.0);
         }
         Err(e) => {
             let actual = HolonErrorKind::from(&e);

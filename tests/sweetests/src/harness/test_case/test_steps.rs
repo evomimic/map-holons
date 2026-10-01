@@ -228,10 +228,6 @@ pub enum DanceTestStep {
         description: String,
     },
     Commit {
-        // Transitional saved-result list for the current executor. Once fixture Commit
-        // returns resolved candidates, derive this list from their dispositions; remove
-        // the field when the executor matches results by identity.
-        saved_tokens: Vec<TestReference>,
         candidates: Vec<ResolvedCommitCandidate>,
         retry_participants: Vec<ExpectedRetryParticipant>,
         expected_status: ExpectedCommitStatus,
@@ -420,7 +416,6 @@ impl core::fmt::Display for DanceTestStep {
                 )
             }
             DanceTestStep::Commit {
-                saved_tokens,
                 candidates,
                 retry_participants,
                 expected_status,
@@ -429,8 +424,7 @@ impl core::fmt::Display for DanceTestStep {
             } => {
                 write!(
                     f,
-                    "{description} [saved_tokens: {}, expected_status: {expected_status}, expected_error: {expected_error:?}, candidates: [",
-                    saved_tokens.len()
+                    "{description} [expected_status: {expected_status}, expected_error: {expected_error:?}, candidates: ["
                 )?;
                 for (index, candidate) in candidates.iter().enumerate() {
                     if index > 0 {
@@ -694,10 +688,10 @@ impl core::fmt::Display for DanceTestStep {
 //                     .field("expected_status", expected_status)
 //                     .finish(),
 //             },
-//             DanceTestStep::Commit { saved_tokens, expected_error, description } =>
+//             DanceTestStep::Commit { candidates, expected_error, description, .. } =>
 //                 f.debug_struct("Commit")
 //                 .field("description", description)
-//                 .field("saved_tokens", saved_tokens)
+//                 .field("candidates", candidates)
 //                 .field("expected_status", expected_status)
 //                 .finish(),
 //             DanceTestStep::DeleteHolon { step_token, expected_error, description } => f

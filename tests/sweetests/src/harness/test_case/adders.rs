@@ -40,9 +40,9 @@
 use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitCandidate,
-    ExpectedCommitStatus, ExpectedDisposition, ExpectedLoadStatus, ExpectedRetryParticipant,
-    ExpectedSnapshot, FixtureHolons, QueryExpectation, QueryInputSpec, QueryRoute, SourceSnapshot,
-    TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedCommitStatus, ExpectedLoadStatus, ExpectedRetryParticipant, ExpectedSnapshot,
+    FixtureHolons, QueryExpectation, QueryInputSpec, QueryRoute, SourceSnapshot, TestHolonState,
+    TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -586,7 +586,7 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         expected_status: ExpectedCommitStatus,
         candidates: Vec<ExpectedCommitCandidate>,
-        retry_participants: Vec<ExpectedRetryParticipant>,
+        mut retry_participants: Vec<ExpectedRetryParticipant>,
         expected_error: Option<HolonErrorKind>,
         description: Option<String>,
     ) -> Result<(), HolonError> {
@@ -600,16 +600,15 @@ impl DancesTestCase {
                 }
                 Vec::new()
             } else {
+                // Retry declarations may use older candidate tokens; freeze their saved
+                // heads so execution never resolves a committed handle as a Staged token.
+                for participant in &mut retry_participants {
+                    participant.token =
+                        fixture_holons.resolve_target_token_to_head(&participant.token)?;
+                }
                 fixture_holons.commit(&candidates, &retry_participants)?
             };
-        // Transitional executor input until identity matching consumes the resolved declarations.
-        let saved_tokens = resolved
-            .iter()
-            .filter(|candidate| candidate.disposition != ExpectedDisposition::NoAction)
-            .map(|candidate| candidate.result_token.clone())
-            .collect();
         self.steps.push(DanceTestStep::Commit {
-            saved_tokens,
             candidates: resolved,
             retry_participants,
             expected_status,

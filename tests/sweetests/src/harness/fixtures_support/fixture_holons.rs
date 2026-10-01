@@ -691,7 +691,7 @@ mod tests {
         assert_eq!(head.expected_id(), staged_token.expected_id());
         assert_eq!(head.expected_snapshot().state(), TestHolonState::Staged);
         assert!(
-            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { saved_tokens, .. }) if saved_tokens.is_empty())
+            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { candidates, .. }) if candidates.is_empty())
         );
 
         // The same token can feed a correction step; a subsequent accepted Commit advances it.
@@ -778,11 +778,10 @@ mod tests {
                 None,
             )
             .unwrap();
-        let Some(DanceTestStep::Commit { saved_tokens, candidates, .. }) = test_case.steps.last()
-        else {
+        let Some(DanceTestStep::Commit { candidates, .. }) = test_case.steps.last() else {
             panic!("expected Commit")
         };
-        assert!(saved_tokens.is_empty());
+        assert_eq!(candidates[0].disposition, ExpectedDisposition::NoAction);
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].expected_new_errors, vec![HolonErrorKind::CommitFailure]);
         let head = fixtures.resolve_target_token_to_head(&update).unwrap();
@@ -944,7 +943,7 @@ mod tests {
     }
 
     #[test]
-    fn mixed_declarations_preserve_author_order_and_filter_only_no_action() {
+    fn mixed_declarations_preserve_author_order_and_mint_distinct_results() {
         use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
         let context = init_fixture_context();
         let mut fixtures = FixtureHolons::new(context.clone());
@@ -973,21 +972,23 @@ mod tests {
                 None,
             )
             .unwrap();
-        let Some(DanceTestStep::Commit { saved_tokens, candidates, .. }) = test_case.steps.last()
-        else {
+        let Some(DanceTestStep::Commit { candidates, .. }) = test_case.steps.last() else {
             panic!("expected Commit")
         };
         assert_eq!(
             candidates.iter().map(|candidate| candidate.staged_token.clone()).collect::<Vec<_>>(),
             declarations.iter().map(|declaration| declaration.token.clone()).collect::<Vec<_>>()
         );
+        let result_ids: std::collections::HashSet<_> =
+            candidates.iter().map(|candidate| candidate.result_token.expected_id()).collect();
         assert_eq!(
-            *saved_tokens,
-            vec![
-                candidates[0].result_token.clone(),
-                candidates[2].result_token.clone(),
-                candidates[3].result_token.clone()
-            ]
+            result_ids.len(),
+            declarations.len(),
+            "each declared disposition mints a distinct result token"
+        );
+        assert_eq!(
+            candidates.iter().map(|candidate| candidate.disposition).collect::<Vec<_>>(),
+            declarations.iter().map(|declaration| declaration.disposition).collect::<Vec<_>>()
         );
         assert_eq!(fixtures.count_saved(), MapInteger(5));
     }
@@ -1048,19 +1049,20 @@ mod tests {
                 &mut fixtures,
                 ExpectedCommitStatus::Incomplete,
                 vec![],
-                vec![ExpectedRetryParticipant::new(before.clone())],
+                vec![ExpectedRetryParticipant::new(a.clone())],
                 None,
                 None,
             )
             .unwrap();
-        let Some(DanceTestStep::Commit { saved_tokens, candidates, retry_participants, .. }) =
+        let Some(DanceTestStep::Commit { candidates, retry_participants, .. }) =
             test_case.steps.last()
         else {
             panic!("expected Commit")
         };
-        assert!(saved_tokens.is_empty());
         assert!(candidates.is_empty());
         assert_eq!(retry_participants.len(), 1);
+        assert_eq!(retry_participants[0].token.expected_id(), before.expected_id());
+        assert_eq!(retry_participants[0].token.expected_snapshot().state(), TestHolonState::Saved);
         assert_eq!(fixtures.resolve_target_token_to_head(&a).unwrap(), before);
     }
 

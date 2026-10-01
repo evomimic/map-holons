@@ -268,10 +268,17 @@ async fn run_dance_test_case(
             DanceTestStep::BeginTransaction { expected_error, .. } => {
                 execute_begin_transaction(&mut test_execution_state, expected_error).await
             }
-            DanceTestStep::Commit { saved_tokens, expected_status, expected_error, .. } => {
+            DanceTestStep::Commit {
+                candidates,
+                retry_participants,
+                expected_status,
+                expected_error,
+                ..
+            } => {
                 execute_commit(
                     &mut test_execution_state,
-                    saved_tokens,
+                    candidates,
+                    retry_participants,
                     expected_status,
                     expected_error,
                 )
