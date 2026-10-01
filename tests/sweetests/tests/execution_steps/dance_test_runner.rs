@@ -109,7 +109,7 @@ pub async fn run_dance_test_suite(test_suite: DanceTestSuite) {
 }
 
 /// Drives a finalized `DancesTestCase` through step execution in an initialized runtime.
-async fn run_dance_test_case(
+pub async fn run_dance_test_case(
     test_case: DancesTestCase,
     mut test_execution_state: &mut TestExecutionState,
     book_person_schema_loaded: &mut bool,

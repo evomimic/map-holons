@@ -3,6 +3,8 @@
 mod fixture_cases;
 
 use fixture_cases::*;
+use holons_test::{DanceTestStep, ExpectedCommitStatus};
+use pretty_assertions::assert_eq;
 
 /// Exercises fixture coverage gates without starting a conductor or dispatching dances.
 #[test]
@@ -18,7 +20,6 @@ fn all_fixtures_author_without_a_conductor() {
     commit_disposition_fixture::commit_stale_graph_only_declaration_fixture().unwrap();
     commit_disposition_fixture::commit_unsupported_pass_one_fixture().unwrap();
     commit_lineage_fixture::commit_sequential_lineage_fixture().unwrap();
-    commit_lineage_fixture::commit_branch_lineage_fixture().unwrap();
     commit_lineage_fixture::commit_non_root_lineage_fixture().unwrap();
     commit_schema_fixture::commit_unstaged_schema_finding_fixture().unwrap();
     commit_schema_fixture::commit_schema_cycle_fixture().unwrap();
@@ -45,4 +46,26 @@ fn all_fixtures_author_without_a_conductor() {
     stage_new_from_clone_fixture::stage_new_from_clone_fixture().unwrap();
     stage_new_version_fixture::stage_new_version_fixture().unwrap();
     transaction_lifecycle_fixture::transaction_lifecycle_fixture().unwrap();
+}
+
+#[test]
+fn incomplete_fixture_authors_all_attempts_without_a_conductor() {
+    let scenario = commit_incomplete_fixture::commit_incomplete_fixture().unwrap();
+    let attempts = &scenario.case.steps[scenario.first_attempt..scenario.first_attempt + 3];
+    for (index, step) in attempts.iter().enumerate() {
+        let DanceTestStep::Commit { candidates, retry_participants, expected_status, .. } = step
+        else {
+            panic!("three consecutive Commit attempts");
+        };
+        assert_eq!(candidates.len(), if index == 0 { 2 } else { 0 });
+        assert_eq!(retry_participants.len(), if index == 0 { 0 } else { 1 });
+        assert_eq!(
+            *expected_status,
+            if index == 2 {
+                ExpectedCommitStatus::Complete
+            } else {
+                ExpectedCommitStatus::Incomplete
+            }
+        );
+    }
 }

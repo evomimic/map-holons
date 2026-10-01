@@ -87,7 +87,6 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_mixed_dispositions_fixture().unwrap(),
             commit_same_key_dispositions_fixture().unwrap(),
             commit_sequential_lineage_fixture().unwrap(),
-            commit_branch_lineage_fixture().unwrap(),
             commit_non_root_lineage_fixture().unwrap(),
             commit_competition_retry_fixture().unwrap(),
             commit_graph_only_competition_fixture().unwrap(),

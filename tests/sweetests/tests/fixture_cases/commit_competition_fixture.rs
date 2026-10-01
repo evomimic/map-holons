@@ -5,7 +5,8 @@ use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
     DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, TestCaseInit,
+    ExpectedLineage, ExpectedPersistedGraph, ExpectedRejectedHolon, ExpectedValidationFinding,
+    ExpectedValidationSubject, PersistedSubject, TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -231,16 +232,18 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
     test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
-        vec![ExpectedCommitCandidate::new(branch_b, ExpectedDisposition::NewVersion)],
+        vec![ExpectedCommitCandidate::new(branch_b.clone(), ExpectedDisposition::NewVersion)],
         vec![],
         None,
         None,
     )?;
 
+    test_case.add_match_saved_content_step()?;
+
     test_case.add_begin_transaction_step(None, None)?;
     let branch_c = test_case.add_stage_new_version_step(
         &mut fixture_holons,
-        original,
+        original.clone(),
         None,
         MapInteger(1),
         None,
@@ -258,10 +261,28 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
     test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
-        vec![ExpectedCommitCandidate::new(branch_c, ExpectedDisposition::NewVersion)],
+        vec![ExpectedCommitCandidate::new(branch_c.clone(), ExpectedDisposition::NewVersion)],
         vec![],
         None,
         None,
+    )?;
+    test_case.add_match_saved_content_step()?;
+    // Tokens distinguish the branches sharing one key; get-all still enumerates only A.
+    let a = PersistedSubject::Token(original);
+    let b = PersistedSubject::Token(branch_b);
+    let c = PersistedSubject::Token(branch_c);
+    test_case.add_verify_persisted_graph_step(
+        &fixture_holons,
+        ExpectedPersistedGraph {
+            enumerated: vec![a.clone(), PersistedSubject::Key("Book.BranchSource".into())],
+            lineage: vec![
+                ExpectedLineage { subject: a.clone(), predecessors: vec![], successors: vec![b.clone(), c.clone()] },
+                ExpectedLineage { subject: b, predecessors: vec![a.clone()], successors: vec![] },
+                ExpectedLineage { subject: c, predecessors: vec![a], successors: vec![] },
+            ],
+            ..Default::default()
+        },
+        Some("Verify both branches have exactly A as predecessor and A has exactly B and C as successors".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)

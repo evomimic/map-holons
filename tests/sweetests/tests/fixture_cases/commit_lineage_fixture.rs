@@ -110,46 +110,6 @@ pub fn commit_sequential_lineage_fixture() -> Result<DancesTestCase, HolonError>
     Ok(test_case)
 }
 
-/// Branches committed in separate transactions share only their declared source.
-pub fn commit_branch_lineage_fixture() -> Result<DancesTestCase, HolonError> {
-    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
-        "Commit branch lineage",
-        "Two same-key branches have exact predecessors and both appear in the root's successors",
-    );
-    test_case.add_load_book_person_inverse_test_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
-    let a = add_described_instance(
-        &fixture_context,
-        &mut test_case,
-        &mut fixture_holons,
-        "Book.BranchLineage",
-        "Title",
-        BOOK_DESCRIPTOR_KEY,
-    )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
-    let b = publish_version(&mut test_case, &mut fixture_holons, a.clone(), "Branch B")?;
-    let c = publish_version(&mut test_case, &mut fixture_holons, a.clone(), "Branch C")?;
-    // Tokens identify each branch even though both saved versions have the same key.
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            enumerated: vec![
-                PersistedSubject::Token(a.clone()),
-                PersistedSubject::Key("Book.BranchLineage".into()),
-            ],
-            lineage: vec![
-                lineage(&a, &[], &[&b, &c]),
-                lineage(&b, &[&a], &[]),
-                lineage(&c, &[&a], &[]),
-            ],
-            ..Default::default()
-        },
-        None,
-    )?;
-    test_case.finalize(&fixture_context, &fixture_holons)?;
-    Ok(test_case)
-}
-
 /// Unchanged and graph-only updates retain non-root ancestry; independent clones reset it.
 pub fn commit_non_root_lineage_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
@@ -185,7 +145,10 @@ pub fn commit_non_root_lineage_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     let mut graph = unchanged;
-    for property_key in ["Title.PropertyType", "Name.PropertyType"] {
+    for (property_key, name_expectation) in [
+        ("Title.PropertyType", EdgeExpectation::Absent),
+        ("Name.PropertyType", EdgeExpectation::ExactlyOnce),
+    ] {
         let candidate = stage_update(&mut test_case, &mut fixture_holons, graph.clone())?;
         let key = MapString(property_key.into());
         let stub = fixture_context.mutation().new_holon(Some(key.clone()))?;
@@ -213,19 +176,16 @@ pub fn commit_non_root_lineage_fixture() -> Result<DancesTestCase, HolonError> {
             ExpectedDisposition::GraphOnly,
         )?;
         let mut edges = Vec::new();
-        for target in ["Title.PropertyType", "Name.PropertyType"] {
+        for (target, expectation) in [
+            ("Title.PropertyType", EdgeExpectation::ExactlyOnce),
+            ("Name.PropertyType", name_expectation),
+        ] {
             edges.push(ExpectedPersistedEdge {
                 source: PersistedSubject::Token(graph.clone()),
                 relationship: "ReferencesProperty".to_relationship_name(),
                 inverse: Some("ReferencedByBook".to_relationship_name()),
                 target: PersistedSubject::Key(target.into()),
-                expectation: if target == "Name.PropertyType"
-                    && property_key == "Title.PropertyType"
-                {
-                    EdgeExpectation::Absent
-                } else {
-                    EdgeExpectation::ExactlyOnce
-                },
+                expectation,
             });
             edges.push(ExpectedPersistedEdge {
                 source: PersistedSubject::Token(a.clone()),
