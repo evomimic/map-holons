@@ -540,7 +540,14 @@ impl FixtureHolons {
                 (
                     StagingSource::Version { source },
                     ExpectedDisposition::NoAction | ExpectedDisposition::GraphOnly,
-                ) => SavedIdentity::AliasOf(source.clone()),
+                ) => {
+                    // Staging drops copied lineage, but an alias reuses the source node
+                    // with its existing predecessor, including non-root versions.
+                    snapshot.with_predecessor(
+                        self.holons[source].head_snapshot.snapshot().predecessor()?,
+                    )?;
+                    SavedIdentity::AliasOf(source.clone())
+                }
                 (StagingSource::Version { source }, ExpectedDisposition::NewVersion) => {
                     let source_head = &self.holons[source].head_snapshot;
                     let source_token =
@@ -854,6 +861,8 @@ mod tests {
                 .result_token;
             let predecessor = b_result.expected_reference().predecessor().unwrap();
             let update = stage_version(&mut fixtures, &b);
+            assert!(update.expected_reference().predecessor().unwrap().is_none());
+            assert_eq!(b_result.expected_reference().predecessor().unwrap(), predecessor);
             let result = fixtures
                 .commit(&[ExpectedCommitCandidate::new(update, disposition)], &[])
                 .unwrap()

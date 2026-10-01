@@ -936,7 +936,9 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage new version".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
+        // Staging clears copied lineage; Commit declares the persisted successor lineage.
+        let mut new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
+        new_snapshot.with_predecessor(None)?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon

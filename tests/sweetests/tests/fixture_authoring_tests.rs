@@ -12,6 +12,11 @@ fn all_fixtures_author_without_a_conductor() {
     commit_competition_fixture::commit_competition_retry_fixture().unwrap();
     commit_competition_fixture::commit_graph_only_competition_fixture().unwrap();
     commit_competition_fixture::commit_branch_across_transactions_fixture().unwrap();
+    commit_disposition_fixture::commit_no_action_fixture().unwrap();
+    commit_disposition_fixture::commit_mixed_dispositions_fixture().unwrap();
+    commit_disposition_fixture::commit_same_key_dispositions_fixture().unwrap();
+    commit_disposition_fixture::commit_stale_graph_only_declaration_fixture().unwrap();
+    commit_disposition_fixture::commit_unsupported_pass_one_fixture().unwrap();
     commit_schema_fixture::commit_unstaged_schema_finding_fixture().unwrap();
     commit_schema_fixture::commit_schema_cycle_fixture().unwrap();
     commit_strict_contract_fixture::commit_strict_contract_fixture().unwrap();

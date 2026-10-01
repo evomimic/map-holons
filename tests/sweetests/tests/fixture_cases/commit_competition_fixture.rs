@@ -84,10 +84,27 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
-        vec![ExpectedCommitCandidate::new(first, ExpectedDisposition::NewVersion)],
+        vec![ExpectedCommitCandidate::new(first.clone(), ExpectedDisposition::NewVersion)],
         vec![],
         None,
         None,
+    )?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let unchanged = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        first,
+        None,
+        MapInteger(1),
+        None,
+        Some("Reuse the corrected retry's saved-result token".into()),
+    )?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(unchanged, ExpectedDisposition::NoAction)],
+        vec![],
+        None,
+        Some("Declare a fresh unchanged attempt after the corrected retry".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)

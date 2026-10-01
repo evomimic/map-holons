@@ -3,6 +3,7 @@ pub mod add_related_holons_executor;
 pub mod begin_transaction_executor;
 pub mod command_affordance_verification_executor;
 pub mod commit_executor;
+pub mod dance_test_runner;
 pub mod delete_holon_executor;
 pub mod descriptor_verification_executor;
 pub mod ensure_database_count_executor;
