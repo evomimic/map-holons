@@ -230,6 +230,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit --- after staging new first version".to_string()),
     )?;
+    test_case.add_match_saved_content_step()?;
 
     test_case.add_verify_relationship_anchoring_step(None)?;
 

@@ -89,6 +89,7 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
         None,
         None,
     )?;
+    test_case.add_match_saved_content_step()?;
     test_case.add_begin_transaction_step(None, None)?;
     let unchanged = test_case.add_stage_new_version_step(
         &mut fixture_holons,

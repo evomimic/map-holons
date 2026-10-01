@@ -27,6 +27,7 @@ use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::bootstrap_operational_schema_fixture::*;
 use fixture_cases::commit_competition_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
+use fixture_cases::commit_lineage_fixture::*;
 use fixture_cases::commit_schema_fixture::*;
 use fixture_cases::commit_strict_contract_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
@@ -85,6 +86,9 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_no_action_fixture().unwrap(),
             commit_mixed_dispositions_fixture().unwrap(),
             commit_same_key_dispositions_fixture().unwrap(),
+            commit_sequential_lineage_fixture().unwrap(),
+            commit_branch_lineage_fixture().unwrap(),
+            commit_non_root_lineage_fixture().unwrap(),
             commit_competition_retry_fixture().unwrap(),
             commit_graph_only_competition_fixture().unwrap(),
             commit_branch_across_transactions_fixture().unwrap(),

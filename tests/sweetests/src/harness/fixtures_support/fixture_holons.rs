@@ -876,7 +876,7 @@ mod tests {
     }
 
     #[test]
-    fn independent_clone_commit_clears_inherited_predecessor() {
+    fn independent_clone_staging_and_commit_clear_lineage_without_mutating_the_source() {
         let context = init_fixture_context();
         let mut fixtures = FixtureHolons::new(context.clone());
         let a = mint_staged_token(&context, &mut fixtures, "clone-source");
@@ -887,11 +887,19 @@ mod tests {
             .unwrap()
             .remove(0)
             .result_token;
-        let snapshot = fixtures.copy_fixture_snapshot(b_result.expected_reference()).unwrap();
-        let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
-        fixtures.create_fixture_holon(expected.clone()).unwrap();
-        let clone =
-            fixtures.mint_test_reference(b_result.expected_snapshot().as_source(), expected);
+        let predecessor = b_result.expected_reference().predecessor().unwrap();
+        let mut test_case = crate::DancesTestCase::default();
+        let clone = test_case
+            .add_stage_new_from_clone_step(
+                &mut fixtures,
+                b_result.clone(),
+                MapString("independent-clone".into()),
+                None,
+                None,
+            )
+            .unwrap();
+        assert!(clone.expected_reference().predecessor().unwrap().is_none());
+        assert_eq!(b_result.expected_reference().predecessor().unwrap(), predecessor);
         let result = fixtures
             .commit(&[ExpectedCommitCandidate::new(clone, ExpectedDisposition::NewRoot)], &[])
             .unwrap()

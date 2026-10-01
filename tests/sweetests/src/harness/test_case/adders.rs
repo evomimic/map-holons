@@ -933,6 +933,8 @@ impl DancesTestCase {
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
         new_snapshot.with_property_value("Key", new_key.clone())?;
+        // An independent clone starts without its saved source's predecessor lineage.
+        new_snapshot.with_predecessor(None)?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
