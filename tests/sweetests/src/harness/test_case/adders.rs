@@ -39,9 +39,10 @@
 //! remaining independent of runtime identifiers and execution-time handles
 use super::test_case::DancesTestCase;
 use crate::{
-    harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
-    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, QueryExpectation, QueryInputSpec,
-    QueryRoute, SourceSnapshot, TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitCandidate,
+    ExpectedCommitStatus, ExpectedDisposition, ExpectedLoadStatus, ExpectedRetryParticipant,
+    ExpectedSnapshot, FixtureHolons, QueryExpectation, QueryInputSpec, QueryRoute, SourceSnapshot,
+    TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -553,11 +554,8 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // Rejection retains staged heads so later correction steps resolve the same holons.
-    //
-    // `expected_status` declares the expected `CommitRequestStatus` on the commit
-    // response. Existing `Incomplete` fixtures model Pass 2 failures after node
-    // persistence, so they still advance heads to Saved.
+    /// Create-only convenience. Updates require explicit disposition declarations.
+    /// Rejected attempts and command errors retain all fixture heads.
     pub fn add_commit_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -566,21 +564,58 @@ impl DancesTestCase {
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
-        let description = description.unwrap_or_else(|| "Commit".to_string());
-        let saved_tokens = if expected_status == ExpectedCommitStatus::Rejected {
-            Vec::new()
-        } else {
-            fixture_holons.commit()?
-        };
-        self.steps.push(DanceTestStep::Commit {
-            saved_tokens,
-            candidates: Vec::new(),
-            retry_participants: Vec::new(),
+        let candidates =
+            if expected_status == ExpectedCommitStatus::Rejected || expected_error.is_some() {
+                Vec::new()
+            } else {
+                fixture_holons.derive_create_only_declarations()?
+            };
+        self.add_commit_step_with_dispositions(
+            fixture_holons,
             expected_status,
+            candidates,
+            Vec::new(),
             expected_error,
             description,
-        });
+        )
+    }
 
+    /// Declares the prepared candidates and retained relationship-retry participants for one attempt.
+    pub fn add_commit_step_with_dispositions(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        expected_status: ExpectedCommitStatus,
+        candidates: Vec<ExpectedCommitCandidate>,
+        retry_participants: Vec<ExpectedRetryParticipant>,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let resolved =
+            if expected_status == ExpectedCommitStatus::Rejected || expected_error.is_some() {
+                if !candidates.is_empty() || !retry_participants.is_empty() {
+                    let message =
+                    "Rejected attempts and command errors use no disposition or retry declarations";
+                    return Err(HolonError::InvalidParameter(message.into()));
+                }
+                Vec::new()
+            } else {
+                fixture_holons.commit(&candidates, &retry_participants)?
+            };
+        // Transitional executor input until identity matching consumes the resolved declarations.
+        let saved_tokens = resolved
+            .iter()
+            .filter(|candidate| candidate.disposition != ExpectedDisposition::NoAction)
+            .map(|candidate| candidate.result_token.clone())
+            .collect();
+        self.steps.push(DanceTestStep::Commit {
+            saved_tokens,
+            candidates: resolved,
+            retry_participants,
+            expected_status,
+            expected_error,
+            description: description.unwrap_or_else(|| "Commit".to_string()),
+        });
         Ok(())
     }
 
@@ -906,7 +941,7 @@ impl DancesTestCase {
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
-            fixture_holons.create_fixture_holon(expected.clone())?;
+            fixture_holons.create_versioned_fixture_holon(expected.clone(), &step_token)?;
         }
 
         // Mint

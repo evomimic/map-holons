@@ -2,9 +2,9 @@ use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::{
-    DancesTestCase, ExpectedCommitCarrierFinding, ExpectedCommitStatus, ExpectedRejectedHolon,
-    ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons, TestCaseInit,
-    TestReference,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitCarrierFinding, ExpectedCommitStatus,
+    ExpectedDisposition, ExpectedRejectedHolon, ExpectedValidationFinding,
+    ExpectedValidationSubject, FixtureHolons, TestCaseInit, TestReference,
 };
 use std::sync::Arc;
 
@@ -173,7 +173,7 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         MapInteger(1),
         None,
     )?;
-    test_case.add_remove_related_holons_step(
+    let replacement = test_case.add_remove_related_holons_step(
         &mut fixture_holons,
         replacement,
         CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
@@ -181,7 +181,14 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(replacement, ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }

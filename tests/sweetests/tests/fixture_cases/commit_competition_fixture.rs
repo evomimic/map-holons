@@ -4,8 +4,8 @@ use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
-    DancesTestCase, ExpectedCommitStatus, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, TestCaseInit,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -74,14 +74,21 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
     // only after reconciliation; an unchanged ForUpdate commits with NoAction.
     let retry_title: PropertyMap =
         [("Title".to_property_name(), "Reconciled title".to_base_value())].into();
-    test_case.add_with_properties_step(
+    let first = test_case.add_with_properties_step(
         &mut fixture_holons,
         first,
         retry_title,
         None,
         Some("Change the surviving replacement before retry".into()),
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(first, ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
@@ -196,14 +203,21 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
     )?;
     let branch_b_title: PropertyMap =
         [("Title".to_property_name(), "Branch B title".to_base_value())].into();
-    test_case.add_with_properties_step(
+    let branch_b = test_case.add_with_properties_step(
         &mut fixture_holons,
         branch_b,
         branch_b_title,
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(branch_b, ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
 
     test_case.add_begin_transaction_step(None, None)?;
     let branch_c = test_case.add_stage_new_version_step(
@@ -216,14 +230,21 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
     )?;
     let branch_c_title: PropertyMap =
         [("Title".to_property_name(), "Branch C title".to_base_value())].into();
-    test_case.add_with_properties_step(
+    let branch_c = test_case.add_with_properties_step(
         &mut fixture_holons,
         branch_c,
         branch_c_title,
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(branch_c, ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }

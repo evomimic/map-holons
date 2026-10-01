@@ -1,5 +1,8 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
+use holons_test::{
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    TestCaseInit,
+};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
@@ -103,9 +106,14 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Add non-definitional Book --ReferencesProperty--> Title.PropertyType".to_string()),
     )?;
 
-    test_case.add_commit_step(
+    test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(
+            graph_only_update.clone(),
+            ExpectedDisposition::GraphOnly,
+        )],
+        vec![],
         None,
         Some("Commit graph-only Book relationship update".to_string()),
     )?;
@@ -146,7 +154,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         None,
     )?;
 
-    test_case.add_add_related_holons_step(
+    let replay_update = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         replay_update,
         RelationshipName(MapString("ReferencesProperty".to_string())),
@@ -158,9 +166,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         ),
     )?;
 
-    test_case.add_commit_step(
+    test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(replay_update.clone(), ExpectedDisposition::GraphOnly)],
+        vec![],
         None,
         Some(
             "Commit replayed graph-only edge --- expecting SmartLink duplicate suppression"
@@ -201,7 +211,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Reuse the setup-phase staged Person1 token directly: the relationship adder
     // resolves it to Person1's committed head (issue #556), so no saved-key lookup
     // workaround is needed for the cross-transaction target (formerly issue #515).
-    test_case.add_add_related_holons_step(
+    let staged_clone = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         staged_clone,
         RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())),
@@ -211,9 +221,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(
+    test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(staged_clone.clone(), ExpectedDisposition::NewVersion)],
+        vec![],
         None,
         Some("Commit --- after staging new first version".to_string()),
     )?;
