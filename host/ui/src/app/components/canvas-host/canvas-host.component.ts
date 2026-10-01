@@ -1,3 +1,4 @@
+import { SingleContextHost } from '../../../dahn/context/single-context-host';
 import { offeredCanvasThemes } from '../../../dahn/themes/offered-canvas-themes';
 import { realizeNode } from '../../../dahn/runtime/realize-node';
 import { PathNavigator } from '../../../dahn/runtime/path-navigator';
@@ -40,9 +41,9 @@ import { dismissStartupOverlay } from '../../startup-overlay';
   `,
 })
 export class CanvasHostComponent implements AfterViewInit, OnDestroy {
-  private navigation?: PathNavigator;
+  private contextHost?: SingleContextHost;
   private destroyed = false;
-  ngOnDestroy(): void { this.destroyed = true; this.navigation?.dispose(); }
+  ngOnDestroy(): void { this.destroyed = true; this.contextHost?.dispose(); }
   @ViewChild('canvasHost') private readonly canvasHost?: ElementRef<HTMLElement>;
 
   private readonly applicationSession = inject(ApplicationSessionService);
@@ -62,9 +63,11 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
   }
 
   private async realizeCanvas(): Promise<void> {
+    if (this.destroyed) return;
     const profile = new StartupProfile();
     try {
       const session = await this.applicationSession.waitForReady();
+      if (this.destroyed) return;
       if (session.phase !== 'ready') {
         this.failure.set(session.failure ?? `Application session stopped in '${session.phase}'.`);
         profile.finish('session-failed');
@@ -113,100 +116,124 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
 
       profile.next('project theme');
       const theme = { ...await new Theme(themeHolon).toCssCustomProperties() };
-      profile.next('construct Canvas');
-      const registry = new DefaultVisualizerRegistry();
-      let homeDancerContext: VisualizerContext | null = null;
-      const canvas = new DomCanvas(
-        host,
-        registry,
-        () => {
-          if (homeDancerContext === null) {
-            throw new Error('Home-Dancer context is unavailable.');
-          }
-          return homeDancerContext;
-        },
-      );
-      // Theme projection is shared by hosted Dancers and refreshed only on
-      // explicit selection. The Canvas remains intentionally empty here.
-      canvas.setTheme(theme);
-      canvas.configureThemeMenu(theme,
-        () => offeredCanvasThemes(activeHolonSpace, themeHolon, theme.metaDesignSystemVersionedKey),
-        selected => {
-          // Existing contexts and future navigation share this session's theme identity.
-          Object.assign(theme, selected);
-        });
-
-      const homeDancerSelection = session.home_dancer_selection;
-      if (homeDancerSelection === null) {
-        // A missing declaration is the only intentional empty-Canvas state.
-        if (this.destroyed) return;
-        profile.next('mount home Dancer');
-        await canvas.mountVisualizers([]);
-        this.canvasState.set('mounted');
-        profile.finish('empty-canvas');
-        dismissStartupOverlay();
-        return;
-      }
-      const homeDancer = transaction.bindPersistedReference(homeDancerSelection.dancer);
-      const rootedNavigationVisualizer = transaction.bindPersistedReference(
-        homeDancerSelection.rooted_navigation_visualizer,
-      );
-      const rootNodeVisualizer = transaction.bindPersistedReference(
-        homeDancerSelection.root_node_visualizer,
-      );
-      try {
-        profile.next('materialize rooted navigation');
-        const pathImplementation = await materialized.realize(rootedNavigationVisualizer);
-        if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) {
-          throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
-        }
-        const pathTag = defineCustomElementOnce('map-rooted-navigation-visualizer', pathImplementation as CustomElementConstructor);
+      if (this.destroyed) return;
+      this.contextHost?.dispose();
+      this.contextHost = new SingleContextHost(host);
+      const created = this.contextHost.create((container, context, signal) => {
         let navigation: PathNavigator | undefined;
-        const rootNodeElement = await renderVisualizerRegion('Root node', async () => {
-          const root = await realizeNode(transaction, materialized, activeHolonSpace, rootNodeVisualizer, theme, canvas, stage => profile.next(stage));
-          navigation = new PathNavigator(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer, await materialized.slot(rootedNavigationVisualizer, 'node'),
-            (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage));
-          this.navigation = navigation;
-          return root.element;
-        });
-        const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
-        registry.register({
-          id: 'rooted-navigation',
-          displayName: 'Rooted Navigation',
-          version: '0.1.0',
-          componentTag: pathTag,
-          supportedTargets: [{ kind: 'holon-node' }],
-          load: async () => { },
-        });
-        homeDancerContext = {
-          title,
-          target: { reference: homeDancer },
-          holon: new DahnHolonView(activeHolonSpace),
-          actions: [],
-          theme,
-          canvas,
-          childVisualizers: new Map([['root-node', rootNodeElement]]),
-          navigation,
-          onInspectHolon: intent => navigation?.inspect(intent),
-          onTraverseRelationship: intent => navigation?.traverseRelationship(intent),
-        };
-        if (this.destroyed) { navigation?.dispose(); return; }
-        profile.next('mount home Dancer');
-        await canvas.mountVisualizers([
-          {
-            visualizerId: 'rooted-navigation',
-            target: { reference: homeDancer },
-            slot: 'primary',
+        profile.next('construct Canvas');
+        const registry = new DefaultVisualizerRegistry();
+        let homeDancerContext: VisualizerContext | null = null;
+        const canvas = new DomCanvas(
+          container,
+          registry,
+          () => {
+            if (homeDancerContext === null) {
+              throw new Error('Home-Dancer context is unavailable.');
+            }
+            return homeDancerContext;
           },
-        ]);
-      } catch (error) {
-        this.navigation?.dispose();
-        canvas.showUnavailable('Home Dancer', error);
+          context,
+        );
+        // Theme projection is shared by hosted Dancers and refreshed only on
+        // explicit selection. The Canvas remains intentionally empty here.
+        canvas.setTheme(theme);
+        canvas.configureThemeMenu(theme,
+          () => offeredCanvasThemes(activeHolonSpace, themeHolon, theme.metaDesignSystemVersionedKey),
+          selected => {
+            // Existing contexts and future navigation share this session's theme identity.
+            Object.assign(theme, selected);
+          });
+
+        const ready = Promise.resolve().then(async () => {
+          if (signal.aborted) return;
+          const homeDancerSelection = session.home_dancer_selection;
+          if (homeDancerSelection === null) {
+            // A missing declaration is the only intentional empty-Canvas state.
+            profile.next('mount home Dancer');
+            await canvas.mountVisualizers([]);
+            return;
+          }
+          const homeDancer = transaction.bindPersistedReference(homeDancerSelection.dancer);
+          const rootedNavigationVisualizer = transaction.bindPersistedReference(
+            homeDancerSelection.rooted_navigation_visualizer,
+          );
+          const rootNodeVisualizer = transaction.bindPersistedReference(
+            homeDancerSelection.root_node_visualizer,
+          );
+          try {
+            profile.next('materialize rooted navigation');
+            const pathImplementation = await materialized.realize(rootedNavigationVisualizer);
+            if (signal.aborted) return;
+            if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) {
+              throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
+            }
+            const pathTag = defineCustomElementOnce('map-rooted-navigation-visualizer', pathImplementation as CustomElementConstructor);
+            const rootNodeElement = await renderVisualizerRegion('Root node', async () => {
+              const root = await realizeNode(transaction, materialized, activeHolonSpace, rootNodeVisualizer, theme, canvas, stage => profile.next(stage));
+              if (signal.aborted) { root.collectionActivation.dispose(); return root.element; }
+              let nodeSlot;
+              try { nodeSlot = await materialized.slot(rootedNavigationVisualizer, 'node'); }
+              catch (error) { root.collectionActivation.dispose(); throw error; }
+              if (signal.aborted) { root.collectionActivation.dispose(); return root.element; }
+              navigation = new PathNavigator(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer, nodeSlot,
+                (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage));
+              return root.element;
+            });
+            if (signal.aborted) return;
+            const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
+            registry.register({
+              id: 'rooted-navigation',
+              displayName: 'Rooted Navigation',
+              version: '0.1.0',
+              componentTag: pathTag,
+              supportedTargets: [{ kind: 'holon-node' }],
+              load: async () => { },
+            });
+            homeDancerContext = {
+              title,
+              target: { reference: homeDancer },
+              holon: new DahnHolonView(activeHolonSpace),
+              actions: [],
+              theme,
+              canvas,
+              childVisualizers: new Map([['root-node', rootNodeElement]]),
+              navigation,
+              onInspectHolon: intent => navigation?.inspect(intent),
+              onTraverseRelationship: intent => navigation?.traverseRelationship(intent),
+            };
+            if (signal.aborted) { navigation?.dispose(); return; }
+            profile.next('mount home Dancer');
+            await canvas.mountVisualizers([
+              {
+                visualizerId: 'rooted-navigation',
+                target: { reference: homeDancer },
+                slot: 'primary',
+              },
+            ]);
+          } catch (error) {
+            navigation?.dispose();
+            canvas.showUnavailable('Home Dancer', error);
+          }
+        });
+        return {
+          ready,
+          setAllocation: allocation => canvas.setAllocation(allocation),
+          dispose: () => { navigation?.dispose(); canvas.dispose(); },
+        };
+      });
+      if (created.status !== 'applied') throw new Error('Unable to create an experiential context.');
+      const mounted = await created.value.ready;
+      if (this.destroyed) return;
+      if (mounted.status !== 'applied') {
+        throw mounted.status === 'refused' ? mounted.error ?? new Error(mounted.reason) : new Error('Context did not mount.');
       }
       this.canvasState.set('mounted');
-      profile.finish('mounted');
+      profile.finish(session.home_dancer_selection === null ? 'empty-canvas' : 'mounted');
       dismissStartupOverlay();
     } catch (error) {
+      this.contextHost?.dispose();
+      if (this.destroyed) return;
       profile.finish('failed');
       this.failure.set(describeError(error));
       this.canvasState.set('realization-error');

@@ -1,4 +1,10 @@
 export type { ActionNode } from './contracts/actions';
+export type { InspectorRegion, MaximizeOperation, OccurrenceAttentionRequest, PresentationRequestResult } from './contracts/presentation';
+export type {
+  ContextAllocation, ContextCapabilities, ContextHandle, ContextHost, ContextId,
+  ContextOperation, ContextPresentation, ContextRequestResult, MountContext, RetainedContext,
+} from './contracts/context-host';
+export { SingleContextHost } from './context/single-context-host';
 export type {
   CanvasApi,
   SurfaceViewRequest,

@@ -248,3 +248,32 @@ it('delegates Canvas view requests through a nested composition owner to the sel
   expect(canvas.requestView('zoom-to-fit')).toBe(false);
   expect(delegate).toHaveBeenCalledTimes(2);
 });
+
+it('invalidates a pending visualizer load on disposal without constructing or attaching the late element', async () => {
+  let finish!: () => void;
+  const loaded = new Promise<void>(resolve => { finish = resolve; });
+  const constructed = vi.fn();
+  const registry = new DefaultVisualizerRegistry();
+  registry.register({ id: 'late', displayName: 'Late', version: '1', componentTag: 'test-late-canvas-child', supportedTargets: [], load: async () => {
+    await loaded;
+    customElements.define('test-late-canvas-child', class extends HTMLElement {
+      constructor() { super(); constructed(); }
+      setContext() {}
+    });
+  } });
+  const container = document.createElement('div');
+  document.body.append(container);
+  const resolveContext = vi.fn(() => ({}) as VisualizerContext);
+  const canvas = new DomCanvas(container, registry, resolveContext);
+  const pending = canvas.mountVisualizers([{ visualizerId: 'late', slot: 'primary', target: {} as DahnTarget }]);
+  canvas.dispose();
+  canvas.dispose();
+  finish();
+  await pending;
+  expect(constructed).not.toHaveBeenCalled();
+  expect(resolveContext).not.toHaveBeenCalled();
+  expect(container.children).toHaveLength(0);
+  expect(canvas.rootElement().children).toHaveLength(0);
+  expect(canvas.requestView('actual-size')).toBe(false);
+  container.remove();
+});
