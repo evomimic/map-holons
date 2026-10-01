@@ -45,7 +45,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-async function fixture() {
+async function fixture(openExploration?: (anchor: HolonReference) => void) {
   const rootSubject = subject('root'); const a = subject('A'); const b = subject('B');
   for (const ref of [rootSubject, a, b]) {
     ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
@@ -71,7 +71,7 @@ async function fixture() {
   });
   const root = await realize(rootSubject as never, visualizers.node);
   const parent = selected('path-inspector');
-  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize);
+  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize, openExploration);
   let occurrences: readonly PathOccurrence[] = [];
   let destination: import('../contracts/path-navigation').PathDestination | undefined;
   navigation.subscribe((path, _, pending) => { occurrences = [...path]; destination = pending; });
@@ -151,7 +151,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(f.root.element.querySelector('table')).toBe(table);
     expect(rows[0].getAttribute('aria-selected')).toBe('true');
     expect(f.root.element.querySelector('[aria-selected=true][role=tab]')?.textContent).toBe('Members (3)');
-    expect(f.element.querySelector('[data-path-inspector-root-node]')?.firstChild).toBe(f.root.element);
+    expect(f.element.querySelector('[data-path-inspector-root-node] > [data-dahn-holon-inspector]')).toBe(f.root.element);
     const nextRows = await openCollection(child.element);
     activate(nextRows[2]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(3));
@@ -1172,4 +1172,58 @@ it('moves a surviving pending destination with its retained branch when an earli
   expect(completed.provenance?.parentOccurrenceId).toBe(retained.id);
   const cells = f.path().map(item => `${(item as any).row}:${item.column}`);
   expect(new Set(cells).size).toBe(cells.length);
+});
+
+
+it('routes Explore from here through a live occurrence without changing the source and rejects stale requests', async () => {
+  const open = vi.fn();
+  const f = await fixture(open);
+  const before = f.path().map(item => ({ id: item.id, subject: item.subject, element: item.element }));
+  f.element.querySelector<HTMLButtonElement>('[data-explore-from-here]')!.click();
+  expect(open).toHaveBeenCalledExactlyOnceWith(f.rootSubject);
+  expect(f.path().map(item => ({ id: item.id, subject: item.subject, element: item.element }))).toEqual(before);
+  f.navigation.reRoot('foreign-or-stale');
+  expect(open).toHaveBeenCalledTimes(1);
+  f.navigation.close(before[0].id);
+  f.navigation.reRoot(before[0].id);
+  expect(open).toHaveBeenCalledTimes(1);
+  f.navigation.dispose();
+  f.navigation.reRoot(before[0].id);
+  expect(open).toHaveBeenCalledTimes(1);
+});
+
+
+it('re-rooting a middle occurrence preserves its entire source chain and descendants', async () => {
+  const open = vi.fn();
+  const f = await fixture(open);
+  const a = f.path()[0];
+  const dSubject = subject('D');
+  f.a.relatedHolons.mockResolvedValue(collection([f.b]));
+  f.b.relatedHolons.mockResolvedValue(collection([dSubject]));
+  const b = await right(f, a);
+  const c = await right(f, b);
+  const d = await right(f, c);
+  const before = f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }));
+  f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${c.id}"] [data-explore-from-here]`)!.click();
+  expect(open).toHaveBeenCalledExactlyOnceWith(c.subject);
+  expect(f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }))).toEqual(before);
+  expect([a, b, c, d].every(item => item.element.isConnected)).toBe(true);
+  expect(f.element.querySelector(`[data-path-occurrence="${d.id}"]`)?.getAttribute('data-focused')).toBe('true');
+});
+
+it('reserves minimal strips for restoration instead of offering Explore from here', async () => {
+  const open = vi.fn();
+  const f = await fixture(open);
+  const root = f.path()[0];
+  const a = await right(f, root);
+  await right(f, a);
+  const control = f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${root.id}"] [data-explore-from-here]`)!;
+  expect(control.title).toBe('Explore from here');
+  expect(control.getAttribute('aria-label')).toBe('Explore from here');
+  expect(control.parentElement!.querySelector('[data-close-occurrence]')).not.toBeNull();
+  expect(control.parentElement!.querySelector('[data-maximize-inspector]')).not.toBeNull();
+  expect(control.hidden).toBe(true);
+  f.navigation.restore(root.id);
+  expect(control.hidden).toBe(false);
+  expect(open).not.toHaveBeenCalled();
 });

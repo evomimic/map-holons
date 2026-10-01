@@ -237,7 +237,9 @@ it('delegates Canvas view requests through a nested composition owner to the sel
   await canvas.mountVisualizers([{ visualizerId: 'nested', slot: 'primary', target: { reference: {} } as DahnTarget }]);
   const allocate = vi.spyOn(surface, 'allocateRows');
   const chrome = container.querySelector<HTMLElement>('[data-dahn-canvas-chrome]')!;
-  [...chrome.querySelectorAll('button')].find(button => button.textContent === 'Zoom to Fit')!.click();
+  expect(chrome.textContent).not.toContain('Zoom to Fit');
+  expect(chrome.textContent).not.toContain('Actual Size');
+  expect(canvas.requestView('zoom-to-fit')).toBe(true);
   expect(delegate).toHaveBeenLastCalledWith('zoom-to-fit');
   expect(surface.view.scale).toBeLessThan(1);
   expect(canvas.requestView('actual-size')).toBe(true);

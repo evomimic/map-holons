@@ -49,6 +49,7 @@ export class PathNavigator implements PathNavigation {
     selectedVisualizer: HolonReference,
     private readonly nodeSlot: HolonReference,
     private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void) => Promise<RealizedNode>,
+    private readonly openExploration?: (anchor: HolonReference) => void,
   ) {
     this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
     this.focus = { occurrenceId: this.root.id, mode: 'restore' };
@@ -97,6 +98,13 @@ export class PathNavigator implements PathNavigation {
     this.cancelAttempt(false);
     this.focus = { occurrenceId, mode: 'restore' };
     this.publish();
+  }
+
+  /** Resolve a live occurrence without changing its topology or sharing its identity. */
+  reRoot(occurrenceId: string): void {
+    if (this.disposed || semanticWork(this.transaction).paused) return;
+    const occurrence = this.path().find(item => item.id === occurrenceId);
+    if (occurrence) this.openExploration?.(occurrence.subject);
   }
 
   /** Remove a branch by occurrence identity; repeated/stale closes are harmless. */

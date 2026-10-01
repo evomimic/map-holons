@@ -127,7 +127,8 @@ describe('Path Inspector visualizer artifact', () => {
 
     expect(element.dataset.dahnPathInspector).toBe('true');
     expect(element.style.display).toBe('grid');
-    expect(element.querySelector('[data-path-inspector-title]')?.textContent).toBe('Active HolonSpace');
+    expect(element.getAttribute('aria-label')).toBe('Active HolonSpace');
+    expect(element.querySelector('[data-path-inspector-title]')).toBeNull();
     const region = element.querySelector('[data-path-inspector-root-node]');
     expect(region).not.toBeNull();
     expect(region?.querySelector('[data-root-node-fixture]')).not.toBeNull();
@@ -307,7 +308,7 @@ it('preserves topology, budgets, responsive state, geometry and lineage across p
   expect(snapshot()).toEqual(before);
   expect(selection.value).toBe('local selection');
   expect(element.lineage.parentElement).toBe(element.surface);
-  expect(element.querySelector('[data-path-inspector-title]').closest('[data-path-inspector-surface]')).toBeNull();
+  expect(element.querySelector('header').closest('[data-path-inspector-surface]')).toBeNull();
 });
 
 it('negotiates useful content extents with border/status chrome and updates only on child reports', async () => {

@@ -99,15 +99,15 @@ it('mounts the selected empty Canvas only after a grant and tears it down withou
   expect(fixture.transaction.revert).not.toHaveBeenCalled();
 });
 
-it('keeps Canvas available when the home Dancer fails to materialize', async () => {
-  const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {});
+it('keeps Canvas and Space Navigator available with Retry when the initial exploration fails', async () => {
   fixture.realize.mockResolvedValueOnce(class {}).mockRejectedValueOnce(new Error('Dancer unavailable'));
   await launch(true);
   resize(480, 360);
   await vi.waitFor(() => expect(fixture.dismiss).toHaveBeenCalledTimes(1));
-  expect(display.querySelector('[data-dahn-canvas-state="degraded"]')).not.toBeNull();
+  expect(display.querySelector('[role="alert"]')?.textContent).toContain('Dancer unavailable');
+  expect(display.querySelector('[aria-busy="true"]')).toBeNull();
   expect(display.querySelector('[data-dahn-canvas-chrome]')).not.toBeNull();
-  expect(diagnostic).toHaveBeenCalled();
+  expect(display.querySelector('[role="alert"]')?.textContent).toContain('Retry');
 });
 
 it('disposes a root produced after context destruction instead of attaching it or creating navigation', async () => {
@@ -120,7 +120,7 @@ it('disposes a root produced after context destruction instead of attaching it o
   const releaseRoot = vi.fn();
   resolveRoot({ element: document.createElement('div'), collectionActivation: { dispose: releaseRoot } });
   await vi.waitFor(() => expect(releaseRoot).toHaveBeenCalledTimes(1));
-  expect(fixture.slot).not.toHaveBeenCalled();
+  expect(fixture.navigationDispose).not.toHaveBeenCalled();
   expect(display.children).toHaveLength(0);
   expect(fixture.dismiss).not.toHaveBeenCalled();
   expect(fixture.transaction.abandon).not.toHaveBeenCalled();
@@ -133,6 +133,10 @@ it('keeps a mounted home Dancer inside the grant and disposes navigation separat
   resize(480, 360);
   await vi.waitFor(() => expect(fixture.dismiss).toHaveBeenCalledTimes(1));
   expect(display.querySelector('[data-dahn-canvas-state="mounted"]')).not.toBeNull();
+  expect(display.querySelector('[data-dahn-dancer-title]')?.textContent).toBe('Space Navigator');
+  expect(display.querySelector('img[alt="MAP"]')?.getAttribute('src')).toBe('assets/branding/map-mark.png');
+  expect(display.textContent).not.toContain('Desktop workspace');
+  expect(display.textContent).not.toContain('MAP Canvas');
   expect(display.querySelector('[data-dahn-canvas-slot]')?.children).toHaveLength(1);
   component.ngOnDestroy();
   expect(fixture.navigationDispose).toHaveBeenCalledTimes(1);

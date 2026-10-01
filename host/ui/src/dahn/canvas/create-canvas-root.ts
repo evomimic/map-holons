@@ -1,6 +1,7 @@
 export interface CanvasRootParts {
   root: HTMLDivElement;
   chrome: HTMLElement;
+  dancerTitle: HTMLElement;
   hostedDancerRegion: HTMLElement;
   awaitingHomeDancer: HTMLParagraphElement;
   primarySlot: HTMLDivElement;
@@ -29,10 +30,22 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   chrome.style.alignItems = 'center';
   chrome.style.justifyContent = 'space-between';
   chrome.style.borderBottom = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
-  chrome.style.paddingBottom = 'var(--dahn-canvas-gap)';
-  chrome.innerHTML = '<strong>MAP Canvas</strong><span>Desktop workspace</span>';
-  chrome.querySelector('span')!.style.color = 'var(--dahn-muted-text-color)';
-  chrome.querySelector('strong')!.style.fontWeight = 'var(--dahn-canvas-heading-font-weight)';
+  chrome.style.paddingBottom = 'var(--dahn-control-gap)';
+  chrome.style.gap = 'var(--dahn-canvas-gap)';
+  chrome.style.flexWrap = 'wrap';
+  const identity = document.createElement('div');
+  Object.assign(identity.style, { display: 'flex', alignItems: 'center', gap: 'var(--dahn-control-gap)', minWidth: '0' });
+  const mark = document.createElement('img');
+  mark.src = 'assets/branding/map-mark.png';
+  mark.alt = 'MAP';
+  mark.width = 36; mark.height = 36;
+  Object.assign(mark.style, { objectFit: 'contain', flex: '0 0 auto' });
+  const dancerTitle = document.createElement('strong');
+  dancerTitle.dataset['dahnDancerTitle'] = 'true';
+  dancerTitle.textContent = 'MAP';
+  Object.assign(dancerTitle.style, { fontWeight: 'var(--dahn-canvas-heading-font-weight)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+  identity.append(mark, dancerTitle);
+  chrome.append(identity);
 
   const hostedDancerRegion = document.createElement('section');
   hostedDancerRegion.dataset['dahnHostedDancerRegion'] = 'true';
@@ -60,5 +73,5 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.append(chrome, hostedDancerRegion);
   container.append(root);
 
-  return { root, chrome, hostedDancerRegion, awaitingHomeDancer, primarySlot };
+  return { root, chrome, dancerTitle, hostedDancerRegion, awaitingHomeDancer, primarySlot };
 }

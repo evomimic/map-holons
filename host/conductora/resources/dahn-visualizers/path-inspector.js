@@ -48,14 +48,18 @@ export default class PathInspectorElement extends HTMLElement {
     this.dataset.dahnPathInspector = 'true';
     Object.assign(this.style, {
       display: 'grid', flex: '1 1 auto', minHeight: '0', minWidth: '0', overflow: 'hidden',
-      gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 'var(--dahn-canvas-gap)',
+      gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'auto minmax(0, 1fr)', gap: '0',
+      boxSizing: 'border-box',
+      border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+      background: 'var(--dahn-panel-surface-background)',
     });
     const title = document.createElement('header');
-    const titleLabel = document.createElement('span');
-    titleLabel.dataset.pathInspectorTitle = 'true';
-    title.append(titleLabel);
-    title.style.color = 'var(--dahn-muted-text-color)';
-    titleLabel.textContent = context.title ?? 'Path Inspector';
+    this.setAttribute('aria-label', context.title ?? 'Path Inspector');
+    Object.assign(title.style, {
+      color: 'var(--dahn-muted-text-color)', padding: 'var(--dahn-control-gap) var(--dahn-slot-padding)',
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--dahn-control-gap)',
+      borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+    });
 
     // Sparse bands preserve retained paths. Each Node continues to own its
     // internal Properties and Collection composition.
@@ -209,7 +213,6 @@ export default class PathInspectorElement extends HTMLElement {
     const gap = parseFloat(getComputedStyle(this.surface).rowGap) || 40;
     const extents = new Map(this.occurrences.map(item => [item.id, this.childExtents(item.element)]));
     const rowExtent = (id, kind) => Math.max(...this.occurrences.filter(item => this.rowId(item) === id).map(item => extents.get(item.id)[kind].height + this.regionInsets(item.id).height));
-    const heights = rows.map(id => rowExtent(id, this.rowAllocations.get(id)));
     const columns = Math.max(...this.occurrences.map(item => (item.column ?? 1)));
     // Derive column policy from occurrence focus each time: inserted columns
     // must never inherit another occurrence's positional allocation state.
@@ -218,6 +221,13 @@ export default class PathInspectorElement extends HTMLElement {
     const columnGap = parseFloat(getComputedStyle(this.surface).columnGap) || 16;
     const allocations = Array.from({ length: columns }, (_, index) => index + 1 === (frontier.column ?? 1) ? 'expanded'
       : this.focus?.mode !== 'restore' && index + 1 === source?.column ? 'partial' : 'compact');
+    // Minimal strips reserve their hit area for restoring the occurrence in place.
+    for (const occurrence of this.occurrences) {
+      const explore = this.regions.get(occurrence.id).querySelector(':scope > [data-explore-from-here]');
+      if (explore) explore.hidden = this.rowAllocations.get(this.rowId(occurrence)) === 'compact'
+        || allocations[(occurrence.column ?? 1) - 1] === 'compact';
+    }
+    const heights = rows.map(id => rowExtent(id, this.rowAllocations.get(id)));
     const columnExtent = (column, kind) => Math.max(0, ...this.occurrences.filter(item => (item.column ?? 1) === column).map(item => extents.get(item.id)[kind].width + this.regionInsets(item.id).width));
     this.columnWidths = allocations.map((allocation, index) => columnExtent(index + 1, allocation));
     this.columnOffsets = this.columnWidths.map((_, index) => this.columnWidths.slice(0, index).reduce((sum, width) => sum + width, 0) + index * columnGap);
@@ -346,6 +356,7 @@ export default class PathInspectorElement extends HTMLElement {
       if (region.nodeElement !== occurrence.element) {
         region.nodeElement?.remove();
         region.querySelector('[data-close-branch]')?.remove();
+        region.querySelector('[data-explore-from-here]')?.remove();
         region.querySelector('[data-restore-occurrence]')?.remove();
         region.nodeElement = occurrence.element;
         occurrence.element.setOccurrenceAttentionHandler?.(operation => this.requestAttention({ operation, target: occurrence.element }));
@@ -354,6 +365,18 @@ export default class PathInspectorElement extends HTMLElement {
           return this.requestContext(operation);
         });
         region.prepend(occurrence.element);
+        if (this.navigation?.reRoot && !occurrence.cancel && occurrence.element.setOccurrenceExplorationHandler) {
+          occurrence.element.setOccurrenceExplorationHandler(() => this.navigation.reRoot(occurrence.id));
+        } else if (this.navigation?.reRoot && !occurrence.cancel) {
+          const explore = document.createElement('button');
+          explore.type = 'button'; explore.textContent = '↗';
+          explore.title = 'Explore from here';
+          explore.setAttribute('aria-label', 'Explore from here');
+          explore.dataset.exploreFromHere = 'true';
+          Object.assign(explore.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+          explore.addEventListener('click', () => this.navigation.reRoot(occurrence.id));
+          region.prepend(explore);
+        }
         if (this.navigation?.close && !occurrence.cancel) {
           if (occurrence.element.setOccurrenceClosureHandler) {
             occurrence.element.setOccurrenceClosureHandler(() => this.navigation.close(occurrence.id));
@@ -446,7 +469,7 @@ export default class PathInspectorElement extends HTMLElement {
     const pixels = value => parseFloat(value) || 0;
     return {
       width: pixels(style.borderLeftWidth) + pixels(style.borderRightWidth),
-      height: pixels(style.borderTopWidth) + pixels(style.borderBottomWidth) + [...this.regions.get(id).querySelectorAll(':scope > [data-restore-occurrence], :scope > [data-close-branch]')].reduce((sum, button) => sum + button.offsetHeight, 0),
+      height: pixels(style.borderTopWidth) + pixels(style.borderBottomWidth) + [...this.regions.get(id).querySelectorAll(':scope > [data-restore-occurrence], :scope > [data-close-branch], :scope > [data-explore-from-here]')].reduce((sum, button) => sum + button.offsetHeight, 0),
     };
   }
   /** Hosts delegate intent to this surface owner, never its grid implementation. */
@@ -462,7 +485,7 @@ export default class PathInspectorElement extends HTMLElement {
     const controls = document.createElement('div');
     controls.setAttribute('role', 'group');
     controls.setAttribute('aria-label', 'Navigation view');
-    Object.assign(controls.style, { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--dahn-control-gap)' });
+    Object.assign(controls.style, { display: 'flex', width: '100%', minWidth: '0', overflowX: 'auto', alignItems: 'center', gap: 'var(--dahn-control-gap)' });
     this.viewButtons = [];
     for (const [label, action] of [
       ['Zoom out', () => this.view.zoom(this.view.scale / 1.25)],
@@ -473,13 +496,13 @@ export default class PathInspectorElement extends HTMLElement {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = label;
       button.addEventListener('click', action);
-      Object.assign(button.style, { font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+      Object.assign(button.style, { flex: '0 0 auto', font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
       controls.append(button); this.viewButtons.push(button);
     }
     this.viewStatus = document.createElement('span');
     this.viewStatus.dataset.navigationViewStatus = 'true';
     // Status changes must not resize the viewport and feed zoom back into layout.
-    Object.assign(this.viewStatus.style, { flex: '0 0 100%', height: '1.5em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+    Object.assign(this.viewStatus.style, { flex: '1 1 0', minWidth: '5ch', fontVariantNumeric: 'tabular-nums', height: '1.5em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
     controls.append(this.viewStatus);
     return controls;
   }
