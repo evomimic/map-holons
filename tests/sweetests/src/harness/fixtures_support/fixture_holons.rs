@@ -1144,6 +1144,94 @@ mod tests {
     }
 
     #[test]
+    fn persisted_graph_subjects_require_saved_heads_before_a_step_is_added() {
+        use crate::{DancesTestCase, ExpectedPersistedGraph, PersistedSubject};
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let staged = mint_staged_token(&context, &mut fixtures, "unsaved-graph-subject");
+        let mut test_case = DancesTestCase::default();
+        let error = test_case
+            .add_verify_persisted_graph_step(
+                &fixtures,
+                ExpectedPersistedGraph {
+                    enumerated: vec![PersistedSubject::Successor {
+                        of: Box::new(PersistedSubject::Token(staged)),
+                        generation: 1,
+                    }],
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap_err();
+        assert!(error.to_string().contains("must have a saved head"));
+        assert!(test_case.steps.is_empty());
+    }
+
+    #[test]
+    fn persisted_graph_subjects_freeze_saved_heads_before_later_deletion() {
+        use crate::{
+            DanceTestStep, DancesTestCase, EdgeExpectation, ExpectedLineage, ExpectedPersistedEdge,
+            ExpectedPersistedGraph, PersistedSubject,
+        };
+        use holons_prelude::prelude::*;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let staged = mint_staged_token(&context, &mut fixtures, "frozen-graph-subject");
+        commit_roots(&mut fixtures);
+        let saved_id = fixtures.resolve_target_token_to_head(&staged).unwrap().expected_id();
+        let subject = PersistedSubject::Token(staged.clone());
+        let mut test_case = DancesTestCase::default();
+        test_case
+            .add_verify_persisted_graph_step(
+                &fixtures,
+                ExpectedPersistedGraph {
+                    enumerated: vec![subject.clone()],
+                    edges: vec![ExpectedPersistedEdge {
+                        source: subject.clone(),
+                        target: subject.clone(),
+                        relationship: "Predecessor".to_relationship_name(),
+                        inverse: None,
+                        expectation: EdgeExpectation::Absent,
+                    }],
+                    lineage: vec![ExpectedLineage {
+                        subject: PersistedSubject::Successor {
+                            of: Box::new(subject.clone()),
+                            generation: 0,
+                        },
+                        predecessors: vec![subject.clone()],
+                        successors: vec![subject],
+                    }],
+                },
+                None,
+            )
+            .unwrap();
+        test_case.add_delete_holon_step(&mut fixtures, staged.clone(), None, None).unwrap();
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&staged).unwrap().expected_snapshot().state(),
+            TestHolonState::Deleted
+        );
+        let DanceTestStep::VerifyPersistedGraph { expected, .. } = &test_case.steps[0] else {
+            panic!("expected graph step");
+        };
+        let assert_saved = |subject: &PersistedSubject| {
+            let PersistedSubject::Token(token) = subject else {
+                panic!("expected token subject");
+            };
+            assert_eq!(token.expected_id(), saved_id);
+            assert_eq!(token.expected_snapshot().state(), TestHolonState::Saved);
+        };
+        assert_saved(&expected.enumerated[0]);
+        assert_saved(&expected.edges[0].source);
+        assert_saved(&expected.edges[0].target);
+        let PersistedSubject::Successor { of, .. } = &expected.lineage[0].subject else {
+            panic!("expected traversal subject");
+        };
+        assert_saved(of);
+        assert_saved(&expected.lineage[0].predecessors[0]);
+        assert_saved(&expected.lineage[0].successors[0]);
+    }
+
+    #[test]
     fn untracked_token_errors() {
         let context = init_fixture_context();
         let mut fixture_holons = FixtureHolons::new(context.clone());

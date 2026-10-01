@@ -15,6 +15,8 @@ pub mod load_query_test_schema_executor;
 pub mod lookup_saved_holon_executor;
 pub mod match_db_content_executor;
 pub mod new_holon_executor;
+pub mod persisted_graph_executor;
+pub mod persisted_read_support;
 pub mod print_database_executor;
 pub mod query_executor;
 pub mod query_relationships_executor;

@@ -208,6 +208,56 @@ pub enum QueryExpectation {
     Error(HolonErrorKind),
 }
 
+/// A saved subject addressed by fixture identity, enumeration key, or lineage traversal.
+#[derive(Clone, Debug)]
+pub enum PersistedSubject {
+    /// The adder freezes this token to its current saved head; execution uses its recorded identity.
+    Token(TestReference),
+    /// Requires exactly one enumerated holon with this key. Use tokens for same-key versions.
+    Key(String),
+    /// Traverses a unique Successor at each hop; zero denotes the source itself.
+    /// Use tokens to identify branches when a hop has multiple successors.
+    Successor { of: Box<PersistedSubject>, generation: usize },
+}
+
+/// Expected occurrence count of a particular target identity in a persisted relationship.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EdgeExpectation {
+    ExactlyOnce,
+    Contains,
+    Absent,
+}
+
+/// One forward edge and, optionally, the corresponding inverse edge.
+#[derive(Clone, Debug)]
+pub struct ExpectedPersistedEdge {
+    pub source: PersistedSubject,
+    pub relationship: RelationshipName,
+    /// When present, applies the same expectation from target back to source.
+    pub inverse: Option<RelationshipName>,
+    pub target: PersistedSubject,
+    pub expectation: EdgeExpectation,
+}
+
+/// Exact identities for the fixed `Predecessor` and `Successor` relationships;
+/// empty lists assert absence of lineage.
+/// Duplicate actual or declared members are errors, even when the identity sets agree.
+#[derive(Clone, Debug)]
+pub struct ExpectedLineage {
+    pub subject: PersistedSubject,
+    pub predecessors: Vec<PersistedSubject>,
+    pub successors: Vec<PersistedSubject>,
+}
+
+/// Persisted graph assertions evaluated with fresh reads rather than staged snapshots.
+#[derive(Clone, Debug, Default)]
+pub struct ExpectedPersistedGraph {
+    /// Each subject must occur exactly once in get-all; unrelated holons are permitted.
+    pub enumerated: Vec<PersistedSubject>,
+    pub edges: Vec<ExpectedPersistedEdge>,
+    pub lineage: Vec<ExpectedLineage>,
+}
+
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
@@ -319,6 +369,10 @@ pub enum DanceTestStep {
         description: String,
     },
     VerifyRelationshipAnchoring {
+        description: String,
+    },
+    VerifyPersistedGraph {
+        expected: ExpectedPersistedGraph,
         description: String,
     },
     VerifyCoreSchemaDescriptorSubtypes {
@@ -548,6 +602,15 @@ impl core::fmt::Display for DanceTestStep {
             }
             DanceTestStep::VerifyRelationshipAnchoring { description } => {
                 write!(f, "{description}")
+            }
+            DanceTestStep::VerifyPersistedGraph { expected, description } => {
+                write!(
+                    f,
+                    "{description} [enumerated: {}, edges: {}, lineage: {}]",
+                    expected.enumerated.len(),
+                    expected.edges.len(),
+                    expected.lineage.len()
+                )
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description } => {
                 write!(f, "{description}")

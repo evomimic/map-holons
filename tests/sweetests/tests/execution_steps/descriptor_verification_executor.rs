@@ -1,4 +1,8 @@
-use core_types::HolonId;
+use super::persisted_read_support::{
+    assert_related_ids_contain, assert_related_ids_contain_exactly_once,
+    assert_related_ids_do_not_contain, find_holon_by_key, find_holons_by_key,
+    loaded_holons_with_context, local_id, related_holon_members, string_property,
+};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
     DanceDescriptor, DeclaredRelationshipDescriptor, HolonDescriptor, OperatorCategory,
@@ -20,7 +24,6 @@ use holons_test::harness::helpers::{
     STAGE_NEW_VERSION_PERSON_1_KEY, VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
-use integrity_core_types::LocalId;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
@@ -996,73 +999,6 @@ async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> Holon
     loaded_holons_with_context(state, step_name).await.1
 }
 
-/// Keeps run-scoped descriptor anchors and returned subjects in the same assertion transaction.
-pub(super) async fn loaded_holons_with_context(
-    state: &mut TestExecutionState,
-    step_name: &str,
-) -> (Arc<TransactionContext>, HolonCollection) {
-    let context = state.open_assertion_context(step_name).await.unwrap_or_else(|error| {
-        panic!("{step_name}: failed to open assertion transaction: {error:?}")
-    });
-
-    let command = MapCommand::Transaction(TransactionCommand {
-        context: context.clone(),
-        action: TransactionAction::GetAllHolons,
-    });
-    let result = state
-        .dispatch_command(command, step_name)
-        .await
-        .unwrap_or_else(|error| panic!("{step_name}: get_all_holons failed: {error:?}"));
-
-    match result {
-        MapResult::Collection(collection) => (context, collection),
-        other => panic!("{step_name}: expected Collection, got {other:?}"),
-    }
-}
-
-fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
-    holons
-        .get_by_key(&MapString::from(key))
-        .unwrap_or_else(|error| panic!("key lookup for {key} failed: {error:?}"))
-        .unwrap_or_else(|| panic!("expected loaded holon with key {key}"))
-}
-
-fn find_holons_by_key(holons: &HolonCollection, key: &str) -> Vec<HolonReference> {
-    holons
-        .get_members()
-        .iter()
-        .filter(|holon| {
-            holon
-                .key()
-                .unwrap_or_else(|error| {
-                    panic!("key read failed while searching for {key}: {error:?}")
-                })
-                .as_ref()
-                .map(|actual| actual.0.as_str() == key)
-                .unwrap_or(false)
-        })
-        .cloned()
-        .collect()
-}
-
-fn local_id(holon: &HolonReference) -> LocalId {
-    match holon.holon_id().unwrap_or_else(|error| panic!("holon_id read failed: {error:?}")) {
-        HolonId::Local(local_id) => local_id,
-        HolonId::External(external_id) => panic!("expected local holon id, got {external_id:?}"),
-    }
-}
-
-fn string_property(holon: &HolonReference, property_name: &str) -> Option<String> {
-    match holon
-        .property_value(&PropertyName(MapString::from(property_name)))
-        .unwrap_or_else(|error| panic!("property_value({property_name}) failed: {error:?}"))
-    {
-        Some(BaseValue::StringValue(value)) => Some(value.0),
-        Some(other) => panic!("property {property_name} expected string value, got {other:?}"),
-        None => None,
-    }
-}
-
 fn new_descriptor_holon(
     context: &Arc<TransactionContext>,
     key: &str,
@@ -1136,66 +1072,6 @@ fn related_holon_keys(holon: &HolonReference, relationship_name: &str) -> Vec<St
                 .0
         })
         .collect()
-}
-
-/// Returns the related holons themselves, for assertions that need to traverse onward
-/// from a target rather than just check that its id is present.
-fn related_holon_members(holon: &HolonReference, relationship_name: &str) -> Vec<HolonReference> {
-    let members_handle = holon
-        .related_holons(RelationshipName(MapString::from(relationship_name)))
-        .unwrap_or_else(|error| panic!("related_holons({relationship_name}) failed: {error:?}"));
-    let members = members_handle.read().unwrap_or_else(|error| {
-        panic!("related_holons({relationship_name}) lock failed: {error:?}")
-    });
-
-    members.get_members().to_vec()
-}
-
-fn related_holon_ids(holon: &HolonReference, relationship_name: &str) -> Vec<LocalId> {
-    let members_handle = holon
-        .related_holons(RelationshipName(MapString::from(relationship_name)))
-        .unwrap_or_else(|error| panic!("related_holons({relationship_name}) failed: {error:?}"));
-    let members = members_handle.read().unwrap_or_else(|error| {
-        panic!("related_holons({relationship_name}) lock failed: {error:?}")
-    });
-
-    members.get_members().iter().map(local_id).collect()
-}
-
-fn assert_related_ids_contain(holon: &HolonReference, relationship_name: &str, expected: &LocalId) {
-    let ids = related_holon_ids(holon, relationship_name);
-    assert!(
-        ids.iter().any(|actual| actual == expected),
-        "expected relationship {relationship_name} ids {ids:?} to contain {expected:?}"
-    );
-}
-
-fn assert_related_ids_do_not_contain(
-    holon: &HolonReference,
-    relationship_name: &str,
-    unexpected: &LocalId,
-) {
-    let ids = related_holon_ids(holon, relationship_name);
-    assert!(
-        ids.iter().all(|actual| actual != unexpected),
-        "expected relationship {relationship_name} ids {ids:?} not to contain {unexpected:?}"
-    );
-}
-
-/// Asserts the target id appears exactly once in the persisted relationship —
-/// duplicate SmartLinks would surface here as repeated members, because the
-/// guest fetch path adds one collection member per persisted link.
-fn assert_related_ids_contain_exactly_once(
-    holon: &HolonReference,
-    relationship_name: &str,
-    expected: &LocalId,
-) {
-    let ids = related_holon_ids(holon, relationship_name);
-    let occurrences = ids.iter().filter(|actual| *actual == expected).count();
-    assert_eq!(
-        occurrences, 1,
-        "expected relationship {relationship_name} ids {ids:?} to contain {expected:?} exactly once"
-    );
 }
 
 fn assert_enum_variants_rewritten_to_declared_side(

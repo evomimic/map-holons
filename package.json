@@ -35,7 +35,7 @@
     "test": "npm run test:unit && npm run sweetest",
     "test:unit": "npm run test:unit:shared && npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run test:unit -w map-happ && npm run test:unit:sweetests && npm run web:typecheck && npm run web:test && npm run typecheck -w map-sdk && npm run test -w map-sdk",
     "test:unit:shared": "bash scripts/test-shared-crates.sh",
-    "test:unit:sweetests": "cargo test --manifest-path tests/sweetests/Cargo.toml --lib --test fixture_authoring_tests",
+    "test:unit:sweetests": "cargo test --manifest-path tests/sweetests/Cargo.toml --lib --test fixture_authoring_tests --test persisted_graph_tests",
 
     "sweetest": "npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run sweet:test",
     "sweetest:nocapture": "npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run sweet:test:nocapture",

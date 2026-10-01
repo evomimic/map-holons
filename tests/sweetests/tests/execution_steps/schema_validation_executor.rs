@@ -11,7 +11,7 @@ use holons_validation::{
 };
 use type_names::CoreValidationRuleName;
 
-use super::descriptor_verification_executor::loaded_holons_with_context;
+use super::persisted_read_support::loaded_holons_with_context;
 
 /// Assesses committed canonical inputs without replacing outcomes or invoking Commit.
 pub async fn execute_verify_schema_validation_conformance(state: &mut TestExecutionState) {

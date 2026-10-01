@@ -40,9 +40,9 @@
 use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitCandidate,
-    ExpectedCommitStatus, ExpectedLoadStatus, ExpectedRetryParticipant, ExpectedSnapshot,
-    FixtureHolons, QueryExpectation, QueryInputSpec, QueryRoute, SourceSnapshot, TestHolonState,
-    TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedCommitStatus, ExpectedLoadStatus, ExpectedPersistedGraph, ExpectedRetryParticipant,
+    ExpectedSnapshot, FixtureHolons, PersistedSubject, QueryExpectation, QueryInputSpec,
+    QueryRoute, SourceSnapshot, TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -374,6 +374,36 @@ impl DancesTestCase {
         });
         self.steps.push(DanceTestStep::VerifyRelationshipAnchoring { description });
 
+        Ok(())
+    }
+
+    /// Freezes token subjects to their saved heads for fresh persisted graph assertions.
+    /// Later staging or mutations cannot redirect this step's recorded identities.
+    pub fn add_verify_persisted_graph_step(
+        &mut self,
+        fixture_holons: &FixtureHolons,
+        mut expected: ExpectedPersistedGraph,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        for subject in &mut expected.enumerated {
+            freeze_persisted_subject(fixture_holons, subject)?;
+        }
+        for edge in &mut expected.edges {
+            freeze_persisted_subject(fixture_holons, &mut edge.source)?;
+            freeze_persisted_subject(fixture_holons, &mut edge.target)?;
+        }
+        for lineage in &mut expected.lineage {
+            freeze_persisted_subject(fixture_holons, &mut lineage.subject)?;
+            for subject in lineage.predecessors.iter_mut().chain(&mut lineage.successors) {
+                freeze_persisted_subject(fixture_holons, subject)?;
+            }
+        }
+        self.steps.push(DanceTestStep::VerifyPersistedGraph {
+            expected,
+            description: description
+                .unwrap_or_else(|| "Verify persisted graph identities and exact lineage".into()),
+        });
         Ok(())
     }
 
@@ -1024,4 +1054,29 @@ impl DancesTestCase {
 
         Ok(())
     }
+}
+
+/// Resolves token subjects at authoring time, including nested traversal sources.
+fn freeze_persisted_subject(
+    fixture_holons: &FixtureHolons,
+    subject: &mut PersistedSubject,
+) -> Result<(), HolonError> {
+    match subject {
+        PersistedSubject::Token(token) => {
+            let head = fixture_holons.resolve_target_token_to_head(token)?;
+            if !matches!(
+                head.expected_snapshot().state(),
+                TestHolonState::Saved | TestHolonState::SavedLookup
+            ) {
+                return Err(HolonError::InvalidParameter(format!(
+                    "Persisted graph subject {token} must have a saved head, got {}",
+                    head.expected_snapshot().state(),
+                )));
+            }
+            *token = head;
+        }
+        PersistedSubject::Successor { of, .. } => freeze_persisted_subject(fixture_holons, of)?,
+        PersistedSubject::Key(_) => {}
+    }
+    Ok(())
 }

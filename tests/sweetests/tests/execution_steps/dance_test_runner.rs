@@ -29,6 +29,7 @@ use super::load_query_test_schema_executor::execute_load_query_test_schema;
 use super::lookup_saved_holon_executor::execute_lookup_saved_holon_by_key;
 use super::match_db_content_executor::execute_match_db_content;
 use super::new_holon_executor::execute_new_holon;
+use super::persisted_graph_executor::execute_verify_persisted_graph;
 use super::query_executor::execute_query;
 use super::query_relationships_executor::execute_query_relationships;
 use super::remove_properties_executor::execute_remove_properties;
@@ -286,6 +287,9 @@ async fn run_dance_test_case(
             }
             DanceTestStep::VerifyRelationshipAnchoring { .. } => {
                 execute_verify_relationship_anchoring(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifyPersistedGraph { expected, .. } => {
+                execute_verify_persisted_graph(&mut test_execution_state, expected).await
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { .. } => {
                 execute_verify_core_schema_descriptor_subtypes(&mut test_execution_state).await
