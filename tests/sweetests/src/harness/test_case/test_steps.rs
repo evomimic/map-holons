@@ -52,6 +52,92 @@ impl core::fmt::Display for ExpectedCommitStatus {
     }
 }
 
+/// Persistence disposition declared for one live Pass 1 candidate, for one Commit attempt.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExpectedDisposition {
+    /// Persist a new root, including an independent clone, without inherited lineage.
+    NewRoot,
+    /// Save nothing and resolve subsequent operations to the saved source.
+    NoAction,
+    /// Persist graph changes using the saved source's identity.
+    GraphOnly,
+    /// Persist a distinct version with its saved source as predecessor.
+    NewVersion,
+}
+
+impl core::fmt::Display for ExpectedDisposition {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let value = match self {
+            ExpectedDisposition::NewRoot => "NewRoot",
+            ExpectedDisposition::NoAction => "NoAction",
+            ExpectedDisposition::GraphOnly => "GraphOnly",
+            ExpectedDisposition::NewVersion => "NewVersion",
+        };
+        write!(f, "{value}")
+    }
+}
+
+/// A fixture author's declaration for one live staged candidate in a Commit attempt.
+#[derive(Clone, Debug)]
+pub struct ExpectedCommitCandidate {
+    pub token: TestReference,
+    pub disposition: ExpectedDisposition,
+    /// Newly appended operational error occurrences; an empty list expects none.
+    /// Repeated kinds represent separate occurrences.
+    pub expected_new_errors: Vec<HolonErrorKind>,
+}
+
+impl ExpectedCommitCandidate {
+    /// Declares a candidate's disposition with no new operational errors expected.
+    pub fn new(token: TestReference, disposition: ExpectedDisposition) -> Self {
+        Self { token, disposition, expected_new_errors: Vec::new() }
+    }
+
+    /// Sets the expected new operational error occurrences for this attempt.
+    pub fn with_expected_new_errors(mut self, expected_new_errors: Vec<HolonErrorKind>) -> Self {
+        self.expected_new_errors = expected_new_errors;
+        self
+    }
+}
+
+/// A committed staged entry retained for a Pass 2 relationship retry.
+/// It has no live node disposition and produces no new `SavedHolons` entry.
+#[derive(Clone, Debug)]
+pub struct ExpectedRetryParticipant {
+    pub token: TestReference,
+    /// Newly appended operational error occurrences; an empty list expects none.
+    /// Multiplicity follows [`ExpectedCommitCandidate::expected_new_errors`].
+    pub expected_new_errors: Vec<HolonErrorKind>,
+}
+
+impl ExpectedRetryParticipant {
+    /// Declares a relationship retry participant with no new operational errors expected.
+    pub fn new(token: TestReference) -> Self {
+        Self { token, expected_new_errors: Vec::new() }
+    }
+
+    /// Sets the expected new operational error occurrences for this attempt.
+    pub fn with_expected_new_errors(mut self, expected_new_errors: Vec<HolonErrorKind>) -> Self {
+        self.expected_new_errors = expected_new_errors;
+        self
+    }
+}
+
+/// Adder-resolved declaration associating author intent with a result token.
+#[derive(Clone, Debug)]
+pub struct ResolvedCommitCandidate {
+    pub staged_token: TestReference,
+    pub disposition: ExpectedDisposition,
+    /// Advanced fixture-head token minted for every declared disposition, including `NoAction`.
+    /// The Commit executor records the corresponding saved reference against this token;
+    /// for `NoAction`, it constructs that reference from the candidate's `versioned_source_id`
+    /// without consuming a `SavedHolons` entry.
+    pub result_token: TestReference,
+    /// Newly appended operational error occurrences; an empty list expects none.
+    /// Multiplicity follows [`ExpectedCommitCandidate::expected_new_errors`].
+    pub expected_new_errors: Vec<HolonErrorKind>,
+}
+
 /// Identity-only subject shape; the executor supplies the realized holon's identity.
 #[derive(Clone, Debug)]
 pub enum ExpectedValidationSubject {
@@ -142,7 +228,12 @@ pub enum DanceTestStep {
         description: String,
     },
     Commit {
-        saved_tokens: Vec<TestReference>, // Used to match expected
+        // Transitional saved-result list for the current executor. Once fixture Commit
+        // returns resolved candidates, derive this list from their dispositions; remove
+        // the field when the executor matches results by identity.
+        saved_tokens: Vec<TestReference>,
+        candidates: Vec<ResolvedCommitCandidate>,
+        retry_participants: Vec<ExpectedRetryParticipant>,
         expected_status: ExpectedCommitStatus,
         expected_error: Option<HolonErrorKind>,
         description: String,
@@ -330,15 +421,41 @@ impl core::fmt::Display for DanceTestStep {
             }
             DanceTestStep::Commit {
                 saved_tokens,
+                candidates,
+                retry_participants,
                 expected_status,
                 expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [saved_tokens: {}, expected_status: {expected_status}, expected_error: {expected_error:?}]",
+                    "{description} [saved_tokens: {}, expected_status: {expected_status}, expected_error: {expected_error:?}, candidates: [",
                     saved_tokens.len()
-                )
+                )?;
+                for (index, candidate) in candidates.iter().enumerate() {
+                    if index > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(
+                        f,
+                        "{{token: {}, disposition: {}, expected_new_errors: {:?}}}",
+                        candidate.staged_token,
+                        candidate.disposition,
+                        candidate.expected_new_errors
+                    )?;
+                }
+                write!(f, "], retry_participants: [")?;
+                for (index, participant) in retry_participants.iter().enumerate() {
+                    if index > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(
+                        f,
+                        "{{token: {}, expected_new_errors: {:?}}}",
+                        participant.token, participant.expected_new_errors
+                    )?;
+                }
+                write!(f, "]]")
             }
             DanceTestStep::DeleteHolon { step_token, expected_error, description } => {
                 write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")

@@ -574,6 +574,8 @@ impl DancesTestCase {
         };
         self.steps.push(DanceTestStep::Commit {
             saved_tokens,
+            candidates: Vec::new(),
+            retry_participants: Vec::new(),
             expected_status,
             expected_error,
             description,
