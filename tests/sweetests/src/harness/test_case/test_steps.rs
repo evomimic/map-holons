@@ -57,7 +57,7 @@ impl core::fmt::Display for ExpectedCommitStatus {
 pub enum ExpectedDisposition {
     /// Persist a new root, including an independent clone, without inherited lineage.
     NewRoot,
-    /// Save nothing and resolve subsequent operations to the saved source.
+    /// Save nothing; retain the staged head under Incomplete, or bind the source under Complete.
     NoAction,
     /// Persist graph changes using the saved source's identity.
     GraphOnly,
@@ -128,11 +128,12 @@ impl ExpectedRetryParticipant {
 pub struct ResolvedCommitCandidate {
     pub staged_token: TestReference,
     pub disposition: ExpectedDisposition,
-    /// Advanced fixture-head token minted for every declared disposition, including `NoAction`.
+    /// Advanced fixture-head token, absent only for `NoAction` under `Incomplete`.
+    /// That candidate keeps its staged head and remains live for the next attempt.
     /// The Commit executor records the corresponding saved reference against this token;
     /// for `NoAction`, it constructs that reference from the candidate's `versioned_source_id`
     /// without consuming a `SavedHolons` entry.
-    pub result_token: TestReference,
+    pub result_token: Option<TestReference>,
     /// Newly appended operational error occurrences; an empty list expects none.
     /// Multiplicity follows [`ExpectedCommitCandidate::expected_new_errors`].
     pub expected_new_errors: Vec<HolonErrorKind>,
@@ -509,9 +510,13 @@ impl core::fmt::Display for DanceTestStep {
                     }
                     write!(
                         f,
-                        "{{token: {}, disposition: {}, expected_new_errors: {:?}}}",
+                        "{{token: {}, disposition: {}, result: {}, expected_new_errors: {:?}}}",
                         candidate.staged_token,
                         candidate.disposition,
+                        candidate.result_token.as_ref().map_or_else(
+                            || "retained staged head".to_string(),
+                            |token| token.to_string(),
+                        ),
                         candidate.expected_new_errors
                     )?;
                 }

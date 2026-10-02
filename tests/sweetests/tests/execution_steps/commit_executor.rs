@@ -462,10 +462,14 @@ pub async fn execute_commit(
                 panic!("{report}");
             }
 
-            // Bind saved results by identity, and unchanged updates directly to their
-            // saved sources. Retained relationship retries keep their existing mappings.
+            // Bind saved results by identity. Unchanged updates bind their saved sources
+            // only when the transaction completes; incomplete attempts keep them staged.
+            // Retained relationship retries keep their existing mappings.
             for (reference, index) in saved_refs.into_iter().zip(matched_indices) {
-                let token = &declarations[index].result_token;
+                let token = declarations[index]
+                    .result_token
+                    .as_ref()
+                    .expect("a SavedHolons outcome must bind a result token");
                 let execution_reference = ExecutionReference::from_token_execution(
                     token,
                     ExecutionHandle::from(reference),
@@ -474,6 +478,17 @@ pub async fn execute_commit(
             }
             for (declaration, observed) in declarations.iter().zip(&observations) {
                 if declaration.disposition == ExpectedDisposition::NoAction {
+                    if expected_status == ExpectedCommitStatus::Incomplete {
+                        assert!(
+                            declaration.result_token.is_none(),
+                            "NoAction under Incomplete must retain its staged head without a result binding"
+                        );
+                        continue;
+                    }
+                    let token = declaration
+                        .result_token
+                        .as_ref()
+                        .expect("NoAction under Complete must bind its saved source");
                     let source_id = HolonId::Local(
                         observed
                             .versioned_source_id
@@ -490,7 +505,6 @@ pub async fn execute_commit(
                             HolonReference::smart_from_id(context.space_read_handle(), source_id)
                         }
                     };
-                    let token = &declaration.result_token;
                     let execution_reference = ExecutionReference::from_token_execution(
                         token,
                         ExecutionHandle::from(reference),

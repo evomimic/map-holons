@@ -643,7 +643,7 @@ impl DancesTestCase {
                     participant.token =
                         fixture_holons.resolve_target_token_to_head(&participant.token)?;
                 }
-                fixture_holons.commit(&candidates, &retry_participants)?
+                fixture_holons.commit(expected_status, &candidates, &retry_participants)?
             };
         self.steps.push(DanceTestStep::Commit {
             candidates: resolved,

@@ -3,7 +3,7 @@
 mod fixture_cases;
 
 use fixture_cases::*;
-use holons_test::{DanceTestStep, ExpectedCommitStatus};
+use holons_test::{DanceTestStep, ExpectedCommitStatus, ExpectedDisposition, TestHolonState};
 use pretty_assertions::assert_eq;
 
 /// Exercises fixture coverage gates without starting a conductor or dispatching dances.
@@ -51,21 +51,46 @@ fn all_fixtures_author_without_a_conductor() {
 #[test]
 fn incomplete_fixture_authors_all_attempts_without_a_conductor() {
     let scenario = commit_incomplete_fixture::commit_incomplete_fixture().unwrap();
-    let attempts = &scenario.case.steps[scenario.first_attempt..scenario.first_attempt + 3];
-    for (index, step) in attempts.iter().enumerate() {
-        let DanceTestStep::Commit { candidates, retry_participants, expected_status, .. } = step
-        else {
-            panic!("three consecutive Commit attempts");
-        };
-        assert_eq!(candidates.len(), if index == 0 { 2 } else { 0 });
-        assert_eq!(retry_participants.len(), if index == 0 { 0 } else { 1 });
-        assert_eq!(
-            *expected_status,
-            if index == 2 {
-                ExpectedCommitStatus::Complete
+    assert_eq!(scenario.attempts.len(), 2);
+    assert!(scenario.attempts[0].unchanged.is_none());
+    assert!(scenario.attempts[1].unchanged.is_some());
+    for sequence in &scenario.attempts {
+        let unchanged_count = usize::from(sequence.unchanged.is_some());
+        let attempts = &scenario.case.steps[sequence.first_attempt..sequence.first_attempt + 3];
+        for (index, step) in attempts.iter().enumerate() {
+            let DanceTestStep::Commit { candidates, retry_participants, expected_status, .. } =
+                step
+            else {
+                panic!("three consecutive Commit attempts");
+            };
+            assert_eq!(candidates.len(), (if index == 0 { 2 } else { 0 }) + unchanged_count);
+            assert_eq!(retry_participants.len(), if index == 0 { 0 } else { 1 });
+            assert_eq!(
+                *expected_status,
+                if index == 2 {
+                    ExpectedCommitStatus::Complete
+                } else {
+                    ExpectedCommitStatus::Incomplete
+                }
+            );
+            if let Some(unchanged) = &sequence.unchanged {
+                let candidate = candidates
+                    .iter()
+                    .find(|candidate| candidate.disposition == ExpectedDisposition::NoAction)
+                    .unwrap();
+                assert_eq!(candidate.staged_token, unchanged.staged);
+                assert!(candidate.expected_new_errors.is_empty());
+                assert_eq!(candidate.result_token.is_some(), index == 2);
+                if index == 2 {
+                    assert_eq!(
+                        candidate.result_token.as_ref().unwrap().expected_id(),
+                        unchanged.saved.expected_id()
+                    );
+                    assert_eq!(unchanged.saved.expected_snapshot().state(), TestHolonState::Saved);
+                }
             } else {
-                ExpectedCommitStatus::Incomplete
+                assert!(candidates.iter().all(|candidate| candidate.result_token.is_some()));
             }
-        );
+        }
     }
 }
