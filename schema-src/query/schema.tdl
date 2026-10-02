@@ -838,3 +838,227 @@ inverse relationship (QueryParameterBinding.HolonType)-[RuntimeParametersFor]->(
     plural: "RuntimeParametersFor"
   }
 }
+
+holon OrderBy.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Collection transformation that returns the input occurrences stably sorted by one through five ordered OrderBySpecs. It neither deduplicates nor projects."
+    display_name: "Order By"
+    display_plural: "Order By Expressions"
+    plural: "OrderByExpressions"
+  }
+  relationships {
+    InstanceRelationships -> (OrderBy.HolonType)-[OrderBySpecs]->(OrderBySpec.HolonType)
+  }
+}
+
+holon OrderBySpec.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "One sort key of an OrderBy: the name of the property to sort by, its direction, and where members missing that value are placed."
+    display_name: "Order By Spec"
+    display_plural: "Order By Specs"
+    plural: "OrderBySpecs"
+  }
+  relationships {
+    InstanceProperties -> [PropertyName.PropertyType, SortDirection.PropertyType, NullPlacement.PropertyType]
+  }
+}
+
+holon Skip.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Collection transformation that removes the first SkipCount occurrences and preserves the order of the rest."
+    display_name: "Skip"
+    display_plural: "Skip Expressions"
+    plural: "SkipExpressions"
+  }
+  relationships {
+    InstanceProperties -> SkipCount.PropertyType
+  }
+}
+
+holon Limit.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Collection transformation that retains at most LimitCount leading occurrences."
+    display_name: "Limit"
+    display_plural: "Limit Expressions"
+    plural: "LimitExpressions"
+  }
+  relationships {
+    InstanceProperties -> LimitCount.PropertyType
+  }
+}
+
+property PropertyName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Name of the property an OrderBySpec sorts by, resolved at execution time against each input member's effective property surface. No default."
+    display_name: "Property Name"
+    display_plural: "Property Names"
+    plural: "PropertyNames"
+  }
+}
+
+property SortDirection.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value QuerySortDirection.MapEnumValueType
+  IsValueRequired true
+  DefaultValue Ascending
+  header {
+    description: "Direction in which an OrderBySpec orders present values. Evaluation resolves an absent value to the descriptor default without writing it."
+    display_name: "Sort Direction"
+    display_plural: "Sort Directions"
+    plural: "SortDirections"
+  }
+}
+
+property NullPlacement.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value QueryNullPlacement.MapEnumValueType
+  IsValueRequired true
+  DefaultValue Missing-Last
+  header {
+    description: "Placement of members missing the sorted value, independent of SortDirection. Evaluation resolves an absent value to the descriptor default without writing it."
+    display_name: "Null Placement"
+    display_plural: "Null Placements"
+    plural: "NullPlacements"
+  }
+}
+
+property SkipCount.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
+  header {
+    description: "Nonnegative number of leading occurrences a Skip removes. No default."
+    display_name: "Skip Count"
+    display_plural: "Skip Counts"
+    plural: "SkipCounts"
+  }
+}
+
+property LimitCount.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
+  header {
+    description: "Nonnegative maximum number of occurrences a Limit retains. No default."
+    display_name: "Limit Count"
+    display_plural: "Limit Counts"
+    plural: "LimitCounts"
+  }
+}
+
+enum QuerySortDirection.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Direction in which an OrderBySpec orders present values."
+    display_name: "Query Sort Direction"
+    display_plural: "Query Sort Directions"
+    plural: "QuerySortDirections"
+  }
+  variants {
+    variant Ascending {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Smaller present values sort first."
+        display_name: "Ascending"
+      }
+    }
+    variant Descending {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Larger present values sort first."
+        display_name: "Descending"
+      }
+    }
+  }
+}
+
+enum QueryNullPlacement.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Placement of members missing an OrderBySpec's value, independent of direction."
+    display_name: "Query Null Placement"
+    display_plural: "Query Null Placements"
+    plural: "QueryNullPlacements"
+  }
+  variants {
+    variant Missing-First {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Members missing the value sort before every present value."
+        display_name: "Missing First"
+      }
+    }
+    variant Missing-Last {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Members missing the value sort after every present value."
+        display_name: "Missing Last"
+      }
+    }
+  }
+}
+
+instance OneToFive.CardinalityConstraint {
+  type CardinalityConstraint.ConstraintType
+  rule_of "MAP Query Schema-v0.0.2"
+  ConstraintName "OneToFive"
+  cardinality 1..5
+}
+
+def relationship (OrderBy.HolonType)-[OrderBySpecs]->(OrderBySpec.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> OneToFive.CardinalityConstraint
+    HasInverse -> OrderBySpecForExpressions
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source OrderBy.HolonType
+  target OrderBySpec.HolonType
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Ordered sort keys of an OrderBy; target order is sort precedence."
+    display_name: "Order By Specs"
+    display_plural: "Order By Specs"
+    plural: "OrderBySpecs"
+  }
+}
+
+inverse relationship (OrderBySpec.HolonType)-[OrderBySpecForExpressions]->(OrderBy.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source OrderBySpec.HolonType
+  target OrderBy.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of OrderBySpecs."
+    display_name: "Order By Spec For Expressions"
+    display_plural: "Order By Spec For Expressions"
+    plural: "OrderBySpecForExpressions"
+  }
+}

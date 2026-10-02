@@ -221,7 +221,7 @@ impl DancerRelationshipTypeName {
     }
 }
 
-/// Canonical Query Schema relationship type names consumed by the Query runtime (QRY1/QRY2).
+/// Canonical Query Schema relationship type names consumed by the Query runtime (QRY1/QRY2/QRY4a).
 #[derive(Debug, Clone, VariantNames)]
 pub enum QueryRelationshipTypeName {
     ExecutesExpression,
@@ -232,6 +232,7 @@ pub enum QueryRelationshipTypeName {
     FocalSpace,
     Input,
     Next,
+    OrderBySpecs,
     Result,
     RootExpression,
     SeedPredicate,

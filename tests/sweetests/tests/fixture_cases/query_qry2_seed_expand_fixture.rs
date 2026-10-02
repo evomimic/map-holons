@@ -396,9 +396,9 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
     Ok(test_case)
 }
 
-/// Properties for a Book/Person instance. `Title` is `IsValueRequired` on
+/// Properties for a Book/Person instance (shared with the QRY4a fixture). `Title` is `IsValueRequired` on
 /// `Book.HolonType`, so a title-less Book is rejected at commit validation.
-fn instance_properties(property_name: &str, value: &str) -> PropertyMap {
+pub(crate) fn instance_properties(property_name: &str, value: &str) -> PropertyMap {
     let mut properties = PropertyMap::new();
     properties
         .insert(property_name.to_property_name(), MapString(value.to_string()).to_base_value());
@@ -415,7 +415,7 @@ fn expansion_properties(relationship_name: &str) -> PropertyMap {
     properties
 }
 
-fn lookup_by_key(
+pub(crate) fn lookup_by_key(
     test_case: &mut DancesTestCase,
     fixture_context: &std::sync::Arc<TransactionContext>,
     fixture_holons: &mut FixtureHolons,
@@ -432,7 +432,7 @@ fn lookup_by_key(
 }
 
 /// Creates, stages, and describes one definition holon.
-fn stage_described(
+pub(crate) fn stage_described(
     test_case: &mut DancesTestCase,
     fixture_context: &std::sync::Arc<TransactionContext>,
     fixture_holons: &mut FixtureHolons,

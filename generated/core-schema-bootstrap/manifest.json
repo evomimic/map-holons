@@ -107,7 +107,7 @@
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "ead0039d2ae7a87a4b1af6d0fd5dcc35acf47a44addb051ea1b7067075f27eb5"
+      "sha256": "ea3ac652bf308d307511b1229a6bc3285934648ee34b46499e1a7c44f44addcb"
     },
     {
       "path": "imports/query-dance/schema.json",
@@ -517,6 +517,14 @@
     },
     {
       "key": "(OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(OrderBy.HolonType)-[OrderBySpecs]->(OrderBySpec.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(OrderBySpec.HolonType)-[OrderBySpecForExpressions]->(OrderBy.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -2304,6 +2312,14 @@
       "type": "MetaOperatorType.MetaHolonType"
     },
     {
+      "key": "Limit.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LimitCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "LinksCreated.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -2640,11 +2656,19 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "NullPlacement.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "NumericRangeConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
     },
     {
       "key": "OneOrMore.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType"
+    },
+    {
+      "key": "OneToFive.CardinalityConstraint",
       "type": "CardinalityConstraint.ConstraintType"
     },
     {
@@ -2666,6 +2690,14 @@
     {
       "key": "OperatorType.HolonType",
       "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "OrderBy.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "OrderBySpec.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "PanelCornerRadius.DesignToken",
@@ -2726,6 +2758,10 @@
     {
       "key": "PropertyMapVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
+    },
+    {
+      "key": "PropertyName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "PropertyNameMinWidth.DesignToken",
@@ -2808,6 +2844,18 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "QueryNullPlacement.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "QueryNullPlacement.MapEnumValueType.Missing-First",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "QueryNullPlacement.MapEnumValueType.Missing-Last",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
       "key": "QueryParameterBinding.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -2818,6 +2866,18 @@
     {
       "key": "QueryPredicate.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "QuerySortDirection.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "QuerySortDirection.MapEnumValueType.Ascending",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "QuerySortDirection.MapEnumValueType.Descending",
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "QuerySubTree.HolonType",
@@ -3016,6 +3076,14 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "Skip.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SkipCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "SlotBorderColor.DesignToken",
       "type": "DesignToken.HolonType"
     },
@@ -3030,6 +3098,10 @@
     {
       "key": "SlotPadding.DesignToken",
       "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SortDirection.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "StageNewFromClone.CommandType",

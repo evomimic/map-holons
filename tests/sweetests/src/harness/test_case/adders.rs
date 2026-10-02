@@ -253,11 +253,12 @@ impl DancesTestCase {
         Ok(())
     }
 
-    /// Executes a committed `Query` through the direct QueryCore seam or the
-    /// `QueryDance` route, with the given collection operand, and asserts the
-    /// expectation (result members, or an error kind). The step creates no
-    /// fixture holon: every runtime record it creates is transient and asserted
-    /// in place by the executor.
+    /// Executes a `Query` — committed, staged, or a transient definition graph
+    /// that is never staged — through the direct QueryCore seam or the
+    /// `QueryDance` route, with the given collection operand and no invocation
+    /// bindings, and asserts the expectation (result members, or an error kind).
+    /// The step creates no fixture holon: every runtime record it creates is
+    /// transient and asserted in place by the executor.
     pub fn add_execute_query_step(
         &mut self,
         query: TestReference,
@@ -266,13 +267,40 @@ impl DancesTestCase {
         expectation: QueryExpectation,
         description: Option<String>,
     ) -> Result<(), HolonError> {
+        self.add_execute_query_with_bindings_step(
+            query,
+            input,
+            route,
+            Vec::new(),
+            expectation,
+            description,
+        )
+    }
+
+    /// Like [`Self::add_execute_query_step`], additionally supplying
+    /// invocation-level parameter `bindings` (direct `begin_execution` argument,
+    /// or `QueryDanceRequest.RequestParameters`).
+    pub fn add_execute_query_with_bindings_step(
+        &mut self,
+        query: TestReference,
+        input: QueryInputSpec,
+        route: QueryRoute,
+        bindings: Vec<TestReference>,
+        expectation: QueryExpectation,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
-        let description = description
-            .unwrap_or_else(|| format!("Execute query via {route:?} with input {input:?}"));
+        let description = description.unwrap_or_else(|| {
+            format!(
+                "Execute query via {route:?} with input {input:?} and {} binding(s)",
+                bindings.len()
+            )
+        });
         self.steps.push(DanceTestStep::ExecuteQuery {
             query,
             input,
             route,
+            bindings,
             expectation,
             description,
         });

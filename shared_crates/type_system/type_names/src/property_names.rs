@@ -198,11 +198,16 @@ pub enum DancerPropertyTypeName {
     DancerPackageIdentity,
 }
 
-/// Canonical Query Schema property type names consumed by the Query runtime (QRY1/QRY2).
+/// Canonical Query Schema property type names consumed by the Query runtime (QRY1/QRY2/QRY4a).
 #[derive(Debug, Clone, VariantNames)]
 pub enum QueryPropertyTypeName {
     ExecutionStatus,
     ExpansionRelationshipName,
+    LimitCount,
+    NullPlacement,
+    PropertyName,
+    SkipCount,
+    SortDirection,
 }
 
 impl QueryPropertyTypeName {
