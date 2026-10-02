@@ -168,14 +168,17 @@ For Complete or supported Incomplete attempts, declare what each prepared live P
 should do. These are verbatim expectations, never inferred from fixture mutations or the response:
 
 - `NewRoot` — a create or independent clone, with no inherited lineage.
-- `NoAction` — an unchanged update: nothing is saved, and the token binds to the saved source.
+- `NoAction` — an unchanged update: nothing is saved. Complete binds the token to the saved source; Incomplete retains the staged head for retry.
 - `GraphOnly` — graph writes anchored to the source identity, whose lineage is untouched.
 - `NewVersion` — a new identity whose single predecessor is the staging source.
 
 Use `ExpectedCommitCandidate::new(token, disposition)` for every live candidate exactly once.
 Mutations never rewrite a declaration: a property write can promote a graph-only candidate to
 NewVersion, so a stale GraphOnly expectation fails as a disposition mismatch before snapshots.
-NoAction saves nothing, but its token remains usable as the saved source.
+NoAction under Incomplete advances no head and binds no result. Declare it again as an
+ExpectedCommitCandidate on retry, not an ExpectedRetryParticipant. Use its saved-source
+token for persisted operations between attempts. Under Complete, its head binds to that
+saved source.
 
 Operational errors are separate from command errors and semantic findings. Attach
 `.with_expected_new_errors(...)` only when needed; omission expects none. Checks compare newly

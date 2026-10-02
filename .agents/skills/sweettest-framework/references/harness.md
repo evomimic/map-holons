@@ -77,10 +77,13 @@ no fixture heads.
 | NewVersion | ForUpdateNewVersion | PublishVersion | yes | new / Committed(new) |
 
 FixtureHolons validates provenance and coverage, prepares declarations in author order, and
-mints one result token per declared candidate, **including NoAction**. The executor derives
-actual dispositions independently from retained staged handles and SavedHolons membership,
-then matches results by saved identity, never by key. Disposition mismatches precede saved-count
-and snapshot failures. A property write can promote GraphOnly to NewVersion; a stale declaration
+mints one result token per declared candidate, including NoAction under Complete. NoAction under
+Incomplete retains its staged head and has result_token = None. It remains a live Pass 1
+candidate and requires a fresh declaration on retry. The other supported dispositions become
+Committed during Pass 1 and advance normally. The executor derives actual dispositions from
+retained staged handles and SavedHolons membership, independently of the declaration, then
+matches results by saved identity, never by key. Disposition mismatches precede saved-count and
+snapshot failures. A property write can promote GraphOnly to NewVersion; a stale declaration
 must fail rather than silently change.
 
 Staging clears copied predecessor lineage. Expected persisted snapshots follow the declaration:
@@ -88,11 +91,12 @@ NewRoot has no inherited lineage; NewVersion has exactly the staging source as p
 NoAction and GraphOnly retain the source version's existing predecessor. Clone candidate
 snapshots before changing lineage; never mutate the saved source's snapshot.
 
-NoAction's result token binds directly to its saved source without consuming a SavedHolons entry.
-NoAction and GraphOnly heads alias existing nodes, so several Saved heads may realize one node.
-`count_saved()` counts non-deleted OwnNode heads. Comparing aliases against the same saved node
-is safe only because graph-only mutations are non-definitional by construction. A SavedLookup
-source remains partial through Commit; it must never become a complete saved-content snapshot.
+Under Complete, NoAction's result token binds directly to its saved source without consuming a
+SavedHolons entry. Under Incomplete, NoAction's result token is None. NoAction and GraphOnly
+heads alias existing nodes, so several Saved heads may realize one node. `count_saved()` counts
+non-deleted OwnNode heads. Comparing aliases against the same saved node is safe only because
+graph-only mutations are non-definitional by construction. A SavedLookup source remains partial
+through Commit; it must never become a complete saved-content snapshot.
 
 Operational errors are separate from disposition, command errors, and semantic findings. Compare
 **new occurrences** against a pre-attempt baseline, including kind and multiplicity; omission
@@ -147,7 +151,10 @@ Choose the read surface deliberately:
 
 Saved-content comparison checks complete saved properties and definitional content, skipping
 partial lookup stubs. Fresh persisted graph checks cover non-definitional changes, materialized
-inverses, and exact lineage, including extra or duplicate edges. Tokens distinguish same-key
-versions; Key subjects require unique enumeration, and Successor traversal requires a unique
-path. Empty lineage expectations assert absence. Use the existing read helpers and assertion
-functions rather than duplicating them.
+inverses, and exact lineage. Within a graph step, `edges` counts occurrences of one named
+target, so `ExactlyOnce` rejects a duplicate of that target but no `edges` entry rejects an
+undeclared extra one; `relationships` and `lineage` compare exact target sets and reject both.
+Declare an inverse direction as its own entry; it is never derivable from a forward declaration.
+Tokens distinguish same-key versions; Key subjects require unique enumeration, and Successor
+traversal requires a unique path. Empty lineage expectations assert absence. Use the existing
+read helpers and assertion functions rather than duplicating them.
