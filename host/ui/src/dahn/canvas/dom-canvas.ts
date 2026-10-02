@@ -24,6 +24,7 @@ export class DomCanvas implements CanvasApi {
   private mountRevision = 0;
   private mountedVisualizers: Array<HTMLElement & Partial<VisualizerElement>> = [];
   private readonly root: HTMLDivElement;
+  private readonly dancerTitle: HTMLElement;
   private readonly actionBar: HTMLElement;
   private readonly primarySlot: HTMLDivElement;
   private readonly hostedDancerRegion: HTMLElement;
@@ -37,6 +38,7 @@ export class DomCanvas implements CanvasApi {
   ) {
     const parts = createCanvasRoot(container);
     this.root = parts.root;
+    this.dancerTitle = parts.dancerTitle;
     this.primarySlot = parts.primarySlot;
     this.hostedDancerRegion = parts.hostedDancerRegion;
     this.awaitingHomeDancer = parts.awaitingHomeDancer;
@@ -45,14 +47,6 @@ export class DomCanvas implements CanvasApi {
     viewControls.setAttribute('role', 'group');
     viewControls.setAttribute('aria-label', 'Canvas actions');
     Object.assign(viewControls.style, { display: 'flex', gap: 'var(--dahn-control-gap)', alignItems: 'center', flexWrap: 'wrap' });
-    for (const [request, label] of [['zoom-to-fit', 'Zoom to Fit'], ['actual-size', 'Actual Size']] as const) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = label;
-      Object.assign(button.style, { font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
-      button.addEventListener('click', () => this.requestView(request));
-      viewControls.append(button);
-    }
     parts.chrome.append(viewControls);
   }
 
@@ -104,6 +98,17 @@ export class DomCanvas implements CanvasApi {
     this.hostedDancerRegion.dataset['dahnCanvasState'] =
       plan.length === 0 ? 'awaiting-home-dancer' : 'mounted';
     this.awaitingHomeDancer.hidden = plan.length > 0;
+  }
+
+  /** Hosts an already-bound Dancer composition without selecting its child roles. */
+  mountDancer(element: HTMLElement & Partial<VisualizerElement>, title: string): void {
+    if (this.disposed) return;
+    this.clear();
+    this.dancerTitle.textContent = title;
+    this.mountedVisualizers = [element];
+    this.primarySlot.append(element);
+    this.awaitingHomeDancer.hidden = true;
+    this.hostedDancerRegion.dataset['dahnCanvasState'] = 'mounted';
   }
 
   /** Keeps the Canvas usable when its home-Dancer region cannot be constructed. */

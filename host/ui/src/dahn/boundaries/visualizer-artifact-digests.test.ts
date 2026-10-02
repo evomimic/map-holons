@@ -34,3 +34,11 @@ describe('registered navigation artifact integrity', () => {
     }
   });
 });
+
+it('offers rooted navigation at every TypeKind boundary supported by the generic Node', async () => {
+  const generated = JSON.parse(await readFile(resolve(repository, 'generated/json-imports/dahn/schema.json'), 'utf8'));
+  const applicability = (key: string): string[] => generated.holons.find((h: any) => h.key === key)
+    .relationships.find((r: any) => r.name === 'ApplicableToType').target.map((t: any) => t.$ref);
+  const roots = applicability('PathInspector.RootedNavigationVisualizer');
+  for (const type of applicability('HolonInspector.NodeVisualizer')) expect(roots).toContain(type);
+});

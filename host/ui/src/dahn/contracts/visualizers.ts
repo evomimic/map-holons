@@ -87,6 +87,8 @@ export interface VisualizerDefinition {
  * Common context passed into Web Component visualizers.
  */
 export interface VisualizerContext {
+  /** Inherited experience identity, independent of the navigation anchor/target. */
+  experience?: { readonly dancer: HolonReference; readonly holonSpace: HolonReference };
   /** Human-readable occurrence identity supplied by the parent composition. */
   title?: string;
   /** Node identity without its type label, for responsive title presentation. */
@@ -166,6 +168,8 @@ export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorPar
   setSpatialBudget?(budget: { width?: number; height: number }): void;
   /** Semantic request to restore the containing occurrence, independent of child layout. */
   setOccurrenceRestorationHandler?(handler: () => void): void;
+  /** Bind the parent-owned action for exploring this occurrence in a new tab. */
+  setOccurrenceExplorationHandler?(handler: () => void): void;
   /** Parent interprets close as occurrence topology removal, not semantic deletion. */
   setOccurrenceClosureHandler?(handler: () => void): void;
   /** Collection identity is resolved by the owning navigation context. */

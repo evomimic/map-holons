@@ -124,6 +124,10 @@ export default class HolonInspectorElement extends HTMLElement {
     this.horizontalState = allocation.horizontal;
     this.setSpatialBudget(allocation);
   }
+  setOccurrenceExplorationHandler(handler) {
+    this.exploreOccurrence = handler;
+    this.adaptBudget();
+  }
   setOccurrenceClosureHandler(handler) {
     this.closeOccurrence = handler;
     if (this.closeButton) this.closeButton.hidden = !handler;
@@ -141,6 +145,7 @@ export default class HolonInspectorElement extends HTMLElement {
     const width = this.allocatedWidth ?? Infinity;
     const narrow = this.horizontalState ? this.horizontalState !== 'full-width' : width < 300;
     const compactWidth = this.horizontalState ? this.horizontalState === 'minimal-width' : width < 100;
+    if (this.exploreButton) this.exploreButton.hidden = !this.exploreOccurrence || compact || compactWidth;
     const hideBody = partial || compactWidth;
     const hideCollection = compact || narrow;
     const active = document.activeElement;
@@ -403,7 +408,16 @@ export default class HolonInspectorElement extends HTMLElement {
     this.closeButton.hidden = !this.closeOccurrence;
     Object.assign(this.closeButton.style, { flex: '0 0 24px', padding: '0', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer' });
     this.closeButton.addEventListener('click', () => this.closeOccurrence?.());
-    title.append(titleControl, this.closeButton);
+    this.exploreButton = document.createElement('button');
+    this.exploreButton.type = 'button';
+    this.exploreButton.dataset.exploreFromHere = 'true';
+    this.exploreButton.title = 'Explore from here';
+    this.exploreButton.setAttribute('aria-label', 'Explore from here');
+    this.exploreButton.hidden = !this.exploreOccurrence;
+    this.exploreButton.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M14 4h6v6 M20 4L10 14 M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    Object.assign(this.exploreButton.style, { flex: '0 0 28px', alignSelf: 'center', width: '28px', height: '28px', padding: '5px', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer' });
+    this.exploreButton.addEventListener('click', () => this.exploreOccurrence?.());
+    title.append(titleControl, this.exploreButton, this.closeButton);
     this.inspectorMaximizeButton = this.presentationButton('Maximize Inspector', () => this.requestOccurrence(this.occurrenceMaximized ? 'restore' : 'maximize'));
     this.inspectorMaximizeButton.dataset.maximizeInspector = 'true';
     this.inspectorMaximizeButton.style.alignSelf = 'center';

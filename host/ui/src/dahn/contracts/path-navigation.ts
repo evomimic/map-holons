@@ -65,6 +65,8 @@ export interface PathFocus {
 export interface PathNavigation {
   subscribe(render: (occurrences: readonly PathOccurrence[], focus: PathFocus | undefined, destination?: PathDestination) => void): () => void;
   restore(occurrenceId: string): void;
+  /** Requests a sibling exploration from the owning Dancer. */
+  reRoot?(occurrenceId: string): void;
   /** Removes presentation lineage, never semantic Holons or transaction state. */
   close(occurrenceId: string): void;
   /** Closes one owning Node's collection presentation and all its member lineages. */

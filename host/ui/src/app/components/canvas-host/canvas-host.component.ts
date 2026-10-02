@@ -1,18 +1,13 @@
+import { SpaceNavigatorExperience } from '../../../dahn/runtime/space-navigator-experience';
 import { SingleContextHost } from '../../../dahn/context/single-context-host';
 import { offeredCanvasThemes } from '../../../dahn/themes/offered-canvas-themes';
-import { realizeNode } from '../../../dahn/runtime/realize-node';
-import { PathNavigator } from '../../../dahn/runtime/path-navigator';
 import { AfterViewInit, OnDestroy, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
-import { DahnHolonView } from '../../../dahn/map-adapter/dahn-holon-view';
 import { DefaultVisualizerRegistry } from '../../../dahn/registry/default-visualizer-registry';
-import type { VisualizerContext } from '../../../dahn/contracts/visualizers';
-import { defineCustomElementOnce } from '../../../dahn/visualizers/define-custom-element-once';
 import { MapClient } from '../../../dahn/deps/map-sdk';
 import { SdkVisualizerMaterializer } from '../../../dahn/map-adapter/sdk-visualizer-materializer';
 import { MaterializedVisualizerCache } from '../../../dahn/runtime/materialized-visualizer-cache';
 import { MaterializedVisualizerRuntime } from '../../../dahn/runtime/materialized-visualizer-runtime';
-import { renderVisualizerRegion } from '../../../dahn/runtime/visualizer-region';
 import { Theme } from '../../../dahn/themes/theme';
 import { ApplicationSessionService } from '../../services/application-session.service';
 import { StartupProfile } from '../../startup-profile';
@@ -120,19 +115,13 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
       this.contextHost?.dispose();
       this.contextHost = new SingleContextHost(host);
       const created = this.contextHost.create((container, context, signal) => {
-        let navigation: PathNavigator | undefined;
+        let experience: SpaceNavigatorExperience | undefined;
         profile.next('construct Canvas');
         const registry = new DefaultVisualizerRegistry();
-        let homeDancerContext: VisualizerContext | null = null;
         const canvas = new DomCanvas(
           container,
           registry,
-          () => {
-            if (homeDancerContext === null) {
-              throw new Error('Home-Dancer context is unavailable.');
-            }
-            return homeDancerContext;
-          },
+          () => { throw new Error('Dancer composition supplies its own role contexts.'); },
           context,
         );
         // Theme projection is shared by hosted Dancers and refreshed only on
@@ -154,72 +143,22 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
             await canvas.mountVisualizers([]);
             return;
           }
-          const homeDancer = transaction.bindPersistedReference(homeDancerSelection.dancer);
-          const rootedNavigationVisualizer = transaction.bindPersistedReference(
-            homeDancerSelection.rooted_navigation_visualizer,
-          );
-          const rootNodeVisualizer = transaction.bindPersistedReference(
-            homeDancerSelection.root_node_visualizer,
-          );
-          try {
-            profile.next('materialize rooted navigation');
-            const pathImplementation = await materialized.realize(rootedNavigationVisualizer);
-            if (signal.aborted) return;
-            if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) {
-              throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
-            }
-            const pathTag = defineCustomElementOnce('map-rooted-navigation-visualizer', pathImplementation as CustomElementConstructor);
-            const rootNodeElement = await renderVisualizerRegion('Root node', async () => {
-              const root = await realizeNode(transaction, materialized, activeHolonSpace, rootNodeVisualizer, theme, canvas, stage => profile.next(stage));
-              if (signal.aborted) { root.collectionActivation.dispose(); return root.element; }
-              let nodeSlot;
-              try { nodeSlot = await materialized.slot(rootedNavigationVisualizer, 'node'); }
-              catch (error) { root.collectionActivation.dispose(); throw error; }
-              if (signal.aborted) { root.collectionActivation.dispose(); return root.element; }
-              navigation = new PathNavigator(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer, nodeSlot,
-                (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage));
-              return root.element;
-            });
-            if (signal.aborted) return;
-            const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
-            registry.register({
-              id: 'rooted-navigation',
-              displayName: 'Rooted Navigation',
-              version: '0.1.0',
-              componentTag: pathTag,
-              supportedTargets: [{ kind: 'holon-node' }],
-              load: async () => { },
-            });
-            homeDancerContext = {
-              title,
-              target: { reference: homeDancer },
-              holon: new DahnHolonView(activeHolonSpace),
-              actions: [],
-              theme,
-              canvas,
-              childVisualizers: new Map([['root-node', rootNodeElement]]),
-              navigation,
-              onInspectHolon: intent => navigation?.inspect(intent),
-              onTraverseRelationship: intent => navigation?.traverseRelationship(intent),
-            };
-            if (signal.aborted) { navigation?.dispose(); return; }
-            profile.next('mount home Dancer');
-            await canvas.mountVisualizers([
-              {
-                visualizerId: 'rooted-navigation',
-                target: { reference: homeDancer },
-                slot: 'primary',
-              },
-            ]);
-          } catch (error) {
-            navigation?.dispose();
-            canvas.showUnavailable('Home Dancer', error);
-          }
+          experience = new SpaceNavigatorExperience({
+            transaction,
+            dancer: transaction.bindPersistedReference(homeDancerSelection.dancer),
+            holonSpace: activeHolonSpace,
+            initialNavigationVisualizer: transaction.bindPersistedReference(homeDancerSelection.rooted_navigation_visualizer),
+            initialNodeVisualizer: transaction.bindPersistedReference(homeDancerSelection.root_node_visualizer),
+            materialized, theme, canvas,
+          });
+          canvas.mountDancer(experience.element, 'Space Navigator');
+          await experience.openInitial();
+          if (signal.aborted) experience.dispose();
         });
         return {
           ready,
           setAllocation: allocation => canvas.setAllocation(allocation),
-          dispose: () => { navigation?.dispose(); canvas.dispose(); },
+          dispose: () => { experience?.dispose(); canvas.dispose(); },
         };
       });
       if (created.status !== 'applied') throw new Error('Unable to create an experiential context.');

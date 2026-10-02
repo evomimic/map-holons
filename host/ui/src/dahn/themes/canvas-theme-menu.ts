@@ -28,7 +28,7 @@ export function createCanvasThemeMenu(
   Object.assign(select.style, {
     font: 'inherit', color: 'var(--dahn-action-text-color)',
     background: 'var(--dahn-action-surface-background)',
-    padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)',
+    padding: 'var(--dahn-control-gap) var(--dahn-action-padding-inline)',
     maxWidth: '100%', appearance: 'none', paddingRight: '2rem', cursor: 'pointer',
     border: 'var(--dahn-slot-border-width) solid var(--dahn-slot-border-color)',
     borderRadius: 'var(--dahn-action-corner-radius)',
