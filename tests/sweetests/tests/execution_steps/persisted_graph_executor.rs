@@ -13,7 +13,8 @@ use pretty_assertions::assert_eq;
 use std::sync::Arc;
 use tracing::info;
 
-/// Checks enumerated subjects, forward/inverse occurrences, and exact lineage identities.
+/// Checks enumerated subjects, forward/inverse occurrences, and exact target sets for
+/// declared relationships and lineage.
 /// One fresh observer transaction leaves the active Commit/retry transaction untouched.
 pub async fn execute_verify_persisted_graph(
     state: &mut TestExecutionState,
@@ -54,24 +55,36 @@ pub async fn execute_verify_persisted_graph(
             );
         }
     }
+    // Lineage expands into ordinary exact-target assertions so one comparator governs
+    // every exactness claim, whether the relationship is fixed or author-declared.
+    // Each lineage subject resolves once and serves both directions, because a
+    // traversal subject would otherwise repeat its hop reads per direction.
+    let mut exact = Vec::new();
+    for relationship in &expected.relationships {
+        exact.push((
+            resolve(&relationship.source),
+            relationship.relationship.to_string(),
+            &relationship.targets,
+        ));
+    }
     for lineage in &expected.lineage {
         let subject = resolve(&lineage.subject);
-        for (name, targets) in
-            [("Predecessor", &lineage.predecessors), ("Successor", &lineage.successors)]
-        {
-            let target_ids: Vec<_> =
-                targets.iter().map(|target| local_id(&resolve(target))).collect();
-            assert_exact_relationship_ids(
-                &format!("subject {:?} {name}", local_id(&subject)),
-                fresh_related_holon_ids(&subject, name),
-                target_ids,
-            );
-        }
+        exact.push((subject.clone(), "Predecessor".to_string(), &lineage.predecessors));
+        exact.push((subject, "Successor".to_string(), &lineage.successors));
+    }
+    for (source, relationship, targets) in exact {
+        let target_ids: Vec<_> = targets.iter().map(|target| local_id(&resolve(target))).collect();
+        assert_exact_relationship_ids(
+            &format!("source {:?} --{relationship}--> exact targets", local_id(&source)),
+            fresh_related_holon_ids(&source, &relationship),
+            target_ids,
+        );
     }
     info!(
-        "verified persisted graph: {} enumerated subjects, {} edges, {} lineage subjects",
+        "verified persisted graph: {} enumerated subjects, {} edges, {} exact relationships, {} lineage subjects",
         expected.enumerated.len(),
         expected.edges.len(),
+        expected.relationships.len(),
         expected.lineage.len()
     );
 }

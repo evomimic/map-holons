@@ -6,7 +6,7 @@ use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
     DancesTestCase, EdgeExpectation, ExpectedCommitCandidate, ExpectedCommitStatus,
     ExpectedDisposition, ExpectedLineage, ExpectedPersistedEdge, ExpectedPersistedGraph,
-    FixtureHolons, PersistedSubject, TestCaseInit, TestReference,
+    ExpectedPersistedRelationship, FixtureHolons, PersistedSubject, TestCaseInit, TestReference,
 };
 
 fn stage_update(
@@ -145,6 +145,8 @@ pub fn commit_non_root_lineage_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     let mut graph = unchanged;
+    // Grows as each iteration persists one more property, giving the exact forward set.
+    let mut persisted_properties: Vec<&str> = Vec::new();
     for (property_key, name_expectation) in [
         ("Title.PropertyType", EdgeExpectation::Absent),
         ("Name.PropertyType", EdgeExpectation::ExactlyOnce),
@@ -175,6 +177,7 @@ pub fn commit_non_root_lineage_fixture() -> Result<DancesTestCase, HolonError> {
             graph.clone(),
             ExpectedDisposition::GraphOnly,
         )?;
+        persisted_properties.push(property_key);
         let mut edges = Vec::new();
         for (target, expectation) in [
             ("Title.PropertyType", EdgeExpectation::ExactlyOnce),
@@ -195,14 +198,34 @@ pub fn commit_non_root_lineage_fixture() -> Result<DancesTestCase, HolonError> {
                 expectation: EdgeExpectation::Absent,
             });
         }
+        // Exact forward collections reject an undeclared extra target, which the
+        // per-target occurrence checks above cannot. The inverse stays partial on
+        // purpose: these are shared schema descriptors, and other fixtures in this
+        // suite legitimately add their own ReferencedByBook sources.
+        let exact_forward = vec![
+            ExpectedPersistedRelationship {
+                source: PersistedSubject::Token(graph.clone()),
+                relationship: "ReferencesProperty".to_relationship_name(),
+                targets: persisted_properties
+                    .iter()
+                    .map(|key| PersistedSubject::Key((*key).into()))
+                    .collect(),
+            },
+            ExpectedPersistedRelationship {
+                source: PersistedSubject::Token(a.clone()),
+                relationship: "ReferencesProperty".to_relationship_name(),
+                targets: Vec::new(),
+            },
+        ];
         test_case.add_verify_persisted_graph_step(
             &fixture_holons,
             ExpectedPersistedGraph {
                 edges,
+                relationships: exact_forward,
                 lineage: vec![lineage(&a, &[], &[&graph]), lineage(&graph, &[&a], &[])],
                 ..Default::default()
             },
-            Some("Graph-only B retains ancestry and exact forward/inverse edge occurrences".into()),
+            Some("Graph-only B retains ancestry and exact forward collections".into()),
         )?;
     }
 

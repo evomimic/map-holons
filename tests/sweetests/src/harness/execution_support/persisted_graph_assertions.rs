@@ -22,6 +22,9 @@ pub fn assert_edge_occurrences(
 }
 
 /// Exact unordered identities, with duplicate expectations rejected rather than normalized away.
+///
+/// Serves lineage and ordinary relationships alike; an empty `expected` asserts an
+/// empty persisted collection rather than skipping the comparison.
 pub fn assert_exact_relationship_ids(
     label: &str,
     mut actual: Vec<LocalId>,
@@ -31,11 +34,11 @@ pub fn assert_exact_relationship_ids(
     expected.sort_by(|left, right| left.0.cmp(&right.0));
     assert!(
         expected.windows(2).all(|pair| pair[0] != pair[1]),
-        "persisted lineage {label}: duplicate declared identities {expected:?}"
+        "persisted relationship {label}: duplicate declared identities {expected:?}"
     );
     assert_eq!(
         actual, expected,
-        "persisted lineage {label}: expected exact identities without duplicates"
+        "persisted relationship {label}: expected exact identities without duplicates"
     );
 }
 
@@ -44,7 +47,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn exact_lineage_accepts_unordered_identities_and_empty_roots() {
+    fn exact_relationship_accepts_unordered_identities_and_empty_collections() {
         assert_exact_relationship_ids(
             "branch successors",
             vec![LocalId(vec![2]), LocalId(vec![1])],
@@ -55,7 +58,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "expected exact identities without duplicates")]
-    fn exact_lineage_rejects_extra_identity() {
+    fn exact_relationship_rejects_extra_identity() {
         assert_exact_relationship_ids(
             "successor predecessors",
             vec![LocalId(vec![1]), LocalId(vec![2])],
@@ -65,7 +68,14 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "expected exact identities without duplicates")]
-    fn exact_lineage_rejects_duplicate_persisted_identity() {
+    fn exact_relationship_rejects_target_when_none_declared() {
+        // An empty declaration is an assertion of emptiness, not an absent expectation.
+        assert_exact_relationship_ids("references property", vec![LocalId(vec![9])], vec![]);
+    }
+
+    #[test]
+    #[should_panic(expected = "expected exact identities without duplicates")]
+    fn exact_relationship_rejects_duplicate_persisted_identity() {
         assert_exact_relationship_ids(
             "successor predecessors",
             vec![LocalId(vec![1]), LocalId(vec![1])],
@@ -75,7 +85,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "duplicate declared identities")]
-    fn exact_lineage_rejects_duplicate_declarations() {
+    fn exact_relationship_rejects_duplicate_declarations() {
         assert_exact_relationship_ids(
             "successor predecessors",
             vec![LocalId(vec![1]), LocalId(vec![1])],

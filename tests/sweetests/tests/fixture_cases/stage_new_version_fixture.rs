@@ -2,7 +2,7 @@ use holons_prelude::prelude::*;
 use holons_test::{
     DancesTestCase, EdgeExpectation, ExpectedCommitCandidate, ExpectedCommitStatus,
     ExpectedDisposition, ExpectedLineage, ExpectedPersistedEdge, ExpectedPersistedGraph,
-    PersistedSubject, TestCaseInit,
+    ExpectedPersistedRelationship, PersistedSubject, TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
@@ -272,8 +272,31 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
                     source: root.clone(),
                     relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
                     inverse: Some("AuthorOf".to_relationship_name()),
-                    target: person,
+                    target: person.clone(),
                     expectation: EdgeExpectation::Absent,
+                },
+            ],
+            // Exact forward collections reject an undeclared extra target; the inverse
+            // directions stay partial above because Title, Name and the person holon are
+            // shared with other fixtures in this suite.
+            relationships: vec![
+                ExpectedPersistedRelationship {
+                    source: root.clone(),
+                    relationship: "ReferencesProperty".to_relationship_name(),
+                    targets: vec![
+                        PersistedSubject::Key("Title.PropertyType".into()),
+                        PersistedSubject::Key("Name.PropertyType".into()),
+                    ],
+                },
+                ExpectedPersistedRelationship {
+                    source: version.clone(),
+                    relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
+                    targets: vec![person],
+                },
+                ExpectedPersistedRelationship {
+                    source: root.clone(),
+                    relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
+                    targets: Vec::new(),
                 },
             ],
             lineage: vec![

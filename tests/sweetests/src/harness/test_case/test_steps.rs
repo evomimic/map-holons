@@ -239,9 +239,30 @@ pub struct ExpectedPersistedEdge {
     pub expectation: EdgeExpectation,
 }
 
+/// Every persisted target of one relationship, as an exact unordered identity set.
+///
+/// Extra or missing targets fail, and duplicate persisted links fail because
+/// multiplicity is preserved rather than normalized away. An empty `targets`
+/// asserts an empty persisted collection.
+///
+/// Declare an inverse direction as its own entry with the target as `source`: an
+/// inverse collection may legitimately hold sources from unrelated declarations, so a
+/// complete inverse expectation cannot be derived from one forward declaration. Exact
+/// inverses on schema descriptors are therefore only sound in an isolated runtime where
+/// every source is known; in shared suites use [`ExpectedPersistedEdge`] for the inverse.
+#[derive(Clone, Debug)]
+pub struct ExpectedPersistedRelationship {
+    pub source: PersistedSubject,
+    pub relationship: RelationshipName,
+    pub targets: Vec<PersistedSubject>,
+}
+
 /// Exact identities for the fixed `Predecessor` and `Successor` relationships;
 /// empty lists assert absence of lineage.
 /// Duplicate actual or declared members are errors, even when the identity sets agree.
+///
+/// Expands into two [`ExpectedPersistedRelationship`] assertions at execution time, so
+/// lineage and ordinary relationships share one exactness comparator.
 #[derive(Clone, Debug)]
 pub struct ExpectedLineage {
     pub subject: PersistedSubject,
@@ -255,6 +276,8 @@ pub struct ExpectedPersistedGraph {
     /// Each subject must occur exactly once in get-all; unrelated holons are permitted.
     pub enumerated: Vec<PersistedSubject>,
     pub edges: Vec<ExpectedPersistedEdge>,
+    /// Exact target sets; the only expectation that rejects an undeclared extra target.
+    pub relationships: Vec<ExpectedPersistedRelationship>,
     pub lineage: Vec<ExpectedLineage>,
 }
 

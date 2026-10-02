@@ -1179,7 +1179,7 @@ mod tests {
     fn persisted_graph_subjects_freeze_saved_heads_before_later_deletion() {
         use crate::{
             DanceTestStep, DancesTestCase, EdgeExpectation, ExpectedLineage, ExpectedPersistedEdge,
-            ExpectedPersistedGraph, PersistedSubject,
+            ExpectedPersistedGraph, ExpectedPersistedRelationship, PersistedSubject,
         };
         use holons_prelude::prelude::*;
         let context = init_fixture_context();
@@ -1200,6 +1200,11 @@ mod tests {
                         relationship: "Predecessor".to_relationship_name(),
                         inverse: None,
                         expectation: EdgeExpectation::Absent,
+                    }],
+                    relationships: vec![ExpectedPersistedRelationship {
+                        source: subject.clone(),
+                        relationship: "ReferencesProperty".to_relationship_name(),
+                        targets: vec![subject.clone()],
                     }],
                     lineage: vec![ExpectedLineage {
                         subject: PersistedSubject::Successor {
@@ -1231,6 +1236,8 @@ mod tests {
         assert_saved(&expected.enumerated[0]);
         assert_saved(&expected.edges[0].source);
         assert_saved(&expected.edges[0].target);
+        assert_saved(&expected.relationships[0].source);
+        assert_saved(&expected.relationships[0].targets[0]);
         let PersistedSubject::Successor { of, .. } = &expected.lineage[0].subject else {
             panic!("expected traversal subject");
         };

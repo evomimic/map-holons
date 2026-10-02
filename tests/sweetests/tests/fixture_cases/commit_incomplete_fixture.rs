@@ -7,8 +7,8 @@ use super::described_instances::add_described_instance;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
-    DancesTestCase, EdgeExpectation, ExpectedCommitCandidate, ExpectedCommitStatus,
-    ExpectedDisposition, ExpectedPersistedEdge, ExpectedPersistedGraph, ExpectedRetryParticipant,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedPersistedGraph, ExpectedPersistedRelationship, ExpectedRetryParticipant,
     PersistedSubject, TestCaseInit, TestReference,
 };
 use integrity_core_types::HolonErrorKind;
@@ -115,6 +115,20 @@ pub fn commit_incomplete_fixture() -> Result<IncompleteScenario, HolonError> {
         Some("Repair the conflict and finish the same transaction".into()),
     )?;
     test_case.add_match_saved_content_step()?;
+    // This scenario owns an isolated runtime and is the only author of ReferencesProperty
+    // in it, so both directions are fully known and declared as exact collections.
+    // An extra or duplicated link in either direction fails here.
+    let referenced = ["Name.PropertyType", "Title.PropertyType"];
+    let mut relationships = vec![ExpectedPersistedRelationship {
+        source: PersistedSubject::Token(saved_update.clone()),
+        relationship: "ReferencesProperty".to_relationship_name(),
+        targets: referenced.iter().map(|key| PersistedSubject::Key((*key).into())).collect(),
+    }];
+    relationships.extend(referenced.iter().map(|key| ExpectedPersistedRelationship {
+        source: PersistedSubject::Key((*key).into()),
+        relationship: "ReferencedByBook".to_relationship_name(),
+        targets: vec![PersistedSubject::Token(saved_update.clone())],
+    }));
     test_case.add_verify_persisted_graph_step(
         &fixture_holons,
         ExpectedPersistedGraph {
@@ -122,19 +136,10 @@ pub fn commit_incomplete_fixture() -> Result<IncompleteScenario, HolonError> {
                 PersistedSubject::Token(saved_update.clone()),
                 PersistedSubject::Token(companion),
             ],
-            edges: ["Name.PropertyType", "Title.PropertyType"]
-                .into_iter()
-                .map(|key| ExpectedPersistedEdge {
-                    source: PersistedSubject::Token(saved_update.clone()),
-                    relationship: "ReferencesProperty".to_relationship_name(),
-                    inverse: Some("ReferencedByBook".to_relationship_name()),
-                    target: PersistedSubject::Key(key.into()),
-                    expectation: EdgeExpectation::ExactlyOnce,
-                })
-                .collect(),
+            relationships,
             ..Default::default()
         },
-        Some("Fresh reads verify replayed forward/inverse links without duplicates".into()),
+        Some("Fresh reads verify exact replayed forward and inverse collections".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(IncompleteScenario { case: test_case, book, title, name, saved_update, first_attempt })

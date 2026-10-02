@@ -393,6 +393,12 @@ impl DancesTestCase {
             freeze_persisted_subject(fixture_holons, &mut edge.source)?;
             freeze_persisted_subject(fixture_holons, &mut edge.target)?;
         }
+        for relationship in &mut expected.relationships {
+            freeze_persisted_subject(fixture_holons, &mut relationship.source)?;
+            for subject in &mut relationship.targets {
+                freeze_persisted_subject(fixture_holons, subject)?;
+            }
+        }
         for lineage in &mut expected.lineage {
             freeze_persisted_subject(fixture_holons, &mut lineage.subject)?;
             for subject in lineage.predecessors.iter_mut().chain(&mut lineage.successors) {
@@ -401,8 +407,9 @@ impl DancesTestCase {
         }
         self.steps.push(DanceTestStep::VerifyPersistedGraph {
             expected,
-            description: description
-                .unwrap_or_else(|| "Verify persisted graph identities and exact lineage".into()),
+            description: description.unwrap_or_else(|| {
+                "Verify persisted graph identities, exact relationships and lineage".into()
+            }),
         });
         Ok(())
     }

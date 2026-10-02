@@ -155,7 +155,7 @@ use `Option<HolonErrorKind>` and descriptions use `Option<String>`.
 | Commit creates | `add_commit_step` | Create-only convenience; saved-version provenance fails at authoring time and requires explicit dispositions |
 | Commit updates and retries | `add_commit_step_with_dispositions` | Declare the prepared live workset and retained relationship-retry participants |
 | Check saved content | `add_match_saved_content_step` | Properties and definitional content; skips partial lookup stubs |
-| Check persisted graph | `add_verify_persisted_graph_step`, `add_verify_relationship_anchoring_step` | Fresh identity/occurrence checks; the latter is the existing focused Book/Person check |
+| Check persisted graph | `add_verify_persisted_graph_step`, `add_verify_relationship_anchoring_step` | Fresh occurrence checks, exact target collections and exact lineage; the latter is the existing focused Book/Person check |
 | Check rejection findings | `add_verify_commit_rejection_step`, `add_verify_commit_carrier_finding_step` | Staged semantic findings and aggregate Schema findings |
 | Resolve external saved holons | `add_lookup_saved_holon_by_key_step` | Returns a partial SavedLookup token; use for schema-loaded holons outside the fixture ledger |
 | Manage lifecycle | `add_begin_transaction_step`, `add_abandon_staged_changes_step`, `add_delete_holon_step` | Explicit transactions, abandon, and deletion |
@@ -199,6 +199,14 @@ a node write occurred. See the worked examples below and the outcome table in
 - Use `add_match_saved_content_step()` after Commit for saved properties and definitional
   content, including after a version-producing Commit. Inverses, non-definitional graph changes
   and exact lineage need `add_verify_persisted_graph_step()` instead.
+- In that step, `edges` counts occurrences of one named target, so it cannot reject an
+  undeclared extra target. Use `relationships` to assert a relationship's exact target set,
+  where an empty list asserts an empty collection. Declare an inverse direction as its own
+  entry; it is never derivable from a forward declaration.
+- Exact collections on holons shared with other fixtures are only sound where every source is
+  known. Ordinary suites share persisted data, so schema descriptors accumulate inverse
+  backlinks: declare exact forward collections there and keep the inverse partial, and reserve
+  exact inverses for a scenario owning an isolated runtime.
 - Expected command failures are successful test outcomes when the error kind matches.
 - Call `finalize()` exactly once, after adding all steps and before returning.
 
