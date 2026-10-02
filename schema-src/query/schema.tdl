@@ -857,14 +857,13 @@ holon OrderBySpec.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "One sort key of an OrderBy: the PropertyType descriptor to sort by, its direction, and where members missing that value are placed."
+    description: "One sort key of an OrderBy: the name of the property to sort by, its direction, and where members missing that value are placed."
     display_name: "Order By Spec"
     display_plural: "Order By Specs"
     plural: "OrderBySpecs"
   }
   relationships {
-    InstanceProperties -> [SortDirection.PropertyType, NullPlacement.PropertyType]
-    InstanceRelationships -> (OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor)
+    InstanceProperties -> [PropertyName.PropertyType, SortDirection.PropertyType, NullPlacement.PropertyType]
   }
 }
 
@@ -893,6 +892,19 @@ holon Limit.HolonType {
   }
   relationships {
     InstanceProperties -> LimitCount.PropertyType
+  }
+}
+
+property PropertyName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Name of the property an OrderBySpec sorts by, resolved at execution time against each input member's effective property surface. No default."
+    display_name: "Property Name"
+    display_plural: "Property Names"
+    plural: "PropertyNames"
   }
 }
 
@@ -1048,40 +1060,5 @@ inverse relationship (OrderBySpec.HolonType)-[OrderBySpecForExpressions]->(Order
     display_name: "Order By Spec For Expressions"
     display_plural: "Order By Spec For Expressions"
     plural: "OrderBySpecForExpressions"
-  }
-}
-
-def relationship (OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor) {
-  type MetaDeclaredRelationshipType.MetaRelationshipType
-  relationships {
-    Constraints -> ExactlyOne.CardinalityConstraint
-    HasInverse -> PropertyForOrderBySpecs
-  }
-  extends DeclaredRelationshipType.RelationshipType
-  source OrderBySpec.HolonType
-  target PropertyType.TypeDescriptor
-  deletion_semantic Block
-  header {
-    description: "The PropertyType descriptor an OrderBySpec sorts by, matched by descriptor identity rather than name."
-    display_name: "Property"
-    display_plural: "Properties"
-    plural: "Properties"
-  }
-}
-
-inverse relationship (PropertyType.TypeDescriptor)-[PropertyForOrderBySpecs]->(OrderBySpec.HolonType) {
-  type MetaInverseRelationshipType.MetaRelationshipType
-  extends InverseRelationshipType.RelationshipType
-  source PropertyType.TypeDescriptor
-  target OrderBySpec.HolonType
-  relationships {
-    Constraints -> ZeroOrMore.CardinalityConstraint
-  }
-  deletion_semantic Block
-  header {
-    description: "Inverse of Property."
-    display_name: "Property For Order By Specs"
-    display_plural: "Property For Order By Specs"
-    plural: "PropertyForOrderBySpecs"
   }
 }

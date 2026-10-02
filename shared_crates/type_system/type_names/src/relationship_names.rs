@@ -233,7 +233,6 @@ pub enum QueryRelationshipTypeName {
     Input,
     Next,
     OrderBySpecs,
-    Property,
     Result,
     RootExpression,
     SeedPredicate,

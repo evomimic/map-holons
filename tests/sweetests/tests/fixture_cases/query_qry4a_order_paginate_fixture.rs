@@ -13,6 +13,16 @@ const QUERY_DESCRIPTOR_KEY: &str = "Query.HolonType";
 const EXPAND_DESCRIPTOR_KEY: &str = "Expand.HolonType";
 const SKIP_DESCRIPTOR_KEY: &str = "Skip.HolonType";
 const LIMIT_DESCRIPTOR_KEY: &str = "Limit.HolonType";
+/// OrderBy schema descriptors. Their runtime lands separately; this slice
+/// proves the bootstrap bundle loads them.
+const ORDER_BY_SCHEMA_KEYS: [&str; 6] = [
+    "OrderBy.HolonType",
+    "OrderBySpec.HolonType",
+    "PropertyName.PropertyType",
+    "SortDirection.PropertyType",
+    "NullPlacement.PropertyType",
+    "OneToFive.CardinalityConstraint",
+];
 
 /// Committed Book/Person data. Authors: A -> [P1, P2], B -> [P1], C -> [],
 /// D -> [P2, P1], so `Expand(AuthoredBy)` over [A, B, D] is
@@ -40,6 +50,10 @@ const PERSON_2_KEY: &str = "Qry4a.Person.2";
 ///    - a root `Skip` with no input: `MissingRequiredRelationship`;
 ///    - the paging query with a nonempty binding list: `NotImplemented` before
 ///      any runtime record exists.
+///
+/// The OrderBy schema descriptors (`OrderBy`, `OrderBySpec`, `PropertyName`,
+/// `SortDirection`, `NullPlacement`, `OneToFive`) are resolved by key to prove
+/// the bootstrap bundle loads them.
 pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "query_qry4a_order_paginate",
@@ -138,6 +152,10 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     let book_d = lookup(&mut test_case, &mut fixture_holons, BOOK_D_KEY)?;
     let person_1 = lookup(&mut test_case, &mut fixture_holons, PERSON_1_KEY)?;
     let person_2 = lookup(&mut test_case, &mut fixture_holons, PERSON_2_KEY)?;
+
+    for key in ORDER_BY_SCHEMA_KEYS {
+        lookup(&mut test_case, &mut fixture_holons, key)?;
+    }
 
     let mut authoring = TransientAuthoring {
         query_type: lookup(&mut test_case, &mut fixture_holons, QUERY_DESCRIPTOR_KEY)?,

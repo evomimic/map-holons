@@ -107,7 +107,7 @@
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "eaf3bb0dae794801c7980c85d9913acb9531f35a1fa8b06e885b3f28ffc017f1"
+      "sha256": "ea3ac652bf308d307511b1229a6bc3285934648ee34b46499e1a7c44f44addcb"
     },
     {
       "path": "imports/query-dance/schema.json",
@@ -528,15 +528,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
-    },
-    {
-      "key": "(PropertyType.TypeDescriptor)-[PropertyForOrderBySpecs]->(OrderBySpec.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -2766,6 +2758,10 @@
     {
       "key": "PropertyMapVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
+    },
+    {
+      "key": "PropertyName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "PropertyNameMinWidth.DesignToken",

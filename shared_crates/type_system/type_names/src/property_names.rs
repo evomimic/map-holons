@@ -205,6 +205,7 @@ pub enum QueryPropertyTypeName {
     ExpansionRelationshipName,
     LimitCount,
     NullPlacement,
+    PropertyName,
     SkipCount,
     SortDirection,
 }

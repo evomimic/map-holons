@@ -2733,7 +2733,7 @@
         "TypeNamePlural": "OrderBySpecs",
         "DisplayName": "Order By Spec",
         "DisplayNamePlural": "Order By Specs",
-        "Description": "One sort key of an OrderBy: the PropertyType descriptor to sort by, its direction, and where members missing that value are placed."
+        "Description": "One sort key of an OrderBy: the name of the property to sort by, its direction, and where members missing that value are placed."
       },
       "relationships": [
         {
@@ -2756,18 +2756,13 @@
           "name": "InstanceProperties",
           "target": [
             {
+              "$ref": "PropertyName.PropertyType"
+            },
+            {
               "$ref": "SortDirection.PropertyType"
             },
             {
               "$ref": "NullPlacement.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "(OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor)"
             }
           ]
         }
@@ -2842,6 +2837,44 @@
           "target": [
             {
               "$ref": "LimitCount.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PropertyName",
+        "TypeNamePlural": "PropertyNames",
+        "DisplayName": "Property Name",
+        "DisplayNamePlural": "Property Names",
+        "Description": "Name of the property an OrderBySpec sorts by, resolved at execution time against each input member's effective property surface. No default.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         }
@@ -3313,123 +3346,6 @@
           "target": [
             {
               "$ref": "OrderBy.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ZeroOrMore.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(OrderBySpec.HolonType)-[Property]->(PropertyType.TypeDescriptor)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "Property",
-        "TypeNamePlural": "Properties",
-        "DisplayName": "Property",
-        "DisplayNamePlural": "Properties",
-        "Description": "The PropertyType descriptor an OrderBySpec sorts by, matched by descriptor identity rather than name.",
-        "IsDefinitional": true,
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "DeclaredRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Query Schema-v0.0.2"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "OrderBySpec.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "PropertyType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "HasInverse",
-          "target": [
-            {
-              "$ref": "(PropertyType.TypeDescriptor)-[PropertyForOrderBySpecs]->(OrderBySpec.HolonType)"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ExactlyOne.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(PropertyType.TypeDescriptor)-[PropertyForOrderBySpecs]->(OrderBySpec.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "PropertyForOrderBySpecs",
-        "TypeNamePlural": "PropertyForOrderBySpecs",
-        "DisplayName": "Property For Order By Specs",
-        "DisplayNamePlural": "Property For Order By Specs",
-        "Description": "Inverse of Property.",
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "InverseRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Query Schema-v0.0.2"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "PropertyType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "OrderBySpec.HolonType"
             }
           ]
         },
