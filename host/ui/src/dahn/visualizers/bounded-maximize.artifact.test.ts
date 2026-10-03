@@ -52,7 +52,7 @@ it('maximizes each local region independently, refuses hidden siblings and resto
   expect(node.propertyViewer.style.gridRow).toBe('1 / -1');
   node.setNodeInspectorAllocation({ width: 1200, height: 900, vertical: 'full-height', horizontal: 'full-width' });
   node.allocateInternalHeight();
-  expect(node.style.gridTemplateRows).toBe('auto minmax(0, 1fr)');
+  expect(node.style.gridTemplateRows).toBe('max-content minmax(0, 1fr)');
   node.setNodeInspectorAllocation({ width: 800, height: 720, vertical: 'full-height', horizontal: 'full-width' });
   expect(node.maximizedRegion).toBe('properties');
   expect(node.requestRegion('restore').status).toBe('applied');

@@ -153,11 +153,34 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns, defaultSortColumnId: keyed && !ordering.isOrdered ? 'Key' : undefined, manualOrderUnavailable: ordering.isOrdered } });
         this.members = members;
     }
+    getCollectionViewportHeight(count = 5) {
+        const pixel = value => parseFloat(value) || 0;
+        const rows = [...(this.table?.tBodies[0]?.rows ?? [])];
+        const cell = rows.flatMap(row => [...row.cells]).find(cell => getComputedStyle(cell).display !== 'none');
+        const style = getComputedStyle(cell ?? this);
+        const line = pixel(style.lineHeight) || (pixel(style.fontSize) || 16) * 1.5;
+        const nominal = line + pixel(style.paddingTop) + pixel(style.paddingBottom)
+            + pixel(style.borderTopWidth) + pixel(style.borderBottomWidth);
+        const measured = rows.slice(0, count).map(row => row.getBoundingClientRect().height || nominal);
+        const rowHeight = measured.length ? Math.max(...measured) : nominal;
+        const data = measured.reduce((sum, height) => sum + height, 0) + Math.max(0, count - measured.length) * rowHeight;
+        const header = this.table?.tHead?.getBoundingClientRect().height || rowHeight;
+        const controls = (this.sortStatus?.offsetHeight || line) + (this.more?.hidden ? 0 : this.more?.offsetHeight || rowHeight);
+        return Math.ceil(controls + header + data + pixel(getComputedStyle(this.table ?? this).borderTopWidth));
+    }
+    reportContentExtent() {
+        const height = this.getCollectionViewportHeight(5);
+        if (height === this.reportedHeight) return;
+        this.reportedHeight = height;
+        this.dispatchEvent(new CustomEvent('dahn-content-extent-changed', { bubbles: true }));
+    }
     connectedCallback() {
         this.observer?.disconnect();
-        this.observer = new ResizeObserver(() => this.fitColumns());
+        this.observer = new ResizeObserver(() => { this.fitColumns(); this.reportContentExtent(); });
         this.observer.observe(this);
+        if (this.table) this.observer.observe(this.table);
         this.fitColumns();
+        this.reportContentExtent();
     }
     disconnectedCallback() { this.observer?.disconnect(); }
     fitColumns() {
@@ -183,6 +206,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         if (!this.expanded && widths.length && count === 1) {
             cells.forEach(row => { if (row[0]) row[0].style.maxWidth = `${Math.max(0, available)}px`; });
         } else cells.forEach(row => { if (row[0]) row[0].style.maxWidth = '32rem'; });
+        this.reportContentExtent();
     }
     setContext(context) {
         const presentation = context.collectionPresentation;

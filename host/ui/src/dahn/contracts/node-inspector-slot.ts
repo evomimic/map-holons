@@ -16,6 +16,8 @@ export interface NodeInspectorAllocation {
 
 /** The parent allocates bands; implementations exclusively allocate their sub-slots. */
 export interface NodeInspectorParticipant {
+  /** Initial source-plus-target height, excluding the connecting channel and parent framing. */
+  setInitialCompositionHeight?(height: number): void;
   getNodeInspectorExtents(): NodeInspectorExtents;
   setNodeInspectorAllocation(allocation: NodeInspectorAllocation): void;
 }
