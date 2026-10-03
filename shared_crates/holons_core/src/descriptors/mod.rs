@@ -64,7 +64,7 @@ pub use key_rule_descriptor::KeyRuleDescriptor;
 pub use kind_semantics::{DescribingCompatibility, DescriptorKindRoots, KindResolutionError};
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
-pub use property_descriptor::PropertyDescriptor;
+pub use property_descriptor::{EffectiveValue, PropertyDescriptor};
 pub use relationship_descriptor::{EffectiveCardinality, RelationshipDescriptor, TargetBinding};
 pub use schema_ownership::{
     resolve_schema_ownership, resolve_schema_ownership_with_reader, schema_components,

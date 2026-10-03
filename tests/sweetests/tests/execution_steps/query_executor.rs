@@ -25,6 +25,7 @@
 
 use std::sync::Arc;
 
+use core_types::HolonNodeModel;
 use holons_core::dances::DanceInvocation;
 use holons_core::query_layer::query_core::{
     FocalSpaceReference, HolonCollectionReference, QueryExecution, QueryReference,
@@ -74,9 +75,14 @@ pub async fn execute_query(
     };
     let expected = ResolvedExpectation::resolve(state, &context, expectation);
 
+    // Evaluation must not mutate caller-owned definitions — not by resolving a
+    // default, and not on failure. Holons shared between queries are covered
+    // too, since every step re-snapshots the whole reachable graph.
+    let definitions_before = definition_snapshot(&query_reference);
+
     match route {
         QueryRoute::Direct => {
-            execute_direct(&context, query_reference, resolved_input, bindings, expected)
+            execute_direct(&context, query_reference.clone(), resolved_input, bindings, expected)
         }
         QueryRoute::QueryDance => {
             let members = match resolved_input {
@@ -87,9 +93,63 @@ pub async fn execute_query(
                      collection-shaped"
                 ),
             };
-            execute_query_dance(state, &context, query_reference, members, bindings, expected).await
+            execute_query_dance(
+                state,
+                &context,
+                query_reference.clone(),
+                members,
+                bindings,
+                expected,
+            )
+            .await
         }
     }
+
+    assert_eq!(
+        definition_snapshot(&query_reference),
+        definitions_before,
+        "query evaluation must leave its definition graph unchanged"
+    );
+}
+
+/// Definition relationships a query evaluation reads and must never change.
+const DEFINITION_RELATIONSHIPS: [&str; 4] = ["RootExpression", "Next", "OrderBySpecs", "Property"];
+
+/// One definition holon's identity, content, and definition-relationship members.
+type DefinitionSnapshot = (String, HolonNodeModel, Vec<Vec<String>>);
+
+/// Content of every definition holon reachable from `query`: the query, each
+/// expression along `RootExpression`/`Next`, and each attached `OrderBySpec`
+/// — its properties plus its definition relationships' member ids, in order.
+fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
+    let snapshot_of = |holon: &HolonReference| {
+        let relationships = DEFINITION_RELATIONSHIPS
+            .iter()
+            // Reference ids, not HolonIds: definitions may be transient.
+            .map(|name| {
+                related_members(holon, *name)
+                    .iter()
+                    .map(|member| member.reference_id_string())
+                    .collect()
+            })
+            .collect();
+        (holon.reference_id_string(), holon.into_model().unwrap(), relationships)
+    };
+
+    let mut snapshot = vec![snapshot_of(query)];
+    let mut seen = std::collections::HashSet::new();
+    let mut next = related_members(query, "RootExpression").into_iter().next();
+    while let Some(expression) = next {
+        if !seen.insert(expression.reference_id_string()) {
+            break; // a cyclic chain is the runtime's error to report, not ours
+        }
+        snapshot.push(snapshot_of(&expression));
+        for spec in related_members(&expression, "OrderBySpecs") {
+            snapshot.push(snapshot_of(&spec));
+        }
+        next = related_members(&expression, "Next").into_iter().next();
+    }
+    snapshot
 }
 
 /// The step's collection operand with fixture tokens resolved to references.
