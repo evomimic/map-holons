@@ -39,8 +39,9 @@
 //! remaining independent of runtime identifiers and execution-time handles
 use super::test_case::DancesTestCase;
 use crate::{
-    harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
-    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, QueryExpectation, QueryInputSpec,
+    harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitCandidate,
+    ExpectedCommitStatus, ExpectedLoadStatus, ExpectedPersistedGraph, ExpectedRetryParticipant,
+    ExpectedSnapshot, FixtureHolons, PersistedSubject, QueryExpectation, QueryInputSpec,
     QueryRoute, SourceSnapshot, TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
@@ -376,6 +377,43 @@ impl DancesTestCase {
         Ok(())
     }
 
+    /// Freezes token subjects to their saved heads for fresh persisted graph assertions.
+    /// Later staging or mutations cannot redirect this step's recorded identities.
+    pub fn add_verify_persisted_graph_step(
+        &mut self,
+        fixture_holons: &FixtureHolons,
+        mut expected: ExpectedPersistedGraph,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        for subject in &mut expected.enumerated {
+            freeze_persisted_subject(fixture_holons, subject)?;
+        }
+        for edge in &mut expected.edges {
+            freeze_persisted_subject(fixture_holons, &mut edge.source)?;
+            freeze_persisted_subject(fixture_holons, &mut edge.target)?;
+        }
+        for relationship in &mut expected.relationships {
+            freeze_persisted_subject(fixture_holons, &mut relationship.source)?;
+            for subject in &mut relationship.targets {
+                freeze_persisted_subject(fixture_holons, subject)?;
+            }
+        }
+        for lineage in &mut expected.lineage {
+            freeze_persisted_subject(fixture_holons, &mut lineage.subject)?;
+            for subject in lineage.predecessors.iter_mut().chain(&mut lineage.successors) {
+                freeze_persisted_subject(fixture_holons, subject)?;
+            }
+        }
+        self.steps.push(DanceTestStep::VerifyPersistedGraph {
+            expected,
+            description: description.unwrap_or_else(|| {
+                "Verify persisted graph identities, exact relationships and lineage".into()
+            }),
+        });
+        Ok(())
+    }
+
     pub fn add_verify_core_schema_descriptor_subtypes_step(
         &mut self,
         description: Option<String>,
@@ -553,11 +591,8 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // Rejection retains staged heads so later correction steps resolve the same holons.
-    //
-    // `expected_status` declares the expected `CommitRequestStatus` on the commit
-    // response. Existing `Incomplete` fixtures model Pass 2 failures after node
-    // persistence, so they still advance heads to Saved.
+    /// Create-only convenience. Updates require explicit disposition declarations.
+    /// Rejected attempts and command errors retain all fixture heads.
     pub fn add_commit_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -566,19 +601,57 @@ impl DancesTestCase {
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
-        let description = description.unwrap_or_else(|| "Commit".to_string());
-        let saved_tokens = if expected_status == ExpectedCommitStatus::Rejected {
-            Vec::new()
-        } else {
-            fixture_holons.commit()?
-        };
-        self.steps.push(DanceTestStep::Commit {
-            saved_tokens,
+        let candidates =
+            if expected_status == ExpectedCommitStatus::Rejected || expected_error.is_some() {
+                Vec::new()
+            } else {
+                fixture_holons.derive_create_only_declarations()?
+            };
+        self.add_commit_step_with_dispositions(
+            fixture_holons,
             expected_status,
+            candidates,
+            Vec::new(),
             expected_error,
             description,
-        });
+        )
+    }
 
+    /// Declares the prepared candidates and retained relationship-retry participants for one attempt.
+    pub fn add_commit_step_with_dispositions(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        expected_status: ExpectedCommitStatus,
+        candidates: Vec<ExpectedCommitCandidate>,
+        mut retry_participants: Vec<ExpectedRetryParticipant>,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let resolved =
+            if expected_status == ExpectedCommitStatus::Rejected || expected_error.is_some() {
+                if !candidates.is_empty() || !retry_participants.is_empty() {
+                    let message =
+                    "Rejected attempts and command errors use no disposition or retry declarations";
+                    return Err(HolonError::InvalidParameter(message.into()));
+                }
+                Vec::new()
+            } else {
+                // Retry declarations may use older candidate tokens; freeze their saved
+                // heads so execution never resolves a committed handle as a Staged token.
+                for participant in &mut retry_participants {
+                    participant.token =
+                        fixture_holons.resolve_target_token_to_head(&participant.token)?;
+                }
+                fixture_holons.commit(expected_status, &candidates, &retry_participants)?
+            };
+        self.steps.push(DanceTestStep::Commit {
+            candidates: resolved,
+            retry_participants,
+            expected_status,
+            expected_error,
+            description: description.unwrap_or_else(|| "Commit".to_string()),
+        });
         Ok(())
     }
 
@@ -867,6 +940,8 @@ impl DancesTestCase {
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
         new_snapshot.with_property_value("Key", new_key.clone())?;
+        // An independent clone starts without its saved source's predecessor lineage.
+        new_snapshot.with_predecessor(None)?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
@@ -900,11 +975,13 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage new version".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
+        // Staging clears copied lineage; Commit declares the persisted successor lineage.
+        let mut new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
+        new_snapshot.with_predecessor(None)?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
-            fixture_holons.create_fixture_holon(expected.clone())?;
+            fixture_holons.create_versioned_fixture_holon(expected.clone(), &step_token)?;
         }
 
         // Mint
@@ -986,4 +1063,29 @@ impl DancesTestCase {
 
         Ok(())
     }
+}
+
+/// Resolves token subjects at authoring time, including nested traversal sources.
+fn freeze_persisted_subject(
+    fixture_holons: &FixtureHolons,
+    subject: &mut PersistedSubject,
+) -> Result<(), HolonError> {
+    match subject {
+        PersistedSubject::Token(token) => {
+            let head = fixture_holons.resolve_target_token_to_head(token)?;
+            if !matches!(
+                head.expected_snapshot().state(),
+                TestHolonState::Saved | TestHolonState::SavedLookup
+            ) {
+                return Err(HolonError::InvalidParameter(format!(
+                    "Persisted graph subject {token} must have a saved head, got {}",
+                    head.expected_snapshot().state(),
+                )));
+            }
+            *token = head;
+        }
+        PersistedSubject::Successor { of, .. } => freeze_persisted_subject(fixture_holons, of)?,
+        PersistedSubject::Key(_) => {}
+    }
+    Ok(())
 }

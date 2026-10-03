@@ -128,6 +128,10 @@ impl ExecutionHolons {
                         TestHolonState::Staged | TestHolonState::Abandoned,
                         HolonReference::Staged(staged_reference),
                     ) => {
+                        // Committed carries a LocalId: an empty-id probe compares the payload
+                        // rather than matching every committed state. Commit resolves declarations
+                        // before dispatch and retains handles, so correcting this guard must not
+                        // introduce post-dispatch staged-token lookup into the Commit executor.
                         if !staged_reference
                             .is_in_state(context, StagedState::Committed(LocalId(Vec::new())))?
                         {

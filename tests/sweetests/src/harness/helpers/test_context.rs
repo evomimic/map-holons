@@ -1,12 +1,15 @@
 use super::create_test_dance_initiator;
 use super::descriptor_completion::{assert_descriptor_completion, expected_descriptor_keys};
+use super::{setup_probe_enabled_conductor, SmartLinkTestControl};
 use crate::{build_core_schema_bootstrap_content_set, init_tracing, DancesTestCase};
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
+use holons_core::dances::DanceInitiator;
 use holons_core::reference_layer::HolonSpaceBehavior;
 use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use holons_prelude::prelude::*;
+use holons_trust_channel::TrustChannel;
 use map_commands_contract::{
     MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
 };
@@ -62,21 +65,43 @@ pub fn init_fixture_context() -> Arc<TransactionContext> {
 pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId) {
     init_tracing();
     let initialization_started = Instant::now();
+    let initiator = create_test_dance_initiator().await;
+    info!(
+        elapsed_ms = initialization_started.elapsed().as_millis(),
+        "sweettest runtime: dance initiator ready"
+    );
+    init_runtime_with_initiator(test_case, initiator).await
+}
 
+/// Boots an isolated probe-enabled runtime; its backend must never join an ordinary suite.
+pub async fn init_probe_test_runtime(
+    test_case: &mut DancesTestCase,
+) -> (Runtime, TxId, SmartLinkTestControl) {
+    init_tracing();
+    let initialization_started = Instant::now();
+    let backend = setup_probe_enabled_conductor().await;
+    let initiator = Arc::new(TrustChannel::new(backend.clone()));
+    info!(
+        elapsed_ms = initialization_started.elapsed().as_millis(),
+        "sweettest runtime: dance initiator ready"
+    );
+    let (runtime, tx_id) = init_runtime_with_initiator(test_case, initiator).await;
+    (runtime, tx_id, SmartLinkTestControl::new(backend))
+}
+
+/// Uses the same bootstrap and fixture import path with either conductor configuration.
+async fn init_runtime_with_initiator(
+    test_case: &mut DancesTestCase,
+    dance_initiator: Arc<dyn DanceInitiator + Send + Sync>,
+) -> (Runtime, TxId) {
+    let initialization_started = Instant::now();
     info!("\n ========== Initializing TEST RUNTIME ============");
 
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> =
         Arc::new(ClientHolonService::development_default());
 
-    // Step 2: Setup DanceInitiator
-    let dance_initiator = create_test_dance_initiator().await;
-    info!(
-        elapsed_ms = initialization_started.elapsed().as_millis(),
-        "sweettest runtime: dance initiator ready"
-    );
-
-    // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`
+    // Step 2: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         Some(dance_initiator),
         holon_service,
@@ -84,11 +109,11 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         ServiceRoutingPolicy::Combined,
     ));
 
-    // Step 4: Create RuntimeSession and Runtime
+    // Step 3: Create RuntimeSession and Runtime
     let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager), None));
     let runtime = Runtime::new(session);
 
-    // Step 5: Bootstrap the first space through the same internal transaction
+    // Step 4: Bootstrap the first space through the same internal transaction
     // shape Conductora uses. The guest writes and returns CoreSchemaSpace as
     // the LocalHolonSpace anchor when this load commits.
     let result = runtime
@@ -180,7 +205,7 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         "Core Schema bootstrap did not inject a LocalHolonSpace anchor"
     );
 
-    // Step 6: Begin the fixture's first ordinary transaction only after the
+    // Step 5: Begin the fixture's first ordinary transaction only after the
     // persisted CoreSchemaSpace anchor is available.
     let result = runtime
         .execute_command(
@@ -194,7 +219,7 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         other => panic!("expected TransactionCreated, got {:?}", other),
     };
 
-    // Step 7: Import transient holons from fixture phase
+    // Step 6: Import transient holons from fixture phase
     let context =
         runtime.session().get_transaction(&tx_id).expect("failed to get initial transaction");
     // Fixture construction happens before runtime startup. Bootstrap consumes

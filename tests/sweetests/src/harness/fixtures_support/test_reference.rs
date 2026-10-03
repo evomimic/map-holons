@@ -43,7 +43,8 @@ pub type SnapshotId = TemporaryId;
 ///
 /// Notes:
 /// - A new token is minted with a unique id for each snapshot representation of a state change.
-/// - FixtureHolons::commit() will mint a saved-intent (ie saved state) token for each staged-intent token whose previous snapshot is not either Abandoned or Saved.
+/// - FixtureHolons::commit() mints saved-intent tokens for advancing candidates;
+///   NoAction under Incomplete retains its staged token for the next attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum TestHolonState {
     Transient,

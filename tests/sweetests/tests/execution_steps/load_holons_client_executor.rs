@@ -4,7 +4,6 @@ use holons_prelude::prelude::*;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::info;
 
 use holons_test::{ExpectedLoadStatus, TestExecutionState};
 

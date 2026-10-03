@@ -4,8 +4,9 @@ use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
-    DancesTestCase, ExpectedCommitStatus, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, TestCaseInit,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedLineage, ExpectedPersistedGraph, ExpectedRejectedHolon, ExpectedValidationFinding,
+    ExpectedValidationSubject, PersistedSubject, TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -74,14 +75,39 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
     // only after reconciliation; an unchanged ForUpdate commits with NoAction.
     let retry_title: PropertyMap =
         [("Title".to_property_name(), "Reconciled title".to_base_value())].into();
-    test_case.add_with_properties_step(
+    let first = test_case.add_with_properties_step(
         &mut fixture_holons,
         first,
         retry_title,
         None,
         Some("Change the surviving replacement before retry".into()),
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(first.clone(), ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
+    test_case.add_match_saved_content_step()?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let unchanged = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        first,
+        None,
+        MapInteger(1),
+        None,
+        Some("Reuse the corrected retry's saved-result token".into()),
+    )?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(unchanged, ExpectedDisposition::NoAction)],
+        vec![],
+        None,
+        Some("Declare a fresh unchanged attempt after the corrected retry".into()),
+    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
@@ -196,19 +222,28 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
     )?;
     let branch_b_title: PropertyMap =
         [("Title".to_property_name(), "Branch B title".to_base_value())].into();
-    test_case.add_with_properties_step(
+    let branch_b = test_case.add_with_properties_step(
         &mut fixture_holons,
         branch_b,
         branch_b_title,
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(branch_b.clone(), ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
+
+    test_case.add_match_saved_content_step()?;
 
     test_case.add_begin_transaction_step(None, None)?;
     let branch_c = test_case.add_stage_new_version_step(
         &mut fixture_holons,
-        original,
+        original.clone(),
         None,
         MapInteger(1),
         None,
@@ -216,14 +251,39 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
     )?;
     let branch_c_title: PropertyMap =
         [("Title".to_property_name(), "Branch C title".to_base_value())].into();
-    test_case.add_with_properties_step(
+    let branch_c = test_case.add_with_properties_step(
         &mut fixture_holons,
         branch_c,
         branch_c_title,
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(branch_c.clone(), ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
+    test_case.add_match_saved_content_step()?;
+    // Tokens distinguish the branches sharing one key; get-all still enumerates only A.
+    let a = PersistedSubject::Token(original);
+    let b = PersistedSubject::Token(branch_b);
+    let c = PersistedSubject::Token(branch_c);
+    test_case.add_verify_persisted_graph_step(
+        &fixture_holons,
+        ExpectedPersistedGraph {
+            enumerated: vec![a.clone(), PersistedSubject::Key("Book.BranchSource".into())],
+            lineage: vec![
+                ExpectedLineage { subject: a.clone(), predecessors: vec![], successors: vec![b.clone(), c.clone()] },
+                ExpectedLineage { subject: b, predecessors: vec![a.clone()], successors: vec![] },
+                ExpectedLineage { subject: c, predecessors: vec![a], successors: vec![] },
+            ],
+            ..Default::default()
+        },
+        Some("Verify both branches have exactly A as predecessor and A has exactly B and C as successors".into()),
+    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }

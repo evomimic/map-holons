@@ -10,14 +10,9 @@ use tracing::info;
 /// For both Transient and Staged references:
 /// adds a new relationship, removes an existing relationship, then adds another relationship again.
 ///
-/// This is also the canonical **strict commit Pass 2 rejection** case (issue
-/// #442): the staged holons are undescribed and their relationships
-/// (`AUTHORED_BY`, `PUBLISHED_BY`) are freeform, so relationship persistence
-/// cannot resolve them against any declared schema surface. The commit is
-/// therefore expected to report `CommitRequestStatus = Incomplete`: Pass 1
-/// still saves all staged holons, but no relationship SmartLinks are persisted.
-/// In-memory add/remove ergonomics
-/// before the commit are unaffected.
+/// This fixture exercises in-memory ergonomics without attempting Commit.
+/// Its undescribed holons and freeform relationships would be semantically
+/// rejected by Commit; relationship-persistence failures need schema-backed fixtures.
 ///
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {

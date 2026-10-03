@@ -52,6 +52,93 @@ impl core::fmt::Display for ExpectedCommitStatus {
     }
 }
 
+/// Persistence disposition declared for one live Pass 1 candidate, for one Commit attempt.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExpectedDisposition {
+    /// Persist a new root, including an independent clone, without inherited lineage.
+    NewRoot,
+    /// Save nothing; retain the staged head under Incomplete, or bind the source under Complete.
+    NoAction,
+    /// Persist graph changes using the saved source's identity.
+    GraphOnly,
+    /// Persist a distinct version with its saved source as predecessor.
+    NewVersion,
+}
+
+impl core::fmt::Display for ExpectedDisposition {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let value = match self {
+            ExpectedDisposition::NewRoot => "NewRoot",
+            ExpectedDisposition::NoAction => "NoAction",
+            ExpectedDisposition::GraphOnly => "GraphOnly",
+            ExpectedDisposition::NewVersion => "NewVersion",
+        };
+        write!(f, "{value}")
+    }
+}
+
+/// A fixture author's declaration for one live staged candidate in a Commit attempt.
+#[derive(Clone, Debug)]
+pub struct ExpectedCommitCandidate {
+    pub token: TestReference,
+    pub disposition: ExpectedDisposition,
+    /// Newly appended operational error occurrences; an empty list expects none.
+    /// Repeated kinds represent separate occurrences.
+    pub expected_new_errors: Vec<HolonErrorKind>,
+}
+
+impl ExpectedCommitCandidate {
+    /// Declares a candidate's disposition with no new operational errors expected.
+    pub fn new(token: TestReference, disposition: ExpectedDisposition) -> Self {
+        Self { token, disposition, expected_new_errors: Vec::new() }
+    }
+
+    /// Sets the expected new operational error occurrences for this attempt.
+    pub fn with_expected_new_errors(mut self, expected_new_errors: Vec<HolonErrorKind>) -> Self {
+        self.expected_new_errors = expected_new_errors;
+        self
+    }
+}
+
+/// A committed staged entry retained for a Pass 2 relationship retry.
+/// It has no live node disposition and produces no new `SavedHolons` entry.
+#[derive(Clone, Debug)]
+pub struct ExpectedRetryParticipant {
+    pub token: TestReference,
+    /// Newly appended operational error occurrences; an empty list expects none.
+    /// Multiplicity follows [`ExpectedCommitCandidate::expected_new_errors`].
+    pub expected_new_errors: Vec<HolonErrorKind>,
+}
+
+impl ExpectedRetryParticipant {
+    /// Declares a relationship retry participant with no new operational errors expected.
+    pub fn new(token: TestReference) -> Self {
+        Self { token, expected_new_errors: Vec::new() }
+    }
+
+    /// Sets the expected new operational error occurrences for this attempt.
+    pub fn with_expected_new_errors(mut self, expected_new_errors: Vec<HolonErrorKind>) -> Self {
+        self.expected_new_errors = expected_new_errors;
+        self
+    }
+}
+
+/// Adder-resolved declaration associating author intent with a result token.
+#[derive(Clone, Debug)]
+pub struct ResolvedCommitCandidate {
+    pub staged_token: TestReference,
+    pub disposition: ExpectedDisposition,
+    /// Advanced fixture-head token, absent only for `NoAction` under `Incomplete`.
+    /// That candidate keeps its staged head and remains live for the next attempt.
+    /// The Commit executor records the corresponding saved reference against this token;
+    /// for `NoAction`, it constructs that reference from the candidate's `versioned_source_id`
+    /// without consuming a `SavedHolons` entry.
+    pub result_token: Option<TestReference>,
+    /// Newly appended operational error occurrences; an empty list expects none.
+    /// Multiplicity follows [`ExpectedCommitCandidate::expected_new_errors`].
+    pub expected_new_errors: Vec<HolonErrorKind>,
+}
+
 /// Identity-only subject shape; the executor supplies the realized holon's identity.
 #[derive(Clone, Debug)]
 pub enum ExpectedValidationSubject {
@@ -122,6 +209,79 @@ pub enum QueryExpectation {
     Error(HolonErrorKind),
 }
 
+/// A saved subject addressed by fixture identity, enumeration key, or lineage traversal.
+#[derive(Clone, Debug)]
+pub enum PersistedSubject {
+    /// The adder freezes this token to its current saved head; execution uses its recorded identity.
+    Token(TestReference),
+    /// Requires exactly one enumerated holon with this key. Use tokens for same-key versions.
+    Key(String),
+    /// Traverses a unique Successor at each hop; zero denotes the source itself.
+    /// Use tokens to identify branches when a hop has multiple successors.
+    Successor { of: Box<PersistedSubject>, generation: usize },
+}
+
+/// Expected occurrence count of a particular target identity in a persisted relationship.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EdgeExpectation {
+    ExactlyOnce,
+    Contains,
+    Absent,
+}
+
+/// One forward edge and, optionally, the corresponding inverse edge.
+#[derive(Clone, Debug)]
+pub struct ExpectedPersistedEdge {
+    pub source: PersistedSubject,
+    pub relationship: RelationshipName,
+    /// When present, applies the same expectation from target back to source.
+    pub inverse: Option<RelationshipName>,
+    pub target: PersistedSubject,
+    pub expectation: EdgeExpectation,
+}
+
+/// Every persisted target of one relationship, as an exact unordered identity set.
+///
+/// Extra or missing targets fail, and duplicate persisted links fail because
+/// multiplicity is preserved rather than normalized away. An empty `targets`
+/// asserts an empty persisted collection.
+///
+/// Declare an inverse direction as its own entry with the target as `source`: an
+/// inverse collection may legitimately hold sources from unrelated declarations, so a
+/// complete inverse expectation cannot be derived from one forward declaration. Exact
+/// inverses on schema descriptors are therefore only sound in an isolated runtime where
+/// every source is known; in shared suites use [`ExpectedPersistedEdge`] for the inverse.
+#[derive(Clone, Debug)]
+pub struct ExpectedPersistedRelationship {
+    pub source: PersistedSubject,
+    pub relationship: RelationshipName,
+    pub targets: Vec<PersistedSubject>,
+}
+
+/// Exact identities for the fixed `Predecessor` and `Successor` relationships;
+/// empty lists assert absence of lineage.
+/// Duplicate actual or declared members are errors, even when the identity sets agree.
+///
+/// Expands into two [`ExpectedPersistedRelationship`] assertions at execution time, so
+/// lineage and ordinary relationships share one exactness comparator.
+#[derive(Clone, Debug)]
+pub struct ExpectedLineage {
+    pub subject: PersistedSubject,
+    pub predecessors: Vec<PersistedSubject>,
+    pub successors: Vec<PersistedSubject>,
+}
+
+/// Persisted graph assertions evaluated with fresh reads rather than staged snapshots.
+#[derive(Clone, Debug, Default)]
+pub struct ExpectedPersistedGraph {
+    /// Each subject must occur exactly once in get-all; unrelated holons are permitted.
+    pub enumerated: Vec<PersistedSubject>,
+    pub edges: Vec<ExpectedPersistedEdge>,
+    /// Exact target sets; the only expectation that rejects an undeclared extra target.
+    pub relationships: Vec<ExpectedPersistedRelationship>,
+    pub lineage: Vec<ExpectedLineage>,
+}
+
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
@@ -142,7 +302,8 @@ pub enum DanceTestStep {
         description: String,
     },
     Commit {
-        saved_tokens: Vec<TestReference>, // Used to match expected
+        candidates: Vec<ResolvedCommitCandidate>,
+        retry_participants: Vec<ExpectedRetryParticipant>,
         expected_status: ExpectedCommitStatus,
         expected_error: Option<HolonErrorKind>,
         description: String,
@@ -232,6 +393,10 @@ pub enum DanceTestStep {
         description: String,
     },
     VerifyRelationshipAnchoring {
+        description: String,
+    },
+    VerifyPersistedGraph {
+        expected: ExpectedPersistedGraph,
         description: String,
     },
     VerifyCoreSchemaDescriptorSubtypes {
@@ -329,16 +494,44 @@ impl core::fmt::Display for DanceTestStep {
                 )
             }
             DanceTestStep::Commit {
-                saved_tokens,
+                candidates,
+                retry_participants,
                 expected_status,
                 expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [saved_tokens: {}, expected_status: {expected_status}, expected_error: {expected_error:?}]",
-                    saved_tokens.len()
-                )
+                    "{description} [expected_status: {expected_status}, expected_error: {expected_error:?}, candidates: ["
+                )?;
+                for (index, candidate) in candidates.iter().enumerate() {
+                    if index > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(
+                        f,
+                        "{{token: {}, disposition: {}, result: {}, expected_new_errors: {:?}}}",
+                        candidate.staged_token,
+                        candidate.disposition,
+                        candidate.result_token.as_ref().map_or_else(
+                            || "retained staged head".to_string(),
+                            |token| token.to_string(),
+                        ),
+                        candidate.expected_new_errors
+                    )?;
+                }
+                write!(f, "], retry_participants: [")?;
+                for (index, participant) in retry_participants.iter().enumerate() {
+                    if index > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(
+                        f,
+                        "{{token: {}, expected_new_errors: {:?}}}",
+                        participant.token, participant.expected_new_errors
+                    )?;
+                }
+                write!(f, "]]")
             }
             DanceTestStep::DeleteHolon { step_token, expected_error, description } => {
                 write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")
@@ -437,6 +630,15 @@ impl core::fmt::Display for DanceTestStep {
             }
             DanceTestStep::VerifyRelationshipAnchoring { description } => {
                 write!(f, "{description}")
+            }
+            DanceTestStep::VerifyPersistedGraph { expected, description } => {
+                write!(
+                    f,
+                    "{description} [enumerated: {}, edges: {}, lineage: {}]",
+                    expected.enumerated.len(),
+                    expected.edges.len(),
+                    expected.lineage.len()
+                )
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description } => {
                 write!(f, "{description}")
@@ -577,10 +779,10 @@ impl core::fmt::Display for DanceTestStep {
 //                     .field("expected_status", expected_status)
 //                     .finish(),
 //             },
-//             DanceTestStep::Commit { saved_tokens, expected_error, description } =>
+//             DanceTestStep::Commit { candidates, expected_error, description, .. } =>
 //                 f.debug_struct("Commit")
 //                 .field("description", description)
-//                 .field("saved_tokens", saved_tokens)
+//                 .field("candidates", candidates)
 //                 .field("expected_status", expected_status)
 //                 .finish(),
 //             DanceTestStep::DeleteHolon { step_token, expected_error, description } => f

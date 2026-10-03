@@ -1,13 +1,19 @@
 use crate::harness::fixtures_support::{TestHolonState, TestReference};
 use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
-use derive_new::new;
+
+use crate::{
+    ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition, ExpectedRetryParticipant,
+    ResolvedCommitCandidate, SAVED_LOOKUP_STUB_MARKER,
+};
 use holons_core::WritableHolon;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext, HolonReference, TransientReference,
 };
-use std::{collections::BTreeMap, sync::Arc};
-use tracing::debug;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use super::{ExpectedSnapshot, SnapshotId, SourceSnapshot};
 use holons_core::ReadableHolon;
@@ -51,9 +57,25 @@ impl FixtureHolonId {
         FixtureHolonId(uuid)
     }
 }
+/// Persisted-source provenance established by staging, independent of Commit expectations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StagingSource {
+    /// A create or independent clone establishes a new root.
+    NewRoot,
+    /// An update was staged from this logical holon's persisted version.
+    Version { source: FixtureHolonId },
+}
+
+/// Whether a fixture head owns its persisted node or reuses another holon's identity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SavedIdentity {
+    OwnNode,
+    AliasOf(FixtureHolonId),
+}
+
 ///  Represents one logical holon as it evolves across multiple Test Steps during the Fixture Phase.
 ///  Mutable and internal to the harness.
-#[derive(new, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct FixtureHolon {
     /// Authoritative snapshot representing the fixture’s current expectation
     /// after the most recent step. Used for chaining and validation.
@@ -62,6 +84,9 @@ pub struct FixtureHolon {
     /// Most recent non-deleted snapshot usable as a source for future steps.
     /// Used when the head snapshot represents a Deleted holon.
     last_live_snapshot: ExpectedSnapshot,
+
+    pub staging_source: StagingSource,
+    pub saved_identity: Option<SavedIdentity>,
 }
 
 impl FixtureHolon {
@@ -82,7 +107,7 @@ impl FixtureHolon {
 /// Fixture-time factory + registry for [`TestReference`]s.
 ///
 /// - **Only** `FixtureHolons` can mint tokens (it calls `TestReference::new`, which is `pub(crate)`).
-/// - `commit()` advances head with a minted *Saved* expectation for all *Staged* intents.
+/// - `commit()` advances declared candidates with disposition-specific persisted expectations.
 ///
 ///  Each token maps to an ExecutionHolon -- the expected runtime resolution.
 #[derive(Clone)]
@@ -145,7 +170,25 @@ impl FixtureHolons {
                 "Can only create a FixtureHolon from Transient or Staged".to_string(),
             ));
         }
-        self.register_fixture_holon(snapshot)
+        self.register_fixture_holon(snapshot, StagingSource::NewRoot)
+    }
+
+    /// Registers an update candidate with the persisted source established by staging.
+    pub fn create_versioned_fixture_holon(
+        &mut self,
+        snapshot: ExpectedSnapshot,
+        source_token: &TestReference,
+    ) -> Result<(), HolonError> {
+        let source = self.fixture_id_for_token(source_token)?;
+        let source_state = self.holons[&source].state();
+        if snapshot.state() != TestHolonState::Staged
+            || !matches!(source_state, TestHolonState::Saved | TestHolonState::SavedLookup)
+        {
+            return Err(HolonError::InvalidParameter(format!(
+                "Version staging requires a Staged snapshot and a saved source: {source_token}, source state {source_state}"
+            )));
+        }
+        self.register_fixture_holon(snapshot, StagingSource::Version { source })
     }
 
     /// Creates and adds a new FixtureHolon for a saved-lookup stub: a key-only
@@ -164,15 +207,24 @@ impl FixtureHolons {
                 "Can only create a saved-lookup FixtureHolon from SavedLookup".to_string(),
             ));
         }
-        self.register_fixture_holon(snapshot)
+        self.register_fixture_holon(snapshot, StagingSource::NewRoot)
     }
 
     /// Shared registration body for new FixtureHolons.
-    fn register_fixture_holon(&mut self, snapshot: ExpectedSnapshot) -> Result<(), HolonError> {
+    fn register_fixture_holon(
+        &mut self,
+        snapshot: ExpectedSnapshot,
+        staging_source: StagingSource,
+    ) -> Result<(), HolonError> {
         let snapshot_id = snapshot.id();
         // Create and insert FixtureHolon
         let fixture_holon_id = FixtureHolonId::new_from_id(snapshot_id.clone()); // unique id constructor
-        let holon = FixtureHolon::new(snapshot.clone(), snapshot); // last live is the same for first creations
+        let holon = FixtureHolon {
+            head_snapshot: snapshot.clone(),
+            last_live_snapshot: snapshot,
+            staging_source,
+            saved_identity: None,
+        }; // last live is the same for first creations
         if self.holons.contains_key(&fixture_holon_id) {
             return Err(HolonError::Misc("Something went wrong in logic.. duplicate ids for fixture holons should never happen".to_string()));
         }
@@ -376,46 +428,186 @@ impl FixtureHolons {
 
     // =====  COMMIT  ======  //
 
-    /// Mint tokens with expected state Saved.
-    /// Returned tokens are *only* used for resolution of expected during the execution, and never passed to an add step.
-    pub fn commit(&mut self) -> Result<Vec<TestReference>, HolonError> {
-        let mut saved_tokens = Vec::new();
+    fn fixture_id_for_token(&self, token: &TestReference) -> Result<FixtureHolonId, HolonError> {
+        self.snapshot_to_fixture_holon
+            .get(&token.expected_id())
+            .cloned()
+            .ok_or_else(|| HolonError::InvalidParameter(format!("Untracked Commit token: {token}")))
+    }
 
-        for holon in self.holons.clone().values() {
-            match holon.head_snapshot.state() {
-                TestHolonState::Staged => {
-                    let snapshot = self.copy_fixture_snapshot(holon.head_snapshot.snapshot())?;
-                    let source = holon.head_snapshot.as_source();
-                    let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Saved);
-                    // Mint saved
-                    let saved_token = TestReference::new(source, expected.clone());
-                    // Return tokens for passing to executor used for building ExecutionReference
-                    saved_tokens.push(saved_token);
-                    // Advance head
-                    self.advance_head(&holon.head_snapshot.snapshot().temporary_id(), expected)?;
-                }
-                TestHolonState::Abandoned => {
-                    debug!("Skipping commit on Abandoned Holon: {:#?}", holon);
-                }
-                TestHolonState::Transient => {
-                    debug!(
-                        "Latest state is not staged, skipping commit on Transient : {:#?}",
-                        holon
-                    );
-                }
-                TestHolonState::Saved => {
-                    debug!("Holon already saved : {:#?}", holon);
-                }
-                TestHolonState::SavedLookup => {
-                    debug!("Holon is a saved lookup stub, nothing to commit : {:#?}", holon);
-                }
-                TestHolonState::Deleted => {
-                    debug!("Holon marked as deleted : {:#?}", holon);
-                }
+    fn candidate_label(&self, token: &TestReference) -> String {
+        format!("{token} (key {:?})", token.expected_reference().key().ok().flatten())
+    }
+
+    /// Checks candidate coverage and provenance before any fixture heads advance.
+    pub(crate) fn validate_commit_expectations(
+        &self,
+        declarations: &[ExpectedCommitCandidate],
+        retry_participants: &[ExpectedRetryParticipant],
+    ) -> Result<(), HolonError> {
+        let mut declared = BTreeSet::new();
+        for declaration in declarations {
+            let id = self.fixture_id_for_token(&declaration.token)?;
+            let holon = &self.holons[&id];
+            let label = self.candidate_label(&declaration.token);
+            if holon.state() != TestHolonState::Staged {
+                return Err(HolonError::InvalidParameter(format!(
+                    "Commit candidate {label} has state {}, expected Staged",
+                    holon.state()
+                )));
+            }
+            if !declared.insert(id) {
+                return Err(HolonError::InvalidParameter(format!(
+                    "Duplicate Commit candidate {label}"
+                )));
+            }
+            let compatible = matches!(
+                (&holon.staging_source, declaration.disposition),
+                (StagingSource::NewRoot, ExpectedDisposition::NewRoot)
+                    | (
+                        StagingSource::Version { .. },
+                        ExpectedDisposition::NoAction
+                            | ExpectedDisposition::GraphOnly
+                            | ExpectedDisposition::NewVersion
+                    )
+            );
+            if !compatible {
+                return Err(HolonError::InvalidParameter(format!("Commit candidate {label}: disposition {} incompatible with staging source {:?}", declaration.disposition, holon.staging_source)));
             }
         }
+        for (id, holon) in &self.holons {
+            if holon.state() == TestHolonState::Staged && !declared.contains(id) {
+                let token = TestReference::new(
+                    holon.head_snapshot.as_source(),
+                    holon.head_snapshot.clone(),
+                );
+                return Err(HolonError::InvalidParameter(format!(
+                    "Missing Commit disposition for {}",
+                    self.candidate_label(&token)
+                )));
+            }
+        }
+        let mut retries = BTreeSet::new();
+        for participant in retry_participants {
+            let id = self.fixture_id_for_token(&participant.token)?;
+            let holon = &self.holons[&id];
+            if declared.contains(&id)
+                || !retries.insert(id)
+                || !matches!(holon.state(), TestHolonState::Saved | TestHolonState::SavedLookup)
+                || holon.saved_identity.is_none()
+            {
+                return Err(HolonError::InvalidParameter(format!("Invalid or duplicate Commit retry participant {}: state {}, saved identity {:?}", self.candidate_label(&participant.token), holon.state(), holon.saved_identity)));
+            }
+        }
+        Ok(())
+    }
 
-        Ok(saved_tokens)
+    /// Derives declarations only when staging unambiguously established new roots.
+    pub fn derive_create_only_declarations(
+        &self,
+    ) -> Result<Vec<ExpectedCommitCandidate>, HolonError> {
+        self.holons.values().filter(|holon| holon.state() == TestHolonState::Staged).map(|holon| {
+            let token = TestReference::new(holon.head_snapshot.as_source(), holon.head_snapshot.clone());
+            if holon.staging_source != StagingSource::NewRoot {
+                return Err(HolonError::InvalidParameter(format!("Commit candidate {} has update provenance; declare its disposition explicitly", self.candidate_label(&token))));
+            }
+            Ok(ExpectedCommitCandidate::new(token, ExpectedDisposition::NewRoot))
+        }).collect()
+    }
+
+    /// Mints result tokens, retaining no-action staged heads while an attempt is incomplete.
+    /// Declarations retain author order and never derive policy from fixture mutations.
+    pub fn commit(
+        &mut self,
+        expected_status: ExpectedCommitStatus,
+        declarations: &[ExpectedCommitCandidate],
+        retry_participants: &[ExpectedRetryParticipant],
+    ) -> Result<Vec<ResolvedCommitCandidate>, HolonError> {
+        self.validate_commit_expectations(declarations, retry_participants)?;
+        // Prepare against unchanged heads before mutating the registry, so a preparation
+        // error leaves every head intact. Version sources are saved when registered;
+        // live Commit candidates must be staged, keeping source heads distinct from them.
+        let mut prepared = Vec::new();
+        for declaration in declarations {
+            let id = self.fixture_id_for_token(&declaration.token)?;
+            let holon = &self.holons[&id];
+            let staged_token = self.resolve_target_token_to_head(&declaration.token)?;
+            if expected_status == ExpectedCommitStatus::Incomplete
+                && declaration.disposition == ExpectedDisposition::NoAction
+            {
+                // The unchanged entry remains ForUpdate in the still-open Nursery.
+                // Its staged identity must remain available to the next Commit attempt.
+                // Supported Incomplete means Pass 1 succeeded: the other dispositions
+                // become Committed and leave the live workset, so only NoAction stays live.
+                prepared.push((
+                    id,
+                    None,
+                    ResolvedCommitCandidate {
+                        staged_token,
+                        disposition: declaration.disposition,
+                        result_token: None,
+                        expected_new_errors: declaration.expected_new_errors.clone(),
+                    },
+                ));
+                continue;
+            }
+            let mut snapshot = self.copy_fixture_snapshot(holon.head_snapshot.snapshot())?;
+            let saved_identity = match (&holon.staging_source, declaration.disposition) {
+                (StagingSource::NewRoot, ExpectedDisposition::NewRoot) => {
+                    snapshot.with_predecessor(None)?;
+                    SavedIdentity::OwnNode
+                }
+                (
+                    StagingSource::Version { source },
+                    ExpectedDisposition::NoAction | ExpectedDisposition::GraphOnly,
+                ) => {
+                    // Staging drops copied lineage, but an alias reuses the source node
+                    // with its existing predecessor, including non-root versions.
+                    snapshot.with_predecessor(
+                        self.holons[source].head_snapshot.snapshot().predecessor()?,
+                    )?;
+                    SavedIdentity::AliasOf(source.clone())
+                }
+                (StagingSource::Version { source }, ExpectedDisposition::NewVersion) => {
+                    let source_head = &self.holons[source].head_snapshot;
+                    let source_token =
+                        TestReference::new(source_head.as_source(), source_head.clone());
+                    snapshot.with_predecessor(Some(
+                        self.resolve_expected_relationship_target(&source_token)?,
+                    ))?;
+                    SavedIdentity::OwnNode
+                }
+                _ => unreachable!("provenance validated before preparing snapshots"),
+            };
+            let state = if snapshot.property_value(SAVED_LOOKUP_STUB_MARKER)?.is_some() {
+                TestHolonState::SavedLookup
+            } else {
+                TestHolonState::Saved
+            };
+            let expected = ExpectedSnapshot::new(snapshot, state);
+            let result_token = TestReference::new(holon.head_snapshot.as_source(), expected);
+            prepared.push((
+                id,
+                Some(saved_identity),
+                ResolvedCommitCandidate {
+                    staged_token,
+                    disposition: declaration.disposition,
+                    result_token: Some(result_token),
+                    expected_new_errors: declaration.expected_new_errors.clone(),
+                },
+            ));
+        }
+        let mut resolved = Vec::new();
+        for (id, saved_identity, candidate) in prepared {
+            if let Some(result_token) = &candidate.result_token {
+                let old_id = self.holons[&id].head_snapshot.id();
+                self.advance_head(&old_id, result_token.expected_snapshot())?;
+                self.holons.get_mut(&id).expect("registered fixture").saved_identity =
+                    saved_identity;
+            }
+            resolved.push(candidate);
+        }
+        Ok(resolved)
     }
 
     // // ==== MINTING ==== // //
@@ -436,7 +628,8 @@ impl FixtureHolons {
 
     // ---- HELPERS ---- //
 
-    // Gets number of Holons per type of TestHolonState in FixtureHolons
+    /// Counts current transient and staged heads, plus fixture-owned saved nodes.
+    /// Abandoned heads contribute no live staged work.
     pub fn counts(&self) -> FixtureHolonCounts {
         let mut counts = FixtureHolonCounts::default();
         for holon in self.holons.values() {
@@ -444,15 +637,29 @@ impl FixtureHolons {
             match state {
                 TestHolonState::Transient => counts.transient += 1,
                 TestHolonState::Staged => counts.staged += 1,
-                TestHolonState::Saved => counts.saved += 1,
-                // Lookup stubs refer to holons saved outside the fixture's ledger
-                // (e.g. by a schema load); they contribute to no fixture counts.
-                TestHolonState::SavedLookup => {}
-                TestHolonState::Abandoned => counts.staged -= 1,
-                TestHolonState::Deleted => counts.saved -= 1,
+                // Saved totals follow node ownership, including aliases and deleted heads.
+                // External lookup stubs own no node; versions of partial stubs can own one.
+                TestHolonState::Abandoned
+                | TestHolonState::Saved
+                | TestHolonState::SavedLookup
+                | TestHolonState::Deleted => {}
             }
         }
+        counts.saved = self.count_saved().0;
         counts
+    }
+
+    /// Counts fixture-owned persisted nodes; aliases and lookup stubs add no nodes.
+    pub fn count_saved(&self) -> MapInteger {
+        MapInteger(
+            self.holons
+                .values()
+                .filter(|holon| {
+                    holon.saved_identity == Some(SavedIdentity::OwnNode)
+                        && holon.state() != TestHolonState::Deleted
+                })
+                .count() as i64,
+        )
     }
 
     pub fn count_transient(&self) -> MapInteger {
@@ -516,7 +723,7 @@ mod tests {
         assert_eq!(head.expected_id(), staged_token.expected_id());
         assert_eq!(head.expected_snapshot().state(), TestHolonState::Staged);
         assert!(
-            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { saved_tokens, .. }) if saved_tokens.is_empty())
+            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { candidates, .. }) if candidates.is_empty())
         );
 
         // The same token can feed a correction step; a subsequent accepted Commit advances it.
@@ -538,7 +745,10 @@ mod tests {
         let mut fixture_holons = FixtureHolons::new(context.clone());
         let staged_token = mint_staged_token(&context, &mut fixture_holons, "book-key");
 
-        fixture_holons.commit().expect("commit should advance staged heads");
+        let declarations = fixture_holons.derive_create_only_declarations().unwrap();
+        fixture_holons
+            .commit(ExpectedCommitStatus::Complete, &declarations, &[])
+            .expect("commit should advance staged heads");
 
         let head_token = fixture_holons
             .resolve_target_token_to_head(&staged_token)
@@ -561,6 +771,686 @@ mod tests {
             .resolve_target_token_to_head(&staged_token)
             .expect("head resolution should succeed");
         assert_eq!(resolved, staged_token);
+    }
+
+    fn commit_roots(fixture_holons: &mut FixtureHolons) {
+        let declarations = fixture_holons.derive_create_only_declarations().unwrap();
+        fixture_holons.commit(ExpectedCommitStatus::Complete, &declarations, &[]).unwrap();
+    }
+
+    fn stage_version(fixture_holons: &mut FixtureHolons, source: &TestReference) -> TestReference {
+        crate::DancesTestCase::default()
+            .add_stage_new_version_step(
+                fixture_holons,
+                source.clone(),
+                None,
+                MapInteger(1),
+                None,
+                None,
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn no_action_advances_head_without_a_saved_result_and_preserves_error_declaration() {
+        use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
+        use integrity_core_types::HolonErrorKind;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let root = mint_staged_token(&context, &mut fixtures, "unchanged");
+        commit_roots(&mut fixtures);
+        let update = stage_version(&mut fixtures, &root);
+        let mut test_case = DancesTestCase::default();
+        test_case
+            .add_commit_step_with_dispositions(
+                &mut fixtures,
+                ExpectedCommitStatus::Complete,
+                vec![ExpectedCommitCandidate::new(update.clone(), ExpectedDisposition::NoAction)
+                    .with_expected_new_errors(vec![HolonErrorKind::CommitFailure])],
+                vec![],
+                None,
+                None,
+            )
+            .unwrap();
+        let Some(DanceTestStep::Commit { candidates, .. }) = test_case.steps.last() else {
+            panic!("expected Commit")
+        };
+        assert_eq!(candidates[0].disposition, ExpectedDisposition::NoAction);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].expected_new_errors, vec![HolonErrorKind::CommitFailure]);
+        let head = fixtures.resolve_target_token_to_head(&update).unwrap();
+        assert_eq!(head.expected_id(), candidates[0].result_token.as_ref().unwrap().expected_id());
+        assert_ne!(head.expected_id(), update.expected_id());
+        assert_eq!(head.expected_snapshot().state(), TestHolonState::Saved);
+        let source_id = fixtures.fixture_id_for_token(&root).unwrap();
+        assert_eq!(
+            fixtures.get_fixture_holon_by_snapshot(&head.expected_id()).unwrap().saved_identity,
+            Some(SavedIdentity::AliasOf(source_id))
+        );
+        assert_eq!(fixtures.count_saved(), MapInteger(1));
+    }
+
+    #[test]
+    fn incomplete_no_action_remains_live_through_retries_while_saved_outcomes_advance() {
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "unchanged-retry");
+        let b = mint_staged_token(&context, &mut fixtures, "graph-retry");
+        let c = mint_staged_token(&context, &mut fixtures, "version-retry");
+        commit_roots(&mut fixtures);
+        let source = fixtures.resolve_target_token_to_head(&a).unwrap();
+        let unchanged = stage_version(&mut fixtures, &a);
+        let graph = stage_version(&mut fixtures, &b);
+        let version = stage_version(&mut fixtures, &c);
+        let root = mint_staged_token(&context, &mut fixtures, "new-retry");
+        let declaration =
+            ExpectedCommitCandidate::new(unchanged.clone(), ExpectedDisposition::NoAction);
+        let results = fixtures
+            .commit(
+                ExpectedCommitStatus::Incomplete,
+                &[
+                    declaration.clone(),
+                    ExpectedCommitCandidate::new(graph.clone(), ExpectedDisposition::GraphOnly),
+                    ExpectedCommitCandidate::new(version, ExpectedDisposition::NewVersion),
+                    ExpectedCommitCandidate::new(root, ExpectedDisposition::NewRoot),
+                ],
+                &[],
+            )
+            .unwrap();
+        assert!(results[0].result_token.is_none());
+        assert!(results[1..].iter().all(|candidate| candidate.result_token.is_some()));
+        assert_eq!(fixtures.resolve_target_token_to_head(&unchanged).unwrap(), unchanged);
+        assert_eq!(fixtures.resolve_target_token_to_head(&a).unwrap(), source);
+        assert_eq!(
+            fixtures.get_fixture_holon_by_snapshot(&unchanged.expected_id()).unwrap().state(),
+            TestHolonState::Staged
+        );
+        assert_eq!(fixtures.count_saved(), MapInteger(5));
+        assert!(fixtures
+            .get_fixture_holon_by_snapshot(&unchanged.expected_id())
+            .unwrap()
+            .saved_identity
+            .is_none());
+
+        let retry = ExpectedRetryParticipant::new(graph);
+        let error =
+            fixtures.commit(ExpectedCommitStatus::Incomplete, &[], &[retry.clone()]).unwrap_err();
+        assert!(error.to_string().contains("Missing Commit disposition"), "{error}");
+        assert_eq!(fixtures.resolve_target_token_to_head(&unchanged).unwrap(), unchanged);
+        let results = fixtures
+            .commit(ExpectedCommitStatus::Incomplete, &[declaration.clone()], &[retry.clone()])
+            .unwrap();
+        assert_eq!(results[0].staged_token, unchanged);
+        assert!(results[0].result_token.is_none());
+        assert_eq!(fixtures.resolve_target_token_to_head(&unchanged).unwrap(), unchanged);
+
+        let results =
+            fixtures.commit(ExpectedCommitStatus::Complete, &[declaration], &[retry]).unwrap();
+        let saved = results[0].result_token.as_ref().unwrap();
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&unchanged).unwrap().expected_id(),
+            saved.expected_id()
+        );
+        assert_eq!(saved.expected_snapshot().state(), TestHolonState::Saved);
+        assert_eq!(
+            fixtures.get_fixture_holon_by_snapshot(&unchanged.expected_id()).unwrap().state(),
+            TestHolonState::Saved
+        );
+        assert_eq!(fixtures.count_saved(), MapInteger(5));
+        assert!(fixtures.derive_create_only_declarations().unwrap().is_empty());
+    }
+
+    #[test]
+    fn incomplete_no_action_can_be_mutated_before_a_fresh_version_declaration() {
+        use holons_prelude::prelude::*;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let root = mint_staged_token(&context, &mut fixtures, "mutable-retry");
+        commit_roots(&mut fixtures);
+        let source = fixtures.resolve_target_token_to_head(&root).unwrap();
+        let unchanged = stage_version(&mut fixtures, &root);
+        let mut case = crate::DancesTestCase::default();
+        case.add_commit_step_with_dispositions(
+            &mut fixtures,
+            ExpectedCommitStatus::Incomplete,
+            vec![ExpectedCommitCandidate::new(unchanged.clone(), ExpectedDisposition::NoAction)],
+            vec![],
+            None,
+            None,
+        )
+        .unwrap();
+        let mutated = case
+            .add_with_properties_step(
+                &mut fixtures,
+                unchanged,
+                [("Title".to_property_name(), "Corrected".to_base_value())].into(),
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(mutated.source_snapshot().state(), TestHolonState::Staged);
+        assert_eq!(fixtures.resolve_target_token_to_head(&root).unwrap(), source);
+        case.add_commit_step_with_dispositions(
+            &mut fixtures,
+            ExpectedCommitStatus::Complete,
+            vec![ExpectedCommitCandidate::new(mutated.clone(), ExpectedDisposition::NewVersion)],
+            vec![],
+            None,
+            None,
+        )
+        .unwrap();
+        let crate::DanceTestStep::Commit { candidates, .. } = &case.steps[0] else {
+            panic!("first attempt");
+        };
+        assert_eq!(candidates[0].disposition, ExpectedDisposition::NoAction);
+        assert!(candidates[0].result_token.is_none());
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&mutated).unwrap().expected_snapshot().state(),
+            TestHolonState::Saved
+        );
+    }
+
+    #[test]
+    fn successive_versions_replace_copied_predecessor_without_mutating_the_source() {
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "versioned");
+        commit_roots(&mut fixtures);
+        let a_head = fixtures.resolve_target_token_to_head(&a).unwrap();
+        let b = stage_version(&mut fixtures, &a);
+        let b_result = fixtures
+            .commit(
+                ExpectedCommitStatus::Complete,
+                &[ExpectedCommitCandidate::new(b.clone(), ExpectedDisposition::NewVersion)],
+                &[],
+            )
+            .unwrap()
+            .remove(0)
+            .result_token
+            .unwrap();
+        assert_eq!(
+            b_result.expected_reference().predecessor().unwrap(),
+            Some(a_head.expected_reference().into())
+        );
+        let b_predecessor = b_result.expected_reference().predecessor().unwrap();
+        let c = stage_version(&mut fixtures, &b);
+        let c_result = fixtures
+            .commit(
+                ExpectedCommitStatus::Complete,
+                &[ExpectedCommitCandidate::new(c, ExpectedDisposition::NewVersion)],
+                &[],
+            )
+            .unwrap()
+            .remove(0)
+            .result_token
+            .unwrap();
+        assert_eq!(
+            c_result.expected_reference().predecessor().unwrap(),
+            Some(b_result.expected_reference().into())
+        );
+        assert_eq!(b_result.expected_reference().predecessor().unwrap(), b_predecessor);
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&b).unwrap().expected_id(),
+            b_result.expected_id()
+        );
+        assert!(a_head.expected_reference().predecessor().unwrap().is_none());
+        assert_eq!(fixtures.count_saved(), MapInteger(3));
+    }
+
+    #[test]
+    fn unchanged_and_graph_only_updates_retain_non_root_source_lineage() {
+        for disposition in [ExpectedDisposition::NoAction, ExpectedDisposition::GraphOnly] {
+            let context = init_fixture_context();
+            let mut fixtures = FixtureHolons::new(context.clone());
+            let a = mint_staged_token(&context, &mut fixtures, "lineage-source");
+            commit_roots(&mut fixtures);
+            let b = stage_version(&mut fixtures, &a);
+            let b_result = fixtures
+                .commit(
+                    ExpectedCommitStatus::Complete,
+                    &[ExpectedCommitCandidate::new(b.clone(), ExpectedDisposition::NewVersion)],
+                    &[],
+                )
+                .unwrap()
+                .remove(0)
+                .result_token
+                .unwrap();
+            let predecessor = b_result.expected_reference().predecessor().unwrap();
+            let update = stage_version(&mut fixtures, &b);
+            assert!(update.expected_reference().predecessor().unwrap().is_none());
+            assert_eq!(b_result.expected_reference().predecessor().unwrap(), predecessor);
+            let result = fixtures
+                .commit(
+                    ExpectedCommitStatus::Complete,
+                    &[ExpectedCommitCandidate::new(update, disposition)],
+                    &[],
+                )
+                .unwrap()
+                .remove(0)
+                .result_token
+                .unwrap();
+            assert_eq!(result.expected_reference().predecessor().unwrap(), predecessor);
+            assert_eq!(b_result.expected_reference().predecessor().unwrap(), predecessor);
+            assert_eq!(fixtures.count_saved(), MapInteger(2));
+            assert_eq!(fixtures.counts().saved, 2);
+        }
+    }
+
+    #[test]
+    fn independent_clone_staging_and_commit_clear_lineage_without_mutating_the_source() {
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "clone-source");
+        commit_roots(&mut fixtures);
+        let b = stage_version(&mut fixtures, &a);
+        let b_result = fixtures
+            .commit(
+                ExpectedCommitStatus::Complete,
+                &[ExpectedCommitCandidate::new(b, ExpectedDisposition::NewVersion)],
+                &[],
+            )
+            .unwrap()
+            .remove(0)
+            .result_token
+            .unwrap();
+        let predecessor = b_result.expected_reference().predecessor().unwrap();
+        let mut test_case = crate::DancesTestCase::default();
+        let clone = test_case
+            .add_stage_new_from_clone_step(
+                &mut fixtures,
+                b_result.clone(),
+                MapString("independent-clone".into()),
+                None,
+                None,
+            )
+            .unwrap();
+        assert!(clone.expected_reference().predecessor().unwrap().is_none());
+        assert_eq!(b_result.expected_reference().predecessor().unwrap(), predecessor);
+        let result = fixtures
+            .commit(
+                ExpectedCommitStatus::Complete,
+                &[ExpectedCommitCandidate::new(clone, ExpectedDisposition::NewRoot)],
+                &[],
+            )
+            .unwrap()
+            .remove(0)
+            .result_token
+            .unwrap();
+        assert!(result.expected_reference().predecessor().unwrap().is_none());
+        assert!(b_result.expected_reference().predecessor().unwrap().is_some());
+    }
+
+    #[test]
+    fn saved_lookup_sources_remain_partial_for_all_update_dispositions() {
+        for disposition in [
+            ExpectedDisposition::NoAction,
+            ExpectedDisposition::GraphOnly,
+            ExpectedDisposition::NewVersion,
+        ] {
+            let context = init_fixture_context();
+            let mut fixtures = FixtureHolons::new(context.clone());
+            let mut snapshot =
+                context.mutation().new_holon(Some(MapString("external".into()))).unwrap();
+            snapshot.with_property_value(SAVED_LOOKUP_STUB_MARKER, true).unwrap();
+            let expected = ExpectedSnapshot::new(snapshot, TestHolonState::SavedLookup);
+            fixtures.create_saved_lookup_fixture_holon(expected.clone()).unwrap();
+            let stub = fixtures.mint_test_reference(expected.as_source(), expected);
+            let update = stage_version(&mut fixtures, &stub);
+            let result = fixtures
+                .commit(
+                    ExpectedCommitStatus::Complete,
+                    &[ExpectedCommitCandidate::new(update, disposition)],
+                    &[],
+                )
+                .unwrap()
+                .remove(0)
+                .result_token
+                .unwrap();
+            assert_eq!(result.expected_snapshot().state(), TestHolonState::SavedLookup);
+            assert_eq!(
+                fixtures.resolve_target_token_to_head(&stub).unwrap().expected_snapshot().state(),
+                TestHolonState::SavedLookup
+            );
+            assert_eq!(
+                fixtures.count_saved(),
+                MapInteger(if disposition == ExpectedDisposition::NewVersion { 1 } else { 0 })
+            );
+        }
+    }
+
+    #[test]
+    fn create_only_convenience_rejects_update_provenance_without_advancing_heads() {
+        use crate::{DancesTestCase, ExpectedCommitStatus};
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "explicit-update");
+        commit_roots(&mut fixtures);
+        let update = stage_version(&mut fixtures, &a);
+        let mut test_case = DancesTestCase::default();
+        let error = test_case
+            .add_commit_step(&mut fixtures, ExpectedCommitStatus::Complete, None, None)
+            .unwrap_err();
+        assert!(error.to_string().contains("explicit-update"));
+        assert!(test_case.steps.is_empty());
+        assert_eq!(fixtures.resolve_target_token_to_head(&update).unwrap(), update);
+    }
+
+    #[test]
+    fn mixed_declarations_preserve_author_order_and_mint_distinct_results() {
+        use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "mixed-a");
+        let b = mint_staged_token(&context, &mut fixtures, "mixed-b");
+        let c = mint_staged_token(&context, &mut fixtures, "mixed-c");
+        commit_roots(&mut fixtures);
+        let unchanged = stage_version(&mut fixtures, &a);
+        let graph_only = stage_version(&mut fixtures, &b);
+        let version = stage_version(&mut fixtures, &c);
+        let root = mint_staged_token(&context, &mut fixtures, "mixed-root");
+        let declarations = vec![
+            ExpectedCommitCandidate::new(version, ExpectedDisposition::NewVersion),
+            ExpectedCommitCandidate::new(unchanged, ExpectedDisposition::NoAction),
+            ExpectedCommitCandidate::new(root, ExpectedDisposition::NewRoot),
+            ExpectedCommitCandidate::new(graph_only, ExpectedDisposition::GraphOnly),
+        ];
+        let mut test_case = DancesTestCase::default();
+        test_case
+            .add_commit_step_with_dispositions(
+                &mut fixtures,
+                ExpectedCommitStatus::Complete,
+                declarations.clone(),
+                vec![],
+                None,
+                None,
+            )
+            .unwrap();
+        let Some(DanceTestStep::Commit { candidates, .. }) = test_case.steps.last() else {
+            panic!("expected Commit")
+        };
+        assert_eq!(
+            candidates.iter().map(|candidate| candidate.staged_token.clone()).collect::<Vec<_>>(),
+            declarations.iter().map(|declaration| declaration.token.clone()).collect::<Vec<_>>()
+        );
+        let result_ids: std::collections::HashSet<_> = candidates
+            .iter()
+            .map(|candidate| candidate.result_token.as_ref().unwrap().expected_id())
+            .collect();
+        assert_eq!(
+            result_ids.len(),
+            declarations.len(),
+            "each declared disposition mints a distinct result token"
+        );
+        assert_eq!(
+            candidates.iter().map(|candidate| candidate.disposition).collect::<Vec<_>>(),
+            declarations.iter().map(|declaration| declaration.disposition).collect::<Vec<_>>()
+        );
+        assert_eq!(fixtures.count_saved(), MapInteger(5));
+    }
+
+    #[test]
+    fn coverage_rejects_missing_duplicate_incompatible_and_non_staged_candidates() {
+        use crate::{DancesTestCase, ExpectedCommitStatus};
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "coverage-a");
+        let b = mint_staged_token(&context, &mut fixtures, "coverage-b");
+        let declaration = ExpectedCommitCandidate::new(a.clone(), ExpectedDisposition::NewRoot);
+        let mut test_case = DancesTestCase::default();
+        for (declarations, diagnostic) in [
+            (vec![declaration.clone()], "coverage-b"),
+            (vec![declaration.clone(), declaration.clone()], "Duplicate"),
+            (
+                vec![ExpectedCommitCandidate::new(a.clone(), ExpectedDisposition::GraphOnly)],
+                "incompatible",
+            ),
+        ] {
+            let error = test_case
+                .add_commit_step_with_dispositions(
+                    &mut fixtures,
+                    ExpectedCommitStatus::Complete,
+                    declarations,
+                    vec![],
+                    None,
+                    None,
+                )
+                .unwrap_err();
+            assert!(error.to_string().contains(diagnostic), "{error}");
+            assert!(test_case.steps.is_empty());
+            assert_eq!(fixtures.resolve_target_token_to_head(&a).unwrap(), a);
+            assert_eq!(fixtures.resolve_target_token_to_head(&b).unwrap(), b);
+        }
+        commit_roots(&mut fixtures);
+        let error =
+            fixtures.commit(ExpectedCommitStatus::Complete, &[declaration], &[]).unwrap_err();
+        assert!(error.to_string().contains("state Saved"));
+    }
+
+    #[test]
+    fn retry_participants_require_saved_identity_and_unique_disjoint_coverage() {
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "retry-source");
+        let declaration = ExpectedCommitCandidate::new(a.clone(), ExpectedDisposition::NewRoot);
+        let retry = ExpectedRetryParticipant::new(a.clone());
+        assert!(fixtures
+            .commit(ExpectedCommitStatus::Complete, &[declaration], &[retry.clone()])
+            .is_err());
+        commit_roots(&mut fixtures);
+        assert!(fixtures.commit(ExpectedCommitStatus::Complete, &[], &[retry.clone()]).is_ok());
+        assert!(fixtures
+            .commit(ExpectedCommitStatus::Complete, &[], &[retry.clone(), retry])
+            .is_err());
+        use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
+        let mut test_case = DancesTestCase::default();
+        let before = fixtures.resolve_target_token_to_head(&a).unwrap();
+        test_case
+            .add_commit_step_with_dispositions(
+                &mut fixtures,
+                ExpectedCommitStatus::Incomplete,
+                vec![],
+                vec![ExpectedRetryParticipant::new(a.clone())],
+                None,
+                None,
+            )
+            .unwrap();
+        let Some(DanceTestStep::Commit { candidates, retry_participants, .. }) =
+            test_case.steps.last()
+        else {
+            panic!("expected Commit")
+        };
+        assert!(candidates.is_empty());
+        assert_eq!(retry_participants.len(), 1);
+        assert_eq!(retry_participants[0].token.expected_id(), before.expected_id());
+        assert_eq!(retry_participants[0].token.expected_snapshot().state(), TestHolonState::Saved);
+        assert_eq!(fixtures.resolve_target_token_to_head(&a).unwrap(), before);
+    }
+
+    #[test]
+    fn command_error_commit_preserves_staged_heads() {
+        use crate::{DancesTestCase, ExpectedCommitStatus};
+        use integrity_core_types::HolonErrorKind;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "command-error");
+        let mut test_case = DancesTestCase::default();
+        test_case
+            .add_commit_step(
+                &mut fixtures,
+                ExpectedCommitStatus::Complete,
+                Some(HolonErrorKind::CommitFailure),
+                None,
+            )
+            .unwrap();
+        assert_eq!(fixtures.resolve_target_token_to_head(&a).unwrap(), a);
+    }
+
+    #[test]
+    fn property_mutations_do_not_rewrite_declared_dispositions() {
+        use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
+        use holons_prelude::prelude::*;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let root = mint_staged_token(&context, &mut fixtures, "stale-declaration");
+        commit_roots(&mut fixtures);
+        let update = stage_version(&mut fixtures, &root);
+        let declaration =
+            ExpectedCommitCandidate::new(update.clone(), ExpectedDisposition::GraphOnly);
+        let properties = [("Title".to_property_name(), "Changed".to_base_value())].into();
+        let mut test_case = DancesTestCase::default();
+        let mutated = test_case
+            .add_with_properties_step(&mut fixtures, update, properties, None, None)
+            .unwrap();
+        test_case
+            .add_commit_step_with_dispositions(
+                &mut fixtures,
+                ExpectedCommitStatus::Complete,
+                vec![declaration],
+                vec![],
+                None,
+                None,
+            )
+            .unwrap();
+        let Some(DanceTestStep::Commit { candidates, .. }) = test_case.steps.last() else {
+            panic!("expected Commit")
+        };
+        assert_eq!(candidates[0].disposition, ExpectedDisposition::GraphOnly);
+        assert_eq!(candidates[0].staged_token.expected_id(), mutated.expected_id());
+    }
+
+    #[test]
+    fn staged_counts_exclude_abandoned_heads_in_mixed_and_fully_abandoned_worksets() {
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let staged = [
+            mint_staged_token(&context, &mut fixtures, "abandoned-count-a"),
+            mint_staged_token(&context, &mut fixtures, "abandoned-count-b"),
+            mint_staged_token(&context, &mut fixtures, "live-count"),
+        ];
+        let mut case = crate::DancesTestCase::default();
+        assert_eq!(fixtures.count_staged(), MapInteger(3));
+        for token in &staged[..2] {
+            case.add_abandon_staged_changes_step(&mut fixtures, token.clone(), None, None).unwrap();
+        }
+        assert_eq!(fixtures.counts().staged, 1);
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&staged[2]).unwrap().expected_snapshot().state(),
+            TestHolonState::Staged
+        );
+        case.add_abandon_staged_changes_step(&mut fixtures, staged[2].clone(), None, None).unwrap();
+        assert_eq!(fixtures.count_staged(), MapInteger(0));
+        assert!(fixtures.derive_create_only_declarations().unwrap().is_empty());
+    }
+
+    #[test]
+    fn deleting_an_owned_head_removes_its_saved_count() {
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let root = mint_staged_token(&context, &mut fixtures, "deleted-count");
+        commit_roots(&mut fixtures);
+        let head = fixtures.resolve_target_token_to_head(&root).unwrap();
+        let deleted = ExpectedSnapshot::new(
+            fixtures.copy_fixture_snapshot(head.expected_reference()).unwrap(),
+            TestHolonState::Deleted,
+        );
+        fixtures.advance_head(&head.expected_id(), deleted).unwrap();
+        assert_eq!(fixtures.count_saved(), MapInteger(0));
+        assert_eq!(fixtures.counts().saved, 0);
+    }
+
+    #[test]
+    fn persisted_graph_subjects_require_saved_heads_before_a_step_is_added() {
+        use crate::{DancesTestCase, ExpectedPersistedGraph, PersistedSubject};
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let staged = mint_staged_token(&context, &mut fixtures, "unsaved-graph-subject");
+        let mut test_case = DancesTestCase::default();
+        let error = test_case
+            .add_verify_persisted_graph_step(
+                &fixtures,
+                ExpectedPersistedGraph {
+                    enumerated: vec![PersistedSubject::Successor {
+                        of: Box::new(PersistedSubject::Token(staged)),
+                        generation: 1,
+                    }],
+                    ..Default::default()
+                },
+                None,
+            )
+            .unwrap_err();
+        assert!(error.to_string().contains("must have a saved head"));
+        assert!(test_case.steps.is_empty());
+    }
+
+    #[test]
+    fn persisted_graph_subjects_freeze_saved_heads_before_later_deletion() {
+        use crate::{
+            DanceTestStep, DancesTestCase, EdgeExpectation, ExpectedLineage, ExpectedPersistedEdge,
+            ExpectedPersistedGraph, ExpectedPersistedRelationship, PersistedSubject,
+        };
+        use holons_prelude::prelude::*;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let staged = mint_staged_token(&context, &mut fixtures, "frozen-graph-subject");
+        commit_roots(&mut fixtures);
+        let saved_id = fixtures.resolve_target_token_to_head(&staged).unwrap().expected_id();
+        let subject = PersistedSubject::Token(staged.clone());
+        let mut test_case = DancesTestCase::default();
+        test_case
+            .add_verify_persisted_graph_step(
+                &fixtures,
+                ExpectedPersistedGraph {
+                    enumerated: vec![subject.clone()],
+                    edges: vec![ExpectedPersistedEdge {
+                        source: subject.clone(),
+                        target: subject.clone(),
+                        relationship: "Predecessor".to_relationship_name(),
+                        inverse: None,
+                        expectation: EdgeExpectation::Absent,
+                    }],
+                    relationships: vec![ExpectedPersistedRelationship {
+                        source: subject.clone(),
+                        relationship: "ReferencesProperty".to_relationship_name(),
+                        targets: vec![subject.clone()],
+                    }],
+                    lineage: vec![ExpectedLineage {
+                        subject: PersistedSubject::Successor {
+                            of: Box::new(subject.clone()),
+                            generation: 0,
+                        },
+                        predecessors: vec![subject.clone()],
+                        successors: vec![subject],
+                    }],
+                },
+                None,
+            )
+            .unwrap();
+        test_case.add_delete_holon_step(&mut fixtures, staged.clone(), None, None).unwrap();
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&staged).unwrap().expected_snapshot().state(),
+            TestHolonState::Deleted
+        );
+        let DanceTestStep::VerifyPersistedGraph { expected, .. } = &test_case.steps[0] else {
+            panic!("expected graph step");
+        };
+        let assert_saved = |subject: &PersistedSubject| {
+            let PersistedSubject::Token(token) = subject else {
+                panic!("expected token subject");
+            };
+            assert_eq!(token.expected_id(), saved_id);
+            assert_eq!(token.expected_snapshot().state(), TestHolonState::Saved);
+        };
+        assert_saved(&expected.enumerated[0]);
+        assert_saved(&expected.edges[0].source);
+        assert_saved(&expected.edges[0].target);
+        assert_saved(&expected.relationships[0].source);
+        assert_saved(&expected.relationships[0].targets[0]);
+        let PersistedSubject::Successor { of, .. } = &expected.lineage[0].subject else {
+            panic!("expected traversal subject");
+        };
+        assert_saved(of);
+        assert_saved(&expected.lineage[0].predecessors[0]);
+        assert_saved(&expected.lineage[0].successors[0]);
     }
 
     #[test]
