@@ -1,3 +1,4 @@
+import { allocateInitialWindow } from '../../initial-window-allocation';
 import { SpaceNavigatorExperience } from '../../../dahn/runtime/space-navigator-experience';
 import { SingleContextHost } from '../../../dahn/context/single-context-host';
 import { offeredCanvasThemes } from '../../../dahn/themes/offered-canvas-themes';
@@ -153,6 +154,14 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
           });
           canvas.mountDancer(experience.element, 'Space Navigator');
           await experience.openInitial();
+          if (!signal.aborted) {
+            // Measure composed chrome after attachment; traversal never repeats this negotiation.
+            await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+            if (!signal.aborted) await allocateInitialWindow(canvas.getSpatialExtents()).catch(error => {
+              // A constrained or unavailable native host must not prevent navigation.
+              console.warn('Initial window allocation could not be applied.', error);
+            });
+          }
           if (signal.aborted) experience.dispose();
         });
         return {

@@ -148,7 +148,7 @@ export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorPar
    * Dispatch a bubbling dahn-spatial-extents-changed event from this element
    * when the report changes; the immediate parent decides reallocation.
    */
-  getSpatialExtents?(): SpatialExtents;
+  getSpatialExtents?(): SpatialExtents | undefined;
   /** PropertyMap slot: intrinsic height at the allocated width. Notify the immediate
    * parent with dahn-content-extent-changed when this report changes. The parent
    * may redistribute its own budget; this does not request outer resizing. */

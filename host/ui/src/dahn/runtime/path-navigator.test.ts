@@ -129,9 +129,9 @@ describe('vertical traversal through selected artifacts', () => {
     activate(rows[1]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(4));
     expect(retained.every(item => f.path().includes(item))).toBe(true);
-    expect(retained[1].column).toBe(2);
-    expect(retained[2].column).toBe(2);
-    expect(f.path()[1].column).toBe(1);
+    expect(retained[1].column).toBe(1);
+    expect(retained[2].column).toBe(1);
+    expect(retained[0].column).toBe(1);
   });
 
   it('opens recursively, preserves source instances, and records separate occurrence and semantic identities', async () => {
@@ -177,10 +177,9 @@ describe('vertical traversal through selected artifacts', () => {
     const descendant = f.path()[2];
     const provenance = child.provenance;
     activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    const alternative = f.path()[1];
-    expect(alternative.subject).toBe(f.a);
-    expect(alternative.column).toBe(1);
-    expect(child.column).toBe(2); expect(descendant.column).toBe(2);
+    const alternative = f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item.subject === f.a)!;
+    expect(alternative.column).toBe(f.path()[0].column! + 1);
+    expect(child.column).toBeLessThan(alternative.column!); expect(descendant.column).toBe(child.column);
     expect(child.provenance).toBe(provenance);
     expect(descendant.provenance?.parentOccurrenceId).toBe(child.id);
     expect(f.root.element.querySelector('table')).toBe(table);
@@ -215,8 +214,9 @@ describe('vertical traversal through selected artifacts', () => {
     // The same Holon reached from a different affordance is a new occurrence.
     activate(nextRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
     expect(f.path()[1].subject).toBe(f.a);
-    expect(f.path()[1].provenance?.affordance.label).toBe('Other');
-    expect(f.path()[1].provenance?.collectionOccurrenceId).not.toBe(child.provenance?.collectionOccurrenceId);
+    const other = f.path().find(item => item.provenance?.affordance.label === 'Other')!;
+    expect(other.column).toBe(f.path()[0].column);
+    expect(other.provenance?.collectionOccurrenceId).not.toBe(child.provenance?.collectionOccurrenceId);
     const reloadedA = { ...f.a };
     f.rootSubject.describedRelatedHolons.mockResolvedValue(collection([reloadedA, f.b]));
     const returnedRows = await openCollection(f.root.element);
@@ -251,21 +251,24 @@ describe('vertical traversal through selected artifacts', () => {
     activate(bRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
     const bottom = f.path()[3];
     activate(aRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(5));
-    const nested = f.path().find(item => item.provenance?.parentOccurrenceId === a.id && item.column === 1)!;
-    expect([a.column, b.column, bottom.column, nested.column]).toEqual([1, 2, 2, 1]);
+    const nested = f.path().find(item => item.provenance?.parentOccurrenceId === a.id && item.id !== b.id)!;
+    expect(nested.column).toBe(a.column! + 1);
+    expect(b.column).toBeLessThan(nested.column!); expect(bottom.column).toBe(b.column);
     activate(rootRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(6));
-    const canonical = f.path()[1];
-    expect([a.column, b.column, bottom.column, nested.column]).toEqual([2, 3, 3, 2]);
+    const canonical = f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item.id !== a.id)!;
+    expect(canonical.column).toBe(nested.column! + 1);
+    expect(a.column).toBeLessThan(canonical.column!);
     const canonicalRows = await openCollection(canonical.element);
     activate(canonicalRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(7));
     activate(rootRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(8));
-    expect([canonical.column, a.column, b.column, bottom.column, nested.column]).toEqual([2, 3, 4, 4, 3]);
+    expect(a.column).toBeLessThan(canonical.column!);
+    expect(b.column).toBe(bottom.column); expect(nested.column).toBe(a.column! + 1);
     // Continue a leaf in a displaced column, then branch from its displaced owner.
     const nestedRows = await openCollection(nested.element);
     activate(nestedRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(9));
     activate(aRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(10));
-    expect(a.column).toBe(3); expect(nested.column).toBe(4); expect(b.column).toBe(5);
-    expect(bottom.column).toBe(5);
+    expect(b.column).toBeLessThan(nested.column!); expect(nested.column).toBeGreaterThan(a.column!);
+    expect(bottom.column).toBe(b.column);
     const positions = f.path().map(item => `${item.rowId}:${item.column}`);
     expect(new Set(positions).size).toBe(positions.length);
     for (const item of [a, b, bottom, nested, canonical]) expect(item.element.isConnected).toBe(true);
@@ -273,7 +276,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(b.provenance?.parentOccurrenceId).toBe(a.id);
     const regions = [...f.element.querySelectorAll<HTMLElement>('[data-path-occurrence]')];
     expect(regions).toHaveLength(10);
-    expect(regions.find(region => region.style.gridRow === '1' && region.style.gridColumn === '2')).toBeUndefined();
+    expect(regions.filter(region => region.style.gridRow === String(f.path()[0].row! + 1))).toHaveLength(1);
     const dispose = f.path().map(item => vi.spyOn((item as any).node.collectionActivation, 'dispose'));
     f.navigation.dispose(); f.navigation.dispose();
     for (const spy of dispose) expect(spy).toHaveBeenCalledTimes(1);
@@ -289,10 +292,10 @@ describe('vertical traversal through selected artifacts', () => {
     activate(rows[1]); await vi.waitFor(() => expect(f.destination()?.retry).toBeDefined());
     const region = f.element.querySelector('[data-path-destination]');
     expect(f.path().map(item => item.element)).toEqual(retained.map(item => item.element));
-    expect(f.path().map(item => item.column)).toEqual([1, 2, 2]);
+    expect(f.path().map(item => item.column)).toEqual([1, 1, 1]);
     f.destination()!.retry!(); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    expect(retained[1].column).toBe(2); expect(retained[2].column).toBe(2);
-    expect(f.path()[1].element.parentElement).toBe(region);
+    expect(retained[1].column).toBe(1); expect(retained[2].column).toBe(1);
+    expect(f.path().find(item => item.subject === f.b && item.provenance?.parentOccurrenceId === retained[0].id)!.element.parentElement).toBe(region);
   });
 
   it('cancels stale alternative realization on tab changes without moving the retained path', async () => {
@@ -326,8 +329,8 @@ describe('vertical traversal through selected artifacts', () => {
     const childRows = await openCollection(a.element);
     activate(childRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
     activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    expect(f.path()[1].subject).toBe(f.b);
-    expect(a.column).toBe(2);
+    expect(f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item.id !== a.id)?.subject).toBe(f.b);
+    expect(a.column).toBe(1);
   });
 
   it.each(['selection', 'materialization', 'descriptor'])('keeps an existing leaf on %s failure and allows retry', async stage => {
@@ -426,7 +429,7 @@ describe('singular traversal through selected artifacts', () => {
     const b = await right(f, root, 1);
     expect(b.rowId).toBe(root.rowId);
     expect(a.rowId).not.toBe(root.rowId);
-    expect((a as any).row).toBe(1); expect((descendant as any).row).toBe(2);
+    expect(a.row).toBeGreaterThan(root.row!); expect(descendant.row! - a.row!).toBe(1);
     expect([a.column, descendant.column, b.column]).toEqual([2, 2, 2]);
     expect([a.id, descendant.id]).toEqual(ids);
     expect([a.provenance, descendant.provenance]).toEqual(provenance);
@@ -434,7 +437,7 @@ describe('singular traversal through selected artifacts', () => {
     const bRows = await openCollection(b.element); activate(bRows[0]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(5));
     const c = await right(f, root, 2);
-    expect((b as any).row).toBe(1); expect((a as any).row).toBe(3);
+    expect(a.row).toBeGreaterThan(b.row!); expect(b.row).toBeGreaterThan(c.row!);
     expect(c.rowId).toBe(root.rowId);
     const positions = f.path().map(item => `${item.rowId}:${item.column}`);
     expect(new Set(positions).size).toBe(positions.length);
@@ -454,15 +457,15 @@ describe('singular traversal through selected artifacts', () => {
     const a = f.path()[1]; const childRows = await openCollection(a.element); activate(childRows[1]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(3));
     activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    expect(a.column).toBe(2);
+    expect(a.column).toBe(1);
     const horizontal = await right(f, a);
-    expect(horizontal.rowId).toBe(a.rowId); expect(horizontal.column).toBe(3);
+    expect(horizontal.rowId).toBe(a.rowId); expect(horizontal.column).toBe(a.column! + 1);
     const horizontalRows = await openCollection(horizontal.element); activate(horizontalRows[2]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(6));
     const retained = f.path().find(item => item.provenance?.parentOccurrenceId === horizontal.id)!;
     const alternative = await right(f, a, 1);
     expect(alternative.rowId).toBe(a.rowId);
-    expect((horizontal as any).row).toBe((a as any).row + 1);
+    expect(horizontal.row).toBeGreaterThan(a.row!);
     expect(retained.provenance?.parentOccurrenceId).toBe(horizontal.id);
     expect(retained.column).toBe(horizontal.column);
     expect(new Set(f.path().map(item => `${item.rowId}:${item.column}`)).size).toBe(f.path().length);
@@ -507,12 +510,12 @@ describe('singular traversal through selected artifacts', () => {
     } else {
       expect(f.destination()?.retry).toBeDefined();
       expect(f.destination()?.message).toContain('Second:');
-      expect(f.path().find(item => item.id === a.id)?.row).toBe(1);
+      expect(f.path().find(item => item.id === a.id)?.row).toBeGreaterThan(f.destination()!.row);
       expect(a.element.isConnected).toBe(true);
       f.destination()!.retry!();
     }
     await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    expect((a as any).row).toBe(1);
+    expect(a.row).toBeGreaterThan(root.row!);
   });
 
   it('deduplicates pending work, rejects foreign affordances and disposes candidates after teardown', async () => {
@@ -534,7 +537,7 @@ describe('singular traversal through selected artifacts', () => {
 });
 
 
-it('preserves horizontal continuations when vertical branching inserts columns before them', async () => {
+it('preserves horizontal continuations when vertical alternatives append', async () => {
   const f = await fixture(); const root = f.path()[0];
   const a = await right(f, root);
   const aRows = await openCollection(a.element); activate(aRows[1]);
@@ -546,10 +549,11 @@ it('preserves horizontal continuations when vertical branching inserts columns b
   const downRows = await openCollection(down.element); activate(downRows[1]);
   await vi.waitFor(() => expect(f.path()).toHaveLength(5));
   activate(rootRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(6));
-  expect(a.column).toBe(3); expect(descendant.column).toBe(3);
+  expect(a.column).toBe(2); expect(descendant.column).toBe(2);
   const next = await right(f, root, 1);
-  expect(next.column).toBe(2);
-  expect(a.column).toBe(4); expect(descendant.column).toBe(4);
+  expect(next.column).toBe(root.column! + 1);
+  expect(a.column).toBe(descendant.column);
+  expect(descendant.row! - a.row!).toBe(1);
   expect(descendant.provenance?.parentOccurrenceId).toBe(a.id);
   expect(new Set(f.path().map(item => `${item.rowId}:${item.column}`)).size).toBe(f.path().length);
 });
@@ -862,7 +866,7 @@ it('cancels a failed horizontal alternative without losing mixed descendants or 
   f.selectVisualizer.mockRejectedValueOnce(new Error('failed alternative'));
   await right(f, root, 1);
   expect(f.destination()?.axis).toBe('horizontal');
-  expect(f.path().find(item => item.id === a.id)?.row).toBe(1);
+  expect(f.path().find(item => item.id === a.id)?.row).toBeGreaterThan(f.destination()!.row);
   expect(f.path().every(item => item.element.isConnected)).toBe(true);
   f.destination()!.cancel();
   expect(f.path().map(item => [item.id, item.rowId, item.column, item.provenance, item.element])).toEqual(snapshot);
@@ -1118,14 +1122,14 @@ it('retains a previously traversed occurrence after its descendants are explicit
   expect(b.element.isConnected).toBe(true);
 });
 
-it('switches a singular button by inserting above the retained horizontal chain with both parent arrows', async () => {
+it('switches a singular button with older groups below the new source-aligned target and both parent arrows', async () => {
   const f = await fixture(); const root = f.path()[0];
   const first = await right(f, root);
   const onward = await right(f, first);
   const previousIds = [first.id, onward.id];
   const second = await right(f, root, 1);
   expect((second as any).row).toBe((root as any).row);
-  expect((first as any).row).toBe((root as any).row + 1);
+  expect(first.row).toBeGreaterThan(root.row!);
   expect((onward as any).row).toBe((first as any).row);
   expect([first.id, onward.id]).toEqual(previousIds);
   expect(first.element.isConnected && onward.element.isConnected).toBe(true);
@@ -1164,7 +1168,7 @@ it('moves a surviving pending destination with its retained branch when an earli
   const pending = f.destination()!;
   f.navigation.close(top.id);
   expect(f.destination()).toBe(pending);
-  expect(pending.row).toBe((root as any).row);
+  expect(pending.row).toBe(f.path().find(item => item.id === retained.id)!.row);
   expect(retained.rowId).toBe(root.rowId);
   gate.resolve(); await vi.waitFor(() => expect(f.destination()).toBeUndefined());
   const completed = f.path().find(item => item.id === pending.id)!;
@@ -1226,4 +1230,49 @@ it('reserves minimal strips for restoration instead of offering Explore from her
   f.navigation.restore(root.id);
   expect(control.hidden).toBe(false);
   expect(open).not.toHaveBeenCalled();
+});
+
+it('revisits an earlier traversal group with a final pending position and preserves both descendant branches', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const first = await right(f, root); const firstChild = await right(f, first);
+  const second = await right(f, root, 1); const secondChild = await right(f, second);
+  const before = new Map([first, firstChild, second, secondChild].map(item => [item.id, item.element]));
+  f.rootSubject.relatedHolons.mockResolvedValueOnce(collection([f.rootSubject]));
+  const paint = deferred<void>(); vi.mocked(destinationPaint).mockImplementationOnce(() => paint.promise);
+  rail(root.element).click();
+  await vi.waitFor(() => expect(f.destination()).toBeDefined());
+  const pending = f.destination()!;
+  const projectedRoot = f.path().find(item => item.id === root.id)!;
+  expect(pending.row).toBe(first.row! + 1);
+  expect(pending.column).toBe(projectedRoot.column! + 1);
+  expect(f.path().find(item => item.id === first.id)!.row).toBeLessThan(pending.row);
+  expect(f.path().find(item => item.id === second.id)!.row).toBeLessThan(pending.row);
+  const projected = f.path().map(item => [item.id, item.row, item.column]);
+  const finalPosition = [pending.row, pending.column];
+  paint.resolve(); await vi.waitFor(() => expect(f.destination()).toBeUndefined());
+  const newest = f.path().find(item => item.id === pending.id)!;
+  expect([newest.row, newest.column]).toEqual(finalPosition);
+  expect(f.path().filter(item => item.id !== newest.id).map(item => [item.id, item.row, item.column])).toEqual(projected);
+  expect(newest.provenance?.traversal?.groupId).toBe(first.provenance?.traversal?.groupId);
+  expect(second.provenance?.traversal?.groupId).not.toBe(first.provenance?.traversal?.groupId);
+  for (const [id, element] of before) expect(f.path().find(item => item.id === id)!.element).toBe(element);
+  expect(firstChild.row).toBe(first.row); expect(secondChild.row).toBe(second.row);
+  expect(f.element.querySelector(`[data-traversal-label="${newest.id}"]`)?.textContent).toBe('First');
+  f.navigation.close(first.id);
+  expect(newest.row).toBe(root.row); expect(second.row).toBeLessThan(newest.row!);
+});
+
+it('compacts vertical traversal groups without discarding surviving descendant geometry', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const rows = await openCollection(root.element);
+  activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+  const first = f.path()[1]; const child = await right(f, first);
+  activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+  const second = f.path().find(item => item.provenance?.parentOccurrenceId === root.id && item.id !== first.id)!;
+  expect(first.column).toBeLessThan(second.column!);
+  f.navigation.close(second.id);
+  expect(first.column).toBe(root.column);
+  expect(child.column).toBe(first.column! + 1);
+  expect(child.row).toBe(first.row);
+  expect(child.provenance?.parentOccurrenceId).toBe(first.id);
 });

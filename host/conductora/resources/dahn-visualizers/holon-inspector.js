@@ -195,7 +195,34 @@ export default class HolonInspectorElement extends HTMLElement {
   }
   scheduleLayout() {
     if (!this.isConnected || this.frame != null) return;
-    this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) { this.layouts.forEach(layout => layout.fit()); this.allocateInternalHeight(); } });
+    this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) { this.fitCompressedText(); this.layouts.forEach(layout => layout.fit()); this.allocateInternalHeight(); } });
+  }
+  fitCompressedText() {
+    const compressed = this.horizontalState && this.horizontalState !== 'full-width'
+      || this.verticalState && this.verticalState !== 'full-height';
+    const controls = [this.titleControl, ...[...(this.singularControls?.values() ?? [])]];
+    // Resolve the same theme font used by traversal labels, including rem/em sizes.
+    const probe = document.createElement('span');
+    probe.style.font = 'var(--dahn-traversal-label-font, 12px/24px system-ui)';
+    Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', pointerEvents: 'none' });
+    this.append(probe);
+    const minimum = parseFloat(getComputedStyle(probe).fontSize) || 12;
+    probe.remove();
+    for (const control of controls) {
+      control.style.fontSize = control === this.titleControl
+        && this.horizontalState === 'minimal-width' && this.verticalState === 'minimal-height'
+        ? 'var(--dahn-canvas-font-size)' : 'inherit';
+      if (!compressed || !control.clientWidth || !control.clientHeight) continue;
+      const normal = parseFloat(getComputedStyle(control).fontSize) || minimum;
+      const vertical = getComputedStyle(control).writingMode.startsWith('vertical');
+      const fits = () => vertical ? control.scrollHeight <= control.clientHeight : control.scrollWidth <= control.clientWidth;
+      let size = Math.max(minimum, normal);
+      control.style.fontSize = `${size}px`;
+      while (!fits() && size > minimum) {
+        size = Math.max(minimum, size - 0.5);
+        control.style.fontSize = `${size}px`;
+      }
+    }
   }
   allocateInternalHeight() {
     if (this.maximizedRegion || !Number.isFinite(this.allocatedHeight) || this.collectionViewer.hidden || this.collectionRegion.inert || this.body.style.display === 'none') return;

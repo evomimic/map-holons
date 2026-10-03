@@ -1,12 +1,22 @@
 import type { CollectionAffordance, RelationshipAffordance } from './affordances';
 import type { HolonReference } from '../deps';
 
+/** Owner-issued traversal identity is independent of its display label. */
+export interface TraversalPresentation {
+  groupId: string;
+  groupOrder: number;
+  label: string;
+  /** Compact presentation only; producers retain any semantic qualifier themselves. */
+  qualifier?: string;
+}
+
 /** Navigation identity survives changes to a cell's projection address. */
 export interface VerticalProvenance {
   kind: 'collection-member';
   parentOccurrenceId: string;
   collectionOccurrenceId: string;
   affordance: CollectionAffordance;
+  traversal?: TraversalPresentation;
 }
 
 /** A singular edge has no Collection mediator. */
@@ -14,6 +24,7 @@ export interface SingularProvenance {
   kind: 'singular-relationship';
   parentOccurrenceId: string;
   affordance: RelationshipAffordance;
+  traversal?: TraversalPresentation;
 }
 
 /** Direction is explicit in provenance, never inferred from grid coordinates. */
@@ -27,6 +38,8 @@ export interface PathOccurrence {
   occluded?: boolean;
   /** Optional projection band identity, independent of occurrence and Holon identity. */
   rowId?: string;
+  /** Stable column band identity; numeric addresses may change during reflow. */
+  columnId?: string;
   /** One-based projected column; omitted for the initial vertical path. */
   column?: number;
   subject: HolonReference;
@@ -46,6 +59,7 @@ export interface PathDestination {
   id: string;
   row: number;
   rowId: string;
+  columnId: string;
   column: number;
   parentOccurrenceId: string;
   element: HTMLElement;

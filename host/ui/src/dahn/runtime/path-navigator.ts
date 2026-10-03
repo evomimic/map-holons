@@ -1,7 +1,8 @@
+import { placeTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
 import { destinationPaint } from './destination-paint';
 import { NavigationProfile } from './navigation-profile';
 import type { InspectHolonIntent, TraverseRelationshipIntent, SingularNavigationState, VisualizerElement } from '../contracts/visualizers';
-import type { PathDestination, PathFocus, PathNavigation, PathOccurrence, VerticalProvenance, TraversalProvenance, SingularProvenance } from '../contracts/path-navigation';
+import type { PathDestination, PathFocus, PathNavigation, PathOccurrence, VerticalProvenance, TraversalProvenance, SingularProvenance, TraversalPresentation } from '../contracts/path-navigation';
 import type { CollectionAffordance, RelationshipAffordance } from '../contracts/affordances';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { RealizedNode } from './realize-node';
@@ -21,6 +22,8 @@ interface Occurrence extends PathOccurrence {
   column: number;
   generation: number;
   traversed: boolean;
+  order: number;
+  traversalGroups: Map<object, TraversalPresentation>;
 }
 
 let nextOccurrence = 0;
@@ -36,7 +39,8 @@ export class PathNavigator implements PathNavigation {
   private check?: { owner: Occurrence; affordance: RelationshipAffordance; restoreDestination?: () => void };
   private reservation?: {
     destination: PathDestination;
-    projections: Map<string, { row: number; rowId: string; column: number; occluded?: boolean }>;
+    target: TraversalCell;
+    projections: Map<string, { row: number; rowId: string; column: number; columnId: string; occluded?: boolean }>;
     previousFocus: PathFocus | undefined;
   };
   private readonly unsubscribeInvalidation: () => void;
@@ -156,80 +160,102 @@ export class PathNavigator implements PathNavigation {
       if (owner.right && removed.has(owner.right.id)) owner.right = undefined;
       owner.alternatives = owner.alternatives.filter(item => !removed.has(item.id));
       owner.horizontalAlternatives = owner.horizontalAlternatives.filter(item => !removed.has(item.id));
+      this.pruneTraversalGroups(owner);
       if (owner.singular.active && ![owner.right, ...owner.horizontalAlternatives].some(item => item?.provenance?.affordance === owner.singular.active)) {
         const pending = this.check?.owner === owner || (this.attempt?.owner === owner && this.attempt.axis === 'horizontal');
         this.singularState(owner, pending ? { ...owner.singular, active: undefined } : { state: 'unresolved' });
       }
     }
-    // A surviving parent keeps its row occupied, so empty-band compaction alone
-    // cannot reclaim a vacated horizontal child cell.
-    const affectedParents = new Set(roots.filter(root => root.provenance?.kind === 'singular-relationship')
-      .map(root => root.provenance!.parentOccurrenceId));
-    for (const owner of before) if (!removed.has(owner.id) && affectedParents.has(owner.id)) {
-      this.packHorizontalAlternatives(owner);
+    const affected = new Map<string, Set<'horizontal' | 'vertical'>>();
+    for (const root of roots) if (root.provenance && !removed.has(root.provenance.parentOccurrenceId)) {
+      const axes = affected.get(root.provenance.parentOccurrenceId) ?? new Set();
+      axes.add(root.provenance.kind === 'singular-relationship' ? 'horizontal' : 'vertical');
+      affected.set(root.provenance.parentOccurrenceId, axes);
     }
     for (const root of roots) this.release(root);
     if (this.root && removed.has(this.root.id)) this.root = undefined;
-    // Remove empty bands globally; sparse alignment within surviving bands remains.
-    const compact = (positions: Array<{ row: number; column: number }>) => {
-      const rows = [...new Set(positions.map(item => item.row))].sort((a, b) => a - b);
-      const columns = [...new Set(positions.map(item => item.column))].sort((a, b) => a - b);
-      for (const item of positions) { item.row = rows.indexOf(item.row); item.column = columns.indexOf(item.column) + 1; }
-    };
-    compact(this.path());
-    if (this.reservation) compact([...this.reservation.projections.values(), this.reservation.destination]);
+    for (const [id, axes] of affected) {
+      const owner = this.path().find(item => item.id === id)!;
+      for (const axis of axes) {
+        const children = axis === 'horizontal' ? owner.horizontalAlternatives : owner.alternatives;
+        if (axis === 'horizontal' && !owner.right) owner.right = children.pop();
+        if (axis === 'vertical' && !owner.child) owner.child = children.pop();
+        const preferred = axis === 'horizontal' ? owner.right : owner.child;
+        const cells = this.layoutCells();
+        compactTraversal(cells, id, axis, preferred?.id);
+        this.applyCells(cells);
+        if (this.reservation) {
+          const projected = this.layoutCells(true);
+          compactTraversal(projected, id, axis, preferred?.id);
+          this.applyCells(projected, true);
+        }
+      }
+    }
     if (this.check) this.check.owner.pending = true;
     this.publish();
   }
 
-  /** Pack sibling branches upward without changing their internal geometry or provenance. */
-  private packHorizontalAlternatives(owner: Occurrence): void {
-    const siblings = [owner.right, ...owner.horizontalAlternatives]
-      .filter((item): item is Occurrence => !!item).sort((a, b) => a.row - b.row);
-    if (!siblings.length) return;
-    const pack = (positions: Map<string, { row: number; rowId: string; column: number }>) => {
-      let nextRow = positions.get(owner.id)!.row;
-      for (const sibling of siblings) {
-        const ids = new Set(this.subtree(sibling).map(item => item.id));
-        const destination = this.reservation?.destination;
-        if (destination && ids.has(destination.parentOccurrenceId)) ids.add(destination.id);
-        const moving = [...positions].filter(([id]) => ids.has(id)).map(([, position]) => position);
-        const outside = [...positions].filter(([id]) => !ids.has(id)).map(([, position]) => position);
-        const start = positions.get(sibling.id)!;
-        const occupied = new Set(outside.map(position => `${position.row}:${position.column}`));
-        let shift = 0;
-        for (let target = nextRow; target < start.row; target++) {
-          const delta = target - start.row;
-          if (moving.every(position => !occupied.has(`${position.row + delta}:${position.column}`))) {
-            shift = delta; break;
-          }
-        }
-        nextRow = start.row + shift + 1;
-        if (!shift) continue;
-        const rowIds = new Map(outside.map(position => [position.row, position.rowId]));
-        for (const position of moving) {
-          position.row += shift;
-          if (!rowIds.has(position.row)) rowIds.set(position.row, identity());
-          position.rowId = rowIds.get(position.row)!;
-        }
-      }
-    };
-    const path = this.path();
-    pack(new Map(path.map(item => [item.id, item as Occurrence & { rowId: string }])));
-    if (this.reservation) {
-      const positions = new Map(this.reservation.projections);
-      positions.set(this.reservation.destination.id, this.reservation.destination);
-      pack(positions);
+  /** A cancelled or removed group's first attempt must not reserve future group order. */
+  private pruneTraversalGroups(owner: Occurrence): void {
+    const live = new Set(this.continuations(owner).map(item => item.provenance?.traversal?.groupId));
+    if (this.attempt?.owner === owner && this.reservation) live.add(this.reservation.target.group as string);
+    for (const [affordance, group] of owner.traversalGroups) if (!live.has(group.groupId)) owner.traversalGroups.delete(affordance);
+  }
+
+  private traversal(owner: Occurrence, affordance: CollectionAffordance | RelationshipAffordance): TraversalPresentation {
+    let group = owner.traversalGroups.get(affordance);
+    if (!group) {
+      group = { groupId: identity(), groupOrder: nextOccurrence, label: affordance.label };
+      owner.traversalGroups.set(affordance, group);
     }
-    if (!owner.right) {
-      owner.right = siblings[0];
-      owner.horizontalAlternatives = owner.horizontalAlternatives.filter(item => item !== owner.right);
+    return group;
+  }
+
+  private layoutCells(projected = false): TraversalCell[] {
+    const cells: TraversalCell[] = this.path().filter(item => !projected || !this.reservation?.projections.get(item.id)?.occluded).map(item => ({
+      id: item.id, parent: item.provenance?.parentOccurrenceId,
+      axis: item.provenance?.kind === 'singular-relationship' ? 'horizontal' : 'vertical',
+      group: item.provenance?.traversal?.groupId ?? item.provenance?.affordance,
+      groupOrder: item.provenance?.traversal?.groupOrder,
+      order: item.order, row: item.row, column: item.column,
+      ...(projected ? this.reservation?.projections.get(item.id) : undefined),
+    }));
+    if (projected && this.reservation) {
+      const destination = this.reservation.destination;
+      cells.push({ ...this.reservation.target, ...destination });
+    }
+    return cells;
+  }
+
+  /** Band identities follow translation; a split band shares its prior allocation basis. */
+  private applyCells(cells: TraversalCell[], projected = false): void {
+    const positions = projected && this.reservation
+      ? new Map([...this.reservation.projections, [this.reservation.destination.id, this.reservation.destination]])
+      : new Map(this.path().map(item => [item.id, item]));
+    const bands = (axis: 'row' | 'column', field: 'rowId' | 'columnId') => {
+      const ids = new Map<number, string>();
+      for (const cell of [...cells].sort((a, b) => a.order - b.order)) {
+        if (!ids.has(cell[axis])) ids.set(cell[axis], positions.get(cell.id)?.[field] ?? identity());
+      }
+      // A band can split when only one retained branch moves. Keep distinct IDs.
+      const used = new Set<string>();
+      for (const [coordinate, id] of ids) {
+        if (used.has(id)) ids.set(coordinate, identity());
+        used.add(ids.get(coordinate)!);
+      }
+      return ids;
+    };
+    const rows = bands('row', 'rowId'), columns = bands('column', 'columnId');
+    for (const cell of cells) {
+      const position = positions.get(cell.id);
+      if (position) Object.assign(position, { row: cell.row, column: cell.column, rowId: rows.get(cell.row), columnId: columns.get(cell.column) });
     }
   }
 
   private occurrence(node: RealizedNode, subject: HolonReference, selectedVisualizer: HolonReference, row: number, column: number, provenance?: TraversalProvenance, subjectIdentity?: string): Occurrence {
     const occurrence: Occurrence = {
-      id: identity(), rowId: `row-${row}`, row, column, subject, subjectIdentity,
+      id: identity(), rowId: `row-${row}`, columnId: `column-${column}`, row, column, subject, subjectIdentity,
+      order: nextOccurrence, traversalGroups: new Map(),
       selectedVisualizer, provenance, element: node.element, node, pending: false,
       generation: 0, traversed: false, alternatives: [], horizontalAlternatives: [], singular: { state: 'unresolved' }, collections: new Map(),
     };
@@ -279,56 +305,24 @@ export class PathNavigator implements PathNavigation {
     if (this.reservation) this.focus = this.reservation.previousFocus;
     this.reservation = undefined;
     this.attempt = undefined;
+    this.pruneTraversalGroups(owner);
     if (publish) this.publish();
   }
 
   /** Project retention rules without releasing a leaf or publishing a semantic edge. */
-  private reserveDestination(owner: Occurrence, axis: 'vertical' | 'horizontal', message: string): PathDestination {
+  private reserveDestination(owner: Occurrence, axis: 'vertical' | 'horizontal', message: string, traversal: TraversalPresentation): PathDestination {
     const projections = new Map(this.path().map(item => [item.id, {
-      row: item.row, rowId: item.rowId!, column: item.column, occluded: false,
+      row: item.row, rowId: item.rowId!, column: item.column, columnId: item.columnId!, occluded: false,
     }]));
-    let row = owner.row, rowId = owner.rowId!, column = owner.column;
-    if (axis === 'horizontal') {
-      const previous = owner.right;
-      if (previous?.traversed) {
-        const retainedRowId = identity();
-        for (const position of projections.values()) if (position.row > owner.row) ++position.row;
-        // Descendants below the anchor move with their band; only its horizontal
-        // continuation still on the anchor row moves into the newly inserted row.
-        for (const item of this.subtree(previous)) if (item.row === owner.row) {
-          const position = projections.get(item.id)!;
-          position.row = owner.row + 1; position.rowId = retainedRowId;
-        }
-      } else if (previous) projections.get(previous.id)!.occluded = true;
-      // A fresh horizontal path gets its own column, including below the root.
-      if (!previous || previous.column !== owner.column + 1) {
-        for (const position of projections.values()) if (position.column > owner.column) ++position.column;
-      }
-      column = owner.column + 1;
-    } else {
-      const previous = owner.child;
-      if (previous?.traversed) {
-        // Insert a whole band first. Only the canonical vertical path still in the
-        // anchor's column moves into it; already displaced descendants shift with
-        // their existing columns and keep their original semantic attachments.
-        for (const position of projections.values()) if (position.column > owner.column) ++position.column;
-        for (const item of this.subtree(previous)) {
-          const position = projections.get(item.id)!;
-          if (item.column === owner.column) ++position.column;
-        }
-      } else if (previous) {
-        projections.get(previous.id)!.occluded = true;
-      }
-      row = owner.row + 1;
-      rowId = [...projections.values()].find(item => item.row === row && !item.occluded)?.rowId ?? identity();
-      // A horizontal branch may already occupy the next row in this column.
-      if ([...projections.values()].some(item => !item.occluded && item.row === row && item.column === owner.column)) {
-        for (const position of projections.values()) if (position.row >= row) ++position.row;
-        rowId = identity();
-      }
-    }
+    const previous = axis === 'horizontal' ? owner.right : owner.child;
+    if (previous && !previous.traversed) projections.get(previous.id)!.occluded = true;
+    const cells = this.layoutCells().filter(cell => cell.id !== (previous && !previous.traversed ? previous.id : undefined));
+    const target: TraversalCell = { id: identity(), parent: owner.id, axis, group: traversal.groupId,
+      groupOrder: traversal.groupOrder, order: nextOccurrence, row: owner.row, column: owner.column };
+    cells.push(target);
+    placeTraversal(cells, target);
     const destination: PathDestination = {
-      id: identity(), row, rowId, column, parentOccurrenceId: owner.id, axis,
+      id: target.id, row: target.row, rowId: identity(), column: target.column, columnId: identity(), parentOccurrenceId: owner.id, axis,
       element: document.createElement('div'), pending: true, message,
       cancel: () => { if (this.reservation?.destination === destination) { this.cancelCheck(); this.cancelAttempt(); } },
     };
@@ -336,7 +330,8 @@ export class PathNavigator implements PathNavigation {
     // The presentation owner may renegotiate after materialization.
     const extents = (owner.element as VisualizerElement).getNodeInspectorExtents?.();
     if (extents) Object.assign(destination.element, { getNodeInspectorExtents: () => extents });
-    this.reservation = { destination, projections, previousFocus: this.focus };
+    this.reservation = { destination, target, projections, previousFocus: this.focus };
+    this.applyCells(cells, true);
     this.focus = { occurrenceId: destination.id, mode: 'traverse' };
     this.publish();
     return destination;
@@ -346,18 +341,21 @@ export class PathNavigator implements PathNavigation {
     const reservation = this.reservation!;
     for (const item of this.path()) {
       const position = reservation.projections.get(item.id)!;
-      item.row = position.row; item.rowId = position.rowId; item.column = position.column;
+      item.row = position.row; item.rowId = position.rowId; item.column = position.column; item.columnId = position.columnId;
     }
     const horizontal = destination.axis === 'horizontal';
     const previous = horizontal ? owner.right : owner.child;
     if (previous?.traversed) (horizontal ? owner.horizontalAlternatives : owner.alternatives).push(previous);
     else if (previous) this.release(previous);
     candidate.id = destination.id;
+    candidate.order = reservation.target.order;
     candidate.rowId = destination.rowId;
+    candidate.columnId = destination.columnId;
     if (horizontal) owner.right = candidate; else owner.child = candidate;
     owner.traversed = true;
     this.reservation = undefined;
     this.attempt = undefined;
+    this.pruneTraversalGroups(owner);
     // Keep the reservation's focus object and region identity on successful fill.
   }
 
@@ -380,7 +378,7 @@ export class PathNavigator implements PathNavigation {
       owner.collections.set(affordance, collectionOccurrenceId);
     }
     this.attempt = { owner, axis: 'vertical', reference: intent.reference, collectionOccurrenceId };
-    const provenance: VerticalProvenance = { kind: 'collection-member', parentOccurrenceId: owner.id, collectionOccurrenceId, affordance };
+    const provenance: VerticalProvenance = { kind: 'collection-member', parentOccurrenceId: owner.id, collectionOccurrenceId, affordance, traversal: this.traversal(owner, affordance) };
     const generation = ++owner.generation;
     const work = semanticWork(this.transaction);
     const revision = work.revision;
@@ -398,7 +396,7 @@ export class PathNavigator implements PathNavigation {
       this.publish();
       return;
     }
-    const destination = retryDestination ?? this.reserveDestination(owner, 'vertical', 'Opening selected holon…');
+    const destination = retryDestination ?? this.reserveDestination(owner, 'vertical', 'Opening selected holon…', provenance.traversal!);
     destination.pending = true;
     destination.message = 'Opening selected holon…';
     destination.retry = undefined;
@@ -533,7 +531,7 @@ export class PathNavigator implements PathNavigation {
           this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
           outcome = 'retained'; this.publish(); return;
         }
-        destination ??= this.reserveDestination(owner, 'horizontal', `Opening ${affordance.label}…`);
+        destination ??= this.reserveDestination(owner, 'horizontal', `Opening ${affordance.label}…`, this.traversal(owner, affordance));
         const painted = destinationPaint();
         profile?.next('target identity');
         const id = await work.run(async () => current() ? reference.holonId() : undefined);
@@ -556,7 +554,7 @@ export class PathNavigator implements PathNavigation {
           candidate = await this.realize(reference, selection.selected, stage => profile?.next(stage));
           if (!current()) { candidate.collectionActivation.dispose(); return; }
           outcome = 'new node'; profile?.next('install node');
-          const provenance: SingularProvenance = { kind: 'singular-relationship', parentOccurrenceId: owner.id, affordance };
+          const provenance: SingularProvenance = { kind: 'singular-relationship', parentOccurrenceId: owner.id, affordance, traversal: this.traversal(owner, affordance) };
           this.commitDestination(owner, this.occurrence(candidate, reference, selection.selected, destination!.row, destination!.column, provenance, subjectIdentity), destination!);
           this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
         });

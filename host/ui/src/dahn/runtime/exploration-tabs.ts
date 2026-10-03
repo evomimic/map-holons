@@ -1,3 +1,4 @@
+import { composedSpatialExtents } from './composed-spatial-extents';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import type { HolonReference } from '../deps';
 import type { VisualizerElement } from '../contracts/visualizers';
@@ -56,6 +57,12 @@ export class ExplorationTabs extends HTMLElement {
     Object.assign(toolbar.style, { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--dahn-control-gap)', flexWrap: 'wrap' });
     toolbar.append(this.tablist, this.actions);
     this.append(toolbar, this.feedback, this.panels);
+  }
+
+  getSpatialExtents() {
+    const child = this.active?.presentation?.element;
+    const report = child?.getSpatialExtents?.();
+    return child && report ? composedSpatialExtents(this, child, report) : undefined;
   }
 
   /** A pending tab acknowledges intent immediately; failures resolve locally. */
