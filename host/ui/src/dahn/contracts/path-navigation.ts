@@ -55,6 +55,8 @@ export interface PathOccurrence {
 
 /** Presentation reservation only: no semantic subject, selected Visualizer, or lineage. */
 export interface PathDestination {
+  /** Presentation of the validated traversal, before its semantic edge commits. */
+  traversal?: TraversalPresentation;
   axis: 'vertical' | 'horizontal';
   id: string;
   row: number;

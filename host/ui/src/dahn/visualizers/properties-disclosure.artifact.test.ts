@@ -31,9 +31,6 @@ async function fixture(heights: number[], initialHeight: number) {
   let height = initialHeight;
   Object.defineProperty(element, 'clientHeight', { get: () => height });
   element.style.gap = '4px';
-  const footer = element.querySelector('footer')!;
-  Object.defineProperty(footer, 'offsetHeight', { get: () => 30 });
-  vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() => rect(15));
   const rows = [...element.querySelectorAll<HTMLElement>('[data-dahn-property-slot]')];
   rows.forEach((row, index) => {
     Object.defineProperty(row, 'offsetHeight', { get: () => heights[index] });
@@ -42,69 +39,32 @@ async function fixture(heights: number[], initialHeight: number) {
   element.querySelector<HTMLElement>('[data-dahn-properties-rows]')!.style.gap = '5px';
   document.body.append(element); flush();
   return {
-    element, children, rows, footer,
+    element, children, rows,
     button: element.querySelector<HTMLButtonElement>('button')!,
     list: element.querySelector<HTMLElement>('[data-dahn-properties-list]')!,
     resize(next: number) { height = next; resized(); flush(); },
   };
 }
-const visible = (rows: HTMLElement[]) => rows.filter(row => row.style.visibility === 'visible');
-
-describe('bounded Properties disclosure', () => {
-  it('shows an exact-fitting ordered prefix and reserves the footer', async () => {
-    const f = await fixture([40, 50, 60], 129); // 129 - footer/gap 34 = 95
-    expect(visible(f.rows)).toEqual(f.rows.slice(0, 2));
-    expect(f.button.textContent).toContain('Show 1 more property');
-    expect(f.rows[2].inert).toBe(true);
-    expect(f.rows[2].getAttribute('aria-hidden')).toBe('true');
-    expect(f.rows[2].firstElementChild).toBe(f.children[2]);
-    expect(f.list.style.overflowY).toBe('hidden');
-    expect(f.button.getAttribute('aria-controls')).toBe(f.list.id);
-  });
-
-  it('shows all rows and omits the footer when everything fits without it', async () => {
-    const f = await fixture([40, 50, 60], 160);
-    expect(visible(f.rows)).toEqual(f.rows);
-    expect(f.footer.style.position).toBe('absolute');
-    expect(f.footer.inert).toBe(true);
-  });
-
-  it('expands only the list, retains focus, and collapses back to the prefix', async () => {
-    const f = await fixture([40, 50, 60], 129);
-    f.button.focus(); f.button.click(); flush();
-    expect(visible(f.rows)).toEqual(f.rows);
-    expect(f.list.style.overflowY).toBe('auto');
+describe('scrollable Properties', () => {
+  it('keeps every property available without a disclosure at small allocations', async () => {
+    const f = await fixture([40, 50, 60], 80);
+    expect(f.element.querySelector('footer')).toBeNull();
+    expect(f.element.querySelector('[data-properties-disclosure]')).toBeNull();
+    expect(f.list.style.overflow).toBe('auto');
     expect(f.list.tabIndex).toBe(0);
-    expect(f.button.getAttribute('aria-expanded')).toBe('true');
-    expect(f.button.textContent).toContain('Show fewer properties');
-    expect(document.activeElement).toBe(f.button);
-    f.list.scrollTop = 60; f.button.click(); flush();
-    expect(f.list.scrollTop).toBe(0);
-    expect(visible(f.rows)).toEqual(f.rows.slice(0, 2));
-    expect(document.activeElement).toBe(f.button);
+    for (const [index, row] of f.rows.entries()) {
+      expect(row.inert).not.toBe(true);
+      expect(row.getAttribute('aria-hidden')).toBeNull();
+      expect(row.firstElementChild).toBe(f.children[index]);
+    }
+    f.list.scrollTop = 60;
+    f.resize(100);
+    expect(f.list.scrollTop).toBe(60);
+    expect(f.rows).toHaveLength(3);
   });
-
-  it('recomputes after allocation and row-height changes without reordering', async () => {
-    const heights = [40, 50, 60];
-    const f = await fixture(heights, 129);
-    heights[0] = 90; resized(); flush();
-    expect(visible(f.rows)).toEqual(f.rows.slice(0, 1));
-    f.button.focus();
-    f.resize(300);
-    expect(document.activeElement).toBe(f.list);
-    expect(visible(f.rows)).toEqual(f.rows);
-    f.resize(80);
-    expect(visible(f.rows)).toHaveLength(0);
-    expect(f.button.textContent).toContain('Show 3 more properties');
-    f.resize(20);
-    expect(f.element.querySelector('h2')).toBeNull();
-    expect(f.footer.inert).toBe(false);
-  });
-
   it('handles empty sets and disconnects observation', async () => {
     const f = await fixture([], 100);
     expect(f.list.textContent).toBe('No properties');
-    expect(f.footer.inert).toBe(true);
     f.element.remove();
     expect(disconnect).toHaveBeenCalled();
   });

@@ -208,7 +208,7 @@ it('centers the horizontal frontier while allowing earlier provenance off-viewpo
   publish([root, child], { occurrenceId: 'child', mode: 'traverse' });
   const childBounds = element.layoutBounds.get('child');
   const childLeft = element.view.paddingX + childBounds.x * element.view.scale - element.viewport.scrollLeft;
-  expect(childLeft + childBounds.width * element.view.scale / 2).toBe(element.view.viewportWidth / 2);
+  expect(childLeft + childBounds.width * element.view.scale).toBe(element.view.viewportWidth);
   const scroll = element.viewport.scrollLeft;
   publish([root, child], element.focus);
   expect(element.viewport.scrollLeft).toBe(scroll);
@@ -416,7 +416,7 @@ it('prioritizes the full vertical frontier when source and target exceed the vie
   expect(childBounds.height).toBe(720);
   expect(childBounds.height).toBeGreaterThanOrEqual(560);
   expect(reveal).not.toHaveBeenCalled();
-  expect(element.view.viewport.scrollTop).toBe(childBounds.y + childBounds.height / 2);
+  expect(element.view.viewport.scrollTop).toBe(childBounds.y + childBounds.height - element.view.viewportHeight);
   expect(element.view.visibility(childBounds).state).toBe('visible');
 });
 
@@ -518,7 +518,7 @@ it('labels operations independently of identity, preserves qualifiers and routes
 });
 
 
-it.each(['horizontal', 'vertical'])('centers a pending %s frontier and its materialized target without changing geometry', async axis => {
+it.each(['horizontal', 'vertical'])('follows a pending %s frontier within real surface bounds without changing geometry', async axis => {
   const Path = await loadPathInspector();
   customElements.define(`test-frontier-${axis}`, class extends Path {});
   const element = document.createElement(`test-frontier-${axis}`) as any;
@@ -531,7 +531,7 @@ it.each(['horizontal', 'vertical'])('centers a pending %s frontier and its mater
   let publish: any;
   element.setContext({ navigation: { subscribe(render: any) { publish = render; render([source], { occurrenceId: source.id, mode: 'restore' }); return () => {}; } } });
   const required = element.getSpatialExtents().minimum;
-  expect(required).toEqual({ width: 1184, height: 1144 });
+  expect(required).toEqual({ width: 1008, height: 1144 });
   element.viewportWidth = required.width; element.viewportHeight = required.height;
   const target = { id: 'target', row: axis === 'vertical' ? 3 : 2, rowId: axis === 'vertical' ? 'r3' : 'r2',
     column: axis === 'horizontal' ? 4 : 3, element: node(), axis, parentOccurrenceId: source.id };
@@ -543,8 +543,126 @@ it.each(['horizontal', 'vertical'])('centers a pending %s frontier and its mater
   expect(element.layoutBounds.get(target.id)).toEqual(pending);
   expect(element.view.visibility(element.layoutBounds.get(target.id)).state).toBe('visible');
   const bounds = element.layoutBounds.get(target.id);
-  expect(element.viewport.scrollLeft + element.view.viewportWidth / 2).toBe(element.view.paddingX + bounds.x + bounds.width / 2);
-  expect(element.viewport.scrollTop + element.view.viewportHeight / 2).toBe(element.view.paddingY + bounds.y + bounds.height / 2);
+  expect(element.view.paddingX).toBe(0);
+  expect(element.view.paddingY).toBe(0);
+  expect(element.viewport.scrollLeft).toBeGreaterThanOrEqual(0);
+  expect(element.viewport.scrollTop).toBeGreaterThanOrEqual(0);
   expect(axis === 'horizontal' ? element.viewport.scrollLeft : element.viewport.scrollTop).toBeGreaterThan(0);
   expect(element.view.scale).toBe(1);
+});
+
+it.each([['horizontal', 180], ['vertical', 180], ['horizontal', 500], ['vertical', 500]] as const)('stages %s traversal over fixed geometry when resolution takes %i ms', async (axis, readyAt) => {
+  const frames = new Map<number, FrameRequestCallback>(); let sequence = 0;
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++sequence, callback); return sequence; });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  const time = vi.spyOn(performance, 'now').mockReturnValue(0);
+  try {
+    const Path = await loadPathInspector();
+    customElements.define(`test-animation-${axis}-${readyAt}`, class extends Path {});
+    const element = document.createElement(`test-animation-${axis}-${readyAt}`) as any;
+    const node = () => Object.assign(document.createElement('section'), {
+      getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
+        vertical: { 'full-height': 720, 'partial-height': 360, 'minimal-height': 48 } }),
+      setNodeInspectorAllocation: vi.fn(),
+    });
+    const source = { id: 'source', row: 0, rowId: 'r0', column: 1, element: node() };
+    let publish: any;
+    element.setContext({ navigation: { dispose: vi.fn(), subscribe(render: any) { publish = render; render([source], { occurrenceId: source.id, mode: 'restore' }); return () => {}; } } });
+    document.body.append(element);
+    element.viewportWidth = 1200; element.viewportHeight = 1200; element.allocateRows();
+    const target = { id: 'target', row: axis === 'vertical' ? 1 : 0, rowId: axis === 'vertical' ? 'r1' : 'r0',
+      column: axis === 'horizontal' ? 2 : 1, element: node(), axis, parentOccurrenceId: source.id, traversal: { label: 'Related', qualifier: 'Filtered' } };
+    const focus = { occurrenceId: target.id, mode: 'traverse' };
+    publish([source], focus, target);
+    const geometry = [...element.layoutBounds];
+    const dimension = axis === 'horizontal' ? 'width' : 'height';
+    expect(element.dataset.traversalPhase).toBe('source-compressing');
+    expect(source.element.setNodeInspectorAllocation.mock.lastCall![0][dimension]).toBe(axis === 'horizontal' ? 800 : 720);
+    expect(element.lineage.querySelector('[data-pending-traversal]')).not.toBeNull();
+    expect(element.lineage.querySelector('[data-lineage-child]')).toBeNull();
+    const tick = (now: number) => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(now)); };
+    tick(180);
+    expect(element.dataset.traversalPhase).toBe('traversal-revealing');
+    const line = element.lineage.querySelector('[data-traversal-target="target"]');
+    expect(line.getAttribute('d').match(/M/g)).toHaveLength(1);
+    expect(Number(line.style.strokeDashoffset)).toBeGreaterThan(0);
+    expect(Number(line.style.strokeDashoffset)).toBeLessThan(1);
+    if (readyAt > 420) {
+      tick(420);
+      expect(element.traversalTransition).toBeUndefined();
+      expect(element.view.visibility(element.layoutBounds.get(target.id)).state).toBe('visible');
+      expect(element.lineage.querySelector('[data-pending-traversal]')).not.toBeNull();
+    }
+    const transition = element.traversalTransition;
+    const resolved = { ...target, element: node(), provenance: { parentOccurrenceId: source.id, kind: axis === 'horizontal' ? 'singular-relationship' : 'collection-member', traversal: target.traversal } };
+    publish([source, resolved], focus);
+    expect(element.traversalTransition).toBe(transition);
+    expect([...element.layoutBounds]).toEqual(geometry);
+    expect(element.lineage.querySelector('[data-traversal-label]').textContent).toContain('Filtered');
+    tick(420);
+    expect(element.traversalTransition).toBeUndefined();
+    expect(element.dataset.traversalPhase).toBeUndefined();
+    expect(element.view.visibility(element.layoutBounds.get(target.id)).state).toBe('visible');
+    expect(element.regions.get(source.id).firstElementChild).not.toBeNull();
+    expect(source.element.isConnected).toBe(true);
+    expect([...element.layoutBounds]).toEqual(geometry);
+    element.remove();
+  } finally { time.mockRestore(); vi.unstubAllGlobals(); }
+});
+
+it('cancels a stale traversal before manual pan and uses immediate reduced-motion arrival', async () => {
+  const f = await surfaceFixture();
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  try {
+    const parent = f.active;
+    const next = { ...f.retained, id: 'next', column: 4, rowId: 'next-row', element: f.retained.element.cloneNode() as HTMLElement,
+      provenance: { kind: 'singular-relationship', parentOccurrenceId: parent.id } };
+    f.publish([...f.items, next], { occurrenceId: next.id, mode: 'traverse' });
+    const previous = f.element.traversalTransition;
+    expect(previous).toBeDefined();
+    const newer = { ...next, id: 'newer', column: 5, rowId: 'newer-row', element: next.element.cloneNode() };
+    f.publish([...f.items, next, newer], { occurrenceId: newer.id, mode: 'traverse' });
+    expect(previous.cancelled).toBe(true);
+    expect(f.element.traversalTransition.targetId).toBe(newer.id);
+    f.element.viewport.dispatchEvent(new Event('wheel'));
+    expect(f.element.traversalTransition).toBeUndefined();
+    f.element.view.pan(-20, -20);
+    const position = [f.element.viewport.scrollLeft, f.element.viewport.scrollTop];
+    previous.refresh();
+    expect([f.element.viewport.scrollLeft, f.element.viewport.scrollTop]).toEqual(position);
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    const reduced = { ...next, id: 'reduced', column: 5, rowId: 'reduced-row', element: next.element.cloneNode() };
+    f.publish([...f.items, next, reduced], { occurrenceId: reduced.id, mode: 'traverse' });
+    expect(f.element.traversalTransition).toBeUndefined();
+    expect(f.element.dataset.traversalPhase).toBeUndefined();
+    const bounds = f.element.layoutBounds.get(reduced.id);
+    expect(f.element.viewport.scrollLeft).toBe((bounds.x + bounds.width / 2) * f.element.view.scale - f.element.view.viewportWidth / 2);
+    f.element.remove();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+
+it('keeps a first downward traversal locked to the left edge without inserting centering margins', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-left-anchored-descent', class extends Path {});
+  const element = document.createElement('test-left-anchored-descent') as any;
+  const node = () => Object.assign(document.createElement('section'), {
+    getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
+      vertical: { 'full-height': 720, 'partial-height': 360, 'minimal-height': 48 } }),
+    setNodeInspectorAllocation: vi.fn(),
+  });
+  const root = { id: 'root', row: 0, rowId: 'r0', column: 1, element: node() };
+  let publish: any;
+  element.setContext({ navigation: { subscribe(render: any) { publish = render; render([root], { occurrenceId: root.id, mode: 'restore' }); return () => {}; } } });
+  element.viewportWidth = 1230; element.viewportHeight = 1200; element.allocateRows();
+  const child = { id: 'child', row: 1, rowId: 'r1', column: 1, element: node(),
+    provenance: { parentOccurrenceId: root.id, kind: 'collection-member' } };
+  publish([root, child], { occurrenceId: child.id, mode: 'traverse' });
+  expect(element.layoutBounds.get(child.id).x).toBe(0);
+  expect(element.surface.style.left).toBe('0px');
+  expect(element.viewport.scrollLeft).toBe(0);
+  expect(element.view.visibility(element.layoutBounds.get(root.id)).state).toBe('visible');
+  expect(element.view.visibility(element.layoutBounds.get(child.id)).state).toBe('visible');
+  expect(root.element.setNodeInspectorAllocation.mock.lastCall![0]).toMatchObject({ vertical: 'partial-height', horizontal: 'full-width' });
 });

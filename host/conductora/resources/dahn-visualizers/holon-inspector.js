@@ -2,6 +2,12 @@ export default class HolonInspectorElement extends HTMLElement {
   constructor() {
     super();
     this.addEventListener('dahn-content-extent-changed', event => {
+      if (event.target === this.collectionViewer?.firstElementChild) {
+        event.stopPropagation();
+        this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
+        this.scheduleLayout();
+        return;
+      }
       if (event.target !== this.propertiesVisualizer) return;
       event.stopPropagation();
       this.scheduleLayout();
@@ -102,20 +108,56 @@ export default class HolonInspectorElement extends HTMLElement {
     this.actionBar.style.display = 'none'; this.actionBar.inert = true;
     this.collectionRegion.style.display = collections ? 'flex' : 'none';
     this.collectionRegion.inert = !collections;
-    this.style.gridTemplateRows = 'auto minmax(0, 1fr)';
+    this.style.gridTemplateRows = 'max-content minmax(0, 1fr)';
     const active = document.activeElement;
     if (this.actionBar.contains(active) || this.singleValueRail.contains(active)
       || (!properties && this.body.contains(active)) || (!collections && this.collectionRegion.contains(active))) this.titleControl.focus();
   }
-  getNodeInspectorExtents() {
-    // This realization alone knows which sub-regions survive compression.
-    if (this.body?.style.display !== 'none' && this.collectionRegion?.offsetHeight > 0) {
-      const gap = parseFloat(getComputedStyle(this).rowGap) || 0;
-      this.partialHeight = this.titleControl.parentElement.offsetHeight + gap + this.collectionRegion.offsetHeight;
+  collectionContentHeight() {
+    const collection = this.collectionViewer?.firstElementChild;
+    const reported = collection?.getCollectionViewportHeight?.(5);
+    if (Number.isFinite(reported) && reported > 0) return reported;
+    // Before a collection is opened, reserve five themed rows, a header and
+    // two control lines. The selected Collection replaces this estimate with
+    // its own measured participation report once mounted.
+    const probe = document.createElement('span');
+    Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', pointerEvents: 'none',
+      height: 'calc(1lh + var(--dahn-table-cell-padding, 12px) * 2 / 3 + var(--dahn-table-cell-border-width, 1px))' });
+    this.append(probe);
+    const row = probe.getBoundingClientRect().height || 33;
+    probe.remove();
+    return Math.ceil(8 * row);
+  }
+  inspectorHeightParts() {
+    const pixels = value => parseFloat(value) || 0;
+    const style = getComputedStyle(this);
+    const gap = pixels(style.rowGap);
+    if (this.horizontalState !== 'minimal-width' && this.verticalState !== 'minimal-height') {
+      this.titleHeight = this.titleControl?.parentElement.offsetHeight || this.titleHeight;
     }
-    const fullHeight = this.collectionViewer?.hidden === false ? 720 : 480;
+    this.tabsHeight = this.collectionTabBar?.offsetHeight || this.tabsHeight;
+    const title = this.titleHeight || 40;
+    const tabs = this.tabsHeight || 48;
+    const viewer = getComputedStyle(this.collectionViewer);
+    const viewerChrome = pixels(viewer.paddingTop) + pixels(viewer.paddingBottom)
+      + pixels(viewer.borderTopWidth) + pixels(viewer.borderBottomWidth);
+    const collection = tabs + this.collectionContentHeight() + viewerChrome;
+    // The normal body grant is retained independently of the collection.
+    const body = this.initialBodyHeight ?? Math.max(0, 480 - title - 2 * gap - tabs);
+    return { title, gap, collection, body };
+  }
+  setInitialCompositionHeight(height) {
+    if (this.initialBodyHeight !== undefined || !Number.isFinite(height) || height <= 0) return;
+    const { title, gap, collection, body } = this.inspectorHeightParts();
+    // Reserve both collections and titles first; only the body uses the remainder.
+    this.fullHeight = undefined;
+    this.initialBodyHeight = Math.max(0, Math.min(body, height - 2 * (title + gap + collection) - gap));
+  }
+  getNodeInspectorExtents() {
+    const { title, gap, collection, body } = this.inspectorHeightParts();
+    const partial = title + gap + collection;
     return {
-      vertical: { 'full-height': fullHeight, 'partial-height': Math.min(fullHeight, Math.max(48, this.partialHeight || 360)), 'minimal-height': 48 },
+      vertical: { 'full-height': this.fullHeight = Math.max(this.fullHeight ?? partial + gap + body, partial), 'partial-height': partial, 'minimal-height': 48 },
       horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
     };
   }
@@ -155,7 +197,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.body.inert = hideBody;
     this.propertyViewer.style.display = narrow ? 'none' : 'flex';
     this.propertyViewer.inert = narrow;
-    this.actionBar.style.display = narrow ? 'none' : 'block';
+    this.actionBar.style.display = narrow ? 'none' : 'flex';
     this.actionBar.inert = narrow;
     this.body.style.gridTemplateColumns = narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     this.singleValueRail.style.gridColumn = narrow ? '1' : '2';
@@ -172,9 +214,10 @@ export default class HolonInspectorElement extends HTMLElement {
     this.titleControl.style.overflow = 'hidden';
     this.titleControl.title = this.titleText;
     this.style.gridTemplateColumns = 'minmax(0, 1fr)';
-    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : narrow ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 1fr) minmax(0, 1fr)';
+    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'max-content minmax(0, 1fr)' : narrow ? 'max-content minmax(0, 1fr)' : this.collectionViewer.hidden ? 'max-content minmax(0, 1fr) auto' : 'max-content minmax(0, 1fr) minmax(0, 1fr)';
     this.applyRegionMaximize();
     this.updateMaximizeControls();
+    this.allocateInternalHeight();
     if (this.isConnected) this.scheduleLayout();
   }
   connectedCallback() {
@@ -225,21 +268,17 @@ export default class HolonInspectorElement extends HTMLElement {
     }
   }
   allocateInternalHeight() {
-    if (this.maximizedRegion || !Number.isFinite(this.allocatedHeight) || this.collectionViewer.hidden || this.collectionRegion.inert || this.body.style.display === 'none') return;
-    const preferred = this.propertiesVisualizer?.getPreferredContentHeight?.();
-    if (!Number.isFinite(preferred) || preferred < 0) return;
-    const pixels = value => parseFloat(value) || 0;
-    const style = getComputedStyle(this);
-    const pane = getComputedStyle(this.propertyViewer);
-    const gap = pixels(style.rowGap);
-    const bodyGap = pixels(getComputedStyle(this.body).rowGap);
-    const available = Math.max(0, this.allocatedHeight - this.titleControl.parentElement.offsetHeight - 2 * gap);
-    const propertyChrome = pixels(pane.paddingTop) + pixels(pane.paddingBottom) + pixels(pane.borderTopWidth) + pixels(pane.borderBottomWidth);
-    const railHeight = this.railLayout?.preferredHeight() || 0;
-    const needed = Math.max(this.actionBar.offsetHeight + bodyGap + preferred + propertyChrome + (this.propertiesMaximizeButton.hidden ? 0 : this.propertiesMaximizeButton.offsetHeight), railHeight);
-    // Reclaim unused space only; never take more than the ordinary body share.
-    const bodyHeight = Math.min(available / 2, Math.ceil(needed));
-    this.style.gridTemplateRows = `auto ${bodyHeight}px minmax(0, 1fr)`;
+    if (this.maximizedRegion || !Number.isFinite(this.allocatedHeight)) return;
+    const { title, gap, collection } = this.inspectorHeightParts();
+    const visibleCollection = this.collectionViewer.hidden ? (this.tabsHeight || 48) : collection;
+    if (this.verticalState === 'minimal-height' || this.horizontalState === 'minimal-width') return;
+    if (this.horizontalState && this.horizontalState !== 'full-width') return;
+    if (this.verticalState === 'partial-height') {
+      this.style.gridTemplateRows = `max-content ${collection}px`;
+      return;
+    }
+    const body = Math.max(0, this.allocatedHeight - title - 2 * gap - visibleCollection);
+    this.style.gridTemplateRows = `max-content ${body}px ${visibleCollection}px`;
   }
   navigationControl(item, tab = false) {
     const button = document.createElement('button');
@@ -460,6 +499,7 @@ export default class HolonInspectorElement extends HTMLElement {
     const actionBar = document.createElement('section');
     this.actionBar = actionBar;
     actionBar.dataset.holonInspectorActionBar = 'true';
+    Object.assign(actionBar.style, { gridColumn: '1 / -1', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--dahn-control-gap)', flexShrink: '0' });
     actionBar.style.minWidth = '0';
     actionBar.style.overflow = 'hidden';
     const actions = context.childVisualizers?.get('actions');
@@ -467,12 +507,14 @@ export default class HolonInspectorElement extends HTMLElement {
     else actionBar.textContent = 'No actions';
     if (this.discovery) {
       const label = document.createElement('label');
+      Object.assign(label.style, { marginLeft: 'auto', whiteSpace: 'nowrap' });
       const toggle = document.createElement('input');
       toggle.type = 'checkbox'; toggle.dataset.showEmptyRelationships = 'true';
       toggle.addEventListener('change', () => { this.showEmpty = toggle.checked; this.updateRelationships(); });
       label.append(toggle, ' Show Empty Relationships');
       const status = document.createElement('div');
       status.dataset.relationshipDiscoveryStatus = 'true';
+      status.style.flexBasis = '100%';
       status.setAttribute('role', 'status');
       this.discoveryStatus = status;
       actionBar.append(label, status);
@@ -497,7 +539,7 @@ export default class HolonInspectorElement extends HTMLElement {
     }
     this.propertiesMaximizeButton = this.presentationButton('Maximize Properties', () => this.requestRegion(this.maximizedRegion === 'properties' ? 'restore' : 'maximize', 'properties'));
     this.propertiesMaximizeButton.dataset.maximizeProperties = 'true';
-    this.propertiesMaximizeButton.style.alignSelf = 'flex-end';
+    Object.assign(this.propertiesMaximizeButton.style, { alignSelf: 'flex-end', height: '20px', width: '24px', flex: '0 0 20px', padding: '1px 3px' });
     propertyViewer.prepend(this.propertiesMaximizeButton);
 
     const singleValueRail = document.createElement('aside');
@@ -533,6 +575,7 @@ export default class HolonInspectorElement extends HTMLElement {
     collectionRegion.append(this.collectionsMaximizeButton);
     collectionRegion.dataset.holonInspectorCollectionRegion = 'true';
     Object.assign(collectionRegion.style, { gridColumn: '1 / -1', minHeight: '0', minWidth: '0', display: 'flex', flexDirection: 'column' });
+    this.collectionTabBar = collectionTabBar;
     const collectionViewer = document.createElement('section');
     this.collectionViewer = collectionViewer;
     collectionViewer.id = this.collectionPanelId;
@@ -542,6 +585,7 @@ export default class HolonInspectorElement extends HTMLElement {
     collectionViewer.setAttribute('aria-label', 'Collection viewer');
     const collection = context.childVisualizers?.get('collections');
     // The region opens only when the parent supplies a selected collection.
+    Object.assign(collectionViewer.style, { padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
     collectionViewer.hidden = !collection;
     if (collection) {
       collectionViewer.append(collection);
@@ -565,9 +609,9 @@ export default class HolonInspectorElement extends HTMLElement {
     body.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     body.style.gridTemplateRows = 'auto minmax(0, 1fr)';
     body.style.gap = 'var(--dahn-canvas-gap)';
-    actionBar.style.gridColumn = '1';
+    actionBar.style.gridColumn = '1 / -1';
     actionBar.style.gridRow = '1';
-    singleValueRail.style.gridRow = '1 / span 2';
+    singleValueRail.style.gridRow = '2';
     for (const pane of [propertyViewer]) {
       pane.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
       pane.style.padding = 'var(--dahn-slot-padding)';

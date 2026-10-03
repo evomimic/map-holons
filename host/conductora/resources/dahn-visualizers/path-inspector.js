@@ -41,7 +41,7 @@ export default class PathInspectorElement extends HTMLElement {
     const insets = this.regionInsets(root.id);
     const style = getComputedStyle(this.surface);
     const minimum = {
-      width: extents.partial.width + (parseFloat(style.columnGap) || 144) + extents.expanded.width + 2 * insets.width,
+      width: extents.compact.width + (parseFloat(style.columnGap) || 144) + extents.expanded.width + 2 * insets.width,
       height: extents.partial.height + (parseFloat(style.rowGap) || 64) + extents.expanded.height + 2 * insets.height,
     };
     // This owner accounts for its toolbar, border and stable scrollbar gutters.
@@ -49,10 +49,30 @@ export default class PathInspectorElement extends HTMLElement {
     minimum.height += Math.max(0, this.offsetHeight - this.viewport.clientHeight);
     return { minimum, preferred: { ...minimum } };
   }
+  frontierPosition(targetId) {
+    const target = this.layoutBounds.get(targetId);
+    if (!target) return undefined;
+    const occurrence = this.occurrences.find(item => item.id === targetId);
+    const source = this.layoutBounds.get(occurrence?.provenance?.parentOccurrenceId ?? occurrence?.parentOccurrenceId);
+    const view = this.view;
+    const coordinate = (axis, dimension, viewport, scroll, surface) => {
+      let position = target[axis] * view.scale + target[dimension] * view.scale / 2 - viewport / 2;
+      if (source) {
+        const start = Math.min(source[axis], target[axis]) * view.scale;
+        const end = Math.max(source[axis] + source[dimension], target[axis] + target[dimension]) * view.scale;
+        if (end - start <= viewport) position = Math.min(start, Math.max(end - viewport, scroll));
+      }
+      return Math.max(0, Math.min(position, Math.max(0, surface * view.scale - viewport)));
+    };
+    return { x: coordinate('x', 'width', view.viewportWidth, this.viewport.scrollLeft, view.width),
+      y: coordinate('y', 'height', view.viewportHeight, this.viewport.scrollTop, view.height) };
+  }
   revealFrontier(frontier) {
-    this.view.center(this.layoutBounds.get(frontier.id));
+    const position = this.frontierPosition(frontier.id);
+    if (position) this.view.position(position.x, position.y);
   }
   disconnectedCallback() {
+    this.stopTraversalTransition();
     this.observer?.disconnect();
     this.unsubscribe?.();
     this.navigation?.dispose();
@@ -102,6 +122,9 @@ export default class PathInspectorElement extends HTMLElement {
       transformOrigin: '0 0',
     });
     this.view = new SurfaceView(viewport, this.surface, () => this.updateVisibility());
+    for (const event of ['wheel', 'pointerdown', 'keydown']) {
+      viewport.addEventListener(event, () => this.stopTraversalTransition(), { capture: true });
+    }
     title.append(this.createViewControls());
     // The overlay shares the grid's scroll coordinates and never intercepts input.
     this.lineage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -304,6 +327,7 @@ export default class PathInspectorElement extends HTMLElement {
     if (firstMeasuredLayout && this.view.ready) this.view.position(0, 0);
     this.applyAttentionProjection();
     this.updateVisibility();
+    this.traversalTransition?.refresh();
   }
   renderLineage(rows, heights, rowGap, columnGap) {
     const tops = heights.map((_, row) => heights.slice(0, row).reduce((sum, height) => sum + height, 0) + row * rowGap);
@@ -312,7 +336,7 @@ export default class PathInspectorElement extends HTMLElement {
     this.lineage.replaceChildren();
     for (const child of this.occurrences) {
       // Attachment comes from provenance, never neighboring cells or DOM order.
-      const parent = this.occurrences.find(item => item.id === child.provenance?.parentOccurrenceId);
+      const parent = this.occurrences.find(item => item.id === (child.provenance?.parentOccurrenceId ?? child.parentOccurrenceId));
       if (!parent) continue;
       const parentRow = rows.indexOf(this.rowId(parent));
       const childRow = rows.indexOf(this.rowId(child));
@@ -322,16 +346,20 @@ export default class PathInspectorElement extends HTMLElement {
       const targetY = tops[childRow] - 4;
       const elbowY = sourceY + rowGap / 2;
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      line.dataset.lineageParent = parent.id;
-      line.dataset.lineageChild = child.id;
-      line.setAttribute('d', `M ${sourceX} ${sourceY} V ${elbowY} H ${targetX} V ${targetY} M ${targetX - 7} ${targetY - 8} L ${targetX} ${targetY} L ${targetX + 7} ${targetY - 8}`);
-      if (child.provenance?.kind === 'singular-relationship') {
+      line.dataset.traversalSource = parent.id;
+      line.dataset.traversalTarget = child.id;
+      if (child.provenance) {
+        line.dataset.lineageParent = parent.id;
+        line.dataset.lineageChild = child.id;
+      } else line.dataset.pendingTraversal = child.id;
+      line.setAttribute('d', `M ${sourceX} ${sourceY} V ${elbowY} H ${targetX} V ${targetY} L ${targetX - 7} ${targetY - 8} L ${targetX} ${targetY} L ${targetX + 7} ${targetY - 8}`);
+      if (child.provenance?.kind === 'singular-relationship' || child.axis === 'horizontal') {
         const startX = this.columnOffsets[(parent.column ?? 1) - 1] + this.columnWidths[(parent.column ?? 1) - 1];
         const endX = this.columnOffsets[(child.column ?? 1) - 1] - 4;
         const startY = tops[parentRow] + heights[parentRow] / 2;
         const endY = tops[childRow] + heights[childRow] / 2;
         const elbowX = startX + columnGap / 2;
-        line.setAttribute('d', `M ${startX} ${startY} H ${elbowX} V ${endY} H ${endX} M ${endX - 8} ${endY - 7} L ${endX} ${endY} L ${endX - 8} ${endY + 7}`);
+        line.setAttribute('d', `M ${startX} ${startY} H ${elbowX} V ${endY} H ${endX} L ${endX - 8} ${endY - 7} L ${endX} ${endY} L ${endX - 8} ${endY + 7}`);
       }
       line.setAttribute('fill', 'none');
       line.setAttribute('stroke', 'currentColor');
@@ -339,10 +367,10 @@ export default class PathInspectorElement extends HTMLElement {
       line.setAttribute('stroke-linecap', 'round');
       line.setAttribute('stroke-linejoin', 'round');
       this.lineage.append(line);
-      const traversal = child.provenance.traversal;
-      const primaryLabel = traversal?.label ?? child.provenance.affordance?.label;
+      const traversal = child.provenance?.traversal ?? child.traversal;
+      const primaryLabel = traversal?.label ?? child.provenance?.affordance?.label;
       if (primaryLabel) {
-        const horizontal = child.provenance.kind === 'singular-relationship';
+        const horizontal = child.provenance?.kind === 'singular-relationship' || child.axis === 'horizontal';
         const targetBounds = this.layoutBounds.get(child.id);
         const width = horizontal ? columnGap - 20 : Math.max(48, targetBounds.width - 16);
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
@@ -363,7 +391,30 @@ export default class PathInspectorElement extends HTMLElement {
       }
     }
   }
+  stopTraversalTransition() {
+    this.traversalTransition?.cancel();
+    this.traversalTransition = undefined;
+  }
+  beginTraversalTransition(frontier, previousBounds, viewportStart) {
+    const sourceId = frontier.provenance?.parentOccurrenceId ?? frontier.parentOccurrenceId;
+    const source = this.occurrences.find(item => item.id === sourceId);
+    const bounds = previousBounds?.get(sourceId);
+    if (!source || !bounds || !this.isConnected || !this.view.ready
+      || typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.revealFrontier(frontier);
+      return;
+    }
+    this.traversalTransition = new TraversalTransition(this, source, frontier, bounds, viewportStart);
+    this.traversalTransition.start();
+  }
   renderPath(occurrences, focus, destination) {
+    const previousBounds = this.layoutBounds;
+    for (const item of occurrences) {
+      const prior = this.occurrences.find(previous => previous.id === item.id);
+      if (prior && prior.element !== item.element) this.bandMetrics.delete(item.id);
+    }
+    const viewportStart = this.view && { x: this.viewport.scrollLeft - this.view.paddingX, y: this.viewport.scrollTop - this.view.paddingY };
+    if (this.traversalTransition && (focus?.occurrenceId !== this.traversalTransition.targetId || focus?.mode === 'restore')) this.stopTraversalTransition();
     const recoverFocus = [...this.regions.values()].some(region => region.contains(document.activeElement));
     const all = [...occurrences, ...(destination ? [destination] : [])].sort((a, b) => a.row === undefined || b.row === undefined ? 0 : a.row - b.row || (a.column ?? 1) - (b.column ?? 1));
     occurrences = all.filter(item => !item.occluded);
@@ -479,7 +530,7 @@ export default class PathInspectorElement extends HTMLElement {
       else delete region.dataset.pathDestination;
       region.tabIndex = -1;
       region.dataset.focused = String(occurrence.id === focus?.occurrenceId);
-      const traversal = occurrence.provenance?.traversal;
+      const traversal = occurrence.provenance?.traversal ?? occurrence.traversal;
       const traversalLabel = traversal?.label ?? occurrence.provenance?.affordance?.label;
       if (traversalLabel) region.setAttribute('aria-description', `Reached through ${traversalLabel}${traversal?.qualifier ? ` (${traversal.qualifier})` : ''}`);
       else region.removeAttribute('aria-description');
@@ -513,6 +564,8 @@ export default class PathInspectorElement extends HTMLElement {
     if (recoverFocus && !this.contains(document.activeElement)) (this.regions.get(focus?.occurrenceId) ?? this.viewport).focus({ preventScroll: true });
     if ((focusChanged || removed || destination || this.pendingFrontier === frontier?.id) && frontier) {
       if (focus?.mode === 'restore') this.view.reveal(this.layoutBounds.get(frontier.id));
+      else if (this.traversalTransition?.targetId === frontier.id) this.traversalTransition.refresh();
+      else if (focusChanged && added.some(item => item.id === frontier.id)) this.beginTraversalTransition(frontier, previousBounds, viewportStart);
       else this.revealFrontier(frontier);
     }
     this.pendingFrontier = destination?.id;
@@ -520,6 +573,12 @@ export default class PathInspectorElement extends HTMLElement {
 
   /** Negotiate only the slot contract; child sub-regions are opaque here. */
   childExtents(element) {
+    if (this.initialCompositionHeight === undefined && this.viewportHeight > 0) {
+      const gap = parseFloat(getComputedStyle(this.surface).rowGap) || 64;
+      const framing = Math.max(0, ...this.occurrences.map(item => this.regionInsets(item.id).height));
+      this.initialCompositionHeight = this.viewportHeight - gap - 2 * framing;
+    }
+    element.setInitialCompositionHeight?.(this.initialCompositionHeight);
     const slot = element.getNodeInspectorExtents?.();
     if (slot) {
       const vertical = ['minimal-height', 'partial-height', 'full-height'].map(key => slot.vertical?.[key]);
@@ -550,6 +609,7 @@ export default class PathInspectorElement extends HTMLElement {
   }
   /** Hosts delegate intent to this surface owner, never its grid implementation. */
   requestView(request) {
+    this.stopTraversalTransition();
     if (request === 'zoom-to-fit') return this.view.fit();
     if (request === 'actual-size') {
       const occurrence = this.occurrences.find(item => item.id === this.focus?.occurrenceId) ?? this.occurrences.at(-1);
@@ -571,7 +631,7 @@ export default class PathInspectorElement extends HTMLElement {
     ]) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = label;
-      button.addEventListener('click', action);
+      button.addEventListener('click', () => { this.stopTraversalTransition(); action(); });
       Object.assign(button.style, { flex: '0 0 auto', font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
       controls.append(button); this.viewButtons.push(button);
     }
@@ -599,9 +659,113 @@ export default class PathInspectorElement extends HTMLElement {
   }
 }
 
+/** One interruptible presentation over final geometry, shared by both axes. */
+export class TraversalTransition {
+  constructor(owner, source, target, startBounds, viewportStart) {
+    this.owner = owner; this.source = source; this.targetId = target.id;
+    this.axis = target.axis ?? (target.provenance?.kind === 'singular-relationship' ? 'horizontal' : 'vertical');
+    this.startBounds = startBounds; this.viewportStart = viewportStart;
+    this.elapsed = 0; this.cancelled = false;
+  }
+  start() {
+    const view = this.owner.view;
+    view.render();
+    // Keep the starting camera position while final geometry is revealed.
+    this.startPosition = { x: this.viewportStart.x + view.paddingX, y: this.viewportStart.y + view.paddingY };
+    view.position(this.startPosition.x, this.startPosition.y);
+    this.finalPosition = this.owner.frontierPosition(this.targetId);
+    this.started = performance.now();
+    this.refresh();
+    const step = now => {
+      if (this.cancelled || this.owner.traversalTransition !== this) return;
+      this.elapsed = now - this.started;
+      this.refresh();
+      if (this.elapsed >= 420) {
+        this.cancel();
+        this.owner.traversalTransition = undefined;
+        this.owner.revealFrontier({ id: this.targetId });
+      } else this.frame = requestAnimationFrame(step);
+    };
+    this.frame = requestAnimationFrame(step);
+  }
+  refresh() {
+    if (this.cancelled || !this.startPosition) return;
+    const owner = this.owner, view = owner.view;
+    const sourceBounds = owner.layoutBounds.get(this.source.id), targetBounds = owner.layoutBounds.get(this.targetId);
+    if (!sourceBounds || !targetBounds) { owner.stopTraversalTransition(); return; }
+    const geometry = JSON.stringify([sourceBounds, targetBounds, view.viewportWidth, view.viewportHeight]);
+    if (geometry !== this.geometry) {
+      this.geometry = geometry;
+      this.finalPosition = owner.frontierPosition(this.targetId);
+    }
+    const clamp = value => Math.max(0, Math.min(1, value));
+    const compression = clamp(this.elapsed / 130);
+    const reveal = clamp((this.elapsed - 130) / 170);
+    const pan = clamp((this.elapsed - 130) / 290);
+    const eased = pan * pan * (3 - 2 * pan);
+    owner.dataset.traversalPhase = this.elapsed < 130 ? 'source-compressing'
+      : this.elapsed < 300 ? 'traversal-revealing' : 'target-arriving';
+    const region = owner.regions.get(this.source.id);
+    const dimension = this.axis === 'horizontal' ? 'width' : 'height';
+    const size = sourceBounds[dimension] + Math.max(0, this.startBounds[dimension] - sourceBounds[dimension]) * (1 - compression) ** 2;
+    region.style[dimension] = compression < 1 ? `${size}px` : '';
+    // Deliver actual budgets to the retained child; never scale or translate it.
+    const insets = owner.regionInsets(this.source.id);
+    const allocation = { width: sourceBounds.width - insets.width, height: sourceBounds.height - insets.height,
+      horizontal: { expanded: 'full-width', partial: 'partial-width', compact: 'minimal-width' }[region.dataset.columnAllocation],
+      vertical: { expanded: 'full-height', partial: 'partial-height', compact: 'minimal-height' }[region.dataset.rowAllocation] };
+    allocation[dimension] = Math.max(0, size - insets[dimension]);
+    if (this.source.element.setNodeInspectorAllocation) this.source.element.setNodeInspectorAllocation(allocation);
+    else this.source.element.setSpatialBudget?.(allocation);
+    for (const line of owner.lineage.querySelectorAll('path')) {
+      const incident = line.dataset.traversalSource === this.source.id || line.dataset.traversalTarget === this.source.id;
+      line.style.visibility = compression < 1 && incident ? 'hidden' : '';
+      if (line.dataset.traversalTarget === this.targetId) {
+        line.setAttribute('pathLength', '1');
+        line.style.strokeDasharray = '1'; line.style.strokeDashoffset = String(1 - reveal);
+      }
+    }
+    for (const label of owner.lineage.querySelectorAll('[data-traversal-label]')) {
+      label.style.opacity = label.dataset.traversalLabel === this.targetId ? String(clamp((reveal - 0.25) / 0.5)) : '';
+    }
+    const targetRegion = owner.regions.get(this.targetId);
+    targetRegion.style.opacity = String(clamp((this.elapsed - 220) / 140));
+    const final = this.finalPosition;
+    view.position(this.startPosition.x + (final.x - this.startPosition.x) * eased,
+      this.startPosition.y + (final.y - this.startPosition.y) * eased);
+  }
+  cancel() {
+    if (this.cancelled) return;
+    this.cancelled = true;
+    cancelAnimationFrame(this.frame);
+    const owner = this.owner;
+    delete owner.dataset.traversalPhase;
+    const region = owner.regions.get(this.source.id);
+    if (region) {
+      region.style.width = ''; region.style.height = '';
+      const bounds = owner.layoutBounds.get(this.source.id);
+      if (bounds) {
+        const insets = owner.regionInsets(this.source.id);
+        const allocation = { width: Math.max(0, bounds.width - insets.width), height: Math.max(0, bounds.height - insets.height),
+          horizontal: { expanded: 'full-width', partial: 'partial-width', compact: 'minimal-width' }[region.dataset.columnAllocation],
+          vertical: { expanded: 'full-height', partial: 'partial-height', compact: 'minimal-height' }[region.dataset.rowAllocation] };
+        if (this.source.element.setNodeInspectorAllocation) this.source.element.setNodeInspectorAllocation(allocation);
+        else this.source.element.setSpatialBudget?.(allocation);
+      }
+    }
+    const target = owner.regions.get(this.targetId);
+    if (target) target.style.opacity = '';
+    for (const line of owner.lineage.querySelectorAll('path')) {
+      line.style.visibility = ''; line.style.strokeDasharray = ''; line.style.strokeDashoffset = '';
+      line.removeAttribute('pathLength');
+    }
+    for (const label of owner.lineage.querySelectorAll('[data-traversal-label]')) label.style.opacity = '';
+  }
+}
+
 /** Layout-agnostic view of an extent. The owner supplies geometry; view changes
- * never request allocation or inspect children. Gutters allow edge occurrences
- * to be centered at actual size without negative, unreachable scroll offsets. */
+ * never request allocation or inspect children. The real surface bounds camera
+ * movement, keeping the origin anchored when there is no content before it. */
 export class SurfaceView {
   constructor(viewport, surface, changed) {
     this.viewport = viewport; this.surface = surface; this.changed = changed;
@@ -624,8 +788,8 @@ export class SurfaceView {
     });
   }
   get ready() { return this.width > 0 && this.height > 0 && this.viewportWidth > 0 && this.viewportHeight > 0; }
-  get paddingX() { return this.centered ? this.viewportWidth / 2 : 0; }
-  get paddingY() { return this.centered ? this.viewportHeight / 2 : 0; }
+  get paddingX() { return 0; }
+  get paddingY() { return 0; }
   setGeometry(width, height, viewportWidth, viewportHeight) {
     this.width = width; this.height = height;
     this.viewportWidth = viewportWidth; this.viewportHeight = viewportHeight;
@@ -654,16 +818,13 @@ export class SurfaceView {
   }
   fit() {
     if (!this.ready) return false;
-    this.centered = false;
     this.scale = this.fitScale(); this.render();
     this.position(0, 0);
     return true;
   }
   center(bounds) {
     if (!this.ready || !bounds) return false;
-    // View-only margins let an edge occurrence occupy the viewport center.
-    // They never become layout bands or contribute to Zoom to Fit bounds.
-    this.centered = true;
+    // Attention is bounded by the real surface; never manufacture origin margins.
     this.render();
     this.position(this.paddingX + (bounds.x + bounds.width / 2) * this.scale - this.viewportWidth / 2,
       this.paddingY + (bounds.y + bounds.height / 2) * this.scale - this.viewportHeight / 2);

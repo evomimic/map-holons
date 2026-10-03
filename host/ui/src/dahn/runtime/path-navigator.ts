@@ -323,7 +323,7 @@ export class PathNavigator implements PathNavigation {
     placeTraversal(cells, target);
     const destination: PathDestination = {
       id: target.id, row: target.row, rowId: identity(), column: target.column, columnId: identity(), parentOccurrenceId: owner.id, axis,
-      element: document.createElement('div'), pending: true, message,
+      element: document.createElement('div'), pending: true, message, traversal,
       cancel: () => { if (this.reservation?.destination === destination) { this.cancelCheck(); this.cancelAttempt(); } },
     };
     // Reserve the slot's full extent before the selected destination is ready.

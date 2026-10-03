@@ -714,7 +714,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:7a49d4dd164c43529b18a0dba80ea8c83efdbd42faba44e663abf59d982ee720",
+        "VisualizerArtifactDigest": "sha256:9777d81926b3f906fdb8100738d487d27745fdef0382303c97008752c272961f",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -920,7 +920,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:a9874cb71536927fd78a76d5c85b82c2f6558fbf294904ad5f39f49d0037e01c",
+        "VisualizerArtifactDigest": "sha256:c612cf946aff4b2f1052e5494f6e2cf5f6e93a2737e11fcaf95498f38136f755",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1129,7 +1129,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:f2038d8b3b8942f91d2e73575a01d17d644dbddcd6e4c813fae623eaf8c58eea",
+        "VisualizerArtifactDigest": "sha256:d634c7915a1619132407abc8915c09ef4c20c50b23d2fb2159d28ee708091634",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

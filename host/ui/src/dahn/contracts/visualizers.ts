@@ -153,6 +153,8 @@ export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorPar
    * parent with dahn-content-extent-changed when this report changes. The parent
    * may redistribute its own budget; this does not request outer resizing. */
   getPreferredContentHeight?(): number | undefined;
+  /** Collection-owned controls/header plus capacity for the requested visible data rows. */
+  getCollectionViewportHeight?(rows: number): number;
   /** Handle locally or delegate to an immediate composed child's surface. */
   requestView?(request: SurfaceViewRequest): boolean;
   requestRegion?(operation: MaximizeOperation, region?: InspectorRegion): PresentationRequestResult;
