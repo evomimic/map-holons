@@ -1,3 +1,4 @@
+import { composedSpatialExtents } from '../runtime/composed-spatial-extents';
 import { createCanvasThemeMenu, type CanvasThemeChoice } from '../themes/canvas-theme-menu';
 import { unavailableVisualizerRegion } from '../runtime/visualizer-region';
 import type { CanvasApi, SurfaceViewRequest, VisualizerMountPlan } from '../contracts/canvas';
@@ -101,6 +102,12 @@ export class DomCanvas implements CanvasApi {
   }
 
   /** Hosts an already-bound Dancer composition without selecting its child roles. */
+  getSpatialExtents() {
+    const child = this.mountedVisualizers[0];
+    const report = child?.getSpatialExtents?.();
+    return child && report ? composedSpatialExtents(this.root, child, report) : undefined;
+  }
+
   mountDancer(element: HTMLElement & Partial<VisualizerElement>, title: string): void {
     if (this.disposed) return;
     this.clear();

@@ -4,7 +4,6 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
   static compositionSlots = { property: 'DefaultPropertyMapVisualizer.PropertySlot' };
   // PropertyMap slot report: intrinsic content height at the granted width.
   getPreferredContentHeight() { return this.preferredContentHeight; }
-  expanded = false;
   frame = null;
 
   connectedCallback() {
@@ -19,8 +18,6 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
 
   setContext(context) {
     this.disconnectedCallback();
-    this.expanded = false;
-    this.layoutState = null;
     this.preferredContentHeight = undefined;
     this.dataset.dahnProperties = 'true';
     Object.assign(this.style, {
@@ -29,34 +26,14 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
       minWidth: '0', minHeight: '0', height: '100%', overflow: 'hidden',
     });
 
-    const style = document.createElement('style');
-    style.textContent = `
-      [data-dahn-properties] [data-properties-disclosure] {
-        display: flex; align-items: center; justify-content: space-between;
-        width: 100%; box-sizing: border-box; border: 0; cursor: pointer;
-        font: inherit; text-align: start;
-        padding: var(--dahn-action-padding-block) var(--dahn-action-padding-inline);
-        border-radius: var(--dahn-action-corner-radius);
-        color: var(--dahn-canvas-text-color);
-        background: transparent;
-      }
-      [data-dahn-properties] [data-properties-disclosure]:hover {
-        background: var(--dahn-action-hover-surface-background);
-        color: var(--dahn-action-text-color);
-      }
-      [data-dahn-properties] [data-properties-disclosure]:focus-visible {
-        outline: var(--dahn-slot-border-width) solid var(--dahn-properties-disclosure-focus-color);
-        outline-offset: calc(-1 * var(--dahn-slot-border-width));
-      }
-    `;
     const list = document.createElement('div');
-    list.tabIndex = -1;
+    list.tabIndex = 0;
     list.id = `dahn-properties-list-${++nextPropertiesId}`;
     list.dataset.dahnPropertiesList = 'true';
     list.setAttribute('role', 'region');
     list.setAttribute('aria-label', context.title ?? 'Properties');
     Object.assign(list.style, {
-      flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'hidden',
+      flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'auto',
       scrollbarGutter: 'stable',
     });
     const properties = document.createElement('div');
@@ -75,60 +52,30 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
         minWidth: '0', boxSizing: 'border-box',
         borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
         padding: 'var(--dahn-action-padding-block) 0',
-        visibility: 'hidden',
       });
-      slot.inert = true;
-      slot.setAttribute('aria-hidden', 'true');
       slot.append(child);
       properties.append(slot);
       this.rows.push(slot);
     }
     list.append(properties);
 
-    const footer = document.createElement('footer');
-    footer.style.flex = '0 0 auto';
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.propertiesDisclosure = 'true';
-    button.setAttribute('aria-controls', list.id);
-    button.setAttribute('aria-expanded', 'false');
-    const label = document.createElement('span');
-    const chevron = document.createElement('span');
-    chevron.setAttribute('aria-hidden', 'true');
-    button.append(label, chevron);
-    // Measure the longest collapsed label before the first fitting pass.
-    label.textContent = `Show ${this.rows.length} more properties`;
-    chevron.textContent = '⌄';
-    footer.append(button);
-    button.addEventListener('click', () => {
-      this.expanded = !this.expanded;
-      list.scrollTop = 0;
-      this.scheduleLayout();
-    });
-    this.parts = { list, properties, footer, button, label, chevron };
-    this.replaceChildren(style, list, footer);
-    this.setFooterVisible(false);
+    const cue = document.createElement('span');
+    cue.dataset.propertiesScrollCue = 'true';
+    cue.hidden = true;
+    Object.assign(cue.style, { position: 'absolute', bottom: '0', right: '16px', pointerEvents: 'none',
+      fontSize: '12px', padding: '2px 6px', color: 'var(--dahn-muted-text-color)',
+      background: 'var(--dahn-panel-surface-background)' });
+    this.parts = { list, properties, cue };
+    list.addEventListener('scroll', () => this.updateScrollCue());
+    this.replaceChildren(list, cue);
     if (this.isConnected) this.observeLayout();
-  }
-
-  setFooterVisible(visible) {
-    const { footer } = this.parts;
-    // Keep the real footer measurable at the allocated width without cloning
-    // selected children or flashing inaccessible content during measurement.
-    Object.assign(footer.style, {
-      position: visible ? 'static' : 'absolute',
-      bottom: '0', left: '0', width: '100%',
-      visibility: visible ? 'visible' : 'hidden',
-    });
-    footer.inert = !visible;
-    footer.setAttribute('aria-hidden', String(!visible));
   }
 
   observeLayout() {
     if (!this.parts) return;
     this.observer?.disconnect();
     this.observer = new ResizeObserver(() => this.scheduleLayout());
-    for (const element of [this, this.parts.list, this.parts.properties, this.parts.footer, ...this.rows]) {
+    for (const element of [this, this.parts.list, this.parts.properties, ...this.rows]) {
       this.observer.observe(element);
     }
     this.scheduleLayout();
@@ -142,53 +89,23 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
     });
   }
 
+  updateScrollCue() {
+    const { list, cue } = this.parts;
+    const below = list.scrollHeight - list.clientHeight - list.scrollTop > 1;
+    const above = list.scrollTop > 1;
+    cue.hidden = !below && !above;
+    cue.textContent = below ? 'Scroll for more ↓' : 'More above ↑';
+  }
+
   fitRows() {
-    const { list, properties, footer, button, label, chevron } = this.parts;
-    const gap = parseFloat(getComputedStyle(this).rowGap) || 0;
+    this.updateScrollCue();
+    const { properties } = this.parts;
     const rowGap = parseFloat(getComputedStyle(properties).rowGap) || 0;
-    const heights = this.rows.map(row => row.offsetHeight);
-    const available = Math.max(0, this.clientHeight);
-    const total = heights.length ? heights.reduce((sum, height) => sum + height, 0) + Math.max(0, heights.length - 1) * rowGap : properties.scrollHeight;
+    const total = this.rows.length ? this.rows.reduce((sum, row) => sum + row.offsetHeight, 0)
+      + Math.max(0, this.rows.length - 1) * rowGap : properties.scrollHeight;
     if (this.clientWidth > 0 && this.preferredContentHeight !== total) {
       this.preferredContentHeight = total;
       this.dispatchEvent(new CustomEvent('dahn-content-extent-changed', { bubbles: true }));
     }
-    const overflowing = total > available;
-    const budget = overflowing ? Math.max(0, available - footer.offsetHeight - gap) : available;
-    let count = 0;
-    let used = 0;
-    for (const height of heights) {
-      const next = used + (count === 0 ? 0 : rowGap) + height;
-      if (next > budget) break;
-      used = next;
-      count++;
-    }
-    if (!overflowing) {
-      this.expanded = false;
-    }
-    const compact = overflowing && this.clientHeight < footer.offsetHeight + gap;
-    const layoutState = `${count}:${overflowing}:${compact}:${this.expanded}`;
-    if (this.layoutState === layoutState) return;
-    this.layoutState = layoutState;
-    // At tiny allocations prioritize the disclosure itself. The list remains
-    // measurable at its real width, but has no visible viewport.
-    Object.assign(list.style, {
-      position: compact ? 'absolute' : 'static',
-      width: '100%', height: compact ? '0' : '',
-    });
-    if (!overflowing && document.activeElement === button) list.focus({ preventScroll: true });
-    this.setFooterVisible(overflowing);
-    list.style.overflowY = this.expanded ? 'auto' : 'hidden';
-    list.tabIndex = this.expanded ? 0 : -1;
-    if (!this.expanded) list.scrollTop = 0;
-    for (const [index, row] of this.rows.entries()) {
-      const visible = !compact && (this.expanded || index < count);
-      row.style.visibility = visible ? 'visible' : 'hidden';
-      row.inert = !visible;
-      row.setAttribute('aria-hidden', String(!visible));
-    }
-    button.setAttribute('aria-expanded', String(this.expanded));
-    label.textContent = this.expanded ? 'Show fewer properties' : `Show ${this.rows.length - count} more ${this.rows.length - count === 1 ? 'property' : 'properties'}`;
-    chevron.textContent = this.expanded ? '⌃' : '⌄';
   }
 }

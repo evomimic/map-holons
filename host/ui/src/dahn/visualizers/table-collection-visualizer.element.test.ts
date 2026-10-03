@@ -325,3 +325,19 @@ it('does not pre-scan cell values for descriptor conformance', () => {
   ] }));
   expect(element.querySelector('td')?.textContent).toBe('Visible');
 });
+
+it('reports controls, header and five data rows even for a shorter collection', () => {
+  const element = createTableCollectionVisualizer() as any;
+  element.setContext(context({ kind: 'scalar', displayName: 'Values', rowIds: ['a', 'b'], columns: [
+    { id: 'value', displayName: 'Value', valueType: 'StringValue', values: [{ StringValue: 'A' }, { StringValue: 'B' }] },
+  ] }));
+  element.style.fontSize = '16px'; element.style.lineHeight = '24px';
+  for (const row of element.table.tBodies[0].rows) vi.spyOn(row, 'getBoundingClientRect').mockReturnValue({ height: 36 } as DOMRect);
+  vi.spyOn(element.table.tHead, 'getBoundingClientRect').mockReturnValue({ height: 40 } as DOMRect);
+  Object.defineProperty(element.sortStatus, 'offsetHeight', { value: 26 });
+  Object.defineProperty(element.more, 'offsetHeight', { value: 30 });
+  element.more.hidden = false;
+  expect(element.getCollectionViewportHeight(5)).toBe(26 + 30 + 40 + 5 * 36);
+  element.more.hidden = true;
+  expect(element.getCollectionViewportHeight(5)).toBe(26 + 40 + 5 * 36);
+});
