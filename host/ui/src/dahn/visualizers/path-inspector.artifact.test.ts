@@ -531,16 +531,18 @@ it.each(['horizontal', 'vertical'])('follows a pending %s frontier within real s
   let publish: any;
   element.setContext({ navigation: { subscribe(render: any) { publish = render; render([source], { occurrenceId: source.id, mode: 'restore' }); return () => {}; } } });
   const required = element.getSpatialExtents().minimum;
-  expect(required).toEqual({ width: 1008, height: 1144 });
+  expect(required).toEqual({ width: 1184, height: 1144 });
   element.viewportWidth = required.width; element.viewportHeight = required.height;
   const target = { id: 'target', row: axis === 'vertical' ? 3 : 2, rowId: axis === 'vertical' ? 'r3' : 'r2',
     column: axis === 'horizontal' ? 4 : 3, element: node(), axis, parentOccurrenceId: source.id };
   const focus = { occurrenceId: target.id, mode: 'traverse' };
   publish([source], focus, target);
   expect(element.view.visibility(element.layoutBounds.get(target.id)).state).toBe('visible');
+  expect(element.view.visibility(element.layoutBounds.get(source.id)).state).toBe('visible');
   const pending = element.layoutBounds.get(target.id);
   publish([source, { ...target, provenance: { parentOccurrenceId: source.id } }], focus);
   expect(element.layoutBounds.get(target.id)).toEqual(pending);
+  expect(element.view.visibility(element.layoutBounds.get(source.id)).state).toBe('visible');
   expect(element.view.visibility(element.layoutBounds.get(target.id)).state).toBe('visible');
   const bounds = element.layoutBounds.get(target.id);
   expect(element.view.paddingX).toBe(0);

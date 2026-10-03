@@ -41,7 +41,7 @@ export default class PathInspectorElement extends HTMLElement {
     const insets = this.regionInsets(root.id);
     const style = getComputedStyle(this.surface);
     const minimum = {
-      width: extents.compact.width + (parseFloat(style.columnGap) || 144) + extents.expanded.width + 2 * insets.width,
+      width: extents.partial.width + (parseFloat(style.columnGap) || 144) + extents.expanded.width + 2 * insets.width,
       height: extents.partial.height + (parseFloat(style.rowGap) || 64) + extents.expanded.height + 2 * insets.height,
     };
     // This owner accounts for its toolbar, border and stable scrollbar gutters.
