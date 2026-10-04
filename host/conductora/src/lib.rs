@@ -4,6 +4,7 @@ pub mod env;
 mod map_commands;
 mod runtime;
 mod setup;
+pub mod source_ingress;
 
 // Re-exports for clean API
 //pub use config::APP_ID;

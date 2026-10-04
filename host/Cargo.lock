@@ -23,6 +23,7 @@ dependencies = [
  "map_commands_contract",
  "map_commands_runtime",
  "map_commands_wire",
+ "rfd",
  "serde",
  "serde_json",
  "session_receptor",
@@ -3233,7 +3234,7 @@ dependencies = [
  "holochain_serialized_bytes",
  "holochain_util",
  "holochain_wasmer_common",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "must_future",
  "rand 0.9.2",
  "rusqlite",
@@ -3285,8 +3286,8 @@ dependencies = [
  "human-panic",
  "indexmap 2.11.1",
  "itertools 0.14.0",
- "kitsune2_api 0.4.1",
- "kitsune2_core 0.4.1",
+ "kitsune2_api",
+ "kitsune2_core",
  "lair_keystore",
  "lair_keystore_api",
  "mockall",
@@ -3347,7 +3348,7 @@ dependencies = [
  "holochain_types",
  "holochain_util",
  "holochain_zome_types",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "opentelemetry",
  "parking_lot",
  "thiserror 2.0.18",
@@ -3397,7 +3398,7 @@ dependencies = [
  "holochain_types",
  "holochain_websocket",
  "holochain_zome_types",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "lair_keystore_api",
  "parking_lot",
  "rand 0.8.5",
@@ -3421,8 +3422,8 @@ dependencies = [
  "holochain_util",
  "holochain_zome_types",
  "indexmap 2.11.1",
- "kitsune2_api 0.4.1",
- "kitsune2_core 0.4.1",
+ "kitsune2_api",
+ "kitsune2_core",
  "kitsune2_gossip",
  "kitsune2_transport_iroh",
  "kitsune2_transport_tx5",
@@ -3566,8 +3567,8 @@ dependencies = [
  "holochain_types",
  "holochain_zome_types",
  "kitsune2",
- "kitsune2_api 0.4.1",
- "kitsune2_core 0.4.1",
+ "kitsune2_api",
+ "kitsune2_core",
  "kitsune2_transport_iroh",
  "mockall",
  "opentelemetry",
@@ -3626,8 +3627,8 @@ dependencies = [
  "holochain_keystore",
  "holochain_types",
  "holochain_util",
- "kitsune2_api 0.1.16",
- "kitsune2_core 0.1.16",
+ "kitsune2_api",
+ "kitsune2_core",
  "kitsune_p2p_mdns",
  "lair_keystore",
  "lair_keystore_api",
@@ -3704,7 +3705,7 @@ dependencies = [
  "holochain_timestamp",
  "holochain_util",
  "holochain_zome_types",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "nanoid",
  "once_cell",
  "opentelemetry",
@@ -3746,7 +3747,7 @@ dependencies = [
  "holochain_state_types",
  "holochain_types",
  "holochain_zome_types",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "one_err",
  "serde",
  "serde_json",
@@ -3820,7 +3821,7 @@ dependencies = [
  "holochain_zome_types",
  "indexmap 2.11.1",
  "itertools 0.14.0",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "mr_bundle",
  "must_future",
  "nanoid",
@@ -4194,7 +4195,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots 1.0.6",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -4619,7 +4620,7 @@ dependencies = [
  "tracing",
  "url",
  "wasm-bindgen-futures",
- "webpki-roots 1.0.6",
+ "webpki-roots",
  "z32",
 ]
 
@@ -4746,7 +4747,7 @@ dependencies = [
  "tokio-websockets",
  "tracing",
  "url",
- "webpki-roots 1.0.6",
+ "webpki-roots",
  "ws_stream_wasm",
  "z32",
 ]
@@ -4904,28 +4905,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81451c4645f7b972ae29f3841eef7a3271962f66be49b06e2a3db3d77cf516c6"
 dependencies = [
  "bytes",
- "kitsune2_api 0.4.1",
- "kitsune2_core 0.4.1",
+ "kitsune2_api",
+ "kitsune2_core",
  "kitsune2_gossip",
  "kitsune2_transport_iroh",
  "serde",
-]
-
-[[package]]
-name = "kitsune2_api"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0102eaca0a8e261059639fed92881a5aebc3a4c11d9a2a5933fd36fc49fc7436"
-dependencies = [
- "base64 0.22.1",
- "bytes",
- "futures",
- "prost 0.13.5",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tracing",
- "url",
 ]
 
 [[package]]
@@ -4937,24 +4921,11 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "futures",
- "prost 0.14.3",
+ "prost",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tracing",
- "url",
-]
-
-[[package]]
-name = "kitsune2_bootstrap_client"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86fc774e0da2711abc5d7b8bd842e3c56bbdbc7b3296a5a0d9e7277c54b3b7e9"
-dependencies = [
- "base64 0.22.1",
- "kitsune2_api 0.1.16",
- "tracing",
- "ureq 2.12.1",
  "url",
 ]
 
@@ -4965,33 +4936,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6c5903ca5d30245a9206b737cd2d57cf9768addad018f8b2842bcf59c3dd8d7"
 dependencies = [
  "base64 0.22.1",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "serde",
  "serde_json",
  "tracing",
- "ureq 3.2.0",
- "url",
-]
-
-[[package]]
-name = "kitsune2_core"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff5cee8f71e0a023b9b2fc616b6735a695f78c0f8157906f0f3d666fc863c464"
-dependencies = [
- "backon",
- "bytes",
- "ed25519-dalek 2.2.0",
- "futures",
- "kitsune2_api 0.1.16",
- "kitsune2_bootstrap_client 0.1.16",
- "prost 0.13.5",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "ureq 2.12.1",
+ "ureq",
  "url",
 ]
 
@@ -5005,9 +4954,9 @@ dependencies = [
  "bytes",
  "ed25519-dalek 2.2.0",
  "futures",
- "kitsune2_api 0.4.1",
- "kitsune2_bootstrap_client 0.4.1",
- "prost 0.14.3",
+ "kitsune2_api",
+ "kitsune2_bootstrap_client",
+ "prost",
  "rand 0.8.5",
  "schemars 0.9.0",
  "serde",
@@ -5024,7 +4973,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68f469fcedc6b47dd6d0aaab5f73ec4b72ce3ae275f572256ae15c7818a1d847"
 dependencies = [
  "bytes",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "tracing",
 ]
 
@@ -5036,10 +4985,10 @@ checksum = "23db2ae5f7383cf74ed28e3ebde2a3f3e4d9e931d5ed96d8f29965f216959511"
 dependencies = [
  "bytes",
  "futures",
- "kitsune2_api 0.4.1",
- "kitsune2_core 0.4.1",
+ "kitsune2_api",
+ "kitsune2_core",
  "kitsune2_dht",
- "prost 0.14.3",
+ "prost",
  "rand 0.8.5",
  "schemars 0.9.0",
  "serde",
@@ -5058,8 +5007,8 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "iroh-holochain",
- "kitsune2_api 0.4.1",
- "kitsune2_bootstrap_client 0.4.1",
+ "kitsune2_api",
+ "kitsune2_bootstrap_client",
  "n0-watcher",
  "schemars 0.9.0",
  "serde",
@@ -5076,7 +5025,7 @@ checksum = "f9b14a757e1f1b861e994dd83521e899fac4e51a4da667e0ff0217ff6969da70"
 dependencies = [
  "base64 0.22.1",
  "bytes",
- "kitsune2_api 0.4.1",
+ "kitsune2_api",
  "schemars 0.9.0",
  "serde",
  "tokio",
@@ -5320,7 +5269,7 @@ dependencies = [
  "minisign-verify",
  "pkg-config",
  "tar",
- "ureq 3.2.0",
+ "ureq",
  "vcpkg",
  "zip 7.3.0",
 ]
@@ -6136,7 +6085,7 @@ version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff32365de1b6743cb203b710788263c44a03de03802daf96092f2da4fe6ba4d7"
 dependencies = [
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate 2.0.0",
  "proc-macro2",
  "quote",
  "syn 2.0.114",
@@ -6908,6 +6857,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "pollster"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3"
+
+[[package]]
 name = "poly1305"
 version = "0.9.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7145,35 +7100,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.13.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
-dependencies = [
- "bytes",
- "prost-derive 0.13.5",
-]
-
-[[package]]
-name = "prost"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2ea70524a2f82d518bce41317d0fae74151505651af45faf1ffbd6fd33f0568"
 dependencies = [
  "bytes",
- "prost-derive 0.14.3",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.13.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
-dependencies = [
- "anyhow",
- "itertools 0.14.0",
- "proc-macro2",
- "quote",
- "syn 2.0.114",
+ "prost-derive",
 ]
 
 [[package]]
@@ -7821,7 +7753,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams 0.4.2",
  "web-sys",
- "webpki-roots 1.0.6",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -7871,6 +7803,30 @@ name = "resolv-conf"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e061d1b48cb8d38042de4ae0a7a6401009d6143dc80d2e2d6f31f0bdd6470c7"
+
+[[package]]
+name = "rfd"
+version = "0.17.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20dafead71c16a34e1ff357ddefc8afc11e7d51d6d2b9fbd07eaa48e3e540220"
+dependencies = [
+ "block2",
+ "dispatch2",
+ "js-sys",
+ "libc",
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-core-foundation",
+ "objc2-foundation",
+ "percent-encoding",
+ "pollster",
+ "raw-window-handle",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "rgb"
@@ -8196,9 +8152,9 @@ dependencies = [
  "tokio-rustls",
  "tokio-tungstenite",
  "tracing",
- "ureq 3.2.0",
+ "ureq",
  "url",
- "webpki-roots 1.0.6",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -10100,7 +10056,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.4",
  "static_assertions",
 ]
 
@@ -10300,22 +10256,6 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "ureq"
-version = "2.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
-dependencies = [
- "base64 0.22.1",
- "flate2",
- "log",
- "once_cell",
- "rustls",
- "rustls-pki-types",
- "url",
- "webpki-roots 0.26.11",
-]
-
-[[package]]
-name = "ureq"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdc97a28575b85cfedf2a7e7d3cc64b3e11bd8ac766666318003abbacc7a21fc"
@@ -10328,7 +10268,7 @@ dependencies = [
  "rustls-pki-types",
  "ureq-proto",
  "utf-8",
- "webpki-roots 1.0.6",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -10919,15 +10859,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31141ce3fc3e300ae89b78c0dd67f9708061d1d2eda54b8209346fd6be9a92c"
 dependencies = [
  "rustls-pki-types",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
-dependencies = [
- "webpki-roots 1.0.6",
 ]
 
 [[package]]

@@ -6,6 +6,7 @@ mod logging;
 mod map_commands;
 mod runtime;
 pub mod setup;
+mod source_ingress;
 
 fn main() {
     // Initialise logging before anything else.

@@ -21,6 +21,7 @@ base_types = { workspace = true }
 serde = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-fs = "2"
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 url2 = "0.0.6"
 app_dirs2 = "2.5.5"
 tempdir = "0.3.7"
