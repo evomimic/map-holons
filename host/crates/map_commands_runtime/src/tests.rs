@@ -1243,3 +1243,101 @@ async fn undo_to_marker_after_redo_to_marker_uses_correct_stack_order() {
         "undo_to_marker after redo_to_marker must pop only the marker EU, not the ones below it"
     );
 }
+
+#[tokio::test]
+async fn preparation_builds_isolated_transient_graphs_without_execution() -> Result<(), HolonError>
+{
+    use core_types::{ContentSet, FileData};
+    use holons_core::reference_layer::ReadableHolon;
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id)?;
+    let contents = ContentSet { files_to_load: vec![
+        FileData { filename: "/one/import.json".into(), raw_contents: r#"{ "holons": [
+            {"key":"a", "properties":{"Name":"é exact"}, "relationships":[{"name":"Next","target":{"$ref":"b"}}]}
+        ] }"#.into() },
+        FileData { filename: "/two/import.json".into(), raw_contents: r#"{"holons":[{"key":"b"}]}"#.into() },
+    ] };
+    let bad = ContentSet {
+        files_to_load: vec![FileData { filename: "broken.json".into(), raw_contents: "{".into() }],
+    };
+    assert!(runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::PrepareHolons { content_set: bad },
+            }),
+            ExecutionPolicy::default()
+        )
+        .await
+        .is_err());
+    assert_eq!(context.lookup().staged_count()?, 0);
+    assert!(context.is_open());
+    let mut requests = Vec::new();
+    for _ in 0..2 {
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: context.clone(),
+                    action: TransactionAction::PrepareHolons { content_set: contents.clone() },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await?;
+        let MapResult::Reference(request) = result else { panic!("expected request reference") };
+        let bundles = request.related_holons("Contains")?.read().unwrap().get_members().clone();
+        assert_eq!(bundles.len(), 2);
+        for (bundle, file) in bundles.iter().zip(&contents.files_to_load) {
+            assert_eq!(
+                bundle.property_value("Filename")?,
+                Some(BaseValue::StringValue(file.filename.clone().into()))
+            );
+            let members =
+                bundle.related_holons("BundleMembers")?.read().unwrap().get_members().clone();
+            assert_eq!(members.len(), 1);
+            let offset = file.raw_contents.find("{\"key\"").unwrap() as i64;
+            assert_eq!(
+                members[0].property_value("StartUtf8ByteOffset")?,
+                Some(BaseValue::IntegerValue(MapInteger(offset)))
+            );
+            if file.filename.starts_with("/one/") {
+                assert_eq!(
+                    members[0].property_value("Name")?,
+                    Some(BaseValue::StringValue("é exact".into()))
+                );
+                let links = members[0]
+                    .related_holons("HasRelationshipReference")?
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                let targets = links[0]
+                    .related_holons("ReferenceTarget")?
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                assert_eq!(
+                    targets[0].property_value("HolonKey")?,
+                    Some(BaseValue::StringValue("b".into()))
+                );
+            }
+        }
+        assert_eq!(context.lookup().staged_count()?, 0);
+        assert!(context.is_open());
+        requests.push(request);
+    }
+    assert_ne!(requests[0].reference_id_string(), requests[1].reference_id_string());
+    context.commit()?;
+    assert!(runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context,
+                action: TransactionAction::PrepareHolons { content_set: contents },
+            }),
+            ExecutionPolicy::default()
+        )
+        .await
+        .is_err());
+    Ok(())
+}

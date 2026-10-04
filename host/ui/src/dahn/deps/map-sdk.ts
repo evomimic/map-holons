@@ -30,6 +30,7 @@ export {
   MapClient,
   MapTransaction,
   MapError,
+  DomainError,
   extractNumber,
   extractString,
 } from '../../../../map-sdk/src';

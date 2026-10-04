@@ -59,6 +59,11 @@ pub async fn handle_transaction(
         TransactionAction::FetchArtifact { handle } => {
             Ok(MapResult::Value(BaseValue::BytesValue(context.fetch_artifact(&handle)?)))
         }
+        TransactionAction::PrepareHolons { content_set } => {
+            let request =
+                holons_loader_client::prepare_holons_from_files(context.clone(), content_set)?;
+            Ok(MapResult::Reference(HolonReference::Transient(request)))
+        }
         TransactionAction::LoadHolons { content_set } => {
             let response =
                 holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;

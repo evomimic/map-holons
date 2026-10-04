@@ -32,7 +32,7 @@ use tracing::{debug, info};
 /// High-level behavior:
 /// - If no input files are provided, returns `HolonError::InvalidParameter`.
 /// - Calls [`parse_files_into_load_set`] to:
-///     - validate each file against the loader JSON Schema, and
+///     - structurally decode each generated loader import, and
 ///     - build a single `HolonLoadSet` holon with per-file bundles.
 /// - If parsing or validation fails for any file, aggregates the resulting
 ///   `ImportFileParsingIssue`s into a single `HolonError` via
@@ -57,43 +57,10 @@ pub async fn load_holons_from_files(
 ) -> Result<TransientReference, HolonError> {
     let load_started_at = Instant::now();
     debug!("[loader-client] start load_holons_from_files");
-    // Guard against missing content; this is almost certainly a caller bug.
-    if content_set.files_to_load.is_empty() {
-        return Err(HolonError::InvalidParameter(
-            "load_holons_from_files: no import files provided".into(),
-        ));
-    }
-    // Phase 1: Parse and structurally validate all files into a single HolonLoadSet.
-    //
-    // For now we allow the parser to choose its own load-set key; a later
-    // iteration may derive a deterministic key (e.g., from filenames or
-    // a UI-provided identifier).
-    let load_set_key: Option<MapString> = Some(MapString("HolonLoadSet".to_string()));
-
+    let file_count = content_set.files_to_load.len();
     let parse_started_at = Instant::now();
-    let load_set_reference: HolonReference =
-        match parse_files_into_load_set(&context, load_set_key, &content_set) {
-            Ok(reference) => reference,
-            Err(issues) => {
-                let error = map_parsing_issues_to_holon_error(&issues);
-                return Err(error);
-            }
-        };
+    let load_set_transient = prepare_holons_from_files(context.clone(), content_set)?;
     let parse_millis = parse_started_at.elapsed().as_millis();
-
-    // Phase 2: Ensure we have a transient reference to the HolonLoadSet.
-    //
-    // The loader client constructs its graph entirely in the transient pool,
-    // so we expect a `HolonReference::Transient`. If, for some reason, we
-    // receive something else, treat it as an invalid parameter in this phase.
-    let load_set_transient: TransientReference = match load_set_reference {
-        HolonReference::Transient(tref) => tref,
-        _ => {
-            return Err(HolonError::InvalidParameter(
-                "load_holons_from_files: expected HolonLoadSet to be a transient reference".into(),
-            ));
-        }
-    };
 
     // Phase 3: Invoke the LoadHolons dance via the reference-layer helper.
     //
@@ -107,11 +74,61 @@ pub async fn load_holons_from_files(
     debug!("[loader-client] load_holons dance returned");
     info!(
         "[PERF-688] loader_client: files={} parse_and_prepare_ms={} dance_round_trip_ms={} total_ms={}",
-        content_set.files_to_load.len(),
+        file_count,
         parse_millis,
         dance_millis,
         load_started_at.elapsed().as_millis(),
     );
 
     Ok(response_reference)
+}
+
+/// Builds a transient load request without invoking the loader or committing.
+///
+/// Supplied filenames and contents are used directly; files are never reread.
+/// Failed attempts may retain partial transient graphs in the owning transaction,
+/// but return no usable request. Every call constructs a separate graph.
+/// Structural decoding is not a replacement for source-review JSON Schema validation.
+pub fn prepare_holons_from_files(
+    context: Arc<TransactionContext>,
+    content_set: ContentSet,
+) -> Result<TransientReference, HolonError> {
+    // Guard against missing content; this is almost certainly a caller bug.
+    if content_set.files_to_load.is_empty() {
+        return Err(HolonError::InvalidParameter(
+            "prepare_holons_from_files: no import files provided".into(),
+        ));
+    }
+    // Phase 1: Parse and structurally validate all files into a single HolonLoadSet.
+    //
+    // For now we allow the parser to choose its own load-set key; a later
+    // iteration may derive a deterministic key (e.g., from filenames or
+    // a UI-provided identifier).
+    let load_set_key: Option<MapString> = Some(MapString("HolonLoadSet".to_string()));
+
+    let load_set_reference: HolonReference =
+        match parse_files_into_load_set(&context, load_set_key, &content_set) {
+            Ok(reference) => reference,
+            Err(issues) => {
+                let error = map_parsing_issues_to_holon_error(&issues);
+                return Err(error);
+            }
+        };
+
+    // Phase 2: Ensure we have a transient reference to the HolonLoadSet.
+    //
+    // The loader client constructs its graph entirely in the transient pool,
+    // so we expect a `HolonReference::Transient`. If, for some reason, we
+    // receive something else, treat it as an invalid parameter in this phase.
+    let load_set_transient: TransientReference = match load_set_reference {
+        HolonReference::Transient(tref) => tref,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "prepare_holons_from_files: expected HolonLoadSet to be a transient reference"
+                    .into(),
+            ));
+        }
+    };
+
+    Ok(load_set_transient)
 }

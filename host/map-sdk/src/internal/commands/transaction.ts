@@ -236,6 +236,15 @@ export function deleteHolon(
   );
 }
 
+/** Construct a request graph without invoking the loader. */
+export function prepareHolons(
+  txId: TxId,
+  contentSet: ContentSet,
+  options?: RequestOptionsOverrides,
+): Promise<HolonReferenceWire> {
+  return runTransactionCommand(txId, { PrepareHolons: { content_set: contentSet } }, expectReference, options);
+}
+
 /**
  * Load uploaded/imported holon content and return the runtime response reference.
  *

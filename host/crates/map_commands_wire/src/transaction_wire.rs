@@ -47,6 +47,10 @@ pub enum TransactionActionWire {
         marker_id: String,
     },
 
+    /// Prepares a transient load request without executing it.
+    PrepareHolons {
+        content_set: ContentSet,
+    },
     /// Loads holons from uploaded/imported file content.
     LoadHolons {
         content_set: ContentSet,
@@ -233,6 +237,9 @@ impl TransactionActionWire {
             }
             TransactionActionWire::RedoToMarker { marker_id } => {
                 Ok(TransactionAction::RedoToMarker { marker_id })
+            }
+            TransactionActionWire::PrepareHolons { content_set } => {
+                Ok(TransactionAction::PrepareHolons { content_set })
             }
             TransactionActionWire::LoadHolons { content_set } => {
                 Ok(TransactionAction::LoadHolons { content_set })

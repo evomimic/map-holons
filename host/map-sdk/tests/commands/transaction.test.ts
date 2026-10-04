@@ -12,6 +12,7 @@ import {
   getTransientHolonByBaseKey,
   getTransientHolonByVersionedKey,
   loadHolons,
+  prepareHolons,
   newHolon,
   redoLast,
   stageNewFromClone,
@@ -211,6 +212,14 @@ const transactionCases: TransactionCase<unknown>[] = [
     action: { StageNewVersionFromId: { holon_id: holonId } },
     okResult: { Reference: stagedReference },
     expected: stagedReference,
+    wrongResult: 'None',
+  },
+  {
+    name: 'prepareHolons',
+    run: () => prepareHolons(txId, contentSet),
+    action: { PrepareHolons: { content_set: contentSet } },
+    okResult: { Reference: transientReference },
+    expected: transientReference,
     wrongResult: 'None',
   },
   {

@@ -9,7 +9,7 @@ import { ContentSet, FileData } from '../../models/shared-types';
 import { ContentStoreInstance } from '../../stores/content.store';
 import { ContentController } from '../../contollers/content.controller';
 import { MapClient, type HolonReference } from '../../../dahn/deps/map-sdk';
-import { presentLoaderResult, type LoaderResultView } from './loader-result.presenter';
+import { loaderFailureDetail, presentLoaderResult, type LoaderResultView } from './loader-result.presenter';
 
 // Helper function to check if the app is running in a Tauri window
 const isTauri = () => !!(window as any).__TAURI__;
@@ -284,6 +284,9 @@ export class JsonDataUploader implements OnInit {
         holonsStaged: 'n/a',
         holonsCommitted: 'n/a',
         errorCount: 'n/a',
+        validationViolationCount: 'n/a',
+        readFailures: [],
+        outcome: '',
         danceSummary: 'Waiting for loader result...',
         linksCreated: 'n/a',
         loadCommitStatus: 'n/a',
@@ -316,12 +319,15 @@ export class JsonDataUploader implements OnInit {
           : await this.loadHolonsIntoActiveRuntime(file_and_schema_Data);
         this.loaderResultStatus = 'Loading loader result...';
         await this.loadLoaderResult(loaderReference);
-        if (this.loaderResult && Number(this.loaderResult.errorCount) === 0) {
+        if (this.loaderResult?.loadCommitStatus === 'Complete' && this.loaderResult.readFailures.length === 0) {
           this.clearForms();
         }
         this.cdr.markForCheck();
       } catch (error) {
-        this.errorMessage = `Tauri Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        this.loaderResultStatus = 'Load could not be completed';
+        this.successMessage = '';
+        this.errorMessage = loaderFailureDetail(error);
+        this.loaderResult = null;
         this.cdr.markForCheck();
       } finally {
         this.isLoading = false;
@@ -348,7 +354,7 @@ export class JsonDataUploader implements OnInit {
   }
 
   hasLoadErrors(): boolean {
-    return !!this.loaderResult && Number(this.loaderResult.errorCount) > 0;
+    return !!this.loaderResult && this.loaderResult.loadErrors.length > 0;
   }
 
   displayLoaderField(value: string): string {
@@ -366,19 +372,15 @@ export class JsonDataUploader implements OnInit {
   private async loadLoaderResult(loaderReference: HolonReference): Promise<void> {
     try {
       this.loaderResult = await presentLoaderResult(loaderReference);
-      this.loaderResultStatus = 'Loader result received.';
-      if (Number(this.loaderResult.errorCount) > 0) {
-        this.successMessage = '';
-        this.errorMessage = `Load completed with ${this.loaderResult.errorCount} error(s).`;
-      } else {
-        this.successMessage = 'Load completed successfully.';
-        this.errorMessage = '';
-      }
+      this.loaderResultStatus = this.loaderResult.outcome;
+      this.successMessage = this.loaderResult.loadCommitStatus === 'Complete' ? this.loaderResult.outcome : '';
+      this.errorMessage = this.loaderResult.loadCommitStatus === 'Complete' ? '' : this.loaderResult.outcome;
+      this.showLoadErrors = this.loaderResult.loadCommitStatus !== 'Complete' && this.hasLoadErrors();
       this.cdr.markForCheck();
     } catch (error) {
       console.error('[Uploader] Failed to read loader result holon:', error);
       this.loaderResultStatus = 'Loader result could not be read.';
-      this.errorMessage = 'Load completed, but the loader summary could not be read.';
+      this.errorMessage = `Loader summary could not be read: ${loaderFailureDetail(error)}`;
       this.successMessage = '';
       this.cdr.markForCheck();
     }

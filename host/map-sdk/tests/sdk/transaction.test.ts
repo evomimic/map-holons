@@ -20,6 +20,7 @@ const {
   getTransientHolonByBaseKeyMock,
   getTransientHolonByVersionedKeyMock,
   loadHolonsMock,
+  prepareHolonsMock,
   newHolonMock,
   stagedCountMock,
   stageNewFromCloneMock,
@@ -37,6 +38,7 @@ const {
   getTransientHolonByBaseKeyMock: vi.fn(),
   getTransientHolonByVersionedKeyMock: vi.fn(),
   loadHolonsMock: vi.fn(),
+  prepareHolonsMock: vi.fn(),
   newHolonMock: vi.fn(),
   stagedCountMock: vi.fn(),
   stageNewFromCloneMock: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock('../../src/internal/commands/transaction', () => ({
   getTransientHolonByBaseKey: getTransientHolonByBaseKeyMock,
   getTransientHolonByVersionedKey: getTransientHolonByVersionedKeyMock,
   loadHolons: loadHolonsMock,
+  prepareHolons: prepareHolonsMock,
   newHolon: newHolonMock,
   stagedCount: stagedCountMock,
   stageNewFromClone: stageNewFromCloneMock,
@@ -149,6 +152,7 @@ describe('MapTransaction', () => {
     getTransientHolonByBaseKeyMock.mockReset();
     getTransientHolonByVersionedKeyMock.mockReset();
     loadHolonsMock.mockReset();
+    prepareHolonsMock.mockReset();
     newHolonMock.mockReset();
     stagedCountMock.mockReset();
     stageNewFromCloneMock.mockReset();
@@ -272,6 +276,19 @@ describe('MapTransaction', () => {
 
     await expect(transaction().deleteHolon(localId)).resolves.toBeUndefined();
     expect(deleteHolonMock).toHaveBeenCalledWith(txId, localId);
+  });
+
+  it('prepares a bound transient request without executing the loader', async () => {
+    prepareHolonsMock.mockResolvedValue(transientReference);
+    const request = await transaction().prepareHolons(contentSet);
+    expect(request).toBeInstanceOf(TransientHolonReference);
+    expect(prepareHolonsMock).toHaveBeenCalledWith(txId, contentSet);
+    expect(loadHolonsMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a preparation response bound to another transaction', async () => {
+    prepareHolonsMock.mockResolvedValue({ Transient: { ...transientReference.Transient, tx_id: 'other' } });
+    await expect(transaction().prepareHolons(contentSet)).rejects.toThrow();
   });
 
   it('wraps loadHolons results as transient references', async () => {

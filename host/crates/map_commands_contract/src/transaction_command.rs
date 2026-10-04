@@ -39,6 +39,9 @@ pub enum TransactionAction {
     /// Redoes mutations up to the specified marker.
     RedoToMarker { marker_id: String },
 
+    /// Prepares a transient load request without staging or committing imported holons.
+    PrepareHolons { content_set: ContentSet },
+
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
 
@@ -195,7 +198,8 @@ impl TransactionAction {
             }
 
             // Mutations
-            TransactionAction::NewHolon { .. }
+            TransactionAction::PrepareHolons { .. }
+            | TransactionAction::NewHolon { .. }
             | TransactionAction::StageNewHolon { .. }
             | TransactionAction::StageNewFromClone { .. }
             | TransactionAction::StageNewVersion { .. }
@@ -212,6 +216,7 @@ impl TransactionAction {
             TransactionAction::UndoToMarker { .. } => "undo_to_marker",
             TransactionAction::RedoToMarker { .. } => "redo_to_marker",
             TransactionAction::LoadHolons { .. } => "load_holons",
+            TransactionAction::PrepareHolons { .. } => "prepare_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",

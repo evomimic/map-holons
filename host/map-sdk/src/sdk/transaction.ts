@@ -166,6 +166,20 @@ export class MapTransaction {
   }
 
   /**
+   * Build a transient HolonLoadSet in this transaction without staging or committing.
+   * Uses supplied contents and source names. Failed preparation may retain transient
+   * state until transaction disposal. This does not perform review JSON Schema validation.
+   */
+  async prepareHolons(contentSet: ContentSet): Promise<TransientHolonReference> {
+    const txId = txIdFor(this);
+    const reference = await internalTransaction.prepareHolons(txId, contentSet);
+    if (!('Transient' in reference) || reference.Transient.tx_id !== txId) {
+      throw new TypeError('Prepared request must be a transient reference in the owning transaction');
+    }
+    return createTransientHolonReference(txId, reference);
+  }
+
+  /**
    * Load uploaded/imported holon content into the current runtime context.
    *
    * In v0 this is a documented special case: current runtime behavior may end

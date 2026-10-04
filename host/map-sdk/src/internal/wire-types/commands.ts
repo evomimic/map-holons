@@ -95,6 +95,7 @@ export type TransactionActionWire =
   | 'RedoLast'
   | { UndoToMarker: { marker_id: string } }
   | { RedoToMarker: { marker_id: string } }
+  | { PrepareHolons: { content_set: ContentSet } }
   | { LoadHolons: { content_set: ContentSet } }
   // Retained legacy dance ingress. Keep operational, but do not treat as the
   // foundation for new command-surface work.
@@ -299,6 +300,9 @@ export function isTransactionActionWire(
   return (
     (typeof value === 'string' && TRANSACTION_UNIT_ACTIONS.has(value)) ||
     // Struct variants.
+    (hasSingleKey(value, 'PrepareHolons') &&
+      isRecord(value.PrepareHolons) &&
+      isContentSet(value.PrepareHolons['content_set'])) ||
     (hasSingleKey(value, 'LoadHolons') &&
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||

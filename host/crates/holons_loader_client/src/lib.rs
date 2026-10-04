@@ -15,7 +15,7 @@ pub mod loader_client;
 mod parser;
 
 // Public re-exports for the main entrypoint.
-pub use loader_client::load_holons_from_files;
+pub use loader_client::{load_holons_from_files, prepare_holons_from_files};
 
 // Re-export key raw types + parsing diagnostics so tests and future
 // tooling can use them without reaching into private modules.

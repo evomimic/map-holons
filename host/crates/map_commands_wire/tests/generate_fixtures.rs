@@ -175,6 +175,18 @@ fn generate_fixtures() {
     );
     write_fixture(
         &fixtures_dir,
+        "request-tx-prepare-holons.json",
+        &request(
+            9,
+            tx_command(
+                41,
+                TransactionActionWire::PrepareHolons { content_set: sample_content_set() },
+            ),
+            mutation_options("prepare holons"),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
         "request-tx-load-holons.json",
         &request(
             9,

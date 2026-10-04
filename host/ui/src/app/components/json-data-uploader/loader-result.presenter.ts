@@ -1,4 +1,4 @@
-import { extractNumber, extractString, type ReadableHolon } from '../../../dahn/deps/map-sdk';
+import { DomainError, extractNumber, extractString, type ReadableHolon } from '../../../dahn/deps/map-sdk';
 
 export interface LoaderErrorView {
   filename: string;
@@ -12,120 +12,81 @@ export interface LoaderResultView {
   holonsStaged: string;
   holonsCommitted: string;
   errorCount: string;
+  validationViolationCount: string;
   danceSummary: string;
   linksCreated: string;
   loadCommitStatus: string;
   loadErrors: LoaderErrorView[];
+  readFailures: string[];
+  outcome: string;
 }
 
-const CORE_PROPERTY_NAMES = {
-  holonsStaged: 'HolonsStaged',
-  holonsCommitted: 'HolonsCommitted',
-  errorCount: 'ErrorCount',
-  danceSummary: 'DanceSummary',
-  linksCreated: 'LinksCreated',
-  loadCommitStatus: 'LoadCommitStatus',
-} as const;
+const UNAVAILABLE = 'Not available';
 
-const LOAD_ERROR_PROPERTY_NAMES = {
-  filename: 'Filename',
-  startUtf8ByteOffset: 'StartUtf8ByteOffset',
-  loaderHolonKey: 'LoaderHolonKey',
-  errorType: 'ErrorType',
-  errorMessage: 'ErrorMessage',
-} as const;
+/** Keep the domain payload: Error.message alone often contains only its variant. */
+export function loaderFailureDetail(error: unknown): string {
+  if (error instanceof DomainError) {
+    return `${error.message}: ${typeof error.payload === 'string' ? error.payload : JSON.stringify(error.payload)}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
 
-export async function presentLoaderResult(
-  loaderHolon: ReadableHolon,
-): Promise<LoaderResultView> {
-  const [
-    holonsStaged,
-    holonsCommitted,
-    errorCount,
-    danceSummary,
-    linksCreated,
-    loadCommitStatus,
-    loadErrors,
-  ] = await Promise.all([
-    readIntegerProperty(loaderHolon, CORE_PROPERTY_NAMES.holonsStaged),
-    readIntegerProperty(loaderHolon, CORE_PROPERTY_NAMES.holonsCommitted),
-    readIntegerProperty(loaderHolon, CORE_PROPERTY_NAMES.errorCount),
-    readStringProperty(loaderHolon, CORE_PROPERTY_NAMES.danceSummary),
-    readIntegerProperty(loaderHolon, CORE_PROPERTY_NAMES.linksCreated),
-    readStringProperty(loaderHolon, CORE_PROPERTY_NAMES.loadCommitStatus),
-    readLoadErrors(loaderHolon),
+/** Read fields independently so a presentation failure cannot erase usable evidence. */
+export async function presentLoaderResult(holon: ReadableHolon): Promise<LoaderResultView> {
+  const readFailures: string[] = [];
+  async function read(source: ReadableHolon, name: string, integer = false): Promise<string> {
+    try {
+      const value = await source.propertyValue(name);
+      if (value === null) return UNAVAILABLE;
+      if (!integer) return extractString(value);
+      const number = extractNumber(value);
+      if (!Number.isSafeInteger(number) || number < 0) throw new Error('Expected a nonnegative integer');
+      return String(number);
+    } catch (error) {
+      readFailures.push(`${name}: ${loaderFailureDetail(error)}`);
+      return UNAVAILABLE;
+    }
+  }
+  const [holonsStaged, holonsCommitted, errorCount, validationViolationCount,
+    danceSummary, linksCreated, loadCommitStatus, totalLoaderHolons] = await Promise.all([
+    read(holon, 'HolonsStaged', true), read(holon, 'HolonsCommitted', true),
+    read(holon, 'ErrorCount', true), read(holon, 'ValidationViolationCount', true),
+    read(holon, 'DanceSummary'), read(holon, 'LinksCreated', true),
+    read(holon, 'LoadCommitStatus'), read(holon, 'TotalLoaderHolons', true),
   ]);
-
-  return {
-    holonsStaged,
-    holonsCommitted,
-    errorCount,
-    danceSummary,
-    linksCreated,
-    loadCommitStatus,
-    loadErrors,
-  };
-}
-
-async function readIntegerProperty(
-  holon: ReadableHolon,
-  propertyName: string,
-): Promise<string> {
-  const value = await holon.propertyValue(propertyName);
-  if (value === null) {
-    return 'n/a';
-  }
-
+  let loadErrors: LoaderErrorView[] = [];
+  let diagnosticsReadable = true;
   try {
-    return String(extractNumber(value));
-  } catch {
-    return JSON.stringify(value);
-  }
-}
-
-async function readStringProperty(
-  holon: ReadableHolon,
-  propertyName: string,
-): Promise<string> {
-  const value = await holon.propertyValue(propertyName);
-  if (value === null) {
-    return 'n/a';
-  }
-
-  try {
-    return extractString(value);
-  } catch {
-    return JSON.stringify(value);
-  }
-}
-
-async function readLoadErrors(
-  loaderHolon: ReadableHolon,
-): Promise<LoaderErrorView[]> {
-  let errorCollection;
-  try {
-    errorCollection = await loaderHolon.relatedHolons('HasLoadError');
+    const collection = await holon.relatedHolons('HasLoadError');
+    loadErrors = await Promise.all(collection.members.map(async source => ({
+      filename: await read(source, 'Filename'),
+      startUtf8ByteOffset: await read(source, 'StartUtf8ByteOffset', true),
+      loaderHolonKey: await read(source, 'LoaderHolonKey'),
+      errorType: await read(source, 'ErrorType'),
+      errorMessage: await read(source, 'ErrorMessage'),
+    })));
   } catch (error) {
-    console.error('[Uploader] Failed to read HasLoadError collection:', error);
-    return [];
+    diagnosticsReadable = false;
+    readFailures.push(`HasLoadError: ${loaderFailureDetail(error)}`);
   }
 
-  return Promise.all(
-    errorCollection.members.map(async (errorHolon: ReadableHolon) => ({
-      filename: await readStringProperty(errorHolon, LOAD_ERROR_PROPERTY_NAMES.filename),
-      startUtf8ByteOffset: await readIntegerProperty(
-        errorHolon,
-        LOAD_ERROR_PROPERTY_NAMES.startUtf8ByteOffset,
-      ),
-      loaderHolonKey: await readStringProperty(
-        errorHolon,
-        LOAD_ERROR_PROPERTY_NAMES.loaderHolonKey,
-      ),
-      errorType: await readStringProperty(errorHolon, LOAD_ERROR_PROPERTY_NAMES.errorType),
-      errorMessage: await readStringProperty(
-        errorHolon,
-        LOAD_ERROR_PROPERTY_NAMES.errorMessage,
-      ),
-    })),
-  );
+  let outcome: string;
+  switch (loadCommitStatus) {
+    case 'Complete': outcome = 'Load complete'; break;
+    case 'Rejected': outcome = 'Load rejected'; break;
+    case 'Incomplete':
+      outcome = holonsCommitted === UNAVAILABLE ? 'Load incomplete — saved count is unavailable'
+        : Number(holonsCommitted) > 0 ? 'Load incomplete — some holons were saved'
+        : 'Load incomplete — no holons were saved';
+      break;
+    case 'Skipped':
+      outcome = totalLoaderHolons === '0' && errorCount === '0' && validationViolationCount === '0'
+        && diagnosticsReadable && loadErrors.length === 0 ? 'Nothing to load' : 'Load skipped';
+      break;
+    default:
+      outcome = 'Load could not be completed';
+      readFailures.push(`LoadCommitStatus is unavailable or unrecognized: ${loadCommitStatus}`);
+  }
+  return { holonsStaged, holonsCommitted, errorCount, validationViolationCount,
+    danceSummary, linksCreated, loadCommitStatus, loadErrors, readFailures, outcome };
 }

@@ -1,0 +1,26 @@
+{
+  "request_id": 9,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "PrepareHolons": {
+          "content_set": {
+            "files_to_load": [
+              {
+                "filename": "sample-loader-file.json",
+                "raw_contents": "{\"holons\":[]}"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "marker_id": "marker-123",
+    "marker_label": "prepare holons",
+    "snapshot_after": true,
+    "disable_undo": false
+  }
+}

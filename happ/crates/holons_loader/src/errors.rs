@@ -50,12 +50,13 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
     }
 }
 
-/// Build transient HolonErrorType holons for reporting load errors.
+/// Build transient HolonLoadError holons for reporting load errors.
 /// - One holon per error.
 /// - If `provenance` + `source_loader_key` are available, stamp:
 ///   LoaderHolonKey, Filename, StartUtf8ByteOffset.
-pub fn make_error_holons_best_effort(
+pub fn make_load_error_holons(
     context: &Arc<TransactionContext>,
+    descriptor: Option<HolonReference>,
     errors: &[ErrorWithContext],
     provenance: Option<&ProvenanceIndex>,
 ) -> Result<Vec<TransientReference>, HolonError> {
@@ -64,15 +65,9 @@ pub fn make_error_holons_best_effort(
     }
 
     let mut output = Vec::with_capacity(errors.len());
-    // Try resolving the HolonErrorType descriptor once.
-    let holon_error_type_descriptor = resolve_holon_error_type_descriptor(context).ok();
-
     for contextual_error in errors {
-        let mut transient_reference = make_error_holon(
-            context,
-            holon_error_type_descriptor.clone(),
-            &contextual_error.error,
-        )?;
+        let mut transient_reference =
+            make_error_holon(context, descriptor.clone(), &contextual_error.error)?;
 
         if let (Some(index), Some(loader_key)) =
             (provenance, contextual_error.source_loader_key.clone())
@@ -174,45 +169,4 @@ fn populate_error_fields(
     )?;
 
     Ok(())
-}
-
-/// Descriptor resolution (best-effort):
-/// 1) Staged (Nursery) lookup by key "HolonLoadError.HolonErrorType"
-/// 2) Saved fallback via the exact-key lineage-head lookup.
-fn resolve_holon_error_type_descriptor(
-    context: &Arc<TransactionContext>,
-) -> Result<HolonReference, HolonError> {
-    // Canonical key from the enum (=> "HolonLoadError")
-    let type_name = CoreHolonTypeName::HolonLoadError.as_holon_name();
-    let key = MapString(format!("{type_name}.HolonErrorType"));
-
-    // 1) Prefer staged (Nursery) by base key
-    let staged_matches = {
-        // Query staged holons by base key.
-        context.lookup().get_staged_holons_by_base_key(&key)?
-    };
-
-    match staged_matches.len() {
-        1 => {
-            let staged_ref = staged_matches.into_iter().next().unwrap();
-            return Ok(HolonReference::Staged(staged_ref));
-        }
-        n if n > 1 => {
-            return Err(HolonError::DuplicateError(
-                "HolonErrorType descriptor (staged)".into(),
-                n.to_string(),
-            ));
-        }
-        _ => { /* fall through to saved fallback */ }
-    }
-
-    // 2) Saved fallback: exact keyed lookup yields the sole visible lineage head.
-    match context.lookup().get_saved_holon_by_key(&key) {
-        Ok(reference) => Ok(HolonReference::Smart(reference)),
-        Err(HolonError::HolonNotFound(_)) => Err(HolonError::HolonNotFound(format!(
-            "HolonErrorType descriptor not found by key '{}'",
-            key.0
-        ))),
-        Err(error) => Err(error),
-    }
 }
