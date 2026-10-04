@@ -349,6 +349,29 @@ export class MapTransaction {
     }
   }
 
+  /**
+   * Executes a prepared request through the explicitly affording HolonSpace.
+   * Use a dedicated loader transaction: Complete closes it, while other outcomes
+   * leave it open. The response and staged evidence remain available for review.
+   */
+  async invokeLoadHolons(
+    affordingSpace: HolonReference,
+    request: TransientHolonReference,
+  ): Promise<HolonReference> {
+    const requestWire = unwrapHolonReference(request);
+    if (!('Transient' in requestWire) || requestWire.Transient.tx_id !== txIdFor(this)) {
+      throw new Error('Prepared HolonLoadSet must belong to this transaction');
+    }
+    const descriptor = await this.getSavedHolonByBaseKey('DanceInvocation.HolonType');
+    if (descriptor === null) throw new Error('DanceInvocation descriptor is unavailable');
+    const invocation = await this.newHolon('load-holons-invocation');
+    await invocation.withDescriptor(descriptor);
+    await invocation.withPropertyValue('DanceName' as PropertyName, { StringValue: 'LoadHolons' });
+    await invocation.addRelatedHolons('AffordingHolon' as RelationshipName, [affordingSpace]);
+    await invocation.addRelatedHolons('Request' as RelationshipName, [request]);
+    return this.danceV2(invocation);
+  }
+
   async danceV2(invocation: HolonReference): Promise<HolonReference> {
     const txId = txIdFor(this);
     const wireRef = await internalTransaction.danceV2(txId, {

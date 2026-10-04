@@ -75,4 +75,31 @@ impl DanceInitiator for TrustChannel {
         debug!("TrustChannel::initiate_dance() — got response: {:?}", response.summarize());
         response
     }
+    async fn initiate_invocation(
+        &self,
+        context: &Arc<TransactionContext>,
+        invocation: holons_core::dances::DanceInvocation,
+    ) -> Result<holons_core::HolonReference, holons_core::HolonError> {
+        use holons_boundary::HolonReferenceWire;
+        use holons_boundary::envelopes::{
+            DanceEnvelopeRequest, DanceEnvelopeResponse, DanceRequestEnvelope,
+        };
+        use holons_core::HolonError;
+        let envelope = DanceRequestEnvelope {
+            request: DanceEnvelopeRequest::Invocation {
+                invocation: HolonReferenceWire::from(invocation.as_holon_reference()),
+            },
+            session: Some(DanceEnvelopeAdapter::attach_session_state(context)?),
+        };
+        let response = self.backend.initiate_dance_envelope(envelope).await?;
+        let state = response.session.ok_or_else(|| {
+            HolonError::InvalidParameter("Canonical Dance response is missing session state".into())
+        })?;
+        // Even failed execution can produce evidence needed for diagnosis and review.
+        DanceEnvelopeAdapter::hydrate_from_response(context, &state)?;
+        match response.response {
+            DanceEnvelopeResponse::Reference { result } => result?.bind(context),
+            _ => Err(HolonError::InvalidParameter("Expected canonical Dance response".into())),
+        }
+    }
 }

@@ -379,6 +379,31 @@
       ]
     },
     {
+      "key": "LoadHolons.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "LoadHolons"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "LoadHolons.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "LoadHolons.DanceType",
       "type": "MetaDanceType.MetaHolonType",
       "properties": {

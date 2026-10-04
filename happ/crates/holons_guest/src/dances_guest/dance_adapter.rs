@@ -7,7 +7,9 @@ use crate::init_guest_context;
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
+use holons_boundary::envelopes::{
+    DanceEnvelopeRequest, DanceEnvelopeResponse, DanceRequestEnvelope, DanceResponseEnvelope,
+};
 use holons_boundary::session_state::{SerializableHolonPool, SessionStateWire};
 use holons_boundary::{DanceRequestWire, DanceResponseWire, HolonReferenceWire, ResponseBodyWire};
 use holons_core::{
@@ -20,6 +22,12 @@ use holons_core::{
 #[hdk_extern]
 pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
     let DanceRequestEnvelope { request, session } = envelope;
+    let request = match request {
+        DanceEnvelopeRequest::Invocation { invocation } => {
+            return Ok(execute_invocation_envelope(invocation, session))
+        }
+        DanceEnvelopeRequest::Legacy(request) => request,
+    };
     let dance_name = request.dance_name.clone();
     let is_load_holons = dance_name.0 == "load_holons";
     let total_started_at = performance_timestamp_micros();
@@ -41,7 +49,10 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
             descriptor: None,
         };
 
-        return Ok(DanceResponseEnvelope { response: response_wire, session });
+        return Ok(DanceResponseEnvelope {
+            response: DanceEnvelopeResponse::Legacy(response_wire),
+            session,
+        });
     }
     let validation_micros = elapsed_micros(validation_started_at);
 
@@ -106,7 +117,44 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         info!("[PERF-688] guest_dance_adapter: load_holons_returning");
     }
 
-    Ok(DanceResponseEnvelope { response: response_wire, session: response_session })
+    Ok(DanceResponseEnvelope {
+        response: DanceEnvelopeResponse::Legacy(response_wire),
+        session: response_session,
+    })
+}
+
+/// Hydrates and binds canonical ingress using the same transaction-state boundary as legacy calls.
+fn execute_invocation_envelope(
+    invocation: HolonReferenceWire,
+    session: Option<SessionStateWire>,
+) -> DanceResponseEnvelope {
+    use holons_core::dances::{execute_dance_v2_locally, DanceInvocation};
+    use holons_core::WritableHolon;
+    let context = session
+        .as_ref()
+        .ok_or_else(|| HolonError::InvalidParameter("Missing SessionStateWire".into()))
+        .and_then(initialize_context_from_session_state);
+    let context = match context {
+        Ok(context) => context,
+        Err(error) => {
+            return DanceResponseEnvelope {
+                response: DanceEnvelopeResponse::Reference { result: Err(error) },
+                session,
+            }
+        }
+    };
+    let result = (|| {
+        let mut reference = invocation.bind(&context)?;
+        reference.with_property_value("InvocationSource", "TrustChannel")?;
+        let invocation = DanceInvocation::new(reference)?;
+        let response = execute_dance_v2_locally(&context, invocation)?;
+        let reference: holons_core::HolonReference = response.into();
+        Ok(HolonReferenceWire::from(&reference))
+    })();
+    DanceResponseEnvelope {
+        response: DanceEnvelopeResponse::Reference { result },
+        session: restore_session_state_from_context(&context),
+    }
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
@@ -140,7 +188,7 @@ fn create_error_response_envelope(
         descriptor: None,
     };
 
-    DanceResponseEnvelope { response: response_wire, session }
+    DanceResponseEnvelope { response: DanceEnvelopeResponse::Legacy(response_wire), session }
 }
 
 fn initialize_context_from_session_state(

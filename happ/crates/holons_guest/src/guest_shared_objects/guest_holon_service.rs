@@ -650,6 +650,18 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_set(context, set)
     }
 
+    fn invoke_load_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        invocation: holons_core::dances::DanceInvocation,
+    ) -> Result<holons_core::dances::DanceResponseReference, HolonError> {
+        let HolonReference::Transient(request) = invocation.require_request()? else {
+            return Err(HolonError::InvalidParameter("HolonLoadSet must be transient".into()));
+        };
+        let response = self.load_holons_internal(context, request)?;
+        holons_core::dances::DanceResponseReference::new(response.into())
+    }
+
     fn ensure_local_holon_space_internal(
         &self,
         context: &Arc<TransactionContext>,

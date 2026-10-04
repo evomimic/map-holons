@@ -95,7 +95,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "10cbdb62a48f3d6a35b496c92ad8a98b2a8067999c7f6d99e51c54b587596d1f"
+      "sha256": "2e7855d754120f8b5202b2c0e3d9c6a5fb482fcc5f4b4eec208915a2a6ecd52e"
     },
     {
       "path": "imports/dancer/schema.json",
@@ -2350,6 +2350,10 @@
     {
       "key": "LoadHolons.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "LoadHolons.DanceImplementation",
+      "type": "DanceImplementation.HolonType"
     },
     {
       "key": "LoadHolons.DanceType",

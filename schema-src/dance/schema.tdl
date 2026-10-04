@@ -120,6 +120,15 @@ holon HolonLoadResponse.DanceResponseType {
   }
 }
 
+instance LoadHolons.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "LoadHolons"
+  relationships {
+    ForDance -> LoadHolons.DanceType
+  }
+}
+
+
 holon LoadHolons.DanceType {
   type MetaDanceType.MetaHolonType
   extends DanceType.HolonType

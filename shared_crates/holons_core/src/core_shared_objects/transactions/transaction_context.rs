@@ -341,6 +341,23 @@ impl TransactionContext {
         Ok(load_response)
     }
 
+    /// Executes canonical loading and reconciles its authoritative terminal status.
+    pub fn invoke_load_holons(
+        self: &Arc<Self>,
+        invocation: crate::dances::DanceInvocation,
+    ) -> Result<crate::dances::DanceResponseReference, HolonError> {
+        self.assert_allowed(TransactionOperation::CommitExecution)?;
+        let response = self.get_holon_service().invoke_load_holons_internal(self, invocation)?;
+        let reference: HolonReference = response.clone().into();
+        let HolonReference::Transient(reference) = reference else {
+            return Err(HolonError::InvalidParameter("HolonLoadResponse must be transient".into()));
+        };
+        if self.should_transition_from_load_response(&reference)? {
+            self.transition_to_committed_if_needed()?;
+        }
+        Ok(response)
+    }
+
     pub(crate) fn fetch_holon_internal(
         self: &Arc<Self>,
         id: &HolonId,
@@ -526,6 +543,14 @@ impl TransactionContext {
     ) -> Result<DanceResponse, HolonError> {
         let initiator = self.get_dance_initiator()?;
         Ok(initiator.initiate_dance(self, request).await)
+    }
+
+    /// Routes a canonical invocation through this Space's configured transport.
+    pub async fn initiate_invocation(
+        self: &Arc<Self>,
+        invocation: crate::dances::DanceInvocation,
+    ) -> Result<HolonReference, HolonError> {
+        self.get_dance_initiator()?.initiate_invocation(self, invocation).await
     }
 
     /// Initiates a dance request originating from host ingress.
@@ -778,6 +803,26 @@ mod tests {
             unreachable_in_transaction_context_tests()
         }
 
+        fn invoke_load_holons_internal(
+            &self,
+            context: &Arc<TransactionContext>,
+            invocation: crate::dances::DanceInvocation,
+        ) -> Result<crate::dances::DanceResponseReference, HolonError> {
+            use crate::descriptors::test_support::new_descriptor_holon;
+            let HolonReference::Transient(request) = invocation.require_request()? else {
+                unreachable!()
+            };
+            let mut response = self.load_holons_internal(context, request)?;
+            let descriptor = new_descriptor_holon(
+                context,
+                "DanceResponseType.HolonType",
+                "DanceResponseType",
+                "Holon",
+            )?;
+            response.with_descriptor(descriptor.into())?;
+            crate::dances::DanceResponseReference::new(response.into())
+        }
+
         fn load_holons_internal(
             &self,
             context: &Arc<TransactionContext>,
@@ -828,6 +873,37 @@ mod tests {
             let set = context.mutation().new_holon(Some("LoadSet".into())).expect("load set");
             context.load_holons_and_commit(set).expect("recognized status must return a response");
             assert_eq!(context.is_open(), status != "Complete", "status: {status}");
+        }
+    }
+
+    #[test]
+    fn canonical_load_response_controls_lifecycle_and_retains_evidence() {
+        use crate::dances::DanceInvocation;
+        use crate::descriptors::test_support::new_descriptor_holon;
+        for status in ["Rejected", "Incomplete", "Skipped", "Complete"] {
+            let context = build_context_with_status(status);
+            let request = context.mutation().new_holon(Some("request".into())).unwrap();
+            let evidence = context.mutation().new_holon(Some("evidence".into())).unwrap();
+            let staged = context.mutation().stage_new_holon(evidence).unwrap();
+            let descriptor = new_descriptor_holon(
+                &context,
+                "DanceInvocation.HolonType",
+                "DanceInvocation",
+                "Holon",
+            )
+            .unwrap();
+            let mut invocation = context.mutation().new_holon(Some("invocation".into())).unwrap();
+            invocation.with_descriptor(descriptor.into()).unwrap();
+            invocation.add_related_holons("Request", vec![request.into()]).unwrap();
+            let response = context
+                .invoke_load_holons(DanceInvocation::new(invocation.into()).unwrap())
+                .unwrap();
+            assert_eq!(context.is_open(), status != "Complete", "{status}");
+            assert_eq!(
+                response.as_holon_reference().property_value("LoadCommitStatus").unwrap(),
+                Some(BaseValue::StringValue(status.into()))
+            );
+            assert_eq!(context.staged_references().unwrap(), vec![staged]);
         }
     }
 

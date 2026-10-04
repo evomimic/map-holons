@@ -42,18 +42,29 @@ impl ResolvedDanceV2Invocation {
 ///
 /// The executor acts as a choreographer. It binds the invocation contract,
 /// validates it, selects one implementation under the current static policy,
-/// invokes it in the current container, and mints a response holon described
-/// by the Dance's declared response type. An implementation that requires a
-/// host-authoritative or space-authoritative capability delegates that concern
-/// to its service or routing boundary.
+/// invokes it in the current container, and returns its typed response or mints
+/// a response holon around the implementation's declared body. An implementation
+/// that requires a host-authoritative or space-authoritative capability delegates
+/// that concern to its service or routing boundary.
 ///
 /// `QueryDance` is the one static exception to implementation selection: it
 /// declares no `DanceImplementation` and is routed, after ordinary binding and
 /// contract validation, to the internal direct Query seam. Its result
-/// collection holon becomes the `QueryDanceResponse` body through the same
-/// response construction every other Dance uses.
-#[tracing::instrument(target = "map_profile", level = "debug", name = "dance.execute", skip_all)]
+/// collection holon becomes the `QueryDanceResponse` body through normal
+/// response-body construction.
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(target = "map_profile", level = "debug", name = "dance.execute", skip_all)
+)]
 pub async fn execute_dance_v2(
+    context: &Arc<TransactionContext>,
+    invocation: DanceInvocation,
+) -> Result<DanceResponseReference, HolonError> {
+    execute_dance_v2_locally(context, invocation)
+}
+
+/// Synchronous execution core for guest ingress and native service adapters.
+pub fn execute_dance_v2_locally(
     context: &Arc<TransactionContext>,
     invocation: DanceInvocation,
 ) -> Result<DanceResponseReference, HolonError> {
@@ -66,9 +77,25 @@ pub async fn execute_dance_v2(
     }
 
     let resolved = resolve_bound_dance_v2_invocation(bound_invocation)?;
-    let response_body = tracing::debug_span!(target: "map_profile", "dance.invoke")
-        .in_scope(|| resolved.implementation.invoke(context, &resolved.bound_invocation))?;
-    build_resolved_dance_v2_response(context, &resolved, response_body)
+    let result = {
+        // Holochain's WasmSubscriber does not support tracing spans.
+        #[cfg(not(target_arch = "wasm32"))]
+        let _span = tracing::debug_span!(target: "map_profile", "dance.invoke").entered();
+        resolved.implementation.invoke(context, &resolved.bound_invocation)?
+    };
+    match result {
+        crate::dances::DanceImplementationResult::Body(body) => {
+            build_resolved_dance_v2_response(context, &resolved, body)
+        }
+        crate::dances::DanceImplementationResult::Response(response) => {
+            if response.as_holon_reference().get_descriptor()?.as_ref()
+                != Some(resolved.response_descriptor.holon())
+            {
+                return Err(HolonError::InvalidParameter("Dance implementation returned a response with a different descriptor than declared".into()));
+            }
+            Ok(response)
+        }
+    }
 }
 
 /// Binds, validates, and resolves the currently available implementation for a
@@ -84,26 +111,35 @@ pub fn resolve_dance_v2_invocation(
 }
 
 /// Binds the invocation to its descriptor-backed contract and validates it.
-#[tracing::instrument(
-    target = "map_profile",
-    level = "debug",
-    name = "dance.bind_and_validate",
-    skip_all
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.bind_and_validate",
+        skip_all
+    )
 )]
 fn bind_and_validate(invocation: DanceInvocation) -> Result<BoundDanceInvocation, HolonError> {
-    let bound_invocation =
-        tracing::debug_span!(target: "map_profile", "dance.bind").in_scope(|| invocation.bind())?;
+    let bound_invocation = {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _span = tracing::debug_span!(target: "map_profile", "dance.bind").entered();
+        invocation.bind()?
+    };
     validate_bound_invocation(&bound_invocation)?;
     Ok(bound_invocation)
 }
 
 /// Selects the currently available implementation for an already validated
 /// invocation.
-#[tracing::instrument(
-    target = "map_profile",
-    level = "debug",
-    name = "dance.resolve_implementation",
-    skip_all
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.resolve_implementation",
+        skip_all
+    )
 )]
 fn resolve_bound_dance_v2_invocation(
     bound_invocation: BoundDanceInvocation,
@@ -114,11 +150,14 @@ fn resolve_bound_dance_v2_invocation(
 }
 
 /// Constructs the descriptor-governed response for an already invoked Dance.
-#[tracing::instrument(
-    target = "map_profile",
-    level = "debug",
-    name = "dance.build_response",
-    skip_all
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.build_response",
+        skip_all
+    )
 )]
 pub fn build_resolved_dance_v2_response(
     context: &Arc<TransactionContext>,
@@ -183,23 +222,36 @@ fn build_response_reference(
     DanceResponseReference::new(response.into())
 }
 
-#[tracing::instrument(target = "map_profile", level = "debug", name = "dance.validate", skip_all)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.validate",
+        skip_all
+    )
+)]
 fn validate_bound_invocation(
     bound_invocation: &crate::dances::BoundDanceInvocation,
 ) -> Result<(), HolonError> {
     validate_request_contract(bound_invocation)?;
     validate_affording_holon_contract(bound_invocation)?;
     validate_invocation_source(bound_invocation)?;
-    tracing::debug_span!(target: "map_profile", "dance.validate_response_contract")
-        .in_scope(|| validate_response_descriptor(&bound_invocation.response_type()?))?;
+    #[cfg(not(target_arch = "wasm32"))]
+    let _span =
+        tracing::debug_span!(target: "map_profile", "dance.validate_response_contract").entered();
+    validate_response_descriptor(&bound_invocation.response_type()?)?;
     Ok(())
 }
 
-#[tracing::instrument(
-    target = "map_profile",
-    level = "debug",
-    name = "dance.validate_request_contract",
-    skip_all
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.validate_request_contract",
+        skip_all
+    )
 )]
 fn validate_request_contract(
     bound_invocation: &crate::dances::BoundDanceInvocation,
@@ -231,11 +283,14 @@ fn validate_request_contract(
     }
 }
 
-#[tracing::instrument(
-    target = "map_profile",
-    level = "debug",
-    name = "dance.validate_affording_holon_contract",
-    skip_all
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.validate_affording_holon_contract",
+        skip_all
+    )
 )]
 fn validate_affording_holon_contract(
     bound_invocation: &crate::dances::BoundDanceInvocation,
@@ -259,11 +314,14 @@ fn validate_invocation_source(
     Ok(())
 }
 
-#[tracing::instrument(
-    target = "map_profile",
-    level = "debug",
-    name = "dance.validate_response_descriptor",
-    skip_all
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "dance.validate_response_descriptor",
+        skip_all
+    )
 )]
 fn validate_response_descriptor(
     response_descriptor: &DanceResponseDescriptor,
