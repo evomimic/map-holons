@@ -14,6 +14,7 @@
     "test:unit": "cargo test --workspace",
     "test:unit:no-run": "cargo test --workspace --no-run",
     "regen:sdk-fixtures": "cargo test -p map_commands_wire --test generate_fixtures -- --ignored",
+    "web:review": "cd ui && ng serve --configuration source-review --port 4201",
     "web:serve": "cd ui && ng serve --no-hmr",
     "web:test:dahn": "npm exec --prefix .. vitest -- run --root ui",
     "web:typecheck": "npx tsc -p ./ui/tsconfig.app.json --noEmit",
