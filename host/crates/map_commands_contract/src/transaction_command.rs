@@ -27,6 +27,12 @@ pub enum TransactionAction {
     /// Commits the transaction.
     Commit,
 
+    /// Explicitly release retained transaction evidence.
+    Dispose,
+
+    /// Verify the captured target before acquiring sources.
+    CheckLoadTarget { space: HolonReference },
+
     /// Undoes the last mutation in this transaction.
     UndoLast,
 
@@ -137,6 +143,9 @@ pub enum VisualizerKind {
     /// raw entry from a PropertyMap.
     Property,
     Value,
+    /// Composes action slots for an affording holon.
+    ActionBar,
+    /// Selects an individual action using its Dance descriptor as subject.
     Action,
 }
 
@@ -162,6 +171,10 @@ pub struct VisualizerSelectionRequest {
 impl TransactionAction {
     pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
+            TransactionAction::Dispose => CommandLifecyclePolicy::holon_read_only(),
+            TransactionAction::CheckLoadTarget { .. } => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
             TransactionAction::Commit => CommandLifecyclePolicy::mutating_with_guard(),
             TransactionAction::UndoLast | TransactionAction::RedoLast => {
                 CommandLifecyclePolicy::transaction_read_only()
@@ -210,6 +223,8 @@ impl TransactionAction {
 
     pub fn label(&self) -> &'static str {
         match self {
+            TransactionAction::Dispose => "dispose",
+            TransactionAction::CheckLoadTarget { .. } => "check_load_target",
             TransactionAction::Commit => "commit",
             TransactionAction::UndoLast => "undo_last",
             TransactionAction::RedoLast => "redo_last",

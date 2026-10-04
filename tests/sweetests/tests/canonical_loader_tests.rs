@@ -84,6 +84,71 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
 
     let context = new_context(&runtime).await;
+    let saved = |key: &str| -> HolonReference {
+        context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
+    };
+    let space = context.get_space_holon().unwrap().unwrap();
+    command(&runtime, &context, TransactionAction::CheckLoadTarget { space: space.clone() })
+        .await
+        .unwrap();
+    for (kind, subject, parent, slot, expected) in [
+        (
+            map_commands_contract::VisualizerKind::ActionBar,
+            space,
+            "HolonInspector.NodeVisualizer",
+            "HolonInspector.ActionsSlot",
+            "GenericActions.ActionBarVisualizer",
+        ),
+        (
+            map_commands_contract::VisualizerKind::Action,
+            saved("LoadHolons.DanceType"),
+            "GenericActions.ActionBarVisualizer",
+            "GenericActions.ActionSlot",
+            "LoadHolons.ActionVisualizer",
+        ),
+        (
+            map_commands_contract::VisualizerKind::Action,
+            saved("MaterializeVisualizer.DanceType"),
+            "GenericActions.ActionBarVisualizer",
+            "GenericActions.ActionSlot",
+            "UnsupportedAction.ActionVisualizer",
+        ),
+    ] {
+        let MapResult::VisualizerSelection(selection) = command(
+            &runtime,
+            &context,
+            TransactionAction::SelectVisualizer {
+                request: map_commands_contract::VisualizerSelectionRequest {
+                    subject,
+                    requested_kind: kind,
+                    parent_visualizer: Some(saved(parent)),
+                    slot: saved(slot),
+                },
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("selection")
+        };
+        assert_eq!(selection.selected.holon_id().unwrap(), saved(expected).holon_id().unwrap());
+    }
+    // Assert the authored forward edge and its committed inverse at the consuming seam.
+    let load_visualizer = saved("LoadHolons.ActionVisualizer");
+    let load_dance = saved("LoadHolons.DanceType");
+    assert!(load_visualizer
+        .related_holons("ApplicableToType")
+        .unwrap()
+        .read()
+        .unwrap()
+        .get_members()
+        .contains(&load_dance));
+    assert!(load_dance
+        .related_holons("HasApplicableVisualizer")
+        .unwrap()
+        .read()
+        .unwrap()
+        .get_members()
+        .contains(&load_visualizer));
     let request = prepare(&runtime, &context, r#"{"holons":[]}"#).await;
     let missing = invocation(&context, request.clone(), None);
     let guest_error = context.initiate_invocation(missing.clone()).await.unwrap_err();
@@ -113,7 +178,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let space = context.get_space_holon().unwrap();
     let empty = invocation(&context, request, space);
     let MapResult::Reference(response) =
-        command(&runtime, &context, TransactionAction::DanceV2 { invocation: empty })
+        command(&runtime, &context, TransactionAction::DanceV2 { invocation: empty.clone() })
             .await
             .unwrap()
     else {
@@ -121,6 +186,11 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     };
     assert_eq!(string(&response, "LoadCommitStatus"), "Skipped");
     assert!(context.is_open());
+    assert!(command(&runtime, &context, TransactionAction::DanceV2 { invocation: empty })
+        .await
+        .is_err());
+    command(&runtime, &context, TransactionAction::Dispose).await.unwrap();
+    assert!(runtime.session().get_transaction(&context.tx_id()).is_err());
 
     for (contents, expected_status) in [
         (r#"{"holons":[{"key":"missing-target","type":"DoesNotExist.HolonType"}]}"#, "Skipped"),
@@ -170,6 +240,8 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .get_members()
             .is_empty());
         assert!(!context.staged_references().unwrap().is_empty());
+        command(&runtime, &context, TransactionAction::Dispose).await.unwrap();
+        assert!(runtime.session().get_transaction(&context.tx_id()).is_err());
         if expected_status == "Complete" {
             let review = new_context(&runtime).await;
             let saved = review

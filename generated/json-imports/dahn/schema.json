@@ -583,7 +583,7 @@
           "name": "AcceptsVisualizerType",
           "target": [
             {
-              "$ref": "ActionVisualizer.HolonType"
+              "$ref": "ActionBarVisualizer.HolonType"
             }
           ]
         }
@@ -620,8 +620,8 @@
       ]
     },
     {
-      "key": "GenericActions.ActionVisualizer",
-      "type": "ActionVisualizer.HolonType",
+      "key": "GenericActions.ActionBarVisualizer",
+      "type": "ActionBarVisualizer.HolonType",
       "properties": {},
       "relationships": [
         {
@@ -689,6 +689,14 @@
           ]
         },
         {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "GenericActions.ActionSlot"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -703,7 +711,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:77f1b9317ce81da20c12cc6e9c0e2b071ce7624c8e9a72c48c9a9af1d5f33b97",
+        "VisualizerArtifactDigest": "sha256:c96e380e6365f0fee139589a0bd69b2b3c94f797675434f263d42d5351e9f437",
         "VisualizerImplementationKey": "dahn.actions",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1360,6 +1368,118 @@
         "Entrypoint": "default",
         "VisualizerArtifactDigest": "sha256:7b8cd6b923b5259e80248fb00dd7920571c4ab2e033d9a6cb3c6d34cf2a32dd4",
         "VisualizerImplementationKey": "dahn.scalar-value",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
+      "key": "ActionBarVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "ActionBarVisualizer",
+        "TypeNamePlural": "ActionBarVisualizers",
+        "DisplayName": "Action Bar Visualizer",
+        "DisplayNamePlural": "Action Bar Visualizers",
+        "Description": "Composes contextual actions into uniformly allocated slots and groups."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericActions.ActionSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UnsupportedAction.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "UnsupportedActionTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UnsupportedActionTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:e1e8cd6283283262560407e5248f36afec5cd44796ec5ba1972397469f16691f",
+        "VisualizerImplementationKey": "dahn.unsupported-action",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
+      "key": "LoadHolons.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "LoadHolons.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "LoadHolonsActionTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolonsActionTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:3807fa07cd0134aa26f019bdec264b51d7dfeab1a7fcb4eb204ad0feb13dc5b8",
+        "VisualizerImplementationKey": "dahn.load-holons-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }

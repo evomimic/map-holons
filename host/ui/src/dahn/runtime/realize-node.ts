@@ -1,3 +1,5 @@
+import { ActionActivation, type ActionInteractions } from './action-activation';
+import type { ActionNode } from '../contracts/actions';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
 import type { RelationshipAffordance } from '../contracts/affordances';
 import { NodeCollectionActivation } from './collection-activation';
@@ -17,6 +19,7 @@ export interface RealizedNode {
   collectionActivation: NodeCollectionActivation;
   singularRelationships: readonly RelationshipAffordance[];
   relationshipDiscovery?: NodeRelationshipDiscovery;
+  actionActivations?: readonly ActionActivation[];
 }
 
 /** Composes any already-selected Node, including the startup-selected root.
@@ -30,6 +33,7 @@ export async function realizeNode(
   theme: DahnTheme,
   canvas: CanvasApi,
   onStage?: (stage: string) => void,
+  actionInteractions?: ActionInteractions,
 ): Promise<RealizedNode> {
   onStage?.('materialize node');
   const nodeImplementation = await materialized.realize(selectedVisualizer);
@@ -160,10 +164,11 @@ export async function realizeNode(
     });
     return propertiesElement;
   });
+  const actionActivations: ActionActivation[] = [];
   onStage?.('select and materialize Actions');
   const actionsElement = await renderVisualizerRegion('Node actions', async () => {
     const selection = await transaction.selectVisualizer({
-      subject, requestedKind: 'action', parentVisualizer: selectedVisualizer,
+      subject, requestedKind: 'actionBar', parentVisualizer: selectedVisualizer,
       slot: await materialized.slot(selectedVisualizer, 'action'),
     });
     const implementation = await materialized.realize(selection.selected);
@@ -172,7 +177,26 @@ export async function realizeNode(
     }
     const tag = defineCustomElementOnce('map-node-actions', implementation as CustomElementConstructor);
     const element = document.createElement(tag) as HTMLElement & { setContext(context: VisualizerContext): void };
-    element.setContext({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas });
+    const children = new Map<string, HTMLElement>();
+    const compose = async (actions: ActionNode[]): Promise<void> => {
+      for (const action of actions) {
+        if (action.kind === 'group') { await compose(action.children ?? []); continue; }
+        children.set(action.id, await renderVisualizerRegion(action.label, async () => {
+          if (!action.dance) throw new Error('Action has no bound Dance descriptor');
+          const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', parentVisualizer: selection.selected, slot: await materialized.slot(selection.selected, 'action') });
+          const implementation = await materialized.realize(selected.selected);
+          if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Action is not an HTMLElement constructor');
+          const tag = defineCustomElementOnce('map-selected-action', implementation as CustomElementConstructor);
+          const child = document.createElement(tag) as VisualizerElement;
+          const activation = new ActionActivation({ subject, dance: action.dance, occurrence: child, label: action.label });
+          actionActivations.push(activation);
+          child.setContext({ target: { reference: subject }, holon: view, actions: [], theme, canvas, actionActivation: activation, actionInteractions });
+          return child;
+        }));
+      }
+    };
+    await compose(affordances.actions);
+    element.setContext({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas, childVisualizers: children });
     return element;
   });
   onStage?.('compose node');
@@ -210,5 +234,5 @@ export async function realizeNode(
     throw error;
   }
   relationshipDiscovery.startAfterDisplay(element);
-  return { element, collectionActivation, relationshipDiscovery, singularRelationships: affordances.singularRelationships };
+  return { element, collectionActivation, relationshipDiscovery, actionActivations, singularRelationships: affordances.singularRelationships };
 }

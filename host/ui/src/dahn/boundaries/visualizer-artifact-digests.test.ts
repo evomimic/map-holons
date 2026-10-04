@@ -9,6 +9,8 @@ const implementations = [
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
   ['TableCollectionTypeScript.VisualizerImplementation', 'table-collection.js'],
   ['GenericActionsTypeScript.VisualizerImplementation', 'actions.js'],
+  ['LoadHolonsActionTypeScript.VisualizerImplementation', 'load-holons-action.js'],
+  ['UnsupportedActionTypeScript.VisualizerImplementation', 'unsupported-action.js'],
   ['DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation', 'properties.js'],
 ];
 

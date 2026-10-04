@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   commit,
+  dispose,
+  checkLoadTarget,
   dance,
   danceV2,
   deleteHolon,
@@ -422,4 +424,15 @@ describe('transaction command builders', () => {
 
     expectTransactionRequest({ DanceV2: { invocation: danceV2Invocation } });
   });
+});
+
+
+it('projects explicit disposal and captured-target verification through transaction commands', async () => {
+  invokeMapCommandMock.mockResolvedValue(okResponse('None'));
+  resetRequestIdCounter();
+  await dispose(txId);
+  expectTransactionRequest('Dispose');
+  invokeMapCommandMock.mockClear(); resetRequestIdCounter();
+  await checkLoadTarget(txId, { Smart: smartWire });
+  expectTransactionRequest({ CheckLoadTarget: { space: { Smart: smartWire } } });
 });

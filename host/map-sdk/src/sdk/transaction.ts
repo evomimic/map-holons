@@ -39,6 +39,7 @@ export type VisualizerKind =
   | 'propertyMap'
   | 'property'
   | 'value'
+  | 'actionBar'
   | 'action';
 
 /**
@@ -109,6 +110,16 @@ export class MapTransaction {
     }
 
     return createHolonReference(txIdFor(this), reference);
+  }
+
+  /** Release retained evidence. Runtime refuses disposal while commands are executing. */
+  async dispose(): Promise<void> { await internalTransaction.dispose(txIdFor(this)); }
+
+  /** Capture a persisted subject in this dedicated transaction and verify Space authority. */
+  async bindLoadTarget(space: HolonReference): Promise<HolonReference> {
+    const target = this.bindPersistedReference(unwrapHolonReference(space));
+    await internalTransaction.checkLoadTarget(txIdFor(this), unwrapHolonReference(target));
+    return target;
   }
 
   async newHolon(key?: string): Promise<TransientHolonReference> {
@@ -450,6 +461,7 @@ export class MapTransaction {
 }
 
 function fromVisualizerKindWire(kind: ReturnType<typeof toVisualizerKindWire>): VisualizerKind {
+  if (kind === 'ActionBar') return 'actionBar';
   if (kind === 'PropertyMap') return 'propertyMap';
   return kind === 'RootedNavigation'
     ? 'rootedNavigation'
@@ -479,6 +491,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
   | 'PropertyMap'
   | 'Property'
   | 'Value'
+  | 'ActionBar'
   | 'Action' {
   if (kind === 'rootedNavigation') {
     return 'RootedNavigation';
@@ -491,7 +504,8 @@ function toVisualizerKindWire(kind: VisualizerKind):
     | 'PropertyMap'
     | 'Property'
     | 'Value'
-    | 'Action';
+    | 'ActionBar'
+  | 'Action';
 }
 
 async function withHolonNotFoundAsNull<T>(

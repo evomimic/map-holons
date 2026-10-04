@@ -115,3 +115,15 @@ describe('source review', () => {
     expect(state.submit()?.files_to_load[0].raw_contents).toBe('original');
   });
 });
+
+it('retains removal and selection when preparation fails before invocation', async () => {
+  const state = new SourceReviewState();
+  await state.replace(discovery('bad', 'good', 'also good'), async () => validator);
+  state.removeSelected();
+  state.toggle('/dir1/import.json', true);
+  const content = state.submit();
+  state.resumeAfterPreparationFailure();
+  expect(state.entries().map(entry => entry.id)).toEqual(['/dir1/import.json', '/dir2/import.json']);
+  expect(state.canSubmit()).toBe(true);
+  expect(state.submit()).toEqual(content);
+});

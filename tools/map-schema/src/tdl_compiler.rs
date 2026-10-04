@@ -2350,9 +2350,9 @@ holon Example.HolonType {
         }
         let actions = holons
             .iter()
-            .find(|holon| holon["key"] == "GenericActions.ActionVisualizer")
+            .find(|holon| holon["key"] == "GenericActions.ActionBarVisualizer")
             .context("generic Actions visualizer")?;
-        assert_eq!(actions["type"], "ActionVisualizer.HolonType");
+        assert_eq!(actions["type"], "ActionBarVisualizer.HolonType");
 
         let path_inspector = holons
             .iter()

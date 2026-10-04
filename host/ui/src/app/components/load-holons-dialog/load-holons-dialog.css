@@ -1,0 +1,33 @@
+/* Body-mounted dialogs inherit the invoking occurrence's copied theme tokens. */
+.load-holons-dialog {
+  position: fixed; inset: 8vh auto auto 50%; transform: translateX(-50%); margin: 0; z-index: 1000;
+  width: min(44rem, calc(100vw - 2rem)); max-height: 84vh; padding: 0; box-sizing: border-box; overflow: hidden;
+  border: 1px solid var(--dahn-slot-border-color); border-radius: var(--dahn-panel-corner-radius);
+  color: var(--dahn-canvas-text-color); background: var(--dahn-canvas-surface-background);
+  font-family: var(--dahn-canvas-font-family); font-size: var(--dahn-canvas-font-size); line-height: var(--dahn-canvas-line-height);
+  box-shadow: 0 1.5rem 4rem #0006;
+}
+.load-holons-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dahn-slot-border-color); flex: 0 0 auto; }
+.load-holons-header h1 { font-size: 1.25rem; font-weight: var(--dahn-canvas-heading-font-weight, 600); margin: 0 0 .375rem; }
+.load-holons-header p { margin: 0; font-size: .875rem; color: var(--dahn-muted-text-color); }
+.load-holons-content { min-height: 0; overflow: auto; }
+.load-holons-content > button { margin: 1.5rem; }
+.load-holons-footer { display: flex; justify-content: flex-end; padding: 1rem 1.5rem; border-top: 1px solid var(--dahn-slot-border-color); flex: 0 0 auto; }
+.load-holons-footer[hidden] { display: none; }
+.load-holons-dialog button { padding: .625rem 1rem; border: 1px solid var(--dahn-slot-border-color); border-radius: var(--dahn-action-corner-radius); background: var(--dahn-action-surface-background); color: var(--dahn-action-text-color); cursor: pointer; }
+.load-holons-dialog button:hover:not(:disabled) { background: var(--dahn-action-hover-surface-background); }
+.load-holons-dialog button:disabled { opacity: .5; cursor: default; }
+.load-holons-dialog :focus-visible { outline: var(--dahn-focus-ring-width, 2px) solid var(--dahn-focus-ring-color); outline-offset: 3px; }
+.load-holons-dialog:focus { outline: none; }
+.load-holons-result { padding: 1.5rem; overflow-wrap: anywhere; }
+.load-holons-result h2 { margin: 0 0 .5rem; font-size: 1.375rem; font-weight: 600; }
+.load-holons-result p { margin: 0; color: var(--dahn-muted-text-color); }
+.load-holons-result dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 1.5rem 0 0; }
+.load-holons-result dl > div { padding: 1rem; background: var(--dahn-panel-surface-background); border: 1px solid var(--dahn-slot-border-color); border-radius: var(--dahn-panel-corner-radius); }
+.load-holons-result dt { font-size: .8125rem; color: var(--dahn-muted-text-color); }
+.load-holons-result dd { margin: .375rem 0 0; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.load-holons-result details { margin-top: 1.25rem; }
+.load-holons-result summary { cursor: pointer; font-weight: 600; }
+.load-holons-result ul { padding-left: 1.25rem; }
+.load-holons-result li { margin-top: .75rem; white-space: pre-wrap; }
+@media (max-width: 480px) { .load-holons-result dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

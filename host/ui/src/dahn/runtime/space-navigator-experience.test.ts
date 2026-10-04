@@ -129,3 +129,21 @@ it('can reopen the HolonSpace after the last tab closes without replacing its ex
   expect(mocks.realizeNode.mock.calls[1][0]).toBe(binding.transaction);
   expect(navigations()[0].context.target.reference).toBe(binding.holonSpace);
 });
+
+it('refuses owner, tab, and experience destruction while an action executes, then releases it', async () => {
+  await experience.openInitial();
+  let executing = true;
+  const action = { canDismiss: () => !executing, dispose: vi.fn(async () => {}) };
+  Object.assign(roots[0], { actionActivations: [action] });
+  const navigation = navigations()[0].context.navigation!;
+  const owner = navigations()[0].occurrences[0];
+  navigation.close!(owner.id);
+  expect(navigations()[0].occurrences).toHaveLength(1);
+  expect(experience.canDismiss()).toBe(false);
+  experience.dispose();
+  expect(experience.element.isConnected).toBe(true);
+  expect(action.dispose).not.toHaveBeenCalled();
+  executing = false; experience.dispose();
+  expect(action.dispose).toHaveBeenCalledOnce();
+  expect(experience.element.isConnected).toBe(false);
+});

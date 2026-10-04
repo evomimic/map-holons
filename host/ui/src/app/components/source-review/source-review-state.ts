@@ -90,6 +90,11 @@ export class SourceReviewState {
     return content;
   }
 
+  /** A failed preparation has not invoked the Dance; preserve the reviewed selection for correction. */
+  resumeAfterPreparationFailure(): void {
+    if (this.phase() === 'submitted') this.phase.set('review');
+  }
+
   cancel(): boolean {
     if (this.terminal()) return false;
     ++this.revision;

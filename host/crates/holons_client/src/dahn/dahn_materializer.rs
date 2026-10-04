@@ -148,7 +148,9 @@ impl DahnMaterializer {
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "PathInspector.RootedNavigationVisualizer" => "path-inspector.js",
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
-            "GenericActions.ActionVisualizer" => "actions.js",
+            "GenericActions.ActionBarVisualizer" => "actions.js",
+            "LoadHolons.ActionVisualizer" => "load-holons-action.js",
+            "UnsupportedAction.ActionVisualizer" => "unsupported-action.js",
             "DefaultPropertyMapVisualizer.PropertyMapVisualizer" => "properties.js",
             "GenericProperty.PropertyVisualizer" => "property.js",
             "StringValue.ValueVisualizer"
@@ -250,7 +252,7 @@ mod tests {
         let materializer = DahnMaterializer::new("/artifacts".into());
         assert_eq!(
             materializer
-                .artifact_for(&MapString::from("GenericActions.ActionVisualizer"))
+                .artifact_for(&MapString::from("GenericActions.ActionBarVisualizer"))
                 .unwrap()
                 .to_string_lossy(),
             "/artifacts/actions.js"

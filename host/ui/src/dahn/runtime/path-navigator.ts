@@ -126,12 +126,14 @@ export class PathNavigator implements PathNavigation {
     const collectionId = owner.collections.get(affordance);
     const roots = this.continuations(owner).filter(item => item.provenance?.kind === 'collection-member'
       && item.provenance.collectionOccurrenceId === collectionId);
+    if (!roots.every(root => this.subtree(root).every(item => this.dismissible(item)))) return;
     this.removeBranches(roots, collectionId);
     owner.collections.delete(affordance);
     owner.node.collectionActivation.close(affordance);
   }
 
   private removeBranches(roots: Occurrence[], collectionId?: string): void {
+    if (!roots.every(root => this.subtree(root).every(item => this.dismissible(item)))) return;
     const before = this.path();
     const removed = new Set(roots.flatMap(root => this.subtree(root)).map(item => item.id));
     const destination = this.reservation?.destination;
@@ -338,6 +340,10 @@ export class PathNavigator implements PathNavigation {
   }
 
   private commitDestination(owner: Occurrence, candidate: Occurrence, destination: PathDestination): void {
+    const prior = destination.axis === 'horizontal' ? owner.right : owner.child;
+    if (prior && !prior.traversed && !this.subtree(prior).every(item => this.dismissible(item))) {
+      throw new Error('An action is executing in the destination being replaced.');
+    }
     const reservation = this.reservation!;
     for (const item of this.path()) {
       const position = reservation.projections.get(item.id)!;
@@ -583,14 +589,21 @@ export class PathNavigator implements PathNavigation {
     })();
   }
 
+  private dismissible(occurrence: Occurrence): boolean {
+    return occurrence.node.actionActivations?.every(action => action.canDismiss()) ?? true;
+  }
+
+  canDismiss(): boolean { return this.path().every(item => this.dismissible(item)); }
+
   private release(occurrence: Occurrence): void {
+    for (const action of occurrence.node.actionActivations ?? []) void action.dispose().catch(console.error);
     ++occurrence.generation;
     occurrence.node.collectionActivation.dispose();
     for (const child of this.continuations(occurrence)) this.release(child);
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed || !this.canDismiss()) return;
     this.cancelCheck();
     this.cancelAttempt(false);
     this.disposed = true;

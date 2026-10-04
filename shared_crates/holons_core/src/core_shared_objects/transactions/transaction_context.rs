@@ -171,6 +171,15 @@ impl TransactionContext {
         })
     }
 
+    /// Release transaction-owned state after the host has excluded active commands.
+    /// Persisted holons and the shared saved cache are unaffected.
+    pub fn dispose(&self) -> Result<(), HolonError> {
+        self.lifecycle_state.store(TransactionLifecycleState::Disposed.as_u8(), Ordering::Release);
+        self.nursery.clear_stage()?;
+        self.transient_manager.clear_pool()?;
+        Ok(())
+    }
+
     /// Internal operation policy gate.
     ///
     /// This is the authoritative lifecycle/access policy matrix.
@@ -206,6 +215,12 @@ impl TransactionContext {
             ));
         }
         let raw_state = self.lifecycle_state.load(Ordering::Acquire);
+        if raw_state == TransactionLifecycleState::Disposed.as_u8() {
+            return Err(HolonError::TransactionNotOpen {
+                tx_id: self.tx_id.value(),
+                state: "Disposed".into(),
+            });
+        }
 
         match operation {
             TransactionOperation::CreateTransient => {

@@ -8,6 +8,7 @@ import type { OccurrenceAttentionRequest, PresentationRequestResult } from '../c
 export interface ExplorationPresentation {
   readonly element: VisualizerElement;
   readonly title: string;
+  canDismiss?(): boolean;
   dispose(): void;
 }
 
@@ -163,6 +164,7 @@ export class ExplorationTabs extends HTMLElement {
   }
 
   private close(tab: ExplorationTab): void {
+    if (tab.presentation?.canDismiss?.() === false) { this.feedback.textContent = "An action is executing in this exploration."; return; }
     if (!this.tabs.delete(tab.id)) return;
     tab.controller.abort();
     tab.presentation?.dispose();
@@ -185,8 +187,10 @@ export class ExplorationTabs extends HTMLElement {
       ?? { status: 'refused', reason: 'No active exploration accepts attention.' };
   }
 
+  canDismiss(): boolean { return [...this.tabs.values()].every(tab => tab.presentation?.canDismiss?.() !== false); }
+
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed || !this.canDismiss()) return;
     this.disposed = true;
     for (const tab of [...this.tabs.values()]) this.close(tab);
     this.feedback.replaceChildren();

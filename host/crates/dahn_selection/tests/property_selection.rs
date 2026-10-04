@@ -144,7 +144,8 @@ fn select(
     graph.edge(21, "DescribedBy", &[11]);
     let (subject, start, role) = match kind {
         VisualizerKind::PropertyMap => (1, 2, 10),
-        VisualizerKind::Action => (1, 2, 13),
+        VisualizerKind::ActionBar => (1, 2, 13),
+        VisualizerKind::Action => (6, 6, 14),
         VisualizerKind::Property => (3, 3, 11),
         VisualizerKind::Value => (3, 4, 12),
         _ => unreachable!(),
@@ -182,6 +183,7 @@ fn selects_each_presentation_role_directly_and_through_inheritance() {
         VisualizerKind::PropertyMap,
         VisualizerKind::Property,
         VisualizerKind::Value,
+        VisualizerKind::ActionBar,
         VisualizerKind::Action,
     ] {
         for inherited in [false, true] {
@@ -195,6 +197,7 @@ fn reports_missing_and_ambiguous_candidates_for_every_role() {
         VisualizerKind::PropertyMap,
         VisualizerKind::Property,
         VisualizerKind::Value,
+        VisualizerKind::ActionBar,
         VisualizerKind::Action,
     ] {
         assert!(

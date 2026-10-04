@@ -25,7 +25,11 @@ async function artifact(name: string) {
 it.each(['actions', 'holon-inspector'])('keeps %s horizontal controls in one row and exposes only spillovers in the disclosure', async name => {
   const element = await artifact(name);
   const items = ['One', 'Two', 'Three'].map(label => ({ label, id: label }));
-  element.setContext({ actions: items, nodeAffordances: { collections: items } });
+  const childVisualizers = new Map(items.map(item => {
+    const button = document.createElement('button'); button.textContent = item.label; button.disabled = true;
+    return [item.id, button] as const;
+  }));
+  element.setContext({ actions: items, childVisualizers, nodeAffordances: { collections: items } });
   const row = element.querySelector<HTMLElement>('[data-overflow-row]')!;
   const more = row.querySelector<HTMLButtonElement>('[data-overflow-more]')!;
   const buttons = [...row.querySelectorAll<HTMLButtonElement>('button:disabled')];
@@ -144,4 +148,23 @@ it('activates singular entries exposed by rail disclosure and reflects occurrenc
   expect(controls[0].getAttribute('aria-pressed')).toBe('false');
   expect(controls[2].getAttribute('aria-pressed')).toBe('true');
   expect(controls[2].getAttribute('aria-busy')).toBe('false');
+});
+
+it('keeps live enabled action handlers and groups in overflow without loader-specific dispatch', async () => {
+  const bar = await artifact('actions');
+  const invoke = vi.fn();
+  const make = (label: string) => { const button = document.createElement('button'); button.textContent = label; button.addEventListener('click', invoke); measure(button, 80); return button; };
+  const first = make('First test action'), second = make('Second test action');
+  bar.setContext({ actions: [{ kind: 'group', label: 'Test group', children: [{ id: 'first' }, { id: 'second' }] }], childVisualizers: new Map([['first', first], ['second', second]]) });
+  const group = bar.querySelector<HTMLElement>('[role=group]')!; measure(group, 170);
+  const row = bar.querySelector<HTMLElement>('[data-overflow-row]')!;
+  Object.defineProperty(row, 'clientWidth', { get: () => 100 });
+  const more = bar.querySelector<HTMLButtonElement>('[data-overflow-more]')!; measure(more, 80);
+  document.body.append(bar); flush(); more.click();
+  expect(bar.querySelector('[data-overflow-popup]')!.contains(group)).toBe(true);
+  expect(group.contains(first)).toBe(true); expect(group.contains(second)).toBe(true);
+  second.click(); expect(invoke).toHaveBeenCalledOnce();
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  expect(row.contains(group)).toBe(true);
+  first.click(); expect(invoke).toHaveBeenCalledTimes(2);
 });

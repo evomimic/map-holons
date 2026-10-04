@@ -1,3 +1,4 @@
+import { LoadHolonsDialogService } from '../load-holons-dialog/load-holons-dialog.service';
 import { allocateInitialWindow } from '../../initial-window-allocation';
 import { SpaceNavigatorExperience } from '../../../dahn/runtime/space-navigator-experience';
 import { SingleContextHost } from '../../../dahn/context/single-context-host';
@@ -42,6 +43,7 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void { this.destroyed = true; this.contextHost?.dispose(); }
   @ViewChild('canvasHost') private readonly canvasHost?: ElementRef<HTMLElement>;
 
+  private readonly actionInteractions = inject(LoadHolonsDialogService);
   private readonly applicationSession = inject(ApplicationSessionService);
   protected readonly failure = signal<string | null>(null);
   protected readonly canvasState = signal<'realizing' | 'mounted' | 'realization-error'>('realizing');
@@ -150,7 +152,7 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
             holonSpace: activeHolonSpace,
             initialNavigationVisualizer: transaction.bindPersistedReference(homeDancerSelection.rooted_navigation_visualizer),
             initialNodeVisualizer: transaction.bindPersistedReference(homeDancerSelection.root_node_visualizer),
-            materialized, theme, canvas,
+            materialized, theme, canvas, actionInteractions: this.actionInteractions,
           });
           canvas.mountDancer(experience.element, 'Space Navigator');
           await experience.openInitial();
@@ -166,6 +168,7 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
         });
         return {
           ready,
+          canDismiss: () => experience?.canDismiss() ?? true,
           setAllocation: allocation => canvas.setAllocation(allocation),
           dispose: () => { experience?.dispose(); canvas.dispose(); },
         };

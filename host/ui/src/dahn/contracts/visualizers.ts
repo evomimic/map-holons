@@ -4,6 +4,7 @@ import type { RelationshipDiscovery } from './relationship-discovery';
 import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances, RelationshipAffordance, CollectionAffordance } from './affordances';
+import type { ActionActivation, ActionInteractions } from '../runtime/action-activation';
 import type { ActionNode } from './actions';
 import type { CanvasApi, SurfaceViewRequest } from './canvas';
 import type { HolonViewAccess } from './holon-view';
@@ -104,6 +105,8 @@ export interface VisualizerContext {
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
+  actionActivation?: ActionActivation;
+  actionInteractions?: ActionInteractions;
   /** Descriptor-classified, presentation-only navigation slots. */
   nodeAffordances?: NodeAffordances;
   /** Occurrence-local collection orchestration supplied by the composition owner. */

@@ -1,3 +1,4 @@
+import type { ActionInteractions } from './action-activation';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
 import type { CanvasApi } from '../contracts/canvas';
@@ -11,6 +12,7 @@ import { realizeNode } from './realize-node';
 import { semanticWork } from './semantic-work';
 
 export interface SpaceNavigatorBinding {
+  readonly actionInteractions?: ActionInteractions;
   readonly transaction: MapTransaction;
   readonly dancer: HolonReference;
   readonly holonSpace: HolonReference;
@@ -40,6 +42,7 @@ export class SpaceNavigatorExperience {
   }
 
   openInitial(): Promise<void> { return this.element.open(this.binding.holonSpace); }
+  canDismiss(): boolean { return this.element.canDismiss(); }
   dispose(): void { this.element.dispose(); }
 
   private realize(anchor: HolonReference, signal: AbortSignal): Promise<ExplorationPresentation> {
@@ -65,7 +68,7 @@ export class SpaceNavigatorExperience {
       const nodeSlot = await materialized.slot(selectedPath, 'node');
       if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, parentVisualizer: selectedPath, requestedKind: 'node' })).selected;
       signal.throwIfAborted();
-      const root = await realizeNode(transaction, materialized, anchor, selectedNode, theme, canvas);
+      const root = await realizeNode(transaction, materialized, anchor, selectedNode, theme, canvas, undefined, this.binding.actionInteractions);
       let navigation: PathNavigator | undefined;
       let element: VisualizerElement | undefined;
       try {
@@ -73,7 +76,7 @@ export class SpaceNavigatorExperience {
         const title = (await anchor.key()) ?? await anchor.versionedKey();
         signal.throwIfAborted();
         navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot,
-          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage),
+          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, this.binding.actionInteractions),
           subject => { if (!work.paused) void this.element.open(subject); });
         element = document.createElement(tag) as VisualizerElement;
         element.setContext({
@@ -84,7 +87,7 @@ export class SpaceNavigatorExperience {
         });
         const retainedNavigation = navigation;
         const retainedElement = element;
-        return { element, title, dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };
+        return { element, title, canDismiss: () => retainedNavigation.canDismiss(), dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };
       } catch (error) {
         if (navigation) navigation.dispose();
         else root.collectionActivation.dispose();

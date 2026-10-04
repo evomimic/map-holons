@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./launcher-theme.generated.css";
+@import "./app/components/load-holons-dialog/load-holons-dialog.css";
 
 /* The pre-runtime launcher uses the generated bootstrap theme. Canvas supplies
    its selected theme locally once the persisted graph is available. */

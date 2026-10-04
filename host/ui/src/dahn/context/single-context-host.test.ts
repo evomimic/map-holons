@@ -161,3 +161,16 @@ it('consumes late failure and disposes resources returned by an adapter that des
   expect(dispose).toHaveBeenCalledTimes(1);
   host.dispose();
 });
+
+it('refuses context destruction and host disposal while its presentation owns execution', async () => {
+  const display = document.createElement('section'); document.body.append(display);
+  const host = new SingleContextHost(display);
+  let executing = true;
+  const dispose = vi.fn();
+  const context = applied(host.create(() => ({ setAllocation() {}, canDismiss: () => !executing, dispose })));
+  DisplayObserver.instances[0].resize(400, 300); await context.ready;
+  expect(context.request('destroy').status).toBe('refused');
+  host.dispose(); expect(dispose).not.toHaveBeenCalled(); expect(display.children).toHaveLength(1);
+  executing = false;
+  expect(context.request('destroy').status).toBe('applied'); expect(dispose).toHaveBeenCalledOnce();
+});

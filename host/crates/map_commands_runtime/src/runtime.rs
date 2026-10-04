@@ -60,6 +60,21 @@ impl Runtime {
             MapCommand::Space(_) => None,
         };
 
+        // A lease covers execution and recovery persistence. Disposal excludes leases,
+        // including commands already bound by another ingress caller.
+        let disposing = matches!(&command, MapCommand::Transaction(cmd) if matches!(cmd.action, TransactionAction::Dispose));
+        let _lease = if disposing {
+            None
+        } else if let Some(ctx) = &context {
+            let rewinds_state = matches!(&command, MapCommand::Transaction(cmd) if matches!(cmd.action,
+                TransactionAction::UndoLast | TransactionAction::RedoLast | TransactionAction::UndoToMarker { .. } | TransactionAction::RedoToMarker { .. }));
+            Some(self.session.admission(ctx.tx_id())?.enter(
+                rewinds_state || lifecycle_policy.mutation != MutationClassification::ReadOnly,
+            )?)
+        } else {
+            None
+        };
+
         // Open-transaction check: reject commands that require an open transaction
         if lifecycle_policy.requires_open_tx {
             if let Some(ref ctx) = context {

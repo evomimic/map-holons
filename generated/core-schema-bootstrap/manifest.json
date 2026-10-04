@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "42a8a0e022a10aec9f1b431393f2f736a03e7a0a1cb057f45435f5d8bbc23153"
+      "sha256": "725475cb5184d4e2b46de26586b40e573206a4799ecc4418a6cd7cf4adbbb6b5"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -822,6 +822,10 @@
     {
       "key": "AbstractMemberMinimumEnforcement.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ActionBarVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType"
     },
     {
       "key": "ActionCornerRadius.DesignToken",
@@ -1984,8 +1988,12 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
-      "key": "GenericActions.ActionVisualizer",
-      "type": "ActionVisualizer.HolonType"
+      "key": "GenericActions.ActionBarVisualizer",
+      "type": "ActionBarVisualizer.HolonType"
+    },
+    {
+      "key": "GenericActions.ActionSlot",
+      "type": "VisualizerSlot.HolonType"
     },
     {
       "key": "GenericActionsTypeScript.VisualizerImplementation",
@@ -2348,6 +2356,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "LoadHolons.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType"
+    },
+    {
       "key": "LoadHolons.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
@@ -2358,6 +2370,10 @@
     {
       "key": "LoadHolons.DanceType",
       "type": "MetaDanceType.MetaHolonType"
+    },
+    {
+      "key": "LoadHolonsActionTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "LoaderHolon.HolonType",
@@ -3294,6 +3310,14 @@
     {
       "key": "UniqueTypeDescriptorRoot.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "UnsupportedAction.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType"
+    },
+    {
+      "key": "UnsupportedActionTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "Validate.OperatorType",

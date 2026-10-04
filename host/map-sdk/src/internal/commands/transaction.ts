@@ -52,6 +52,14 @@ async function runTransactionCommand<T>(
  *
  * The public SDK currently discards this payload and exposes `Promise<void>`.
  */
+export function dispose(txId: TxId): Promise<void> {
+  return runTransactionCommand(txId, 'Dispose', expectNone);
+}
+
+export function checkLoadTarget(txId: TxId, space: HolonReferenceWire): Promise<void> {
+  return runTransactionCommand(txId, { CheckLoadTarget: { space } }, expectNone);
+}
+
 export function commit(
   txId: TxId,
 ): Promise<HolonReferenceWire> {

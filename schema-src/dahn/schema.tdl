@@ -219,7 +219,7 @@ instance HolonInspector.PropertyMapSlot {
 instance HolonInspector.ActionsSlot {
   type VisualizerSlot.HolonType
   relationships {
-    AcceptsVisualizerType -> ActionVisualizer.HolonType
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
   }
 }
 
@@ -237,8 +237,8 @@ instance HolonInspector.SingleValueSlot {
   }
 }
 
-instance GenericActions.ActionVisualizer {
-  type ActionVisualizer.HolonType
+instance GenericActions.ActionBarVisualizer {
+  type ActionBarVisualizer.HolonType
   relationships {
     ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
     ConsumesDesignToken -> [
@@ -255,6 +255,7 @@ instance GenericActions.ActionVisualizer {
       SlotBorderStyle.DesignToken,
       SlotBorderWidth.DesignToken,
     ]
+    HasSlot -> GenericActions.ActionSlot
     ImplementedBy -> GenericActionsTypeScript.VisualizerImplementation
   }
 }
@@ -263,7 +264,7 @@ instance GenericActionsTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.actions"
-  VisualizerArtifactDigest "sha256:77f1b9317ce81da20c12cc6e9c0e2b071ce7624c8e9a72c48c9a9af1d5f33b97"
+  VisualizerArtifactDigest "sha256:c96e380e6365f0fee139589a0bd69b2b3c94f797675434f263d42d5351e9f437"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -524,6 +525,58 @@ instance ScalarValueTypeScript.VisualizerImplementation {
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.scalar-value"
   VisualizerArtifactDigest "sha256:7b8cd6b923b5259e80248fb00dd7920571c4ab2e033d9a6cb3c6d34cf2a32dd4"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+holon ActionBarVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Composes contextual actions into uniformly allocated slots and groups."
+    display_name: "Action Bar Visualizer"
+    display_plural: "Action Bar Visualizers"
+    plural: "ActionBarVisualizers"
+  }
+}
+
+instance GenericActions.ActionSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> ActionVisualizer.HolonType
+  }
+}
+
+instance UnsupportedAction.ActionVisualizer {
+  type ActionVisualizer.HolonType
+  relationships {
+    ApplicableToType -> DanceType.HolonType
+    ImplementedBy -> UnsupportedActionTypeScript.VisualizerImplementation
+  }
+}
+
+instance UnsupportedActionTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.unsupported-action"
+  VisualizerArtifactDigest "sha256:e1e8cd6283283262560407e5248f36afec5cd44796ec5ba1972397469f16691f"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance LoadHolons.ActionVisualizer {
+  type ActionVisualizer.HolonType
+  relationships {
+    ApplicableToType -> LoadHolons.DanceType
+    ImplementedBy -> LoadHolonsActionTypeScript.VisualizerImplementation
+  }
+}
+
+instance LoadHolonsActionTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.load-holons-action"
+  VisualizerArtifactDigest "sha256:3807fa07cd0134aa26f019bdec264b51d7dfeab1a7fcb4eb204ad0feb13dc5b8"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

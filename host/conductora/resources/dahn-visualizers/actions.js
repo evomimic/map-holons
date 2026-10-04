@@ -1,4 +1,5 @@
 export default class ActionsElement extends HTMLElement {
+  static compositionSlots = { action: "GenericActions.ActionSlot" };
   connectedCallback() {
     if (!this.layout) return;
     this.observer?.disconnect();
@@ -20,23 +21,22 @@ export default class ActionsElement extends HTMLElement {
   setContext(context) {
     this.dataset.dahnNodeActions = 'true';
     this.disconnectedCallback();
-    const controls = context.actions.map(action => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = action.label;
-      button.disabled = true;
-      button.title = 'Action activation is not available yet';
-      button.dataset.actionId = action.id;
-      button.style.font = 'inherit';
-      button.style.border = 'var(--dahn-slot-border-width) solid var(--dahn-slot-border-color)';
-      button.style.opacity = '1';
-      button.style.color = 'var(--dahn-action-text-color)';
-      button.style.padding = 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)';
-      button.style.borderRadius = 'var(--dahn-action-corner-radius)';
-      button.style.background = 'var(--dahn-action-surface-background)';
-      return button;
+    const compose = actions => actions.map(action => {
+      if (action.kind !== 'group') {
+        const child = context.childVisualizers?.get(action.id);
+        if (!child) throw new Error(`Missing selected Action Visualizer: ${action.id}`);
+        child.dataset.actionId = action.id;
+        return child;
+      }
+      const group = document.createElement('div');
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', action.label);
+      Object.assign(group.style, { display: 'flex', alignItems: 'stretch', gap: 'var(--dahn-control-gap)', borderInlineStart: '1px solid var(--dahn-slot-border-color)', paddingInlineStart: 'var(--dahn-control-gap)' });
+      group.append(...compose(action.children ?? []));
+      return group;
     });
-    this.layout = horizontalOverflow(this, controls, 'More actions');
+    const controls = compose(context.actions);
+    this.layout = horizontalOverflow(this, controls, 'More actions', [...(context.childVisualizers?.values() ?? [])]);
     if (this.isConnected) this.connectedCallback();
     if (controls.length === 0) this.textContent = 'No actions';
   }
@@ -44,8 +44,8 @@ export default class ActionsElement extends HTMLElement {
 
 let nextOverflowId = 0;
 
-// A disclosure is presentation-only; the contained semantic controls stay disabled.
-function horizontalOverflow(host, controls, label) {
+// Overflow moves the live selected controls, preserving their interaction bindings.
+function horizontalOverflow(host, controls, label, slots) {
   Object.assign(host.style, { display: 'block', minWidth: '0', maxWidth: '100%', position: 'relative' });
   const row = document.createElement('div');
   row.dataset.overflowRow = 'true';
@@ -77,6 +77,8 @@ function horizontalOverflow(host, controls, label) {
   const close = () => {
     if (opened && popup.hidePopover) popup.hidePopover();
     opened = false; popup.hidden = true; more.setAttribute('aria-expanded', 'false');
+    for (const control of controls) row.insertBefore(control, more);
+    controls.forEach(control => show(control, !hidden.includes(control)));
   };
   const place = () => {
     const anchor = more.getBoundingClientRect();
@@ -91,17 +93,13 @@ function horizontalOverflow(host, controls, label) {
   };
   more.addEventListener('click', () => {
     if (opened) { close(); return; }
-    popup.replaceChildren(...hidden.map(control => {
-      const copy = control.cloneNode(true);
-      copy.style.marginBottom = 'var(--dahn-control-gap)';
-      copy.removeAttribute('aria-hidden'); copy.inert = false;
-      Object.assign(copy.style, { position: 'static', visibility: 'visible', display: 'block', width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' });
-      return copy;
-    }));
+    popup.replaceChildren(...hidden);
+    hidden.forEach(control => show(control, true));
     popup.hidden = false;
     if (popup.showPopover) popup.showPopover();
     opened = true; more.setAttribute('aria-expanded', 'true'); place(); popup.focus();
   });
+  popup.addEventListener('click', event => { if (event.target.closest('button') && !event.target.closest('button').disabled) close(); });
   const escape = event => { if (opened && event.key === 'Escape') { close(); more.focus(); } };
   const outside = event => { if (opened && !popup.contains(event.target) && !more.contains(event.target)) close(); };
   popup.addEventListener('toggle', event => { if (event.newState === 'closed') { opened = false; popup.hidden = true; more.setAttribute('aria-expanded', 'false'); } });
@@ -112,6 +110,12 @@ function horizontalOverflow(host, controls, label) {
     element.inert = !visible; element.setAttribute('aria-hidden', String(!visible));
   };
   const fit = () => {
+    if (opened) { place(); return; }
+    close();
+    slots.forEach(slot => { slot.style.width = 'max-content'; slot.style.minHeight = ''; });
+    const slotWidth = Math.max(0, ...slots.map(slot => slot.offsetWidth));
+    const slotHeight = Math.max(0, ...slots.map(slot => slot.offsetHeight));
+    slots.forEach(slot => { slot.style.width = `${slotWidth}px`; slot.style.minHeight = `${slotHeight}px`; });
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
     const widths = controls.map(control => control.offsetWidth);

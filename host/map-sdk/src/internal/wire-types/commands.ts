@@ -60,6 +60,7 @@ export type VisualizerKindWire =
   | 'PropertyMap'
   | 'Property'
   | 'Value'
+  | 'ActionBar'
   | 'Action';
 
 /**
@@ -90,6 +91,8 @@ export interface VisualizerSelectionRequestWire {
  * - tuple variants are not used in this enum
  */
 export type TransactionActionWire =
+  | 'Dispose'
+  | { CheckLoadTarget: { space: HolonReferenceWire } }
   | 'Commit'
   | 'UndoLast'
   | 'RedoLast'
@@ -204,6 +207,7 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
+  'Dispose',
   'Commit',
   'UndoLast',
   'RedoLast',
@@ -299,6 +303,7 @@ export function isTransactionActionWire(
 ): value is TransactionActionWire {
   return (
     (typeof value === 'string' && TRANSACTION_UNIT_ACTIONS.has(value)) ||
+    (hasSingleKey(value, 'CheckLoadTarget') && isRecord(value.CheckLoadTarget) && isHolonReferenceWire(value.CheckLoadTarget['space'])) ||
     // Struct variants.
     (hasSingleKey(value, 'PrepareHolons') &&
       isRecord(value.PrepareHolons) &&
@@ -328,6 +333,7 @@ export function isTransactionActionWire(
         value.SelectVisualizer['requested_kind'] === 'PropertyMap' ||
         value.SelectVisualizer['requested_kind'] === 'Property' ||
         value.SelectVisualizer['requested_kind'] === 'Value' ||
+        value.SelectVisualizer['requested_kind'] === 'ActionBar' ||
         value.SelectVisualizer['requested_kind'] === 'Action')) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
       isStringFieldObject(value.GetStagedHolonByBaseKey, 'key')) ||

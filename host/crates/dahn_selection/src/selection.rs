@@ -196,13 +196,13 @@ pub fn select_visualizer(
         }
     }
     let descriptor = match requested_kind {
-        VisualizerKind::Property => subject,
+        VisualizerKind::Property | VisualizerKind::Action => subject,
         VisualizerKind::Value => {
             PropertyDescriptor::from_holon(subject).value_type()?.holon().clone()
         }
         VisualizerKind::Node
         | VisualizerKind::PropertyMap
-        | VisualizerKind::Action
+        | VisualizerKind::ActionBar
         | VisualizerKind::RootedNavigation => subject.holon_descriptor()?.holon().clone(),
         _ => {
             return Err(HolonError::InvalidParameter(
@@ -309,6 +309,7 @@ fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonE
         | VisualizerKind::PropertyMap
         | VisualizerKind::Property
         | VisualizerKind::Value
+        | VisualizerKind::ActionBar
         | VisualizerKind::Action => Err(HolonError::NotImplemented(format!(
             "No deterministic DAHN bootstrap selection is configured for VisualizerKind::{kind:?}"
         ))),
