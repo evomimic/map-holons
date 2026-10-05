@@ -1,32 +1,37 @@
-//! `OrderBy` — stable, descriptor-backed multi-key ordering for QueryCore (QRY4a).
+//! `OrderBy` — stable, descriptor-backed multi-key ordering for QueryCore.
 //!
 //! An `OrderBy` expression relates, through the ordered `OrderBySpecs`
 //! relationship, one through five `OrderBySpec` holons; relationship target
-//! order is sort precedence. Each spec names the `PropertyType` descriptor to
-//! sort by (`Property`, matched by descriptor identity, never by name) and
-//! carries a `SortDirection` and a `NullPlacement`.
+//! order is sort precedence. Each spec selects the property to sort by **by
+//! name** (`PropertyName`) and carries a `SortDirection` and a `NullPlacement`.
 //!
 //! Argument resolution is read-only. `SortDirection` and `NullPlacement` are
-//! resolved with [`PropertyDescriptor::effective_value`]: an authored value is
+//! resolved with [`crate::descriptors::PropertyDescriptor::effective_value`]: an authored value is
 //! validated and used without consulting the default; only an absent value
 //! resolves the descriptor-defined default (`Ascending`, `Missing-Last`), which
-//! is never written back. Nothing here calls `populate_defaults`, so neither a
-//! successful nor a failed evaluation changes the caller's definitions.
+//! is never written back. Nothing here calls `populate_defaults`, and no
+//! resolved descriptor is written to the spec, so neither a successful nor a
+//! failed evaluation changes the caller's definitions.
 //!
 //! Validation precedes any output:
-//! - the spec shape (count, kind, `Property` target, enum values) and each key's
-//!   value domain, even for empty input;
-//! - for every input occurrence, including a singleton: the referenced property
-//!   must be on the member's effective property surface (by identity), a present
-//!   value must be valid for the key's value descriptor, and an absent value is
-//!   only allowed when the property is optional.
+//! - the spec shape (count, kind, a string `PropertyName`, enum values), even for
+//!   empty input;
+//! - for every input occurrence, including a singleton and keys that do not
+//!   decide the final order: `PropertyName` resolves through the member's own
+//!   effective property surface (the shared descriptor lookup), requiredness
+//!   comes from that member's resolved declaration, and every member of a key
+//!   must resolve to the same effective value-type descriptor identity — also
+//!   when its value is absent. Distinct `PropertyType`s sharing the name are
+//!   accepted on those terms; matching primitive representations alone are not.
+//!
+//! Empty input has no members to resolve against, so property applicability and
+//! comparison domains are only checked once members exist.
 //!
 //! Supported domains are descriptor-backed integer and string values whose
 //! descriptor affords `EqualsOperator` and `LessThanOperator`; comparisons go
 //! through those operators. Every other domain (boolean, enum, bytes, arrays)
 //! fails with `UnsupportedOperator` — there is no stringification or
-//! reference-identity fallback. Because keys are matched by property identity,
-//! all members share that property's value descriptor.
+//! reference-identity fallback.
 //!
 //! Ordering is lexicographic over the keys and stable: the first non-tied key
 //! decides, fully tied occurrences keep their input order, and duplicate
@@ -37,50 +42,48 @@
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use base_types::{BaseValue, BaseValueKind, MapEnumValue};
 use core_types::{HolonError, PropertyName};
 use type_names::{CoreOperatorTypeName, QueryPropertyTypeName, QueryRelationshipTypeName};
 
-use super::query_core::{exactly_one, related_members, require_described_as};
-use crate::core_shared_objects::transactions::TransactionContext;
+use super::query_core::{related_members, require_described_as};
 use crate::descriptors::{
-    equals_or_extends, resolve_core_descriptor, same_definition, Descriptor, EffectiveValue,
-    EnumValueDescriptor, HolonDescriptor, IntegerValueDescriptor, OperatorDescriptor,
-    PropertyDescriptor, StringValueDescriptor, ValueDescriptor, ValueDescriptorKind,
+    same_definition, Descriptor, EffectiveValue, EnumValueDescriptor, HolonDescriptor,
+    IntegerValueDescriptor, OperatorDescriptor, StringValueDescriptor, ValueDescriptor,
+    ValueDescriptorKind,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
 const ORDER_BY_SPEC_TYPE_NAME: &str = "OrderBySpec";
-const PROPERTY_TYPE_DESCRIPTOR_KEY: &str = "PropertyType.TypeDescriptor";
 const MIN_SPECS: usize = 1;
 const MAX_SPECS: usize = 5;
 
 /// Sorts `members` by the `OrderBy` definition `expression`. Returns the same
 /// occurrences, reordered.
 pub(crate) fn order_by(
-    context: &Arc<TransactionContext>,
     expression: &HolonReference,
     members: &[HolonReference],
 ) -> Result<Vec<HolonReference>, HolonError> {
-    let keys = read_sort_keys(context, expression)?;
+    let specs = read_sort_specs(expression)?;
+    if members.is_empty() {
+        return Ok(Vec::new());
+    }
 
-    let mut surfaces = PropertySurfaces::default();
+    let mut keys: Vec<ResolvedKey> = specs.into_iter().map(ResolvedKey::new).collect();
+    let mut declarations = MemberDeclarations::default();
     let mut rows = Vec::with_capacity(members.len());
     for (index, member) in members.iter().enumerate() {
         let values = keys
-            .iter()
-            .map(|key| key.value_of(member, &mut surfaces))
+            .iter_mut()
+            .map(|key| key.value_of(member, &mut declarations))
             .collect::<Result<Vec<_>, _>>()?;
         rows.push((index, values));
     }
 
-    let rules: Vec<KeyRule> = keys.iter().map(|key| key.rule).collect();
+    let rules: Vec<KeyRule> = keys.iter().map(|key| key.spec.rule).collect();
     let sorted = stable_sort(rows, |(_, left), (_, right)| {
-        compare_keys(&rules, left, right, |position, lhs, rhs| {
-            keys[position].domain.compare(lhs, rhs)
-        })
+        compare_keys(&rules, left, right, |position, lhs, rhs| keys[position].compare(lhs, rhs))
     })?;
     Ok(sorted.into_iter().map(|(index, _)| members[index].clone()).collect())
 }
@@ -126,20 +129,15 @@ struct KeyRule {
     placement: NullPlacement,
 }
 
-/// One validated `OrderBySpec`.
-struct SortKey {
-    property: PropertyDescriptor,
+/// One validated `OrderBySpec`: the selected property name and its rule.
+struct SortSpec {
     property_name: PropertyName,
-    required: bool,
-    domain: KeyDomain,
     rule: KeyRule,
 }
 
-/// Reads and validates the ordered specs of an `OrderBy` definition.
-fn read_sort_keys(
-    context: &Arc<TransactionContext>,
-    expression: &HolonReference,
-) -> Result<Vec<SortKey>, HolonError> {
+/// Reads and validates the ordered specs of an `OrderBy` definition. Needs no
+/// input members, so it applies to empty input too.
+fn read_sort_specs(expression: &HolonReference) -> Result<Vec<SortSpec>, HolonError> {
     let specs = related_members(expression, QueryRelationshipTypeName::OrderBySpecs)?;
     if !(MIN_SPECS..=MAX_SPECS).contains(&specs.len()) {
         return Err(HolonError::InvalidParameter(format!(
@@ -147,28 +145,14 @@ fn read_sort_keys(
             specs.len()
         )));
     }
-
-    let property_type_root = resolve_core_descriptor(context, PROPERTY_TYPE_DESCRIPTOR_KEY)?;
-    specs.iter().map(|spec| read_sort_key(spec, &property_type_root)).collect()
+    specs.iter().map(read_sort_spec).collect()
 }
 
-fn read_sort_key(
-    spec: &HolonReference,
-    property_type_root: &HolonReference,
-) -> Result<SortKey, HolonError> {
+fn read_sort_spec(spec: &HolonReference) -> Result<SortSpec, HolonError> {
     require_described_as(spec, ORDER_BY_SPEC_TYPE_NAME)?;
-
-    let target = exactly_one(spec, QueryRelationshipTypeName::Property)?;
-    if !equals_or_extends(&target, property_type_root)? {
-        return Err(HolonError::WrongDescriptorKind {
-            expected: "PropertyType".to_string(),
-            found: target.holon_descriptor()?.header().type_name()?.to_string(),
-            descriptor: target.summarize()?,
-        });
-    }
-    let property = PropertyDescriptor::from_holon(target);
-
     let spec_descriptor = spec.holon_descriptor()?;
+
+    let property_name = read_property_name(spec, &spec_descriptor)?;
     let direction = read_variant(spec, &spec_descriptor, QueryPropertyTypeName::SortDirection)?;
     let direction = SortDirection::from_variant(&direction)
         .ok_or_else(|| unrecognized_variant(QueryPropertyTypeName::SortDirection, &direction))?;
@@ -176,13 +160,25 @@ fn read_sort_key(
     let placement = NullPlacement::from_variant(&placement)
         .ok_or_else(|| unrecognized_variant(QueryPropertyTypeName::NullPlacement, &placement))?;
 
-    Ok(SortKey {
-        property_name: property.property_name()?,
-        required: property.is_required()?,
-        domain: KeyDomain::resolve(&property.value_type()?)?,
-        property,
-        rule: KeyRule { direction, placement },
-    })
+    Ok(SortSpec { property_name, rule: KeyRule { direction, placement } })
+}
+
+/// Resolves the required, default-less `PropertyName` argument of `spec`. It
+/// must be a string; there is no fallback.
+fn read_property_name(
+    spec: &HolonReference,
+    spec_descriptor: &HolonDescriptor,
+) -> Result<PropertyName, HolonError> {
+    let name = QueryPropertyTypeName::PropertyName;
+    let property = spec_descriptor.get_property_by_name(name.clone())?;
+    match property.effective_value(spec)? {
+        Some(EffectiveValue::Authored(BaseValue::StringValue(value)))
+        | Some(EffectiveValue::Default(BaseValue::StringValue(value))) => Ok(PropertyName(value)),
+        Some(EffectiveValue::Authored(other)) | Some(EffectiveValue::Default(other)) => {
+            Err(HolonError::UnexpectedValueType(format!("{other:?}"), "String".to_string()))
+        }
+        None => Err(HolonError::EmptyField(name.as_property_name().to_string())),
+    }
 }
 
 /// Resolves a required enum argument of `spec` through the read-only
@@ -289,53 +285,114 @@ impl KeyDomain {
     }
 }
 
-/// Per-descriptor cache of each member type's effective property surface.
-#[derive(Default)]
-struct PropertySurfaces {
-    by_descriptor: HashMap<String, Vec<PropertyDescriptor>>,
+/// A member type's resolved declaration of one selected property name.
+#[derive(Clone)]
+struct MemberDeclaration {
+    required: bool,
+    value_type: HolonReference,
 }
 
-impl PropertySurfaces {
-    /// Whether `property` (by identity) is on `member`'s effective property surface.
-    fn declares(
+/// Caches each member type's resolution of each selected property name, so a
+/// collection of one type resolves every name once.
+#[derive(Default)]
+struct MemberDeclarations {
+    by_type_and_name: HashMap<(String, String), MemberDeclaration>,
+}
+
+impl MemberDeclarations {
+    /// Resolves `property_name` through `member`'s effective property surface
+    /// with the shared descriptor lookup, whose undeclared-name and
+    /// duplicate-declaration errors propagate unchanged.
+    fn resolve(
         &mut self,
         member: &HolonReference,
-        property: &PropertyDescriptor,
-    ) -> Result<bool, HolonError> {
+        property_name: &PropertyName,
+    ) -> Result<MemberDeclaration, HolonError> {
         let descriptor = member.holon_descriptor()?;
-        let key = descriptor.holon().reference_id_string();
-        if !self.by_descriptor.contains_key(&key) {
-            self.by_descriptor.insert(key.clone(), descriptor.instance_properties()?);
+        let cache_key = (descriptor.holon().reference_id_string(), property_name.to_string());
+        if let Some(declaration) = self.by_type_and_name.get(&cache_key) {
+            return Ok(declaration.clone());
         }
-        Ok(self.by_descriptor[&key]
-            .iter()
-            .any(|candidate| same_definition(candidate.holon(), property.holon())))
+        let property = descriptor.get_property_by_name(property_name.clone())?;
+        let declaration = MemberDeclaration {
+            required: property.is_required()?,
+            value_type: property.value_type()?.holon().clone(),
+        };
+        self.by_type_and_name.insert(cache_key, declaration.clone());
+        Ok(declaration)
     }
 }
 
-impl SortKey {
+/// One sort key while its members are resolved. The first member fixes the
+/// key's value type and comparison domain; every later member must resolve to
+/// that same value-type identity.
+struct ResolvedKey {
+    spec: SortSpec,
+    binding: Option<(HolonReference, KeyDomain)>,
+}
+
+impl ResolvedKey {
+    fn new(spec: SortSpec) -> Self {
+        Self { spec, binding: None }
+    }
+
     /// This key's value on `member`: `Some` when present and valid, `None`
-    /// when an optional property is absent.
+    /// when the member's own declaration makes the property optional.
     fn value_of(
-        &self,
+        &mut self,
         member: &HolonReference,
-        surfaces: &mut PropertySurfaces,
+        declarations: &mut MemberDeclarations,
     ) -> Result<Option<BaseValue>, HolonError> {
-        if !surfaces.declares(member, &self.property)? {
-            return Err(HolonError::DescriptorDeclarationNotFound {
-                kind: "property".to_string(),
-                name: self.property_name.to_string(),
-                descriptor: member.summarize()?,
-            });
-        }
-        match member.property_value(&self.property_name)? {
+        let declaration = declarations.resolve(member, &self.spec.property_name)?;
+        self.bind(&declaration.value_type, member)?;
+        match member.property_value(&self.spec.property_name)? {
             Some(value) => {
-                self.domain.validate(&value)?;
+                self.domain().validate(&value)?;
                 Ok(Some(value))
             }
-            None if self.required => Err(HolonError::EmptyField(self.property_name.to_string())),
+            None if declaration.required => {
+                Err(HolonError::EmptyField(self.spec.property_name.to_string()))
+            }
             None => Ok(None),
         }
+    }
+
+    /// Fixes the key's value type on first use and checks identity afterwards,
+    /// whether or not the member has a value.
+    fn bind(
+        &mut self,
+        value_type: &HolonReference,
+        member: &HolonReference,
+    ) -> Result<(), HolonError> {
+        match &self.binding {
+            Some((bound, _)) if same_definition(bound, value_type) => Ok(()),
+            Some((bound, _)) => Err(HolonError::InvalidParameter(format!(
+                "OrderBy key {} resolves to value type {} on {}, but to {} on an earlier \
+                 member; every member of a key must share one value type",
+                self.spec.property_name,
+                ValueDescriptor::from_holon(value_type.clone()).header().type_name()?,
+                member.summarize()?,
+                ValueDescriptor::from_holon(bound.clone()).header().type_name()?,
+            ))),
+            None => {
+                let domain = KeyDomain::resolve(&ValueDescriptor::from_holon(value_type.clone()))?;
+                self.binding = Some((value_type.clone(), domain));
+                Ok(())
+            }
+        }
+    }
+
+    /// The key's comparison domain. Only used once a member has bound the key.
+    fn domain(&self) -> &KeyDomain {
+        match &self.binding {
+            Some((_, domain)) => domain,
+            None => unreachable!("a key is bound by its first member"),
+        }
+    }
+
+    /// Orders two present values of this key.
+    fn compare(&self, lhs: &BaseValue, rhs: &BaseValue) -> Result<Ordering, HolonError> {
+        self.domain().compare(lhs, rhs)
     }
 }
 

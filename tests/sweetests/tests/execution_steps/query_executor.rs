@@ -113,14 +113,14 @@ pub async fn execute_query(
 }
 
 /// Definition relationships a query evaluation reads and must never change.
-const DEFINITION_RELATIONSHIPS: [&str; 4] = ["RootExpression", "Next", "OrderBySpecs", "Property"];
+const DEFINITION_RELATIONSHIPS: [&str; 3] = ["RootExpression", "Next", "OrderBySpecs"];
 
 /// One definition holon's identity, content, and definition-relationship members.
 type DefinitionSnapshot = (String, HolonNodeModel, Vec<Vec<String>>);
 
 /// Content of every definition holon reachable from `query`: the query, each
 /// expression along `RootExpression`/`Next`, and each attached `OrderBySpec`
-/// — its properties plus its definition relationships' member ids, in order.
+/// — its properties plus its definition relationships' members, in order.
 fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
     let snapshot_of = |holon: &HolonReference| {
         let relationships = DEFINITION_RELATIONSHIPS

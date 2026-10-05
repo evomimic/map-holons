@@ -25,11 +25,6 @@ const ORDER_BY_SCHEMA_KEYS: [&str; 6] = [
 ];
 const ORDER_BY_DESCRIPTOR_KEY: &str = "OrderBy.HolonType";
 const ORDER_BY_SPEC_DESCRIPTOR_KEY: &str = "OrderBySpec.HolonType";
-const TITLE_PROPERTY_KEY: &str = "Title.PropertyType";
-const PAGE_COUNT_PROPERTY_KEY: &str = "PageCount.PropertyType";
-const IS_PUBLISHED_PROPERTY_KEY: &str = "IsPublished.PropertyType";
-const PUBLICATION_STATUS_PROPERTY_KEY: &str = "PublicationStatus.PropertyType";
-const NAME_PROPERTY_KEY: &str = "Name.PropertyType";
 /// Inverse of `AuthoredBy` in the Book/Person test schema.
 const PERSON_TO_BOOK_RELATIONSHIP: &str = "AuthorOf";
 
@@ -87,10 +82,15 @@ const PERSON_3_KEY: &str = "Qry4a.Person.3";
 ///    - Title then PageCount descending (the Title spec holon is shared with
 ///      other OrderBy expressions);
 ///    - `Skip(2) -> OrderBy` versus `OrderBy -> Skip(2)`; empty and singleton input;
-///    - failures: no specs (even on empty input), a missing / doubled /
-///      wrong-kind Property target, an undeclared variant, a string where an enum
-///      value belongs, boolean and enum sort domains, a property the members do
-///      not declare, and the same failure after a completed `Expand`.
+///    - failures: no specs, or a missing / non-string `PropertyName` (all on
+///      empty input); an undeclared variant, a string where an enum value
+///      belongs, boolean and enum sort domains, and property names the members
+///      do not declare; and the same failure after a completed `Expand`.
+///
+///    Every spec selects its property by name (`PropertyName`), resolved against
+///    each member's effective descriptors at execution time. Name resolution
+///    across distinct same-named `PropertyType`s is covered by the QueryCore
+///    unit tests, which build such types directly.
 ///
 /// The OrderBy schema descriptors (`OrderBy`, `OrderBySpec`, `PropertyName`,
 /// `SortDirection`, `NullPlacement`, `OneToFive`) are resolved by key to prove
@@ -233,12 +233,6 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     }
     let book = |number: usize| sorted_books[number - 1].clone();
     let books = |numbers: &[usize]| numbers.iter().map(|number| book(*number)).collect::<Vec<_>>();
-    let title = lookup(&mut test_case, &mut fixture_holons, TITLE_PROPERTY_KEY)?;
-    let page_count = lookup(&mut test_case, &mut fixture_holons, PAGE_COUNT_PROPERTY_KEY)?;
-    let is_published = lookup(&mut test_case, &mut fixture_holons, IS_PUBLISHED_PROPERTY_KEY)?;
-    let publication_status =
-        lookup(&mut test_case, &mut fixture_holons, PUBLICATION_STATUS_PROPERTY_KEY)?;
-    let name = lookup(&mut test_case, &mut fixture_holons, NAME_PROPERTY_KEY)?;
 
     for key in ORDER_BY_SCHEMA_KEYS {
         lookup(&mut test_case, &mut fixture_holons, key)?;
@@ -306,8 +300,8 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     let proof_skip = authoring.skip("Skip.Qry4aProof", Some(1))?;
     let proof_skip = authoring.next(proof_skip, proof_limit)?;
     let proof_pages =
-        authoring.spec("Spec.Qry4aProofPages", &[&page_count], descending.clone(), None)?;
-    let proof_titles = authoring.spec("Spec.Qry4aProofTitles", &[&title], None, None)?;
+        authoring.spec("Spec.Qry4aProofPages", selector("PageCount"), descending.clone(), None)?;
+    let proof_titles = authoring.spec("Spec.Qry4aProofTitles", selector("Title"), None, None)?;
     let proof_order = authoring.order_by("OrderBy.Qry4aProof", vec![proof_pages, proof_titles])?;
     let proof_order = authoring.next(proof_order, proof_skip)?;
     let proof_expand = authoring.expand("Expand.Qry4aProof", PERSON_TO_BOOK_RELATIONSHIP)?;
@@ -316,23 +310,23 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
 
     // One Title spec with both enum arguments omitted, shared by several
     // OrderBy expressions (an aliased definition holon).
-    let title_spec = authoring.spec("Spec.Qry4aTitle", &[&title], None, None)?;
+    let title_spec = authoring.spec("Spec.Qry4aTitle", selector("Title"), None, None)?;
     let by_title = authoring.order_by("OrderBy.Qry4aTitle", vec![title_spec.clone()])?;
     let by_title = authoring.query("Query.Qry4aByTitle", by_title)?;
     let pages_desc_first = authoring.spec(
         "Spec.Qry4aPagesDescFirst",
-        &[&page_count],
+        selector("PageCount"),
         descending.clone(),
         missing_first,
     )?;
     let pages_desc_first =
         authoring.order_by("OrderBy.Qry4aPagesDescFirst", vec![pages_desc_first])?;
     let pages_desc_first = authoring.query("Query.Qry4aPagesDescFirst", pages_desc_first)?;
-    let pages_asc = authoring.spec("Spec.Qry4aPagesAsc", &[&page_count], ascending, None)?;
+    let pages_asc = authoring.spec("Spec.Qry4aPagesAsc", selector("PageCount"), ascending, None)?;
     let pages_asc = authoring.order_by("OrderBy.Qry4aPagesAsc", vec![pages_asc])?;
     let pages_asc = authoring.query("Query.Qry4aPagesAsc", pages_asc)?;
     let pages_desc =
-        authoring.spec("Spec.Qry4aPagesDesc", &[&page_count], descending.clone(), None)?;
+        authoring.spec("Spec.Qry4aPagesDesc", selector("PageCount"), descending.clone(), None)?;
     let title_then_pages =
         authoring.order_by("OrderBy.Qry4aTitleThenPages", vec![title_spec.clone(), pages_desc])?;
     let title_then_pages = authoring.query("Query.Qry4aTitleThenPages", title_then_pages)?;
@@ -351,33 +345,59 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     let mut failing = Vec::new();
     let no_specs = authoring.order_by("OrderBy.Qry4aNoSpecs", vec![])?;
     let no_specs = authoring.query("Query.Qry4aNoSpecs", no_specs)?;
-    let failing_spec_cases: [(&str, Vec<&TestReference>, Option<BaseValue>, HolonErrorKind); 8] = [
-        ("NoProperty", vec![], None, HolonErrorKind::MissingRequiredRelationship),
-        ("TwoProperties", vec![&title, &page_count], None, HolonErrorKind::MultipleRelatedHolons),
-        ("BookAsProperty", vec![&sorted_books[0]], None, HolonErrorKind::WrongDescriptorKind),
+    // Spec-shape failures need no members, so they run over empty input.
+    let mut failing_on_empty = Vec::new();
+    for (label, property_name, kind) in [
+        ("MissingPropertyName", None, HolonErrorKind::EmptyField),
+        (
+            "IntegerPropertyName",
+            Some(MapInteger(3).to_base_value()),
+            HolonErrorKind::UnexpectedValueType,
+        ),
+    ] {
+        let spec = authoring.spec(&format!("Spec.Qry4a{label}"), property_name, None, None)?;
+        let order = authoring.order_by(&format!("OrderBy.Qry4a{label}"), vec![spec])?;
+        failing_on_empty.push((
+            label,
+            authoring.query(&format!("Query.Qry4a{label}"), order)?,
+            kind,
+        ));
+    }
+    let failing_spec_cases: [(&str, Option<BaseValue>, Option<BaseValue>, HolonErrorKind); 6] = [
         (
             "UndeclaredVariant",
-            vec![&title],
+            selector("Title"),
             Some(enum_value("Sideways")),
             HolonErrorKind::EnumVariantNotInSchema,
         ),
         (
             "StringDirection",
-            vec![&title],
+            selector("Title"),
             Some(MapString("Descending".to_string()).to_base_value()),
             HolonErrorKind::ValueKindMismatch,
         ),
-        ("BooleanKey", vec![&is_published], None, HolonErrorKind::UnsupportedOperator),
-        ("EnumKey", vec![&publication_status], None, HolonErrorKind::UnsupportedOperator),
-        ("PersonNameOnBooks", vec![&name], None, HolonErrorKind::DescriptorDeclarationNotFound),
+        ("BooleanKey", selector("IsPublished"), None, HolonErrorKind::UnsupportedOperator),
+        ("EnumKey", selector("PublicationStatus"), None, HolonErrorKind::UnsupportedOperator),
+        (
+            "PersonNameOnBooks",
+            selector("Name"),
+            None,
+            HolonErrorKind::DescriptorDeclarationNotFound,
+        ),
+        (
+            "UnknownName",
+            selector("NoSuchProperty"),
+            None,
+            HolonErrorKind::DescriptorDeclarationNotFound,
+        ),
     ];
-    for (label, targets, direction, kind) in failing_spec_cases {
-        let spec = authoring.spec(&format!("Spec.Qry4a{label}"), &targets, direction, None)?;
+    for (label, property_name, direction, kind) in failing_spec_cases {
+        let spec = authoring.spec(&format!("Spec.Qry4a{label}"), property_name, direction, None)?;
         let order = authoring.order_by(&format!("OrderBy.Qry4a{label}"), vec![spec])?;
         failing.push((label, authoring.query(&format!("Query.Qry4a{label}"), order)?, kind));
     }
     // The same undeclared-property failure reached after a completed Expand.
-    let late_name = authoring.spec("Spec.Qry4aLateName", &[&name], None, None)?;
+    let late_name = authoring.spec("Spec.Qry4aLateName", selector("Name"), None, None)?;
     let late_order = authoring.order_by("OrderBy.Qry4aLateName", vec![late_name])?;
     let late_expand = authoring.expand("Expand.Qry4aLateName", PERSON_TO_BOOK_RELATIONSHIP)?;
     let late_expand = authoring.next(late_expand, late_order)?;
@@ -514,6 +534,15 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
             QueryExpectation::Error(HolonErrorKind::InvalidParameter),
             Some(format!("OrderBy without specs via {route:?} fails even on empty input")),
         )?;
+        for (label, query, kind) in &failing_on_empty {
+            test_case.add_execute_query_step(
+                query.clone(),
+                QueryInputSpec::Collection(vec![]),
+                route,
+                QueryExpectation::Error(*kind),
+                Some(format!("OrderBy {label} via {route:?} fails even on empty input")),
+            )?;
+        }
         for (label, query, kind) in &failing {
             test_case.add_execute_query_step(
                 query.clone(),
@@ -628,25 +657,26 @@ impl TransientAuthoring<'_> {
         self.described(key, count_properties("LimitCount", count), self.limit_type.clone())
     }
 
-    /// An `OrderBySpec` over `properties` (normally exactly one PropertyType);
-    /// `None` leaves SortDirection / NullPlacement unset.
+    /// An `OrderBySpec` selecting `property_name` (normally a string); `None`
+    /// leaves that argument, SortDirection or NullPlacement unset.
     fn spec(
         &mut self,
         key: &str,
-        properties: &[&TestReference],
+        property_name: Option<BaseValue>,
         direction: Option<BaseValue>,
         placement: Option<BaseValue>,
     ) -> Result<TestReference, HolonError> {
         let mut values = PropertyMap::new();
+        if let Some(property_name) = property_name {
+            values.insert("PropertyName".to_property_name(), property_name);
+        }
         if let Some(direction) = direction {
             values.insert("SortDirection".to_property_name(), direction);
         }
         if let Some(placement) = placement {
             values.insert("NullPlacement".to_property_name(), placement);
         }
-        let spec = self.described(key, values, self.spec_type.clone())?;
-        let targets = properties.iter().map(|property| (*property).clone()).collect();
-        self.relate_all(spec, "Property", targets, format!("{key} --Property--> sort property"))
+        self.described(key, values, self.spec_type.clone())
     }
 
     /// An `OrderBy` relating `specs` in precedence order.
@@ -666,6 +696,11 @@ impl TransientAuthoring<'_> {
     ) -> Result<TestReference, HolonError> {
         self.relate(expression, "Next", successor, "Relate expression --Next--> successor".into())
     }
+}
+
+/// A `PropertyName` argument selecting `name`.
+fn selector(name: &str) -> Option<BaseValue> {
+    Some(MapString(name.to_string()).to_base_value())
 }
 
 fn enum_value(variant: &str) -> BaseValue {
