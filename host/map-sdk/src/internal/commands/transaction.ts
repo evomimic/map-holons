@@ -467,3 +467,8 @@ export function selectCollectionVisualizer(
 ): Promise<VisualizerSelectionWire> {
   return runTransactionCommand(txId, { SelectCollectionVisualizer: request }, expectVisualizerSelection);
 }
+
+/** Retrieve Saved Nursery membership without resolving saved properties in the loader context. */
+export function getCommittedHolons(txId: TxId): Promise<HolonCollectionWire> {
+  return runTransactionCommand(txId, 'GetCommittedHolons', expectCollection);
+}

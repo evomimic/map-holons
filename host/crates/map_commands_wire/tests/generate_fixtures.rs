@@ -36,6 +36,19 @@ fn generate_fixtures() {
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
     write_fixture(
         &fixtures_dir,
+        "request-committed-holons.json",
+        &request(
+            141,
+            MapCommandWire::Transaction(TransactionCommandWire {
+                tx_id: TxId::from_str("41").unwrap(),
+                action: TransactionActionWire::GetCommittedHolons,
+            }),
+            default_options(),
+        ),
+    );
+
+    write_fixture(
+        &fixtures_dir,
         "request-holon-validation-findings.json",
         &request(
             123,

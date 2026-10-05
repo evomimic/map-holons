@@ -108,6 +108,7 @@ export type TransactionActionWire =
   | { SelectCollectionVisualizer: { collection: DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire } }
   | { FetchArtifact: { handle: string } }
   | 'GetAllHolons'
+  | 'GetCommittedHolons'
   | { GetSavedHolonByBaseKey: { key: string } }
   | { GetStagedHolonByBaseKey: { key: string } }
   // Deliberate exception: duplicate-base-key staging lookup stays
@@ -214,6 +215,7 @@ const TRANSACTION_UNIT_ACTIONS = new Set([
   'UndoLast',
   'RedoLast',
   'GetAllHolons',
+  'GetCommittedHolons',
   'GetStagedCount',
   'GetTransientCount',
 ]);

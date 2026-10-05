@@ -93,6 +93,9 @@ pub enum TransactionActionWire {
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
+    /// Saved Nursery members projected without cached/staged properties.
+    GetCommittedHolons,
+
     /// `get_saved_holon_by_key(key)` → `SmartReference`
     GetSavedHolonByBaseKey {
         key: MapString,
@@ -315,6 +318,7 @@ impl TransactionActionWire {
             TransactionActionWire::GetTransientHolonByVersionedKey { key } => {
                 Ok(TransactionAction::GetTransientHolonByVersionedKey { key })
             }
+            TransactionActionWire::GetCommittedHolons => Ok(TransactionAction::GetCommittedHolons),
             TransactionActionWire::GetStagedCount => Ok(TransactionAction::GetStagedCount),
             TransactionActionWire::GetTransientCount => Ok(TransactionAction::GetTransientCount),
 

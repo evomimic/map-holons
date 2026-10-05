@@ -275,6 +275,9 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         let MapResult::Reference(response) = result else { panic!("expected response") };
         assert_eq!(string(&response, "LoadCommitStatus"), expected_status);
         assert_eq!(context.is_open(), expected_status != "Complete");
+        let committed = assert_committed_review(&runtime, &context).await;
+        assert_eq!(committed, if expected_status == "Complete" { 1 } else { 0 });
+
         if expected_status == "Rejected" {
             let commits = response
                 .related_holons("LoadCommitResponse")
@@ -476,6 +479,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     assert!(
         matches!(response.property_value("HolonsCommitted").unwrap(), Some(base_types::BaseValue::IntegerValue(value)) if value.0 > 0)
     );
+    assert!(assert_committed_review(&runtime, &context).await > 0);
     assert!(context.is_open());
     assert!(!response
         .related_holons("HasLoadError")
@@ -489,4 +493,44 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
 
     assert!(unrelated.is_open());
     assert!(unrelated_staged.holon_id().is_err());
+}
+
+/// Read the exact Saved set in a fresh context, without carrying staged properties across.
+async fn assert_committed_review(runtime: &Runtime, loader: &Arc<TransactionContext>) -> usize {
+    let MapResult::Collection(members) =
+        command(runtime, loader, TransactionAction::GetCommittedHolons).await.unwrap()
+    else {
+        panic!("committed collection")
+    };
+    let review = new_context(runtime).await;
+    command(
+        runtime,
+        &review,
+        TransactionAction::CheckLoadTarget {
+            space: HolonReference::smart_from_id(
+                review.space_read_handle(),
+                loader.get_space_holon().unwrap().unwrap().holon_id().unwrap(),
+            ),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(review.staged_references().unwrap().is_empty());
+    for member in members.get_members() {
+        let id = member.holon_id().unwrap();
+        let saved = HolonReference::smart_from_id(review.space_read_handle(), id.clone());
+        assert_eq!(saved.holon_id().unwrap(), id);
+        assert!(saved.key().is_ok(), "saved key retrieval");
+        assert!(!saved
+            .related_holons("DescribedBy")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .is_empty());
+    }
+    let count = members.get_members().len();
+    command(runtime, &review, TransactionAction::Dispose).await.unwrap();
+    assert!(runtime.session().get_transaction(&review.tx_id()).is_err());
+    count
 }

@@ -97,6 +97,24 @@ pub async fn handle_transaction(
                 holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;
             Ok(MapResult::Reference(HolonReference::Transient(response)))
         }
+        TransactionAction::GetCommittedHolons => {
+            let mut members = Vec::new();
+            for staged in context.staged_references()? {
+                // State inspection distinguishes expected unsaved candidates from read failures.
+                if staged.is_committed()? {
+                    members.push(HolonReference::smart_from_id(
+                        context.space_read_handle(),
+                        staged.holon_id()?,
+                    ));
+                }
+            }
+            // Membership is known; keys must be fetched in the separate review context.
+            Ok(MapResult::Collection(holons_core::HolonCollection::from_parts(
+                holons_core::CollectionState::Fetched,
+                members,
+                Default::default(),
+            )))
+        }
         TransactionAction::GetAllHolons => {
             let collection = context.lookup().get_all_holons()?;
             Ok(MapResult::Collection(collection))

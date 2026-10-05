@@ -1390,3 +1390,66 @@ async fn preparation_preserves_multiple_parser_findings_without_commit() -> Resu
     assert_eq!(context.lookup().staged_count()?, 0);
     Ok(())
 }
+
+#[tokio::test]
+async fn committed_membership_is_identity_only_and_transaction_local() -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::Holon;
+    use holons_core::ReadableHolon;
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id)?;
+    let mut saved_ids = Vec::new();
+    for (index, key) in [Some("staged-key"), Some("second-staged-key")].into_iter().enumerate() {
+        let source = context.mutation().new_holon(key.map(Into::into))?;
+        let staged = context.mutation().stage_new_holon(source)?;
+        let local_id = LocalId(vec![index as u8 + 1; 39]);
+        let model = staged.get_holon_to_commit(&context)?;
+        let mut model = model.write().unwrap();
+        let Holon::Staged(holon) = &mut *model else { panic!("staged") };
+        // Simulate the persistence result; the fail-fast service cannot fetch any saved data.
+        holon.to_committed(local_id.clone())?;
+        saved_ids.push(HolonId::Local(local_id));
+    }
+    let source = context.mutation().new_holon(Some("unsaved".into()))?;
+    context.mutation().stage_new_holon(source)?;
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            ExecutionPolicy::default(),
+        )
+        .await?;
+    assert!(!context.is_open());
+    let result = runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::GetCommittedHolons),
+            ExecutionPolicy::default(),
+        )
+        .await?;
+    let MapResult::Collection(collection) = result else { panic!("collection") };
+    assert_eq!(collection.get_members().len(), 2);
+    assert!(collection.keyed_index().is_empty());
+    for member in collection.get_members() {
+        assert!(saved_ids.contains(&member.holon_id()?));
+        let HolonReference::Smart(saved) = member else { panic!("saved identity") };
+        assert!(saved.smart_property_values().is_none());
+    }
+    let other = begin_tx(&runtime).await;
+    let MapResult::Collection(empty) = runtime
+        .execute_command(
+            tx_cmd(&runtime, &other, TransactionAction::GetCommittedHolons),
+            ExecutionPolicy::default(),
+        )
+        .await?
+    else {
+        panic!("collection")
+    };
+    assert!(empty.get_members().is_empty());
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Dispose),
+            ExecutionPolicy::default(),
+        )
+        .await?;
+    assert!(runtime.session().get_transaction(&tx_id).is_err());
+    Ok(())
+}

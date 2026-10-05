@@ -78,6 +78,9 @@ pub enum TransactionAction {
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
+    /// Identity-only references for Saved members in this transaction’s retained Nursery.
+    GetCommittedHolons,
+
     /// `get_saved_holon_by_key(key)` → `SmartReference`
     GetSavedHolonByBaseKey { key: MapString },
 
@@ -172,6 +175,8 @@ impl TransactionAction {
     pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
             TransactionAction::Dispose => CommandLifecyclePolicy::holon_read_only(),
+            // Retained Saved identity evidence remains readable after the loader commits.
+            TransactionAction::GetCommittedHolons => CommandLifecyclePolicy::holon_read_only(),
             TransactionAction::CheckLoadTarget { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
@@ -250,6 +255,7 @@ impl TransactionAction {
             TransactionAction::GetTransientHolonByVersionedKey { .. } => {
                 "get_transient_holon_by_versioned_key"
             }
+            TransactionAction::GetCommittedHolons => "get_committed_holons",
             TransactionAction::GetStagedCount => "get_staged_count",
             TransactionAction::GetTransientCount => "get_transient_count",
             TransactionAction::NewHolon { .. } => "new_holon",

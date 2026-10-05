@@ -6,6 +6,7 @@
  */
 export type {
   ParserDiagnostic,
+  CommittedHolonEntry,
   ValidationFinding,
   ValidationFindingKind,
   ValidationSubject,
@@ -34,6 +35,7 @@ export type {
 export {
   readLoadValidationDiagnostics,
   readParserDiagnostics,
+  CommittedHolonsReview,
   CorePropertyName,
   MapClient,
   MapTransaction,

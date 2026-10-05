@@ -1,3 +1,4 @@
+import { createCommittedHolonsReview, type CommittedHolonsReview } from './committed-review';
 import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
@@ -85,6 +86,7 @@ const MAP_TRANSACTION_CONSTRUCTION = Symbol('MapTransactionConstruction');
  * each SDK method to exactly one transaction or holon command.
  */
 export class MapTransaction {
+  private completedLoadSpace?: HolonReference;
   private materializationTail: Promise<void> = Promise.resolve();
 
   constructor(txId: TxId, token: typeof MAP_TRANSACTION_CONSTRUCTION) {
@@ -380,7 +382,16 @@ export class MapTransaction {
     await invocation.withPropertyValue('DanceName' as PropertyName, { StringValue: 'LoadHolons' });
     await invocation.addRelatedHolons('AffordingHolon' as RelationshipName, [affordingSpace]);
     await invocation.addRelatedHolons('Request' as RelationshipName, [request]);
-    return this.danceV2(invocation);
+    const response = await this.danceV2(invocation);
+    this.completedLoadSpace = affordingSpace;
+    return response;
+  }
+
+  /** Owns a fresh saved-state review context for this dedicated loader transaction. */
+  async openCommittedReview(): Promise<CommittedHolonsReview> {
+    if (!this.completedLoadSpace) throw new Error('Committed review requires a returned canonical load response');
+    const membership = await internalTransaction.getCommittedHolons(txIdFor(this));
+    return createCommittedHolonsReview(this.completedLoadSpace, membership);
   }
 
   async danceV2(invocation: HolonReference): Promise<HolonReference> {
