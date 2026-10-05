@@ -4,18 +4,20 @@ use holons_prelude::prelude::*;
 
 use crate::errors::ErrorWithContext;
 
-/// Completes the loader's staged inputs before Commit. Normalize all local defaults
-/// before copying any inherited default, so nursery order cannot affect native kinds.
+/// Runs the loader's final default-population and enum-materialization pass before Commit.
+/// Early descriptor attachment may already have populated some values. Normalize all
+/// local defaults before attempting further population, then materialize property values,
+/// including tokens copied by early attempts, so nursery order cannot affect native kinds.
 pub(crate) fn complete_loaded_values(
     context: &Arc<TransactionContext>,
-) -> Result<(usize, Vec<ErrorWithContext>), HolonError> {
+) -> Result<Vec<ErrorWithContext>, HolonError> {
     let staged = context.staged_references()?;
     if staged.is_empty() {
-        return Ok((0, Vec::new()));
+        return Ok(Vec::new());
     }
     let materializer = match EnumMaterializer::resolve(context) {
         Ok(materializer) => materializer,
-        Err(error) => return Ok((0, vec![ErrorWithContext { error, source_loader_key: None }])),
+        Err(error) => return Ok(vec![ErrorWithContext { error, source_loader_key: None }]),
     };
     let mut errors = Vec::new();
     for mut holon in staged.iter().cloned() {
@@ -24,23 +26,17 @@ pub(crate) fn complete_loaded_values(
         }
     }
     if !errors.is_empty() {
-        return Ok((0, errors));
+        return Ok(errors);
     }
-    let mut deferred_count = 0;
     for mut holon in staged {
-        let result = match holon.populate_defaults() {
-            Ok(CompletionOutcome::Completed) => materializer.materialize_properties(&mut holon),
-            Ok(CompletionOutcome::DeferredNoDescriptor) => {
-                deferred_count += 1;
-                Ok(())
-            }
-            Err(error) => Err(error),
-        };
+        let result = holon
+            .populate_defaults()
+            .and_then(|()| materializer.materialize_properties(&mut holon));
         if let Err(error) = result {
             errors.push(ErrorWithContext { error, source_loader_key: holon.key()? });
         }
     }
-    Ok((deferred_count, errors))
+    Ok(errors)
 }
 
 /// Loader-local interpretation of imported enum tokens after relationship resolution.
@@ -81,7 +77,14 @@ impl EnumMaterializer {
     /// Converts populated imported strings only when the effective property selects
     /// an enum family. Invalid token spelling remains intact for enum membership validation.
     fn materialize_properties(&self, holon: &mut StagedReference) -> Result<(), HolonError> {
-        for property in holon.available_properties()? {
+        let descriptor = match holon.holon_descriptor() {
+            Ok(descriptor) => descriptor,
+            // Undescribed holons have no contract to select native representations;
+            // Commit reports the missing descriptor.
+            Err(HolonError::MissingDescribedBy { .. }) => return Ok(()),
+            Err(error) => return Err(error),
+        };
+        for property in descriptor.instance_properties()? {
             let name = property.property_name()?;
             if let Some(BaseValue::StringValue(token)) = holon.property_value(&name)? {
                 if self.is_enum(&property)? {

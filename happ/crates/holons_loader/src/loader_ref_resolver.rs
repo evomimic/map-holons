@@ -759,7 +759,9 @@ impl LoaderRefResolver {
             return match write_targets.len() {
                 0 => Ok(0), // nothing to do (likely deduped earlier)
                 1 => {
-                    // Exactly one descriptor: attach it
+                    // Attachment may populate defaults from the contract already present,
+                    // including cloned saved edges on staged replacements. The final pass
+                    // in `complete_loaded_values` remains authoritative after assembly.
                     staged_source.with_descriptor(write_targets.remove(0))?;
                     Ok(1)
                 }

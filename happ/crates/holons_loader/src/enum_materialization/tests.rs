@@ -140,7 +140,7 @@ fn completion_materializes_imported_tokens_and_inherited_defaults_without_coerci
     relate(&mut subject, "DescribedBy", &owner)?;
     // Attaching DescribedBy may already have populated the inherited string default.
     for _ in 0..2 {
-        let (_, errors) = complete_loaded_values(&context)?;
+        let errors = complete_loaded_values(&context)?;
         assert!(errors.is_empty(), "{errors:?}");
         for (name, token) in [
             ("InheritedChoice", "Version"),
@@ -190,7 +190,7 @@ fn unresolved_value_type_is_a_completion_error_with_source_provenance() -> Resul
     let mut p = node(&context, "Broken.PropertyType", "Broken")?;
     relate(&mut p, "Extends", &property_root)?;
     p.with_property_value("DefaultValue", "Version")?;
-    let (_, errors) = complete_loaded_values(&context)?;
+    let errors = complete_loaded_values(&context)?;
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].source_loader_key, Some(MapString("Broken.PropertyType".into())));
     assert!(matches!(errors[0].error, HolonError::MissingRequiredRelationship { .. }));

@@ -248,20 +248,20 @@ impl HolonStagingBehavior for Nursery {
             }
         };
 
-        // Snapshot the persisted properties before cloning. `clone_holon` runs construction
-        // completion on the clone (see `TransactionContext::clone_holon`), so this is the
-        // last point at which the pre-completion state is observable.
+        // Snapshot the persisted properties before cloning. `clone_holon` attempts default
+        // population on the clone (see `TransactionContext::clone_holon`), so this comparison
+        // captures defaults added without changing the persisted source.
         let source_properties = current_version.into_model()?.property_map;
         // Clone through the reference layer so cached persisted relationships are preserved.
         let cloned_transient =
             self.require_context()?.clone_holon(&HolonReference::Smart(current_version.clone()))?;
         let clone_model = cloned_transient.raw_holon_clone_model()?;
-        let completion_changed_properties = clone_model.properties != source_properties;
+        let defaults_changed_properties = clone_model.properties != source_properties;
         let mut staged_holon =
             StagedHolon::new_for_update_from_clone_model(clone_model, source_local_id)?;
         // Defaults added to the clone are explicit content changes. A graph-only
         // commit would reuse the saved node and silently discard those additions.
-        if completion_changed_properties {
+        if defaults_changed_properties {
             staged_holon.note_property_mutation()?;
         }
 

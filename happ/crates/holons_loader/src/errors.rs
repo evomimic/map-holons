@@ -104,8 +104,10 @@ pub fn make_load_error_holons(
 ///
 /// This function creates a new transient holon and populates it with the
 /// standard error fields (e.g., `error_type`, `error_message`).
-/// If a `descriptor` is provided, it is attached via `with_descriptor()` to identify
-/// the holon's type (typically `HolonErrorType`). If `descriptor` is `None`, the holon
+/// If a `descriptor` is provided, it is attached by authoring `DescribedBy` directly
+/// to identify the holon's type (typically `HolonErrorType`). No defaults are
+/// attempted: diagnostics must remain available even when the descriptor belongs
+/// to the malformed graph being reported. If `descriptor` is `None`, the holon
 /// is left untyped but still contains all relevant error details.
 ///
 /// # Arguments
@@ -119,7 +121,7 @@ pub fn make_load_error_holons(
 ///
 /// # Behavior
 /// - Always calls `create_empty_error_holon()` to allocate a new transient holon.
-/// - Applies `with_descriptor()` only if a descriptor is provided.
+/// - Authors `DescribedBy` without default population if a descriptor is provided.
 /// - Uses `populate_error_fields()` to fill in diagnostic fields.
 ///
 /// Use this helper to create both typed and untyped error holons from a single entry point.
@@ -130,7 +132,8 @@ pub fn make_error_holon(
 ) -> Result<TransientReference, HolonError> {
     let mut transient_reference = create_empty_error_holon(context)?;
     if let Some(desc) = descriptor {
-        transient_reference.with_descriptor(desc)?;
+        transient_reference
+            .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![desc])?;
     }
     populate_error_fields(&mut transient_reference, err)?;
     Ok(transient_reference)
