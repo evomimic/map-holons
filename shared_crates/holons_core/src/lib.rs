@@ -35,9 +35,9 @@ pub use descriptors::{
     UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind,
 };
 pub use reference_layer::{
-    assert_reference_transaction_compatible, CompletionOutcome, Divergence, EquivalenceOutcome,
-    EquivalenceResolver, HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior,
-    HolonStagingBehavior, NoOpResolver, NodeResolution, ProspectiveIdentity, ReadableHolon,
-    SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
+    assert_reference_transaction_compatible, Divergence, EquivalenceOutcome, EquivalenceResolver,
+    HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
+    NoOpResolver, NodeResolution, ProspectiveIdentity, ReadableHolon, SmartReference,
+    StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
 // pub use utils::*;
