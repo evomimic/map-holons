@@ -18,7 +18,7 @@ function fixture() {
   let submit!: (content: any) => void;
   const unmount = vi.fn();
   const mount = vi.fn((_host, _discovery, callback) => { submit = callback; return { dispose: unmount, resume: vi.fn() }; });
-  const binding = { subject: {} as never, dance: {} as never, occurrence: document.createElement('div'), label: 'Load' };
+  const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence: document.createElement('div'), label: 'Load' };
   const dialog = new LoadHolonsDialog(binding, client as never, source as never, mount);
   dialogs.push(dialog);
   return { dialog, binding, transaction, client, source, mount, unmount, submit: () => submit({ files_to_load: [] }) };

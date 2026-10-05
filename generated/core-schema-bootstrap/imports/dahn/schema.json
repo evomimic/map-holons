@@ -1848,6 +1848,17 @@
           ]
         },
         {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "LoadHolons.DiagnosticsSlot"
+            },
+            {
+              "$ref": "LoadHolons.CommittedHolonsSlot"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -1866,11 +1877,57 @@
       ]
     },
     {
+      "key": "LoadHolons.DiagnosticsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolons.CommittedHolonsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "LoadHolonsActionTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:3807fa07cd0134aa26f019bdec264b51d7dfeab1a7fcb4eb204ad0feb13dc5b8",
+        "VisualizerArtifactDigest": "sha256:89f2c4d9e1941dc5527d3461e7a9c44a477a54a0722f8864230edd7631187c50",
         "VisualizerImplementationKey": "dahn.load-holons-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

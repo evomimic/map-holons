@@ -188,7 +188,7 @@ export async function realizeNode(
           if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Action is not an HTMLElement constructor');
           const tag = defineCustomElementOnce('map-selected-action', implementation as CustomElementConstructor);
           const child = document.createElement(tag) as VisualizerElement;
-          const activation = new ActionActivation({ subject, dance: action.dance, occurrence: child, label: action.label });
+          const activation = new ActionActivation({ subject, dance: action.dance, visualizer: selected.selected, occurrence: child, label: action.label });
           actionActivations.push(activation);
           child.setContext({ target: { reference: subject }, holon: view, actions: [], theme, canvas, actionActivation: activation, actionInteractions });
           return child;

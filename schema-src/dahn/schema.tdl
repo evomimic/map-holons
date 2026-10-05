@@ -567,8 +567,23 @@ instance UnsupportedActionTypeScript.VisualizerImplementation {
 instance LoadHolons.ActionVisualizer {
   type ActionVisualizer.HolonType
   relationships {
+    HasSlot -> [LoadHolons.DiagnosticsSlot, LoadHolons.CommittedHolonsSlot]
     ApplicableToType -> LoadHolons.DanceType
     ImplementedBy -> LoadHolonsActionTypeScript.VisualizerImplementation
+  }
+}
+
+instance LoadHolons.DiagnosticsSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> CollectionVisualizer.HolonType
+  }
+}
+
+instance LoadHolons.CommittedHolonsSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> CollectionVisualizer.HolonType
   }
 }
 
@@ -576,7 +591,7 @@ instance LoadHolonsActionTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-action"
-  VisualizerArtifactDigest "sha256:3807fa07cd0134aa26f019bdec264b51d7dfeab1a7fcb4eb204ad0feb13dc5b8"
+  VisualizerArtifactDigest "sha256:89f2c4d9e1941dc5527d3461e7a9c44a477a54a0722f8864230edd7631187c50"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

@@ -83,6 +83,29 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let source = unrelated.mutation().new_holon(Some("unrelated-edit".into())).unwrap();
     let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
 
+    // Collection implementations are supplied by the Space Navigator package, not Core Schema.
+    let package_context = new_context(&runtime).await;
+    let MapResult::Reference(package_response) = command(
+        &runtime,
+        &package_context,
+        TransactionAction::LoadHolons {
+            content_set: ContentSet {
+                files_to_load: vec![FileData {
+                    filename: "space-navigator/schema.json".into(),
+                    raw_contents: include_str!(
+                        "../../../generated/house-troupe/space-navigator/imports/schema.json"
+                    )
+                    .into(),
+                }],
+            },
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("package response")
+    };
+    assert_eq!(string(&package_response, "LoadCommitStatus"), "Complete");
+    command(&runtime, &package_context, TransactionAction::Dispose).await.unwrap();
     let context = new_context(&runtime).await;
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
@@ -134,6 +157,43 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     }
     // Assert the authored forward edge and its committed inverse at the consuming seam.
     let load_visualizer = saved("LoadHolons.ActionVisualizer");
+    for slot_key in ["LoadHolons.DiagnosticsSlot", "LoadHolons.CommittedHolonsSlot"] {
+        let slot = saved(slot_key);
+        assert!(load_visualizer
+            .related_holons("HasSlot")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&slot));
+        assert!(slot
+            .related_holons("SlotForVisualizer")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&load_visualizer));
+        let MapResult::VisualizerSelection(selection) = command(
+            &runtime,
+            &context,
+            TransactionAction::SelectCollectionVisualizer {
+                collection: map_commands_contract::DescribedHolonCollection {
+                    members: holons_core::HolonCollection::new_transient(),
+                    element_type: saved("DanceImplementation.HolonType"),
+                },
+                parent_visualizer: load_visualizer.clone(),
+                slot,
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("collection selection")
+        };
+        assert_eq!(
+            selection.selected.holon_id().unwrap(),
+            saved("TableCollectionVisualizer.CollectionVisualizer").holon_id().unwrap()
+        );
+    }
     let load_dance = saved("LoadHolons.DanceType");
     assert!(load_visualizer
         .related_holons("ApplicableToType")

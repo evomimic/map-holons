@@ -4,6 +4,8 @@ import type { HolonReference } from '../deps';
 export interface ActionBinding {
   readonly subject: HolonReference;
   readonly dance: HolonReference;
+  /** Selected presentation owner, retained for owned result-slot composition. */
+  readonly visualizer: HolonReference;
   readonly occurrence: HTMLElement;
   readonly label: string;
 }

@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { ActionActivation, type ActionInteraction } from './action-activation';
 
 it('uses the same lifetime for a second action and preserves captured identity across focus changes', async () => {
-  const binding = { subject: {} as never, dance: {} as never, occurrence: document.createElement('div'), label: 'Test action' };
+  const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence: document.createElement('div'), label: 'Test action' };
   let finish!: () => void;
   let pending = true;
   const interaction: ActionInteraction = { canDismiss: () => !pending, focus: vi.fn(), dispose: vi.fn(async () => finish()), closed: new Promise(resolve => { finish = resolve; }) };

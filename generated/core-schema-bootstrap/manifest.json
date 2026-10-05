@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "725475cb5184d4e2b46de26586b40e573206a4799ecc4418a6cd7cf4adbbb6b5"
+      "sha256": "ff6554d1f0b3bd11eb1d29d29ddf6c3725efe373e9679cf12040569ab883a2cd"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -2364,12 +2364,20 @@
       "type": "MetaCommandType.MetaHolonType"
     },
     {
+      "key": "LoadHolons.CommittedHolonsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "LoadHolons.DanceImplementation",
       "type": "DanceImplementation.HolonType"
     },
     {
       "key": "LoadHolons.DanceType",
       "type": "MetaDanceType.MetaHolonType"
+    },
+    {
+      "key": "LoadHolons.DiagnosticsSlot",
+      "type": "VisualizerSlot.HolonType"
     },
     {
       "key": "LoadHolonsActionTypeScript.VisualizerImplementation",

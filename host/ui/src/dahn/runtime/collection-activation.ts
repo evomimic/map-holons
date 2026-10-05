@@ -2,10 +2,10 @@ import { NavigationProfile } from './navigation-profile';
 import { destinationPaint } from './destination-paint';
 import { semanticWork } from './semantic-work';
 import type { NodeRelationshipDiscovery } from './relationship-discovery';
-import { INSPECT_HOLON_EVENT, type CollectionInteractionElement, type InspectHolonIntent } from '../contracts/visualizers';
+import { INSPECT_HOLON_EVENT, type InspectHolonIntent } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
-import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
-import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
+import type { HolonReference, MapTransaction } from '../deps';
+import { realizeCollection, type CollectionElement } from './realize-collection';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
 export type CollectionState = 'unresolved' | 'checking' | 'empty' | 'loading' | 'loaded-empty' | 'loaded' | 'error';
@@ -21,10 +21,6 @@ export interface CollectionActivation {
   close?(affordance: CollectionAffordance): void;
   dispose(): void;
 }
-
-type CollectionElement = CollectionInteractionElement & {
-  setCollection(collection: DescribedHolonCollection, title: string, ordering: { isOrdered: boolean }): Promise<void>;
-};
 
 /** Owns one Node occurrence's lazy collection lifecycle, never its layout. */
 export class NodeCollectionActivation implements CollectionActivation {
@@ -156,18 +152,12 @@ export class NodeCollectionActivation implements CollectionActivation {
             stage = 'Visualizer selection';
             const slot = await this.transaction.getSavedHolonByBaseKey(slotKey);
             if (slot === null) throw new Error('The requested Collections slot is unavailable');
-            const selection = await this.transaction.selectCollectionVisualizer(collection, this.parentVisualizer, slot);
-            if (!current()) return;
-            profile?.next('collection artifact materialization');
-            stage = 'Artifact materialization';
-            const implementation = await this.materialized.realize(selection.selected);
-            if (!current()) return;
-            if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
-              throw new Error('Selected Collection implementation is not an HTMLElement constructor');
-            }
-            const tag = defineCustomElementOnce('map-selected-collection', implementation as CustomElementConstructor);
-            const element = document.createElement(tag) as CollectionElement;
-            if (typeof element.setCollection !== 'function') throw new Error('Selected implementation has no described-collection input');
+            const element = await realizeCollection(this.transaction, collection, this.parentVisualizer, slot,
+              this.materialized, current, name => {
+                stage = name;
+                if (name === 'Artifact materialization') profile?.next('collection artifact materialization');
+              });
+            if (!element) return;
             profile?.next('collection ordering');
             stage = 'Property retrieval / presentation';
             const isOrdered = await affordance.relationship.descriptor.isOrdered();
