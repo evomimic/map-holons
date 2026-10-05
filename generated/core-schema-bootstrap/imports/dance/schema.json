@@ -5442,6 +5442,66 @@
       ]
     },
     {
+      "key": "LoadDiagnostic.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadDiagnostic",
+        "TypeNamePlural": "LoadDiagnostics",
+        "DisplayName": "Load Diagnostic",
+        "DisplayNamePlural": "Load Diagnostics",
+        "Description": "Action-owned diagnostic display values; real subject references remain separately bound to the originating load transaction."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Message.PropertyType"
+            },
+            {
+              "$ref": "Filename.PropertyType"
+            },
+            {
+              "$ref": "LoaderHolonKey.PropertyType"
+            },
+            {
+              "$ref": "StartUtf8ByteOffset.PropertyType"
+            },
+            {
+              "$ref": "ViolationKind.PropertyType"
+            },
+            {
+              "$ref": "Severity.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "LoadValidationSource.Projection",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {

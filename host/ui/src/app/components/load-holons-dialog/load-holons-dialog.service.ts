@@ -1,3 +1,5 @@
+import { LoadDiagnosticPresentation, type DiagnosticPresentation, type MountDiagnostics } from './load-diagnostic-presentation';
+import { readLoadDiagnostics, parserLoadDiagnostics } from './load-diagnostics';
 import { ApplicationRef, EnvironmentInjector, Injectable, createComponent, inject } from '@angular/core';
 import { MapClient, type ContentSet, type HolonReference, type MapTransaction } from '../../../dahn/deps/map-sdk';
 import type { ActionBinding, ActionInteraction, ActionInteractions } from '../../../dahn/runtime/action-activation';
@@ -42,7 +44,10 @@ export class LoadHolonsDialog implements ActionInteraction {
   private readonly status = document.createElement('p');
   private readonly closeButton = document.createElement('button');
   private readonly initializing: Promise<void>;
+  private readonly themeObserver = new MutationObserver(() => this.refreshTheme());
+  private themeProperties = new Set<string>();
   private terminal = false;
+  private diagnostics?: DiagnosticPresentation;
   private transaction?: MapTransaction;
   private target?: HolonReference;
   /** Keep the bound response available for subsequent result presentation until dismissal. */
@@ -59,7 +64,8 @@ export class LoadHolonsDialog implements ActionInteraction {
   readonly closed = new Promise<void>(resolve => { this.finish = resolve; });
 
   constructor(private readonly binding: ActionBinding, private readonly client: MapClient,
-    private readonly sources: NativeLoaderSourceAdapter, private readonly mountReview: MountReview) {
+    private readonly sources: NativeLoaderSourceAdapter, private readonly mountReview: MountReview,
+    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read) => new LoadDiagnosticPresentation(binding, client, read)) {
     this.dialog.setAttribute('aria-label', binding.label);
     this.dialog.tabIndex = -1;
     this.dialog.className = 'load-holons-dialog';
@@ -76,16 +82,32 @@ export class LoadHolonsDialog implements ActionInteraction {
     header.append(heading, this.status);
     const footer = document.createElement('footer'); footer.className = 'load-holons-footer'; footer.append(this.closeButton);
     this.dialog.append(header, this.content, footer);
-    const tokens = getComputedStyle(binding.occurrence);
-    for (let index = 0; index < tokens.length; index++) {
-      const name = tokens.item(index);
-      if (name.startsWith('--dahn-')) this.dialog.style.setProperty(name, tokens.getPropertyValue(name));
+    this.refreshTheme();
+    // Body-mounted dialogs cannot inherit tokens from their invoking Canvas.
+    // Observe its ancestry so theme changes preserve local occurrence overrides.
+    for (let source: HTMLElement | null = binding.occurrence; source; source = source.parentElement) {
+      this.themeObserver.observe(source, { attributes: true, attributeFilter: ['style', 'class'] });
     }
     document.body.append(this.dialog);
     // A modeless popup preserves navigation outside the owned presentation.
     this.dialog.show(); this.dialog.style.display = 'flex'; this.dialog.style.flexDirection = 'column';
     this.dialog.focus();
     this.initializing = this.initialize();
+  }
+
+  private refreshTheme(): void {
+    const tokens = getComputedStyle(this.binding.occurrence);
+    const current = new Set<string>();
+    for (let index = 0; index < tokens.length; index++) {
+      const name = tokens.item(index);
+      if (!name.startsWith('--dahn-')) continue;
+      current.add(name);
+      this.dialog.style.setProperty(name, tokens.getPropertyValue(name));
+    }
+    for (const name of this.themeProperties) {
+      if (!current.has(name)) this.dialog.style.removeProperty(name);
+    }
+    this.themeProperties = current;
   }
 
   focus(): void { this.dialog.focus(); }
@@ -145,6 +167,8 @@ export class LoadHolonsDialog implements ActionInteraction {
     this.busy = true; this.closeButton.disabled = true;
     this.started = Date.now();
     // Detach rather than destroy review so preparation failure preserves selection.
+    const previousDiagnostics = this.diagnostics; this.diagnostics = undefined;
+    previousDiagnostics?.element.remove();
     const reviewNodes = Array.from(this.content.childNodes);
     const pending = document.createElement('section'); pending.className = 'load-holons-pending';
     pending.setAttribute('aria-busy', 'true');
@@ -163,6 +187,16 @@ export class LoadHolonsDialog implements ActionInteraction {
     update(); this.elapsed = setInterval(update, 1000);
     let invoked = false;
     try {
+      if (previousDiagnostics) {
+        try { await previousDiagnostics.dispose(); }
+        catch (error) {
+          this.diagnostics = previousDiagnostics;
+          this.content.replaceChildren(previousDiagnostics.element, ...reviewNodes);
+          this.mountedReview?.resume();
+          phase = `Unable to release previous diagnostics: ${loaderFailureDetail(error)}`;
+          return;
+        }
+      }
       const request = await this.transaction.prepareHolons(content);
       if (!this.current(generation)) return;
       phase = 'Executing Load Holons'; update(); invoked = true;
@@ -181,17 +215,18 @@ export class LoadHolonsDialog implements ActionInteraction {
         const count = document.createElement('dd'); count.textContent = value;
         const metric = document.createElement('div'); metric.append(label, count); counts.append(metric);
       }
-      summary.append(heading, details, counts);
-      if (result.loadErrors.length || result.readFailures.length) {
-        const diagnostics = document.createElement('details');
-        const caption = document.createElement('summary'); caption.textContent = 'Load diagnostics';
-        const list = document.createElement('ul');
-        for (const message of [...result.loadErrors.map(error => `${error.filename} · ${error.loaderHolonKey}: ${error.errorType} — ${error.errorMessage} (byte ${error.startUtf8ByteOffset})`), ...result.readFailures]) {
-          const item = document.createElement('li'); item.textContent = message; list.append(item);
-        }
-        diagnostics.append(caption, list); summary.append(diagnostics);
+      summary.append(heading, details);
+      if (result.loadCommitStatus === 'Complete') summary.append(counts);
+      else {
+        const metrics = document.createElement('details');
+        const caption = document.createElement('summary'); caption.textContent = 'Load summary';
+        metrics.append(caption, counts); summary.append(metrics);
       }
-      this.content.replaceChildren(summary);
+      if (result.readFailures.length) {
+        const failures = document.createElement('p'); failures.textContent = result.readFailures.join(' · '); summary.append(failures);
+      }
+      this.diagnostics = this.mountDiagnostics(this.binding, this.client, () => readLoadDiagnostics(response));
+      this.content.replaceChildren(summary, this.diagnostics.element);
       this.closeButton.parentElement!.hidden = false;
       this.closeButton.textContent = 'Close';
       this.terminal = true; phase = 'Finished';
@@ -200,6 +235,8 @@ export class LoadHolonsDialog implements ActionInteraction {
       if (!invoked) {
         this.content.replaceChildren(...reviewNodes);
         this.mountedReview?.resume();
+        this.diagnostics = this.mountDiagnostics(this.binding, this.client, async () => parserLoadDiagnostics(error));
+        this.content.prepend(this.diagnostics.element);
         this.dialog.focus();
         phase = `Preparation failed: ${loaderFailureDetail(error)}`;
       } else {
@@ -222,7 +259,9 @@ export class LoadHolonsDialog implements ActionInteraction {
     this.disposing = true; ++this.generation;
     try {
       await this.initializing;
+      await this.diagnostics?.dispose(); this.diagnostics = undefined;
       await this.transaction?.dispose();
+      this.themeObserver.disconnect();
       this.disposed = true; ++this.generation;
       this.response = undefined; this.target = undefined; this.transaction = undefined;
       clearInterval(this.elapsed); this.mountedReview?.dispose(); this.mountedReview = undefined;

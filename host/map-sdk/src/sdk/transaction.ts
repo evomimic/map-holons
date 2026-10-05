@@ -114,6 +114,11 @@ export class MapTransaction {
     return createHolonReference(txIdFor(this), reference);
   }
 
+  /** Rebind a persisted public handle without carrying transaction-local state. */
+  bindSavedReference(reference: HolonReference): HolonReference {
+    return this.bindPersistedReference(unwrapHolonReference(reference));
+  }
+
   /** Release retained evidence. Runtime refuses disposal while commands are executing. */
   async dispose(): Promise<void> { await internalTransaction.dispose(txIdFor(this)); }
 
@@ -410,6 +415,19 @@ export class MapTransaction {
     const txId = txIdFor(this);
     const wire = await internalTransaction.selectCollectionVisualizer(txId, {
       collection: unwrapDescribedCollection(collection), parent_visualizer: unwrapHolonReference(parentVisualizer), slot: unwrapHolonReference(slot),
+    });
+    return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
+  }
+
+  /** Select for action-owned value rows using their declared projection type.
+   * The empty member envelope is a type witness, not the projected row membership.
+   * Values and activation identities remain owned by the presentation producer.
+   */
+  async selectProjectedCollectionVisualizer(elementType: HolonReference, parentVisualizer: HolonReference, slot: HolonReference): Promise<VisualizerSelection> {
+    const txId = txIdFor(this);
+    const wire = await internalTransaction.selectCollectionVisualizer(txId, {
+      collection: { element_type: unwrapHolonReference(elementType), members: { state: 'Fetched', members: [], keyed_index: {} } },
+      parent_visualizer: unwrapHolonReference(parentVisualizer), slot: unwrapHolonReference(slot),
     });
     return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
   }

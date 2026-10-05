@@ -37,6 +37,10 @@ export interface TableColumn {
 }
 
 interface TablePresentationBase {
+  /** Producer-supplied stable permutation; explicit user sorting takes precedence. */
+  defaultRowOrder?: readonly TableRowId[];
+  defaultOrderLabel?: string;
+  missingValueLabel?: string;
   /** Descriptor-authorized table default; absent means supplied order. */
   defaultSortColumnId?: TableColumnId;
   /** Ordered relationship whose occurrence positions are not yet available. */
@@ -57,6 +61,11 @@ export interface HolonPropertyMapTablePresentation extends TablePresentationBase
   kind: 'holon-property-map';
 }
 
+/** Action-owned value records; row activation is resolved by the producer. */
+export interface RecordTablePresentation extends TablePresentationBase {
+  kind: 'record';
+}
+
 /**
  * Input to the Table Collection Visualizer.
  *
@@ -66,4 +75,5 @@ export interface HolonPropertyMapTablePresentation extends TablePresentationBase
  */
 export type TablePresentation =
   | ScalarTablePresentation
-  | HolonPropertyMapTablePresentation;
+  | HolonPropertyMapTablePresentation
+  | RecordTablePresentation;

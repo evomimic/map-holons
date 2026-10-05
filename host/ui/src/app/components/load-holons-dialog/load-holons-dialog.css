@@ -39,3 +39,10 @@
 .load-holons-spinner { display: inline-block; width: 3rem; height: 3rem; border: 4px solid var(--dahn-slot-border-color); border-top-color: var(--dahn-focus-ring-color, currentColor); border-radius: 50%; animation: load-holons-spin 1s linear infinite; }
 @keyframes load-holons-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .load-holons-spinner { animation: none; } }
+
+.load-diagnostics { padding: 0 1.5rem 1.5rem; min-width: 0; }
+.load-diagnostics > div > section { height: 22rem !important; max-height: 50vh; margin-top: .75rem; }
+.load-diagnostic-detail { border-top: 1px solid var(--dahn-slot-border-color); margin-top: 1rem; padding-top: .5rem; overflow-wrap: anywhere; }
+.load-diagnostic-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8125rem; }
+.load-diagnostic-detail dt { font-weight: 600; margin-top: .5rem; }
+.load-diagnostic-detail dd { margin-left: 0; }

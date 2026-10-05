@@ -1545,6 +1545,20 @@ inverse relationship (CommitResponse.Projection)-[CommitResponseForLoad]->(Holon
   }
 }
 
+holon LoadDiagnostic.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Action-owned diagnostic display values; real subject references remain separately bound to the originating load transaction."
+    display_name: "Load Diagnostic"
+    display_plural: "Load Diagnostics"
+    plural: "LoadDiagnostics"
+  }
+  relationships {
+    InstanceProperties -> [Message.PropertyType, Filename.PropertyType, LoaderHolonKey.PropertyType, StartUtf8ByteOffset.PropertyType, ViolationKind.PropertyType, Severity.PropertyType]
+  }
+}
+
 holon LoadValidationSource.Projection {
   type MetaHolonType.MetaTypeDescriptor
   extends Projection.HolonType

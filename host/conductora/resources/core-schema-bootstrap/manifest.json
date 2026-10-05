@@ -95,7 +95,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "4818edf682e1901076376d54a7d2c7bca82da293218736670f8e4ec65d4c612d"
+      "sha256": "a3f05da2be69de7f40868c75e1ca818e68a533c72bddf1862b126284d8f029ed"
     },
     {
       "path": "imports/dancer/schema.json",
@@ -2378,6 +2378,10 @@
     {
       "key": "LoadCommitStatus.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadDiagnostic.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "LoadHolons.ActionVisualizer",

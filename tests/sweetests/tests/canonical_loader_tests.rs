@@ -179,7 +179,11 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             TransactionAction::SelectCollectionVisualizer {
                 collection: map_commands_contract::DescribedHolonCollection {
                     members: holons_core::HolonCollection::new_transient(),
-                    element_type: saved("DanceImplementation.HolonType"),
+                    element_type: saved(if slot_key == "LoadHolons.DiagnosticsSlot" {
+                        "LoadDiagnostic.Projection"
+                    } else {
+                        "DanceImplementation.HolonType"
+                    }),
                 },
                 parent_visualizer: load_visualizer.clone(),
                 slot,

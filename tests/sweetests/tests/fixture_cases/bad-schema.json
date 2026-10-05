@@ -1,0 +1,20 @@
+{
+  "holons": [
+    {
+      "key": "Rejected.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "Rejected",
+        "Undeclared": true
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": {
+            "$ref": "LoadHolons.DanceType"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -2,20 +2,26 @@ import type { DescribedHolonCollection, HolonReference, MapTransaction } from '.
 import type { DahnTheme } from '../contracts/themes';
 import type { ActionBinding } from './action-activation';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
-import { realizeCollection, type CollectionElement } from './realize-collection';
+import type { TablePresentation } from '../contracts/table-presentation';
+import { realizeProjectedCollection, realizeCollection, type CollectionElement } from './realize-collection';
 import { semanticWork } from './semantic-work';
 
-export interface ActionResultCollection {
+interface ActionResultBase {
   /** Composition role declared by the selected Action Visualizer implementation. */
   role: string;
   label: string;
-  collection: DescribedHolonCollection;
+
   transaction: MapTransaction;
   /** Parent and runtime must be bound to this collection's transaction. */
   parentVisualizer: HolonReference;
   materialized: MaterializedVisualizerRuntime;
   isOrdered: boolean;
 }
+
+export type ActionResultCollection = ActionResultBase & (
+  { collection: DescribedHolonCollection; projection?: never } |
+  { collection?: never; projection: { elementType: HolonReference; presentation: TablePresentation; activate(id: string): void } }
+);
 
 export interface ActionResultInspection {
   reference: HolonReference;
@@ -36,7 +42,7 @@ export class ActionResultCollections {
   private disposed = false;
 
   constructor(private readonly origin: ActionBinding, results: readonly ActionResultCollection[],
-    theme: DahnTheme, private readonly inspect: (intent: ActionResultInspection) => void) {
+    theme: Pick<DahnTheme, 'cssCustomProperties'>, private readonly inspect: (intent: ActionResultInspection) => void) {
     if (new Set(results.map(result => result.role)).size !== results.length) throw new Error('Duplicate result roles');
     this.element.setAttribute('aria-label', 'Action results');
     Object.assign(this.element.style, { display: 'flex', flexDirection: 'column', minHeight: '0', height: '100%', overflow: 'hidden' });
@@ -49,7 +55,8 @@ export class ActionResultCollections {
       const panel = document.createElement('div'); panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-label', binding.label);
       const id = `action-result-${crypto.randomUUID()}`; panel.id = id; tab.setAttribute('aria-controls', id);
       tab.id = `${id}-tab`; panel.setAttribute('aria-labelledby', tab.id);
-      Object.assign(panel.style, { minHeight: '0', overflow: 'auto', flex: '1 1 auto' });
+      // Collection visualizers need a flex parent to receive the panel's available height.
+      Object.assign(panel.style, { display: 'flex', flexDirection: 'column', minHeight: '0', minWidth: '0', overflow: 'auto', flex: '1 1 auto' });
       tab.addEventListener('click', () => this.show(binding.role));
       tab.addEventListener('keydown', event => {
         const roles = [...this.occurrences.keys()]; const index = roles.indexOf(binding.role);
@@ -61,7 +68,7 @@ export class ActionResultCollections {
       const occurrence = { binding, tab, panel, generation: 0, loaded: false, content: undefined as CollectionElement | undefined, unsubscribe: () => {} };
       occurrence.unsubscribe = semanticWork(binding.transaction).onInvalidate(() => {
         ++occurrence.generation; occurrence.loaded = false;
-        occurrence.content?.setInspectHolonHandler(null); occurrence.content = undefined;
+        occurrence.content?.setInspectHolonHandler(null); occurrence.content?.setActivateRowHandler?.(null); occurrence.content = undefined;
         panel.textContent = 'Semantic context changed. Select the collection again.';
       });
       this.occurrences.set(binding.role, occurrence); tabs.append(tab); this.element.append(panel);
@@ -75,7 +82,9 @@ export class ActionResultCollections {
     if (!occurrence) throw new Error(`Unknown result role ${role}`);
     this.active = role;
     for (const [key, item] of this.occurrences) {
-      item.panel.hidden = key !== role; item.tab.setAttribute('aria-selected', String(key === role));
+      item.panel.hidden = key !== role;
+      item.panel.style.display = key === role ? 'flex' : 'none';
+      item.tab.setAttribute('aria-selected', String(key === role));
       item.tab.tabIndex = key === role ? 0 : -1;
     }
     if (occurrence.loaded) return;
@@ -91,11 +100,19 @@ export class ActionResultCollections {
         if (!current()) return;
         const slot = await binding.materialized.slot(binding.parentVisualizer, binding.role);
         if (!current()) return;
-        const element = await realizeCollection(binding.transaction, binding.collection, binding.parentVisualizer,
-          slot, binding.materialized, current, name => { stage = name; });
+        const element = binding.projection
+          ? await realizeProjectedCollection(binding.transaction, binding.projection.elementType, binding.parentVisualizer,
+            slot, binding.materialized, current, name => { stage = name; })
+          : await realizeCollection(binding.transaction, binding.collection, binding.parentVisualizer,
+            slot, binding.materialized, current, name => { stage = name; });
         if (!element || !current()) return;
         stage = 'Collection presentation';
-        await element.setCollection(binding.collection, binding.label, { isOrdered: binding.isOrdered });
+        if (binding.projection) {
+          element.setProjection!(binding.projection.presentation);
+          element.setActivateRowHandler!(id => {
+            if (current() && this.active === role && element.isConnected) binding.projection!.activate(id);
+          });
+        } else await element.setCollection(binding.collection, binding.label, { isOrdered: binding.isOrdered });
         if (!current()) return;
         element.setInspectHolonHandler(reference => {
           if (current() && this.active === role && element.isConnected) this.inspect({ reference, source: element, result: binding, origin: this.origin });
@@ -114,7 +131,7 @@ export class ActionResultCollections {
   dispose(): void {
     this.disposed = true;
     for (const occurrence of this.occurrences.values()) {
-      ++occurrence.generation; occurrence.unsubscribe(); occurrence.content?.setInspectHolonHandler(null);
+      ++occurrence.generation; occurrence.unsubscribe(); occurrence.content?.setInspectHolonHandler(null); occurrence.content?.setActivateRowHandler?.(null);
     }
     this.occurrences.clear(); this.element.remove();
   }

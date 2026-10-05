@@ -10,7 +10,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () { this.open = false; };
 });
 afterEach(async () => { for (const dialog of dialogs) await dialog.dispose(); document.body.replaceChildren(); vi.restoreAllMocks(); });
-function fixture() {
+function fixture(occurrence = document.createElement('div')) {
   const target = {};
   const transaction = { bindLoadTarget: vi.fn(async () => target), dispose: vi.fn(async () => {}), prepareHolons: vi.fn(async () => ({})), invokeLoadHolons: vi.fn() };
   const client = { beginTransaction: vi.fn(async () => transaction) };
@@ -18,10 +18,11 @@ function fixture() {
   let submit!: (content: any) => void;
   const unmount = vi.fn();
   const mount = vi.fn((_host, _discovery, callback) => { _host.textContent = 'Retained review selection'; submit = callback; return { dispose: unmount, resume: vi.fn() }; });
-  const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence: document.createElement('div'), label: 'Load' };
-  const dialog = new LoadHolonsDialog(binding, client as never, source as never, mount);
+  const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence, label: 'Load' };
+  const mountDiagnostics = vi.fn((_binding, _client, _read) => ({ element: document.createElement('section'), dispose: vi.fn(async () => {}) }));
+  const dialog = new LoadHolonsDialog(binding, client as never, source as never, mount, mountDiagnostics);
   dialogs.push(dialog);
-  return { dialog, binding, transaction, client, source, mount, unmount, submit: () => submit({ files_to_load: [{ filename: 'sample.json', raw_contents: '{}' }] }) };
+  return { dialog, binding, transaction, client, source, mount, mountDiagnostics, unmount, submit: () => submit({ files_to_load: [{ filename: 'sample.json', raw_contents: '{}' }] }) };
 }
 async function choose(f: ReturnType<typeof fixture>) {
   await tick();
@@ -91,7 +92,7 @@ it('replaces review immediately and restores the same review on preparation fail
   expect(document.querySelector('.load-holons-footer')?.hasAttribute('hidden')).toBe(true);
   expect(f.unmount).not.toHaveBeenCalled();
   reject(new Error('Invalid source')); await tick();
-  expect(document.querySelector('.load-holons-content')!.firstChild).toBe(review);
+  expect(document.querySelector('.load-holons-content')!.contains(review)).toBe(true);
   expect(document.body.textContent).toContain('Preparation failed: Invalid source');
   expect(document.querySelector('.load-holons-pending')).toBeNull();
   expect(f.mount.mock.results[0].value.resume).toHaveBeenCalledOnce();
@@ -119,4 +120,34 @@ it('updates elapsed time without repeating live phase announcements and clears t
     await vi.advanceTimersByTimeAsync(0);
     expect(vi.getTimerCount()).toBe(0);
   } finally { vi.useRealTimers(); }
+});
+
+it('releases the previous diagnostic view before retrying preparation and before releasing the load transaction', async () => {
+  const f = fixture(); f.transaction.prepareHolons.mockRejectedValueOnce(new Error('parser failure'));
+  await choose(f); f.submit(); await tick();
+  const diagnostics = f.mountDiagnostics.mock.results[0].value;
+  expect(document.querySelector('.load-holons-content')!.contains(diagnostics.element)).toBe(true);
+  f.transaction.invokeLoadHolons.mockRejectedValueOnce(new Error('transport failure'));
+  f.submit(); await tick();
+  expect(diagnostics.dispose).toHaveBeenCalledOnce();
+  expect(diagnostics.dispose.mock.invocationCallOrder[0]).toBeLessThan(f.transaction.prepareHolons.mock.invocationCallOrder[1]);
+  await f.dialog.dispose();
+  expect(diagnostics.dispose.mock.invocationCallOrder[0]).toBeLessThan(f.transaction.dispose.mock.invocationCallOrder[0]);
+});
+
+it('refreshes an open dialog when theme tokens change and releases observation on close', async () => {
+  const occurrence = document.createElement('div'); document.body.append(occurrence);
+  occurrence.style.setProperty('--dahn-canvas-text-color', 'red');
+  occurrence.style.setProperty('--dahn-focus-ring-color', 'blue');
+  const f = fixture(occurrence); await tick();
+  const element = document.querySelector('dialog')!;
+  expect(element.style.getPropertyValue('--dahn-canvas-text-color')).toBe('red');
+  occurrence.style.setProperty('--dahn-canvas-text-color', 'green');
+  occurrence.style.removeProperty('--dahn-focus-ring-color');
+  await tick();
+  expect(element.style.getPropertyValue('--dahn-canvas-text-color')).toBe('green');
+  expect(element.style.getPropertyValue('--dahn-focus-ring-color')).toBe('');
+  await f.dialog.dispose();
+  occurrence.style.setProperty('--dahn-canvas-text-color', 'purple'); await tick();
+  expect(element.style.getPropertyValue('--dahn-canvas-text-color')).toBe('green');
 });

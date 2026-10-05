@@ -91,3 +91,28 @@ it('does not mount a late selection after the action owner is disposed', async (
   expect(owner.element.querySelector('table')).toBeNull();
   expect(f.materialize).toHaveBeenCalledTimes(1);
 });
+
+it('selects projected rows normally and keeps producer order until explicit user sorting', async () => {
+  const a = fixture('diagnostics'), b = fixture('committed');
+  const activate = vi.fn(); const elementType = { key: async () => 'LoadDiagnostic.Projection' };
+  const select = vi.fn(async () => ({ selected: { key: async () => 'table' } }));
+  Object.assign(a.transaction, { selectProjectedCollectionVisualizer: select });
+  const projected = { ...a.binding, collection: undefined, projection: { elementType, activate, presentation: {
+    kind: 'record', displayName: 'Diagnostics', rowIds: ['ten', 'two', 'missing'], defaultRowOrder: ['two', 'ten', 'missing'],
+    defaultOrderLabel: 'Source location', missingValueLabel: 'Not available',
+    columns: [{ id: 'value', displayName: 'Message', valueType: 'StringValue', values: [{ StringValue: 'A' }, { StringValue: 'Z' }, null] }],
+  } } };
+  owner = new ActionResultCollections({ occurrence: document.createElement('div') } as never, [projected, b.binding] as never, { cssCustomProperties: {} }, vi.fn());
+  document.body.append(owner.element); await vi.waitFor(() => expect(table()).toBeTruthy());
+  expect(select).toHaveBeenCalledWith(elementType, a.parent, a.slot);
+  expect(a.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();
+  const ids = () => [...table()!.querySelectorAll<HTMLElement>('tbody tr')].map(row => row.dataset.rowId);
+  expect(ids()).toEqual(['two', 'ten', 'missing']); expect(table()!.textContent).toContain('Not available');
+  const row = table()!.querySelector('tbody tr')!;
+  row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); expect(activate).toHaveBeenCalledWith('two');
+  table()!.querySelector<HTMLButtonElement>('[data-sort-toggle]')!.click(); expect(ids()).toEqual(['ten', 'two', 'missing']);
+  owner.show('committed'); await vi.waitFor(() => expect(table()).toBeTruthy());
+  row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); expect(activate).toHaveBeenCalledTimes(1);
+  owner.show('diagnostics'); expect(ids()).toEqual(['ten', 'two', 'missing']);
+  owner.dispose(); row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); expect(activate).toHaveBeenCalledTimes(1);
+});
