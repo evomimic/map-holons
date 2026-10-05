@@ -1,5 +1,5 @@
 //! QueryCore — descriptor-backed Query runtime (QRY1 scaffold, QRY2 navigation,
-//! QRY4a pagination).
+//! QRY4a ordering and pagination).
 //!
 //! This module is the internal direct-execution seam for a reusable `Query`
 //! definition. It owns the definition/runtime boundary:
@@ -12,7 +12,7 @@
 //!   caller-supplied input;
 //! - `Pending -> Running -> Complete | Failed` status progression;
 //! - execution of the root expression and each `Next` successor in turn —
-//!   `SeedHolons` (root only), `Expand`, `Skip`, and `Limit` — with
+//!   `SeedHolons` (root only), `Expand`, `OrderBy`, `Skip`, and `Limit` — with
 //!   `HolonError::NotImplemented` for every other concrete kind.
 //!
 //! Focal space is invocation context, not definition state: it is recorded only
@@ -29,7 +29,7 @@
 //! source or a transform. The runtime enforces the operator-specific rule in
 //! [`QueryReference::begin_execution`]: a root `SeedHolons` accepts no input (a
 //! supplied collection is a contract error, not an ignored operand); a root
-//! transform (`Expand`, `Skip`, `Limit`) requires exactly one
+//! transform (`Expand`, `OrderBy`, `Skip`, `Limit`) requires exactly one
 //! `HolonCollectionReference`. When present, the
 //! caller's collection holon is linked as `Input` by identity; it is never copied.
 //!
@@ -56,7 +56,7 @@ use type_names::{
     CoreRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName, ToRelationshipName,
 };
 
-use super::pagination;
+use super::{order_by, pagination};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::descriptors::resolve_core_descriptor;
 use crate::reference_layer::{HolonReference, ReadableHolon, TransientReference, WritableHolon};
@@ -67,6 +67,7 @@ const HOLON_COLLECTION_TYPE_NAME: &str = "HolonCollection";
 const HOLON_SPACE_TYPE_NAME: &str = "HolonSpace";
 const SEED_HOLONS_TYPE_NAME: &str = "SeedHolons";
 const EXPAND_TYPE_NAME: &str = "Expand";
+const ORDER_BY_TYPE_NAME: &str = "OrderBy";
 const SKIP_TYPE_NAME: &str = "Skip";
 const LIMIT_TYPE_NAME: &str = "Limit";
 const EXECUTION_INSTANCE_DESCRIPTOR_KEY: &str = "ExecutionInstance.HolonType";
@@ -327,6 +328,12 @@ impl QueryExecution {
                     let input = self.step_input(step)?;
                     expand(&input.members()?, &expansion_name(&expression)?)?
                 }
+                // Specs are validated before any member is read, so an invalid
+                // spec fails even for an empty collection.
+                ExpressionKind::OrderBy => {
+                    let members = self.step_input(step)?.members()?;
+                    order_by::order_by(&expression, &members)?
+                }
                 // The count is read before the input, so an invalid count fails
                 // even for an empty collection.
                 ExpressionKind::Skip => {
@@ -409,6 +416,7 @@ impl QueryExecution {
 enum ExpressionKind {
     SeedHolons,
     Expand,
+    OrderBy,
     Skip,
     Limit,
     Unsupported(String),
@@ -420,6 +428,7 @@ impl ExpressionKind {
         Ok(match type_name.as_str() {
             SEED_HOLONS_TYPE_NAME => Self::SeedHolons,
             EXPAND_TYPE_NAME => Self::Expand,
+            ORDER_BY_TYPE_NAME => Self::OrderBy,
             SKIP_TYPE_NAME => Self::Skip,
             LIMIT_TYPE_NAME => Self::Limit,
             _ => Self::Unsupported(type_name),
@@ -438,7 +447,7 @@ impl ExpressionKind {
             (Self::SeedHolons, Some(_)) => Err(HolonError::InvalidParameter(
                 "SeedHolons is a source expression and accepts no input collection".to_string(),
             )),
-            (Self::Expand | Self::Skip | Self::Limit, None) => {
+            (Self::Expand | Self::OrderBy | Self::Skip | Self::Limit, None) => {
                 Err(HolonError::MissingRequiredRelationship {
                     relationship: QueryRelationshipTypeName::Input
                         .to_relationship_name()
@@ -598,7 +607,10 @@ fn set_status(record: &mut TransientReference, status: ExecutionStatus) -> Resul
     Ok(())
 }
 
-fn require_described_as(holon: &HolonReference, expected: &str) -> Result<(), HolonError> {
+pub(crate) fn require_described_as(
+    holon: &HolonReference,
+    expected: &str,
+) -> Result<(), HolonError> {
     let found = holon.holon_descriptor()?.header().type_name()?;
     if found.0 != expected {
         return Err(HolonError::WrongDescriptorKind {
@@ -657,12 +669,13 @@ mod tests {
 
     use base_types::{BaseValue, MapBoolean, MapInteger};
     use core_types::{HolonId, LocalId, PropertyMap};
-    use type_names::ToPropertyName;
+    use type_names::{CorePropertyTypeName, ToPropertyName};
 
     use super::*;
     use crate::core_shared_objects::holon::SavedHolon;
     use crate::descriptors::test_support::{
-        build_context, build_context_with_saved_holons, new_holon_type_descriptor, new_test_holon,
+        build_context, build_context_with_saved_holons, new_descriptor_holon,
+        new_holon_type_descriptor, new_property_descriptor_holon, new_test_holon,
     };
 
     // ---- QRY1 constructor guards -------------------------------------------
@@ -1973,6 +1986,625 @@ mod tests {
             "a refused invocation creates no transient holon at all"
         );
         assert_no_runtime_records(&fixture);
+    }
+
+    /// An `OrderBy` definition relating `spec_count` spec holons.
+    fn order_by_with_specs(fixture: &Fixture, spec_count: usize) -> TransientReference {
+        let mut expression = fixture.described("order-by", ORDER_BY_TYPE_NAME);
+        let specs: Vec<HolonReference> = (0..spec_count)
+            .map(|index| fixture.described(&format!("spec-{index}"), "OrderBySpec").into())
+            .collect();
+        if !specs.is_empty() {
+            expression.add_related_holons(QueryRelationshipTypeName::OrderBySpecs, specs).unwrap();
+        }
+        expression
+    }
+
+    #[test]
+    fn order_by_spec_count_is_validated_even_for_empty_input() {
+        for spec_count in [0, 6] {
+            let fixture = build_fixture();
+            let root = order_by_with_specs(&fixture, spec_count);
+            let (instance, members) = run_over(&fixture, &root, &[]);
+            let error = members.unwrap_err();
+            assert!(
+                matches!(error, HolonError::InvalidParameter(_)),
+                "{spec_count} specs: unexpected error: {error:?}"
+            );
+            let records =
+                related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions)
+                    .unwrap();
+            assert_eq!(
+                records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+                Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+            );
+            assert!(related_members(&records[0], QueryRelationshipTypeName::Result)
+                .unwrap()
+                .is_empty());
+        }
+    }
+
+    #[test]
+    fn order_by_root_requires_input() {
+        let fixture = build_fixture();
+        let root = order_by_with_specs(&fixture, 1);
+        let query = fixture.query_with_root(&root);
+        let error = query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::MissingRequiredRelationship { relationship, .. }
+                if relationship == "Input"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    // ---- OrderBy name selection over transient descriptors -----------------
+
+    /// Transient descriptors for OrderBy: value types with afforded operators,
+    /// the `OrderBySpec` type, and member types that declare same-named
+    /// properties through distinct `PropertyType` descriptors.
+    struct SortWorld {
+        fixture: Fixture,
+        spec_type: TransientReference,
+        string_type: TransientReference,
+        other_string_type: TransientReference,
+        integer_type: TransientReference,
+        boolean_type: TransientReference,
+    }
+
+    impl SortWorld {
+        fn new() -> Self {
+            Self::with_sort_direction(|_| {})
+        }
+
+        /// Builds the world, letting a test adjust the `SortDirection` property
+        /// descriptor (its default) before the spec type declares it.
+        fn with_sort_direction(adjust: impl FnOnce(&mut TransientReference)) -> Self {
+            let fixture = build_fixture();
+            let context = fixture.context.clone();
+            let operator = |key: &str, name: &str| -> HolonReference {
+                new_descriptor_holon(&context, key, name, "Operator").unwrap().into()
+            };
+            let equals = operator("op-equals", "EqualsOperator");
+            let less_than = operator("op-less-than", "LessThanOperator");
+            let value_type = |key: &str, kind: &str, operators: &[&HolonReference]| {
+                let mut holon = new_descriptor_holon(&context, key, kind, "Value").unwrap();
+                holon
+                    .with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, true)
+                    .unwrap();
+                if !operators.is_empty() {
+                    holon
+                        .add_related_holons(
+                            CoreRelationshipTypeName::AffordsOperator,
+                            operators.iter().map(|operator| (*operator).clone()).collect(),
+                        )
+                        .unwrap();
+                }
+                holon
+            };
+            let string_type = value_type("string-type", "StringValueType", &[&equals, &less_than]);
+            let other_string_type =
+                value_type("other-string-type", "StringValueType", &[&equals, &less_than]);
+            let integer_type =
+                value_type("integer-type", "IntegerValueType", &[&equals, &less_than]);
+            let boolean_type = value_type("boolean-type", "BooleanValueType", &[&equals]);
+
+            let enum_type = |key: &str, variants: &[&str]| -> HolonReference {
+                let mut holon = value_type(key, "MapEnumValueType", &[&equals]);
+                let variants: Vec<HolonReference> = variants
+                    .iter()
+                    .map(|variant| {
+                        new_descriptor_holon(
+                            &context,
+                            &format!("{key}.{variant}"),
+                            variant,
+                            "Value",
+                        )
+                        .unwrap()
+                        .into()
+                    })
+                    .collect();
+                holon.add_related_holons(CoreRelationshipTypeName::Variants, variants).unwrap();
+                holon.into()
+            };
+            let mut sort_direction = new_property_descriptor_holon(
+                &context,
+                "SortDirection.PropertyType",
+                "SortDirection",
+                true,
+                enum_type("sort-direction-type", &["Ascending", "Descending"]),
+            )
+            .unwrap();
+            sort_direction
+                .with_property_value(CorePropertyTypeName::DefaultValue, "Ascending")
+                .unwrap();
+            adjust(&mut sort_direction);
+            let mut null_placement = new_property_descriptor_holon(
+                &context,
+                "NullPlacement.PropertyType",
+                "NullPlacement",
+                true,
+                enum_type("null-placement-type", &["Missing-First", "Missing-Last"]),
+            )
+            .unwrap();
+            null_placement
+                .with_property_value(CorePropertyTypeName::DefaultValue, "Missing-Last")
+                .unwrap();
+            let property_name = new_property_descriptor_holon(
+                &context,
+                "PropertyName.PropertyType",
+                "PropertyName",
+                true,
+                string_type.clone().into(),
+            )
+            .unwrap();
+            let mut spec_type =
+                new_holon_type_descriptor(&context, "OrderBySpec.HolonType", "OrderBySpec")
+                    .unwrap();
+            spec_type
+                .add_related_holons(
+                    CoreRelationshipTypeName::InstanceProperties,
+                    vec![property_name.into(), sort_direction.into(), null_placement.into()],
+                )
+                .unwrap();
+
+            Self { fixture, spec_type, string_type, other_string_type, integer_type, boolean_type }
+        }
+
+        /// A member holon type declaring `(property name, required, value type)`
+        /// properties, each through its own `PropertyType` descriptor.
+        fn member_type(
+            &self,
+            type_name: &str,
+            properties: &[(&str, bool, &TransientReference)],
+        ) -> HolonReference {
+            let context = &self.fixture.context;
+            let declarations: Vec<HolonReference> = properties
+                .iter()
+                .map(|(name, required, value_type)| {
+                    new_property_descriptor_holon(
+                        context,
+                        &format!("{type_name}.{name}.PropertyType"),
+                        name,
+                        *required,
+                        (*value_type).clone().into(),
+                    )
+                    .unwrap()
+                    .into()
+                })
+                .collect();
+            let mut holon_type =
+                new_holon_type_descriptor(context, &format!("{type_name}.HolonType"), type_name)
+                    .unwrap();
+            holon_type
+                .add_related_holons(CoreRelationshipTypeName::InstanceProperties, declarations)
+                .unwrap();
+            holon_type.into()
+        }
+
+        /// A member of `holon_type` with the given stored property values.
+        fn member(
+            &self,
+            key: &str,
+            holon_type: &HolonReference,
+            values: &[(&str, BaseValue)],
+        ) -> HolonReference {
+            let mut holon = new_test_holon(&self.fixture.context, key).unwrap();
+            holon.with_descriptor(holon_type.clone()).unwrap();
+            for (name, value) in values {
+                holon.with_property_value(*name, value.clone()).unwrap();
+            }
+            holon.into()
+        }
+
+        /// An `OrderBySpec`; each argument is stored only when given.
+        fn spec(
+            &self,
+            key: &str,
+            property_name: Option<BaseValue>,
+            direction: Option<&str>,
+            placement: Option<&str>,
+        ) -> HolonReference {
+            let mut spec = new_test_holon(&self.fixture.context, key).unwrap();
+            spec.with_descriptor(self.spec_type.clone().into()).unwrap();
+            if let Some(name) = property_name {
+                spec.with_property_value(QueryPropertyTypeName::PropertyName, name).unwrap();
+            }
+            for (property, variant) in [
+                (QueryPropertyTypeName::SortDirection, direction),
+                (QueryPropertyTypeName::NullPlacement, placement),
+            ] {
+                if let Some(variant) = variant {
+                    spec.with_property_value(
+                        property,
+                        MapEnumValue(MapString(variant.to_string())),
+                    )
+                    .unwrap();
+                }
+            }
+            spec.into()
+        }
+
+        fn order_by(&self, specs: Vec<HolonReference>) -> TransientReference {
+            let mut expression = self.fixture.described("order-by", ORDER_BY_TYPE_NAME);
+            expression.add_related_holons(QueryRelationshipTypeName::OrderBySpecs, specs).unwrap();
+            expression
+        }
+
+        /// Runs `root` over `members` (any phase) and returns the instance and
+        /// the result members.
+        fn run(
+            &self,
+            root: &TransientReference,
+            members: &[HolonReference],
+        ) -> (HolonReference, Result<Vec<HolonReference>, HolonError>) {
+            let query = self.fixture.query_with_root(root);
+            let mut input = self.fixture.described("sort-input", HOLON_COLLECTION_TYPE_NAME);
+            if !members.is_empty() {
+                input
+                    .add_related_holons(
+                        CoreRelationshipTypeName::CollectionMembers,
+                        members.to_vec(),
+                    )
+                    .unwrap();
+            }
+            let input = HolonCollectionReference::new(input.into()).unwrap();
+            let execution = query
+                .begin_execution(
+                    &self.fixture.context,
+                    self.fixture.focal_space(),
+                    Some(input),
+                    Vec::new(),
+                )
+                .unwrap();
+            let instance: HolonReference = execution.instance().clone().into();
+            let members = execution.run().and_then(|result| {
+                related_members(
+                    result.as_holon_reference(),
+                    CoreRelationshipTypeName::CollectionMembers,
+                )
+            });
+            (instance, members)
+        }
+    }
+
+    fn text(value: &str) -> BaseValue {
+        BaseValue::StringValue(MapString(value.to_string()))
+    }
+
+    fn number(value: i64) -> BaseValue {
+        BaseValue::IntegerValue(MapInteger(value))
+    }
+
+    fn refs_of(members: &[HolonReference]) -> Vec<String> {
+        members.iter().map(HolonReference::reference_id_string).collect()
+    }
+
+    /// The step failed with no Result, the instance has no ExecutionResult.
+    fn assert_failed_without_result(instance: &HolonReference) {
+        let records =
+            related_members(instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        let step = records.last().unwrap();
+        assert_eq!(
+            step.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+        );
+        assert!(related_members(step, QueryRelationshipTypeName::Result).unwrap().is_empty());
+        assert!(related_members(instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn distinct_same_named_properties_with_one_value_type_sort_together() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let film = world.member_type("Film", &[("Title", true, &world.string_type)]);
+        let members = [
+            world.member("book-c", &book, &[("Title", text("Charlie"))]),
+            world.member("film-a", &film, &[("Title", text("Alpha"))]),
+            world.member("book-b", &book, &[("Title", text("Bravo"))]),
+            world.member("film-b", &film, &[("Title", text("Bravo"))]),
+        ];
+        let root = world.order_by(vec![world.spec("spec", Some(text("Title")), None, None)]);
+
+        let (_, sorted) = world.run(&root, &members);
+        let expected = [&members[1], &members[2], &members[3], &members[0]];
+        assert_eq!(
+            refs_of(&sorted.unwrap()),
+            expected.iter().map(|member| member.reference_id_string()).collect::<Vec<_>>(),
+            "Book and Film Titles are distinct PropertyTypes over one value type; ties keep input order"
+        );
+    }
+
+    #[test]
+    fn a_second_value_type_identity_is_rejected_even_with_the_same_primitive_kind() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let gadget = world.member_type("Gadget", &[("Title", true, &world.other_string_type)]);
+        let members = [
+            world.member("book", &book, &[("Title", text("Bravo"))]),
+            world.member("gadget", &gadget, &[("Title", text("Alpha"))]),
+        ];
+        let root = world.order_by(vec![world.spec("spec", Some(text("Title")), None, None)]);
+
+        let (instance, sorted) = world.run(&root, &members);
+        let error = sorted.unwrap_err();
+        assert!(matches!(error, HolonError::InvalidParameter(_)), "unexpected error: {error:?}");
+        assert_failed_without_result(&instance);
+    }
+
+    #[test]
+    fn value_type_identity_is_enforced_when_the_value_is_absent() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let toy = world.member_type("Toy", &[("Title", false, &world.integer_type)]);
+        let members = [
+            world.member("book", &book, &[("Title", text("Bravo"))]),
+            world.member("toy-without-title", &toy, &[]),
+        ];
+        let root = world.order_by(vec![world.spec("spec", Some(text("Title")), None, None)]);
+
+        let (instance, sorted) = world.run(&root, &members);
+        let error = sorted.unwrap_err();
+        assert!(matches!(error, HolonError::InvalidParameter(_)), "unexpected error: {error:?}");
+        assert_failed_without_result(&instance);
+    }
+
+    #[test]
+    fn requiredness_comes_from_each_members_own_declaration() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let film = world.member_type("Film", &[("Title", false, &world.string_type)]);
+        let root = world.order_by(vec![world.spec("spec", Some(text("Title")), None, None)]);
+
+        // Film's Title is optional: absent is a missing value, placed last.
+        let titled_book = world.member("book", &book, &[("Title", text("Bravo"))]);
+        let untitled_film = world.member("film", &film, &[]);
+        let (_, sorted) = world.run(&root, &[untitled_film.clone(), titled_book.clone()]);
+        assert_eq!(refs_of(&sorted.unwrap()), refs_of(&[titled_book, untitled_film.clone()]));
+
+        // Book's Title is required, even when a Film came first.
+        let untitled_book = world.member("untitled-book", &book, &[]);
+        let (instance, sorted) = world.run(&root, &[untitled_film, untitled_book]);
+        let error = sorted.unwrap_err();
+        assert!(
+            matches!(&error, HolonError::EmptyField(name) if name == "Title"),
+            "unexpected error: {error:?}"
+        );
+        assert_failed_without_result(&instance);
+    }
+
+    #[test]
+    fn member_failures_apply_to_every_occurrence_and_every_key() {
+        let world = SortWorld::new();
+        let book = world.member_type(
+            "Book",
+            &[("Title", true, &world.string_type), ("Pages", false, &world.integer_type)],
+        );
+        let pages_then_title = || {
+            world.order_by(vec![
+                world.spec("pages", Some(text("Pages")), None, None),
+                world.spec("title", Some(text("Title")), None, None),
+            ])
+        };
+        let cases: [(&str, Vec<HolonReference>, HolonErrorKindProbe); 4] = [
+            (
+                "malformed value on a key that does not decide the order",
+                vec![
+                    world.member("one", &book, &[("Title", text("A")), ("Pages", number(1))]),
+                    world.member("two", &book, &[("Title", number(7)), ("Pages", number(2))]),
+                ],
+                HolonErrorKindProbe::ValueKindMismatch,
+            ),
+            (
+                "malformed singleton",
+                vec![world.member("only", &book, &[("Title", number(7))])],
+                HolonErrorKindProbe::ValueKindMismatch,
+            ),
+            (
+                "absent required value on a non-deciding key",
+                vec![
+                    world.member("one", &book, &[("Title", text("A")), ("Pages", number(1))]),
+                    world.member("two", &book, &[("Pages", number(2))]),
+                ],
+                HolonErrorKindProbe::EmptyField,
+            ),
+            (
+                "absent required singleton",
+                vec![world.member("only", &book, &[])],
+                HolonErrorKindProbe::EmptyField,
+            ),
+        ];
+        for (label, members, expected) in cases {
+            let (instance, sorted) = world.run(&pages_then_title(), &members);
+            let error = sorted.unwrap_err();
+            assert!(expected.matches(&error), "{label}: unexpected error: {error:?}");
+            assert_failed_without_result(&instance);
+        }
+
+        let undeclared = world.order_by(vec![world.spec("spec", Some(text("Nope")), None, None)]);
+        let (instance, sorted) =
+            world.run(&undeclared, &[world.member("only", &book, &[("Title", text("A"))])]);
+        let error = sorted.unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { name, .. } if name == "Nope"),
+            "unexpected error: {error:?}"
+        );
+        assert_failed_without_result(&instance);
+    }
+
+    /// Error kinds the member-failure cases expect.
+    enum HolonErrorKindProbe {
+        ValueKindMismatch,
+        EmptyField,
+    }
+
+    impl HolonErrorKindProbe {
+        fn matches(&self, error: &HolonError) -> bool {
+            match self {
+                Self::ValueKindMismatch => matches!(error, HolonError::ValueKindMismatch { .. }),
+                Self::EmptyField => matches!(error, HolonError::EmptyField(_)),
+            }
+        }
+    }
+
+    #[test]
+    fn unsupported_domains_fail_once_a_member_binds_the_key() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Flag", false, &world.boolean_type)]);
+        let root = world.order_by(vec![world.spec("spec", Some(text("Flag")), None, None)]);
+
+        let (_, empty) = world.run(&root, &[]);
+        assert!(empty.unwrap().is_empty(), "empty input has no members to bind the domain");
+
+        let (instance, sorted) = world.run(&root, &[world.member("book", &book, &[])]);
+        let error = sorted.unwrap_err();
+        assert!(
+            matches!(error, HolonError::UnsupportedOperator { .. }),
+            "unexpected error: {error:?}"
+        );
+        assert_failed_without_result(&instance);
+    }
+
+    #[test]
+    fn property_name_must_be_a_present_string_even_for_empty_input() {
+        let world = SortWorld::new();
+        for (label, property_name) in [("missing", None), ("integer", Some(number(3)))] {
+            let root = world.order_by(vec![world.spec("spec", property_name, None, None)]);
+            let (instance, sorted) = world.run(&root, &[]);
+            let error = sorted.unwrap_err();
+            match label {
+                "missing" => assert!(
+                    matches!(&error, HolonError::EmptyField(name) if name == "PropertyName"),
+                    "{label}: unexpected error: {error:?}"
+                ),
+                _ => assert!(
+                    matches!(error, HolonError::UnexpectedValueType(..)),
+                    "{label}: unexpected error: {error:?}"
+                ),
+            }
+            assert_failed_without_result(&instance);
+        }
+    }
+
+    #[test]
+    fn five_specs_are_accepted() {
+        let world = SortWorld::new();
+        let book = world.member_type(
+            "Book",
+            &[("Title", true, &world.string_type), ("Pages", false, &world.integer_type)],
+        );
+        let specs = ["Pages", "Title", "Pages", "Title", "Pages"]
+            .iter()
+            .enumerate()
+            .map(|(index, name)| world.spec(&format!("spec-{index}"), Some(text(name)), None, None))
+            .collect();
+        let root = world.order_by(specs);
+        let members = [
+            world.member("two", &book, &[("Title", text("B")), ("Pages", number(2))]),
+            world.member("one", &book, &[("Title", text("A")), ("Pages", number(1))]),
+        ];
+        let (_, sorted) = world.run(&root, &members);
+        assert_eq!(refs_of(&sorted.unwrap()), refs_of(&[members[1].clone(), members[0].clone()]));
+    }
+
+    #[test]
+    fn enum_default_failures_are_explicit_and_leave_the_spec_unchanged() {
+        // An invalid descriptor default, and a descriptor with no default.
+        let invalid_default = SortWorld::with_sort_direction(|property| {
+            property.with_property_value(CorePropertyTypeName::DefaultValue, "Sideways").unwrap();
+        });
+        let no_default = SortWorld::with_sort_direction(|property| {
+            property.remove_property_value(CorePropertyTypeName::DefaultValue).unwrap();
+        });
+        for (label, world) in [("invalid default", invalid_default), ("no default", no_default)] {
+            let spec = world.spec("spec", Some(text("Title")), None, None);
+            let before = spec.into_model().unwrap();
+            let root = world.order_by(vec![spec.clone()]);
+            let (instance, sorted) = world.run(&root, &[]);
+            let error = sorted.unwrap_err();
+            match label {
+                "invalid default" => assert!(
+                    matches!(error, HolonError::EnumVariantNotInSchema { .. }),
+                    "{label}: unexpected error: {error:?}"
+                ),
+                _ => assert!(
+                    matches!(&error, HolonError::EmptyField(name) if name == "SortDirection"),
+                    "{label}: unexpected error: {error:?}"
+                ),
+            }
+            assert_failed_without_result(&instance);
+            assert_eq!(spec.into_model().unwrap(), before, "{label}: the spec is unchanged");
+        }
+    }
+
+    #[test]
+    fn explicit_enum_values_bypass_a_broken_default_lookup() {
+        // Two Extends parents and no local DefaultValue: any default lookup fails.
+        let world = SortWorld::with_sort_direction(|property| {
+            property.remove_property_value(CorePropertyTypeName::DefaultValue).unwrap();
+            let context = property.bound_context();
+            let parents: Vec<HolonReference> = ["parent-a", "parent-b"]
+                .iter()
+                .map(|key| new_descriptor_holon(&context, key, key, "Property").unwrap().into())
+                .collect();
+            property.add_related_holons(CoreRelationshipTypeName::Extends, parents).unwrap();
+        });
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let members = [
+            world.member("a", &book, &[("Title", text("A"))]),
+            world.member("b", &book, &[("Title", text("B"))]),
+        ];
+
+        let explicit = world.order_by(vec![world.spec(
+            "valid",
+            Some(text("Title")),
+            Some("Descending"),
+            None,
+        )]);
+        let (_, sorted) = world.run(&explicit, &members);
+        assert_eq!(refs_of(&sorted.unwrap()), refs_of(&[members[1].clone(), members[0].clone()]));
+
+        let invalid = world.order_by(vec![world.spec(
+            "invalid",
+            Some(text("Title")),
+            Some("Sideways"),
+            None,
+        )]);
+        let (_, sorted) = world.run(&invalid, &members);
+        let error = sorted.unwrap_err();
+        assert!(
+            matches!(error, HolonError::EnumVariantNotInSchema { .. }),
+            "an invalid explicit value fails on its own, not through the default lookup: {error:?}"
+        );
+
+        let omitted = world.order_by(vec![world.spec("omitted", Some(text("Title")), None, None)]);
+        let (_, sorted) = world.run(&omitted, &members);
+        assert!(sorted.is_err(), "only an absent value reaches the broken lookup");
+    }
+
+    #[test]
+    fn a_missing_spec_declaration_propagates_the_descriptor_error() {
+        let world = SortWorld::new();
+        // A spec described by a type that declares no SortDirection.
+        let bare_spec_type =
+            new_holon_type_descriptor(&world.fixture.context, "Bare.HolonType", "OrderBySpec")
+                .unwrap();
+        let mut spec = new_test_holon(&world.fixture.context, "bare-spec").unwrap();
+        spec.with_descriptor(bare_spec_type.into()).unwrap();
+        spec.with_property_value(QueryPropertyTypeName::PropertyName, MapString("Title".into()))
+            .unwrap();
+        let root = world.order_by(vec![spec.into()]);
+
+        let (instance, sorted) = world.run(&root, &[]);
+        let error = sorted.unwrap_err();
+        assert!(
+            matches!(error, HolonError::DescriptorDeclarationNotFound { .. }),
+            "unexpected error: {error:?}"
+        );
+        assert_failed_without_result(&instance);
     }
 
     #[test]

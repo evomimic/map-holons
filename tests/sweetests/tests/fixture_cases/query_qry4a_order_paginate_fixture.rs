@@ -23,6 +23,10 @@ const ORDER_BY_SCHEMA_KEYS: [&str; 6] = [
     "NullPlacement.PropertyType",
     "OneToFive.CardinalityConstraint",
 ];
+const ORDER_BY_DESCRIPTOR_KEY: &str = "OrderBy.HolonType";
+const ORDER_BY_SPEC_DESCRIPTOR_KEY: &str = "OrderBySpec.HolonType";
+/// Inverse of `AuthoredBy` in the Book/Person test schema.
+const PERSON_TO_BOOK_RELATIONSHIP: &str = "AuthorOf";
 
 /// Committed Book/Person data. Authors: A -> [P1, P2], B -> [P1], C -> [],
 /// D -> [P2, P1], so `Expand(AuthoredBy)` over [A, B, D] is
@@ -34,13 +38,30 @@ const BOOK_D_KEY: &str = "Qry4a.Book.D";
 const PERSON_1_KEY: &str = "Qry4a.Person.1";
 const PERSON_2_KEY: &str = "Qry4a.Person.2";
 
-/// QRY4a (issue #755), slice 4a-1: transient query definitions, `Skip`, `Limit`,
+/// Committed sort data, all authored by `Qry4a.Person.3`: `(key, Title,
+/// PageCount)`. Titles repeat (ties) and compare ordinally — "Bravo" < "Charlie"
+/// < "Delta" < "alpha" — and two books have no `PageCount` (an optional
+/// property, so a missing value).
+const SORT_BOOKS: [(&str, &str, Option<i64>); 6] = [
+    ("Qry4a.Sort.1", "Delta", Some(300)),
+    ("Qry4a.Sort.2", "alpha", Some(100)),
+    ("Qry4a.Sort.3", "Charlie", None),
+    ("Qry4a.Sort.4", "Bravo", Some(100)),
+    ("Qry4a.Sort.5", "Charlie", Some(250)),
+    ("Qry4a.Sort.6", "Bravo", None),
+];
+const PERSON_3_KEY: &str = "Qry4a.Person.3";
+
+/// QRY4a (issue #755): transient query definitions, `OrderBy`, `Skip`, `Limit`,
 /// and invocation-binding refusal, on both the direct and QueryDance routes.
+/// The executor also asserts, for every step, that evaluation leaves the whole
+/// definition graph (query, expressions, OrderBySpecs) unchanged.
 ///
 /// 1. Stage and commit Book/Person data only. No Query definition is committed.
-/// 2. In a fresh transaction, author every Query / Expand / Skip / Limit as a
-///    **transient** holon (`NewHolon` + `DescribedBy` + relationships; never
-///    staged), then execute:
+/// 2. In a fresh transaction, author every Query / Expand / OrderBy /
+///    OrderBySpec / Skip / Limit as a **transient** holon (`NewHolon` +
+///    `DescribedBy` + relationships; never staged), then execute the paging
+///    cases (4a-1):
 ///    - `Expand -> Skip(1) -> Limit(3)` over [A, B, D]: [P2, P1, P2];
 ///    - `Limit(2) -> Skip(1)` versus `Skip(1) -> Limit(2)` over [A, B, C, A]:
 ///      authored `Next` order decides the page ([B] versus [B, C]);
@@ -49,7 +70,27 @@ const PERSON_2_KEY: &str = "Qry4a.Person.2";
 ///    - a negative `LimitCount` over empty input: `InvalidParameter`;
 ///    - a root `Skip` with no input: `MissingRequiredRelationship`;
 ///    - the paging query with a nonempty binding list: `NotImplemented` before
-///      any runtime record exists.
+///      any runtime record exists;
+///
+///    and the ordering cases (4a-2), over the `SORT_BOOKS` input
+///    `[1, 2, 3, 4, 5, 6, 2]` unless noted:
+///    - the delivery proof `Expand(AuthorOf) -> OrderBy(PageCount desc, Title)
+///      -> Skip(1) -> Limit(3)` from Person.3: `[5, 4, 2]`;
+///    - Title with SortDirection and NullPlacement omitted (resolved to
+///      Ascending / Missing-Last, never stored): ordinal, stable, duplicates kept;
+///    - PageCount Descending + Missing-First; PageCount explicitly Ascending;
+///    - Title then PageCount descending (the Title spec holon is shared with
+///      other OrderBy expressions);
+///    - `Skip(2) -> OrderBy` versus `OrderBy -> Skip(2)`; empty and singleton input;
+///    - failures: no specs, or a missing / non-string `PropertyName` (all on
+///      empty input); an undeclared variant, a string where an enum value
+///      belongs, boolean and enum sort domains, and property names the members
+///      do not declare; and the same failure after a completed `Expand`.
+///
+///    Every spec selects its property by name (`PropertyName`), resolved against
+///    each member's effective descriptors at execution time. Name resolution
+///    across distinct same-named `PropertyType`s is covered by the QueryCore
+///    unit tests, which build such types directly.
 ///
 /// The OrderBy schema descriptors (`OrderBy`, `OrderBySpec`, `PropertyName`,
 /// `SortDirection`, `NullPlacement`, `OneToFive`) are resolved by key to prove
@@ -57,8 +98,8 @@ const PERSON_2_KEY: &str = "Qry4a.Person.2";
 pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "query_qry4a_order_paginate",
-        "QRY4a-1: transient Query graphs page with Skip and Limit through the direct and \
-         QueryDance routes; invocation bindings are refused",
+        "QRY4a: transient Query graphs order with OrderBy and page with Skip and Limit \
+         through the direct and QueryDance routes; invocation bindings are refused",
     );
 
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
@@ -130,6 +171,39 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
             )?;
         }
     }
+    let person_3 = stage(
+        &mut test_case,
+        &mut fixture_holons,
+        PERSON_3_KEY,
+        "Name",
+        "Qry4a Person Three",
+        &person_type,
+        "Person",
+    )?;
+    for (key, title, page_count) in SORT_BOOKS {
+        let mut properties = instance_properties("Title", title);
+        if let Some(page_count) = page_count {
+            properties
+                .insert("PageCount".to_property_name(), MapInteger(page_count).to_base_value());
+        }
+        let book = stage_described(
+            &mut test_case,
+            &fixture_context,
+            &mut fixture_holons,
+            key,
+            properties,
+            &book_type,
+            "Book",
+        )?;
+        test_case.add_add_related_holons_step(
+            &mut fixture_holons,
+            book,
+            RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())),
+            vec![person_3.clone()],
+            None,
+            Some(format!("{key} --AuthoredBy--> Person.3")),
+        )?;
+    }
     test_case.add_commit_step(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
@@ -152,6 +226,13 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     let book_d = lookup(&mut test_case, &mut fixture_holons, BOOK_D_KEY)?;
     let person_1 = lookup(&mut test_case, &mut fixture_holons, PERSON_1_KEY)?;
     let person_2 = lookup(&mut test_case, &mut fixture_holons, PERSON_2_KEY)?;
+    let person_3 = lookup(&mut test_case, &mut fixture_holons, PERSON_3_KEY)?;
+    let mut sorted_books = Vec::new();
+    for (key, _, _) in SORT_BOOKS {
+        sorted_books.push(lookup(&mut test_case, &mut fixture_holons, key)?);
+    }
+    let book = |number: usize| sorted_books[number - 1].clone();
+    let books = |numbers: &[usize]| numbers.iter().map(|number| book(*number)).collect::<Vec<_>>();
 
     for key in ORDER_BY_SCHEMA_KEYS {
         lookup(&mut test_case, &mut fixture_holons, key)?;
@@ -162,6 +243,8 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         expand_type: lookup(&mut test_case, &mut fixture_holons, EXPAND_DESCRIPTOR_KEY)?,
         skip_type: lookup(&mut test_case, &mut fixture_holons, SKIP_DESCRIPTOR_KEY)?,
         limit_type: lookup(&mut test_case, &mut fixture_holons, LIMIT_DESCRIPTOR_KEY)?,
+        order_by_type: lookup(&mut test_case, &mut fixture_holons, ORDER_BY_DESCRIPTOR_KEY)?,
+        spec_type: lookup(&mut test_case, &mut fixture_holons, ORDER_BY_SPEC_DESCRIPTOR_KEY)?,
         test_case: &mut test_case,
         fixture_context: &fixture_context,
         fixture_holons: &mut fixture_holons,
@@ -204,6 +287,121 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     // Any holon stands in for a binding: refusal happens before its content
     // could matter, and neither route validates RequestParameters targets.
     let binding = authoring.new_holon("Qry4a.Binding", PropertyMap::new())?;
+
+    // --- OrderBy (4a-2) ---
+    let descending = Some(enum_value("Descending"));
+    let ascending = Some(enum_value("Ascending"));
+    let missing_first = Some(enum_value("Missing-First"));
+
+    // Delivery proof: Expand(AuthorOf) -> OrderBy(PageCount desc, Title) ->
+    // Skip(1) -> Limit(3). The keys order every book, so the storage order of
+    // the inverse expansion cannot leak into the result.
+    let proof_limit = authoring.limit("Limit.Qry4aProof", Some(3))?;
+    let proof_skip = authoring.skip("Skip.Qry4aProof", Some(1))?;
+    let proof_skip = authoring.next(proof_skip, proof_limit)?;
+    let proof_pages =
+        authoring.spec("Spec.Qry4aProofPages", selector("PageCount"), descending.clone(), None)?;
+    let proof_titles = authoring.spec("Spec.Qry4aProofTitles", selector("Title"), None, None)?;
+    let proof_order = authoring.order_by("OrderBy.Qry4aProof", vec![proof_pages, proof_titles])?;
+    let proof_order = authoring.next(proof_order, proof_skip)?;
+    let proof_expand = authoring.expand("Expand.Qry4aProof", PERSON_TO_BOOK_RELATIONSHIP)?;
+    let proof_expand = authoring.next(proof_expand, proof_order)?;
+    let proof_query = authoring.query("Query.Qry4aProof", proof_expand)?;
+
+    // One Title spec with both enum arguments omitted, shared by several
+    // OrderBy expressions (an aliased definition holon).
+    let title_spec = authoring.spec("Spec.Qry4aTitle", selector("Title"), None, None)?;
+    let by_title = authoring.order_by("OrderBy.Qry4aTitle", vec![title_spec.clone()])?;
+    let by_title = authoring.query("Query.Qry4aByTitle", by_title)?;
+    let pages_desc_first = authoring.spec(
+        "Spec.Qry4aPagesDescFirst",
+        selector("PageCount"),
+        descending.clone(),
+        missing_first,
+    )?;
+    let pages_desc_first =
+        authoring.order_by("OrderBy.Qry4aPagesDescFirst", vec![pages_desc_first])?;
+    let pages_desc_first = authoring.query("Query.Qry4aPagesDescFirst", pages_desc_first)?;
+    let pages_asc = authoring.spec("Spec.Qry4aPagesAsc", selector("PageCount"), ascending, None)?;
+    let pages_asc = authoring.order_by("OrderBy.Qry4aPagesAsc", vec![pages_asc])?;
+    let pages_asc = authoring.query("Query.Qry4aPagesAsc", pages_asc)?;
+    let pages_desc =
+        authoring.spec("Spec.Qry4aPagesDesc", selector("PageCount"), descending.clone(), None)?;
+    let title_then_pages =
+        authoring.order_by("OrderBy.Qry4aTitleThenPages", vec![title_spec.clone(), pages_desc])?;
+    let title_then_pages = authoring.query("Query.Qry4aTitleThenPages", title_then_pages)?;
+
+    // Authored order: Skip(2) -> OrderBy versus OrderBy -> Skip(2).
+    let sort_after_skip = authoring.order_by("OrderBy.Qry4aAfterSkip", vec![title_spec.clone()])?;
+    let skip_then_sort = authoring.skip("Skip.Qry4aThenSort", Some(2))?;
+    let skip_then_sort = authoring.next(skip_then_sort, sort_after_skip)?;
+    let skip_then_sort = authoring.query("Query.Qry4aSkipThenSort", skip_then_sort)?;
+    let skip_after_sort = authoring.skip("Skip.Qry4aAfterSort", Some(2))?;
+    let sort_then_skip = authoring.order_by("OrderBy.Qry4aThenSkip", vec![title_spec.clone()])?;
+    let sort_then_skip = authoring.next(sort_then_skip, skip_after_sort)?;
+    let sort_then_skip = authoring.query("Query.Qry4aSortThenSkip", sort_then_skip)?;
+
+    // Failures, each rooted at an OrderBy over Books unless noted.
+    let mut failing = Vec::new();
+    let no_specs = authoring.order_by("OrderBy.Qry4aNoSpecs", vec![])?;
+    let no_specs = authoring.query("Query.Qry4aNoSpecs", no_specs)?;
+    // Spec-shape failures need no members, so they run over empty input.
+    let mut failing_on_empty = Vec::new();
+    for (label, property_name, kind) in [
+        ("MissingPropertyName", None, HolonErrorKind::EmptyField),
+        (
+            "IntegerPropertyName",
+            Some(MapInteger(3).to_base_value()),
+            HolonErrorKind::UnexpectedValueType,
+        ),
+    ] {
+        let spec = authoring.spec(&format!("Spec.Qry4a{label}"), property_name, None, None)?;
+        let order = authoring.order_by(&format!("OrderBy.Qry4a{label}"), vec![spec])?;
+        failing_on_empty.push((
+            label,
+            authoring.query(&format!("Query.Qry4a{label}"), order)?,
+            kind,
+        ));
+    }
+    let failing_spec_cases: [(&str, Option<BaseValue>, Option<BaseValue>, HolonErrorKind); 6] = [
+        (
+            "UndeclaredVariant",
+            selector("Title"),
+            Some(enum_value("Sideways")),
+            HolonErrorKind::EnumVariantNotInSchema,
+        ),
+        (
+            "StringDirection",
+            selector("Title"),
+            Some(MapString("Descending".to_string()).to_base_value()),
+            HolonErrorKind::ValueKindMismatch,
+        ),
+        ("BooleanKey", selector("IsPublished"), None, HolonErrorKind::UnsupportedOperator),
+        ("EnumKey", selector("PublicationStatus"), None, HolonErrorKind::UnsupportedOperator),
+        (
+            "PersonNameOnBooks",
+            selector("Name"),
+            None,
+            HolonErrorKind::DescriptorDeclarationNotFound,
+        ),
+        (
+            "UnknownName",
+            selector("NoSuchProperty"),
+            None,
+            HolonErrorKind::DescriptorDeclarationNotFound,
+        ),
+    ];
+    for (label, property_name, direction, kind) in failing_spec_cases {
+        let spec = authoring.spec(&format!("Spec.Qry4a{label}"), property_name, direction, None)?;
+        let order = authoring.order_by(&format!("OrderBy.Qry4a{label}"), vec![spec])?;
+        failing.push((label, authoring.query(&format!("Query.Qry4a{label}"), order)?, kind));
+    }
+    // The same undeclared-property failure reached after a completed Expand.
+    let late_name = authoring.spec("Spec.Qry4aLateName", selector("Name"), None, None)?;
+    let late_order = authoring.order_by("OrderBy.Qry4aLateName", vec![late_name])?;
+    let late_expand = authoring.expand("Expand.Qry4aLateName", PERSON_TO_BOOK_RELATIONSHIP)?;
+    let late_expand = authoring.next(late_expand, late_order)?;
+    let late_failure = authoring.query("Query.Qry4aLateName", late_expand)?;
 
     for route in [QueryRoute::Direct, QueryRoute::QueryDance] {
         test_case.add_execute_query_step(
@@ -275,6 +473,92 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
             QueryExpectation::Error(HolonErrorKind::NotImplemented),
             Some(format!("Invocation bindings via {route:?} are refused before any record")),
         )?;
+
+        // --- OrderBy ---
+        let input = || QueryInputSpec::Collection(books(&[1, 2, 3, 4, 5, 6, 2]));
+        let ordered = |numbers: &[usize]| QueryExpectation::Members(books(numbers));
+        test_case.add_execute_query_step(
+            proof_query.clone(),
+            QueryInputSpec::Collection(vec![person_3.clone()]),
+            route,
+            ordered(&[5, 4, 2]),
+            Some(format!("Delivery proof Expand -> OrderBy -> Skip -> Limit via {route:?}")),
+        )?;
+        for (query, expected, what) in [
+            (&by_title, [4, 6, 3, 5, 1, 2, 2], "Title with defaults (ordinal, stable)"),
+            (&pages_desc_first, [3, 6, 1, 5, 2, 4, 2], "PageCount Descending, Missing-First"),
+            (&pages_asc, [2, 4, 2, 5, 1, 3, 6], "PageCount Ascending, default Missing-Last"),
+            (&title_then_pages, [4, 6, 5, 3, 1, 2, 2], "Title, then PageCount Descending"),
+        ] {
+            test_case.add_execute_query_step(
+                query.clone(),
+                input(),
+                route,
+                ordered(&expected),
+                Some(format!("OrderBy {what} via {route:?}")),
+            )?;
+        }
+        test_case.add_execute_query_step(
+            skip_then_sort.clone(),
+            input(),
+            route,
+            ordered(&[4, 6, 3, 5, 2]),
+            Some(format!("Skip(2) -> OrderBy sorts only the retained input via {route:?}")),
+        )?;
+        test_case.add_execute_query_step(
+            sort_then_skip.clone(),
+            input(),
+            route,
+            ordered(&[3, 5, 1, 2, 2]),
+            Some(format!("OrderBy -> Skip(2) slices the sorted result via {route:?}")),
+        )?;
+        test_case.add_execute_query_step(
+            by_title.clone(),
+            QueryInputSpec::Collection(vec![]),
+            route,
+            ordered(&[]),
+            Some(format!("OrderBy over empty input via {route:?}")),
+        )?;
+        test_case.add_execute_query_step(
+            by_title.clone(),
+            QueryInputSpec::Collection(books(&[3])),
+            route,
+            ordered(&[3]),
+            Some(format!("OrderBy over a singleton via {route:?}")),
+        )?;
+
+        test_case.add_execute_query_step(
+            no_specs.clone(),
+            QueryInputSpec::Collection(vec![]),
+            route,
+            QueryExpectation::Error(HolonErrorKind::InvalidParameter),
+            Some(format!("OrderBy without specs via {route:?} fails even on empty input")),
+        )?;
+        for (label, query, kind) in &failing_on_empty {
+            test_case.add_execute_query_step(
+                query.clone(),
+                QueryInputSpec::Collection(vec![]),
+                route,
+                QueryExpectation::Error(*kind),
+                Some(format!("OrderBy {label} via {route:?} fails even on empty input")),
+            )?;
+        }
+        for (label, query, kind) in &failing {
+            test_case.add_execute_query_step(
+                query.clone(),
+                QueryInputSpec::Collection(books(&[1, 2])),
+                route,
+                QueryExpectation::Error(*kind),
+                Some(format!("OrderBy {label} via {route:?} fails with {kind:?}")),
+            )?;
+        }
+        test_case.add_execute_query_step(
+            late_failure.clone(),
+            QueryInputSpec::Collection(vec![person_3.clone()]),
+            route,
+            QueryExpectation::Error(HolonErrorKind::DescriptorDeclarationNotFound),
+            Some(format!("A failing OrderBy after a completed Expand via {route:?}")),
+        )?;
     }
 
     test_case.finalize(&fixture_context, &fixture_holons)?;
@@ -292,6 +576,8 @@ struct TransientAuthoring<'a> {
     expand_type: TestReference,
     skip_type: TestReference,
     limit_type: TestReference,
+    order_by_type: TestReference,
+    spec_type: TestReference,
 }
 
 impl TransientAuthoring<'_> {
@@ -318,11 +604,25 @@ impl TransientAuthoring<'_> {
         target: TestReference,
         description: String,
     ) -> Result<TestReference, HolonError> {
+        self.relate_all(source, relationship, vec![target], description)
+    }
+
+    /// Relates `targets` in order; an empty list leaves `source` unchanged.
+    fn relate_all(
+        &mut self,
+        source: TestReference,
+        relationship: &str,
+        targets: Vec<TestReference>,
+        description: String,
+    ) -> Result<TestReference, HolonError> {
+        if targets.is_empty() {
+            return Ok(source);
+        }
         self.test_case.add_add_related_holons_step(
             self.fixture_holons,
             source,
             RelationshipName(MapString(relationship.to_string())),
-            vec![target],
+            targets,
             None,
             Some(description),
         )
@@ -357,6 +657,38 @@ impl TransientAuthoring<'_> {
         self.described(key, count_properties("LimitCount", count), self.limit_type.clone())
     }
 
+    /// An `OrderBySpec` selecting `property_name` (normally a string); `None`
+    /// leaves that argument, SortDirection or NullPlacement unset.
+    fn spec(
+        &mut self,
+        key: &str,
+        property_name: Option<BaseValue>,
+        direction: Option<BaseValue>,
+        placement: Option<BaseValue>,
+    ) -> Result<TestReference, HolonError> {
+        let mut values = PropertyMap::new();
+        if let Some(property_name) = property_name {
+            values.insert("PropertyName".to_property_name(), property_name);
+        }
+        if let Some(direction) = direction {
+            values.insert("SortDirection".to_property_name(), direction);
+        }
+        if let Some(placement) = placement {
+            values.insert("NullPlacement".to_property_name(), placement);
+        }
+        self.described(key, values, self.spec_type.clone())
+    }
+
+    /// An `OrderBy` relating `specs` in precedence order.
+    fn order_by(
+        &mut self,
+        key: &str,
+        specs: Vec<TestReference>,
+    ) -> Result<TestReference, HolonError> {
+        let order_by = self.described(key, PropertyMap::new(), self.order_by_type.clone())?;
+        self.relate_all(order_by, "OrderBySpecs", specs, format!("{key} --OrderBySpecs--> specs"))
+    }
+
     fn next(
         &mut self,
         expression: TestReference,
@@ -364,6 +696,15 @@ impl TransientAuthoring<'_> {
     ) -> Result<TestReference, HolonError> {
         self.relate(expression, "Next", successor, "Relate expression --Next--> successor".into())
     }
+}
+
+/// A `PropertyName` argument selecting `name`.
+fn selector(name: &str) -> Option<BaseValue> {
+    Some(MapString(name.to_string()).to_base_value())
+}
+
+fn enum_value(variant: &str) -> BaseValue {
+    MapEnumValue(MapString(variant.to_string())).to_base_value()
 }
 
 /// `SkipCount` / `LimitCount` properties; `None` leaves the count unset.
