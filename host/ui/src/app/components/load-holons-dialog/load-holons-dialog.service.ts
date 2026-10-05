@@ -144,8 +144,22 @@ export class LoadHolonsDialog implements ActionInteraction {
     const generation = this.generation;
     this.busy = true; this.closeButton.disabled = true;
     this.started = Date.now();
+    // Detach rather than destroy review so preparation failure preserves selection.
+    const reviewNodes = Array.from(this.content.childNodes);
+    const pending = document.createElement('section'); pending.className = 'load-holons-pending';
+    pending.setAttribute('aria-busy', 'true');
+    const heading = document.createElement('h2'); heading.textContent = 'Load in progress'; heading.tabIndex = -1;
+    const spinner = document.createElement('span'); spinner.className = 'load-holons-spinner'; spinner.setAttribute('aria-hidden', 'true');
+    const message = document.createElement('p'); message.textContent = 'Loading holons…';
+    const count = document.createElement('p'); count.textContent = `${content.files_to_load.length} ${content.files_to_load.length === 1 ? 'file' : 'files'} submitted`;
+    const timer = document.createElement('p'); timer.className = 'load-holons-timer'; timer.setAttribute('aria-live', 'off');
+    pending.append(spinner, heading, message, count, timer);
+    this.content.replaceChildren(pending); heading.focus();
     let phase = 'Preparing request';
-    const update = () => { this.status.textContent = `${phase} · ${Math.floor((Date.now() - this.started) / 1000)}s elapsed`; };
+    const update = () => {
+      if (this.status.textContent !== phase) this.status.textContent = phase;
+      timer.textContent = `${Math.floor((Date.now() - this.started) / 1000)}s elapsed`;
+    };
     update(); this.elapsed = setInterval(update, 1000);
     let invoked = false;
     try {
@@ -184,7 +198,9 @@ export class LoadHolonsDialog implements ActionInteraction {
     } catch (error) {
       if (!this.current(generation)) return;
       if (!invoked) {
+        this.content.replaceChildren(...reviewNodes);
         this.mountedReview?.resume();
+        this.dialog.focus();
         phase = `Preparation failed: ${loaderFailureDetail(error)}`;
       } else {
         this.mountedReview?.dispose(); this.mountedReview = undefined;
@@ -194,7 +210,10 @@ export class LoadHolonsDialog implements ActionInteraction {
       }
     } finally {
       clearInterval(this.elapsed); this.elapsed = undefined;
-      if (this.current(generation)) { update(); this.busy = false; this.closeButton.disabled = false; }
+      if (this.current(generation)) { pending.setAttribute('aria-busy', 'false');
+        update(); this.busy = false; this.closeButton.disabled = false;
+        if (this.terminal) { this.status.textContent = `${phase} · ${Math.floor((Date.now() - this.started) / 1000)}s elapsed`; this.closeButton.focus(); }
+      }
     }
   }
 

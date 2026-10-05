@@ -5,6 +5,7 @@
  * never on MAP SDK internal modules or transport-layer types.
  */
 export type {
+  ParserDiagnostic,
   ValidationFinding,
   ValidationFindingKind,
   ValidationSubject,
@@ -32,6 +33,7 @@ export type {
 
 export {
   readLoadValidationDiagnostics,
+  readParserDiagnostics,
   CorePropertyName,
   MapClient,
   MapTransaction,

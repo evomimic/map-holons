@@ -1341,3 +1341,52 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
         .is_err());
     Ok(())
 }
+
+#[tokio::test]
+async fn preparation_preserves_multiple_parser_findings_without_commit() -> Result<(), HolonError> {
+    use core_types::{ContentSet, FileData, LoaderParsingIssueKind};
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id)?;
+    let result = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::PrepareHolons {
+                    content_set: ContentSet {
+                        files_to_load: vec![
+                            FileData {
+                                filename: "valid.json".into(),
+                                raw_contents: r#"{"holons":[{"key":"valid"}]}"#.into(),
+                            },
+                            FileData { filename: "first.json".into(), raw_contents: "{\n".into() },
+                            FileData { filename: "second.json".into(), raw_contents: "{\n".into() },
+                            FileData {
+                                filename: "shape.json".into(),
+                                raw_contents: r#"{"holons":[{"key":12}]}"#.into(),
+                            },
+                        ],
+                    },
+                },
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    let Err(HolonError::LoaderParsingError(failure)) = result else {
+        panic!("expected structured parser failure")
+    };
+    assert_eq!(failure.issues.len(), 3);
+    assert_eq!(failure.issues[0].filename, "first.json");
+    assert_eq!(failure.issues[1].filename, "second.json");
+    assert_eq!(failure.issues[2].filename, "shape.json");
+    assert!(failure
+        .issues
+        .iter()
+        .all(|issue| issue.kind == LoaderParsingIssueKind::StructuralValidationFailure));
+    assert_eq!(failure.issues[0].location.as_ref().unwrap().line, 2);
+    assert!(failure.issues[2].location.as_ref().unwrap().column > 10);
+    assert!(failure.issues.iter().all(|issue| issue.source_error.is_some()));
+    assert!(context.is_open());
+    assert_eq!(context.lookup().staged_count()?, 0);
+    Ok(())
+}

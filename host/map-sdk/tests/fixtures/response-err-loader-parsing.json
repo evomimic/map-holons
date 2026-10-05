@@ -1,0 +1,24 @@
+{
+  "request_id": 140,
+  "result": {
+    "Err": {
+      "LoaderParsingError": {
+        "message": "broken.json: invalid import",
+        "issues": [
+          {
+            "filename": "broken.json",
+            "kind": "StructuralValidationFailure",
+            "message": "invalid import",
+            "location": {
+              "line": 2,
+              "column": 3
+            },
+            "source_error": {
+              "InvalidParameter": "expected holons"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

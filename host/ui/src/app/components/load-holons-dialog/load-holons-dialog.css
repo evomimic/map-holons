@@ -31,3 +31,11 @@
 .load-holons-result ul { padding-left: 1.25rem; }
 .load-holons-result li { margin-top: .75rem; white-space: pre-wrap; }
 @media (max-width: 480px) { .load-holons-result dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.load-holons-pending { padding: 3rem 1.5rem; text-align: center; }
+.load-holons-pending h2 { margin: 1.25rem 0 .75rem; font-size: 1.375rem; }
+.load-holons-pending p { margin: .5rem 0; color: var(--dahn-muted-text-color); }
+.load-holons-timer { font-variant-numeric: tabular-nums; }
+.load-holons-spinner { display: inline-block; width: 3rem; height: 3rem; border: 4px solid var(--dahn-slot-border-color); border-top-color: var(--dahn-focus-ring-color, currentColor); border-radius: 50%; animation: load-holons-spin 1s linear infinite; }
+@keyframes load-holons-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .load-holons-spinner { animation: none; } }

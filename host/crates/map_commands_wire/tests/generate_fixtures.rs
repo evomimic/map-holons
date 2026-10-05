@@ -481,6 +481,25 @@ fn generate_fixtures() {
     );
     write_fixture(
         &fixtures_dir,
+        "response-err-loader-parsing.json",
+        &response(
+            140,
+            Err(HolonError::LoaderParsingError(core_types::LoaderParsingFailure {
+                message: "broken.json: invalid import".into(),
+                issues: vec![core_types::LoaderParsingIssue {
+                    filename: "broken.json".into(),
+                    kind: core_types::LoaderParsingIssueKind::StructuralValidationFailure,
+                    message: "invalid import".into(),
+                    location: Some(core_types::LoaderParsingLocation { line: 2, column: 3 }),
+                    source_error: Some(Box::new(HolonError::InvalidParameter(
+                        "expected holons".into(),
+                    ))),
+                }],
+            })),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
         "response-err-holon-not-found.json",
         &response(113, Err(HolonError::HolonNotFound("missing-holon".to_string()))),
     );

@@ -17,11 +17,11 @@ function fixture() {
   const source = { capabilities: vi.fn(async () => ({ mixedSelection: true })), select: vi.fn(async () => ({ status: 'selected', discovery: { sources: [], issues: [] } })) };
   let submit!: (content: any) => void;
   const unmount = vi.fn();
-  const mount = vi.fn((_host, _discovery, callback) => { submit = callback; return { dispose: unmount, resume: vi.fn() }; });
+  const mount = vi.fn((_host, _discovery, callback) => { _host.textContent = 'Retained review selection'; submit = callback; return { dispose: unmount, resume: vi.fn() }; });
   const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence: document.createElement('div'), label: 'Load' };
   const dialog = new LoadHolonsDialog(binding, client as never, source as never, mount);
   dialogs.push(dialog);
-  return { dialog, binding, transaction, client, source, mount, unmount, submit: () => submit({ files_to_load: [] }) };
+  return { dialog, binding, transaction, client, source, mount, unmount, submit: () => submit({ files_to_load: [{ filename: 'sample.json', raw_contents: '{}' }] }) };
 }
 async function choose(f: ReturnType<typeof fixture>) {
   await tick();
@@ -74,4 +74,49 @@ it.each(['Complete', 'Incomplete', 'Rejected', 'Skipped'])('retains %s evidence 
   expect(f.transaction.dispose).not.toHaveBeenCalled();
   f.submit(); await tick(); expect(f.transaction.invokeLoadHolons).toHaveBeenCalledOnce();
   await f.dialog.dispose(); expect(f.transaction.dispose).toHaveBeenCalledOnce();
+});
+
+it('replaces review immediately and restores the same review on preparation failure', async () => {
+  const f = fixture(); let reject!: (reason: Error) => void;
+  f.transaction.prepareHolons.mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await choose(f);
+  const review = document.querySelector('.load-holons-content')!.firstChild;
+  f.submit();
+  expect(document.body.textContent).toContain('Load in progress');
+  expect(document.body.textContent).toContain('1 file submitted');
+  expect(document.body.textContent).not.toContain('Retained review selection');
+  expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+  expect(document.activeElement?.textContent).toBe('Load in progress');
+  expect(document.querySelector('.load-holons-timer')?.getAttribute('aria-live')).toBe('off');
+  expect(document.querySelector('.load-holons-footer')?.hasAttribute('hidden')).toBe(true);
+  expect(f.unmount).not.toHaveBeenCalled();
+  reject(new Error('Invalid source')); await tick();
+  expect(document.querySelector('.load-holons-content')!.firstChild).toBe(review);
+  expect(document.body.textContent).toContain('Preparation failed: Invalid source');
+  expect(document.querySelector('.load-holons-pending')).toBeNull();
+  expect(f.mount.mock.results[0].value.resume).toHaveBeenCalledOnce();
+  expect(f.transaction.invokeLoadHolons).not.toHaveBeenCalled();
+  expect(f.dialog.canDismiss()).toBe(true);
+  f.transaction.prepareHolons.mockResolvedValue({});
+  f.transaction.invokeLoadHolons.mockRejectedValue(new Error('No response'));
+  f.submit(); await tick();
+  expect(document.body.textContent).toContain('No usable response');
+  expect(document.querySelector('.load-holons-pending')).toBeNull();
+});
+
+it('updates elapsed time without repeating live phase announcements and clears the timer', async () => {
+  const f = fixture(); await choose(f);
+  let reject!: (reason: Error) => void;
+  f.transaction.prepareHolons.mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
+  vi.useFakeTimers();
+  try {
+    f.submit();
+    const status = document.querySelector('[role="status"]')!;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(document.querySelector('.load-holons-timer')?.textContent).toBe('3s elapsed');
+    expect(status.textContent).toBe('Preparing request');
+    reject(new Error('Invalid source'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally { vi.useRealTimers(); }
 });

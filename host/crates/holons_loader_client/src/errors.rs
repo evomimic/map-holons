@@ -5,30 +5,32 @@
 //!   suitable for returning across the Receptor boundary.
 //! - Formatting those issues into human-readable diagnostics for logs or UI.
 //!
-//! Phase 1 can keep the implementation minimal (e.g., aggregate messages into
-//! a single string); future phases can add richer structures if needed.
+//! Structured findings and readable summaries travel together across the existing error boundary.
 
 use core_types::HolonError;
 use std::fmt::Write;
 
 use crate::parser::{ImportFileParsingIssue, ImportFileParsingIssueKind};
 
-/// Convert a list of per-file parsing issues into a single `HolonError`
-/// that can be returned from the loader client entrypoint.
-///
-/// Typical behavior (to be implemented later):
-/// - Summarize the number of failing files.
-/// - Concatenate or otherwise compress their messages.
-/// - Wrap this summary in `HolonError::LoaderParsingError(...)`.
+/// Preserve each parser finding while retaining a readable summary for existing callers.
 pub fn map_parsing_issues_to_holon_error(issues: &[ImportFileParsingIssue]) -> HolonError {
-    if issues.is_empty() {
-        return HolonError::LoaderParsingError(
-            "Loader parsing failed but no issues were reported".into(),
-        );
-    }
-
-    let formatted = format_parsing_issues(issues);
-    HolonError::LoaderParsingError(formatted)
+    HolonError::LoaderParsingError(core_types::LoaderParsingFailure {
+        message: if issues.is_empty() {
+            "Loader parsing failed but no issues were reported".into()
+        } else {
+            format_parsing_issues(issues)
+        },
+        issues: issues
+            .iter()
+            .map(|issue| core_types::LoaderParsingIssue {
+                filename: issue.file_path.to_string_lossy().into_owned(),
+                kind: issue.kind.clone(),
+                message: issue.message.clone(),
+                location: issue.location.clone(),
+                source_error: issue.source_error.clone().map(Box::new),
+            })
+            .collect(),
+    })
 }
 
 /// Render parsing issues into a user-readable, multi-line string.

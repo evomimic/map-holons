@@ -26,6 +26,7 @@ const UNAVAILABLE = 'Not available';
 /** Keep the domain payload: Error.message alone often contains only its variant. */
 export function loaderFailureDetail(error: unknown): string {
   if (error instanceof DomainError) {
+    if (error.variant === 'LoaderParsingError' && error.payload && typeof error.payload === 'object' && 'message' in error.payload && typeof error.payload.message === 'string') return error.payload.message;
     return `${error.message}: ${typeof error.payload === 'string' ? error.payload : JSON.stringify(error.payload)}`;
   }
   return error instanceof Error ? error.message : String(error);

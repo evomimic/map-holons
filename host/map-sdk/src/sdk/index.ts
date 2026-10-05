@@ -53,3 +53,6 @@ export type {
 } from './types';
 export { readLoadValidationDiagnostics } from './validation';
 export type { ValidationFinding, ValidationFindingKind, ValidationSubject, LoadValidationFinding, LoadValidationDiagnostics } from './validation';
+
+export { readParserDiagnostics } from './parser-diagnostics';
+export type { ParserDiagnostic } from './parser-diagnostics';
