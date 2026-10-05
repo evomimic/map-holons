@@ -16,7 +16,7 @@ import type { MaterializedVisualizerRuntime } from './materialized-visualizer-ru
 /** A realized Node owns its collection lifecycle and classified interaction inputs. */
 export interface RealizedNode {
   element: HTMLElement;
-  collectionActivation: NodeCollectionActivation;
+  collectionActivation: Pick<NodeCollectionActivation, 'setBeforeChange' | 'sourceAffordance' | 'close' | 'dispose'>;
   singularRelationships: readonly RelationshipAffordance[];
   relationshipDiscovery?: NodeRelationshipDiscovery;
   actionActivations?: readonly ActionActivation[];

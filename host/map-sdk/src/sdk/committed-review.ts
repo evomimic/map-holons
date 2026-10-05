@@ -21,7 +21,7 @@ export class CommittedHolonsReview {
   private releasing?: Promise<void>;
   private activeReads = new Set<Promise<unknown>>();
   constructor(
-    private readonly context: MapTransaction,
+    readonly transaction: MapTransaction,
     readonly collection: DescribedHolonCollection,
     private readonly identities: ReadonlyArray<HolonId>,
     token: typeof construction,
@@ -55,7 +55,7 @@ export class CommittedHolonsReview {
     if (this.releasing) return this.releasing;
     this.releasing = (async () => {
       await Promise.allSettled([...this.activeReads]);
-      await this.context.dispose();
+      await this.transaction.dispose();
       this.disposed = true;
     })();
     try { await this.releasing; } finally { this.releasing = undefined; }

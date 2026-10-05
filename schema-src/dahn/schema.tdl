@@ -1082,3 +1082,21 @@ inverse relationship (DesignToken.HolonType)-[ConsumedByVisualizer]->(Visualizer
     plural: "ConsumedByVisualizerRelationships"
   }
 }
+
+// The response's concrete type selects this Node before the generic ancestor.
+instance LoadHolons.NodeVisualizer {
+  type NodeVisualizer.HolonType
+  relationships {
+    ApplicableToType -> HolonLoadResponse.DanceResponseType
+    ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.load-holons-inspector"
+  VisualizerArtifactDigest "sha256:95da485d9a4b86ff54d1ac77967d1a0f597b4f2c4cadd131c620208a5e4fd091"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}

@@ -147,3 +147,62 @@ it('refuses owner, tab, and experience destruction while an action executes, the
   expect(action.dispose).toHaveBeenCalledOnce();
   expect(experience.element.isConnected).toBe(false);
 });
+
+it('supplies action-owned inspection and refresh without replacing the exploration', async () => {
+  const openLoadHolons = vi.fn();
+  (binding as { actionInteractions?: unknown }).actionInteractions = { openLoadHolons };
+  await experience.openInitial();
+  const element = navigations()[0];
+  const interactions = mocks.realizeNode.mock.calls[0][7];
+  interactions.openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
+  const captured = openLoadHolons.mock.calls[0][0];
+  expect(captured.presentResult).toBeTypeOf('function');
+  captured.refreshAfterPersistence();
+  expect(navigations()[0]).toBe(element);
+  expect(mocks.realizeNode).toHaveBeenCalledOnce();
+});
+
+it('selects the response Node in its loader context and expands saved members within its rooted path', async () => {
+  const { MaterializedVisualizerRuntime } = await import('./materialized-visualizer-runtime');
+  class ResultNode extends HTMLElement {
+    setContext(context: VisualizerContext) { this.append(...context.childVisualizers!.values()); }
+    getNodeInspectorExtents() { return { horizontal: { 'full-width': 900, 'partial-width': 600, 'minimal-width': 120 }, vertical: { 'full-height': 760, 'partial-height': 600, 'minimal-height': 48 } }; }
+    setNodeInspectorAllocation() {}
+  }
+  const resultNode = reference('Selected result node'), slot = reference('Node slot');
+  const loaderMaterializations: unknown[] = [];
+  const realize = vi.spyOn(MaterializedVisualizerRuntime.prototype, 'realize').mockImplementation(async function(this: any, selected) {
+    const owner = this.cache.materializer.transaction;
+    if (owner.committed) {
+      loaderMaterializations.push(selected);
+      throw new Error('TransactionAlreadyCommitted');
+    }
+    return selected === resultNode ? ResultNode : NavigationElement;
+  });
+  const slots = vi.spyOn(MaterializedVisualizerRuntime.prototype, 'slot').mockResolvedValue(slot);
+  const openLoadHolons = vi.fn();
+  try {
+    (binding as any).actionInteractions = { openLoadHolons };
+    await experience.openInitial();
+    mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
+    const present = openLoadHolons.mock.calls[0][0].presentResult;
+    const response = reference('Response'), member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
+    const loader = { committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })) };
+    const review = { bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
+    const collection = document.createElement('section'), properties = document.createElement('section');
+    const affordance = { kind: 'result', label: 'Committed holons', role: 'committed' };
+    const lifecycle = { setBeforeChange: vi.fn(), sourceAffordance: (source: HTMLElement) => source === collection ? affordance : undefined, close: vi.fn(), dispose: vi.fn() };
+    const path = await present({ transaction: loader, review, subject: response, children: new Map([['properties', properties], ['collections', collection]]), collections: lifecycle, signal: new AbortController().signal });
+    document.body.append(path.element);
+    expect(loader.selectVisualizer).toHaveBeenCalledWith({ subject: response, requestedKind: 'node', slot, parentVisualizer: binding.initialNavigationVisualizer });
+    expect(path.element.occurrences[0].subject).toBe(response);
+    path.inspect({ reference: member, source: collection });
+    await vi.waitFor(() => expect(path.element.occurrences).toHaveLength(2));
+    expect(path.element.occurrences[0].element.contains(properties)).toBe(true);
+    expect(path.element.occurrences[1].subject).toBe(member);
+    expect(path.element.occurrences[1].provenance.kind).toBe('collection-member');
+    expect(review.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ subject: member, requestedKind: 'node' }));
+    expect(loaderMaterializations).toEqual([]);
+    path.dispose(); expect(lifecycle.dispose).toHaveBeenCalledOnce();
+  } finally { realize.mockRestore(); slots.mockRestore(); }
+});

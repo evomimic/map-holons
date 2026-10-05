@@ -168,6 +168,23 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
     let runtime = build_test_runtime();
     let tx_id = begin_tx(&runtime).await;
     let (context, subject) = minimally_described_transient(&runtime, &tx_id);
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("commit with retained transient evidence");
+    assert!(!context.is_open());
+    assert!(matches!(
+        runtime
+            .execute_command(
+                tx_cmd(&runtime, &tx_id, TransactionAction::NewHolon { key: None }),
+                ExecutionPolicy::default(),
+            )
+            .await,
+        Err(HolonError::TransactionAlreadyCommitted { .. })
+    ));
     let direct = dahn_selection::select_visualizer(
         &context,
         VisualizerSelectionRequest {

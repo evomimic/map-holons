@@ -1,4 +1,4 @@
-import { MapClient, type MapTransaction } from '../../../dahn/deps/map-sdk';
+import { MapClient, type MapTransaction, type HolonReference } from '../../../dahn/deps/map-sdk';
 import type { ActionBinding } from '../../../dahn/runtime/action-activation';
 import { ActionResultCollections } from '../../../dahn/runtime/action-result-collections';
 import { MaterializedVisualizerCache } from '../../../dahn/runtime/materialized-visualizer-cache';
@@ -9,7 +9,7 @@ import { diagnosticPresentation, locationLabel, type LoadDiagnosticRow, type Loa
 import { loaderFailureDetail } from '../json-data-uploader/loader-result.presenter';
 
 export interface DiagnosticPresentation { readonly element: HTMLElement; dispose(): Promise<void> }
-export type MountDiagnostics = (binding: ActionBinding, client: MapClient, read: () => Promise<LoadDiagnostics>) => DiagnosticPresentation;
+export type MountDiagnostics = (binding: ActionBinding, client: MapClient, read: () => Promise<LoadDiagnostics>, load?: { transaction: MapTransaction; complete: boolean; response: HolonReference; summary: HTMLElement }) => DiagnosticPresentation;
 
 /** Owns values and a separate presentation transaction; subjects remain loader-bound. */
 export class LoadDiagnosticPresentation implements DiagnosticPresentation {

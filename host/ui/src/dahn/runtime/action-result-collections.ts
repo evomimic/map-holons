@@ -48,6 +48,8 @@ export class ActionResultCollections {
     Object.assign(this.element.style, { display: 'flex', flexDirection: 'column', minHeight: '0', height: '100%', overflow: 'hidden' });
     for (const [name, value] of Object.entries(theme.cssCustomProperties)) this.element.style.setProperty(name, value);
     const tabs = document.createElement('div'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Result collections');
+    // A single collection is already selected; its owner supplies the view label.
+    tabs.hidden = results.length < 2;
     this.element.append(tabs);
     for (const binding of results) {
       const tab = document.createElement('button'); tab.type = 'button'; tab.textContent = binding.label;

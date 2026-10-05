@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "ff6554d1f0b3bd11eb1d29d29ddf6c3725efe373e9679cf12040569ab883a2cd"
+      "sha256": "bc8e89077ed398e0e84ea252f0bb233a9fc4f913b560be0bf0ff7bed0133df75"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -2408,7 +2408,15 @@
       "type": "VisualizerSlot.HolonType"
     },
     {
+      "key": "LoadHolons.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType"
+    },
+    {
       "key": "LoadHolonsActionTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "LoadHolonsInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
     },
     {

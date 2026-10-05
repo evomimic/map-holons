@@ -14,5 +14,6 @@ export interface RelationshipAffordance {
   relationship: AvailableRelationshipHandle;
 }
 export type CollectionAffordance =
+  | { kind: 'result'; label: string; role: string }
   | { kind: 'property'; label: string; property: PropertyDescriptorHandle }
   | { kind: 'relationship'; label: string; description?: string; relationship: AvailableRelationshipHandle };

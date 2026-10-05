@@ -35,6 +35,7 @@ export class NodeCollectionActivation implements CollectionActivation {
   private pendingUpdate?: (update: CollectionUpdate) => void;
   private readonly unsubscribeInvalidation: () => void;
   private selected: CollectionAffordance | undefined;
+  private selectedSlot?: string;
   private requested?: CollectionAffordance;
 
   private beforeChange?: () => boolean;
@@ -55,6 +56,7 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly discovery?: NodeRelationshipDiscovery,
   ) {
     this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
+      const selected = this.selected; const slot = this.selectedSlot; const publish = this.presentationUpdate;
       ++this.generation; ++this.requestGeneration;
       this.pendingUpdate?.({ state: 'error', message: 'Semantic context changed. Select the collection again after editing.' });
       this.pendingUpdate = undefined;
@@ -64,6 +66,11 @@ export class NodeCollectionActivation implements CollectionActivation {
       this.content?.setInspectHolonHandler(null);
       this.content = undefined;
       this.selected = undefined;
+      if (selected?.kind === 'relationship' && slot && publish) {
+        queueMicrotask(() => {
+          if (!this.disposed && !semanticWork(this.transaction).paused) this.load(selected, slot, publish, true, true);
+        });
+      }
     });
   }
 
@@ -77,7 +84,7 @@ export class NodeCollectionActivation implements CollectionActivation {
     return true;
   }
 
-  private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void, retry = false): void {
+  private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void, retry = false, refreshing = false): void {
     const request = ++this.requestGeneration;
     const work = semanticWork(this.transaction);
     const revision = work.revision;
@@ -85,13 +92,13 @@ export class NodeCollectionActivation implements CollectionActivation {
     const current = () => !this.disposed && request === (allocated ? this.activeRequest : this.requestGeneration) && revision === work.revision;
     let bindingGeneration = this.generation;
     const allocate = () => {
-      if (!current() || this.beforeChange?.() === false) return false;
+      if (!current() || (!refreshing && this.beforeChange?.() === false)) return false;
       if (this.selected && this.content?.getCollectionViewState) {
         this.viewStates.set(this.selected, this.content.getCollectionViewState());
       }
       this.content?.setInspectHolonHandler(null);
       this.content = undefined;
-      this.selected = affordance;
+      this.selected = affordance; this.selectedSlot = slotKey;
       bindingGeneration = ++this.generation;
       allocated = true;
       this.activeRequest = request;
@@ -139,6 +146,10 @@ export class NodeCollectionActivation implements CollectionActivation {
             const name = await affordance.relationship.descriptor.relationshipName();
             if (!current()) return;
             profile?.next('collection membership');
+            // Refresh membership before reading its described envelope; the public
+            // fresh-read path updates the relationship cache used by that envelope.
+            if (refreshing) await this.owner.relatedHolons(name, { requireFresh: true });
+            if (!current()) return;
             const collection = await this.owner.describedRelatedHolons(name);
             if (!current()) return;
             this.discovery?.record(affordance, collection.length);

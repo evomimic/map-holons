@@ -3043,6 +3043,40 @@
           ]
         }
       ]
+    },
+    {
+      "key": "LoadHolons.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "LoadHolonsInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolonsInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:95da485d9a4b86ff54d1ac77967d1a0f597b4f2c4cadd131c620208a5e4fd091",
+        "VisualizerImplementationKey": "dahn.load-holons-inspector",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
     }
   ]
 }

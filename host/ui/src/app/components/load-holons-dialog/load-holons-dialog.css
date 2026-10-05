@@ -46,3 +46,28 @@
 .load-diagnostic-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8125rem; }
 .load-diagnostic-detail dt { font-weight: 600; margin-top: .5rem; }
 .load-diagnostic-detail dd { margin-left: 0; }
+
+.load-results { padding: 0 1.5rem 1.5rem; min-width: 0; }
+.load-results [hidden] { display: none !important; }
+.load-results > section[aria-label="Committed holons"] { height: 24rem; max-height: 55vh; }
+
+.load-holons-steps { display: inline-block; text-align: left; margin: 1rem auto; padding-left: 1.5rem; }
+.load-holons-steps li { padding: .25rem 0; color: var(--dahn-muted-text-color); }
+.load-holons-steps [aria-current="step"] { color: var(--dahn-canvas-text-color); font-weight: 600; }
+
+/* Navigator-owned load presentations occupy the same allocation as exploration. */
+.load-holons-tab {
+  position: relative; inset: auto; transform: none; margin: 0; width: 100%; max-height: none;
+  flex: 1 1 auto; min-height: 0; box-shadow: none;
+}
+.load-holons-tab .load-holons-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+
+/* Keep the load node and its bounded collection above the expanded member path.
+   The tab scrolls as a whole; spare height must not stretch the collection. */
+.load-holons-tab .load-holons-result { flex: 0 0 auto; }
+.load-holons-tab .load-results { display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; }
+.load-results > section[aria-label="Committed holons"] { flex: 0 0 auto; height: 22rem; max-height: 50vh; }
+.load-results > .load-diagnostics { padding: 0; }
+
+.load-result-path { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.load-holons-content:has(> .load-result-path) { overflow: hidden; }

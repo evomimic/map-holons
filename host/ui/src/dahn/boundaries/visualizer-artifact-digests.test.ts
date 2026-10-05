@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const repository = resolve(process.cwd(), '..');
 const implementations = [
+  ['LoadHolonsInspectorTypeScript.VisualizerImplementation', 'load-holons-inspector.js'],
   ['PathInspectorTypeScript.VisualizerImplementation', 'path-inspector.js'],
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
   ['TableCollectionTypeScript.VisualizerImplementation', 'table-collection.js'],

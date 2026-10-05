@@ -274,6 +274,15 @@ fn collection_selection_does_not_validate_member_types_on_read() {
 }
 
 fn slot_select(graph: Graph, slot: u8, parent: Option<u8>) -> Result<u8, HolonError> {
+    slot_select_kind(graph, slot, parent, VisualizerKind::Property)
+}
+
+fn slot_select_kind(
+    graph: Graph,
+    slot: u8,
+    parent: Option<u8>,
+    kind: VisualizerKind,
+) -> Result<u8, HolonError> {
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
@@ -285,7 +294,7 @@ fn slot_select(graph: Graph, slot: u8, parent: Option<u8>) -> Result<u8, HolonEr
         &context,
         VisualizerSelectionRequest {
             subject: Graph::reference(&context, 1),
-            requested_kind: VisualizerKind::Property,
+            requested_kind: kind,
             slot: Graph::reference(&context, slot),
             parent_visualizer: parent.map(|id| Graph::reference(&context, id)),
         },
@@ -341,4 +350,24 @@ fn slot_selection_rejects_foreign_slots_empty_contracts_and_ambiguity() {
         slot_select(graph, 30, None),
         Err(HolonError::MultipleRelatedHolons { count: 2, .. })
     ));
+}
+
+#[test]
+fn node_selection_starts_at_described_type_and_falls_back_through_extends() {
+    for specialized in [true, false] {
+        let mut graph = slot_graph();
+        // Subject 1 is an ordinary response; descriptor 4 is its concrete type.
+        graph.edge(1, "DescribedBy", &[4]);
+        graph.edge(4, "Extends", &[2]);
+        graph.edge(2, "HasApplicableVisualizer", &[22]);
+        if specialized {
+            graph.edge(4, "HasApplicableVisualizer", &[20]);
+        }
+        // Applicability on the subject itself must not control Node selection.
+        graph.edge(1, "HasApplicableVisualizer", &[21]);
+        assert_eq!(
+            slot_select_kind(graph, 30, Some(40), VisualizerKind::Node).unwrap(),
+            if specialized { 20 } else { 22 }
+        );
+    }
 }

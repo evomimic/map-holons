@@ -1,4 +1,7 @@
-import type { HolonReference } from '../deps';
+import type { RealizedNode } from './realize-node';
+import type { InspectHolonIntent } from '../contracts/visualizers';
+import type { ExplorationPresentation } from './exploration-tabs';
+import type { HolonReference, MapTransaction } from '../deps';
 
 /** Captured semantic and occurrence identity; navigation never mutates this binding. */
 export interface ActionBinding {
@@ -8,6 +11,12 @@ export interface ActionBinding {
   readonly visualizer: HolonReference;
   readonly occurrence: HTMLElement;
   readonly label: string;
+  readonly mountPresentation?: (element: HTMLElement, owner: ActionInteraction) => { focus(): void; remove(): void };
+  readonly presentResult?: (request: {
+    transaction: MapTransaction; review: MapTransaction; subject: HolonReference;
+    children: Map<string, HTMLElement>; collections: RealizedNode['collectionActivation']; signal: AbortSignal;
+  }) => Promise<ExplorationPresentation & { inspect(intent: InspectHolonIntent): void }>;
+  readonly refreshAfterPersistence?: () => void;
 }
 
 export interface ActionInteraction {

@@ -10,7 +10,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () { this.open = false; };
 });
 afterEach(async () => { for (const dialog of dialogs) await dialog.dispose(); document.body.replaceChildren(); vi.restoreAllMocks(); });
-function fixture(occurrence = document.createElement('div')) {
+function fixture(occurrence = document.createElement('div'), mountPresentation?: (element: HTMLElement, owner: any) => { focus(): void; remove(): void }) {
   const target = {};
   const transaction = { bindLoadTarget: vi.fn(async () => target), dispose: vi.fn(async () => {}), prepareHolons: vi.fn(async () => ({})), invokeLoadHolons: vi.fn() };
   const client = { beginTransaction: vi.fn(async () => transaction) };
@@ -18,7 +18,7 @@ function fixture(occurrence = document.createElement('div')) {
   let submit!: (content: any) => void;
   const unmount = vi.fn();
   const mount = vi.fn((_host, _discovery, callback) => { _host.textContent = 'Retained review selection'; submit = callback; return { dispose: unmount, resume: vi.fn() }; });
-  const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence, label: 'Load' };
+  const binding = { subject: {} as never, dance: {} as never, visualizer: {} as never, occurrence, mountPresentation, label: 'Load', refreshAfterPersistence: vi.fn() };
   const mountDiagnostics = vi.fn((_binding, _client, _read) => ({ element: document.createElement('section'), dispose: vi.fn(async () => {}) }));
   const dialog = new LoadHolonsDialog(binding, client as never, source as never, mount, mountDiagnostics);
   dialogs.push(dialog);
@@ -70,6 +70,8 @@ it.each(['Complete', 'Incomplete', 'Rejected', 'Skipped'])('retains %s evidence 
   f.transaction.invokeLoadHolons.mockResolvedValue(response);
   await choose(f); f.submit(); await tick();
   expect(document.body.textContent).toContain(status);
+  expect(f.binding.refreshAfterPersistence).toHaveBeenCalledTimes(['Complete', 'Incomplete'].includes(status) ? 1 : 0);
+  expect(f.mountDiagnostics).toHaveBeenCalledWith(f.binding, f.client, expect.any(Function), expect.objectContaining({ transaction: f.transaction, complete: status === 'Complete', summary: expect.any(HTMLElement) }));
   expect(document.body.textContent).toContain('Not available');
   expect(document.body.textContent).toContain('Validation violations3');
   expect(f.transaction.dispose).not.toHaveBeenCalled();
@@ -114,8 +116,8 @@ it('updates elapsed time without repeating live phase announcements and clears t
     f.submit();
     const status = document.querySelector('[role="status"]')!;
     await vi.advanceTimersByTimeAsync(3000);
-    expect(document.querySelector('.load-holons-timer')?.textContent).toBe('3s elapsed');
-    expect(status.textContent).toBe('Preparing request');
+    expect(document.querySelector('.load-holons-timer')?.textContent).toBe('Total elapsed: 3s');
+    expect(status.textContent).toBe('Parsing and preparing files');
     reject(new Error('Invalid source'));
     await vi.advanceTimersByTimeAsync(0);
     expect(vi.getTimerCount()).toBe(0);
@@ -150,4 +152,31 @@ it('refreshes an open dialog when theme tokens change and releases observation o
   await f.dialog.dispose();
   occurrence.style.setProperty('--dahn-canvas-text-color', 'purple'); await tick();
   expect(element.style.getPropertyValue('--dahn-canvas-text-color')).toBe('green');
+});
+
+it('marks parsing complete only after preparation and distinguishes guest execution', async () => {
+  const f = fixture(); await choose(f);
+  let prepared!: (value: {}) => void;
+  let failed!: (error: Error) => void;
+  f.transaction.prepareHolons.mockImplementation(() => new Promise(resolve => { prepared = resolve; }));
+  f.transaction.invokeLoadHolons.mockImplementation(() => new Promise((_resolve, reject) => { failed = reject; }));
+  f.submit();
+  expect(document.querySelector('[aria-current="step"]')?.textContent).toBe('Parse and prepare files — in progress');
+  expect(f.transaction.invokeLoadHolons).not.toHaveBeenCalled();
+  prepared({}); await tick();
+  expect(document.body.textContent).toContain('Parse and prepare files — complete');
+  expect(document.querySelector('[aria-current="step"]')?.textContent).toBe('Execute Load Holons — in progress');
+  expect(document.body.textContent).toContain('internal progress is not available');
+  failed(new Error('No guest response')); await tick();
+});
+
+it('uses the supplied Navigator tab host instead of opening a dialog', async () => {
+  const host = document.createElement('div'); document.body.append(host);
+  const focus = vi.fn(), remove = vi.fn();
+  const mount = vi.fn((element: HTMLElement) => { host.append(element); return { focus, remove }; });
+  const f = fixture(document.createElement('div'), mount); await tick();
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(host.querySelector('.load-holons-tab')).not.toBeNull();
+  f.dialog.focus(); expect(focus).toHaveBeenCalledOnce();
+  await f.dialog.dispose(); expect(remove).toHaveBeenCalledOnce();
 });

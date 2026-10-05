@@ -1,3 +1,4 @@
+import { LoadResultPresentation } from './load-result-presentation';
 import { LoadDiagnosticPresentation, type DiagnosticPresentation, type MountDiagnostics } from './load-diagnostic-presentation';
 import { readLoadDiagnostics, parserLoadDiagnostics } from './load-diagnostics';
 import { ApplicationRef, EnvironmentInjector, Injectable, createComponent, inject } from '@angular/core';
@@ -39,7 +40,8 @@ type MountReview = (host: HTMLElement, discovery: SourceDiscovery, submit: (cont
 
 /** Presentation owns one dedicated transaction from acquisition until explicit dismissal. */
 export class LoadHolonsDialog implements ActionInteraction {
-  private readonly dialog = document.createElement('dialog');
+  private readonly dialog: HTMLElement;
+  private presentation?: { focus(): void; remove(): void };
   private readonly content = document.createElement('div');
   private readonly status = document.createElement('p');
   private readonly closeButton = document.createElement('button');
@@ -65,7 +67,11 @@ export class LoadHolonsDialog implements ActionInteraction {
 
   constructor(private readonly binding: ActionBinding, private readonly client: MapClient,
     private readonly sources: NativeLoaderSourceAdapter, private readonly mountReview: MountReview,
-    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read) => new LoadDiagnosticPresentation(binding, client, read)) {
+    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read, load) => {
+      const diagnostics = new LoadDiagnosticPresentation(binding, client, read);
+      return load ? new LoadResultPresentation(binding, diagnostics, load.transaction, load.complete, { response: load.response, summary: load.summary }) : diagnostics;
+    }) {
+    this.dialog = document.createElement(binding.mountPresentation ? 'section' : 'dialog');
     this.dialog.setAttribute('aria-label', binding.label);
     this.dialog.tabIndex = -1;
     this.dialog.className = 'load-holons-dialog';
@@ -88,9 +94,13 @@ export class LoadHolonsDialog implements ActionInteraction {
     for (let source: HTMLElement | null = binding.occurrence; source; source = source.parentElement) {
       this.themeObserver.observe(source, { attributes: true, attributeFilter: ['style', 'class'] });
     }
-    document.body.append(this.dialog);
+    if (binding.mountPresentation) {
+      this.dialog.classList.add('load-holons-tab');
+      this.presentation = binding.mountPresentation(this.dialog, this);
+    } else document.body.append(this.dialog);
     // A modeless popup preserves navigation outside the owned presentation.
-    this.dialog.show(); this.dialog.style.display = 'flex'; this.dialog.style.flexDirection = 'column';
+    if (this.dialog instanceof HTMLDialogElement) this.dialog.show();
+    this.dialog.style.display = 'flex'; this.dialog.style.flexDirection = 'column';
     this.dialog.focus();
     this.initializing = this.initialize();
   }
@@ -110,7 +120,7 @@ export class LoadHolonsDialog implements ActionInteraction {
     this.themeProperties = current;
   }
 
-  focus(): void { this.dialog.focus(); }
+  focus(): void { this.presentation?.focus(); this.dialog.focus(); }
   canDismiss(): boolean { return !this.busy; }
   private current(generation: number): boolean { return !this.disposed && !this.disposing && this.generation === generation; }
 
@@ -174,15 +184,21 @@ export class LoadHolonsDialog implements ActionInteraction {
     pending.setAttribute('aria-busy', 'true');
     const heading = document.createElement('h2'); heading.textContent = 'Load in progress'; heading.tabIndex = -1;
     const spinner = document.createElement('span'); spinner.className = 'load-holons-spinner'; spinner.setAttribute('aria-hidden', 'true');
-    const message = document.createElement('p'); message.textContent = 'Loading holons…';
+    const message = document.createElement('p'); message.textContent = 'Parsing source files and preparing the load request…';
     const count = document.createElement('p'); count.textContent = `${content.files_to_load.length} ${content.files_to_load.length === 1 ? 'file' : 'files'} submitted`;
     const timer = document.createElement('p'); timer.className = 'load-holons-timer'; timer.setAttribute('aria-live', 'off');
-    pending.append(spinner, heading, message, count, timer);
+    const steps = document.createElement('ol'); steps.className = 'load-holons-steps';
+    steps.setAttribute('aria-label', 'Load progress');
+    const parsing = document.createElement('li'); parsing.textContent = 'Parse and prepare files — in progress'; parsing.setAttribute('aria-current', 'step');
+    const execution = document.createElement('li'); execution.textContent = 'Execute Load Holons — waiting';
+    const responseStep = document.createElement('li'); responseStep.textContent = 'Read load result — waiting';
+    steps.append(parsing, execution, responseStep);
+    pending.append(spinner, heading, message, count, steps, timer);
     this.content.replaceChildren(pending); heading.focus();
-    let phase = 'Preparing request';
+    let phase = 'Parsing and preparing files';
     const update = () => {
       if (this.status.textContent !== phase) this.status.textContent = phase;
-      timer.textContent = `${Math.floor((Date.now() - this.started) / 1000)}s elapsed`;
+      timer.textContent = `Total elapsed: ${Math.floor((Date.now() - this.started) / 1000)}s`;
     };
     update(); this.elapsed = setInterval(update, 1000);
     let invoked = false;
@@ -197,11 +213,19 @@ export class LoadHolonsDialog implements ActionInteraction {
           return;
         }
       }
+      const preparationStarted = Date.now();
       const request = await this.transaction.prepareHolons(content);
       if (!this.current(generation)) return;
+      parsing.textContent = `Parse and prepare files — complete (${((Date.now() - preparationStarted) / 1000).toFixed(1)}s)`;
+      parsing.removeAttribute('aria-current');
+      execution.textContent = 'Execute Load Holons — in progress'; execution.setAttribute('aria-current', 'step');
+      message.textContent = 'Load initiated. Waiting for the guest response; internal progress is not available.';
       phase = 'Executing Load Holons'; update(); invoked = true;
       const response = await this.transaction.invokeLoadHolons(this.target, request);
       this.response = response;
+      execution.textContent = 'Execute Load Holons — response received'; execution.removeAttribute('aria-current');
+      responseStep.textContent = 'Read load result — in progress'; responseStep.setAttribute('aria-current', 'step');
+      message.textContent = 'Reading the returned load outcome…';
       phase = 'Reading response'; update();
       const result = await presentLoaderResult(response);
       if (!this.current(generation)) return;
@@ -225,7 +249,17 @@ export class LoadHolonsDialog implements ActionInteraction {
       if (result.readFailures.length) {
         const failures = document.createElement('p'); failures.textContent = result.readFailures.join(' · '); summary.append(failures);
       }
-      this.diagnostics = this.mountDiagnostics(this.binding, this.client, () => readLoadDiagnostics(response));
+      this.diagnostics = this.mountDiagnostics(this.binding, this.client, () => readLoadDiagnostics(response), {
+        transaction: this.transaction, complete: result.loadCommitStatus === 'Complete', response, summary,
+      });
+      if (result.loadCommitStatus === 'Complete' || result.loadCommitStatus === 'Incomplete') {
+        try { this.binding.refreshAfterPersistence?.(); }
+        catch (error) {
+          const refreshFailure = document.createElement('p');
+          refreshFailure.textContent = `Navigator refresh unavailable: ${loaderFailureDetail(error)}`;
+          summary.append(refreshFailure);
+        }
+      }
       this.content.replaceChildren(summary, this.diagnostics.element);
       this.closeButton.parentElement!.hidden = false;
       this.closeButton.textContent = 'Close';
@@ -249,7 +283,7 @@ export class LoadHolonsDialog implements ActionInteraction {
       clearInterval(this.elapsed); this.elapsed = undefined;
       if (this.current(generation)) { pending.setAttribute('aria-busy', 'false');
         update(); this.busy = false; this.closeButton.disabled = false;
-        if (this.terminal) { this.status.textContent = `${phase} · ${Math.floor((Date.now() - this.started) / 1000)}s elapsed`; this.closeButton.focus(); }
+        if (this.terminal) { this.status.textContent = `${phase} · Total elapsed: ${Math.floor((Date.now() - this.started) / 1000)}s`; this.closeButton.focus(); }
       }
     }
   }
@@ -265,7 +299,8 @@ export class LoadHolonsDialog implements ActionInteraction {
       this.disposed = true; ++this.generation;
       this.response = undefined; this.target = undefined; this.transaction = undefined;
       clearInterval(this.elapsed); this.mountedReview?.dispose(); this.mountedReview = undefined;
-      this.dialog.close(); this.dialog.remove(); this.binding.occurrence.querySelector<HTMLElement>('button')?.focus(); this.finish();
+      if (this.dialog instanceof HTMLDialogElement) this.dialog.close();
+      this.presentation?.remove(); this.dialog.remove(); this.binding.occurrence.querySelector<HTMLElement>('button')?.focus(); this.finish();
     } catch (error) { this.status.textContent = `Unable to release load state: ${loaderFailureDetail(error)}`; }
     finally { this.disposing = false; }
   }

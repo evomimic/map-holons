@@ -129,3 +129,22 @@ it('hides the whole inactive subtree even when descendant visibility is explicit
   expect(a.element.parentElement!.style.opacity).toBe('1');
   expect(b.element.parentElement!.style.opacity).toBe('0');
 });
+
+it('retains an action tab across navigation and protects execution and pending cleanup', async () => {
+  const root = presentation('HolonSpace');
+  tabs = new ExplorationTabs(async () => root); document.body.append(tabs); await tabs.open(anchor);
+  const content = document.createElement('section'); content.textContent = 'Load progress';
+  const cleanup = pending<void>(); let busy = true;
+  const owner = { canDismiss: () => !busy, dispose: vi.fn(() => cleanup.promise) };
+  const handle = tabs.mountAction('Load Holons', content, owner);
+  expect(active()).toBe('Load Holons');
+  click('HolonSpace'); expect(content.isConnected).toBe(true);
+  handle.focus(); expect(active()).toBe('Load Holons');
+  tabs.querySelector<HTMLButtonElement>('[aria-label="Close Load Holons"]')!.click();
+  expect(owner.dispose).not.toHaveBeenCalled();
+  busy = false;
+  tabs.querySelector<HTMLButtonElement>('[aria-label="Close Load Holons"]')!.click();
+  expect(content.isConnected).toBe(true);
+  cleanup.resolve(); await vi.waitFor(() => expect(content.isConnected).toBe(false));
+  expect(active()).toBe('HolonSpace'); expect(root.dispose).not.toHaveBeenCalled();
+});

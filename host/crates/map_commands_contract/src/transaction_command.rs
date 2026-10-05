@@ -195,8 +195,10 @@ impl TransactionAction {
                     requires_commit_guard: false,
                 }
             }
-            TransactionAction::SelectCollectionVisualizer { .. }
-            | TransactionAction::SelectVisualizer { .. } => {
+            // Selection only reads the retained subject and descriptor graph.
+            // Materialization still creates invocation holons and requires an open context.
+            TransactionAction::SelectVisualizer { .. } => CommandLifecyclePolicy::holon_read_only(),
+            TransactionAction::SelectCollectionVisualizer { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::FetchArtifact { .. } => {
