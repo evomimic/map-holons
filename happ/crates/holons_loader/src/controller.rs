@@ -160,6 +160,7 @@ impl HolonLoaderController {
         let mut merged_queued_relationship_references: Vec<TransientReference> = Vec::new();
 
         // In-memory provenance index: loader_holon_key -> (filename, start_utf8_byte_offset)
+        let mut staged_sources = Vec::new();
         let mut provenance_index: ProvenanceIndex = HashMap::new();
         // Accumulates duplicate-key errors discovered while indexing provenance.
         let mut provenance_errors: Vec<ErrorWithContext> = Vec::new();
@@ -184,6 +185,7 @@ impl HolonLoaderController {
             let mut mapper_output =
                 LoaderHolonMapper::map_bundle(context, bundle_reference.clone())?;
 
+            staged_sources.append(&mut mapper_output.staged_sources);
             total_holons_staged += mapper_output.staged_count;
             total_loader_holons += mapper_output.loader_holon_count;
 
@@ -509,6 +511,38 @@ impl HolonLoaderController {
             summary,
             commit_error_holons,
         )?;
+
+        // Retain the original Commit carriers, including findings without a staged subject.
+        let mut response_reference = response_reference;
+        response_reference
+            .add_related_holons("LoadCommitResponse", vec![commit_response.into()])?;
+        let mut source_carriers = Vec::new();
+        for (staged, key) in staged_sources {
+            if staged.validation_findings()?.is_empty() {
+                continue;
+            }
+            let Some(source) = provenance_index.get(&key) else {
+                continue;
+            };
+            let mut carrier = context.mutation().new_holon(Some(MapString(format!(
+                "load-validation-source-{}",
+                source_carriers.len()
+            ))))?;
+            if let Some(descriptor) = crate::response_descriptor::resolve_response_descriptor(
+                context,
+                "LoadValidationSource.Projection",
+            )? {
+                carrier.with_descriptor(descriptor)?;
+            }
+            carrier.with_property_value("Filename", source.filename.clone())?;
+            carrier.with_property_value("LoaderHolonKey", key)?;
+            if let Some(offset) = source.start_utf8_byte_offset {
+                carrier.with_property_value("StartUtf8ByteOffset", offset)?;
+            }
+            carrier.add_related_holons("ValidationSourceSubject", vec![staged.into()])?;
+            source_carriers.push(carrier.into());
+        }
+        response_reference.add_related_holons("HasValidationSource", source_carriers)?;
 
         info!(
             "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={} {}",

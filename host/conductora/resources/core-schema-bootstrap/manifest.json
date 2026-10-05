@@ -95,7 +95,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "2e7855d754120f8b5202b2c0e3d9c6a5fb482fcc5f4b4eec208915a2a6ecd52e"
+      "sha256": "4818edf682e1901076376d54a7d2c7bca82da293218736670f8e4ec65d4c612d"
     },
     {
       "path": "imports/dancer/schema.json",
@@ -150,6 +150,10 @@
     {
       "key": "(CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(CommitResponse.Projection)-[CommitResponseForLoad]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(CommitResponse.Projection)-[HasValidationFinding]->(CommitValidationFinding.Projection)",
@@ -328,6 +332,14 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(HolonLoadResponse.DanceResponseType)-[HasValidationSource]->(LoadValidationSource.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[LoadCommitResponse]->(CommitResponse.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -385,6 +397,10 @@
     },
     {
       "key": "(HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollection.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[HasLoadValidationSource]->(LoadValidationSource.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -458,6 +474,14 @@
     {
       "key": "(KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType.TypeDescriptor)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadValidationSource.Projection)-[ValidationSourceForLoad]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadValidationSource.Projection)-[ValidationSourceSubject]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
@@ -2382,6 +2406,10 @@
     {
       "key": "LoadHolonsActionTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "LoadValidationSource.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "LoaderHolon.HolonType",

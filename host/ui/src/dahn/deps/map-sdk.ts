@@ -5,6 +5,11 @@
  * never on MAP SDK internal modules or transport-layer types.
  */
 export type {
+  ValidationFinding,
+  ValidationFindingKind,
+  ValidationSubject,
+  LoadValidationFinding,
+  LoadValidationDiagnostics,
   BaseValue,
   ContentSet,
   FileData,
@@ -26,6 +31,7 @@ export type {
 } from '../../../../map-sdk/src';
 
 export {
+  readLoadValidationDiagnostics,
   CorePropertyName,
   MapClient,
   MapTransaction,

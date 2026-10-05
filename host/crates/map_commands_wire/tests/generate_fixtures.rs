@@ -34,6 +34,39 @@ use uuid::Uuid;
 fn generate_fixtures() {
     let fixtures_dir = fixtures_dir();
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
+    write_fixture(
+        &fixtures_dir,
+        "request-holon-validation-findings.json",
+        &request(
+            123,
+            holon_command(
+                41,
+                staged_reference(41, uuid_b()),
+                HolonActionWire::Read(ReadableHolonActionWire::GetValidationFindings),
+            ),
+            default_options(),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-validation-findings.json",
+        &response(
+            123,
+            Ok(MapResultWire::ValidationFindings(vec![core_types::CommitValidationViolation {
+                kind: core_types::CommitValidationViolationKind::RuleViolation {
+                    code: "DS-TEST".into(),
+                },
+                rule_key: Some("ExampleRule".into()),
+                severity: core_types::ValidationSeverity::Error,
+                subject: core_types::ValidationSubjectPath::Property {
+                    holon_identity: "subject".into(),
+                    name: "Bad".into(),
+                },
+                descriptor_identity: None,
+                message: "Invalid property".into(),
+            }])),
+        ),
+    );
     let described = map_commands_wire::DescribedHolonCollectionWire {
         members: HolonCollectionWire {
             state: CollectionState::Fetched,

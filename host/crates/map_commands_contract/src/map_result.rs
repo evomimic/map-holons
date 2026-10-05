@@ -82,6 +82,9 @@ pub enum MapResult {
     /// Returns a holon id.
     HolonId(HolonId),
 
+    /// Immutable structured values from a staged carrier, not a collection of holon handles.
+    ValidationFindings(Vec<core_types::CommitValidationViolation>),
+
     /// Transitional dance-result exception retained for legacy and in-flight dance paths.
     DanceResponse(DanceResponse),
 }

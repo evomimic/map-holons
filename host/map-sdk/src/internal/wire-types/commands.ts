@@ -140,6 +140,7 @@ export type ReadableHolonActionWire =
   | 'CloneHolon'
   | 'Summarize'
   | 'GetHolonId'
+  | 'GetValidationFindings'
   | 'GetPredecessor'
   | 'GetKey'
   | 'GetVersionedKey'
@@ -190,6 +191,7 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'CloneHolon',
   'Summarize',
   'GetHolonId',
+  'GetValidationFindings',
   'GetPredecessor',
   'GetKey',
   'GetVersionedKey',

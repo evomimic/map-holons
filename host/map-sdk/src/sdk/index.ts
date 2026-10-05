@@ -51,3 +51,5 @@ export type {
   SmartReference,
   WritableHolon,
 } from './types';
+export { readLoadValidationDiagnostics } from './validation';
+export type { ValidationFinding, ValidationFindingKind, ValidationSubject, LoadValidationFinding, LoadValidationDiagnostics } from './validation';

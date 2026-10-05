@@ -1,3 +1,4 @@
+import { projectValidationFinding, type ValidationFinding } from './validation';
 import * as internalHolon from '../internal/commands/holon';
 import type {
   HolonReferenceWire,
@@ -48,6 +49,12 @@ export class HolonReference implements WritableHolon {
 
     holonReferenceTxIds.set(this, txId);
     holonReferenceWires.set(this, wireRef);
+  }
+
+  /** Findings on this staged carrier, including Saved-backed staged references.
+   * Reads remain subject to transaction lifecycle enforcement. */
+  async validationFindings(): Promise<ValidationFinding[]> {
+    return (await internalHolon.readValidationFindings(txIdFor(this), wireRefFor(this))).map(projectValidationFinding);
   }
 
   async cloneHolon(): Promise<TransientHolonReference> {

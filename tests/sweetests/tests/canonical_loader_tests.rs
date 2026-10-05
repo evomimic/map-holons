@@ -253,6 +253,10 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     assert!(runtime.session().get_transaction(&context.tx_id()).is_err());
 
     for (contents, expected_status) in [
+        (
+            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.7"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
+            "Rejected",
+        ),
         (r#"{"holons":[{"key":"missing-target","type":"DoesNotExist.HolonType"}]}"#, "Skipped"),
         (
             r#"{"holons":[{"key":"Rejected.DanceImplementation","type":"DanceImplementation.HolonType","properties":{"ImplementationName":"Rejected","Undeclared":true},"relationships":[{"name":"ForDance","target":{"$ref":"LoadHolons.DanceType"}}]}]}"#,
@@ -272,6 +276,83 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         assert_eq!(string(&response, "LoadCommitStatus"), expected_status);
         assert_eq!(context.is_open(), expected_status != "Complete");
         if expected_status == "Rejected" {
+            let commits = response
+                .related_holons("LoadCommitResponse")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .clone();
+            assert_eq!(commits.len(), 1);
+            let commit = &commits[0];
+            let subjects = commit
+                .related_holons("RejectedHolons")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .clone();
+            let unattached = commit
+                .related_holons("HasValidationFinding")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .clone();
+            let mut finding_count = unattached.len();
+            for subject in &subjects {
+                let result = runtime
+                    .execute_command(
+                        MapCommand::Holon(map_commands_contract::HolonCommand {
+                            context: context.clone(),
+                            target: subject.clone(),
+                            action: map_commands_contract::HolonAction::Read(
+                                map_commands_contract::ReadableHolonAction::GetValidationFindings,
+                            ),
+                        }),
+                        ExecutionPolicy::default(),
+                    )
+                    .await
+                    .unwrap();
+                let MapResult::ValidationFindings(findings) = result else {
+                    panic!("validation findings")
+                };
+                assert!(!findings.is_empty());
+                assert!(findings.iter().all(|finding| !finding.message.is_empty()));
+                finding_count += findings.len();
+            }
+            assert_eq!(
+                response.property_value("ValidationViolationCount").unwrap(),
+                Some(base_types::BaseValue::IntegerValue(base_types::MapInteger(
+                    finding_count as i64
+                )))
+            );
+            if contents.contains("Unattached.HolonType") {
+                assert!(
+                    !unattached.is_empty(),
+                    "unstaged Schema findings must survive the loader response"
+                );
+                assert!(unattached
+                    .iter()
+                    .all(|finding| finding.property_value("Message").unwrap().is_some()));
+            } else {
+                let sources = response
+                    .related_holons("HasValidationSource")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                assert_eq!(sources.len(), 1);
+                assert_eq!(string(&sources[0], "Filename"), "canonical.json");
+                assert!(sources[0]
+                    .related_holons("ValidationSourceSubject")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .contains(&subjects[0]));
+            }
             assert!(
                 matches!(response.property_value("ValidationViolationCount").unwrap(), Some(base_types::BaseValue::IntegerValue(value)) if value.0 > 0)
             );

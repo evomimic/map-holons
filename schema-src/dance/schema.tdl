@@ -116,7 +116,11 @@ holon HolonLoadResponse.DanceResponseType {
       LinksCreated.PropertyType,
       LoadCommitStatus.PropertyType
     ]
-    InstanceRelationships -> (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)
+    InstanceRelationships -> [
+      (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError),
+      (HolonLoadResponse.DanceResponseType)-[LoadCommitResponse]->(CommitResponse.Projection),
+      (HolonLoadResponse.DanceResponseType)-[HasValidationSource]->(LoadValidationSource.Projection)
+    ]
   }
 }
 
@@ -1503,5 +1507,125 @@ inverse relationship (HolonType.TypeDescriptor)-[RejectedByCommit]->(CommitRespo
     display_name: "RejectedByCommit Relationship"
     display_plural: "RejectedByCommit Relationships"
     plural: "RejectedByCommitRelationships"
+  }
+}
+
+relationship (HolonLoadResponse.DanceResponseType)-[LoadCommitResponse]->(CommitResponse.Projection) {
+  header {
+    display_name: "LoadCommitResponse"
+    display_plural: "LoadCommitResponse Relationships"
+    plural: "LoadCommitResponseRelationships"
+    description: "Retains the original Commit response for a completed loader invocation."
+  }
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source HolonLoadResponse.DanceResponseType
+  target CommitResponse.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> CommitResponseForLoad
+  }
+}
+
+inverse relationship (CommitResponse.Projection)-[CommitResponseForLoad]->(HolonLoadResponse.DanceResponseType) {
+  header {
+    display_name: "CommitResponseForLoad"
+    display_plural: "CommitResponseForLoad Relationships"
+    plural: "CommitResponseForLoadRelationships"
+    description: "Identifies the load outcome retaining this Commit response."
+  }
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source CommitResponse.Projection
+  target HolonLoadResponse.DanceResponseType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
+}
+
+holon LoadValidationSource.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Input provenance associated with an exact staged validation subject for one retained load."
+    display_name: "Load Validation Source"
+    display_plural: "Load Validation Sources"
+    plural: "LoadValidationSources"
+  }
+  relationships {
+    InstanceProperties -> [Filename.PropertyType, LoaderHolonKey.PropertyType, StartUtf8ByteOffset.PropertyType]
+    InstanceRelationships -> (LoadValidationSource.Projection)-[ValidationSourceSubject]->(HolonType.TypeDescriptor)
+  }
+}
+
+relationship (HolonLoadResponse.DanceResponseType)-[HasValidationSource]->(LoadValidationSource.Projection) {
+  header {
+    display_name: "HasValidationSource"
+    display_plural: "HasValidationSource Relationships"
+    plural: "HasValidationSourceRelationships"
+    description: "Retains input provenance for staged validation subjects in one load."
+  }
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source HolonLoadResponse.DanceResponseType
+  target LoadValidationSource.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> ValidationSourceForLoad
+  }
+}
+
+inverse relationship (LoadValidationSource.Projection)-[ValidationSourceForLoad]->(HolonLoadResponse.DanceResponseType) {
+  header {
+    display_name: "ValidationSourceForLoad"
+    display_plural: "ValidationSourceForLoad Relationships"
+    plural: "ValidationSourceForLoadRelationships"
+    description: "Identifies the load retaining this source provenance."
+  }
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source LoadValidationSource.Projection
+  target HolonLoadResponse.DanceResponseType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (LoadValidationSource.Projection)-[ValidationSourceSubject]->(HolonType.TypeDescriptor) {
+  header {
+    display_name: "ValidationSourceSubject"
+    display_plural: "ValidationSourceSubject Relationships"
+    plural: "ValidationSourceSubjectRelationships"
+    description: "Identifies the exact staged subject produced from this input source."
+  }
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source LoadValidationSource.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasLoadValidationSource
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[HasLoadValidationSource]->(LoadValidationSource.Projection) {
+  header {
+    display_name: "HasLoadValidationSource"
+    display_plural: "HasLoadValidationSource Relationships"
+    plural: "HasLoadValidationSourceRelationships"
+    description: "Exposes retained input provenance for a staged validation subject."
+  }
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target LoadValidationSource.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
   }
 }

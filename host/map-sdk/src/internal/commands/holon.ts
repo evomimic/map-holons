@@ -2,6 +2,7 @@ import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
   expectCollection,
+  expectValidationFindings,
   expectDescribedCollection,
   expectEffectiveCardinality,
   expectHolonId,
@@ -15,6 +16,7 @@ import {
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
   BaseValue,
+  CommitValidationViolationWire,
   HolonId,
   HolonReferenceWire,
   MapResultWire,
@@ -412,4 +414,8 @@ export function readInstanceProperties(txId: TxId, target: HolonReferenceWire) {
 }
 export function readPropertyValueKind(txId: TxId, target: HolonReferenceWire) {
   return runHolonCommand(txId, target, { Read: 'GetPropertyValueKind' }, expectValue);
+}
+
+export function readValidationFindings(txId: TxId, target: HolonReferenceWire): Promise<CommitValidationViolationWire[]> {
+  return runHolonCommand(txId, target, { Read: 'GetValidationFindings' }, expectValidationFindings);
 }

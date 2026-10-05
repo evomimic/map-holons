@@ -25,6 +25,8 @@ mod tests;
 /// for the duration of the load call.
 #[derive(Debug, Default)]
 pub struct MapperOutput {
+    /// Exact staged carriers and their input keys, before defaults or commit change state.
+    pub staged_sources: Vec<(StagedReference, MapString)>,
     /// Detached `LoaderRelationshipReference` transients queued for Pass-2 resolution.
     pub queued_relationship_references: Vec<TransientReference>,
     /// Non-fatal errors encountered during Pass-1 (e.g., missing key).
@@ -76,7 +78,8 @@ impl LoaderHolonMapper {
             debug!("Pass1: staging target from LoaderHolon #{}", index);
 
             match Self::build_target_staged(context, loader_reference) {
-                Ok((_staged_reference, loader_key)) => {
+                Ok((staged_reference, loader_key)) => {
+                    output.staged_sources.push((staged_reference, loader_key.clone()));
                     // Nursery will index by key; we only track counts and queue refs.
                     output.staged_count += 1;
 

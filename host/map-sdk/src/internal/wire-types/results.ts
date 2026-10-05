@@ -1,5 +1,7 @@
 import {
   type BaseValue,
+  type CommitValidationViolationWire,
+  isCommitValidationViolationWire,
   type DanceResponseWire,
   type HolonCollectionWire,
   type HolonId,
@@ -82,6 +84,7 @@ export type MapResultWire =
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { DescribedCollection: DescribedHolonCollectionWire }
+  | { ValidationFindings: CommitValidationViolationWire[] }
   | { QualifiedRelationships: QualifiedRelationshipWire[] }
   | { EffectiveCardinality: { minimum: number; maximum: number | null } }
   | { Value: BaseValue }
@@ -114,6 +117,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
     (hasSingleKey(value, 'DescribedCollection') && isDescribedHolonCollectionWire(value.DescribedCollection)) ||
     (hasSingleKey(value, 'Collection') &&
       isHolonCollectionWire(value.Collection)) ||
+    (hasSingleKey(value, 'ValidationFindings') && Array.isArray(value.ValidationFindings) && value.ValidationFindings.every(isCommitValidationViolationWire)) ||
     (hasSingleKey(value, 'QualifiedRelationships') &&
       Array.isArray(value.QualifiedRelationships) &&
       value.QualifiedRelationships.every(isQualifiedRelationshipWire)) ||
