@@ -14,6 +14,7 @@ use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
+        transactions::TxId,
         Holon, HolonCollection, ReadableHolonState, StagedHolon, WriteableHolonState,
     },
     descriptors::{resolve_inverse_relationship_name, TargetBinding},
@@ -22,7 +23,7 @@ use holons_core::{
 };
 
 use base_types::MapString;
-use core_types::{CanonicalKey, HolonError, HolonId, KeyMatch, OccurrenceId};
+use core_types::{CanonicalKey, HolonError, HolonId, KeyMatch, OccurrenceId, TemporaryId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{short_hex, LocalId, PropertyMap, RelationshipName};
@@ -188,6 +189,38 @@ struct RelationshipCommitSource {
     source_reference: HolonReference,
 }
 
+/// Saved target anchors established by this invocation's accepted NoAction outcomes.
+/// These subjects retain ForUpdate and do not appear in SavedHolons, but accepted
+/// relationships may still target their unchanged persisted versions.
+#[derive(Default)]
+struct NoActionTargetAnchors {
+    ids: HashMap<(TxId, TemporaryId), LocalId>,
+}
+
+impl NoActionTargetAnchors {
+    fn remember(&mut self, reference: &StagedReference) -> Result<(), HolonError> {
+        let source_id = reference.versioned_source_id()?.ok_or_else(|| {
+            HolonError::InvalidState("NoAction target has no persisted source identity".into())
+        })?;
+        self.ids.insert((reference.tx_id(), reference.temporary_id()), source_id);
+        Ok(())
+    }
+
+    fn resolve(&self, reference: &HolonReference) -> Result<HolonId, HolonError> {
+        match reference.holon_id() {
+            Err(error @ HolonError::NotImplemented(_)) => {
+                if let HolonReference::Staged(staged) = reference {
+                    if let Some(id) = self.ids.get(&(staged.tx_id(), staged.temporary_id())) {
+                        return Ok(HolonId::Local(id.clone()));
+                    }
+                }
+                Err(error)
+            }
+            result => result,
+        }
+    }
+}
+
 impl RelationshipCommitSource {
     fn from_committed_staged_holon(
         staged_reference: &StagedReference,
@@ -329,6 +362,7 @@ pub fn commit(
     let mut saved_ids: Vec<LocalId> = Vec::new();
     let mut key_index_source_ids: HashSet<LocalId> = HashSet::new();
     let mut failed_count = 0_usize;
+    let mut no_action_targets = NoActionTargetAnchors::default();
 
     // === FIRST PASS: Commit Staged Holons ===
     {
@@ -359,6 +393,7 @@ pub fn commit(
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::NoAction) => {
+                    no_action_targets.remember(staged_reference)?;
                     trace!("No action required for {:?}", staged_reference.temporary_id());
                 }
                 Err(error) => {
@@ -500,6 +535,7 @@ pub fn commit(
                 name.clone(),
                 inverse_name,
                 &holon_collection,
+                &no_action_targets,
                 &mut smartlink_write_context,
                 &mut inverse_dedup_context,
                 &mut performance_metrics,
@@ -792,6 +828,7 @@ fn commit_relationship(
     name: RelationshipName,
     inverse_name: RelationshipName,
     collection: &HolonCollection,
+    no_action_targets: &NoActionTargetAnchors,
     smartlink_write_context: &mut SmartLinkWriteContext,
     inverse_dedup_context: &mut InverseDedupContext,
     performance_metrics: &mut CommitPerformanceMetrics,
@@ -803,6 +840,7 @@ fn commit_relationship(
         name.clone(),
         inverse_name,
         collection,
+        no_action_targets,
         smartlink_write_context,
         inverse_dedup_context,
         performance_metrics,
@@ -975,8 +1013,9 @@ fn materialize_target_binding(
 /// Creates local forward and inverse SmartLinks for each member in `collection`.
 ///
 /// Current behavior is fail-fast at the collection level: if any member cannot
-/// resolve a persisted `holon_id` or key metadata, this function returns that
+/// resolve a persisted target identity or key metadata, this function returns that
 /// error immediately and no later members in the same collection are processed.
+/// Accepted NoAction targets resolve through this invocation's saved source anchors.
 /// In practice, an abandoned staged target can therefore prevent otherwise
 /// valid sibling links in the same relationship collection from being
 /// persisted during this commit pass.
@@ -989,6 +1028,7 @@ fn save_smartlinks_for_collection(
     name: RelationshipName,
     inverse_name: RelationshipName,
     collection: &HolonCollection,
+    no_action_targets: &NoActionTargetAnchors,
     smartlink_write_context: &mut SmartLinkWriteContext,
     inverse_dedup_context: &mut InverseDedupContext,
     performance_metrics: &mut CommitPerformanceMetrics,
@@ -1028,7 +1068,7 @@ fn save_smartlinks_for_collection(
             holon_reference.reference_id_string()
         );
 
-        let target_id = match holon_reference.holon_id() {
+        let target_id = match no_action_targets.resolve(holon_reference) {
             Ok(id) => {
                 debug!("Resolved holon_id for index {}: {:?}", target_index, id);
                 id
@@ -1249,6 +1289,55 @@ fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKe
 mod tests {
     use super::*;
     use holons_core::core_shared_objects::holon::ValidationState;
+
+    #[test]
+    fn accepted_no_action_targets_resolve_without_changing_their_lifecycle(
+    ) -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::{
+            space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+        };
+
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let transient = context.mutation().new_holon(Some("unchanged-target".into()))?;
+        let target = context.mutation().stage_new_holon(transient)?;
+        let rc_holon = target.get_holon_to_commit(&context)?;
+        {
+            let mut holon = rc_holon.write().unwrap();
+            let model = holon.holon_clone_model();
+            *holon = Holon::Staged(StagedHolon::new_for_update_from_clone_model(
+                model,
+                LocalId(vec![1]),
+            )?);
+        }
+        let reference = HolonReference::from(&target);
+        let mut anchors = NoActionTargetAnchors::default();
+        assert!(matches!(anchors.resolve(&reference), Err(HolonError::NotImplemented(_))));
+        anchors.remember(&target)?;
+        assert_eq!(anchors.resolve(&reference)?, HolonId::Local(LocalId(vec![1])));
+        assert!(target.is_in_state(&context, StagedState::ForUpdate)?);
+        assert!(matches!(target.holon_id(), Err(HolonError::NotImplemented(_))));
+
+        let transient = context.mutation().new_holon(Some("uncommitted-create".into()))?;
+        let created = context.mutation().stage_new_holon(transient)?;
+        assert!(matches!(
+            anchors.resolve(&created.clone().into()),
+            Err(HolonError::NotImplemented(_))
+        ));
+        assert!(anchors.remember(&created).is_err());
+
+        let mut holon = rc_holon.write().unwrap();
+        let Holon::Staged(staged) = &mut *holon else { unreachable!() };
+        staged.to_committed(LocalId(vec![2]))?;
+        drop(holon);
+        assert_eq!(anchors.resolve(&reference)?, HolonId::Local(LocalId(vec![2])));
+        Ok(())
+    }
 
     #[test]
     fn persistence_error_writeback_preserves_lifecycle_and_validation() -> Result<(), HolonError> {

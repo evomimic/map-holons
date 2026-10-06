@@ -144,6 +144,8 @@ pub trait WritableHolon: WritableHolonImpl {
     /// Use this path for descriptor-assisted initialization. Direct `DescribedBy`
     /// authoring through [`Self::add_related_holons`] attaches without itself
     /// attempting defaults.
+    /// Changing the descriptor of an existing staged holon produces a new version.
+    /// Reattaching the same descriptor preserves the edge and still attempts defaults.
     ///
     /// An attachment error is returned without attempting defaults. After a
     /// successful attachment, default population follows its best-effort error

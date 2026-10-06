@@ -51,7 +51,7 @@ pub struct ResolverMetrics {
     pub described_by: ResolverPhaseMetrics,
     /// Descriptor-ancestry bootstrap sub-pass.
     pub extends: ResolverPhaseMetrics,
-    /// Remaining in-memory relationship writes.
+    /// Remaining in-memory relationship writes and post-assembly accounting.
     pub assembly: ResolverPhaseMetrics,
 }
 
@@ -117,12 +117,44 @@ struct DeclaredRelationshipWrite {
 pub struct ResolverState {
     metrics: ResolverMetrics,
     phase: ResolverPhase,
+    relationship_changes: Vec<AssembledRelationshipChange>,
+}
+
+/// Net additions retain source provenance until accounting against the assembled graph.
+#[derive(Debug)]
+struct AssembledRelationshipChange {
+    source: StagedReference,
+    name: RelationshipName,
+    source_loader_key: Option<MapString>,
 }
 
 impl ResolverState {
     /// Create a fresh state with no pre-fetched saved index.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn record_relationship_change(
+        &mut self,
+        source: StagedReference,
+        name: &RelationshipName,
+        reference: &TransientReference,
+        additions: i64,
+    ) -> Result<(), HolonError> {
+        if additions > 0
+            && source.versioned_source_id()?.is_some()
+            && !self
+                .relationship_changes
+                .iter()
+                .any(|change| change.source == source && change.name == *name)
+        {
+            self.relationship_changes.push(AssembledRelationshipChange {
+                source,
+                name: name.clone(),
+                source_loader_key: LoaderRefResolver::source_loader_key_of_lrr(reference),
+            });
+        }
+        Ok(())
     }
 
     fn phase_metrics(&mut self) -> &mut ResolverPhaseMetrics {
@@ -144,6 +176,7 @@ impl LoaderRefResolver {
     ///   1) Pass-2a: DescribedBy -> with_descriptor()
     ///   2) Pass-2b: Extends -> add_related_holons_ungoverned()
     ///   3) Pass-2c: assemble remaining relationships with add_related_holons_ungoverned()
+    ///   4) Account for net additions on updates against the assembled contract
     pub fn resolve_relationships(
         context: &Arc<TransactionContext>,
         queued_relationship_references: Vec<TransientReference>,
@@ -190,6 +223,19 @@ impl LoaderRefResolver {
 
         outcome.links_created += created;
         outcome.errors.extend(errors);
+        // Declarations may be authored after the relationships they license.
+        let accounting_started_at = performance_timestamp_micros();
+        for change in &resolver_state.relationship_changes {
+            if let Err(error) =
+                change.source.account_for_assembled_relationship_change(&change.name)
+            {
+                outcome.errors.push(ErrorWithContext {
+                    error,
+                    source_loader_key: change.source_loader_key.clone(),
+                });
+            }
+        }
+        resolver_state.metrics.assembly.elapsed_micros += elapsed_micros(accounting_started_at);
         outcome.metrics = resolver_state.metrics;
 
         debug!(
@@ -404,11 +450,28 @@ impl LoaderRefResolver {
                     }
 
                     match Self::write_bootstrap_relationship(
-                        staged_source,
+                        staged_source.clone(),
                         relationship_name,
                         unique_targets,
                     ) {
-                        Ok(n) => outcome.links_created += n,
+                        Ok(n) => {
+                            outcome.links_created += n;
+                            if *relationship_name
+                                != CoreRelationshipTypeName::DescribedBy.as_relationship_name()
+                            {
+                                if let Err(error) = resolver_state.record_relationship_change(
+                                    staged_source,
+                                    relationship_name,
+                                    relationship_reference,
+                                    n,
+                                ) {
+                                    outcome.errors.push(Self::error_with_context(
+                                        relationship_reference,
+                                        error,
+                                    ));
+                                }
+                            }
+                        }
                         Err(e) => {
                             outcome.errors.push(Self::error_with_context(relationship_reference, e))
                         }
@@ -766,8 +829,11 @@ impl LoaderRefResolver {
                     // Attachment may populate defaults from the contract already present,
                     // including cloned saved edges on staged replacements. The final pass
                     // in `complete_loaded_values` remains authoritative after assembly.
-                    staged_source.with_descriptor(write_targets.remove(0))?;
-                    Ok(1)
+                    let descriptor = write_targets.remove(0);
+                    let existing = HolonReference::from(staged_source.clone()).get_descriptor()?;
+                    staged_source.with_descriptor(descriptor)?;
+                    let attached = HolonReference::from(staged_source.clone()).get_descriptor()?;
+                    Ok(i64::from(existing != attached))
                 }
                 _ => {
                     Err(HolonError::InvalidRelationship(
@@ -784,11 +850,7 @@ impl LoaderRefResolver {
             return Ok(0);
         }
 
-        let number_of_targets = write_targets.len() as i64;
-        staged_source
-            .add_related_holons_ungoverned(declared_relationship_name.clone(), write_targets)?;
-
-        Ok(number_of_targets)
+        Self::write_assembled_relationship(staged_source, declared_relationship_name, write_targets)
     }
 
     /// Preserves imported relationship state while its descriptor contract is
@@ -802,9 +864,20 @@ impl LoaderRefResolver {
             return Ok(0);
         }
 
-        let number_of_targets = targets.len() as i64;
+        let collection = staged_source.related_holons(relationship_name)?;
+        let before = collection
+            .read()
+            .map_err(|error| HolonError::FailedToBorrow(error.to_string()))?
+            .get_members()
+            .len();
         staged_source.add_related_holons_ungoverned(relationship_name.clone(), targets)?;
-        Ok(number_of_targets)
+        let collection = staged_source.related_holons(relationship_name)?;
+        let after = collection
+            .read()
+            .map_err(|error| HolonError::FailedToBorrow(error.to_string()))?
+            .get_members()
+            .len();
+        Ok((after - before) as i64)
     }
 
     /// Builds a stable dedupe key for (source, relationship, target).
@@ -887,9 +960,15 @@ impl LoaderRefResolver {
         let mut created_link_count = 0i64;
         if let Some(declared_write) = declared_write {
             created_link_count += Self::write_assembled_relationship(
-                declared_write.staged_source,
+                declared_write.staged_source.clone(),
                 &relationship_name,
                 declared_write.targets,
+            )?;
+            resolver_state.record_relationship_change(
+                declared_write.staged_source,
+                &relationship_name,
+                relationship_reference,
+                created_link_count,
             )?;
             for edge_key in declared_write.edge_keys {
                 seen_relationship_edge_keys.insert(edge_key);

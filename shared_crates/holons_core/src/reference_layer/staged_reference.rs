@@ -2,7 +2,7 @@ use derive_new::new;
 use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 use std::{fmt, sync::Arc};
-use tracing::info;
+use tracing::{info, warn};
 use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 
 use crate::core_shared_objects::holon::{StagedState, ValidationState};
@@ -40,11 +40,11 @@ enum DuplicatePolicy {
 
 /// Lifecycle effect of an already-permitted relationship mutation.
 ///
-/// This classification does not authorize an operation. Policy errors must be
+/// This classification does not authorize an operation. Ordinary policy errors must be
 /// propagated rather than converted into `PreserveLifecycle`.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum RelationshipMutationEffect {
-    /// Leave the staged lifecycle unchanged, as for creates, ungoverned assembly,
+    /// Leave the staged lifecycle unchanged, as for creates,
     /// or removal of undeclared local input.
     /// This skips lifecycle classification; it does not bypass Commit validation.
     PreserveLifecycle,
@@ -126,7 +126,15 @@ impl StagedReference {
             .any(|owner| owner.holon_id().is_ok_and(|owner_id| owner_id == space_id));
 
         if !has_current_space {
-            self.add_related_holons_ungoverned(CoreRelationshipTypeName::OwnedBy, vec![space])?;
+            // Ownership is version-bound even when its declaration is still being assembled.
+            self.add_related_holons_with_classification(
+                CoreRelationshipTypeName::OwnedBy.as_relationship_name(),
+                Self::related_holons_with_keys(vec![space])?,
+                RelationshipMutationPolicy {
+                    effect: RelationshipMutationEffect::DefinitionalChange,
+                    duplicate_policy: DuplicatePolicy::Ungoverned,
+                },
+            )?;
         }
         Ok(())
     }
@@ -650,12 +658,15 @@ impl StagedReference {
         )
     }
 
-    /// Adds relationship targets without descriptor-policy classification.
+    /// Adds relationship targets without relationship authorization or duplicate-policy enforcement.
     ///
     /// This is a narrowly scoped escape hatch for descriptor-graph construction
-    /// paths, such as loader Pass-2 bootstrap writes, where the caller already
-    /// owns relationship validation and deduplication but the self-describing
-    /// relationship declarations may not exist yet. Ordinary runtime mutation
+    /// paths, such as loader Pass-2 bootstrap writes, where the self-describing
+    /// relationship declarations may not exist yet. Creates retain authored input.
+    /// Updates skip targets already present and preserve lifecycle during assembly.
+    /// After assembling relationships, producers must account for net additions with
+    /// [`Self::account_for_assembled_relationship_change`]. Commit validates authored
+    /// input independently, including undeclared relationships. Ordinary runtime mutation
     /// must use [`crate::reference_layer::WritableHolon::add_related_holons`]
     /// so #516 duplicate policy, metadata failures, and inverse-name rejection
     /// are enforced.
@@ -664,11 +675,108 @@ impl StagedReference {
         relationship_name: T,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
-        self.add_related_holons_without_classification(
-            relationship_name.to_relationship_name(),
-            holons,
+        self.is_accessible(AccessType::Write)?;
+        let relationship_name = relationship_name.to_relationship_name();
+        let mut entries = Self::related_holons_with_keys(holons)?;
+        let state = self.staged_state()?;
+        if state != StagedState::ForCreate {
+            // Snapshot targets before mutation to avoid retaining a collection lock.
+            let collection = self.related_holons(&relationship_name)?;
+            let mut present = collection
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .get_members()
+                .clone();
+            entries.retain(|(target, _)| {
+                if present.iter().any(|existing| Self::same_relationship_target(existing, target)) {
+                    false
+                } else {
+                    present.push(target.clone());
+                    true
+                }
+            });
+        }
+        self.add_related_holons_with_classification(
+            relationship_name,
+            entries,
+            RelationshipMutationPolicy {
+                effect: RelationshipMutationEffect::PreserveLifecycle,
+                duplicate_policy: DuplicatePolicy::Ungoverned,
+            },
         )?;
         Ok(self)
+    }
+
+    /// Accounts for a net relationship addition after the producer has assembled its graph.
+    ///
+    /// Assembly-only: call once per changed relationship after all declaration edges are
+    /// authored, never for a replay that added no targets. Undeclared names preserve
+    /// lifecycle and remain subject to Commit rejection. Other classification failures
+    /// are diagnosed and conservatively version-producing. This establishes no validity
+    /// or descriptor-readiness guarantee and never demotes an existing new version.
+    pub fn account_for_assembled_relationship_change<T: ToRelationshipName>(
+        &self,
+        relationship_name: T,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        if matches!(self.staged_state()?, StagedState::ForCreate | StagedState::ForUpdateNewVersion)
+        {
+            return Ok(());
+        }
+        let relationship_name = relationship_name.to_relationship_name();
+        let source = HolonReference::from(self.clone());
+        let classification =
+            match effective_relationship_declaration(&source, relationship_name.clone()) {
+                Ok(declaration) => declaration.is_definitional(),
+                Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                    if kind == "relationship" && name == relationship_name.to_string() =>
+                {
+                    return Ok(())
+                }
+                Err(error) => Err(error),
+            };
+        let is_definitional = match classification {
+            Ok(value) => value,
+            Err(error) => {
+                warn!(
+                    source = %self.reference_id_string(),
+                    relationship = %relationship_name,
+                    ?error,
+                    "Assembly mutation classification failed; preserving the change in a new version"
+                );
+                true
+            }
+        };
+        let holon = self.get_rc_holon()?;
+        let mut guard =
+            holon.write().map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?;
+        match &mut *guard {
+            Holon::Staged(staged) => staged.note_relationship_mutation(is_definitional),
+            _ => Err(HolonError::InvalidType(
+                "Expected a staged holon for assembly accounting".into(),
+            )),
+        }
+    }
+
+    /// Compares runtime identity, including committed handles for the same saved version.
+    fn same_relationship_target(left: &HolonReference, right: &HolonReference) -> bool {
+        if left == right {
+            return true;
+        }
+        // Local saved ids are space-scoped. Compare a committed staged target
+        // through a saved handle from its own space, not through raw id equality.
+        match (left, right) {
+            (HolonReference::Staged(staged), HolonReference::Smart(saved))
+            | (HolonReference::Smart(saved), HolonReference::Staged(staged)) => {
+                staged.holon_id().is_ok_and(|id| {
+                    crate::SmartReference::new_from_id(
+                        staged.context_handle.context().space_read_handle(),
+                        id,
+                    ) == *saved
+                })
+            }
+            _ => false,
+        }
     }
 
     fn remove_related_holons_without_classification(
@@ -944,6 +1052,13 @@ impl WritableHolonImpl for StagedReference {
         let self_ref = HolonReference::Staged(self.clone());
         let existing_descriptor_option = self_ref.get_descriptor()?;
 
+        if existing_descriptor_option
+            .as_ref()
+            .is_some_and(|existing| Self::same_relationship_target(existing, &descriptor_reference))
+        {
+            return self.ensure_current_space_ownership();
+        }
+
         if let Some(existing_descriptor) = existing_descriptor_option {
             // Remove the current descriptor edge
             self.remove_related_holons_without_classification(
@@ -952,10 +1067,15 @@ impl WritableHolonImpl for StagedReference {
             )?;
         }
 
-        // Attach the new descriptor edge
-        self.add_related_holons_without_classification(
+        // DescribedBy defines the subject's contract. A changed descriptor is
+        // version-producing even before the new contract can be traversed.
+        self.add_related_holons_with_classification(
             CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-            vec![descriptor_reference],
+            Self::related_holons_with_keys(vec![descriptor_reference])?,
+            RelationshipMutationPolicy {
+                effect: RelationshipMutationEffect::DefinitionalChange,
+                duplicate_policy: DuplicatePolicy::Ungoverned,
+            },
         )?;
 
         self.ensure_current_space_ownership()?;
@@ -1032,9 +1152,9 @@ mod tests {
     use crate::{
         core_shared_objects::{holon::HolonState, StagedHolon},
         descriptors::test_support::{
-            build_context, core_holon_type_name, new_declared_relationship_descriptor_holon,
-            new_descriptor_holon, new_holon_type_descriptor, new_relationship_descriptor_holon,
-            new_test_holon,
+            build_context, build_context_with_saved_holons, core_holon_type_name,
+            new_declared_relationship_descriptor_holon, new_descriptor_holon,
+            new_holon_type_descriptor, new_relationship_descriptor_holon, new_test_holon,
         },
         reference_layer::WritableHolon,
     };
@@ -1401,8 +1521,7 @@ mod tests {
         source.with_descriptor(descriptor.clone().into())?;
         assert_eq!(source.raw_holon_clone_model()?.properties, before);
         assert_eq!(source.staged_state()?, StagedState::ForUpdate);
-        // Reattachment still replaces the relationship; these assertions concern
-        // only default-property writes and their lifecycle consequence.
+        // Reattachment preserves the descriptor edge while still attempting defaults.
         source.remove_property_value("Enabled")?;
         force_staged_reference_for_update(&context, &source)?;
         source.with_descriptor(descriptor.into())?;
@@ -1419,6 +1538,139 @@ mod tests {
         key: &str,
     ) -> Result<StagedReference, HolonError> {
         context.mutation().stage_new_holon(new_test_holon(context, key)?)
+    }
+
+    #[test]
+    fn descriptor_replacement_versions_updates_and_same_descriptor_is_a_noop(
+    ) -> Result<(), HolonError> {
+        for graph_only in [false, true] {
+            let context = build_context();
+            let (descriptor, target_type) =
+                staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+            let mut source = staged_update_source(&context, descriptor.clone())?;
+            if graph_only {
+                source.add_related_holons("AuthoredBy", vec![target_type.clone().into()])?;
+            }
+            let state = source.staged_state()?;
+            let properties = source.raw_holon_clone_model()?.properties;
+            let edge = source.related_holons(CoreRelationshipTypeName::DescribedBy)?;
+            source.with_descriptor(descriptor.into())?;
+            assert_eq!(source.staged_state()?, state);
+            assert!(Arc::ptr_eq(
+                &edge,
+                &source.related_holons(CoreRelationshipTypeName::DescribedBy)?
+            ));
+
+            source.with_descriptor(target_type.clone().into())?;
+            assert_eq!(source.staged_state()?, StagedState::ForUpdateNewVersion);
+            assert_eq!(source.raw_holon_clone_model()?.properties, properties);
+            assert_eq!(HolonReference::from(&source).get_descriptor()?, Some(target_type.into()));
+            assert_eq!(relationship_member_count(&source, "DescribedBy")?, 1);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn ownership_addition_on_same_descriptor_update_is_version_producing() -> Result<(), HolonError>
+    {
+        let space_id = LocalId(vec![210]);
+        let mut properties = PropertyMap::new();
+        properties.insert(
+            CorePropertyTypeName::Key.as_property_name(),
+            BaseValue::StringValue(MapString("space".into())),
+        );
+        let context = build_context_with_saved_holons(
+            vec![crate::core_shared_objects::holon::SavedHolon::new(
+                space_id.clone(),
+                properties,
+                None,
+                base_types::MapInteger(1),
+            )],
+            std::collections::HashMap::new(),
+        );
+        let (descriptor, _) = staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+        let mut source = staged_update_source(&context, descriptor.clone())?;
+        context.set_space_holon_id(HolonId::Local(space_id))?;
+        source.with_descriptor(descriptor.clone().into())?;
+        assert_eq!(source.staged_state()?, StagedState::ForUpdateNewVersion);
+        assert_eq!(relationship_member_count(&source, "OwnedBy")?, 1);
+        force_staged_reference_for_update(&context, &source)?;
+        source.with_descriptor(descriptor.into())?;
+        assert_eq!(source.staged_state()?, StagedState::ForUpdate);
+        assert_eq!(relationship_member_count(&source, "OwnedBy")?, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn assembly_updates_account_only_for_new_targets() -> Result<(), HolonError> {
+        for is_definitional in [false, true] {
+            let context = build_context();
+            let (descriptor, _) =
+                staged_relationship_descriptor(&context, "AuthoredBy", Some(is_definitional))?;
+            let mut source = staged_update_source(&context, descriptor)?;
+            let existing = staged_target(&context, "existing-target")?;
+            let added = staged_target(&context, "added-target")?;
+            source.add_related_holons("AuthoredBy", vec![existing.clone().into()])?;
+            force_staged_reference_for_update(&context, &source)?;
+            let properties = source.raw_holon_clone_model()?.properties;
+
+            source.add_related_holons_ungoverned(
+                "AuthoredBy",
+                vec![existing.clone().into(), existing.clone().into()],
+            )?;
+            assert_eq!(source.staged_state()?, StagedState::ForUpdate);
+            assert_eq!(relationship_member_count(&source, "AuthoredBy")?, 1);
+
+            for _ in 0..2 {
+                source.add_related_holons_ungoverned(
+                    "AuthoredBy",
+                    vec![existing.clone().into(), added.clone().into(), added.clone().into()],
+                )?;
+                assert_eq!(relationship_member_count(&source, "AuthoredBy")?, 2);
+                if source.staged_state()? == StagedState::ForUpdate {
+                    source.account_for_assembled_relationship_change("AuthoredBy")?;
+                }
+                assert_eq!(
+                    source.staged_state()?,
+                    if is_definitional {
+                        StagedState::ForUpdateNewVersion
+                    } else {
+                        StagedState::ForUpdateGraphOnly
+                    }
+                );
+                assert_eq!(source.raw_holon_clone_model()?.properties, properties);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn assembly_updates_conservatively_version_unresolved_classification() -> Result<(), HolonError>
+    {
+        for metadata in [None, Some(BaseValue::StringValue(MapString("invalid".into())))] {
+            let context = build_context();
+            let (descriptor, _) = staged_relationship_descriptor_with_metadata(
+                &context,
+                "AuthoredBy",
+                metadata,
+                Some(BaseValue::BooleanValue(base_types::MapBoolean(false))),
+            )?;
+            let mut source = staged_update_source(&context, descriptor)?;
+            let target = staged_target(&context, "target")?;
+            source.add_related_holons_ungoverned("AuthoredBy", vec![target.clone().into()])?;
+            assert_eq!(source.staged_state()?, StagedState::ForUpdate);
+            source.account_for_assembled_relationship_change("AuthoredBy")?;
+            assert_eq!(source.staged_state()?, StagedState::ForUpdateNewVersion);
+            assert_eq!(relationship_member_count(&source, "AuthoredBy")?, 1);
+
+            force_staged_reference_for_update(&context, &source)?;
+            source.add_related_holons_ungoverned("AuthoredBy", vec![target.clone().into()])?;
+            assert_eq!(source.staged_state()?, StagedState::ForUpdate);
+            source.add_related_holons_ungoverned("Unknown", vec![target.into()])?;
+            source.account_for_assembled_relationship_change("Unknown")?;
+            assert_eq!(source.staged_state()?, StagedState::ForUpdate);
+        }
+        Ok(())
     }
 
     fn relationship_member_count(
@@ -1770,6 +2022,7 @@ mod tests {
                 "UnknownRelationship",
                 vec![target.clone().into()],
             )?;
+            source.account_for_assembled_relationship_change("UnknownRelationship")?;
             source.remove_related_holons("UnknownRelationship", vec![target.clone().into()])?;
             assert!(source.is_in_state(&context, expected)?);
             assert_eq!(relationship_member_count(&source, "UnknownRelationship")?, 0);

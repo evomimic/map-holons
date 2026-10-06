@@ -12,6 +12,7 @@ use map_commands_contract::{
 };
 use map_commands_runtime::{ExecutionPolicy, Runtime};
 use std::{collections::BTreeSet, sync::Arc};
+use tracing::debug;
 
 async fn begin(runtime: &Runtime) -> Arc<TransactionContext> {
     let result = runtime
@@ -141,12 +142,20 @@ async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defa
     .unwrap();
     let response = context.load_holons_and_commit(load_set).unwrap();
 
-    eprintln!("Loader response: {:?}", response.into_model().unwrap().property_map);
+    debug!(
+        tx_id = ?context.tx_id(),
+        properties = ?response.into_model().unwrap().property_map,
+        "Extension import loader response"
+    );
 
     let errors = response.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
     let members = errors.read().unwrap().get_members().clone();
     for error in members {
-        eprintln!("Loader error: {:?}", error.into_model().unwrap().property_map);
+        debug!(
+            tx_id = ?context.tx_id(),
+            properties = ?error.into_model().unwrap().property_map,
+            "Extension import loader error"
+        );
     }
 
     assert_eq!(
@@ -206,6 +215,81 @@ async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defa
     for (name, token) in [("TargetBinding", "Version"), ("ExtraChoice", "Lineage")] {
         assert_eq!(
             saved.property_value(name).unwrap(),
+            Some(MapEnumValue(MapString(token.into())).to_base_value())
+        );
+    }
+
+    // Replaying the saved contract's edges must retain its version, while a new
+    // instance can still persist a relationship to the unchanged staged target.
+    let context = begin(&runtime).await;
+    let descriptor_id = context
+        .lookup()
+        .get_saved_holon_by_key(&"MixedDefaults.HolonType".into())
+        .unwrap()
+        .holon_id();
+    let mut instance =
+        context.mutation().new_holon(Some("MixedDefaults.ReplayedInstance".into())).unwrap();
+    for (name, source, target) in [
+        ("DescribedBy", "MixedDefaults.HolonType", "MetaHolonType.MetaTypeDescriptor"),
+        ("InstanceProperties", "MixedDefaults.HolonType", "ExtraChoice.PropertyType"),
+        ("DescribedBy", "MixedDefaults.ReplayedInstance", "MixedDefaults.HolonType"),
+    ] {
+        add_loader_relationship_reference(&context, &mut instance, name, source, &[target])
+            .unwrap();
+    }
+    let mut bundle =
+        context.mutation().new_holon(Some("MixedDefaults.ReplayBundle".into())).unwrap();
+    bundle
+        .add_related_holons(CoreRelationshipTypeName::BundleMembers, vec![instance.into()])
+        .unwrap();
+    let load_set = make_load_set_from_bundles(
+        &context,
+        "MixedDefaults.ReplaySet",
+        vec![BundleWithFilename::new(bundle, "mixed-defaults-replay.json")],
+    )
+    .unwrap();
+    let response = context.load_holons_and_commit(load_set).unwrap();
+    assert_eq!(
+        response.property_value("LoadCommitStatus").unwrap(),
+        Some("Complete".to_base_value()),
+        "{:?}",
+        response.into_model().unwrap().property_map
+    );
+    assert_eq!(response.property_value("ErrorCount").unwrap(), Some(0_i64.to_base_value()));
+    assert_eq!(response.property_value("HolonsCommitted").unwrap(), Some(1_i64.to_base_value()));
+    assert_eq!(response.property_value("LinksCreated").unwrap(), Some(1_i64.to_base_value()));
+    let staged = context.staged_references().unwrap();
+    let unchanged = staged
+        .iter()
+        .find(|reference| {
+            reference.versioned_source_id().unwrap().as_ref() == Some(descriptor_id.local_id())
+        })
+        .expect("replayed descriptor remains in the staged set");
+    assert!(unchanged
+        .is_in_state(&context, holons_core::core_shared_objects::holon::StagedState::ForUpdate)
+        .unwrap());
+    assert_eq!(unchanged.versioned_source_id().unwrap(), Some(descriptor_id.local_id().clone()));
+
+    let observer = begin(&runtime).await;
+    let descriptor =
+        observer.lookup().get_saved_holon_by_key(&"MixedDefaults.HolonType".into()).unwrap();
+    assert_eq!(descriptor.holon_id(), descriptor_id);
+    assert_eq!(
+        descriptor
+            .related_holons("InstanceProperties")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .len(),
+        2
+    );
+    let instance =
+        observer.lookup().get_saved_holon_by_key(&"MixedDefaults.ReplayedInstance".into()).unwrap();
+    assert_eq!(HolonReference::from(&instance).get_descriptor().unwrap(), Some(descriptor.into()));
+    for (name, token) in [("TargetBinding", "Version"), ("ExtraChoice", "Lineage")] {
+        assert_eq!(
+            instance.property_value(name).unwrap(),
             Some(MapEnumValue(MapString(token.into())).to_base_value())
         );
     }
