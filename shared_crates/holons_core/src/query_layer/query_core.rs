@@ -2207,7 +2207,13 @@ mod tests {
             placement: Option<&str>,
         ) -> HolonReference {
             let mut spec = new_test_holon(&self.fixture.context, key).unwrap();
-            spec.with_descriptor(self.spec_type.clone().into()).unwrap();
+            // These query fixtures exercise read-only effective defaults, including
+            // malformed defaults; descriptor authoring must leave omissions explicit.
+            spec.add_related_holons(
+                CoreRelationshipTypeName::DescribedBy,
+                vec![self.spec_type.clone().into()],
+            )
+            .unwrap();
             if let Some(name) = property_name {
                 spec.with_property_value(QueryPropertyTypeName::PropertyName, name).unwrap();
             }

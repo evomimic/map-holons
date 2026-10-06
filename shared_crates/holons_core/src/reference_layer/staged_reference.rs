@@ -1380,6 +1380,40 @@ mod tests {
         Ok(staged_source)
     }
 
+    #[test]
+    fn attachment_default_writes_promote_updates_and_repeat_attempts_do_not(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut descriptor = new_holon_type_descriptor(&context, "defaults-type", "DefaultsType")?;
+        let mut property = new_descriptor_holon(&context, "enabled", "Enabled", "Property")?;
+        property
+            .with_property_value(CorePropertyTypeName::IsValueRequired, true)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+        descriptor.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![context.mutation().stage_new_holon(property)?.into()],
+        )?;
+        let descriptor = context.mutation().stage_new_holon(descriptor)?;
+        let mut source = staged_update_source(&context, descriptor.clone())?;
+        let before = source.raw_holon_clone_model()?.properties;
+        source.populate_defaults()?;
+        source.populate_defaults()?;
+        source.with_descriptor(descriptor.clone().into())?;
+        assert_eq!(source.raw_holon_clone_model()?.properties, before);
+        assert_eq!(source.staged_state()?, StagedState::ForUpdate);
+        // Reattachment still replaces the relationship; these assertions concern
+        // only default-property writes and their lifecycle consequence.
+        source.remove_property_value("Enabled")?;
+        force_staged_reference_for_update(&context, &source)?;
+        source.with_descriptor(descriptor.into())?;
+        assert_eq!(source.staged_state()?, StagedState::ForUpdateNewVersion);
+        assert_eq!(
+            source.property_value("Enabled")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+        );
+        Ok(())
+    }
+
     fn staged_target(
         context: &Arc<TransactionContext>,
         key: &str,

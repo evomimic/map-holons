@@ -231,7 +231,7 @@ mod tests {
         build_context, new_declared_relationship_descriptor_holon, new_descriptor_holon,
         new_holon_type_descriptor, new_test_holon,
     };
-    use crate::reference_layer::{CompletionOutcome, ReadableHolon, WritableHolon};
+    use crate::reference_layer::{ReadableHolon, WritableHolon};
     use base_types::MapString;
     use core_types::HolonError;
     use type_names::CoreRelationshipTypeName;
@@ -255,12 +255,14 @@ mod tests {
     }
 
     #[test]
-    fn populate_defaults_defers_for_an_undescribed_holon() -> Result<(), HolonError> {
+    fn populate_defaults_preserves_an_undescribed_holon() -> Result<(), HolonError> {
         let context = build_context();
         let mut holon = new_test_holon(&context, "undescribed-instance")?;
         holon.with_property_value("Authored", "preserved")?;
 
-        assert_eq!(holon.populate_defaults()?, CompletionOutcome::DeferredNoDescriptor);
+        let before = holon.into_model()?;
+        holon.populate_defaults()?;
+        assert_eq!(holon.into_model()?, before);
 
         assert!(matches!(
             holon.property_value("Authored")?,
@@ -289,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    fn completion_preserves_progress_and_retries_nested_descriptor_deferral(
+    fn attachment_preserves_progress_and_explicit_attempt_fills_nested_omissions(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let mut deferred = new_descriptor_holon(&context, "deferred", "Deferred", "Property")?;
@@ -310,7 +312,6 @@ mod tests {
         let mut target = new_test_holon(&context, "target")?;
         target.with_descriptor(descriptor.into())?;
 
-        assert_eq!(target.populate_defaults()?, CompletionOutcome::DeferredNoDescriptor);
         assert_eq!(
             target.property_value("Required")?,
             Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
@@ -320,7 +321,9 @@ mod tests {
 
         let mut required_definition =
             new_descriptor_holon(&context, "required-definition", "IsValueRequired", "Property")?;
-        required_definition.with_property_value(CorePropertyTypeName::DefaultValue, true)?;
+        required_definition
+            .with_property_value(CorePropertyTypeName::IsValueRequired, false)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, true)?;
         let mut meta_property =
             new_descriptor_holon(&context, "meta-property", "MetaProperty", "Holon")?;
         meta_property.add_related_holons(
@@ -330,8 +333,10 @@ mod tests {
         deferred.with_descriptor(meta_property.into())?;
         target.with_property_value("Required", true)?;
 
-        assert_eq!(target.populate_defaults()?, CompletionOutcome::Completed);
-        assert_eq!(target.populate_defaults()?, CompletionOutcome::Completed);
+        target.populate_defaults()?;
+        let before = target.into_model()?;
+        target.populate_defaults()?;
+        assert_eq!(target.into_model()?, before);
         assert_eq!(
             target.property_value("Required")?,
             Some(BaseValue::BooleanValue(base_types::MapBoolean(true)))
@@ -372,7 +377,9 @@ mod tests {
         )?;
         let descriptor = context.mutation().stage_new_holon(descriptor)?;
         let mut source = new_test_holon(&context, "source")?;
-        source.with_descriptor(descriptor.into())?;
+        source
+            .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor.into()])?;
+        assert_eq!(source.property_value("Enabled")?, None);
         source.with_property_value("Authored", "preserved")?;
 
         let transient_clone = context.clone_holon(&source.clone().into())?;
@@ -394,6 +401,253 @@ mod tests {
         }
         assert_eq!(source.property_value("Enabled")?, None);
         assert_eq!(clone_source.property_value("Enabled")?, None);
+        Ok(())
+    }
+
+    /// A contract with an applicable default, an optional default, an absent default,
+    /// and an authored value that must survive attachment.
+    fn attachment_contract(
+        context: &std::sync::Arc<crate::core_shared_objects::transactions::TransactionContext>,
+    ) -> Result<HolonReference, HolonError> {
+        let mut contract = new_holon_type_descriptor(context, "attach-contract", "AttachContract")?;
+        for (name, required, default) in [
+            ("Enabled", true, Some(false)),
+            ("Optional", false, Some(true)),
+            ("NoDefault", true, None),
+            ("Authored", true, Some(false)),
+        ] {
+            let mut property = new_descriptor_holon(context, name, name, "Property")?;
+            property.with_property_value(CorePropertyTypeName::IsValueRequired, required)?;
+            if let Some(value) = default {
+                property.with_property_value(CorePropertyTypeName::DefaultValue, value)?;
+            }
+            contract.add_related_holons(
+                CoreRelationshipTypeName::InstanceProperties,
+                vec![context.mutation().stage_new_holon(property)?.into()],
+            )?;
+        }
+        Ok(context.mutation().stage_new_holon(contract)?.into())
+    }
+
+    #[test]
+    fn transient_attachment_populates_only_required_absent_defaults() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut subject = new_test_holon(&context, "transient-subject")?;
+        subject.with_property_value("Authored", "preserved")?;
+        subject.with_descriptor(attachment_contract(&context)?)?;
+        assert_eq!(
+            subject.property_value("Enabled")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+        );
+        assert_eq!(subject.property_value("Optional")?, None);
+        assert_eq!(subject.property_value("NoDefault")?, None);
+        assert_eq!(
+            subject.property_value("Authored")?,
+            Some(BaseValue::StringValue(MapString("preserved".into())))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn staged_attachment_preserves_validation_state_and_removal_is_explicit(
+    ) -> Result<(), HolonError> {
+        use crate::core_shared_objects::holon::ValidationState;
+        for state in [
+            ValidationState::NoDescriptor,
+            ValidationState::ValidationRequired,
+            ValidationState::Validated,
+            ValidationState::Invalid,
+        ] {
+            let context = build_context();
+            let mut subject =
+                context.mutation().stage_new_holon(new_test_holon(&context, "staged-subject")?)?;
+            subject.replace_validation_outcome(state.clone(), Vec::new())?;
+            let before = subject.validation_state()?;
+            subject.with_descriptor(attachment_contract(&context)?)?;
+            assert_eq!(subject.validation_state()?, before);
+            assert_eq!(
+                subject.property_value("Enabled")?,
+                Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+            );
+            subject.remove_property_value("Enabled")?;
+            assert_eq!(subject.property_value("Enabled")?, None);
+            subject.populate_defaults()?;
+            assert_eq!(
+                subject.property_value("Enabled")?,
+                Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn direct_descriptor_authoring_on_staged_holon_leaves_defaults_absent() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let mut subject =
+            context.mutation().stage_new_holon(new_test_holon(&context, "direct-subject")?)?;
+        subject.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![attachment_contract(&context)?],
+        )?;
+        assert_eq!(subject.property_value("Enabled")?, None);
+        subject.populate_defaults()?;
+        assert_eq!(
+            subject.property_value("Enabled")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn attachment_error_retains_descriptor_and_ancestor_default() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut healthy = new_descriptor_holon(&context, "healthy", "Healthy", "Property")?;
+        healthy
+            .with_property_value(CorePropertyTypeName::IsValueRequired, true)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+        let mut ancestor = new_holon_type_descriptor(&context, "ancestor", "Ancestor")?;
+        ancestor.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![healthy.into()],
+        )?;
+        let empty_meta = new_holon_type_descriptor(&context, "empty-meta", "EmptyMeta")?;
+        let mut failing = new_descriptor_holon(&context, "failing", "Failing", "Property")?;
+        failing.with_descriptor(empty_meta.into())?;
+        let mut contract =
+            new_holon_type_descriptor(&context, "failing-contract", "FailingContract")?;
+        contract.add_related_holons(CoreRelationshipTypeName::Extends, vec![ancestor.into()])?;
+        contract.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![failing.into()],
+        )?;
+        let contract: HolonReference = contract.into();
+        let mut subject: HolonReference = new_test_holon(&context, "partial-error")?.into();
+        assert!(
+            matches!(subject.with_descriptor(contract.clone()), Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "IsValueRequired")
+        );
+        assert_eq!(subject.get_descriptor()?, Some(contract));
+        assert_eq!(
+            subject.property_value("Healthy")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+        );
+        assert_eq!(subject.property_value("Failing")?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn inaccessible_attachment_returns_before_descriptor_reads() -> Result<(), HolonError> {
+        let source_id = core_types::LocalId(vec![99]);
+        let saved = crate::core_shared_objects::holon::SavedHolon::new(
+            source_id.clone(),
+            core_types::PropertyMap::new(),
+            None,
+            base_types::MapInteger(1),
+        );
+        let context = crate::descriptors::test_support::build_context_with_saved_holons(
+            vec![saved],
+            std::collections::HashMap::new(),
+        );
+        // The descriptor does not exist in the service. Any default read would fail
+        // differently from the saved subject's write-access rejection.
+        let mut subject = crate::SmartReference::new_from_id(
+            context.space_read_handle(),
+            core_types::HolonId::Local(core_types::LocalId(vec![99])),
+        );
+        let descriptor = HolonReference::smart_from_id(
+            context.space_read_handle(),
+            core_types::HolonId::Local(core_types::LocalId(vec![100])),
+        );
+        assert!(matches!(subject.with_descriptor(descriptor), Err(HolonError::NotAccessible(..))));
+        Ok(())
+    }
+
+    #[test]
+    fn defaults_added_before_and_after_update_staging_preserve_saved_source(
+    ) -> Result<(), HolonError> {
+        use crate::core_shared_objects::holon::{SavedHolon, StagedState};
+        use crate::descriptors::test_support::build_context_with_saved_holons;
+        use base_types::{MapBoolean, MapInteger};
+        use core_types::{HolonId, LocalId, PropertyMap};
+        use std::collections::HashMap;
+
+        let id = |n| HolonId::Local(LocalId(vec![n]));
+        let snapshots = [
+            (1, "saved-source", "Source"),
+            (2, "saved-contract", "Contract"),
+            (3, "saved-property", "Enabled"),
+            (4, "described-by", "DescribedBy"),
+            (5, "declared-family", "DeclaredRelationshipType"),
+        ]
+        .into_iter()
+        .map(|(n, key, name)| {
+            let mut properties: PropertyMap = [
+                (
+                    CorePropertyTypeName::Key.to_property_name(),
+                    BaseValue::StringValue(MapString(key.into())),
+                ),
+                (
+                    CorePropertyTypeName::TypeName.to_property_name(),
+                    BaseValue::StringValue(MapString(name.into())),
+                ),
+            ]
+            .into();
+            if n == 3 {
+                properties.insert(
+                    CorePropertyTypeName::IsValueRequired.to_property_name(),
+                    BaseValue::BooleanValue(MapBoolean(true)),
+                );
+                properties.insert(
+                    CorePropertyTypeName::DefaultValue.to_property_name(),
+                    BaseValue::BooleanValue(MapBoolean(false)),
+                );
+            }
+            SavedHolon::new(LocalId(vec![n]), properties, None, MapInteger(1))
+        })
+        .collect();
+        let edges = HashMap::from([
+            ((id(1), CoreRelationshipTypeName::DescribedBy.as_relationship_name()), vec![id(2)]),
+            (
+                (id(2), CoreRelationshipTypeName::InstanceProperties.as_relationship_name()),
+                vec![id(3)],
+            ),
+            (
+                (id(2), CoreRelationshipTypeName::InstanceRelationships.as_relationship_name()),
+                vec![id(4)],
+            ),
+            ((id(4), CoreRelationshipTypeName::Extends.as_relationship_name()), vec![id(5)]),
+        ]);
+        let context = build_context_with_saved_holons(snapshots, edges);
+        let source = crate::SmartReference::new_from_id(context.space_read_handle(), id(1));
+        let before = source.into_model()?.property_map;
+        let staged = context.mutation().stage_new_version(source.clone())?;
+        assert_eq!(staged.staged_state()?, StagedState::ForUpdateNewVersion);
+        assert_eq!(
+            staged.property_value("Enabled")?,
+            Some(BaseValue::BooleanValue(MapBoolean(false)))
+        );
+        assert_eq!(source.into_model()?.property_map, before);
+
+        // Build a second unchanged update from an explicit source snapshot to isolate
+        // the attachment-time write from clone-time population.
+        let mut transient = context.mutation().new_holon(source.key()?)?;
+        for (name, value) in &before {
+            transient.with_property_value(name, value.clone())?;
+        }
+        let mut staged = crate::descriptors::test_support::stage_update_snapshot(
+            &context,
+            LocalId(vec![1]),
+            transient,
+        )?;
+        assert_eq!(staged.staged_state()?, StagedState::ForUpdate);
+        staged
+            .with_descriptor(HolonReference::smart_from_id(context.space_read_handle(), id(2)))?;
+        assert_eq!(staged.staged_state()?, StagedState::ForUpdateNewVersion);
+        assert_eq!(
+            staged.property_value("Enabled")?,
+            Some(BaseValue::BooleanValue(MapBoolean(false)))
+        );
+        assert_eq!(source.into_model()?.property_map, before);
         Ok(())
     }
 

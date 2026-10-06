@@ -3,7 +3,7 @@ use holons_prelude::prelude::*;
 use std::collections::BTreeSet;
 
 /// Captures descriptor identities from the input, independently of runtime
-/// descriptor resolution, so deferred completion cannot make the assertion vacuous.
+/// descriptor resolution, so unavailable descriptors cannot make the assertion vacuous.
 pub fn expected_descriptor_keys(content_set: &ContentSet) -> BTreeSet<String> {
     let mut keys = BTreeSet::new();
     for file in &content_set.files_to_load {

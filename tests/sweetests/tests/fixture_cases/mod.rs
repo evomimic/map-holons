@@ -1,4 +1,5 @@
 pub mod abandon_staged_changes_fixture;
+pub mod attachment_defaults_fixture;
 pub mod bootstrap_operational_schema_fixture;
 pub mod commit_competition_fixture;
 pub mod commit_disposition_fixture;

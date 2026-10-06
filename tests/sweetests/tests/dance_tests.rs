@@ -24,6 +24,7 @@ use execution_steps::dance_test_runner::{run_dance_test_suite, DanceTestSuite};
 use rstest::*;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
+use fixture_cases::attachment_defaults_fixture::*;
 use fixture_cases::bootstrap_operational_schema_fixture::*;
 use fixture_cases::commit_competition_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
@@ -83,6 +84,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             stage_new_version_fixture().unwrap(),
             simple_create_holon_fixture().unwrap(),
             commit_validation_fixture().unwrap(),
+            attachment_defaults_fixture().unwrap(),
             commit_no_action_fixture().unwrap(),
             commit_mixed_dispositions_fixture().unwrap(),
             commit_same_key_dispositions_fixture().unwrap(),

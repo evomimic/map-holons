@@ -294,8 +294,8 @@ impl Fixture {
         Ok(subject.into())
     }
 
-    /// Stages a subject before attaching its contract so tests can author missing inputs
-    /// explicitly without staging-time default population supplying them.
+    /// Stages and describes a subject. Contract declares no Title default, so
+    /// attachment leaves Title absent until the test supplies it.
     pub fn staged_subject(&self, key: &str) -> Result<StagedReference, HolonError> {
         let subject = self.context.mutation().new_holon(Some(MapString(key.into())))?;
         let mut subject = self.context.mutation().stage_new_holon(subject)?;

@@ -25,6 +25,7 @@ fn all_fixtures_author_without_a_conductor() {
     commit_schema_fixture::commit_schema_cycle_fixture().unwrap();
     commit_strict_contract_fixture::commit_strict_contract_fixture().unwrap();
     commit_validation_fixture::commit_validation_fixture().unwrap();
+    attachment_defaults_fixture::attachment_defaults_fixture().unwrap();
     delete_holon_fixture::delete_holon_fixture().unwrap();
     ergonomic_add_remove_properties_fixture::ergonomic_add_remove_properties_fixture().unwrap();
     ergonomic_add_remove_related_holons_fixture::ergonomic_add_remove_related_holons_fixture()
@@ -94,4 +95,96 @@ fn incomplete_fixture_authors_all_attempts_without_a_conductor() {
             }
         }
     }
+}
+
+#[test]
+fn descriptor_step_replaces_targets_and_preserves_authored_values() {
+    use holons_prelude::prelude::*;
+    use holons_test::TestCaseInit;
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } =
+        TestCaseInit::new("Descriptor expectation", "Replacement and explicit defaults");
+    let mut targets = Vec::new();
+    for key in ["old-descriptor", "new-descriptor"] {
+        let key = MapString(key.into());
+        let stub = fixture_context.mutation().new_holon(Some(key.clone())).unwrap();
+        targets.push(
+            test_case
+                .add_lookup_saved_holon_by_key_step(&mut fixture_holons, stub, key, None, None)
+                .unwrap(),
+        );
+    }
+    let key = MapString("subject".into());
+    let source = fixture_context.mutation().new_holon(Some(key.clone())).unwrap();
+    let properties: PropertyMap = [("Authored".to_property_name(), true.to_base_value())].into();
+    let subject = test_case
+        .add_new_holon_step(&mut fixture_holons, source, properties, Some(key), None, None)
+        .unwrap();
+    let subject = test_case.add_stage_holon_step(&mut fixture_holons, subject, None, None).unwrap();
+    let subject = test_case
+        .add_add_related_holons_step(
+            &mut fixture_holons,
+            subject,
+            CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+            vec![targets[0].clone()],
+            None,
+            None,
+        )
+        .unwrap();
+    let defaults: PropertyMap = [
+        ("Authored".to_property_name(), false.to_base_value()),
+        ("Added".to_property_name(), false.to_base_value()),
+    ]
+    .into();
+    let updated = test_case
+        .add_with_descriptor_step(
+            &mut fixture_holons,
+            subject.clone(),
+            targets[1].clone(),
+            defaults.clone(),
+            None,
+            None,
+        )
+        .unwrap();
+    let expected = updated.expected_snapshot();
+    assert_eq!(expected.snapshot().property_value("Authored").unwrap(), Some(true.to_base_value()));
+    assert_eq!(expected.snapshot().property_value("Added").unwrap(), Some(false.to_base_value()));
+    let members = expected
+        .snapshot()
+        .related_holons(CoreRelationshipTypeName::DescribedBy)
+        .unwrap()
+        .read()
+        .unwrap()
+        .get_members()
+        .clone();
+    assert_eq!(members.len(), 1);
+    assert_eq!(members[0].key().unwrap(), Some(MapString("new-descriptor".into())));
+    let original = subject.expected_snapshot();
+    assert_eq!(original.snapshot().property_value("Added").unwrap(), None);
+    assert_eq!(
+        original
+            .snapshot()
+            .related_holons(CoreRelationshipTypeName::DescribedBy)
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()[0]
+            .key()
+            .unwrap(),
+        Some(MapString("old-descriptor".into()))
+    );
+    let repeated = test_case
+        .add_with_descriptor_step(
+            &mut fixture_holons,
+            updated,
+            targets[1].clone(),
+            defaults,
+            None,
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        repeated.expected_snapshot().snapshot().into_model().unwrap().property_map,
+        expected.snapshot().into_model().unwrap().property_map
+    );
+    test_case.finalize(&fixture_context, &fixture_holons).unwrap();
 }

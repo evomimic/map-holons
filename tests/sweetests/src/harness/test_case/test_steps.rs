@@ -297,6 +297,12 @@ pub enum DanceTestStep {
         expected_error: Option<HolonErrorKind>,
         description: String,
     },
+    WithDescriptor {
+        step_token: TestReference,
+        descriptor: TestReference,
+        expected_error: Option<HolonErrorKind>,
+        description: String,
+    },
     BeginTransaction {
         expected_error: Option<HolonErrorKind>,
         description: String,
@@ -492,6 +498,14 @@ impl core::fmt::Display for DanceTestStep {
                     "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_error: {expected_error:?}]",
                     holons_to_add.len()
                 )
+            }
+            DanceTestStep::WithDescriptor {
+                step_token,
+                descriptor,
+                expected_error,
+                description,
+            } => {
+                write!(f, "{description} [token: {step_token}, descriptor: {descriptor}, expected_error: {expected_error:?}]")
             }
             DanceTestStep::Commit {
                 candidates,

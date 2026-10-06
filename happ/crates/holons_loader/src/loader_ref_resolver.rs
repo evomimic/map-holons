@@ -705,7 +705,11 @@ impl LoaderRefResolver {
 
         // Try base key as a secondary staged lookup.
         if let Ok(Some(base_key)) = write_source_endpoint.key() {
-            let staged_matches = context.lookup().get_staged_holons_by_base_key(&base_key)?;
+            let staged_matches = match context.lookup().get_staged_holons_by_base_key(&base_key) {
+                Ok(matches) => matches,
+                Err(HolonError::HolonNotFound(_)) => Vec::new(),
+                Err(error) => return Err(error),
+            };
 
             match staged_matches.len() {
                 1 => {

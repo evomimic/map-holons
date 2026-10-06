@@ -38,6 +38,7 @@ use super::schema_validation_executor::execute_verify_schema_validation_conforma
 use super::stage_new_from_clone_executor::execute_stage_new_from_clone;
 use super::stage_new_holon_executor::execute_stage_new_holon;
 use super::stage_new_version_executor::execute_stage_new_version;
+use super::with_descriptor_executor::execute_with_descriptor;
 use super::with_properties_executor::execute_with_properties;
 
 use super::execute_print_database;
@@ -153,6 +154,15 @@ pub async fn run_dance_test_case(
                     step_token,
                     relationship_name,
                     holons_to_add,
+                    expected_error,
+                )
+                .await
+            }
+            DanceTestStep::WithDescriptor { step_token, descriptor, expected_error, .. } => {
+                execute_with_descriptor(
+                    &mut test_execution_state,
+                    step_token,
+                    descriptor,
                     expected_error,
                 )
                 .await

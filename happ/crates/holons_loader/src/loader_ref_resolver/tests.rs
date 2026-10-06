@@ -1,5 +1,154 @@
 use super::*;
 use crate::controller::tests::context;
+use core_types::{HolonId, LocalId};
+use holons_core::core_shared_objects::{
+    holon::{SavedHolon, StagedState},
+    space_manager::HolonSpaceManager,
+    Holon, ServiceRoutingPolicy,
+};
+use holons_core::reference_layer::HolonServiceApi;
+use std::any::Any;
+
+/// Supplies one described saved source so promotion exercises the real nursery path.
+#[derive(Debug)]
+struct SavedSourceService {
+    source: SavedHolon,
+    descriptor: SavedHolon,
+}
+
+impl HolonServiceApi for SavedSourceService {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn relationship_cache_policy(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &HolonId,
+        _: &RelationshipName,
+    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+        Ok(holons_core::RelationshipCachePolicy::Fresh)
+    }
+
+    fn fetch_holon_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<Holon, HolonError> {
+        for holon in [&self.source, &self.descriptor] {
+            if holon.get_local_id()? == *id.local_id() {
+                return Ok(Holon::Saved(holon.clone()));
+            }
+        }
+        Err(HolonError::HolonNotFound(id.to_string()))
+    }
+
+    fn fetch_related_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<HolonCollection, HolonError> {
+        let mut collection = HolonCollection::new_existing();
+        if self.source.get_local_id()? == *source.local_id()
+            && *name == CoreRelationshipTypeName::DescribedBy.as_relationship_name()
+        {
+            collection.add_references(vec![HolonReference::smart_from_id(
+                context.space_read_handle(),
+                HolonId::Local(self.descriptor.get_local_id()?),
+            )])?;
+        }
+        Ok(collection)
+    }
+
+    fn fetch_all_related_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
+        let name = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
+        let collection = self.fetch_related_holons_internal(context, source, &name)?;
+        let mut relationships = RelationshipMap::new_empty();
+        relationships.insert(name, Arc::new(std::sync::RwLock::new(collection)));
+        Ok(relationships)
+    }
+
+    fn commit_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &[StagedReference],
+    ) -> Result<TransientReference, HolonError> {
+        panic!("unexpected commit")
+    }
+
+    fn delete_holon_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &LocalId,
+    ) -> Result<(), HolonError> {
+        panic!("unexpected delete")
+    }
+
+    fn get_all_holons_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+    ) -> Result<HolonCollection, HolonError> {
+        panic!("unexpected storage enumeration")
+    }
+
+    fn load_holons_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: TransientReference,
+    ) -> Result<TransientReference, HolonError> {
+        panic!("unexpected load")
+    }
+}
+
+#[test]
+fn saved_write_source_without_a_staged_match_is_promoted_and_reused() {
+    let id = HolonId::Local(LocalId(vec![201]));
+    let mut properties = PropertyMap::new();
+    properties.insert(CorePropertyTypeName::Key.as_property_name(), "saved-source".to_base_value());
+    properties.insert("Title".to_property_name(), "Authored title".to_base_value());
+    let source = SavedHolon::new(id.local_id().clone(), properties.clone(), None, MapInteger(1));
+    let mut descriptor_properties = PropertyMap::new();
+    descriptor_properties
+        .insert(CorePropertyTypeName::Key.as_property_name(), "SavedSourceType".to_base_value());
+    descriptor_properties.insert(
+        CorePropertyTypeName::TypeName.as_property_name(),
+        "SavedSourceType".to_base_value(),
+    );
+    let descriptor =
+        SavedHolon::new(LocalId(vec![202]), descriptor_properties, None, MapInteger(1));
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(SavedSourceService { source, descriptor }),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    let saved = HolonReference::smart_with_key(
+        context.space_read_handle(),
+        id.clone(),
+        "saved-source".into(),
+    );
+    assert!(matches!(
+        context.lookup().get_staged_holons_by_base_key(&"saved-source".into()),
+        Err(HolonError::HolonNotFound(_))
+    ));
+
+    let promoted = LoaderRefResolver::resolve_staged_write_source(&context, &saved).unwrap();
+    assert!(promoted.is_in_state(&context, StagedState::ForUpdate).unwrap());
+    assert_eq!(promoted.into_model().unwrap().property_map, properties);
+    assert_eq!(saved.into_model().unwrap().property_map, properties);
+    let reused = LoaderRefResolver::resolve_staged_write_source(&context, &saved).unwrap();
+    assert_eq!(reused, promoted);
+    assert_eq!(
+        context.lookup().get_staged_holons_by_base_key(&"saved-source".into()).unwrap().len(),
+        1
+    );
+}
 
 fn node(context: &Arc<TransactionContext>, key: &str) -> StagedReference {
     let mut transient = context.mutation().new_holon(Some(key.into())).unwrap();
