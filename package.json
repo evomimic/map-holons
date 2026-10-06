@@ -23,6 +23,7 @@
   "build": "npm run build:happ && npm run build:host",
   "build:host": "npm run build:house-troupe && npm run build -w map-host",
     "build:happ": "npm run build:happ -w map-happ",
+    "web:review": "npm run web:review -w map-host",
     "web:test": "npm run web:test:dahn -w map-host",
     "web:typecheck": "npm run web:typecheck -w map-host",
 

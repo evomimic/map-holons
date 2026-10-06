@@ -1,4 +1,6 @@
 pub mod holon_error;
+pub mod loader_parsing_error;
+pub use loader_parsing_error::*;
 pub mod holon_node_model;
 pub mod id;
 pub mod property;

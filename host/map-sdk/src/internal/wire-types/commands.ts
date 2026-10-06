@@ -60,6 +60,7 @@ export type VisualizerKindWire =
   | 'PropertyMap'
   | 'Property'
   | 'Value'
+  | 'ActionBar'
   | 'Action';
 
 /**
@@ -90,11 +91,14 @@ export interface VisualizerSelectionRequestWire {
  * - tuple variants are not used in this enum
  */
 export type TransactionActionWire =
+  | 'Dispose'
+  | { CheckLoadTarget: { space: HolonReferenceWire } }
   | 'Commit'
   | 'UndoLast'
   | 'RedoLast'
   | { UndoToMarker: { marker_id: string } }
   | { RedoToMarker: { marker_id: string } }
+  | { PrepareHolons: { content_set: ContentSet } }
   | { LoadHolons: { content_set: ContentSet } }
   // Retained legacy dance ingress. Keep operational, but do not treat as the
   // foundation for new command-surface work.
@@ -104,6 +108,7 @@ export type TransactionActionWire =
   | { SelectCollectionVisualizer: { collection: DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire } }
   | { FetchArtifact: { handle: string } }
   | 'GetAllHolons'
+  | 'GetCommittedHolons'
   | { GetSavedHolonByBaseKey: { key: string } }
   | { GetStagedHolonByBaseKey: { key: string } }
   // Deliberate exception: duplicate-base-key staging lookup stays
@@ -136,6 +141,7 @@ export type ReadableHolonActionWire =
   | 'CloneHolon'
   | 'Summarize'
   | 'GetHolonId'
+  | 'GetValidationFindings'
   | 'GetPredecessor'
   | 'GetKey'
   | 'GetVersionedKey'
@@ -186,6 +192,7 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'CloneHolon',
   'Summarize',
   'GetHolonId',
+  'GetValidationFindings',
   'GetPredecessor',
   'GetKey',
   'GetVersionedKey',
@@ -203,10 +210,12 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
+  'Dispose',
   'Commit',
   'UndoLast',
   'RedoLast',
   'GetAllHolons',
+  'GetCommittedHolons',
   'GetStagedCount',
   'GetTransientCount',
 ]);
@@ -298,7 +307,11 @@ export function isTransactionActionWire(
 ): value is TransactionActionWire {
   return (
     (typeof value === 'string' && TRANSACTION_UNIT_ACTIONS.has(value)) ||
+    (hasSingleKey(value, 'CheckLoadTarget') && isRecord(value.CheckLoadTarget) && isHolonReferenceWire(value.CheckLoadTarget['space'])) ||
     // Struct variants.
+    (hasSingleKey(value, 'PrepareHolons') &&
+      isRecord(value.PrepareHolons) &&
+      isContentSet(value.PrepareHolons['content_set'])) ||
     (hasSingleKey(value, 'LoadHolons') &&
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||
@@ -324,6 +337,7 @@ export function isTransactionActionWire(
         value.SelectVisualizer['requested_kind'] === 'PropertyMap' ||
         value.SelectVisualizer['requested_kind'] === 'Property' ||
         value.SelectVisualizer['requested_kind'] === 'Value' ||
+        value.SelectVisualizer['requested_kind'] === 'ActionBar' ||
         value.SelectVisualizer['requested_kind'] === 'Action')) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
       isStringFieldObject(value.GetStagedHolonByBaseKey, 'key')) ||

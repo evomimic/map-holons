@@ -3,7 +3,7 @@ use std::sync::Arc;
 use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::dances::{implementations, BoundDanceInvocation};
+use crate::dances::{implementations, BoundDanceInvocation, DanceImplementationResult};
 use crate::descriptors::{accessor_helpers, DanceDescriptor, TypeHeader};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use base_types::{BaseValue, MapString};
@@ -50,27 +50,36 @@ impl DanceImplementation {
         &self,
         context: &Arc<TransactionContext>,
         bound_invocation: &BoundDanceInvocation,
-    ) -> Result<Option<HolonReference>, HolonError> {
+    ) -> Result<DanceImplementationResult, HolonError> {
         let implementation_name = self.implementation_name()?;
 
+        if implementation_name == CoreDanceImplementationName::LoadHolons.as_command_name().0 {
+            return implementations::load_holons::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Response);
+        }
+
         if implementation_name == CoreDanceImplementationName::Commit.as_command_name().0 {
-            return implementations::commit::invoke(context, bound_invocation);
+            return implementations::commit::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
         }
 
         if implementation_name == CoreDanceImplementationName::DeleteHolon.as_command_name().0 {
-            return implementations::delete_holon::invoke(context, bound_invocation);
+            return implementations::delete_holon::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
         }
 
         if implementation_name
             == DahnDanceImplementationName::LocalMaterializeVisualizer.as_implementation_name()
         {
-            return implementations::materialize_visualizer::invoke(context, bound_invocation);
+            return implementations::materialize_visualizer::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
         }
 
         if implementation_name
             == DancerDanceImplementationName::LocalActivateDancer.as_implementation_name()
         {
-            return implementations::activate_dancer::invoke(context, bound_invocation);
+            return implementations::activate_dancer::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
         }
 
         Err(HolonError::NotImplemented(format!(

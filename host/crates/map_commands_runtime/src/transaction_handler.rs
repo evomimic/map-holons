@@ -1,7 +1,7 @@
 use base_types::{BaseValue, MapInteger};
 use core_types::HolonError;
 use holons_core::dances::execute_dance_v2;
-use holons_core::HolonReference;
+use holons_core::{HolonReference, ReadableHolon};
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
 use super::runtime_session::RuntimeSession;
@@ -14,6 +14,21 @@ pub async fn handle_transaction(
     let context = &command.context;
 
     match command.action {
+        TransactionAction::Dispose => {
+            session.dispose_transaction(&context.tx_id()).await?;
+            Ok(MapResult::None)
+        }
+        TransactionAction::CheckLoadTarget { space } => {
+            let expected = context
+                .get_space_holon()?
+                .ok_or_else(|| HolonError::InvalidState("No persisted HolonSpace".into()))?;
+            if space.holon_id()? != expected.holon_id()? {
+                return Err(HolonError::InvalidParameter(
+                    "Captured HolonSpace does not match the loader transaction".into(),
+                ));
+            }
+            Ok(MapResult::None)
+        }
         TransactionAction::Commit => {
             let response = context.commit()?;
             Ok(MapResult::Reference(HolonReference::Transient(response)))
@@ -42,6 +57,15 @@ pub async fn handle_transaction(
             Ok(MapResult::DanceResponse(response))
         }
         TransactionAction::DanceV2 { invocation } => {
+            if invocation.dance_name()?.to_string() == "LoadHolons" {
+                let resolved =
+                    holons_core::dances::resolve_dance_v2_invocation(invocation.clone())?;
+                let bound = resolved.bound_invocation();
+                let request = bound.request().ok_or_else(|| {
+                    HolonError::InvalidParameter("LoadHolons requires a prepared request".into())
+                })?;
+                session.admission(context.tx_id())?.submit(request)?;
+            }
             let response = execute_dance_v2(context, invocation).await?;
             Ok(MapResult::Reference(HolonReference::from(response)))
         }
@@ -59,10 +83,37 @@ pub async fn handle_transaction(
         TransactionAction::FetchArtifact { handle } => {
             Ok(MapResult::Value(BaseValue::BytesValue(context.fetch_artifact(&handle)?)))
         }
+        TransactionAction::PrepareHolons { content_set } => {
+            session.admission(context.tx_id())?.begin_preparation()?;
+            let request =
+                holons_loader_client::prepare_holons_from_files(context.clone(), content_set)?;
+            session
+                .admission(context.tx_id())?
+                .prepared(HolonReference::Transient(request.clone()))?;
+            Ok(MapResult::Reference(HolonReference::Transient(request)))
+        }
         TransactionAction::LoadHolons { content_set } => {
             let response =
                 holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;
             Ok(MapResult::Reference(HolonReference::Transient(response)))
+        }
+        TransactionAction::GetCommittedHolons => {
+            let mut members = Vec::new();
+            for staged in context.staged_references()? {
+                // State inspection distinguishes expected unsaved candidates from read failures.
+                if staged.is_committed()? {
+                    members.push(HolonReference::smart_from_id(
+                        context.space_read_handle(),
+                        staged.holon_id()?,
+                    ));
+                }
+            }
+            // Membership is known; keys must be fetched in the separate review context.
+            Ok(MapResult::Collection(holons_core::HolonCollection::from_parts(
+                holons_core::CollectionState::Fetched,
+                members,
+                Default::default(),
+            )))
         }
         TransactionAction::GetAllHolons => {
             let collection = context.lookup().get_all_holons()?;

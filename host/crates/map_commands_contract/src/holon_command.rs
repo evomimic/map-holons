@@ -42,6 +42,9 @@ impl HolonAction {
         match self {
             HolonAction::Read(ReadableHolonAction::CloneHolon) => "clone_holon",
             HolonAction::Read(ReadableHolonAction::Summarize) => "summarize",
+            HolonAction::Read(ReadableHolonAction::GetValidationFindings) => {
+                "get_validation_findings"
+            }
             HolonAction::Read(ReadableHolonAction::GetHolonId) => "get_holon_id",
             HolonAction::Read(ReadableHolonAction::GetPredecessor) => "get_predecessor",
             HolonAction::Read(ReadableHolonAction::GetKey) => "get_key",
@@ -93,6 +96,9 @@ pub enum ReadableHolonAction {
 
     /// `ReadableHolon::holon_id()` → `HolonId`
     GetHolonId,
+
+    /// Snapshot of a staged carrier’s structured validation findings.
+    GetValidationFindings,
 
     /// `ReadableHolon::predecessor()` → `Option<HolonReference>`
     GetPredecessor,

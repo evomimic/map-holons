@@ -63,6 +63,7 @@ pub enum MapResultWire {
 
     /// Returns a holon id.
     HolonId(HolonId),
+    ValidationFindings(Vec<core_types::CommitValidationViolation>),
 
     /// Transitional dance-result exception retained at the IPC boundary.
     DanceResponse(DanceResponseWire),
@@ -107,6 +108,7 @@ impl From<MapResult> for MapResultWire {
                     element_type: HolonReferenceWire::from(&collection.element_type),
                 })
             }
+            MapResult::ValidationFindings(findings) => MapResultWire::ValidationFindings(findings),
             MapResult::None => MapResultWire::None,
             MapResult::UndoComplete => MapResultWire::UndoComplete,
             MapResult::RedoComplete => MapResultWire::RedoComplete,

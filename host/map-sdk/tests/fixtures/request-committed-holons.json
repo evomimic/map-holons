@@ -1,0 +1,15 @@
+{
+  "request_id": 141,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": "GetCommittedHolons"
+    }
+  },
+  "options": {
+    "marker_id": null,
+    "marker_label": null,
+    "snapshot_after": false,
+    "disable_undo": false
+  }
+}

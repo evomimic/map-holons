@@ -2,6 +2,7 @@ mod holon_handler;
 mod runtime;
 mod runtime_session;
 mod space_handler;
+mod transaction_admission;
 mod transaction_handler;
 
 pub use runtime::{ExecutionPolicy, Runtime};

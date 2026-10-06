@@ -12,6 +12,8 @@ use crate::ExecutionPolicy;
 pub struct RuntimeSession {
     space_manager: Arc<HolonSpaceManager>,
     recovery: Option<Arc<SessionReceptor>>,
+    admissions:
+        std::sync::Mutex<HashMap<TxId, Arc<crate::transaction_admission::TransactionAdmission>>>,
     active_sessions: RwLock<HashMap<TxId, Arc<ClientSession>>>,
     archived_sessions: RwLock<HashMap<TxId, Arc<ClientSession>>>,
 }
@@ -24,6 +26,7 @@ impl RuntimeSession {
         Self {
             space_manager,
             recovery,
+            admissions: Default::default(),
             active_sessions: RwLock::new(HashMap::new()),
             archived_sessions: RwLock::new(HashMap::new()),
         }
@@ -211,6 +214,32 @@ impl RuntimeSession {
         Ok(())
     }
 
+    pub(crate) fn admission(
+        &self,
+        tx_id: TxId,
+    ) -> Result<Arc<crate::transaction_admission::TransactionAdmission>, HolonError> {
+        let mut admissions =
+            self.admissions.lock().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        Ok(Arc::clone(admissions.entry(tx_id).or_default()))
+    }
+
+    /// Drop pools and recovery data only after excluding all active commands.
+    pub async fn dispose_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {
+        let session = self.get_client_session(tx_id)?;
+        self.admission(*tx_id)?.dispose()?;
+        session.context().dispose()?;
+        session.cleanup().await?;
+        self.active_sessions
+            .write()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .remove(tx_id);
+        self.archived_sessions
+            .write()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .remove(tx_id);
+        Ok(())
+    }
+
     pub fn space_manager(&self) -> &Arc<HolonSpaceManager> {
         &self.space_manager
     }
@@ -395,5 +424,73 @@ mod tests {
             new_tx_id.value() > recovered_tx_id.value(),
             "new tx_id should advance beyond the recovered tx_id to avoid collisions"
         );
+    }
+    #[tokio::test]
+    async fn disposal_excludes_active_commands_and_releases_pools() {
+        let session = RuntimeSession::new(build_test_space_manager(), None);
+        let id = session.begin_transaction().await.unwrap();
+        let context = session.get_transaction(&id).unwrap();
+        let reference = context.mutation().new_holon(Some("retained-request".into())).unwrap();
+        let admission = session.admission(id).unwrap();
+        let lease = admission.enter(false).unwrap();
+        assert!(session.dispose_transaction(&id).await.is_err());
+        drop(lease);
+        session.dispose_transaction(&id).await.unwrap();
+        assert!(session.get_transaction(&id).is_err());
+        assert!(admission.enter(false).is_err());
+        assert_eq!(
+            context.lifecycle_state(),
+            holons_core::core_shared_objects::transactions::TransactionLifecycleState::Disposed
+        );
+        assert!(holons_core::ReadableHolon::key(&reference).is_err());
+    }
+
+    #[tokio::test]
+    async fn load_admission_requires_preparation_and_never_resets_after_execution() {
+        let session = RuntimeSession::new(build_test_space_manager(), None);
+        let id = session.begin_transaction().await.unwrap();
+        let context = session.get_transaction(&id).unwrap();
+        let request = holons_core::HolonReference::Transient(
+            context.mutation().new_holon(Some("retained-request".into())).unwrap(),
+        );
+        let admission = session.admission(id).unwrap();
+        let lease = admission.enter(true).unwrap();
+        assert!(admission.submit(&request).is_err());
+        admission.prepared(request.clone()).unwrap();
+        admission.submit(&request).unwrap();
+        assert!(admission.submit(&request).is_err());
+        assert!(admission.enter(true).is_err());
+        assert!(admission.dispose().is_err());
+        drop(lease);
+        // Non-Complete leaves the transaction open without re-enabling submission.
+        assert!(context.is_open());
+        assert!(admission.enter(true).is_err());
+        assert!(admission.enter(false).is_ok());
+        session.dispose_transaction(&id).await.unwrap();
+    }
+    #[tokio::test]
+    async fn competing_submission_claims_have_exactly_one_winner() {
+        let session = RuntimeSession::new(build_test_space_manager(), None);
+        let id = session.begin_transaction().await.unwrap();
+        let context = session.get_transaction(&id).unwrap();
+        let request = holons_core::HolonReference::Transient(
+            context.mutation().new_holon(Some("submission".into())).unwrap(),
+        );
+        let admission = session.admission(id).unwrap();
+        let _lease = admission.enter(true).unwrap();
+        admission.prepared(request.clone()).unwrap();
+        let barrier = std::sync::Barrier::new(8);
+        let winners = std::thread::scope(|scope| {
+            let attempts: Vec<_> = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        admission.submit(&request).is_ok()
+                    })
+                })
+                .collect();
+            attempts.into_iter().map(|attempt| usize::from(attempt.join().unwrap())).sum::<usize>()
+        });
+        assert_eq!(winners, 1);
     }
 }

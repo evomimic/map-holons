@@ -5,6 +5,7 @@ pub mod dance_response;
 pub mod dance_v2_executor;
 pub mod holon_dance_adapter;
 pub mod implementation;
+pub mod implementation_result;
 pub mod implementations;
 pub mod materialized_visualizer;
 pub(crate) mod query_dance_adapter;
@@ -20,8 +21,9 @@ pub use self::dance_initiator::DanceInitiator;
 pub use self::dance_request::{DanceRequest, DanceType, RequestBody};
 pub use self::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 pub use self::dance_v2_executor::{
-    build_resolved_dance_v2_response, execute_dance_v2, resolve_dance_v2_invocation,
-    ResolvedDanceV2Invocation,
+    build_resolved_dance_v2_response, execute_dance_v2, execute_dance_v2_locally,
+    resolve_dance_v2_invocation, ResolvedDanceV2Invocation,
 };
 pub use self::implementation::DanceImplementation;
+pub use self::implementation_result::DanceImplementationResult;
 pub use self::materialized_visualizer::MaterializedVisualizer;

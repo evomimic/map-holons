@@ -51,3 +51,11 @@ export type {
   SmartReference,
   WritableHolon,
 } from './types';
+export { readLoadValidationDiagnostics } from './validation';
+export type { ValidationFinding, ValidationFindingKind, ValidationSubject, LoadValidationFinding, LoadValidationDiagnostics } from './validation';
+
+export { readParserDiagnostics } from './parser-diagnostics';
+export type { ParserDiagnostic } from './parser-diagnostics';
+
+export { CommittedHolonsReview } from './committed-review';
+export type { CommittedHolonEntry } from './committed-review';

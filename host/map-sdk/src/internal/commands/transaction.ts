@@ -52,6 +52,14 @@ async function runTransactionCommand<T>(
  *
  * The public SDK currently discards this payload and exposes `Promise<void>`.
  */
+export function dispose(txId: TxId): Promise<void> {
+  return runTransactionCommand(txId, 'Dispose', expectNone);
+}
+
+export function checkLoadTarget(txId: TxId, space: HolonReferenceWire): Promise<void> {
+  return runTransactionCommand(txId, { CheckLoadTarget: { space } }, expectNone);
+}
+
 export function commit(
   txId: TxId,
 ): Promise<HolonReferenceWire> {
@@ -234,6 +242,15 @@ export function deleteHolon(
     expectNone,
     options,
   );
+}
+
+/** Construct a request graph without invoking the loader. */
+export function prepareHolons(
+  txId: TxId,
+  contentSet: ContentSet,
+  options?: RequestOptionsOverrides,
+): Promise<HolonReferenceWire> {
+  return runTransactionCommand(txId, { PrepareHolons: { content_set: contentSet } }, expectReference, options);
 }
 
 /**
@@ -449,4 +466,9 @@ export function selectCollectionVisualizer(
   request: { collection: import('../wire-types/results').DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire },
 ): Promise<VisualizerSelectionWire> {
   return runTransactionCommand(txId, { SelectCollectionVisualizer: request }, expectVisualizerSelection);
+}
+
+/** Retrieve Saved Nursery membership without resolving saved properties in the loader context. */
+export function getCommittedHolons(txId: TxId): Promise<HolonCollectionWire> {
+  return runTransactionCommand(txId, 'GetCommittedHolons', expectCollection);
 }

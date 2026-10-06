@@ -5,6 +5,13 @@
  * never on MAP SDK internal modules or transport-layer types.
  */
 export type {
+  ParserDiagnostic,
+  CommittedHolonEntry,
+  ValidationFinding,
+  ValidationFindingKind,
+  ValidationSubject,
+  LoadValidationFinding,
+  LoadValidationDiagnostics,
   BaseValue,
   ContentSet,
   FileData,
@@ -26,10 +33,14 @@ export type {
 } from '../../../../map-sdk/src';
 
 export {
+  readLoadValidationDiagnostics,
+  readParserDiagnostics,
+  CommittedHolonsReview,
   CorePropertyName,
   MapClient,
   MapTransaction,
   MapError,
+  DomainError,
   extractNumber,
   extractString,
 } from '../../../../map-sdk/src';

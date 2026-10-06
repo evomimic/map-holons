@@ -168,6 +168,23 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
     let runtime = build_test_runtime();
     let tx_id = begin_tx(&runtime).await;
     let (context, subject) = minimally_described_transient(&runtime, &tx_id);
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("commit with retained transient evidence");
+    assert!(!context.is_open());
+    assert!(matches!(
+        runtime
+            .execute_command(
+                tx_cmd(&runtime, &tx_id, TransactionAction::NewHolon { key: None }),
+                ExecutionPolicy::default(),
+            )
+            .await,
+        Err(HolonError::TransactionAlreadyCommitted { .. })
+    ));
     let direct = dahn_selection::select_visualizer(
         &context,
         VisualizerSelectionRequest {
@@ -1242,4 +1259,214 @@ async fn undo_to_marker_after_redo_to_marker_uses_correct_stack_order() {
         1,
         "undo_to_marker after redo_to_marker must pop only the marker EU, not the ones below it"
     );
+}
+
+#[tokio::test]
+async fn preparation_builds_isolated_transient_graphs_without_execution() -> Result<(), HolonError>
+{
+    use core_types::{ContentSet, FileData};
+    use holons_core::reference_layer::ReadableHolon;
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id)?;
+    let contents = ContentSet { files_to_load: vec![
+        FileData { filename: "/one/import.json".into(), raw_contents: r#"{ "holons": [
+            {"key":"a", "properties":{"Name":"é exact"}, "relationships":[{"name":"Next","target":{"$ref":"b"}}]}
+        ] }"#.into() },
+        FileData { filename: "/two/import.json".into(), raw_contents: r#"{"holons":[{"key":"b"}]}"#.into() },
+    ] };
+    let bad = ContentSet {
+        files_to_load: vec![FileData { filename: "broken.json".into(), raw_contents: "{".into() }],
+    };
+    assert!(runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::PrepareHolons { content_set: bad },
+            }),
+            ExecutionPolicy::default()
+        )
+        .await
+        .is_err());
+    assert_eq!(context.lookup().staged_count()?, 0);
+    assert!(context.is_open());
+    let mut requests = Vec::new();
+    for _ in 0..2 {
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: context.clone(),
+                    action: TransactionAction::PrepareHolons { content_set: contents.clone() },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await?;
+        let MapResult::Reference(request) = result else { panic!("expected request reference") };
+        let bundles = request.related_holons("Contains")?.read().unwrap().get_members().clone();
+        assert_eq!(bundles.len(), 2);
+        for (bundle, file) in bundles.iter().zip(&contents.files_to_load) {
+            assert_eq!(
+                bundle.property_value("Filename")?,
+                Some(BaseValue::StringValue(file.filename.clone().into()))
+            );
+            let members =
+                bundle.related_holons("BundleMembers")?.read().unwrap().get_members().clone();
+            assert_eq!(members.len(), 1);
+            let offset = file.raw_contents.find("{\"key\"").unwrap() as i64;
+            assert_eq!(
+                members[0].property_value("StartUtf8ByteOffset")?,
+                Some(BaseValue::IntegerValue(MapInteger(offset)))
+            );
+            if file.filename.starts_with("/one/") {
+                assert_eq!(
+                    members[0].property_value("Name")?,
+                    Some(BaseValue::StringValue("é exact".into()))
+                );
+                let links = members[0]
+                    .related_holons("HasRelationshipReference")?
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                let targets = links[0]
+                    .related_holons("ReferenceTarget")?
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                assert_eq!(
+                    targets[0].property_value("HolonKey")?,
+                    Some(BaseValue::StringValue("b".into()))
+                );
+            }
+        }
+        assert_eq!(context.lookup().staged_count()?, 0);
+        assert!(context.is_open());
+        requests.push(request);
+    }
+    assert_ne!(requests[0].reference_id_string(), requests[1].reference_id_string());
+    context.commit()?;
+    assert!(runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context,
+                action: TransactionAction::PrepareHolons { content_set: contents },
+            }),
+            ExecutionPolicy::default()
+        )
+        .await
+        .is_err());
+    Ok(())
+}
+
+#[tokio::test]
+async fn preparation_preserves_multiple_parser_findings_without_commit() -> Result<(), HolonError> {
+    use core_types::{ContentSet, FileData, LoaderParsingIssueKind};
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id)?;
+    let result = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::PrepareHolons {
+                    content_set: ContentSet {
+                        files_to_load: vec![
+                            FileData {
+                                filename: "valid.json".into(),
+                                raw_contents: r#"{"holons":[{"key":"valid"}]}"#.into(),
+                            },
+                            FileData { filename: "first.json".into(), raw_contents: "{\n".into() },
+                            FileData { filename: "second.json".into(), raw_contents: "{\n".into() },
+                            FileData {
+                                filename: "shape.json".into(),
+                                raw_contents: r#"{"holons":[{"key":12}]}"#.into(),
+                            },
+                        ],
+                    },
+                },
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    let Err(HolonError::LoaderParsingError(failure)) = result else {
+        panic!("expected structured parser failure")
+    };
+    assert_eq!(failure.issues.len(), 3);
+    assert_eq!(failure.issues[0].filename, "first.json");
+    assert_eq!(failure.issues[1].filename, "second.json");
+    assert_eq!(failure.issues[2].filename, "shape.json");
+    assert!(failure
+        .issues
+        .iter()
+        .all(|issue| issue.kind == LoaderParsingIssueKind::StructuralValidationFailure));
+    assert_eq!(failure.issues[0].location.as_ref().unwrap().line, 2);
+    assert!(failure.issues[2].location.as_ref().unwrap().column > 10);
+    assert!(failure.issues.iter().all(|issue| issue.source_error.is_some()));
+    assert!(context.is_open());
+    assert_eq!(context.lookup().staged_count()?, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn committed_membership_is_identity_only_and_transaction_local() -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::Holon;
+    use holons_core::ReadableHolon;
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id)?;
+    let mut saved_ids = Vec::new();
+    for (index, key) in [Some("staged-key"), Some("second-staged-key")].into_iter().enumerate() {
+        let source = context.mutation().new_holon(key.map(Into::into))?;
+        let staged = context.mutation().stage_new_holon(source)?;
+        let local_id = LocalId(vec![index as u8 + 1; 39]);
+        let model = staged.get_holon_to_commit(&context)?;
+        let mut model = model.write().unwrap();
+        let Holon::Staged(holon) = &mut *model else { panic!("staged") };
+        // Simulate the persistence result; the fail-fast service cannot fetch any saved data.
+        holon.to_committed(local_id.clone())?;
+        saved_ids.push(HolonId::Local(local_id));
+    }
+    let source = context.mutation().new_holon(Some("unsaved".into()))?;
+    context.mutation().stage_new_holon(source)?;
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            ExecutionPolicy::default(),
+        )
+        .await?;
+    assert!(!context.is_open());
+    let result = runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::GetCommittedHolons),
+            ExecutionPolicy::default(),
+        )
+        .await?;
+    let MapResult::Collection(collection) = result else { panic!("collection") };
+    assert_eq!(collection.get_members().len(), 2);
+    assert!(collection.keyed_index().is_empty());
+    for member in collection.get_members() {
+        assert!(saved_ids.contains(&member.holon_id()?));
+        let HolonReference::Smart(saved) = member else { panic!("saved identity") };
+        assert!(saved.smart_property_values().is_none());
+    }
+    let other = begin_tx(&runtime).await;
+    let MapResult::Collection(empty) = runtime
+        .execute_command(
+            tx_cmd(&runtime, &other, TransactionAction::GetCommittedHolons),
+            ExecutionPolicy::default(),
+        )
+        .await?
+    else {
+        panic!("collection")
+    };
+    assert!(empty.get_members().is_empty());
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Dispose),
+            ExecutionPolicy::default(),
+        )
+        .await?;
+    assert!(runtime.session().get_transaction(&tx_id).is_err());
+    Ok(())
 }

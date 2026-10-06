@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-const { select } = vi.hoisted(() => ({ select: vi.fn() }));
-vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select }));
+const { select, selectCollection } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn() }));
+vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection }));
 import { createMapTransaction } from '../../src/sdk/transaction';
 import { createHolonReference, unwrapHolonReference } from '../../src/sdk/references';
 import { createPropertyDescriptorHandle } from '../../src/sdk/descriptors';
@@ -34,4 +34,16 @@ describe('descriptor selection request binding', () => {
     const descriptor = createPropertyDescriptorHandle(createHolonReference(41, subject));
     await expect(createMapTransaction(41).selectValueVisualizer(descriptor, createHolonReference(41, parent), createHolonReference(41, slot))).rejects.toThrow('No applicable Value Visualizer');
   });
+});
+
+it('selects projected values by their declared type through the ordinary Collection command', async () => {
+  selectCollection.mockResolvedValue({ selected, requested_kind: 'Collection', alternatives_available: false });
+  const tx = createMapTransaction(41);
+  const result = await tx.selectProjectedCollectionVisualizer(createHolonReference(41, subject), createHolonReference(41, parent), createHolonReference(41, slot));
+  expect(selectCollection).toHaveBeenCalledWith(41, { collection: { element_type: subject, members: { state: 'Fetched', members: [], keyed_index: {} } }, parent_visualizer: parent, slot });
+  expect(unwrapHolonReference(result.selected)).toEqual(selected);
+  expect(result.requestedKind).toBe('collection');
+});
+it('refuses to move transaction-local diagnostic subjects into a presentation transaction', () => {
+  expect(() => createMapTransaction(42).bindSavedReference(createHolonReference(41, subject))).toThrow('persisted Smart');
 });

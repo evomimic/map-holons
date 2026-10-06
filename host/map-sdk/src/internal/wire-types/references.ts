@@ -507,7 +507,7 @@ export type HolonErrorWire =
   | { InvalidParameter: string }
   | { InvalidRelationship: [string, string] }
   | { InvalidUpdate: string }
-  | { LoaderParsingError: string }
+  | { LoaderParsingError: LoaderParsingFailureWire }
   | { Misc: string }
   | { MissingDescribedBy: { holon: string } }
   | { MissingStagedCollection: string }
@@ -1184,7 +1184,7 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
     isTaggedValue(value, 'InvalidParameter', isString) ||
     isTaggedValue(value, 'InvalidRelationship', isStringPair) ||
     isTaggedValue(value, 'InvalidUpdate', isString) ||
-    isTaggedValue(value, 'LoaderParsingError', isString) ||
+    isTaggedValue(value, 'LoaderParsingError', isLoaderParsingFailureWire) ||
     isTaggedValue(value, 'Misc', isString) ||
     isTaggedValue(value, 'MissingStagedCollection', isString) ||
     isTaggedValue(value, 'NotAccessible', isStringPair) ||
@@ -1481,4 +1481,25 @@ export function isDanceResponseWire(value: unknown): value is DanceResponseWire 
     isResponseBodyWire(value['body']) &&
     isNullable(value['descriptor'], isHolonReferenceWire)
   );
+}
+
+export interface LoaderParsingFailureWire {
+  message: string;
+  issues: Array<{
+    filename: string;
+    kind: 'IoFailure' | 'JsonDecodingFailure' | 'StructuralValidationFailure' | 'HolonConstructionFailure';
+    message: string;
+    location: { line: number; column: number } | null;
+    source_error: HolonErrorWire | null;
+  }>;
+}
+
+export function isLoaderParsingFailureWire(value: unknown): value is LoaderParsingFailureWire {
+  return isRecord(value) && isString(value['message']) && Array.isArray(value['issues']) && value['issues'].every(issue =>
+    isRecord(issue) && isString(issue['filename']) && isString(issue['message']) &&
+    ['IoFailure', 'JsonDecodingFailure', 'StructuralValidationFailure', 'HolonConstructionFailure'].includes(issue['kind'] as string) &&
+    isNullable(issue['source_error'], isHolonErrorWire) &&
+    isNullable(issue['location'], (location): location is { line: number; column: number } => isRecord(location) &&
+      Number.isSafeInteger(location['line']) && (location['line'] as number) >= 1 &&
+      Number.isSafeInteger(location['column']) && (location['column'] as number) >= 0));
 }

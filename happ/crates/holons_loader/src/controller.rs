@@ -19,7 +19,7 @@ use tracing::{debug, info, warn};
 
 use holons_prelude::prelude::*;
 
-use crate::errors::{make_error_holons_best_effort, ErrorWithContext};
+use crate::errors::{make_load_error_holons, ErrorWithContext};
 use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
 
 /// Local structure to hold LoaderHolon provenance used for error enrichment.
@@ -41,25 +41,20 @@ enum LoadCommitStatus {
 
 impl LoadCommitStatus {
     /// Preserves semantic rejection independently of operational persistence failures.
-    fn from_commit_status(value: Option<BaseValue>) -> Self {
+    fn from_commit_status(value: Option<BaseValue>) -> Result<Self, HolonError> {
         match value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
-                "Complete" => Self::Complete,
-                "Incomplete" => Self::Incomplete,
-                "Rejected" => Self::Rejected,
-                _ => {
-                    warn!("Unexpected CommitRequestStatus value in commit response: {:?}", status);
-                    Self::Incomplete
-                }
+                "Complete" => Ok(Self::Complete),
+                "Incomplete" => Ok(Self::Incomplete),
+                "Rejected" => Ok(Self::Rejected),
+                _ => Err(HolonError::InvalidParameter(format!(
+                    "Unexpected CommitRequestStatus: {}",
+                    status.0
+                ))),
             },
-            Some(other) => {
-                warn!("Unexpected CommitRequestStatus type in commit response: {:?}", other);
-                Self::Incomplete
-            }
-            None => {
-                warn!("Missing CommitRequestStatus in commit response");
-                Self::Incomplete
-            }
+            value => Err(HolonError::InvalidParameter(format!(
+                "Missing or invalid CommitRequestStatus: {value:?}"
+            ))),
         }
     }
 }
@@ -105,6 +100,16 @@ impl HolonLoaderController {
         context: &Arc<TransactionContext>,
         set_reference: TransientReference, // -> HolonLoadSet
     ) -> Result<TransientReference, HolonError> {
+        // Lookups require an open transaction; retain handles before Commit can close it.
+        // During first-space bootstrap these descriptors may not exist yet.
+        let response_descriptor = crate::response_descriptor::resolve_response_descriptor(
+            context,
+            "HolonLoadResponse.DanceResponseType",
+        )?;
+        let error_descriptor = crate::response_descriptor::resolve_response_descriptor(
+            context,
+            "HolonLoadError.HolonError",
+        )?;
         let load_started_at = performance_timestamp_micros();
         // let run_id = Uuid::new_v4();
         // info!("HolonLoaderController::load_set - start run_id={run_id}");
@@ -125,6 +130,7 @@ impl HolonLoaderController {
 
             let response_reference = self.build_response(
                 context,
+                response_descriptor.clone(),
                 run_id,
                 0, // holons_staged
                 0, // holons_committed
@@ -154,6 +160,7 @@ impl HolonLoaderController {
         let mut merged_queued_relationship_references: Vec<TransientReference> = Vec::new();
 
         // In-memory provenance index: loader_holon_key -> (filename, start_utf8_byte_offset)
+        let mut staged_sources = Vec::new();
         let mut provenance_index: ProvenanceIndex = HashMap::new();
         // Accumulates duplicate-key errors discovered while indexing provenance.
         let mut provenance_errors: Vec<ErrorWithContext> = Vec::new();
@@ -178,6 +185,7 @@ impl HolonLoaderController {
             let mut mapper_output =
                 LoaderHolonMapper::map_bundle(context, bundle_reference.clone())?;
 
+            staged_sources.append(&mut mapper_output.staged_sources);
             total_holons_staged += mapper_output.staged_count;
             total_loader_holons += mapper_output.loader_holon_count;
 
@@ -195,8 +203,9 @@ impl HolonLoaderController {
                 );
 
                 // Prefer typed error holons; enrich with filename/offset via provenance index.
-                let error_holons = make_error_holons_best_effort(
+                let error_holons = make_load_error_holons(
                     context,
+                    error_descriptor.clone(),
                     &mapper_output.errors,
                     Some(&provenance_index),
                 )?;
@@ -208,6 +217,7 @@ impl HolonLoaderController {
 
                 let response_reference = self.build_response(
                     context,
+                    response_descriptor.clone(),
                     run_id,
                     total_holons_staged,
                     0,                 // holons_committed
@@ -238,8 +248,9 @@ impl HolonLoaderController {
             );
 
             // Build error holons, enriched with filename/offset via provenance_index.
-            let error_holons = make_error_holons_best_effort(
+            let error_holons = make_load_error_holons(
                 context,
+                error_descriptor.clone(),
                 &provenance_errors,
                 Some(&provenance_index),
             )?;
@@ -252,6 +263,7 @@ impl HolonLoaderController {
 
             let response_reference = self.build_response(
                 context,
+                response_descriptor.clone(),
                 run_id,
                 total_holons_staged,
                 0,                     // holons_committed
@@ -286,6 +298,7 @@ impl HolonLoaderController {
 
             let response_reference = self.build_response(
                 context,
+                response_descriptor.clone(),
                 run_id,
                 0, // holons_staged
                 0, // holons_committed
@@ -335,11 +348,16 @@ impl HolonLoaderController {
                 resolver_error_count
             );
 
-            let error_holons =
-                make_error_holons_best_effort(context, &resolver_errors, Some(&provenance_index))?;
+            let error_holons = make_load_error_holons(
+                context,
+                error_descriptor.clone(),
+                &resolver_errors,
+                Some(&provenance_index),
+            )?;
 
             let response_reference = self.build_response(
                 context,
+                response_descriptor.clone(),
                 run_id,
                 total_holons_staged,
                 0, // holons_committed
@@ -377,13 +395,15 @@ impl HolonLoaderController {
 
         if !population_errors.is_empty() {
             let population_error_count = population_errors.len() as i64;
-            let error_holons = make_error_holons_best_effort(
+            let error_holons = make_load_error_holons(
                 context,
+                error_descriptor.clone(),
                 &population_errors,
                 Some(&provenance_index),
             )?;
             let response_reference = self.build_response(
                 context,
+                response_descriptor.clone(),
                 run_id,
                 total_holons_staged,
                 0,
@@ -415,7 +435,7 @@ impl HolonLoaderController {
         // commit() (authoritative), while counts are retained for summary/diagnostics.
         let commit_status_value = commit_response
             .property_value(CorePropertyTypeName::CommitRequestStatus.as_property_name())?;
-        let load_commit_status = LoadCommitStatus::from_commit_status(commit_status_value);
+        let load_commit_status = LoadCommitStatus::from_commit_status(commit_status_value)?;
 
         // SavedHolons counts successful node persistence, not all assessed candidates.
         // Live candidates may produce NoAction, so these counts need not balance.
@@ -452,8 +472,12 @@ impl HolonLoaderController {
 
         let commit_errors = Self::collect_commit_errors(context)?;
         let commit_error_count = commit_errors.len() as i64;
-        let commit_error_holons =
-            make_error_holons_best_effort(context, &commit_errors, Some(&provenance_index))?;
+        let commit_error_holons = make_load_error_holons(
+            context,
+            error_descriptor.clone(),
+            &commit_errors,
+            Some(&provenance_index),
+        )?;
 
         let summary = if matches!(load_commit_status, LoadCommitStatus::Complete) {
             format!(
@@ -474,6 +498,7 @@ impl HolonLoaderController {
 
         let response_reference = self.build_response(
             context,
+            response_descriptor.clone(),
             run_id,
             total_holons_staged,
             saved_holons,
@@ -486,6 +511,38 @@ impl HolonLoaderController {
             summary,
             commit_error_holons,
         )?;
+
+        // Retain the original Commit carriers, including findings without a staged subject.
+        let mut response_reference = response_reference;
+        response_reference
+            .add_related_holons("LoadCommitResponse", vec![commit_response.into()])?;
+        let mut source_carriers = Vec::new();
+        for (staged, key) in staged_sources {
+            if staged.validation_findings()?.is_empty() {
+                continue;
+            }
+            let Some(source) = provenance_index.get(&key) else {
+                continue;
+            };
+            let mut carrier = context.mutation().new_holon(Some(MapString(format!(
+                "load-validation-source-{}",
+                source_carriers.len()
+            ))))?;
+            if let Some(descriptor) = crate::response_descriptor::resolve_response_descriptor(
+                context,
+                "LoadValidationSource.Projection",
+            )? {
+                carrier.with_descriptor(descriptor)?;
+            }
+            carrier.with_property_value("Filename", source.filename.clone())?;
+            carrier.with_property_value("LoaderHolonKey", key)?;
+            if let Some(offset) = source.start_utf8_byte_offset {
+                carrier.with_property_value("StartUtf8ByteOffset", offset)?;
+            }
+            carrier.add_related_holons("ValidationSourceSubject", vec![staged.into()])?;
+            source_carriers.push(carrier.into());
+        }
+        response_reference.add_related_holons("HasValidationSource", source_carriers)?;
 
         info!(
             "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={} {}",
@@ -672,7 +729,7 @@ impl HolonLoaderController {
                         loader_key.0, existing.filename.0, first_offset, filename.0, second_offset,
                     );
 
-                    // Attach the loader key so make_error_holons_best_effort can
+                    // Attach the loader key so make_load_error_holons can
                     // enrich with filename/offset via the provenance index.
                     let error = HolonError::DuplicateError(
                         "duplicate loader_holon key in HolonLoadSet".into(),
@@ -708,6 +765,7 @@ impl HolonLoaderController {
     fn build_response(
         &self,
         context: &Arc<TransactionContext>,
+        descriptor: Option<HolonReference>,
         run_id: i64, // uuid::Uuid,
         holons_staged: i64,
         holons_committed: i64,
@@ -730,6 +788,10 @@ impl HolonLoaderController {
 
         // Mutate the holon via its reference
         let mut response_reference = response_reference;
+
+        if let Some(descriptor) = descriptor {
+            response_reference.with_descriptor(descriptor)?;
+        }
 
         // 2) Set core counters
         response_reference.with_property_value(

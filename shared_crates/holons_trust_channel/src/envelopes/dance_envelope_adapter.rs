@@ -1,7 +1,9 @@
 use core_types::HolonId;
 use holons_boundary::DanceRequestWire;
 use holons_boundary::HolonReferenceWire;
-use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
+use holons_boundary::envelopes::{
+    DanceEnvelopeRequest, DanceEnvelopeResponse, DanceRequestEnvelope, DanceResponseEnvelope,
+};
 use holons_boundary::session_state::SerializableHolonPool;
 use holons_boundary::session_state::SessionStateWire;
 use holons_core::HolonError;
@@ -23,7 +25,7 @@ impl DanceEnvelopeAdapter {
     ) -> Result<DanceRequestEnvelope, HolonError> {
         let request_wire = DanceRequestWire::from(&request);
         let session = Some(Self::attach_session_state(context)?);
-        Ok(DanceRequestEnvelope { request: request_wire, session })
+        Ok(DanceRequestEnvelope { request: DanceEnvelopeRequest::Legacy(request_wire), session })
     }
 
     /// Inbound: hydrate context from envelope session state, then bind response wire to runtime.
@@ -37,11 +39,14 @@ impl DanceEnvelopeAdapter {
             reason: "Missing SessionStateWire".to_string(),
         })?;
         Self::hydrate_from_response(context, &session_state)?;
-        response.bind(context)
+        match response {
+            DanceEnvelopeResponse::Legacy(response) => response.bind(context),
+            _ => Err(HolonError::InvalidParameter("Expected legacy Dance response".into())),
+        }
     }
 
     /// Outbound: serializes staged and transient state into a wire payload.
-    fn attach_session_state(
+    pub(crate) fn attach_session_state(
         context: &Arc<TransactionContext>,
     ) -> Result<SessionStateWire, HolonError> {
         let mut session_state = SessionStateWire::default();
@@ -61,7 +66,7 @@ impl DanceEnvelopeAdapter {
     }
 
     /// Inbound: restores staged and transient state from the wire payload.
-    fn hydrate_from_response(
+    pub(crate) fn hydrate_from_response(
         context: &Arc<TransactionContext>,
         state: &SessionStateWire,
     ) -> Result<(), HolonError> {

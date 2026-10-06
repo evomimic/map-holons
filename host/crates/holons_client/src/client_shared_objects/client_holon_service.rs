@@ -520,6 +520,19 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
+    fn invoke_load_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        invocation: holons_core::dances::DanceInvocation,
+    ) -> Result<holons_core::dances::DanceResponseReference, HolonError> {
+        let _guard = context.begin_host_commit_ingress_guard()?;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })?;
+        // Descriptor reads may perform synchronous remote lookups. Validate after the
+        // transport future has completed so those reads cannot nest its executor.
+        holons_core::dances::DanceResponseReference::new(response)
+    }
+
     fn load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,

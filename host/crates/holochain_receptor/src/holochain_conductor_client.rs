@@ -91,9 +91,9 @@ impl ConductorDanceCaller for HolochainConductorClient {
         &self,
         request: DanceRequestEnvelope,
     ) -> Result<DanceResponseEnvelope, HolonError> {
-        let is_load_holons = request.request.dance_name.0.as_str() == "load_holons";
+        let is_load_holons = request.request.transport_label() == "load_holons";
         let profiling = std::env::var_os("MAP_PROFILE").is_some();
-        let dance_name = profiling.then(|| request.request.dance_name.0.clone());
+        let dance_name = profiling.then(|| request.request.transport_label().to_owned());
         let round_trip_started = Instant::now();
 
         // --- Serialize request ---
@@ -172,7 +172,10 @@ fn server_error_response_wire(msg: String) -> DanceResponseEnvelope {
         body: ResponseBodyWire::None,
         descriptor: None,
     };
-    DanceResponseEnvelope { response, session: None }
+    DanceResponseEnvelope {
+        response: holons_boundary::envelopes::DanceEnvelopeResponse::Legacy(response),
+        session: None,
+    }
 }
 
 // NOTE: I have had to put this back to make the UI work - needs to be refactored properly later

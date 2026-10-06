@@ -1,0 +1,30 @@
+{
+  "request_id": 9,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "CheckLoadTarget": {
+          "space": {
+            "Smart": {
+              "holon_id": {
+                "Local": [
+                  61,
+                  62,
+                  63
+                ]
+              },
+              "smart_property_values": null
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "marker_id": null,
+    "marker_label": null,
+    "snapshot_after": false,
+    "disable_undo": false
+  }
+}

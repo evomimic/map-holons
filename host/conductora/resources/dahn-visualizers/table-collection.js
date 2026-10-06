@@ -22,6 +22,10 @@ function assertPresentation(presentation) {
     if (rowIds.size !== presentation.rowIds.length) {
         throw new Error('A table presentation must provide unique row IDs.');
     }
+    if (presentation.defaultRowOrder && (presentation.defaultRowOrder.length !== rowIds.size ||
+        new Set(presentation.defaultRowOrder).size !== rowIds.size || presentation.defaultRowOrder.some(id => !rowIds.has(id)))) {
+        throw new Error('Default row order must be a permutation of row identities.');
+    }
     const columnIds = new Set(presentation.columns.map((column) => column.id));
     if (columnIds.size !== presentation.columns.length) {
         throw new Error('A table presentation must provide unique column IDs.');
@@ -49,6 +53,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.applySort();
     }
     defaultSort() {
+        if (this.presentation?.defaultRowOrder) return null;
         const column = this.presentation?.columns.find(column => column.id === this.presentation.defaultSortColumnId && eligible(column));
         return column ? { columnId: column.id, direction: 'ascending' } : null;
     }
@@ -63,6 +68,10 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const presentation = this.presentation;
         const column = presentation.columns.find(column => column.id === this.sort?.columnId);
         const indices = presentation.rowIds.map((_, index) => index);
+        if (!column && presentation.defaultRowOrder) {
+            const rank = new Map(presentation.defaultRowOrder.map((id, i) => [id, i]));
+            indices.sort((a, b) => rank.get(presentation.rowIds[a]) - rank.get(presentation.rowIds[b]));
+        }
         if (column) indices.sort((a, b) => compareValues(column.values[a], column.values[b], this.sort.direction) || a - b);
         const focused = this.contains(document.activeElement) ? document.activeElement : null;
         this.table.tBodies[0].append(...indices.map(index => this.rowElements.get(presentation.rowIds[index])));
@@ -81,9 +90,11 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 button.style.fontWeight = selected ? 'bold' : 'normal';
             }
         }
-        this.sortStatus.textContent = column ? `Sorted by ${column.displayName}, ${this.sort.direction}` : this.presentation.manualOrderUnavailable ? 'Manual order unavailable · supplied order' : 'Supplied order';
+        this.sortStatus.textContent = column ? `Sorted by ${column.displayName}, ${this.sort.direction}` : this.presentation.defaultRowOrder ? (this.presentation.defaultOrderLabel ?? 'Default order') : this.presentation.manualOrderUnavailable ? 'Manual order unavailable · supplied order' : 'Supplied order';
         this.fitColumns();
     }
+    setProjection(presentation) { this.setContext({ collectionPresentation: presentation }); }
+    setActivateRowHandler(handler) { this.activateProjectedRow = handler; }
     setInspectHolonHandler(handler) {
         this.inspectHolon = handler;
         if (handler === null) this.members.clear();
@@ -103,6 +114,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
     }
     activateRow(row) {
         this.selectRow(row);
+        if (this.isConnected) this.activateProjectedRow?.(row.dataset.rowId);
         const reference = this.members.get(row.dataset.rowId);
         if (reference !== undefined && this.isConnected) this.inspectHolon?.(reference);
     }
@@ -214,6 +226,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             throw new Error('Table Collection Visualizer requires a collection presentation.');
         }
         assertPresentation(presentation);
+        this.activateProjectedRow = null;
         this.presentation = presentation;
         this.sort = this.defaultSort();
         ++this.generation;
@@ -332,7 +345,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             for (const column of presentation.columns) {
                 const cell = document.createElement('td');
                 cell.dataset['columnId'] = column.id;
-                cell.textContent = formatStaticValue(column.values[rowIndex]);
+                cell.textContent = column.values[rowIndex] === null ? (presentation.missingValueLabel ?? 'n/a') : formatStaticValue(column.values[rowIndex]);
                 cell.title = cell.textContent;
                 cell.style.borderBottom =
                     'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';

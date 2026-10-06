@@ -96,6 +96,8 @@ impl AppBuilder {
             .manage(ApplicationSessionState::new(application_experience))
             .invoke_handler(tauri::generate_handler![
                 application_session,
+                crate::source_ingress::commands::select_loader_sources,
+                crate::source_ingress::picker::source_picker_capabilities,
                 commands::root_space,
                 commands::serde_test,
                 commands::map_request,

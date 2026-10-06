@@ -91,7 +91,7 @@ pub enum HolonError {
     #[error("Updates requires: {0}")]
     InvalidUpdate(String),
     #[error("Loader import file parsing failed: {0}")]
-    LoaderParsingError(String),
+    LoaderParsingError(crate::LoaderParsingFailure),
     #[error("Miscellaneous error: {0}")]
     Misc(String),
     #[error("{0} relationship is missing StagedCollection")]

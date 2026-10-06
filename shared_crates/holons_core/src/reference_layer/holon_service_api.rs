@@ -174,6 +174,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         load_set: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 
+    /// Executes a validated canonical loader invocation in the authoritative Space.
+    fn invoke_load_holons_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _invocation: crate::dances::DanceInvocation,
+    ) -> Result<crate::dances::DanceResponseReference, HolonError> {
+        Err(HolonError::NotImplemented("Canonical LoadHolons execution".into()))
+    }
+
     /// Ensures a persisted local space holon exists and returns its reference.
     ///
     /// Default implementation is unsupported outside guest/runtime contexts.

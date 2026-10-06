@@ -1,16 +1,21 @@
+import { DeprecatedLoadHolonsComponent } from './components/load-holons/deprecated-load-holons.component';
 import { Routes } from '@angular/router';
 import { ContentSpace } from './components/content-spaces/content-spaces';
 import { ContentSpaceDetail } from './components/content-space-detail/content-space-detail';
 import { AllSpaces } from './components/all-spaces/all-spaces';
 import { Settings } from './components/settings/settings';
 import { LoadHolonsComponent } from './components/load-holons/load-holons.component';
+import { canNavigateFromCanvas } from './services/canvas-navigation-guard';
 
 
 export const routes: Routes = [
     { path: '', component: AllSpaces},
+    { path: 'load-holons-deprecated', component: DeprecatedLoadHolonsComponent, canActivate: [canNavigateFromCanvas], data: { breadcrumb: 'Load Holons (deprecated)' } },
     {
         path: 'load-holons',
         component: LoadHolonsComponent,
+        canActivate: [canNavigateFromCanvas],
+        canDeactivate: [(component: LoadHolonsComponent) => component.canDismiss()],
         data: { breadcrumb: 'Load Holons' },
     },
     {

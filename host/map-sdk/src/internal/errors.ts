@@ -75,5 +75,5 @@ export class DomainError extends MapError {
  */
 export function parseDomainError(wire: HolonErrorWire): DomainError {
   const [variant, payload] = Object.entries(wire)[0] ?? ['UnknownDomainError', undefined];
-  return new DomainError(variant, payload);
+  return new DomainError(variant, payload, 'LoaderParsingError' in wire ? wire.LoaderParsingError.message : undefined);
 }

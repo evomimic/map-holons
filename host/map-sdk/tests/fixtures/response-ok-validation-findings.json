@@ -1,0 +1,26 @@
+{
+  "request_id": 123,
+  "result": {
+    "Ok": {
+      "ValidationFindings": [
+        {
+          "kind": {
+            "RuleViolation": {
+              "code": "DS-TEST"
+            }
+          },
+          "rule_key": "ExampleRule",
+          "severity": "Error",
+          "subject": {
+            "Property": {
+              "holon_identity": "subject",
+              "name": "Bad"
+            }
+          },
+          "descriptor_identity": null,
+          "message": "Invalid property"
+        }
+      ]
+    }
+  }
+}

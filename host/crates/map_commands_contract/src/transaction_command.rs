@@ -27,6 +27,12 @@ pub enum TransactionAction {
     /// Commits the transaction.
     Commit,
 
+    /// Explicitly release retained transaction evidence.
+    Dispose,
+
+    /// Verify the captured target before acquiring sources.
+    CheckLoadTarget { space: HolonReference },
+
     /// Undoes the last mutation in this transaction.
     UndoLast,
 
@@ -38,6 +44,9 @@ pub enum TransactionAction {
 
     /// Redoes mutations up to the specified marker.
     RedoToMarker { marker_id: String },
+
+    /// Prepares a transient load request without staging or committing imported holons.
+    PrepareHolons { content_set: ContentSet },
 
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
@@ -68,6 +77,9 @@ pub enum TransactionAction {
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
+
+    /// Identity-only references for Saved members in this transaction’s retained Nursery.
+    GetCommittedHolons,
 
     /// `get_saved_holon_by_key(key)` → `SmartReference`
     GetSavedHolonByBaseKey { key: MapString },
@@ -134,6 +146,9 @@ pub enum VisualizerKind {
     /// raw entry from a PropertyMap.
     Property,
     Value,
+    /// Composes action slots for an affording holon.
+    ActionBar,
+    /// Selects an individual action using its Dance descriptor as subject.
     Action,
 }
 
@@ -159,6 +174,12 @@ pub struct VisualizerSelectionRequest {
 impl TransactionAction {
     pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
+            TransactionAction::Dispose => CommandLifecyclePolicy::holon_read_only(),
+            // Retained Saved identity evidence remains readable after the loader commits.
+            TransactionAction::GetCommittedHolons => CommandLifecyclePolicy::holon_read_only(),
+            TransactionAction::CheckLoadTarget { .. } => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
             TransactionAction::Commit => CommandLifecyclePolicy::mutating_with_guard(),
             TransactionAction::UndoLast | TransactionAction::RedoLast => {
                 CommandLifecyclePolicy::transaction_read_only()
@@ -174,8 +195,10 @@ impl TransactionAction {
                     requires_commit_guard: false,
                 }
             }
-            TransactionAction::SelectCollectionVisualizer { .. }
-            | TransactionAction::SelectVisualizer { .. } => {
+            // Selection only reads the retained subject and descriptor graph.
+            // Materialization still creates invocation holons and requires an open context.
+            TransactionAction::SelectVisualizer { .. } => CommandLifecyclePolicy::holon_read_only(),
+            TransactionAction::SelectCollectionVisualizer { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::FetchArtifact { .. } => {
@@ -195,7 +218,8 @@ impl TransactionAction {
             }
 
             // Mutations
-            TransactionAction::NewHolon { .. }
+            TransactionAction::PrepareHolons { .. }
+            | TransactionAction::NewHolon { .. }
             | TransactionAction::StageNewHolon { .. }
             | TransactionAction::StageNewFromClone { .. }
             | TransactionAction::StageNewVersion { .. }
@@ -206,12 +230,15 @@ impl TransactionAction {
 
     pub fn label(&self) -> &'static str {
         match self {
+            TransactionAction::Dispose => "dispose",
+            TransactionAction::CheckLoadTarget { .. } => "check_load_target",
             TransactionAction::Commit => "commit",
             TransactionAction::UndoLast => "undo_last",
             TransactionAction::RedoLast => "redo_last",
             TransactionAction::UndoToMarker { .. } => "undo_to_marker",
             TransactionAction::RedoToMarker { .. } => "redo_to_marker",
             TransactionAction::LoadHolons { .. } => "load_holons",
+            TransactionAction::PrepareHolons { .. } => "prepare_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
@@ -230,6 +257,7 @@ impl TransactionAction {
             TransactionAction::GetTransientHolonByVersionedKey { .. } => {
                 "get_transient_holon_by_versioned_key"
             }
+            TransactionAction::GetCommittedHolons => "get_committed_holons",
             TransactionAction::GetStagedCount => "get_staged_count",
             TransactionAction::GetTransientCount => "get_transient_count",
             TransactionAction::NewHolon { .. } => "new_holon",

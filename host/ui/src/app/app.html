@@ -3,6 +3,10 @@
     <h1>MAP Application Launcher failed</h1>
     <p>{{ failure() }}</p>
   </main>
+} @else if (experience() && deprecatedLoaderRoute()) {
+  <app-holons-loader-host></app-holons-loader-host>
+} @else if (experience() && loaderRoute()) {
+  <router-outlet></router-outlet>
 } @else if (experience() === 'canvas') {
   <app-canvas-host></app-canvas-host>
 } @else if (experience() === 'holons-loader') {

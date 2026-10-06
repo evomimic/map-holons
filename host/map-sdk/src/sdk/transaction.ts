@@ -1,3 +1,4 @@
+import { createCommittedHolonsReview, type CommittedHolonsReview } from './committed-review';
 import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
@@ -39,6 +40,7 @@ export type VisualizerKind =
   | 'propertyMap'
   | 'property'
   | 'value'
+  | 'actionBar'
   | 'action';
 
 /**
@@ -84,6 +86,7 @@ const MAP_TRANSACTION_CONSTRUCTION = Symbol('MapTransactionConstruction');
  * each SDK method to exactly one transaction or holon command.
  */
 export class MapTransaction {
+  private completedLoadSpace?: HolonReference;
   private materializationTail: Promise<void> = Promise.resolve();
 
   constructor(txId: TxId, token: typeof MAP_TRANSACTION_CONSTRUCTION) {
@@ -109,6 +112,21 @@ export class MapTransaction {
     }
 
     return createHolonReference(txIdFor(this), reference);
+  }
+
+  /** Rebind a persisted public handle without carrying transaction-local state. */
+  bindSavedReference(reference: HolonReference): HolonReference {
+    return this.bindPersistedReference(unwrapHolonReference(reference));
+  }
+
+  /** Release retained evidence. Runtime refuses disposal while commands are executing. */
+  async dispose(): Promise<void> { await internalTransaction.dispose(txIdFor(this)); }
+
+  /** Capture a persisted subject in this dedicated transaction and verify Space authority. */
+  async bindLoadTarget(space: HolonReference): Promise<HolonReference> {
+    const target = this.bindPersistedReference(unwrapHolonReference(space));
+    await internalTransaction.checkLoadTarget(txIdFor(this), unwrapHolonReference(target));
+    return target;
   }
 
   async newHolon(key?: string): Promise<TransientHolonReference> {
@@ -163,6 +181,20 @@ export class MapTransaction {
 
   async deleteHolon(localId: LocalId): Promise<void> {
     await internalTransaction.deleteHolon(txIdFor(this), localId);
+  }
+
+  /**
+   * Build a transient HolonLoadSet in this transaction without staging or committing.
+   * Uses supplied contents and source names. Failed preparation may retain transient
+   * state until transaction disposal. This does not perform review JSON Schema validation.
+   */
+  async prepareHolons(contentSet: ContentSet): Promise<TransientHolonReference> {
+    const txId = txIdFor(this);
+    const reference = await internalTransaction.prepareHolons(txId, contentSet);
+    if (!('Transient' in reference) || reference.Transient.tx_id !== txId) {
+      throw new TypeError('Prepared request must be a transient reference in the owning transaction');
+    }
+    return createTransientHolonReference(txId, reference);
   }
 
   /**
@@ -335,6 +367,38 @@ export class MapTransaction {
     }
   }
 
+  /**
+   * Executes a prepared request through the explicitly affording HolonSpace.
+   * Use a dedicated loader transaction: Complete closes it, while other outcomes
+   * leave it open. The response and staged evidence remain available for review.
+   */
+  async invokeLoadHolons(
+    affordingSpace: HolonReference,
+    request: TransientHolonReference,
+  ): Promise<HolonReference> {
+    const requestWire = unwrapHolonReference(request);
+    if (!('Transient' in requestWire) || requestWire.Transient.tx_id !== txIdFor(this)) {
+      throw new Error('Prepared HolonLoadSet must belong to this transaction');
+    }
+    const descriptor = await this.getSavedHolonByBaseKey('DanceInvocation.HolonType');
+    if (descriptor === null) throw new Error('DanceInvocation descriptor is unavailable');
+    const invocation = await this.newHolon('load-holons-invocation');
+    await invocation.withDescriptor(descriptor);
+    await invocation.withPropertyValue('DanceName' as PropertyName, { StringValue: 'LoadHolons' });
+    await invocation.addRelatedHolons('AffordingHolon' as RelationshipName, [affordingSpace]);
+    await invocation.addRelatedHolons('Request' as RelationshipName, [request]);
+    const response = await this.danceV2(invocation);
+    this.completedLoadSpace = affordingSpace;
+    return response;
+  }
+
+  /** Owns a fresh saved-state review context for this dedicated loader transaction. */
+  async openCommittedReview(): Promise<CommittedHolonsReview> {
+    if (!this.completedLoadSpace) throw new Error('Committed review requires a returned canonical load response');
+    const membership = await internalTransaction.getCommittedHolons(txIdFor(this));
+    return createCommittedHolonsReview(this.completedLoadSpace, membership);
+  }
+
   async danceV2(invocation: HolonReference): Promise<HolonReference> {
     const txId = txIdFor(this);
     const wireRef = await internalTransaction.danceV2(txId, {
@@ -351,6 +415,19 @@ export class MapTransaction {
     const txId = txIdFor(this);
     const wire = await internalTransaction.selectCollectionVisualizer(txId, {
       collection: unwrapDescribedCollection(collection), parent_visualizer: unwrapHolonReference(parentVisualizer), slot: unwrapHolonReference(slot),
+    });
+    return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
+  }
+
+  /** Select for action-owned value rows using their declared projection type.
+   * The empty member envelope is a type witness, not the projected row membership.
+   * Values and activation identities remain owned by the presentation producer.
+   */
+  async selectProjectedCollectionVisualizer(elementType: HolonReference, parentVisualizer: HolonReference, slot: HolonReference): Promise<VisualizerSelection> {
+    const txId = txIdFor(this);
+    const wire = await internalTransaction.selectCollectionVisualizer(txId, {
+      collection: { element_type: unwrapHolonReference(elementType), members: { state: 'Fetched', members: [], keyed_index: {} } },
+      parent_visualizer: unwrapHolonReference(parentVisualizer), slot: unwrapHolonReference(slot),
     });
     return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
   }
@@ -413,6 +490,7 @@ export class MapTransaction {
 }
 
 function fromVisualizerKindWire(kind: ReturnType<typeof toVisualizerKindWire>): VisualizerKind {
+  if (kind === 'ActionBar') return 'actionBar';
   if (kind === 'PropertyMap') return 'propertyMap';
   return kind === 'RootedNavigation'
     ? 'rootedNavigation'
@@ -442,6 +520,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
   | 'PropertyMap'
   | 'Property'
   | 'Value'
+  | 'ActionBar'
   | 'Action' {
   if (kind === 'rootedNavigation') {
     return 'RootedNavigation';
@@ -454,7 +533,8 @@ function toVisualizerKindWire(kind: VisualizerKind):
     | 'PropertyMap'
     | 'Property'
     | 'Value'
-    | 'Action';
+    | 'ActionBar'
+  | 'Action';
 }
 
 async function withHolonNotFoundAsNull<T>(

@@ -77,12 +77,13 @@ export class SingleContextHost implements ContextHost {
     }
     if (!capabilities[operation]) return { status: 'unsupported', reason: `Context ${operation} is not supported.` };
     if (operation === 'activate') return { status: 'already-satisfied' };
+    if (record.presentation?.canDismiss?.() === false) return { status: 'refused', reason: 'An action is executing in this context.' };
     this.release(record, { status: 'refused', reason: 'Context was destroyed before mounting completed.' });
     return { status: 'applied', value: undefined };
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed || this.retained?.presentation?.canDismiss?.() === false) return;
     this.disposed = true;
     if (this.retained) this.release(this.retained, { status: 'refused', reason: 'Context Host was disposed.' });
   }

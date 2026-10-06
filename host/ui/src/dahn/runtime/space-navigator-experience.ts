@@ -1,3 +1,4 @@
+import type { ActionActivation, ActionBinding, ActionInteractions } from './action-activation';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
 import type { CanvasApi } from '../contracts/canvas';
@@ -8,9 +9,12 @@ import { ExplorationTabs, type ExplorationPresentation } from './exploration-tab
 import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 import { PathNavigator } from './path-navigator';
 import { realizeNode } from './realize-node';
+import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
+import { SdkVisualizerMaterializer } from '../map-adapter/sdk-visualizer-materializer';
 import { semanticWork } from './semantic-work';
 
 export interface SpaceNavigatorBinding {
+  readonly actionInteractions?: ActionInteractions;
   readonly transaction: MapTransaction;
   readonly dancer: HolonReference;
   readonly holonSpace: HolonReference;
@@ -39,8 +43,69 @@ export class SpaceNavigatorExperience {
     this.element.actions.append(home);
   }
 
+  private rootActions: readonly ActionActivation[] = [];
+  private rootInteractions?: ActionInteractions;
+
+  /** Activate the existing afforded action; never synthesize a target or invocation. */
+  async openLoadHolons(): Promise<void> {
+    if (!this.rootInteractions) throw new Error('Loading is unavailable for the active HolonSpace.');
+    const candidates: ActionActivation[] = [];
+    for (const action of this.rootActions) {
+      if (await action.binding.dance.key() === 'LoadHolons.DanceType') candidates.push(action);
+    }
+    if (candidates.length !== 1) throw new Error('The active HolonSpace must afford exactly one LoadHolons action.');
+    const action = candidates[0];
+    if (!action.binding.occurrence.isConnected) throw new Error('The active HolonSpace presentation is unavailable.');
+    action.activate(binding => this.rootInteractions!.openLoadHolons(binding));
+  }
+
   openInitial(): Promise<void> { return this.element.open(this.binding.holonSpace); }
+  canDismiss(): boolean { return this.element.canDismiss(); }
   dispose(): void { this.element.dispose(); }
+
+
+  private async presentResult(request: Parameters<NonNullable<ActionBinding['presentResult']>>[0], path: HolonReference) {
+    return semanticWork(request.review).realize(async () => {
+      const { transaction, review, subject, children, collections, signal } = request;
+      signal.throwIfAborted();
+      const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache(new SdkVisualizerMaterializer(review)));
+      const parent = review.bindSavedReference(path);
+      const slot = await materialized.slot(parent, 'node');
+      // Selection reads retained evidence; realization creates invocation holons.
+      // Keep saved selection inputs bound to the response's archived context.
+      const selected = (await transaction.selectVisualizer({
+        subject, parentVisualizer: transaction.bindSavedReference(parent),
+        slot: transaction.bindSavedReference(slot), requestedKind: 'node',
+      })).selected;
+      const implementation = await materialized.realize(review.bindSavedReference(selected));
+      if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected result Node is not an HTMLElement constructor');
+      const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
+      if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
+      const { theme, canvas } = this.binding;
+      root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, childVisualizers: children });
+      signal.throwIfAborted();
+      // The response retains its loader binding. Descendants are saved references
+      // owned by the review; neither context is serialized or rebound as transient data.
+      const reviewRuntime = materialized;
+      const reviewParent = review.bindSavedReference(path);
+      const reviewSlot = review.bindSavedReference(slot);
+      const navigation = new PathNavigator(review, reviewParent,
+        { element: root, collectionActivation: collections, singularRelationships: [] },
+        subject, review.bindSavedReference(selected), reviewSlot,
+        (member, visualizer, stage) => realizeNode(review, reviewRuntime, member, visualizer, theme, canvas, stage));
+      try {
+        const pathImplementation = await materialized.realize(parent);
+        if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) throw new Error('Invalid RootedNavigation implementation');
+        signal.throwIfAborted();
+        const element = document.createElement(defineCustomElementOnce('map-rooted-navigation-visualizer', pathImplementation as CustomElementConstructor)) as VisualizerElement;
+        element.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
+          navigation, childVisualizers: new Map([['root-node', root]]),
+          onInspectHolon: intent => navigation.inspect(intent), onTraverseRelationship: intent => navigation.traverseRelationship(intent) });
+        return { element, title: 'Load Holons', inspect: (intent: Parameters<PathNavigator['inspect']>[0]) => navigation.inspect(intent),
+          dispose: () => { navigation.dispose(); element.remove(); } };
+      } catch (error) { navigation.dispose(); throw error; }
+    });
+  }
 
   private realize(anchor: HolonReference, signal: AbortSignal): Promise<ExplorationPresentation> {
     const initial = this.first;
@@ -65,7 +130,16 @@ export class SpaceNavigatorExperience {
       const nodeSlot = await materialized.slot(selectedPath, 'node');
       if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, parentVisualizer: selectedPath, requestedKind: 'node' })).selected;
       signal.throwIfAborted();
-      const root = await realizeNode(transaction, materialized, anchor, selectedNode, theme, canvas);
+      const actionInteractions: ActionInteractions | undefined = this.binding.actionInteractions && {
+        openLoadHolons: binding => this.binding.actionInteractions!.openLoadHolons({
+          ...binding,
+          mountPresentation: (element, owner) => this.element.mountAction(binding.label, element, owner),
+          refreshAfterPersistence: () => work.invalidate(),
+          presentResult: request => this.presentResult(request, selectedPath),
+        }),
+      };
+      const root = await realizeNode(transaction, materialized, anchor, selectedNode, theme, canvas, undefined, actionInteractions);
+      if (initial) { this.rootActions = root.actionActivations ?? []; this.rootInteractions = actionInteractions; }
       let navigation: PathNavigator | undefined;
       let element: VisualizerElement | undefined;
       try {
@@ -73,7 +147,7 @@ export class SpaceNavigatorExperience {
         const title = (await anchor.key()) ?? await anchor.versionedKey();
         signal.throwIfAborted();
         navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot,
-          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage),
+          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, actionInteractions),
           subject => { if (!work.paused) void this.element.open(subject); });
         element = document.createElement(tag) as VisualizerElement;
         element.setContext({
@@ -84,7 +158,7 @@ export class SpaceNavigatorExperience {
         });
         const retainedNavigation = navigation;
         const retainedElement = element;
-        return { element, title, dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };
+        return { element, title, canDismiss: () => retainedNavigation.canDismiss(), dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };
       } catch (error) {
         if (navigation) navigation.dispose();
         else root.collectionActivation.dispose();

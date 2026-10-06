@@ -25,4 +25,12 @@ pub trait DanceInitiator: Send + Sync + Debug {
         context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse;
+    /// Sends a canonical invocation reference through the configured transport.
+    async fn initiate_invocation(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _invocation: crate::dances::DanceInvocation,
+    ) -> Result<crate::reference_layer::HolonReference, core_types::HolonError> {
+        Err(core_types::HolonError::NotImplemented("Canonical Dance transport".into()))
+    }
 }

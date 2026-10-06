@@ -25,6 +25,14 @@ fn handle_read(
     action: ReadableHolonAction,
 ) -> Result<MapResult, HolonError> {
     match action {
+        ReadableHolonAction::GetValidationFindings => match target {
+            HolonReference::Staged(reference) => {
+                Ok(MapResult::ValidationFindings(reference.validation_findings()?))
+            }
+            _ => {
+                Err(HolonError::InvalidType("Validation findings require a staged carrier".into()))
+            }
+        },
         ReadableHolonAction::GetDescribedRelatedHolons { name } => {
             let relationship = target.holon_descriptor()?.resolve_available_relationship(&name)?;
             let available = target.available_relationships()?.into_iter().any(|candidate| {

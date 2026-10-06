@@ -26,6 +26,8 @@ export interface ContextHandle {
 
 /** Presentation resources only. Semantic owners are deliberately absent. */
 export interface ContextPresentation {
+  /** Refuse destruction while owned actions are executing. */
+  canDismiss?(): boolean;
   setAllocation(allocation: ContextAllocation): void;
   dispose(): void;
   /** Optional asynchronous realization, cancelled through the mount signal. */

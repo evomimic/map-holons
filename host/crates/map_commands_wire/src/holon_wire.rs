@@ -38,6 +38,7 @@ pub enum ReadableHolonActionWire {
 
     /// `holon_id()` → `HolonId`
     GetHolonId,
+    GetValidationFindings,
 
     /// `predecessor()` → `Option<HolonReference>`
     GetPredecessor,
@@ -130,6 +131,9 @@ impl ReadableHolonActionWire {
             }
             ReadableHolonActionWire::GetInstanceProperties => {
                 ReadableHolonAction::GetInstanceProperties
+            }
+            ReadableHolonActionWire::GetValidationFindings => {
+                ReadableHolonAction::GetValidationFindings
             }
             ReadableHolonActionWire::GetPropertyValueKind => {
                 ReadableHolonAction::GetPropertyValueKind

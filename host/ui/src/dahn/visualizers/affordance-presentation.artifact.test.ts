@@ -10,7 +10,8 @@ async function artifact(name: string) {
 }
 it('populates rail, collection slot and selected actions while keeping every control inactive', async () => {
   const actions = await artifact('actions');
-  actions.setContext({ actions: [{ id: 'dance', label: 'Do something' }] });
+  const child = document.createElement('button'); child.disabled = true; child.textContent = 'Do something';
+  actions.setContext({ actions: [{ id: 'dance', label: 'Do something' }], childVisualizers: new Map([['dance', child]]) });
   const node = await artifact('holon-inspector');
   const properties = document.createElement('section');
   node.setContext({

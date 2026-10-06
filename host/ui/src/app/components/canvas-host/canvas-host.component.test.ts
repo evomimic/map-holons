@@ -1,8 +1,10 @@
 import '@angular/compiler';
+import { LoadHolonsDialogService } from '../load-holons-dialog/load-holons-dialog.service';
 import { Injector, runInInjectionContext } from '@angular/core';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CanvasHostComponent } from './canvas-host.component';
 import { ApplicationSessionService } from '../../services/application-session.service';
+import { CanvasNavigationGuard } from '../../services/canvas-navigation-guard';
 
 const fixture = vi.hoisted(() => {
   const reference = { key: vi.fn(async () => 'Home'), versionedKey: vi.fn(async () => 'Home@1') };
@@ -26,7 +28,7 @@ vi.mock('../../../dahn/runtime/materialized-visualizer-runtime', () => ({
 }));
 vi.mock('../../../dahn/runtime/realize-node', () => ({ realizeNode: fixture.realizeNode }));
 vi.mock('../../../dahn/runtime/path-navigator', () => ({
-  PathNavigator: class { dispose = fixture.navigationDispose; },
+  PathNavigator: class { canDismiss = () => true; dispose = fixture.navigationDispose; },
 }));
 vi.mock('../../../dahn/themes/theme', () => ({
   Theme: class { async toCssCustomProperties() { return { themeKey: 'Test', cssCustomProperties: {} }; } },
@@ -68,7 +70,7 @@ afterEach(() => {
 });
 
 async function launch(home: boolean) {
-  injector = Injector.create({ providers: [{ provide: ApplicationSessionService, useValue: {
+  injector = Injector.create({ providers: [CanvasNavigationGuard, { provide: LoadHolonsDialogService, useValue: { openLoadHolons: vi.fn() } }, { provide: ApplicationSessionService, useValue: {
     waitForReady: async () => ({ phase: 'ready', active_holon_space: {},
       canvas_selection: { theme_key: 'theme', canvas_key: 'canvas', canvas_visualizer_key: 'visualizer' },
       home_dancer_selection: home ? { dancer: {}, rooted_navigation_visualizer: {}, root_node_visualizer: {} } : null,

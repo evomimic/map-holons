@@ -31,6 +31,14 @@ pub enum TransactionActionWire {
     /// Commits the transaction.
     Commit,
 
+    /// Explicitly release retained transaction evidence.
+    Dispose,
+
+    /// Verify the captured target before acquiring sources.
+    CheckLoadTarget {
+        space: HolonReferenceWire,
+    },
+
     /// Undoes the last mutation in this transaction.
     UndoLast,
 
@@ -47,6 +55,10 @@ pub enum TransactionActionWire {
         marker_id: String,
     },
 
+    /// Prepares a transient load request without executing it.
+    PrepareHolons {
+        content_set: ContentSet,
+    },
     /// Loads holons from uploaded/imported file content.
     LoadHolons {
         content_set: ContentSet,
@@ -80,6 +92,9 @@ pub enum TransactionActionWire {
     // ── Lookup actions ───────────────────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
+
+    /// Saved Nursery members projected without cached/staged properties.
+    GetCommittedHolons,
 
     /// `get_saved_holon_by_key(key)` → `SmartReference`
     GetSavedHolonByBaseKey {
@@ -161,6 +176,9 @@ pub enum VisualizerKindWire {
     PropertyMap,
     Property,
     Value,
+    /// Composes action slots for an affording holon.
+    ActionBar,
+    /// Selects an individual action using its Dance descriptor as subject.
     Action,
 }
 
@@ -189,6 +207,7 @@ impl From<VisualizerKindWire> for VisualizerKind {
             VisualizerKindWire::PropertyMap => Self::PropertyMap,
             VisualizerKindWire::Property => Self::Property,
             VisualizerKindWire::Value => Self::Value,
+            VisualizerKindWire::ActionBar => Self::ActionBar,
             VisualizerKindWire::Action => Self::Action,
         }
     }
@@ -204,6 +223,7 @@ impl From<VisualizerKind> for VisualizerKindWire {
             VisualizerKind::PropertyMap => Self::PropertyMap,
             VisualizerKind::Property => Self::Property,
             VisualizerKind::Value => Self::Value,
+            VisualizerKind::ActionBar => Self::ActionBar,
             VisualizerKind::Action => Self::Action,
         }
     }
@@ -225,6 +245,10 @@ impl TransactionCommandWire {
 impl TransactionActionWire {
     fn bind(self, context: &Arc<TransactionContext>) -> Result<TransactionAction, HolonError> {
         match self {
+            TransactionActionWire::Dispose => Ok(TransactionAction::Dispose),
+            TransactionActionWire::CheckLoadTarget { space } => {
+                Ok(TransactionAction::CheckLoadTarget { space: space.bind(context)? })
+            }
             TransactionActionWire::Commit => Ok(TransactionAction::Commit),
             TransactionActionWire::UndoLast => Ok(TransactionAction::UndoLast),
             TransactionActionWire::RedoLast => Ok(TransactionAction::RedoLast),
@@ -233,6 +257,9 @@ impl TransactionActionWire {
             }
             TransactionActionWire::RedoToMarker { marker_id } => {
                 Ok(TransactionAction::RedoToMarker { marker_id })
+            }
+            TransactionActionWire::PrepareHolons { content_set } => {
+                Ok(TransactionAction::PrepareHolons { content_set })
             }
             TransactionActionWire::LoadHolons { content_set } => {
                 Ok(TransactionAction::LoadHolons { content_set })
@@ -291,6 +318,7 @@ impl TransactionActionWire {
             TransactionActionWire::GetTransientHolonByVersionedKey { key } => {
                 Ok(TransactionAction::GetTransientHolonByVersionedKey { key })
             }
+            TransactionActionWire::GetCommittedHolons => Ok(TransactionAction::GetCommittedHolons),
             TransactionActionWire::GetStagedCount => Ok(TransactionAction::GetStagedCount),
             TransactionActionWire::GetTransientCount => Ok(TransactionAction::GetTransientCount),
 

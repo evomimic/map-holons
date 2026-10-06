@@ -49,7 +49,7 @@ impl DanceEnvelopeTransport for MockConductorConfig {
         &self,
         envelope: DanceRequestEnvelope,
     ) -> Result<DanceResponseEnvelope, HolonError> {
-        let is_load_holons = envelope.request.dance_name.0 == "load_holons";
+        let is_load_holons = envelope.request.transport_label() == "load_holons";
         let started = Instant::now();
         let result = self
             .conductor
@@ -160,11 +160,11 @@ pub async fn assert_unanchored_ordinary_session_is_rejected(backend: &MockConduc
             .expect("the fixed test transaction id must be valid"),
     );
     let envelope = DanceRequestEnvelope {
-        request: DanceRequestWire {
+        request: holons_boundary::envelopes::DanceEnvelopeRequest::Legacy(DanceRequestWire {
             dance_name: MapString("get_all_holons".into()),
             dance_type: DanceTypeWire::Standalone,
             body: RequestBodyWire::None,
-        },
+        }),
         session: Some(session),
     };
 
@@ -173,20 +173,23 @@ pub async fn assert_unanchored_ordinary_session_is_rejected(backend: &MockConduc
         .call_fallible(&backend.cell.zome(PRODUCTION_COORDINATOR_ZOME), "dance_adapter", envelope)
         .await
         .expect("the unanchored ordinary dance must reach the production coordinator");
+    let holons_boundary::envelopes::DanceEnvelopeResponse::Legacy(response) = response.response
+    else {
+        panic!("expected legacy response")
+    };
     assert_eq!(
-        response.response.status_code,
+        response.status_code,
         ResponseStatusCode::Conflict,
         "the unanchored ordinary dance must be rejected: {:?}",
-        response.response
+        response
     );
     assert!(
         response
-            .response
             .description
             .0
             .contains("ordinary transaction is missing its persisted local HolonSpace"),
         "the rejection must explain the missing persisted LocalHolonSpace: {:?}",
-        response.response
+        response
     );
 }
 

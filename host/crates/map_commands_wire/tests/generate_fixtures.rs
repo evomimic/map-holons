@@ -34,6 +34,52 @@ use uuid::Uuid;
 fn generate_fixtures() {
     let fixtures_dir = fixtures_dir();
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
+    write_fixture(
+        &fixtures_dir,
+        "request-committed-holons.json",
+        &request(
+            141,
+            MapCommandWire::Transaction(TransactionCommandWire {
+                tx_id: TxId::from_str("41").unwrap(),
+                action: TransactionActionWire::GetCommittedHolons,
+            }),
+            default_options(),
+        ),
+    );
+
+    write_fixture(
+        &fixtures_dir,
+        "request-holon-validation-findings.json",
+        &request(
+            123,
+            holon_command(
+                41,
+                staged_reference(41, uuid_b()),
+                HolonActionWire::Read(ReadableHolonActionWire::GetValidationFindings),
+            ),
+            default_options(),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-validation-findings.json",
+        &response(
+            123,
+            Ok(MapResultWire::ValidationFindings(vec![core_types::CommitValidationViolation {
+                kind: core_types::CommitValidationViolationKind::RuleViolation {
+                    code: "DS-TEST".into(),
+                },
+                rule_key: Some("ExampleRule".into()),
+                severity: core_types::ValidationSeverity::Error,
+                subject: core_types::ValidationSubjectPath::Property {
+                    holon_identity: "subject".into(),
+                    name: "Bad".into(),
+                },
+                descriptor_identity: None,
+                message: "Invalid property".into(),
+            }])),
+        ),
+    );
     let described = map_commands_wire::DescribedHolonCollectionWire {
         members: HolonCollectionWire {
             state: CollectionState::Fetched,
@@ -171,6 +217,37 @@ fn generate_fixtures() {
                 TransactionActionWire::DeleteHolon { local_id: local_id(&[51, 52, 53]) },
             ),
             mutation_options("delete holon"),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "request-tx-dispose.json",
+        &request(9, tx_command(41, TransactionActionWire::Dispose), default_options()),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "request-tx-check-load-target.json",
+        &request(
+            9,
+            tx_command(
+                41,
+                TransactionActionWire::CheckLoadTarget {
+                    space: smart_reference(41, local_holon_id(&[61, 62, 63]), None),
+                },
+            ),
+            default_options(),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "request-tx-prepare-holons.json",
+        &request(
+            9,
+            tx_command(
+                41,
+                TransactionActionWire::PrepareHolons { content_set: sample_content_set() },
+            ),
+            mutation_options("prepare holons"),
         ),
     );
     write_fixture(
@@ -414,6 +491,25 @@ fn generate_fixtures() {
         // query-shaped body. The outer result variant remains the command-side
         // exception while the nested node collection stays compatibility-only.
         &response(112, Ok(MapResultWire::DanceResponse(sample_dance_response()))),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-err-loader-parsing.json",
+        &response(
+            140,
+            Err(HolonError::LoaderParsingError(core_types::LoaderParsingFailure {
+                message: "broken.json: invalid import".into(),
+                issues: vec![core_types::LoaderParsingIssue {
+                    filename: "broken.json".into(),
+                    kind: core_types::LoaderParsingIssueKind::StructuralValidationFailure,
+                    message: "invalid import".into(),
+                    location: Some(core_types::LoaderParsingLocation { line: 2, column: 3 }),
+                    source_error: Some(Box::new(HolonError::InvalidParameter(
+                        "expected holons".into(),
+                    ))),
+                }],
+            })),
+        ),
     );
     write_fixture(
         &fixtures_dir,

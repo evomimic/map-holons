@@ -1,6 +1,7 @@
 import { MalformedResponseError } from './errors';
 import type {
   BaseValue,
+  CommitValidationViolationWire,
   DanceResponseWire,
   HolonCollectionWire,
   HolonId,
@@ -237,4 +238,10 @@ export function expectEffectiveCardinality(result: MapResultWire): { minimum: nu
 export function expectDescribedCollection(result: MapResultWire) {
   if (typeof result !== 'string' && 'DescribedCollection' in result) return result.DescribedCollection;
   throw unexpectedResultVariant('DescribedCollection', result);
+}
+
+/** Decode a lifecycle-checked snapshot of staged validation findings. */
+export function expectValidationFindings(result: MapResultWire): CommitValidationViolationWire[] {
+  if (typeof result === 'object' && 'ValidationFindings' in result) return result.ValidationFindings;
+  throw unexpectedResultVariant('ValidationFindings', result);
 }

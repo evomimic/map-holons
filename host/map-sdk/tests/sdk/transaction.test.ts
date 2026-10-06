@@ -20,6 +20,7 @@ const {
   getTransientHolonByBaseKeyMock,
   getTransientHolonByVersionedKeyMock,
   loadHolonsMock,
+  prepareHolonsMock,
   newHolonMock,
   stagedCountMock,
   stageNewFromCloneMock,
@@ -37,6 +38,7 @@ const {
   getTransientHolonByBaseKeyMock: vi.fn(),
   getTransientHolonByVersionedKeyMock: vi.fn(),
   loadHolonsMock: vi.fn(),
+  prepareHolonsMock: vi.fn(),
   newHolonMock: vi.fn(),
   stagedCountMock: vi.fn(),
   stageNewFromCloneMock: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock('../../src/internal/commands/transaction', () => ({
   getTransientHolonByBaseKey: getTransientHolonByBaseKeyMock,
   getTransientHolonByVersionedKey: getTransientHolonByVersionedKeyMock,
   loadHolons: loadHolonsMock,
+  prepareHolons: prepareHolonsMock,
   newHolon: newHolonMock,
   stagedCount: stagedCountMock,
   stageNewFromClone: stageNewFromCloneMock,
@@ -149,6 +152,7 @@ describe('MapTransaction', () => {
     getTransientHolonByBaseKeyMock.mockReset();
     getTransientHolonByVersionedKeyMock.mockReset();
     loadHolonsMock.mockReset();
+    prepareHolonsMock.mockReset();
     newHolonMock.mockReset();
     stagedCountMock.mockReset();
     stageNewFromCloneMock.mockReset();
@@ -272,6 +276,19 @@ describe('MapTransaction', () => {
 
     await expect(transaction().deleteHolon(localId)).resolves.toBeUndefined();
     expect(deleteHolonMock).toHaveBeenCalledWith(txId, localId);
+  });
+
+  it('prepares a bound transient request without executing the loader', async () => {
+    prepareHolonsMock.mockResolvedValue(transientReference);
+    const request = await transaction().prepareHolons(contentSet);
+    expect(request).toBeInstanceOf(TransientHolonReference);
+    expect(prepareHolonsMock).toHaveBeenCalledWith(txId, contentSet);
+    expect(loadHolonsMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a preparation response bound to another transaction', async () => {
+    prepareHolonsMock.mockResolvedValue({ Transient: { ...transientReference.Transient, tx_id: 'other' } });
+    await expect(transaction().prepareHolons(contentSet)).rejects.toThrow();
   });
 
   it('wraps loadHolons results as transient references', async () => {
@@ -464,5 +481,34 @@ describe('materialization transaction ordering', () => {
     ]);
     expect(results.map(result => result.status)).toEqual(['rejected', 'rejected']);
     expect(lookup).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('canonical loader invocation', () => {
+  it('binds the prepared request and explicit Space and returns the direct response', async () => {
+    const tx = createMapTransaction(txId);
+    const request = createTransientHolonReference(txId, transientReference);
+    const space = createHolonReference(txId, stagedReference);
+    const invocation = createTransientHolonReference(txId, transientReference);
+    const descriptor = createHolonReference(txId, stagedReference);
+    const withDescriptor = vi.spyOn(invocation, 'withDescriptor').mockResolvedValue(undefined);
+    const withProperty = vi.spyOn(invocation, 'withPropertyValue').mockResolvedValue(undefined);
+    const relate = vi.spyOn(invocation, 'addRelatedHolons').mockResolvedValue(undefined);
+    vi.spyOn(tx, 'getSavedHolonByBaseKey').mockResolvedValue(descriptor as never);
+    vi.spyOn(tx, 'newHolon').mockResolvedValue(invocation);
+    const execute = vi.spyOn(tx, 'danceV2').mockResolvedValue(request);
+    expect(await tx.invokeLoadHolons(space, request)).toBe(request);
+    expect(withDescriptor).toHaveBeenCalledWith(descriptor);
+    expect(withProperty).toHaveBeenCalledWith('DanceName', { StringValue: 'LoadHolons' });
+    expect(relate.mock.calls).toEqual([['AffordingHolon', [space]], ['Request', [request]]]);
+    expect(execute).toHaveBeenCalledWith(invocation);
+  });
+
+  it('refuses a request owned by a different transaction before construction', async () => {
+    const tx = createMapTransaction(txId);
+    const request = createTransientHolonReference(42, { Transient: { tx_id: 42, id: 'foreign' } });
+    const lookup = vi.spyOn(tx, 'getSavedHolonByBaseKey');
+    await expect(tx.invokeLoadHolons(createHolonReference(txId, stagedReference), request)).rejects.toThrow('must belong');
+    expect(lookup).not.toHaveBeenCalled();
   });
 });

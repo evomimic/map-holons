@@ -144,7 +144,8 @@ fn select(
     graph.edge(21, "DescribedBy", &[11]);
     let (subject, start, role) = match kind {
         VisualizerKind::PropertyMap => (1, 2, 10),
-        VisualizerKind::Action => (1, 2, 13),
+        VisualizerKind::ActionBar => (1, 2, 13),
+        VisualizerKind::Action => (6, 6, 14),
         VisualizerKind::Property => (3, 3, 11),
         VisualizerKind::Value => (3, 4, 12),
         _ => unreachable!(),
@@ -182,6 +183,7 @@ fn selects_each_presentation_role_directly_and_through_inheritance() {
         VisualizerKind::PropertyMap,
         VisualizerKind::Property,
         VisualizerKind::Value,
+        VisualizerKind::ActionBar,
         VisualizerKind::Action,
     ] {
         for inherited in [false, true] {
@@ -195,6 +197,7 @@ fn reports_missing_and_ambiguous_candidates_for_every_role() {
         VisualizerKind::PropertyMap,
         VisualizerKind::Property,
         VisualizerKind::Value,
+        VisualizerKind::ActionBar,
         VisualizerKind::Action,
     ] {
         assert!(
@@ -271,6 +274,15 @@ fn collection_selection_does_not_validate_member_types_on_read() {
 }
 
 fn slot_select(graph: Graph, slot: u8, parent: Option<u8>) -> Result<u8, HolonError> {
+    slot_select_kind(graph, slot, parent, VisualizerKind::Property)
+}
+
+fn slot_select_kind(
+    graph: Graph,
+    slot: u8,
+    parent: Option<u8>,
+    kind: VisualizerKind,
+) -> Result<u8, HolonError> {
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
@@ -282,7 +294,7 @@ fn slot_select(graph: Graph, slot: u8, parent: Option<u8>) -> Result<u8, HolonEr
         &context,
         VisualizerSelectionRequest {
             subject: Graph::reference(&context, 1),
-            requested_kind: VisualizerKind::Property,
+            requested_kind: kind,
             slot: Graph::reference(&context, slot),
             parent_visualizer: parent.map(|id| Graph::reference(&context, id)),
         },
@@ -338,4 +350,24 @@ fn slot_selection_rejects_foreign_slots_empty_contracts_and_ambiguity() {
         slot_select(graph, 30, None),
         Err(HolonError::MultipleRelatedHolons { count: 2, .. })
     ));
+}
+
+#[test]
+fn node_selection_starts_at_described_type_and_falls_back_through_extends() {
+    for specialized in [true, false] {
+        let mut graph = slot_graph();
+        // Subject 1 is an ordinary response; descriptor 4 is its concrete type.
+        graph.edge(1, "DescribedBy", &[4]);
+        graph.edge(4, "Extends", &[2]);
+        graph.edge(2, "HasApplicableVisualizer", &[22]);
+        if specialized {
+            graph.edge(4, "HasApplicableVisualizer", &[20]);
+        }
+        // Applicability on the subject itself must not control Node selection.
+        graph.edge(1, "HasApplicableVisualizer", &[21]);
+        assert_eq!(
+            slot_select_kind(graph, 30, Some(40), VisualizerKind::Node).unwrap(),
+            if specialized { 20 } else { 22 }
+        );
+    }
 }

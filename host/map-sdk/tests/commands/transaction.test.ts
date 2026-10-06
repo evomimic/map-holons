@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   commit,
+  dispose,
+  checkLoadTarget,
   dance,
   danceV2,
   deleteHolon,
@@ -12,6 +14,7 @@ import {
   getTransientHolonByBaseKey,
   getTransientHolonByVersionedKey,
   loadHolons,
+  prepareHolons,
   newHolon,
   redoLast,
   stageNewFromClone,
@@ -214,6 +217,14 @@ const transactionCases: TransactionCase<unknown>[] = [
     wrongResult: 'None',
   },
   {
+    name: 'prepareHolons',
+    run: () => prepareHolons(txId, contentSet),
+    action: { PrepareHolons: { content_set: contentSet } },
+    okResult: { Reference: transientReference },
+    expected: transientReference,
+    wrongResult: 'None',
+  },
+  {
     name: 'loadHolons',
     run: () => loadHolons(txId, contentSet),
     action: { LoadHolons: { content_set: contentSet } },
@@ -413,4 +424,15 @@ describe('transaction command builders', () => {
 
     expectTransactionRequest({ DanceV2: { invocation: danceV2Invocation } });
   });
+});
+
+
+it('projects explicit disposal and captured-target verification through transaction commands', async () => {
+  invokeMapCommandMock.mockResolvedValue(okResponse('None'));
+  resetRequestIdCounter();
+  await dispose(txId);
+  expectTransactionRequest('Dispose');
+  invokeMapCommandMock.mockClear(); resetRequestIdCounter();
+  await checkLoadTarget(txId, { Smart: smartWire });
+  expectTransactionRequest({ CheckLoadTarget: { space: { Smart: smartWire } } });
 });

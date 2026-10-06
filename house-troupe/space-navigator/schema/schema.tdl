@@ -101,7 +101,7 @@ instance TableCollectionTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.table-collection"
-  VisualizerArtifactDigest "sha256:886f4edf0f2b4211eb81ac2dce5132c618018ca671f6cf3476e458f831f582d4"
+  VisualizerArtifactDigest "sha256:4c39fedf4b1182342910590d2bb9a008765930e87ebb572927c0c5ea4cfb0419"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

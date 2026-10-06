@@ -8,7 +8,8 @@ import type { OccurrenceAttentionRequest, PresentationRequestResult } from '../c
 export interface ExplorationPresentation {
   readonly element: VisualizerElement;
   readonly title: string;
-  dispose(): void;
+  canDismiss?(): boolean;
+  dispose(): void | Promise<void>;
 }
 
 export type RealizeExploration = (anchor: HolonReference, signal: AbortSignal) => Promise<ExplorationPresentation>;
@@ -20,6 +21,7 @@ interface ExplorationTab {
   controls: HTMLElement;
   panel: HTMLElement;
   presentation?: ExplorationPresentation;
+  closing?: boolean;
 }
 
 let nextTab = 0;
@@ -127,6 +129,27 @@ export class ExplorationTabs extends HTMLElement {
     }
   }
 
+  /** Mount an action alongside explorations without transferring its transaction ownership. */
+  mountAction(title: string, element: HTMLElement, owner: { canDismiss(): boolean; dispose(): Promise<void> }): { focus(): void; remove(): void } {
+    if (this.disposed) throw new Error('Navigator is disposed');
+    const id = `action-${++nextTab}`;
+    const button = this.button(title), close = this.button('×');
+    const controls = document.createElement('div'), panel = document.createElement('section');
+    button.id = `${id}-tab`; button.setAttribute('role', 'tab'); button.setAttribute('aria-controls', id);
+    close.setAttribute('aria-label', `Close ${title}`);
+    Object.assign(controls.style, { display: 'flex', border: '1px solid var(--dahn-slot-border-color)', borderRadius: 'var(--dahn-action-corner-radius)' });
+    panel.id = id; panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', button.id);
+    Object.assign(panel.style, { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '0', minWidth: '0', overflow: 'hidden' });
+    const tab: ExplorationTab = { id, controller: new AbortController(), button, controls, panel,
+      presentation: { element: element as VisualizerElement, title, canDismiss: () => owner.canDismiss(), dispose: () => owner.dispose() } };
+    controls.append(button, close); panel.append(element);
+    this.tabs.set(id, tab); this.tablist.append(controls); this.panels.append(panel);
+    button.addEventListener('click', () => this.activate(tab, true));
+    close.addEventListener('click', () => { void this.close(tab); });
+    this.activate(tab, true);
+    return { focus: () => this.activate(tab, true), remove: () => this.removeTab(tab) };
+  }
+
   private button(label: string): HTMLButtonElement {
     const button = document.createElement('button');
     button.type = 'button';
@@ -162,15 +185,25 @@ export class ExplorationTabs extends HTMLElement {
     if (transferFocus) tab.button.focus();
   }
 
-  private close(tab: ExplorationTab): void {
+  private async close(tab: ExplorationTab): Promise<void> {
+    if (tab.closing) return;
+    if (tab.presentation?.canDismiss?.() === false) { this.feedback.textContent = 'An action is executing in this tab.'; return; }
+    if (!this.tabs.has(tab.id)) return;
+    tab.closing = true; tab.controller.abort();
+    try {
+      const released = tab.presentation?.dispose();
+      if (released) await released;
+      this.removeTab(tab);
+    } catch (error) {
+      this.feedback.textContent = `Unable to close tab: ${String(error)}`;
+    } finally { tab.closing = false; }
+  }
+
+  private removeTab(tab: ExplorationTab): void {
     if (!this.tabs.delete(tab.id)) return;
-    tab.controller.abort();
-    tab.presentation?.dispose();
-    tab.controls.remove();
-    tab.panel.remove();
+    tab.controls.remove(); tab.panel.remove();
     if (this.active === tab) {
-      this.active = undefined;
-      ++this.activationRevision;
+      this.active = undefined; ++this.activationRevision;
       const next = [...this.tabs.values()].find(item => item.presentation);
       if (next) { this.activate(next, false); next.button.focus(); }
     }
@@ -185,8 +218,10 @@ export class ExplorationTabs extends HTMLElement {
       ?? { status: 'refused', reason: 'No active exploration accepts attention.' };
   }
 
+  canDismiss(): boolean { return [...this.tabs.values()].every(tab => tab.presentation?.canDismiss?.() !== false); }
+
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed || !this.canDismiss()) return;
     this.disposed = true;
     for (const tab of [...this.tabs.values()]) this.close(tab);
     this.feedback.replaceChildren();

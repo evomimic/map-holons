@@ -18,8 +18,8 @@ pub struct CommandLifecyclePolicy {
 impl CommandLifecyclePolicy {
     /// Read-only policy for transaction-scoped commands.
     ///
-    /// All transaction commands require an open transaction — even lookups —
-    /// because a committed transaction must reject all further operations.
+    /// Ordinary transaction commands, including lookups, require an open transaction.
+    /// Explicit retained-evidence reads and disposal use their own closed-context policy.
     pub const fn transaction_read_only() -> Self {
         Self {
             mutation: MutationClassification::ReadOnly,

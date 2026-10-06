@@ -5,10 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 const repository = resolve(process.cwd(), '..');
 const implementations = [
+  ['LoadHolonsInspectorTypeScript.VisualizerImplementation', 'load-holons-inspector.js'],
   ['PathInspectorTypeScript.VisualizerImplementation', 'path-inspector.js'],
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
   ['TableCollectionTypeScript.VisualizerImplementation', 'table-collection.js'],
   ['GenericActionsTypeScript.VisualizerImplementation', 'actions.js'],
+  ['LoadHolonsActionTypeScript.VisualizerImplementation', 'load-holons-action.js'],
+  ['UnsupportedActionTypeScript.VisualizerImplementation', 'unsupported-action.js'],
   ['DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation', 'properties.js'],
 ];
 

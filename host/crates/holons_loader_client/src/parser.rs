@@ -20,26 +20,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// High-level classification of a per-file parsing issue.
-///
-/// This allows the caller (and UI) to distinguish between simple I/O failures,
-/// JSON decoding problems, structural violations, and internal holon construction
-/// failures.
-#[derive(Debug)]
-pub enum ImportFileParsingIssueKind {
-    /// Any failure to read or open the import file.
-    IoFailure,
-
-    /// Raw JSON decoding errors (malformed JSON or unexpected shape).
-    JsonDecodingFailure,
-
-    /// Generated JSON violates loader-owned structural constraints.
-    StructuralValidationFailure,
-
-    /// Errors that occur while constructing transient holons and their
-    /// relationships inside the loader graph.
-    HolonConstructionFailure,
-}
+pub use core_types::LoaderParsingIssueKind as ImportFileParsingIssueKind;
+use core_types::LoaderParsingLocation;
 
 /// Represents a single problem encountered while processing one import file.
 ///
@@ -59,6 +41,8 @@ pub struct ImportFileParsingIssue {
     /// Optional underlying HolonError when the failure originates from
     /// the loader / holon layer rather than raw I/O / JSON.
     pub source_error: Option<HolonError>,
+    /// Original-file decoder coordinates, absent for rules without location evidence.
+    pub location: Option<LoaderParsingLocation>,
 }
 
 /// Raw JSON representation of a loader import file as defined by the loader
@@ -116,6 +100,7 @@ pub fn parse_files_into_load_set(
                 kind: ImportFileParsingIssueKind::HolonConstructionFailure,
                 message: "Failed to create HolonLoadSet holon".to_string(),
                 source_error: Some(err),
+                location: None,
             };
             return Err(vec![issue]);
         }
@@ -192,7 +177,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
     let (raw_file_with_slices, has_inverse_pairs) =
         match validate_and_deserialize_loader_file_with_pairs(raw_json, &import_file.filename) {
             Ok(wrapper) => wrapper,
-            Err(err) => {
+            Err((err, location)) => {
                 return Err(ImportFileParsingIssue {
                     file_path: file_path.clone(),
                     kind: ImportFileParsingIssueKind::StructuralValidationFailure,
@@ -201,6 +186,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                         import_file.filename, err
                     ),
                     source_error: Some(err),
+                    location,
                 });
             }
         };
@@ -219,6 +205,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                     import_file.filename, err
                 ),
                 source_error: Some(err),
+                location: None,
             });
         }
     }
@@ -241,6 +228,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                     import_file.filename, err
                 ),
                 source_error: Some(err),
+                location: None,
             });
         }
     };
@@ -266,6 +254,11 @@ fn parse_single_import_file_into_bundle_with_tracker(
                         import_file.filename, json_err
                     ),
                     source_error: None,
+                    location: Some(slice_error_location(
+                        raw_json,
+                        start_offset as usize,
+                        &json_err,
+                    )),
                 });
             }
         };
@@ -283,6 +276,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                             raw_holon.key, import_file.filename, err
                         ),
                         source_error: Some(err),
+                        location: None,
                     });
                 }
             };
@@ -305,6 +299,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                     raw_holon.key, import_file.filename, err
                 ),
                 source_error: Some(err),
+                location: None,
             });
         }
 
@@ -324,6 +319,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                             err
                         ),
                         source_error: Some(err),
+                        location: None,
                     });
                 }
             };
@@ -343,6 +339,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
                         err
                     ),
                     source_error: Some(err),
+                    location: None,
                 });
             }
         }
@@ -360,22 +357,30 @@ fn validate_and_deserialize_loader_file<'a>(
 ) -> Result<RawLoaderFileWithSlices<'a>, HolonError> {
     validate_and_deserialize_loader_file_with_pairs(raw_json, filename)
         .map(|(raw_file, _pairs)| raw_file)
+        .map_err(|(error, _)| error)
 }
 
 fn validate_and_deserialize_loader_file_with_pairs<'a>(
     raw_json: &'a str,
     filename: &str,
-) -> Result<(RawLoaderFileWithSlices<'a>, Vec<HasInversePair>), HolonError> {
+) -> Result<
+    (RawLoaderFileWithSlices<'a>, Vec<HasInversePair>),
+    (HolonError, Option<LoaderParsingLocation>),
+> {
     // Deserialize borrowed RawValue slices before loader-structural validation.
     let raw_file =
         serde_json::from_str::<RawLoaderFileWithSlices<'a>>(raw_json).map_err(|err| {
-            HolonError::InvalidParameter(format!(
-                "Failed to decode loader import JSON (file '{}'): {}",
-                filename, err
-            ))
+            (
+                HolonError::InvalidParameter(format!(
+                    "Failed to decode loader import JSON (file '{}'): {}",
+                    filename, err
+                )),
+                Some(LoaderParsingLocation { line: err.line(), column: err.column() }),
+            )
         })?;
 
-    let has_inverse_pairs = validate_relationship_pair_metadata_authoring(&raw_file, filename)?;
+    let has_inverse_pairs =
+        validate_relationship_pair_metadata_authoring(&raw_file, filename, raw_json)?;
 
     Ok((raw_file, has_inverse_pairs))
 }
@@ -435,7 +440,8 @@ impl HasInverseTargetUniquenessTracker {
 fn validate_relationship_pair_metadata_authoring(
     raw_file: &RawLoaderFileWithSlices<'_>,
     filename: &str,
-) -> Result<Vec<HasInversePair>, HolonError> {
+    raw_json: &str,
+) -> Result<Vec<HasInversePair>, (HolonError, Option<LoaderParsingLocation>)> {
     let mut decoded_holons = Vec::with_capacity(raw_file.holons.len());
     let mut relationship_descriptors = HashMap::new();
     let mut has_inverse_pairs = Vec::new();
@@ -443,10 +449,10 @@ fn validate_relationship_pair_metadata_authoring(
 
     for raw_value in &raw_file.holons {
         let raw_holon = serde_json::from_str::<RawLoaderHolon>(raw_value.get()).map_err(|err| {
-            HolonError::InvalidParameter(format!(
+            (HolonError::InvalidParameter(format!(
                 "Failed to decode loader holon JSON during relationship-pair validation (file '{}'): {}",
                 filename, err
-            ))
+            )), Some(slice_error_location(raw_json, compute_holon_start_offset(raw_json, raw_value.get()) as usize, &err)))
         })?;
 
         let extends_declared_relationship_type = relationship_targets(&raw_holon, "Extends")
@@ -471,10 +477,10 @@ fn validate_relationship_pair_metadata_authoring(
         if let Some(inverse_of) =
             raw_holon.relationships.iter().find(|relationship| relationship.name == "InverseOf")
         {
-            return Err(import_relationship_validation_error(format!(
+            return Err((import_relationship_validation_error(format!(
                 "Loader import file '{}' authors InverseOf on '{}'. Relationship-pair metadata must be authored from the declared relationship side with HasInverse; offending target(s): {:?}",
                 filename, raw_holon.key, inverse_of.targets
-            )));
+            )), None));
         }
 
         let Some(metadata) = relationship_descriptors.get(&raw_holon.key) else {
@@ -487,25 +493,27 @@ fn validate_relationship_pair_metadata_authoring(
         let has_inverse_targets =
             relationship_targets(raw_holon, "HasInverse").cloned().collect::<Vec<_>>();
         if has_inverse_targets.len() != 1 {
-            return Err(import_relationship_validation_error(format!(
+            return Err((import_relationship_validation_error(format!(
                 "Declared relationship descriptor '{}' in '{}' must author exactly one HasInverse target; found {}",
                 raw_holon.key,
                 filename,
                 has_inverse_targets.len()
-            )));
+            )), None));
         }
 
         let target_key = &has_inverse_targets[0];
         if let Some(target_metadata) = relationship_descriptors.get(target_key) {
             if !target_metadata.extends_inverse_relationship_type {
-                return Err(import_relationship_validation_error(format!(
+                return Err((import_relationship_validation_error(format!(
                     "Declared relationship descriptor '{}' in '{}' has HasInverse target '{}', but that target does not extend InverseRelationshipType",
                     raw_holon.key, filename, target_key
-                )));
+                )), None));
             }
         }
 
-        inverse_target_tracker.record(filename, &raw_holon.key, &target_key)?;
+        inverse_target_tracker
+            .record(filename, &raw_holon.key, &target_key)
+            .map_err(|error| (error, None))?;
         has_inverse_pairs.push(HasInversePair {
             declared_source_key: raw_holon.key.clone(),
             inverse_target_key: target_key.clone(),
@@ -554,6 +562,25 @@ pub fn compute_holon_start_offset(file_buffer: &str, holon_slice: &str) -> i64 {
 mod tests {
     use super::*;
     use std::{fs, path::PathBuf};
+
+    #[test]
+    fn decoder_coordinates_refer_to_original_utf8_input() {
+        let input = "{\n  \"holons\": [{\"key\":\"é\"}, {\"key\":12}]\n}";
+        let (_, location) =
+            validate_and_deserialize_loader_file_with_pairs(input, "unicode.json").unwrap_err();
+        let location = location.expect("decoder reports original source coordinates");
+        assert_eq!(location.line, 2);
+        let line = input.lines().nth(1).unwrap();
+        assert_eq!(location.column, line.find("12").unwrap() + 2);
+    }
+
+    #[test]
+    fn structural_rule_does_not_invent_coordinates() {
+        let input = relationship_pair_import("", "");
+        let (_, location) =
+            validate_and_deserialize_loader_file_with_pairs(&input, "rules.json").unwrap_err();
+        assert!(location.is_none());
+    }
 
     fn relationship_pair_import(
         declared_relationships: &str,
@@ -690,7 +717,7 @@ mod tests {
             )
             .unwrap_or_else(|error| {
                 panic!(
-                    "core schema export {} failed relationship-pair validation: {error}",
+                    "core schema export {} failed relationship-pair validation: {error:?}",
                     schema_path.display()
                 )
             });
@@ -811,5 +838,20 @@ mod tests {
 
         assert!(message.contains("authors InverseOf"));
         assert!(message.contains("HasInverse"));
+    }
+}
+
+/// Translate decoder coordinates from a borrowed holon slice to the original file.
+fn slice_error_location(
+    input: &str,
+    offset: usize,
+    error: &serde_json::Error,
+) -> LoaderParsingLocation {
+    let prefix = &input[..offset];
+    let preceding_lines = prefix.bytes().filter(|byte| *byte == b'\n').count();
+    let preceding_columns = prefix.rsplit('\n').next().unwrap_or("").len();
+    LoaderParsingLocation {
+        line: preceding_lines + error.line(),
+        column: error.column() + if error.line() == 1 { preceding_columns } else { 0 },
     }
 }

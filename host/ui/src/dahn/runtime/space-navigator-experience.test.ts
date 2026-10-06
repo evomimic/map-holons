@@ -129,3 +129,120 @@ it('can reopen the HolonSpace after the last tab closes without replacing its ex
   expect(mocks.realizeNode.mock.calls[1][0]).toBe(binding.transaction);
   expect(navigations()[0].context.target.reference).toBe(binding.holonSpace);
 });
+
+it('refuses owner, tab, and experience destruction while an action executes, then releases it', async () => {
+  await experience.openInitial();
+  let executing = true;
+  const action = { canDismiss: () => !executing, dispose: vi.fn(async () => {}) };
+  Object.assign(roots[0], { actionActivations: [action] });
+  const navigation = navigations()[0].context.navigation!;
+  const owner = navigations()[0].occurrences[0];
+  navigation.close!(owner.id);
+  expect(navigations()[0].occurrences).toHaveLength(1);
+  expect(experience.canDismiss()).toBe(false);
+  experience.dispose();
+  expect(experience.element.isConnected).toBe(true);
+  expect(action.dispose).not.toHaveBeenCalled();
+  executing = false; experience.dispose();
+  expect(action.dispose).toHaveBeenCalledOnce();
+  expect(experience.element.isConnected).toBe(false);
+});
+
+it('supplies action-owned inspection and refresh without replacing the exploration', async () => {
+  const openLoadHolons = vi.fn();
+  (binding as { actionInteractions?: unknown }).actionInteractions = { openLoadHolons };
+  await experience.openInitial();
+  const element = navigations()[0];
+  const interactions = mocks.realizeNode.mock.calls[0][7];
+  interactions.openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
+  const captured = openLoadHolons.mock.calls[0][0];
+  expect(captured.presentResult).toBeTypeOf('function');
+  captured.refreshAfterPersistence();
+  expect(navigations()[0]).toBe(element);
+  expect(mocks.realizeNode).toHaveBeenCalledOnce();
+});
+
+it('selects the response Node in its loader context and expands saved members within its rooted path', async () => {
+  const { MaterializedVisualizerRuntime } = await import('./materialized-visualizer-runtime');
+  class ResultNode extends HTMLElement {
+    setContext(context: VisualizerContext) { this.append(...context.childVisualizers!.values()); }
+    getNodeInspectorExtents() { return { horizontal: { 'full-width': 900, 'partial-width': 600, 'minimal-width': 120 }, vertical: { 'full-height': 760, 'partial-height': 600, 'minimal-height': 48 } }; }
+    setNodeInspectorAllocation() {}
+  }
+  const resultNode = reference('Selected result node'), slot = reference('Node slot');
+  const loaderMaterializations: unknown[] = [];
+  const realize = vi.spyOn(MaterializedVisualizerRuntime.prototype, 'realize').mockImplementation(async function(this: any, selected) {
+    const owner = this.cache.materializer.transaction;
+    if (owner.committed) {
+      loaderMaterializations.push(selected);
+      throw new Error('TransactionAlreadyCommitted');
+    }
+    return selected === resultNode ? ResultNode : NavigationElement;
+  });
+  const slots = vi.spyOn(MaterializedVisualizerRuntime.prototype, 'slot').mockResolvedValue(slot);
+  const openLoadHolons = vi.fn();
+  try {
+    (binding as any).actionInteractions = { openLoadHolons };
+    await experience.openInitial();
+    mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
+    const present = openLoadHolons.mock.calls[0][0].presentResult;
+    const response = reference('Response'), member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
+    const loader = { committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })) };
+    const review = { bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
+    const collection = document.createElement('section'), properties = document.createElement('section');
+    const affordance = { kind: 'result', label: 'Committed holons', role: 'committed' };
+    const lifecycle = { setBeforeChange: vi.fn(), sourceAffordance: (source: HTMLElement) => source === collection ? affordance : undefined, close: vi.fn(), dispose: vi.fn() };
+    const path = await present({ transaction: loader, review, subject: response, children: new Map([['properties', properties], ['collections', collection]]), collections: lifecycle, signal: new AbortController().signal });
+    document.body.append(path.element);
+    expect(loader.selectVisualizer).toHaveBeenCalledWith({ subject: response, requestedKind: 'node', slot, parentVisualizer: binding.initialNavigationVisualizer });
+    expect(path.element.occurrences[0].subject).toBe(response);
+    path.inspect({ reference: member, source: collection });
+    await vi.waitFor(() => expect(path.element.occurrences).toHaveLength(2));
+    expect(path.element.occurrences[0].element.contains(properties)).toBe(true);
+    expect(path.element.occurrences[1].subject).toBe(member);
+    expect(path.element.occurrences[1].provenance.kind).toBe('collection-member');
+    expect(review.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ subject: member, requestedKind: 'node' }));
+    expect(loaderMaterializations).toEqual([]);
+    path.dispose(); expect(lifecycle.dispose).toHaveBeenCalledOnce();
+  } finally { realize.mockRestore(); slots.mockRestore(); }
+});
+
+it('launches the active Space afforded loader action through its existing activation', async () => {
+  const { ActionActivation } = await import('./action-activation');
+  const interaction = { canDismiss: () => true, focus: vi.fn(), dispose: vi.fn(async () => {}), closed: new Promise<void>(() => {}) };
+  const openLoadHolons = vi.fn(() => interaction);
+  (binding as any).actionInteractions = { openLoadHolons };
+  const root = document.createElement('div');
+  const action = new ActionActivation({ subject: binding.holonSpace, dance: reference('LoadHolons.DanceType'), visualizer: reference('Selected action'), occurrence: root, label: 'Load Holons' });
+  mocks.realizeNode.mockResolvedValueOnce({ element: root, collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn() }, singularRelationships: [], actionActivations: [action] });
+  await experience.openInitial();
+  await experience.openLoadHolons();
+  expect(openLoadHolons).toHaveBeenCalledWith(expect.objectContaining({ subject: binding.holonSpace, mountPresentation: expect.any(Function) }));
+  await experience.openLoadHolons();
+  expect(openLoadHolons).toHaveBeenCalledOnce();
+  expect(interaction.focus).toHaveBeenCalledOnce();
+});
+
+it('does not synthesize a loader action when the active Space does not afford it', async () => {
+  const openLoadHolons = vi.fn();
+  (binding as any).actionInteractions = { openLoadHolons };
+  await experience.openInitial();
+  await expect(experience.openLoadHolons()).rejects.toThrow('exactly one LoadHolons action');
+  expect(openLoadHolons).not.toHaveBeenCalled();
+});
+
+it('retains the result inspection adapter for actions on descendant nodes', async () => {
+  const openLoadHolons = vi.fn();
+  (binding as any).actionInteractions = { openLoadHolons };
+  await experience.openInitial();
+  const source = roots[0].element;
+  const affordance = { kind: 'result', role: 'committed', label: 'Members' };
+  Object.assign(roots[0].collectionActivation, { sourceAffordance: () => affordance });
+  const member = { ...reference('Descendant HolonSpace'), holonId: vi.fn(async () => ({ Local: [9] })) };
+  navigations()[0].context.navigation!.inspect({ reference: member as never, source });
+  await vi.waitFor(() => expect(mocks.realizeNode).toHaveBeenCalledTimes(2));
+  mocks.realizeNode.mock.calls[1][7].openLoadHolons({ subject: member, label: 'Load' });
+  expect(openLoadHolons.mock.calls[0][0]).toEqual(expect.objectContaining({
+    presentResult: expect.any(Function), refreshAfterPersistence: expect.any(Function), mountPresentation: expect.any(Function),
+  }));
+});

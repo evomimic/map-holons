@@ -19,7 +19,7 @@ const artifacts = Object.fromEntries(await Promise.all(
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
 const selected = (key: string) => ({ key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
-const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), action: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
+const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
 const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
 function subject(name: string) {
@@ -51,7 +51,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void) {
     ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
     ref.relatedHolons.mockImplementation(async name => collection([name === 'First' ? a : name === 'Second' ? b : rootSubject]));
   }
-  const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'propertyMap' | 'action' }) => ({ selected: visualizers[request.requestedKind] }));
+  const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'propertyMap' | 'actionBar' }) => ({ selected: visualizers[request.requestedKind] }));
   const transaction = {
     selectVisualizer,
     selectPropertyVisualizer: vi.fn(async () => ({ selected: visualizers.property })),

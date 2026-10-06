@@ -26,6 +26,8 @@
 pub enum TransactionLifecycleState {
     Open = 0,
     Committed = 1,
+    /// Explicitly released; all transaction-owned evidence has been discarded.
+    Disposed = 2,
 }
 
 impl TransactionLifecycleState {
@@ -37,6 +39,7 @@ impl TransactionLifecycleState {
         match value {
             0 => Self::Open,
             1 => Self::Committed,
+            2 => Self::Disposed,
             _ => {
                 debug_assert!(
                     false,

@@ -1,3 +1,4 @@
+import { semanticWork } from './semantic-work';
 import { destinationPaint } from './destination-paint';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -394,4 +395,15 @@ it('closes collection presentation without disposing activation and rejects late
   expect(f.activation.sourceAffordance(content)).toBe(a);
   f.activation.close(a);
   expect(f.activation.sourceAffordance(content)).toBeUndefined();
+});
+
+it('refreshes an open collection from fresh membership on semantic invalidation', async () => {
+  const f = fixture(true); const updates: CollectionUpdate[] = [];
+  f.activation.activate(tab('Owns'), 'slot', update => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
+  f.owner.describedRelatedHolons.mockResolvedValue(collection(3));
+  semanticWork(f.transaction as never).invalidate();
+  await vi.waitFor(() => expect(updates.at(-1)?.content?.querySelectorAll('tbody tr')).toHaveLength(3));
+  expect(f.owner.relatedHolons).toHaveBeenLastCalledWith('Owns', { requireFresh: true });
+  f.activation.dispose();
 });
