@@ -4,6 +4,7 @@ import { Injector, runInInjectionContext } from '@angular/core';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CanvasHostComponent } from './canvas-host.component';
 import { ApplicationSessionService } from '../../services/application-session.service';
+import { CanvasNavigationGuard } from '../../services/canvas-navigation-guard';
 
 const fixture = vi.hoisted(() => {
   const reference = { key: vi.fn(async () => 'Home'), versionedKey: vi.fn(async () => 'Home@1') };
@@ -69,7 +70,7 @@ afterEach(() => {
 });
 
 async function launch(home: boolean) {
-  injector = Injector.create({ providers: [{ provide: LoadHolonsDialogService, useValue: { openLoadHolons: vi.fn() } }, { provide: ApplicationSessionService, useValue: {
+  injector = Injector.create({ providers: [CanvasNavigationGuard, { provide: LoadHolonsDialogService, useValue: { openLoadHolons: vi.fn() } }, { provide: ApplicationSessionService, useValue: {
     waitForReady: async () => ({ phase: 'ready', active_holon_space: {},
       canvas_selection: { theme_key: 'theme', canvas_key: 'canvas', canvas_visualizer_key: 'visualizer' },
       home_dancer_selection: home ? { dancer: {}, rooted_navigation_visualizer: {}, root_node_visualizer: {} } : null,

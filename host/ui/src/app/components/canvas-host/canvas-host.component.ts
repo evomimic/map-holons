@@ -1,4 +1,5 @@
 import { LoadHolonsDialogService } from '../load-holons-dialog/load-holons-dialog.service';
+import { CanvasNavigationGuard } from '../../services/canvas-navigation-guard';
 import { allocateInitialWindow } from '../../initial-window-allocation';
 import { SpaceNavigatorExperience } from '../../../dahn/runtime/space-navigator-experience';
 import { SingleContextHost } from '../../../dahn/context/single-context-host';
@@ -41,9 +42,14 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
   @Input() launchLoadHolons = false;
   private contextHost?: SingleContextHost;
   private navigator?: SpaceNavigatorExperience;
+  private readonly unregisterNavigationOwner = inject(CanvasNavigationGuard).register(this);
   canDismiss(): boolean { return this.navigator?.canDismiss() ?? true; }
   private destroyed = false;
-  ngOnDestroy(): void { this.destroyed = true; this.contextHost?.dispose(); }
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    this.contextHost?.dispose();
+    this.unregisterNavigationOwner();
+  }
   @ViewChild('canvasHost') private readonly canvasHost?: ElementRef<HTMLElement>;
 
   private readonly actionInteractions = inject(LoadHolonsDialogService);

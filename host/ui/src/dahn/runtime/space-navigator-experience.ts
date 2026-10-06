@@ -147,7 +147,7 @@ export class SpaceNavigatorExperience {
         const title = (await anchor.key()) ?? await anchor.versionedKey();
         signal.throwIfAborted();
         navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot,
-          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, this.binding.actionInteractions),
+          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, actionInteractions),
           subject => { if (!work.paused) void this.element.open(subject); });
         element = document.createElement(tag) as VisualizerElement;
         element.setContext({

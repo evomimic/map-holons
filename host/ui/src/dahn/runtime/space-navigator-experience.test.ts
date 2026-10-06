@@ -230,3 +230,19 @@ it('does not synthesize a loader action when the active Space does not afford it
   await expect(experience.openLoadHolons()).rejects.toThrow('exactly one LoadHolons action');
   expect(openLoadHolons).not.toHaveBeenCalled();
 });
+
+it('retains the result inspection adapter for actions on descendant nodes', async () => {
+  const openLoadHolons = vi.fn();
+  (binding as any).actionInteractions = { openLoadHolons };
+  await experience.openInitial();
+  const source = roots[0].element;
+  const affordance = { kind: 'result', role: 'committed', label: 'Members' };
+  Object.assign(roots[0].collectionActivation, { sourceAffordance: () => affordance });
+  const member = { ...reference('Descendant HolonSpace'), holonId: vi.fn(async () => ({ Local: [9] })) };
+  navigations()[0].context.navigation!.inspect({ reference: member as never, source });
+  await vi.waitFor(() => expect(mocks.realizeNode).toHaveBeenCalledTimes(2));
+  mocks.realizeNode.mock.calls[1][7].openLoadHolons({ subject: member, label: 'Load' });
+  expect(openLoadHolons.mock.calls[0][0]).toEqual(expect.objectContaining({
+    presentResult: expect.any(Function), refreshAfterPersistence: expect.any(Function), mountPresentation: expect.any(Function),
+  }));
+});
