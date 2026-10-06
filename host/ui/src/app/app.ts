@@ -1,3 +1,5 @@
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CanvasHostComponent } from './components/canvas-host/canvas-host.component';
 import { HolonsLoaderHostComponent } from './components/holons-loader-host/holons-loader-host.component';
@@ -10,10 +12,23 @@ import { updateStartupOverlayPhase } from './startup-overlay';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CanvasHostComponent, HolonsLoaderHostComponent],
+  imports: [CanvasHostComponent, HolonsLoaderHostComponent, RouterOutlet],
   templateUrl: './app.html',
 })
 export class App implements OnInit {
+  private readonly router = inject(Router);
+  protected readonly loaderRoute = signal(false);
+  protected readonly deprecatedLoaderRoute = signal(false);
+  constructor() {
+    const update = (url: string) => {
+      this.loaderRoute.set(/^\/load-holons(?:[?#]|$)/.test(url));
+      this.deprecatedLoaderRoute.set(/^\/load-holons-deprecated(?:[?#]|$)/.test(url));
+    };
+    update(this.router.url);
+    this.router.events.pipe(takeUntilDestroyed()).subscribe(event => {
+      if (event instanceof NavigationEnd) update(event.urlAfterRedirects);
+    });
+  }
   private readonly applicationSession = inject(ApplicationSessionService);
   protected readonly experience = signal<ApplicationExperience | null>(null);
   protected readonly failure = signal<string | null>(null);

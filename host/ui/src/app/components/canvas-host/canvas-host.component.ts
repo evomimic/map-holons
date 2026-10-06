@@ -3,7 +3,7 @@ import { allocateInitialWindow } from '../../initial-window-allocation';
 import { SpaceNavigatorExperience } from '../../../dahn/runtime/space-navigator-experience';
 import { SingleContextHost } from '../../../dahn/context/single-context-host';
 import { offeredCanvasThemes } from '../../../dahn/themes/offered-canvas-themes';
-import { AfterViewInit, OnDestroy, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, OnDestroy, Input, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
 import { DefaultVisualizerRegistry } from '../../../dahn/registry/default-visualizer-registry';
 import { MapClient } from '../../../dahn/deps/map-sdk';
@@ -38,7 +38,10 @@ import { dismissStartupOverlay } from '../../startup-overlay';
   `,
 })
 export class CanvasHostComponent implements AfterViewInit, OnDestroy {
+  @Input() launchLoadHolons = false;
   private contextHost?: SingleContextHost;
+  private navigator?: SpaceNavigatorExperience;
+  canDismiss(): boolean { return this.navigator?.canDismiss() ?? true; }
   private destroyed = false;
   ngOnDestroy(): void { this.destroyed = true; this.contextHost?.dispose(); }
   @ViewChild('canvasHost') private readonly canvasHost?: ElementRef<HTMLElement>;
@@ -71,12 +74,12 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
         profile.finish('session-failed');
         return;
       }
+      if (session.active_holon_space === null) {
+        throw new Error('No active HolonSpace.');
+      }
       const selection = session.canvas_selection;
       if (selection === null) {
         throw new Error('Application session is ready without a selected Canvas.');
-      }
-      if (session.active_holon_space === null) {
-        throw new Error('Application session is ready without an active HolonSpace reference.');
       }
 
       const host = this.canvasHost?.nativeElement;
@@ -141,6 +144,7 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
           if (signal.aborted) return;
           const homeDancerSelection = session.home_dancer_selection;
           if (homeDancerSelection === null) {
+            if (this.launchLoadHolons) throw new Error('The active HolonSpace has no Navigator experience for loading.');
             // A missing declaration is the only intentional empty-Canvas state.
             profile.next('mount home Dancer');
             await canvas.mountVisualizers([]);
@@ -154,8 +158,10 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
             initialNodeVisualizer: transaction.bindPersistedReference(homeDancerSelection.root_node_visualizer),
             materialized, theme, canvas, actionInteractions: this.actionInteractions,
           });
+          this.navigator = experience;
           canvas.mountDancer(experience.element, 'Space Navigator');
           await experience.openInitial();
+          if (!signal.aborted && this.launchLoadHolons) await experience.openLoadHolons();
           if (!signal.aborted) {
             // Measure composed chrome after attachment; traversal never repeats this negotiation.
             await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));

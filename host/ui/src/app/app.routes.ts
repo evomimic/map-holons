@@ -1,3 +1,4 @@
+import { DeprecatedLoadHolonsComponent } from './components/load-holons/deprecated-load-holons.component';
 import { Routes } from '@angular/router';
 import { ContentSpace } from './components/content-spaces/content-spaces';
 import { ContentSpaceDetail } from './components/content-space-detail/content-space-detail';
@@ -8,9 +9,11 @@ import { LoadHolonsComponent } from './components/load-holons/load-holons.compon
 
 export const routes: Routes = [
     { path: '', component: AllSpaces},
+    { path: 'load-holons-deprecated', component: DeprecatedLoadHolonsComponent, data: { breadcrumb: 'Load Holons (deprecated)' } },
     {
         path: 'load-holons',
         component: LoadHolonsComponent,
+        canDeactivate: [(component: LoadHolonsComponent) => component.canDismiss()],
         data: { breadcrumb: 'Load Holons' },
     },
     {

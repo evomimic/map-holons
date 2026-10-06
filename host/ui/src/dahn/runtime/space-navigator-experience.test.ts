@@ -206,3 +206,27 @@ it('selects the response Node in its loader context and expands saved members wi
     path.dispose(); expect(lifecycle.dispose).toHaveBeenCalledOnce();
   } finally { realize.mockRestore(); slots.mockRestore(); }
 });
+
+it('launches the active Space afforded loader action through its existing activation', async () => {
+  const { ActionActivation } = await import('./action-activation');
+  const interaction = { canDismiss: () => true, focus: vi.fn(), dispose: vi.fn(async () => {}), closed: new Promise<void>(() => {}) };
+  const openLoadHolons = vi.fn(() => interaction);
+  (binding as any).actionInteractions = { openLoadHolons };
+  const root = document.createElement('div');
+  const action = new ActionActivation({ subject: binding.holonSpace, dance: reference('LoadHolons.DanceType'), visualizer: reference('Selected action'), occurrence: root, label: 'Load Holons' });
+  mocks.realizeNode.mockResolvedValueOnce({ element: root, collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn() }, singularRelationships: [], actionActivations: [action] });
+  await experience.openInitial();
+  await experience.openLoadHolons();
+  expect(openLoadHolons).toHaveBeenCalledWith(expect.objectContaining({ subject: binding.holonSpace, mountPresentation: expect.any(Function) }));
+  await experience.openLoadHolons();
+  expect(openLoadHolons).toHaveBeenCalledOnce();
+  expect(interaction.focus).toHaveBeenCalledOnce();
+});
+
+it('does not synthesize a loader action when the active Space does not afford it', async () => {
+  const openLoadHolons = vi.fn();
+  (binding as any).actionInteractions = { openLoadHolons };
+  await experience.openInitial();
+  await expect(experience.openLoadHolons()).rejects.toThrow('exactly one LoadHolons action');
+  expect(openLoadHolons).not.toHaveBeenCalled();
+});

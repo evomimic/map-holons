@@ -1,4 +1,4 @@
-import type { ActionBinding, ActionInteractions } from './action-activation';
+import type { ActionActivation, ActionBinding, ActionInteractions } from './action-activation';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
 import type { CanvasApi } from '../contracts/canvas';
@@ -41,6 +41,22 @@ export class SpaceNavigatorExperience {
     Object.assign(home.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
     home.addEventListener('click', () => { if (!semanticWork(binding.transaction).paused) void this.element.open(binding.holonSpace); });
     this.element.actions.append(home);
+  }
+
+  private rootActions: readonly ActionActivation[] = [];
+  private rootInteractions?: ActionInteractions;
+
+  /** Activate the existing afforded action; never synthesize a target or invocation. */
+  async openLoadHolons(): Promise<void> {
+    if (!this.rootInteractions) throw new Error('Loading is unavailable for the active HolonSpace.');
+    const candidates: ActionActivation[] = [];
+    for (const action of this.rootActions) {
+      if (await action.binding.dance.key() === 'LoadHolons.DanceType') candidates.push(action);
+    }
+    if (candidates.length !== 1) throw new Error('The active HolonSpace must afford exactly one LoadHolons action.');
+    const action = candidates[0];
+    if (!action.binding.occurrence.isConnected) throw new Error('The active HolonSpace presentation is unavailable.');
+    action.activate(binding => this.rootInteractions!.openLoadHolons(binding));
   }
 
   openInitial(): Promise<void> { return this.element.open(this.binding.holonSpace); }
@@ -123,6 +139,7 @@ export class SpaceNavigatorExperience {
         }),
       };
       const root = await realizeNode(transaction, materialized, anchor, selectedNode, theme, canvas, undefined, actionInteractions);
+      if (initial) { this.rootActions = root.actionActivations ?? []; this.rootInteractions = actionInteractions; }
       let navigation: PathNavigator | undefined;
       let element: VisualizerElement | undefined;
       try {
