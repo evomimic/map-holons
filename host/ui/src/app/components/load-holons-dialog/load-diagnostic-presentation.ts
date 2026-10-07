@@ -1,4 +1,5 @@
-import { createParserDiagnosticReport } from './parser-diagnostic-holons';
+import { attachRequestDiagnostics } from './load-request-diagnostics';
+import type { LoadRequest } from './load-request-holons';
 import { MapClient, type MapTransaction, type HolonReference } from '../../../dahn/deps/map-sdk';
 import type { ActionBinding } from '../../../dahn/runtime/action-activation';
 import { ActionResultCollections } from '../../../dahn/runtime/action-result-collections';
@@ -15,7 +16,7 @@ export interface DiagnosticPresentation {
   subscribeCount?(listener: (count: number | undefined) => void): () => void;
   dispose(): Promise<void>;
 }
-export type MountDiagnostics = (binding: ActionBinding, client: MapClient, read: () => Promise<LoadDiagnostics>, load?: { transaction: MapTransaction; complete: boolean; response: HolonReference; summary: HTMLElement }, preparation?: MapTransaction) => DiagnosticPresentation;
+export type MountDiagnostics = (binding: ActionBinding, client: MapClient, read: () => Promise<LoadDiagnostics>, load?: { transaction: MapTransaction; complete: boolean; response: HolonReference; summary: HTMLElement }, failure?: { transaction: MapTransaction; request: LoadRequest; message: string; retainedDiagnostics?: boolean }) => DiagnosticPresentation;
 
 /** Owns values and a separate presentation transaction; subjects remain loader-bound. */
 export class LoadDiagnosticPresentation implements DiagnosticPresentation {
@@ -30,8 +31,8 @@ export class LoadDiagnosticPresentation implements DiagnosticPresentation {
   private disposed = false;
   private generation = 0;
   private count?: number;
-  private report?: HolonReference;
-  private readonly reportRows = new Map<string, HolonReference>();
+  private requestRoot?: HolonReference;
+  private readonly requestRows = new Map<string, HolonReference>();
   private path?: Awaited<ReturnType<NonNullable<ActionBinding['presentResult']>>>;
   private readonly abort = new AbortController();
   private readonly countListeners = new Set<(count: number | undefined) => void>();
@@ -47,7 +48,7 @@ export class LoadDiagnosticPresentation implements DiagnosticPresentation {
   }
 
   constructor(private readonly binding: ActionBinding, private readonly client: MapClient,
-    private readonly read: () => Promise<LoadDiagnostics>, private readonly preparation?: MapTransaction) {
+    private readonly read: () => Promise<LoadDiagnostics>, private readonly failure?: { transaction: MapTransaction; request: LoadRequest; message: string; retainedDiagnostics?: boolean }) {
     this.element.className = 'load-diagnostics'; this.element.setAttribute('aria-label', 'Load diagnostics');
     this.element.append(this.results);
     this.pending = this.open();
@@ -60,11 +61,13 @@ export class LoadDiagnosticPresentation implements DiagnosticPresentation {
     try {
       const data = await this.read();
       if (this.disposed) return;
-      if (this.preparation && !this.report) {
-        this.report = await createParserDiagnosticReport(this.preparation, data);
-        for (const row of data.rows) if (row.reference) this.reportRows.set(row.id, row.reference);
-      } else if (this.preparation) {
-        for (const row of data.rows) row.reference = this.reportRows.get(row.id);
+      if (this.failure?.retainedDiagnostics) {
+        this.requestRoot = this.failure.request.reference;
+      } else if (this.failure && !this.requestRoot) {
+        this.requestRoot = await attachRequestDiagnostics(this.failure.transaction, this.failure.request, data);
+        for (const row of data.rows) if (row.reference) this.requestRows.set(row.id, row.reference);
+      } else if (this.failure) {
+        for (const row of data.rows) row.reference = this.requestRows.get(row.id);
       }
       if (this.disposed) return;
       const feedback = document.createElement('div'); feedback.setAttribute('role', 'status');
@@ -79,6 +82,20 @@ export class LoadDiagnosticPresentation implements DiagnosticPresentation {
       }
       await this.transaction.bindLoadTarget(this.binding.subject);
       if (this.disposed) return;
+      if (this.failure && this.requestRoot) {
+        this.results.replaceChildren(feedback);
+        this.publishCount(data.readFailures.length ? undefined : data.rows.length);
+        if (!this.path) {
+          if (!this.binding.presentResult) throw new Error('Rooted diagnostic presentation is unavailable');
+          const path = await this.binding.presentResult({ transaction: this.failure.transaction, review: this.transaction,
+            subject: this.requestRoot, signal: this.abort.signal });
+          if (this.disposed) { await path.dispose(); return; }
+          this.path = path;
+        }
+        const summary = document.createElement('p'); summary.textContent = this.failure.message;
+        this.element.replaceChildren(summary, this.results, this.path.element);
+        return;
+      }
       const parent = this.transaction.bindSavedReference(this.binding.visualizer);
       const elementType = await this.transaction.getSavedHolonByBaseKey('LoadDiagnostic.Projection');
       if (!elementType) throw new Error('LoadDiagnostic.Projection is unavailable');
@@ -93,24 +110,7 @@ export class LoadDiagnosticPresentation implements DiagnosticPresentation {
       hint.textContent = 'Select a diagnostic and press Enter, or double-click, to view details.';
       this.results.replaceChildren(feedback, ...(data.rows.length ? [hint] : []), this.collections.element);
       this.publishCount(data.readFailures.length ? undefined : data.rows.length);
-      if (this.preparation && this.report && !this.path) {
-        if (!this.binding.presentResult) throw new Error('Rooted diagnostic presentation is unavailable');
-        const summary = document.createElement('section'); summary.className = 'load-holons-result';
-        summary.textContent = 'Preparation failed';
-        const collection = document.createElement('section'); collection.className = 'load-results';
-        const label = document.createElement('div'); label.textContent = `Diagnostics (${data.rows.length})`;
-        label.hidden = data.rows.length === 0 && !data.readFailures.length;
-        collection.append(label, this.results);
-        const affordance = { kind: 'result' as const, role: 'diagnostics', label: 'Diagnostics' };
-        const path = await this.binding.presentResult({ transaction: this.preparation, review: this.transaction, subject: this.report,
-          children: new Map([['properties', summary], ['collections', collection]]), signal: this.abort.signal,
-          collections: { setBeforeChange: () => {}, sourceAffordance: source => this.results.contains(source) ? affordance : undefined,
-            close: () => {}, dispose: () => {} },
-        });
-        if (this.disposed) { await path.dispose(); return; }
-        this.path = path; this.setInspect(reference => path.inspect({ reference, source: this.results }));
-        this.element.replaceChildren(path.element);
-      }
+
     } catch (error) {
       if (this.disposed) return;
       this.results.textContent = `Diagnostics unavailable: ${loaderFailureDetail(error)}`;
@@ -136,10 +136,13 @@ export class LoadDiagnosticPresentation implements DiagnosticPresentation {
     this.abort.abort();
     await this.pending; await this.inspection;
     await this.path?.dispose();
-    if (this.transaction) {
-      const resume = await semanticWork(this.transaction).pauseAndDrain();
-      try { await this.transaction.dispose(); this.transaction = undefined; } finally { resume(); }
-    }
+    const resumeLoader = this.failure ? await semanticWork(this.failure.transaction).pauseAndDrain() : undefined;
+    try {
+      if (this.transaction) {
+        const resume = await semanticWork(this.transaction).pauseAndDrain();
+        try { await this.transaction.dispose(); this.transaction = undefined; } finally { resume(); }
+      }
+    } finally { resumeLoader?.(); }
     this.element.remove();
   }
 }

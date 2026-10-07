@@ -497,10 +497,10 @@ describe('canonical loader invocation', () => {
     vi.spyOn(tx, 'getSavedHolonByBaseKey').mockResolvedValue(descriptor as never);
     vi.spyOn(tx, 'newHolon').mockResolvedValue(invocation);
     const execute = vi.spyOn(tx, 'danceV2').mockResolvedValue(request);
-    expect(await tx.invokeLoadHolons(space, request)).toBe(request);
+    expect(await tx.invokeLoadHolons(space, request, request)).toBe(request);
     expect(withDescriptor).toHaveBeenCalledWith(descriptor);
     expect(withProperty).toHaveBeenCalledWith('DanceName', { StringValue: 'LoadHolons' });
-    expect(relate.mock.calls).toEqual([['AffordingHolon', [space]], ['Request', [request]]]);
+    expect(relate.mock.calls).toEqual([['AffordingHolon', [space]], ['Request', [request]], ['LoadRequest', [request]]]);
     expect(execute).toHaveBeenCalledWith(invocation);
   });
 

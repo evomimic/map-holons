@@ -928,7 +928,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:433086df38ce2fd7f45ec2e12096eb3d10c59c64bf97f188debcc219cb276b4d",
+        "VisualizerArtifactDigest": "sha256:cfd252151a5613a4e9e097dcf0e6cb2b22884bfc1f52cac6500010234fe7ee50",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3054,9 +3054,20 @@
           "target": [
             {
               "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "LoadHolonsResult.PropertyMapSlot"
             },
             {
-              "$ref": "LoadDiagnosticReport.Projection"
+              "$ref": "LoadHolonsResult.ActionsSlot"
+            },
+            {
+              "$ref": "LoadHolonsResult.CollectionsSlot"
             }
           ]
         },
@@ -3075,11 +3086,56 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:bac84d190fb71367206e7d15d41ae9a8f04d009363136eacb776c4541e4814f3",
+        "VisualizerArtifactDigest": "sha256:4a346279b4dc5c79d5c42db4a18c147cd0804b87b4e37b4224dff894f31b771f",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
+    },
+    {
+      "key": "LoadHolonsResult.PropertyMapSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "PropertyMapVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolonsResult.ActionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionBarVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolonsResult.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

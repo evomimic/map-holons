@@ -54,6 +54,7 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly parentVisualizer: HolonReference,
     private readonly materialized: MaterializedVisualizerRuntime,
     private readonly discovery?: NodeRelationshipDiscovery,
+    private readonly presentation: MapTransaction = transaction,
   ) {
     this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
       const selected = this.selected; const slot = this.selectedSlot; const publish = this.presentationUpdate;
@@ -161,13 +162,13 @@ export class NodeCollectionActivation implements CollectionActivation {
             }
             profile?.next('collection visualizer selection');
             stage = 'Visualizer selection';
-            const slot = await this.transaction.getSavedHolonByBaseKey(slotKey);
+            const slot = await this.presentation.getSavedHolonByBaseKey(slotKey);
             if (slot === null) throw new Error('The requested Collections slot is unavailable');
             const element = await realizeCollection(this.transaction, collection, this.parentVisualizer, slot,
               this.materialized, current, name => {
                 stage = name;
                 if (name === 'Artifact materialization') profile?.next('collection artifact materialization');
-              });
+              }, this.presentation);
             if (!element) return;
             profile?.next('collection ordering');
             stage = 'Property retrieval / presentation';

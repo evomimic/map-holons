@@ -1,4 +1,4 @@
-import { extractNumber, extractString, readParserDiagnostics,
+import { DomainError, extractNumber, extractString, readParserDiagnostics,
   type HolonReference } from '../../../dahn/deps/map-sdk';
 import type { TablePresentation } from '../../../dahn/contracts/table-presentation';
 import { loaderFailureDetail } from '../json-data-uploader/loader-result.presenter';
@@ -20,9 +20,18 @@ export interface LoadDiagnostics { rows: LoadDiagnosticRow[]; readFailures: stri
 
 /** Flatten evidence without converting diagnostic carriers into offending subjects. */
 export async function readLoadDiagnostics(response: HolonReference): Promise<LoadDiagnostics> {
+  return readDiagnostics(response, 'HasDiagnostic', true);
+}
+
+/** Read evidence retained by the admitted runtime invocation without mutating its submitted context. */
+export async function readRequestDiagnostics(request: HolonReference): Promise<LoadDiagnostics> {
+  return readDiagnostics(request, 'Diagnostics', false);
+}
+
+async function readDiagnostics(response: HolonReference, relationship: string, checkCounts: boolean): Promise<LoadDiagnostics> {
   const rows: LoadDiagnosticRow[] = [], readFailures: string[] = [];
   try {
-    const diagnostics = await response.relatedHolons('HasDiagnostic');
+    const diagnostics = await response.relatedHolons(relationship);
     for (const reference of diagnostics) {
       const read = async (name: string) => {
         try { return await reference.propertyValue(name); }
@@ -38,6 +47,7 @@ export async function readLoadDiagnostics(response: HolonReference): Promise<Loa
         location: offset === null ? null : { kind: 'byte', offset: extractNumber(offset) },
         subject: subjects.members[0] ?? null, details: null });
     }
+    if (!checkCounts) return { rows, readFailures };
     const errors = await response.propertyValue('ErrorCount');
     const violations = await response.propertyValue('ValidationViolationCount');
     if (errors === null || violations === null) throw new Error('Diagnostic counts are unavailable');
@@ -79,4 +89,16 @@ export function diagnosticPresentation(rows: readonly LoadDiagnosticRow[]): Tabl
     defaultRowOrder: order.map(({ row }) => row.id), defaultOrderLabel: 'Source path → coordinate representation → numeric location',
     missingValueLabel: 'Not available', columns: fields.map(([id, displayName, value]) => ({ id, displayName, valueType: 'StringValue',
       values: rows.map(row => { const cell = value(row); return cell === null ? null : { StringValue: cell }; }) })) };
+}
+
+/** Preserve a non-parser failure as a diagnostic even when no response was returned. */
+export function failureLoadDiagnostics(error: unknown, category: string): LoadDiagnostics {
+  const parsed = parserLoadDiagnostics(error);
+  if (parsed.rows.length) return parsed;
+  const structured = error instanceof DomainError
+    ? { variant: error.variant, payload: error.payload }
+    : error instanceof Error ? { name: error.name, message: error.message } : error;
+  return { rows: [{ id: 'failure', category, message: loaderFailureDetail(error), filename: null,
+    subjectKey: null, location: null, subject: null, details: { sourceError: structured ?? null } }],
+    readFailures: parsed.readFailures };
 }

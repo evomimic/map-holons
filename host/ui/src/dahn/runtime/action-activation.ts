@@ -14,7 +14,8 @@ export interface ActionBinding {
   readonly mountPresentation?: (element: HTMLElement, owner: ActionInteraction) => { focus(): void; remove(): void };
   readonly presentResult?: (request: {
     transaction: MapTransaction; review: MapTransaction; subject: HolonReference;
-    children: Map<string, HTMLElement>; collections: RealizedNode['collectionActivation']; signal: AbortSignal;
+    contextFor?: (subject: HolonReference) => MapTransaction;
+    children?: Map<string, HTMLElement>; collections?: RealizedNode['collectionActivation']; signal: AbortSignal;
   }) => Promise<ExplorationPresentation & { inspect(intent: InspectHolonIntent): void }>;
   readonly refreshAfterPersistence?: () => void;
 }

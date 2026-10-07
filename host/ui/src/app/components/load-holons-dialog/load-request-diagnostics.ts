@@ -1,14 +1,10 @@
 import type { HolonReference, MapTransaction } from '../../../dahn/deps/map-sdk';
+import type { LoadRequest } from './load-request-holons';
 import type { LoadDiagnostics } from './load-diagnostics';
 
-/** Preparation is still open: reports and their evidence share the loader context. */
-export async function createParserDiagnosticReport(transaction: MapTransaction, data: LoadDiagnostics): Promise<HolonReference> {
-  const diagnosticType = await transaction.getSavedHolonByBaseKey('LoadDiagnostic.Projection');
-  const reportType = await transaction.getSavedHolonByBaseKey('LoadDiagnosticReport.Projection');
-  if (!diagnosticType || !reportType) throw new Error('Diagnostic presentation descriptors are unavailable');
-  const report = await transaction.newHolon(`load-diagnostic-report-${crypto.randomUUID()}`);
-  await report.withDescriptor(reportType);
-  await report.withPropertyValue('Message', { StringValue: 'Preparation failed' });
+/** Attach failure evidence to the retained request in its original loader context. */
+export async function attachRequestDiagnostics(transaction: MapTransaction, request: LoadRequest, data: LoadDiagnostics): Promise<HolonReference> {
+  const { diagnosticType, evidenceType } = request;
   const diagnostics: HolonReference[] = [];
   for (const row of data.rows) {
     const diagnostic = await transaction.newHolon(`load-diagnostic-${crypto.randomUUID()}`);
@@ -25,15 +21,13 @@ export async function createParserDiagnosticReport(transaction: MapTransaction, 
       await diagnostic.withPropertyValue('SourceColumn', { IntegerValue: row.location.column });
     }
     if (details?.sourceError != null) {
-      const evidenceType = await transaction.getSavedHolonByBaseKey('DiagnosticEvidenceValue.Projection');
-      if (!evidenceType) throw new Error('Diagnostic evidence descriptor is unavailable');
       await diagnostic.addRelatedHolons('SourceError', [await createEvidenceValue(transaction, evidenceType, details.sourceError)]);
     }
     row.reference = diagnostic;
     diagnostics.push(diagnostic);
   }
-  await report.addRelatedHolons('Diagnostics', diagnostics);
-  return report;
+  await request.reference.addRelatedHolons('Diagnostics', diagnostics);
+  return request.reference;
 }
 
 /** Preserve transport error structure as navigable values, including empty containers and null. */

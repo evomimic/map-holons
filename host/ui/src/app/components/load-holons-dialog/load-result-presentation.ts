@@ -1,6 +1,6 @@
 import type { HolonReference } from '../../../dahn/deps';
 import type { CollectionAffordance } from '../../../dahn/contracts/affordances';
-import type { CommittedHolonsReview, MapTransaction } from '../../../dahn/deps/map-sdk';
+import { MapClient, type CommittedHolonsReview, type MapTransaction } from '../../../dahn/deps/map-sdk';
 import type { ActionBinding } from '../../../dahn/runtime/action-activation';
 import { ActionResultCollections } from '../../../dahn/runtime/action-result-collections';
 import { MaterializedVisualizerCache } from '../../../dahn/runtime/materialized-visualizer-cache';
@@ -15,6 +15,7 @@ export class LoadResultPresentation implements DiagnosticPresentation {
   private readonly saved = document.createElement('section');
   private readonly controls = document.createElement('div');
   private readonly empty = document.createElement('p');
+  private presentation?: MapTransaction;
   private review?: CommittedHolonsReview;
   private collection?: ActionResultCollections;
   private readonly abort = new AbortController();
@@ -30,7 +31,7 @@ export class LoadResultPresentation implements DiagnosticPresentation {
   private readonly committedAffordance: CollectionAffordance = { kind: 'result', role: 'committed', label: 'Committed holons' };
 
   constructor(private readonly binding: ActionBinding, private readonly diagnostics: DiagnosticPresentation,
-    private readonly loader: MapTransaction, complete: boolean, private readonly root: { response: HolonReference; summary: HTMLElement }) {
+    private readonly loader: MapTransaction, complete: boolean, private readonly root: { response: HolonReference; summary: HTMLElement }, private readonly client = new MapClient()) {
     diagnostics.setInspect?.(reference => this.path?.inspect({ reference, source: diagnostics.element }));
     this.element.className = 'load-results';
     this.controls.setAttribute('role', 'tablist'); this.controls.setAttribute('aria-label', 'Load result views');
@@ -72,16 +73,50 @@ export class LoadResultPresentation implements DiagnosticPresentation {
     this.controls.hidden = !role; this.empty.hidden = !!role;
   }
 
+  /** Root navigation does not depend on committed membership or saved-member reads. */
+  private async ensurePath(): Promise<void> {
+    if (!this.presentation) {
+      this.presentation = await this.client.beginTransaction();
+      if (this.disposed) return;
+    }
+    if (this.disposed) return;
+    await this.presentation!.bindLoadTarget(this.binding.subject);
+    if (this.disposed) return;
+    if (!this.path) {
+      if (!this.binding.presentResult) throw new Error('Rooted result presentation is unavailable');
+      const collections = document.createElement('section'); collections.className = 'load-results';
+      collections.append(this.controls, this.diagnostics.element, this.saved, this.empty);
+      const path = await this.binding.presentResult({
+        transaction: this.loader, review: this.presentation!, subject: this.root.response,
+        children: new Map([['properties', this.root.summary], ['collections', collections]]),
+        contextFor: reference => this.loader.owns(reference) ? this.loader
+          : this.review?.transaction.owns(reference) ? this.review.transaction : this.presentation!,
+        collections: {
+          setBeforeChange: handler => { this.beforeChange = handler; },
+          sourceAffordance: source => this.active === 'committed' && this.saved.contains(source) ? this.committedAffordance
+            : this.active === 'diagnostics' && this.diagnostics.element.contains(source) ? this.diagnosticAffordance : undefined,
+          close: () => { this.show('diagnostics'); },
+          dispose: () => { this.beforeChange = undefined; },
+        }, signal: this.abort.signal,
+      });
+      if (this.disposed) { await path.dispose(); return; }
+      this.path = path; this.element.className = 'load-result-path';
+      this.element.replaceChildren(path.element);
+    }
+  }
+
   private async open(): Promise<void> {
     this.saved.textContent = 'Reading committed holons…';
     try {
+      await this.ensurePath();
+      if (this.disposed) return;
       this.review ??= await this.loader.openCommittedReview();
       if (this.disposed) return;
       const entries = await this.review.readMembers();
       if (this.disposed) return;
       this.counts.set('committed', entries.length); this.show(this.active);
       const transaction = this.review.transaction;
-      const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache(new SdkVisualizerMaterializer(transaction)));
+      const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache(new SdkVisualizerMaterializer(this.presentation!)));
       // Membership and activation references come from the review. Per-member read
       // failures are values here, so one unavailable member cannot hide its peers.
       const elementType = await transaction.getSavedHolonByBaseKey('HolonType.TypeDescriptor');
@@ -99,25 +134,6 @@ export class LoadResultPresentation implements DiagnosticPresentation {
           activate: id => { const entry = entries[Number(id)]; if (entry) this.inspect(entry.reference); },
         } }], { cssCustomProperties: {} }, () => {});
       this.saved.replaceChildren(this.collection.element);
-      if (!this.path) {
-        if (!this.binding.presentResult) throw new Error('Rooted result presentation is unavailable');
-        const collections = document.createElement('section'); collections.className = 'load-results';
-        collections.append(this.controls, this.diagnostics.element, this.saved, this.empty);
-        const path = await this.binding.presentResult({
-          transaction: this.loader, review: transaction, subject: this.root.response,
-          children: new Map([['properties', this.root.summary], ['collections', collections]]),
-          collections: {
-            setBeforeChange: handler => { this.beforeChange = handler; },
-            sourceAffordance: source => this.active === 'committed' && this.saved.contains(source) ? this.committedAffordance
-              : this.active === 'diagnostics' && this.diagnostics.element.contains(source) ? this.diagnosticAffordance : undefined,
-            close: () => { this.show('diagnostics'); },
-            dispose: () => { this.beforeChange = undefined; },
-          }, signal: this.abort.signal,
-        });
-        if (this.disposed) { await path.dispose(); return; }
-        this.path = path; this.element.className = 'load-result-path';
-        this.element.replaceChildren(path.element);
-      }
       if (entries.some(entry => entry.failures.length)) {
         this.retry(this.saved, () => { this.pending = this.refreshReads(); });
       }
@@ -159,10 +175,19 @@ export class LoadResultPresentation implements DiagnosticPresentation {
     this.disposed = true; this.unsubscribeCount?.(); this.abort.abort();
     await this.pending;
     await this.path?.dispose(); this.collection?.dispose();
-    if (this.review) {
-      const resume = await semanticWork(this.review.transaction).pauseAndDrain();
-      try { await this.review.dispose(); } finally { resume(); }
-    }
-    await this.diagnostics.dispose(); this.element.remove();
+    // Loader-owned descendants may await the open presentation materializer.
+    // Drain their scheduler before releasing any context they can still use.
+    const resumeLoader = await semanticWork(this.loader).pauseAndDrain();
+    try {
+      if (this.review) {
+        const resume = await semanticWork(this.review.transaction).pauseAndDrain();
+        try { await this.review.dispose(); } finally { resume(); }
+      }
+      if (this.presentation) {
+        const resume = await semanticWork(this.presentation).pauseAndDrain();
+        try { await this.presentation.dispose(); } finally { resume(); }
+      }
+      await this.diagnostics.dispose(); this.element.remove();
+    } finally { resumeLoader(); }
   }
 }

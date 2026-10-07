@@ -3,7 +3,7 @@ const { select, selectCollection } = vi.hoisted(() => ({ select: vi.fn(), select
 vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection }));
 import { createMapTransaction } from '../../src/sdk/transaction';
 import { createHolonReference, unwrapHolonReference } from '../../src/sdk/references';
-import { createPropertyDescriptorHandle } from '../../src/sdk/descriptors';
+import { createPropertyDescriptorHandle, createHolonDescriptorHandle } from '../../src/sdk/descriptors';
 import type { HolonReferenceWire } from '../../src/internal/wire-types';
 
 const wire = (id: string): HolonReferenceWire => ({ Transient: { tx_id: 41, id } });
@@ -46,4 +46,13 @@ it('selects projected values by their declared type through the ordinary Collect
 });
 it('refuses to move transaction-local diagnostic subjects into a presentation transaction', () => {
   expect(() => createMapTransaction(42).bindSavedReference(createHolonReference(41, subject))).toThrow('persisted Smart');
+});
+
+it('selects retained collection types in a fresh context without sending loader-bound membership', async () => {
+  const typeWire: HolonReferenceWire = { Smart: { holon_id: { Local: [8] }, smart_property_values: null } };
+  const elementType = createHolonDescriptorHandle(createHolonReference(41, typeWire));
+  selectCollection.mockResolvedValue({ selected, requested_kind: 'Collection', alternatives_available: false });
+  await createMapTransaction(42).selectProjectedCollectionVisualizer(elementType, createHolonReference(42, parent), createHolonReference(42, slot));
+  expect(selectCollection).toHaveBeenLastCalledWith(42, { collection: { element_type: typeWire,
+    members: { state: 'Fetched', members: [], keyed_index: {} } }, parent_visualizer: parent, slot });
 });

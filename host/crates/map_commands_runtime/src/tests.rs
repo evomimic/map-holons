@@ -1269,6 +1269,21 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
     let runtime = build_test_runtime();
     let tx_id = begin_tx(&runtime).await;
     let context = runtime.session().get_transaction(&tx_id)?;
+    for name in [
+        "HolonLoadSet",
+        "HolonLoaderBundle",
+        "LoaderHolon",
+        "LoaderRelationshipReference",
+        "LoaderHolonReference",
+    ] {
+        let mut descriptor =
+            context.mutation().new_holon(Some(format!("{name}.HolonType").into()))?;
+        descriptor.with_property_value("TypeName", name)?;
+        descriptor.with_property_value("IsAbstractType", false)?;
+        context.mutation().stage_new_holon(descriptor)?;
+    }
+    let initial_staged_count = context.lookup().staged_count()?;
+
     let contents = ContentSet { files_to_load: vec![
         FileData { filename: "/one/import.json".into(), raw_contents: r#"{ "holons": [
             {"key":"a", "properties":{"Name":"é exact"}, "relationships":[{"name":"Next","target":{"$ref":"b"}}]}
@@ -1288,7 +1303,7 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
         )
         .await
         .is_err());
-    assert_eq!(context.lookup().staged_count()?, 0);
+    assert_eq!(context.lookup().staged_count()?, initial_staged_count);
     assert!(context.is_open());
     let mut requests = Vec::new();
     for _ in 0..2 {
@@ -1302,9 +1317,14 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
             )
             .await?;
         let MapResult::Reference(request) = result else { panic!("expected request reference") };
+        assert_eq!(request.holon_descriptor()?.header().type_name()?.to_string(), "HolonLoadSet");
         let bundles = request.related_holons("Contains")?.read().unwrap().get_members().clone();
         assert_eq!(bundles.len(), 2);
         for (bundle, file) in bundles.iter().zip(&contents.files_to_load) {
+            assert_eq!(
+                bundle.holon_descriptor()?.header().type_name()?.to_string(),
+                "HolonLoaderBundle"
+            );
             assert_eq!(
                 bundle.property_value("Filename")?,
                 Some(BaseValue::StringValue(file.filename.clone().into()))
@@ -1312,6 +1332,10 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
             let members =
                 bundle.related_holons("BundleMembers")?.read().unwrap().get_members().clone();
             assert_eq!(members.len(), 1);
+            assert_eq!(
+                members[0].holon_descriptor()?.header().type_name()?.to_string(),
+                "LoaderHolon"
+            );
             let offset = file.raw_contents.find("{\"key\"").unwrap() as i64;
             assert_eq!(
                 members[0].property_value("StartUtf8ByteOffset")?,
@@ -1328,6 +1352,10 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
                     .unwrap()
                     .get_members()
                     .clone();
+                assert_eq!(
+                    links[0].holon_descriptor()?.header().type_name()?.to_string(),
+                    "LoaderRelationshipReference"
+                );
                 let targets = links[0]
                     .related_holons("ReferenceTarget")?
                     .read()
@@ -1335,12 +1363,16 @@ async fn preparation_builds_isolated_transient_graphs_without_execution() -> Res
                     .get_members()
                     .clone();
                 assert_eq!(
+                    targets[0].holon_descriptor()?.header().type_name()?.to_string(),
+                    "LoaderHolonReference"
+                );
+                assert_eq!(
                     targets[0].property_value("HolonKey")?,
                     Some(BaseValue::StringValue("b".into()))
                 );
             }
         }
-        assert_eq!(context.lookup().staged_count()?, 0);
+        assert_eq!(context.lookup().staged_count()?, initial_staged_count);
         assert!(context.is_open());
         requests.push(request);
     }
@@ -1468,5 +1500,100 @@ async fn committed_membership_is_identity_only_and_transaction_local() -> Result
         )
         .await?;
     assert!(runtime.session().get_transaction(&tx_id).is_err());
+    Ok(())
+}
+
+/// The admitted operation can finish transient evidence after submission; subsequent client writes cannot.
+#[tokio::test]
+async fn retained_load_request_completion_preserves_submission_guard() -> Result<(), HolonError> {
+    use crate::load_request_completion::LoadRequestCompletion;
+    use holons_core::{dances::DanceInvocation, ReadableHolon};
+    for succeeds in [false, true] {
+        let runtime = build_test_runtime();
+        let tx_id = begin_tx(&runtime).await;
+        let context = runtime.session().get_transaction(&tx_id)?;
+        for key in ["LoadDiagnostic.Projection", "DiagnosticEvidenceValue.Projection"] {
+            let descriptor = context.mutation().new_holon(Some(key.into()))?;
+            context.mutation().stage_new_holon(descriptor)?;
+        }
+        let mut invocation_type = context.mutation().new_holon(Some(
+            format!("completion-test-{}", context.lookup().transient_count()?).into(),
+        ))?;
+        invocation_type.with_property_value("TypeName", "DanceInvocation")?;
+        invocation_type.with_property_value("IsAbstractType", false)?;
+        let mut invocation = context.mutation().new_holon(Some(
+            format!("completion-test-{}", context.lookup().transient_count()?).into(),
+        ))?;
+        invocation.with_descriptor(invocation_type.into())?;
+        let mut request_type = context.mutation().new_holon(Some("request-type".into()))?;
+        request_type.with_property_value("TypeName", "LoadRequest")?;
+        request_type.with_property_value("IsAbstractType", false)?;
+        let mut request: HolonReference = context
+            .mutation()
+            .new_holon(Some(
+                format!("completion-test-{}", context.lookup().transient_count()?).into(),
+            ))?
+            .into();
+        request.with_descriptor(request_type.into())?;
+        let prepared: HolonReference = context
+            .mutation()
+            .new_holon(Some(
+                format!("completion-test-{}", context.lookup().transient_count()?).into(),
+            ))?
+            .into();
+        invocation.add_related_holons("LoadRequest", vec![request.clone()])?;
+        let invocation = DanceInvocation::new(invocation.into())?;
+        let mut completion = LoadRequestCompletion::from_invocation(&context, &invocation)?
+            .expect("retained request");
+        let admission = runtime.session().admission(tx_id)?;
+        admission.prepared(prepared.clone())?;
+        let lease = admission.enter(true)?;
+        admission.submit(&prepared)?;
+        assert!(admission.enter(true).is_err());
+        if succeeds {
+            let response: HolonReference = context.commit()?.into();
+            completion.responded(response.clone())?;
+            assert_eq!(
+                response.related_holons("LoadRequest")?.read().unwrap().get_members(),
+                &vec![request.clone()]
+            );
+            assert_eq!(
+                request.related_holons("LoadResponse")?.read().unwrap().get_members(),
+                &vec![response]
+            );
+            assert_eq!(
+                request.property_value("LoadRequestStatus")?,
+                Some(BaseValue::StringValue("Responded".into()))
+            );
+        } else {
+            let error = HolonError::InvalidState("guest failed".into());
+            completion.failed(&context, &error)?;
+            assert_eq!(
+                request.property_value("LoadRequestStatus")?,
+                Some(BaseValue::StringValue("InvocationFailed".into()))
+            );
+            let diagnostics =
+                request.related_holons("Diagnostics")?.read().unwrap().get_members().clone();
+            assert_eq!(diagnostics.len(), 1);
+            assert_eq!(
+                diagnostics[0].property_value("Message")?,
+                Some(BaseValue::StringValue(error.to_string().into()))
+            );
+            let evidence =
+                diagnostics[0].related_holons("SourceError")?.read().unwrap().get_members().clone();
+            assert_eq!(evidence.len(), 1);
+            assert_eq!(
+                evidence[0].property_value("EvidenceValueKind")?,
+                Some(BaseValue::StringValue("object".into()))
+            );
+            assert_eq!(
+                evidence[0].related_holons("EvidenceMembers")?.read().unwrap().get_members().len(),
+                1
+            );
+        }
+        drop(lease);
+        assert!(admission.enter(true).is_err());
+        assert!(admission.enter(false).is_ok());
+    }
     Ok(())
 }

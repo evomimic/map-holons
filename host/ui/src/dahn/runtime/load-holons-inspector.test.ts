@@ -54,3 +54,67 @@ it('integrates occurrence controls in one header and retains the rail during ver
   expect(node.body.hidden).toBe(true);
   node.remove();
 });
+
+it('composes response properties and ordinary collection traversal without supplied result content', () => {
+  const node = document.createElement('test-loader-node-inspector') as any;
+  const properties = document.createElement('div'); properties.textContent = 'InvocationFailed';
+  const diagnostics = { kind: 'relationship', label: 'Diagnostics' };
+  const memberCollection = document.createElement('section'); memberCollection.textContent = 'Retained failure';
+  const activate = vi.fn((_affordance, slot, publish) => {
+    expect(slot).toBe('LoadHolonsResult.CollectionsSlot');
+    publish({ state: 'loaded', content: memberCollection });
+  });
+  node.setContext({ title: 'Load Response', childVisualizers: new Map([['properties', properties]]),
+    nodeAffordances: { singularRelationships: [], collections: [diagnostics] }, collectionActivation: { activate } });
+  document.body.append(node);
+  expect(Inspector.compositionSlots.propertyMap).toBe('LoadHolonsResult.PropertyMapSlot');
+  node.querySelector('[role="tab"]').click();
+  expect(activate).toHaveBeenCalledOnce();
+  expect(properties.isConnected).toBe(true);
+  expect(memberCollection.isConnected).toBe(true);
+  node.remove();
+});
+
+it('grants the shipped PropertyMap a bounded height and updates it when content reports its extent', async () => {
+  const propertiesSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/properties.js'), 'utf8');
+  const { default: Properties } = await import(`data:text/javascript;base64,${Buffer.from(propertiesSource).toString('base64')}`);
+  customElements.define('test-loader-response-properties', Properties);
+  const properties = document.createElement('test-loader-response-properties') as any;
+  const status = document.createElement('div'); status.textContent = 'LoadCommitStatus: Complete';
+  properties.setContext({ childVisualizers: new Map([['LoadCommitStatus', status]]) });
+  const node = document.createElement('test-loader-node-inspector') as any;
+  node.setContext({ title: 'Load Response', childVisualizers: new Map([['properties', properties]]), nodeAffordances: {} });
+  node.setNodeInspectorAllocation({ horizontal: 'full-width', vertical: 'full-height', width: 800, height: 600 });
+  expect(parseFloat(node.properties.style.height)).toBeGreaterThan(0);
+  expect(parseFloat(node.properties.style.height)).toBeLessThan(600);
+  properties.preferredContentHeight = 92;
+  properties.dispatchEvent(new CustomEvent('dahn-content-extent-changed', { bubbles: true }));
+  expect(node.properties.style.height).toBe('92px');
+  node.setNodeInspectorAllocation({ horizontal: 'full-width', vertical: 'partial-height', width: 800, height: 300 });
+  expect(node.properties.hidden).toBe(true);
+  node.setNodeInspectorAllocation({ horizontal: 'full-width', vertical: 'full-height', width: 800, height: 600 });
+  expect(node.properties.style.height).toBe('92px');
+});
+
+it('hides verified-empty response diagnostics, reports known counts, and retains discovery failure retries', () => {
+  const node = document.createElement('test-loader-node-inspector') as any;
+  const diagnostics = { kind: 'relationship', label: 'Diagnostics' };
+  let population: any = { state: 'pending' }, refresh!: () => void;
+  const retry = vi.fn(), activate = vi.fn();
+  node.setContext({ title: 'Load Response', nodeAffordances: { collections: [diagnostics] }, collectionActivation: { activate },
+    relationshipDiscovery: { population: () => population, subscribe: (listener: () => void) => { refresh = listener; listener(); return () => {}; }, retry } });
+  const tab = node.querySelector('[role="tab"]');
+  expect(tab.disabled).toBe(true);
+  population = { state: 'empty', count: 0 }; refresh();
+  expect(tab.hidden).toBe(true);
+  expect(node.collectionsExpand.hidden).toBe(true);
+  expect(getComputedStyle(node.collectionsExpand).display).toBe('none');
+  population = { state: 'populated', count: 2 }; refresh();
+  expect(tab.hidden).toBe(false); expect(tab.disabled).toBe(false);
+  expect(tab.textContent).toBe('Diagnostics (2)');
+  population = { state: 'failed', message: 'read denied' }; refresh();
+  expect(node.textContent).toContain('read denied');
+  [...node.querySelectorAll('button')].find((button: any) => button.textContent === 'Retry Diagnostics').click();
+  expect(retry).toHaveBeenCalledWith(diagnostics);
+  expect(activate).not.toHaveBeenCalled();
+});

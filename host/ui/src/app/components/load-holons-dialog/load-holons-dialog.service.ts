@@ -1,7 +1,8 @@
+import { createLoadRequest, type LoadRequest } from './load-request-holons';
 import { semanticWork } from '../../../dahn/runtime/semantic-work';
 import { LoadResultPresentation } from './load-result-presentation';
 import { LoadDiagnosticPresentation, type DiagnosticPresentation, type MountDiagnostics } from './load-diagnostic-presentation';
-import { readLoadDiagnostics, parserLoadDiagnostics } from './load-diagnostics';
+import { readLoadDiagnostics, readRequestDiagnostics, failureLoadDiagnostics } from './load-diagnostics';
 import { ApplicationRef, EnvironmentInjector, Injectable, createComponent, inject } from '@angular/core';
 import { MapClient, type ContentSet, type HolonReference, type MapTransaction } from '../../../dahn/deps/map-sdk';
 import type { ActionBinding, ActionInteraction, ActionInteractions } from '../../../dahn/runtime/action-activation';
@@ -72,9 +73,9 @@ export class LoadHolonsDialog implements ActionInteraction {
 
   constructor(private readonly binding: ActionBinding, private readonly client: MapClient,
     private readonly sources: NativeLoaderSourceAdapter, private readonly mountReview: MountReview,
-    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read, load, preparation) => {
-      const diagnostics = new LoadDiagnosticPresentation(binding, client, read, preparation);
-      return load ? new LoadResultPresentation(binding, diagnostics, load.transaction, load.complete, { response: load.response, summary: load.summary }) : diagnostics;
+    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read, load, failure) => {
+      const diagnostics = new LoadDiagnosticPresentation(binding, client, read, failure);
+      return load ? new LoadResultPresentation(binding, diagnostics, load.transaction, load.complete, { response: load.response, summary: load.summary }, client) : diagnostics;
     }) {
     this.dialog = document.createElement(binding.mountPresentation ? 'section' : 'dialog');
     this.dialog.setAttribute('aria-label', binding.label);
@@ -209,6 +210,7 @@ export class LoadHolonsDialog implements ActionInteraction {
     };
     update(); this.elapsed = setInterval(update, 1000);
     let invoked = false;
+    let retainedRequest: LoadRequest | undefined;
     try {
       if (previousDiagnostics) {
         try { await previousDiagnostics.dispose(); }
@@ -221,14 +223,19 @@ export class LoadHolonsDialog implements ActionInteraction {
         }
       }
       const preparationStarted = Date.now();
+      retainedRequest = await createLoadRequest(this.transaction, content);
       const request = await this.transaction.prepareHolons(content);
+      await retainedRequest.reference.addRelatedHolons('PreparedLoadSet', [request]);
+      await retainedRequest.reference.withPropertyValue('LoadRequestStatus', { StringValue: 'Prepared' });
       if (!this.current(generation)) return;
       parsing.textContent = `Parse and prepare files — complete (${((Date.now() - preparationStarted) / 1000).toFixed(1)}s)`;
       parsing.removeAttribute('aria-current');
       execution.textContent = 'Execute Load Holons — in progress'; execution.setAttribute('aria-current', 'step');
       message.textContent = 'Load initiated. Waiting for the guest response; internal progress is not available.';
-      phase = 'Executing Load Holons'; update(); invoked = true;
-      const response = await this.transaction.invokeLoadHolons(this.target, request);
+      phase = 'Executing Load Holons'; update();
+      await retainedRequest.reference.withPropertyValue('LoadRequestStatus', { StringValue: 'Invoking' });
+      invoked = true;
+      const response = await this.transaction.invokeLoadHolons(this.target, request, retainedRequest.reference);
       this.response = response;
       execution.textContent = 'Execute Load Holons — response received'; execution.removeAttribute('aria-current');
       responseStep.textContent = 'Read load result — in progress'; responseStep.setAttribute('aria-current', 'step');
@@ -276,13 +283,26 @@ export class LoadHolonsDialog implements ActionInteraction {
       if (!invoked) {
         this.content.replaceChildren(...reviewNodes);
         this.mountedReview?.resume();
-        this.diagnostics = this.mountDiagnostics(this.binding, this.client, async () => parserLoadDiagnostics(error), undefined, this.transaction);
-        this.content.prepend(this.diagnostics.element);
+        if (retainedRequest) {
+          await retainedRequest.reference.withPropertyValue('LoadRequestStatus', { StringValue: 'PreparationFailed' });
+          await retainedRequest.reference.withPropertyValue('Message', { StringValue: loaderFailureDetail(error) });
+          this.diagnostics = this.mountDiagnostics(this.binding, this.client, async () => failureLoadDiagnostics(error, 'Preparation failure'), undefined,
+            { transaction: this.transaction, request: retainedRequest, message: `Preparation failed: ${loaderFailureDetail(error)}` });
+        }
+        if (this.diagnostics) this.content.prepend(this.diagnostics.element);
         this.dialog.focus();
         phase = `Preparation failed: ${loaderFailureDetail(error)}`;
       } else {
-        this.mountedReview?.dispose(); this.mountedReview = undefined;
-        this.content.textContent = `No usable response was received. ${loaderFailureDetail(error)}`;
+        // Submission admission is terminal after invocation; retained review is inspection only.
+        this.content.replaceChildren(...reviewNodes);
+        if (retainedRequest && !this.response) {
+          this.diagnostics = this.mountDiagnostics(this.binding, this.client, async () => readRequestDiagnostics(retainedRequest!.reference), undefined,
+            { transaction: this.transaction, request: retainedRequest, message: `No usable response was received. ${loaderFailureDetail(error)}`, retainedDiagnostics: true });
+          this.content.prepend(this.diagnostics.element);
+        } else {
+          const failure = document.createElement('p'); failure.textContent = `Result presentation failed: ${loaderFailureDetail(error)}`;
+          this.content.prepend(failure);
+        }
         this.closeButton.parentElement!.hidden = false;
         this.terminal = true; this.closeButton.textContent = 'Close'; phase = 'Invocation failed';
       }

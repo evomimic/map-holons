@@ -95,7 +95,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "0f6f335f5c135fc4cf505b3d9ac7bc66cbe9fbebbb6bf794ca2c477aa67881e5"
+      "sha256": "a0c25f2e93d8f5eb324aaa84167aa8a20baed59d28f83d50c8d5259fdb382939"
     },
     {
       "path": "imports/dancer/schema.json",
@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "2a4f720449c2e245d19ed874e9c06f6db1974d094e320f7e1cfb386c41ed107c"
+      "sha256": "d72d3df9e121c8b4fa7665345acebe7d5a197fe56a15fa8c56f964c8dff624d3"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -189,6 +189,10 @@
     },
     {
       "key": "(DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[LoadRequest]->(LoadRequest.Projection)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -356,8 +360,20 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(HolonLoadResponse.DanceResponseType)-[LoadRequest]->(LoadRequest.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[ResponseFor]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonLoadSet.HolonType)-[PreparedFor]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)",
@@ -508,7 +524,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(LoadDiagnostic.Projection)-[DiagnosticsOf]->(LoadDiagnosticReport.Projection)",
+      "key": "(LoadDiagnostic.Projection)-[DiagnosticsForRequest]->(LoadRequest.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -520,8 +536,40 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(LoadDiagnosticReport.Projection)-[Diagnostics]->(LoadDiagnostic.Projection)",
+      "key": "(LoadRequest.Projection)-[Diagnostics]->(LoadDiagnostic.Projection)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadRequest.Projection)-[LoadResponse]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadRequest.Projection)-[PreparedLoadSet]->(HolonLoadSet.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadRequest.Projection)-[RequestForInvocation]->(DanceInvocation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadRequest.Projection)-[RequestForResponse]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadRequest.Projection)-[SubmittedSources]->(LoadSourceSet.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadSource.Projection)-[SourceIn]->(LoadSourceSet.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadSourceSet.Projection)-[Sources]->(LoadSource.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadSourceSet.Projection)-[SubmittedFor]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(LoadValidationSource.Projection)-[ValidationSourceForLoad]->(HolonLoadResponse.DanceResponseType)",
@@ -2448,10 +2496,6 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
-      "key": "LoadDiagnosticReport.Projection",
-      "type": "MetaHolonType.MetaTypeDescriptor"
-    },
-    {
       "key": "LoadHolons.ActionVisualizer",
       "type": "ActionVisualizer.HolonType"
     },
@@ -2486,6 +2530,34 @@
     {
       "key": "LoadHolonsInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "LoadHolonsResult.ActionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "LoadHolonsResult.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "LoadHolonsResult.PropertyMapSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "LoadRequest.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadRequestStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadSource.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadSourceSet.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "LoadValidationSource.Projection",
@@ -3245,6 +3317,10 @@
     },
     {
       "key": "SourceColumn.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SourceContents.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {

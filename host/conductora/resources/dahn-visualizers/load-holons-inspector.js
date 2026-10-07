@@ -1,5 +1,15 @@
 /** Specialized properties and result collections within ordinary Node allocation. */
 export default class LoadHolonsInspector extends HTMLElement {
+  constructor() {
+    super();
+    this.addEventListener('dahn-content-extent-changed', event => {
+      if (event.target !== this.propertyVisualizer) return;
+      event.stopPropagation();
+      this.setNodeInspectorAllocation(this.allocation);
+      this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
+    });
+  }
+  static compositionSlots = { propertyMap: 'LoadHolonsResult.PropertyMapSlot', action: 'LoadHolonsResult.ActionsSlot' };
   setContext(context) {
     this.unsubscribe?.();
     this.style.cssText = 'display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-panel-corner-radius);background:var(--dahn-canvas-surface-background);color:var(--dahn-canvas-text-color);';
@@ -34,7 +44,8 @@ export default class LoadHolonsInspector extends HTMLElement {
     }
     this.properties = document.createElement('section');
     this.properties.style.cssText = 'min-width:0;min-height:0;overflow:auto;flex:0 1 auto;';
-    const properties = context.childVisualizers?.get('properties'); if (properties) this.properties.append(properties);
+    const properties = this.propertyVisualizer = context.childVisualizers?.get('properties');
+    if (properties) this.properties.append(properties);
 
     this.collections = document.createElement('section');
     this.collections.style.cssText = 'min-width:0;min-height:0;overflow:auto;flex:1 1 auto;';
@@ -44,17 +55,72 @@ export default class LoadHolonsInspector extends HTMLElement {
     });
     this.collectionsExpand.style.cssText += 'display:block;margin-left:auto;min-height:28px;';
     this.collections.append(this.collectionsExpand);
-    const collections = context.childVisualizers?.get('collections'); if (collections) {
+    this.collectionControls = new Map();
+    this.discoveryStatus = document.createElement('div'); this.discoveryStatus.setAttribute('role', 'status');
+    this.collections.append(this.discoveryStatus);
+    let collections = context.childVisualizers?.get('collections');
+    if (!collections && context.collectionActivation && context.nodeAffordances?.collections?.length) {
+      collections = document.createElement('section');
+      collections.style.cssText = 'display:flex;flex-direction:column;min-height:0;overflow:hidden;';
+      const tabs = document.createElement('div'); tabs.setAttribute('role', 'tablist');
+      const viewer = document.createElement('section'); viewer.style.cssText = 'flex:1 1 0;min-height:0;overflow:auto;';
+      for (const affordance of context.nodeAffordances.collections) {
+        const tab = document.createElement('button'); tab.type = 'button'; tab.textContent = affordance.label;
+        tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false');
+        tab.addEventListener('click', () => context.collectionActivation.activate(affordance, 'LoadHolonsResult.CollectionsSlot', update => {
+          this.activeCollection = affordance;
+          for (const button of tabs.children) button.setAttribute('aria-selected', String(button === tab));
+          if (update.content) viewer.replaceChildren(update.content);
+          else {
+            viewer.textContent = update.message || (update.state === 'unresolved' ? '' : 'No targets.');
+            if (update.retry) viewer.append(control('Retry collection', 'Retry', update.retry));
+          }
+        }));
+        this.collectionControls.set(affordance, tab); tabs.append(tab);
+      }
+      this.collectionViewer = viewer;
+      collections.append(tabs, viewer);
+    }
+    if (collections) {
       collections.style.flex = '1 1 0'; collections.style.minHeight = '0'; collections.style.height = 'auto';
       this.collections.append(collections);
     }
-    this.collectionsExpand.hidden = !collections;
+    this.hasCollections = !!collections;
+    this.collectionsExpand.hidden = !this.hasCollections;
+    this.collectionsExpand.style.display = this.hasCollections ? 'block' : 'none';
     this.content = document.createElement('section');
     this.content.style.cssText = 'display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;gap:.75rem;flex:1 1 auto;';
     this.content.append(this.properties, this.collections);
     this.body.append(this.content, this.rail);
     this.replaceChildren(heading, this.body);
     this.unsubscribe = context.relationshipDiscovery?.subscribe(() => {
+      this.discoveryStatus.replaceChildren();
+      let pending = 0;
+      for (const [affordance, tab] of this.collectionControls) {
+        const state = context.relationshipDiscovery.population(affordance);
+        tab.hidden = state.state !== 'populated';
+        tab.disabled = state.state !== 'populated';
+        tab.textContent = affordance.label + (state.count !== undefined ? ` (${state.count})` : '');
+        if (tab.hidden && document.activeElement === tab) this.titleControl.focus();
+        if (state.state === 'empty' && this.activeCollection === affordance) {
+          context.collectionActivation?.close();
+          this.collectionViewer.replaceChildren(); this.activeCollection = undefined;
+          tab.setAttribute('aria-selected', 'false');
+        }
+        if (state.state === 'unknown' || state.state === 'pending') ++pending;
+        if (state.state === 'failed') {
+          const retry = control(`Retry ${affordance.label}`, `Retry ${affordance.label}`, () => context.relationshipDiscovery.retry(affordance));
+          this.discoveryStatus.append(`${affordance.label}: ${state.message} `, retry);
+        }
+      }
+      if (pending) this.discoveryStatus.prepend(`Inspecting collections (${pending} remaining)… `);
+      if (this.collectionControls.size) {
+        this.hasCollections = [...this.collectionControls.values()].some(tab => !tab.hidden);
+        this.collectionsExpand.hidden = !this.hasCollections;
+        this.collectionsExpand.style.display = this.hasCollections ? 'block' : 'none';
+        if (!this.hasCollections) this.collectionsMaximized = false;
+        this.setNodeInspectorAllocation(this.allocation);
+      }
       for (const [affordance, button] of this.controls) {
         const state = context.relationshipDiscovery.population(affordance);
         button.hidden = state.state === 'empty';
@@ -85,11 +151,15 @@ export default class LoadHolonsInspector extends HTMLElement {
     const rows = collection?.getCollectionViewportHeight(5) || 8 * (lineHeight + 8);
     this.collectionHeight = rows + 48;
     const title = this.heading?.getBoundingClientRect().height || 64;
-    const properties = Math.max(280, (this.properties?.lastElementChild?.scrollHeight || 0) + 0);
+    const properties = Math.max(280, this.propertyContentHeight());
     return {
       horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
       vertical: { 'full-height': title + properties + 12 + this.collectionHeight, 'partial-height': title + this.collectionHeight, 'minimal-height': 48 },
     };
+  }
+  // The PropertyMap fills its granted region; intrinsic reports size that region.
+  propertyContentHeight() {
+    return this.propertyVisualizer?.getPreferredContentHeight?.() ?? (this.propertyVisualizer?.scrollHeight || 280);
   }
   setNodeInspectorAllocation(allocation) {
     if (!allocation) return;
@@ -105,6 +175,10 @@ export default class LoadHolonsInspector extends HTMLElement {
       if (narrow || minimal) this.collectionsMaximized = false;
       this.properties.hidden = narrow || partial || this.collectionsMaximized;
       this.properties.style.display = this.properties.hidden ? 'none' : 'block';
+      const bodyHeight = Math.max(0, allocation.height - (this.heading?.getBoundingClientRect().height || 64));
+      const propertyBudget = Math.max(0, bodyHeight - (this.hasCollections ? 60 : 0));
+      this.properties.style.height = Math.min(this.propertyContentHeight(), propertyBudget) + 'px';
+      this.properties.style.flex = '0 0 auto';
       this.collections.hidden = minimal || narrow;
       this.collections.style.display = this.collections.hidden ? 'none' : 'flex';
       this.content.hidden = narrow; this.content.style.display = narrow ? 'none' : 'flex';

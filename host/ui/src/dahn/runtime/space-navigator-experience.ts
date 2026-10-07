@@ -11,7 +11,7 @@ import { defineCustomElementOnce } from '../visualizers/define-custom-element-on
 import { ExplorationTabs, type ExplorationPresentation } from './exploration-tabs';
 import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 import { PathNavigator } from './path-navigator';
-import { realizeNode } from './realize-node';
+import { realizeNode, type RealizedNode } from './realize-node';
 import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
 import { SdkVisualizerMaterializer } from '../map-adapter/sdk-visualizer-materializer';
 import { semanticWork } from './semantic-work';
@@ -69,7 +69,7 @@ export class SpaceNavigatorExperience {
 
   private async presentResult(request: Parameters<NonNullable<ActionBinding['presentResult']>>[0], path: HolonReference) {
     return semanticWork(request.review).realize(async () => {
-      const { transaction, review, subject, children, collections, signal } = request;
+      const { transaction, review, subject, children, collections, signal, contextFor = member => transaction.owns(member) ? transaction : review } = request;
       signal.throwIfAborted();
       const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache(new SdkVisualizerMaterializer(review)));
       const parent = review.bindSavedReference(path);
@@ -80,18 +80,26 @@ export class SpaceNavigatorExperience {
         subject, parentVisualizer: transaction.bindSavedReference(parent),
         slot: transaction.bindSavedReference(slot), requestedKind: 'node',
       })).selected;
-      const implementation = await materialized.realize(review.bindSavedReference(selected));
-      if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected result Node is not an HTMLElement constructor');
-      const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
-      if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
       const { theme, canvas } = this.binding;
-      const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
-      const discovery = new NodeRelationshipDiscovery(review, subject, affordances.singularRelationships);
-      root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, childVisualizers: children,
-        nodeAffordances: affordances, relationshipDiscovery: discovery,
-        activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
-      });
-      discovery.startAfterDisplay(root);
+      let rootNode: RealizedNode;
+      if (!children) {
+        rootNode = await realizeNode(transaction, materialized, subject, review.bindSavedReference(selected), theme, canvas, undefined, undefined, review);
+      } else {
+        if (!collections) throw new Error('Custom result content requires its collection lifecycle');
+        const implementation = await materialized.realize(review.bindSavedReference(selected));
+        if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected result Node is not an HTMLElement constructor');
+        const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
+        if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
+        const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
+        const discovery = new NodeRelationshipDiscovery(transaction, subject, affordances.singularRelationships);
+        root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, childVisualizers: children,
+          nodeAffordances: affordances, relationshipDiscovery: discovery,
+          activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
+        });
+        discovery.startAfterDisplay(root);
+        rootNode = { element: root, collectionActivation: { ...collections, dispose: () => { discovery.dispose(); collections.dispose(); } }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships };
+      }
+      const root = rootNode.element;
       signal.throwIfAborted();
       // The response retains its loader binding. Descendants are saved references
       // owned by the review; neither context is serialized or rebound as transient data.
@@ -99,10 +107,10 @@ export class SpaceNavigatorExperience {
       const reviewParent = review.bindSavedReference(path);
       const reviewSlot = review.bindSavedReference(slot);
       const navigation = new PathNavigator(review, reviewParent,
-        { element: root, collectionActivation: { ...collections, dispose: () => { discovery.dispose(); collections.dispose(); } }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships },
+        rootNode,
         subject, review.bindSavedReference(selected), reviewSlot,
-        (member, visualizer, stage) => realizeNode(transaction.owns(member) ? transaction : review, reviewRuntime, member, visualizer, theme, canvas, stage),
-        undefined, member => transaction.owns(member) ? transaction : review);
+        (member, visualizer, stage) => realizeNode(contextFor(member), reviewRuntime, member, visualizer, theme, canvas, stage, undefined, review),
+        undefined, contextFor);
       try {
         const pathImplementation = await materialized.realize(parent);
         if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) throw new Error('Invalid RootedNavigation implementation');

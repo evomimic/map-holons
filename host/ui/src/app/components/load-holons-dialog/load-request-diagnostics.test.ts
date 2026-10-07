@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createParserDiagnosticReport } from './parser-diagnostic-holons';
+import { attachRequestDiagnostics } from './load-request-diagnostics';
 import type { LoadDiagnostics } from './load-diagnostics';
 
 it('constructs typed parser evidence and a distinct report in the supplied owning context', async () => {
@@ -14,9 +14,9 @@ it('constructs typed parser evidence and a distinct report in the supplied ownin
   const data: LoadDiagnostics = { rows: [{ id: 'parser', category: 'Parser issue', message: 'Unexpected EOF', filename: '/a.json',
     location: { kind: 'line-column', line: 2, column: 0 }, subject: null, subjectKey: null,
     details: { kind: 'JsonDecodingFailure', sourceError: { InvalidParameter: 'original parser evidence' } } }], readFailures: [] };
-  const report = await createParserDiagnosticReport(transaction as never, data);
+  const report = await attachRequestDiagnostics(transaction as never, { reference: await transaction.newHolon(), diagnosticType: { key: 'LoadDiagnostic.Projection' }, evidenceType: { key: 'DiagnosticEvidenceValue.Projection' } } as never, data);
   expect(report).toBe(created[0]);
-  expect(created[0].withDescriptor).toHaveBeenCalledWith({ key: 'LoadDiagnosticReport.Projection' });
+  expect(created[0].withDescriptor).not.toHaveBeenCalled();
   expect(created[1].withDescriptor).toHaveBeenCalledWith({ key: 'LoadDiagnostic.Projection' });
   expect(created[1].withPropertyValue).toHaveBeenCalledWith('SourceColumn', { IntegerValue: 0 });
   expect(created[1].addRelatedHolons).toHaveBeenCalledWith('SourceError', [created[2]]);
@@ -27,7 +27,7 @@ it('constructs typed parser evidence and a distinct report in the supplied ownin
   expect(created[0].addRelatedHolons).toHaveBeenCalledWith('Diagnostics', [created[1]]);
   expect(created[1].addRelatedHolons).not.toHaveBeenCalledWith('DiagnosticSubject', expect.anything());
   expect(data.rows[0].reference).toBe(created[1]);
-  expect(created[0].withPropertyValue.mock.calls.map(([name]: string[]) => name)).toEqual(['Message']);
+  expect(created[0].withPropertyValue.mock.calls.map(([name]: string[]) => name)).toEqual([]);
 });
 
 it('preserves nested errors, array positions, scalar types, null, and empty values holonically', async () => {
@@ -43,7 +43,7 @@ it('preserves nested errors, array positions, scalar types, null, and empty valu
   const sourceError = { Example: { numbers: [0, 1.5], text: '', flag: false, missing: null, empty: {}, list: [] } };
   const data: LoadDiagnostics = { rows: [{ id: 'parser', category: 'Parser issue', message: null, filename: null,
     location: null, subject: null, subjectKey: null, details: { kind: 'HolonConstructionFailure', sourceError } }], readFailures: [] };
-  const report = await createParserDiagnosticReport(transaction as never, data) as any;
+  const report = await attachRequestDiagnostics(transaction as never, { reference: await transaction.newHolon(), diagnosticType: { key: 'LoadDiagnostic.Projection' }, evidenceType: { key: 'DiagnosticEvidenceValue.Projection' } } as never, data) as any;
   const restore = (node: any): unknown => {
     const kind = node.properties.EvidenceValueKind.StringValue;
     const scalar = node.properties.EvidenceScalarValue?.StringValue;
