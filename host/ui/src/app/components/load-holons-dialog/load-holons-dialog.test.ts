@@ -12,7 +12,8 @@ beforeEach(() => {
 afterEach(async () => { for (const dialog of dialogs) await dialog.dispose(); document.body.replaceChildren(); vi.restoreAllMocks(); });
 function fixture(occurrence = document.createElement('div'), mountPresentation?: (element: HTMLElement, owner: any) => { focus(): void; remove(): void }) {
   const target = {};
-  const transaction = { bindLoadTarget: vi.fn(async () => target), dispose: vi.fn(async () => {}), prepareHolons: vi.fn(async () => ({})), invokeLoadHolons: vi.fn() };
+  const requestHolon = { withDescriptor: vi.fn(async () => {}), withPropertyValue: vi.fn(async () => {}), addRelatedHolons: vi.fn(async () => {}), relatedHolons: vi.fn(async () => []) };
+  const transaction = { getSavedHolonByBaseKey: vi.fn(async () => ({})), newHolon: vi.fn(async () => ({ ...requestHolon })), bindLoadTarget: vi.fn(async () => target), dispose: vi.fn(async () => {}), prepareHolons: vi.fn(async () => ({})), invokeLoadHolons: vi.fn() };
   const client = { beginTransaction: vi.fn(async () => transaction) };
   const source = { capabilities: vi.fn(async () => ({ mixedSelection: true })), select: vi.fn(async () => ({ status: 'selected', discovery: { sources: [], issues: [] } })) };
   let submit!: (content: any) => void;
@@ -45,7 +46,7 @@ it('blocks close and duplicates until a no-response failure reaches explicit rev
   document.querySelector('dialog')!.dispatchEvent(new Event('cancel', { cancelable: true }));
   expect(f.transaction.dispose).not.toHaveBeenCalled();
   reject(new Error('Transport unavailable')); await tick();
-  expect(document.body.textContent).toContain('No usable response'); expect(document.body.textContent).not.toContain('Complete');
+  expect(f.mountDiagnostics.mock.calls.at(-1)?.[4]?.message).toContain('No usable response'); expect(document.body.textContent).not.toContain('Complete');
   expect(f.dialog.canDismiss()).toBe(true); await f.dialog.dispose(); expect(f.transaction.dispose).toHaveBeenCalledOnce();
 });
 it('ignores native results after pre-submit dismissal', async () => {
@@ -65,7 +66,7 @@ it.each(['Complete', 'Incomplete', 'Rejected', 'Skipped'])('retains %s evidence 
   const f = fixture();
   const response = {
     propertyValue: vi.fn(async (name: string) => name === 'LoadCommitStatus' ? { StringValue: status } : name === 'ValidationViolationCount' ? { IntegerValue: 3 } : null),
-    relatedHolons: vi.fn(async () => ({ members: [] })),
+    relatedHolons: vi.fn(async () => ({ members: [] })), addRelatedHolons: vi.fn(async () => {}),
   };
   f.transaction.invokeLoadHolons.mockResolvedValue(response);
   await choose(f); f.submit(); await tick();
@@ -93,7 +94,7 @@ it('replaces review immediately and restores the same review on preparation fail
   expect(document.querySelector('.load-holons-timer')?.getAttribute('aria-live')).toBe('off');
   expect(document.querySelector('.load-holons-footer')?.hasAttribute('hidden')).toBe(true);
   expect(f.unmount).not.toHaveBeenCalled();
-  reject(new Error('Invalid source')); await tick();
+  await tick(); reject(new Error('Invalid source')); await tick();
   expect(document.querySelector('.load-holons-content')!.contains(review)).toBe(true);
   expect(document.body.textContent).toContain('Preparation failed: Invalid source');
   expect(document.querySelector('.load-holons-pending')).toBeNull();
@@ -103,7 +104,7 @@ it('replaces review immediately and restores the same review on preparation fail
   f.transaction.prepareHolons.mockResolvedValue({});
   f.transaction.invokeLoadHolons.mockRejectedValue(new Error('No response'));
   f.submit(); await tick();
-  expect(document.body.textContent).toContain('No usable response');
+  expect(f.mountDiagnostics.mock.calls.at(-1)?.[4]?.message).toContain('No usable response');
   expect(document.querySelector('.load-holons-pending')).toBeNull();
 });
 
@@ -163,7 +164,7 @@ it('marks parsing complete only after preparation and distinguishes guest execut
   f.submit();
   expect(document.querySelector('[aria-current="step"]')?.textContent).toBe('Parse and prepare files — in progress');
   expect(f.transaction.invokeLoadHolons).not.toHaveBeenCalled();
-  prepared({}); await tick();
+  await tick(); prepared({}); await tick();
   expect(document.body.textContent).toContain('Parse and prepare files — complete');
   expect(document.querySelector('[aria-current="step"]')?.textContent).toBe('Execute Load Holons — in progress');
   expect(document.body.textContent).toContain('internal progress is not available');
@@ -179,4 +180,50 @@ it('uses the supplied Navigator tab host instead of opening a dialog', async () 
   expect(host.querySelector('.load-holons-tab')).not.toBeNull();
   f.dialog.focus(); expect(focus).toHaveBeenCalledOnce();
   await f.dialog.dispose(); expect(remove).toHaveBeenCalledOnce();
+});
+
+it('retains an input request before preparation fails and uses it as the failure root', async () => {
+  const f = fixture(); f.transaction.prepareHolons.mockRejectedValue(new Error('parse failed'));
+  await choose(f); f.submit(); await tick();
+  const request = f.transaction.newHolon.mock.results[0].value;
+  expect(f.transaction.newHolon.mock.invocationCallOrder[0]).toBeLessThan(f.transaction.prepareHolons.mock.invocationCallOrder[0]);
+  const failure = f.mountDiagnostics.mock.calls[0][4];
+  expect(failure.request.reference).toBe(await request);
+  expect(failure.message).toContain('parse failed');
+  expect(f.transaction.invokeLoadHolons).not.toHaveBeenCalled();
+});
+
+it('retains source review and the request for invocation failure without enabling resubmission', async () => {
+  const f = fixture(); f.transaction.invokeLoadHolons.mockRejectedValue(new Error('transport failed'));
+  await choose(f); f.submit(); await tick();
+  expect(f.unmount).not.toHaveBeenCalled();
+  expect(f.mountDiagnostics.mock.calls[0][4].message).toContain('transport failed');
+  const data = await f.mountDiagnostics.mock.calls[0][2]();
+  expect(data.rows).toEqual([]);
+  expect(f.mountDiagnostics.mock.calls[0][4].retainedDiagnostics).toBe(true);
+  f.submit(); await tick(); expect(f.transaction.invokeLoadHolons).toHaveBeenCalledOnce();
+});
+
+it('passes the retained request into the runtime invocation before submission', async () => {
+  const f = fixture();
+  const response = { propertyValue: async () => null, relatedHolons: async () => ({ members: [] }), addRelatedHolons: vi.fn(async () => {}) };
+  f.transaction.invokeLoadHolons.mockResolvedValue(response);
+  await choose(f); f.submit(); await tick();
+  const request = await f.transaction.newHolon.mock.results[0].value;
+  expect(request.addRelatedHolons).toHaveBeenCalledWith('PreparedLoadSet', [await f.transaction.prepareHolons.mock.results[0].value]);
+  expect(f.transaction.invokeLoadHolons).toHaveBeenCalledWith(f.binding.subject, await f.transaction.prepareHolons.mock.results[0].value, request);
+  expect(request.addRelatedHolons).not.toHaveBeenCalledWith('LoadResponse', expect.anything());
+  expect(response.addRelatedHolons).not.toHaveBeenCalled();
+});
+
+it('presents the returned response without client mutations after submission', async () => {
+  const f = fixture();
+  const response = { propertyValue: async () => null, relatedHolons: async () => ({ members: [] }),
+    addRelatedHolons: vi.fn(async () => { throw new Error('link failed'); }) };
+  f.transaction.invokeLoadHolons.mockResolvedValue(response);
+  await choose(f); f.submit(); await tick();
+  expect(f.mountDiagnostics.mock.calls[0][3].response).toBe(response);
+  expect(response.addRelatedHolons).not.toHaveBeenCalled();
+  expect(document.body.textContent).not.toContain('Request navigation unavailable');
+  expect(f.mountDiagnostics.mock.calls[0][4]).toBeUndefined();
 });

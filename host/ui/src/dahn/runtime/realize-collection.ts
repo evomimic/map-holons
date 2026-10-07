@@ -15,10 +15,14 @@ export type CollectionElement = CollectionInteractionElement & {
 export async function realizeCollection(
   transaction: MapTransaction, collection: DescribedHolonCollection,
   parent: HolonReference, slot: HolonReference, materialized: MaterializedVisualizerRuntime,
-  current: () => boolean, stage: (name: string) => void,
+  current: () => boolean, stage: (name: string) => void, presentation: MapTransaction = transaction,
 ): Promise<CollectionElement | undefined> {
   stage('Visualizer selection');
-  const selection = await transaction.selectCollectionVisualizer(collection, parent, slot);
+  // Selection needs the saved element type, not the loader-bound member handles.
+  const selection = presentation === transaction
+    ? await transaction.selectCollectionVisualizer(collection, parent, slot)
+    : await presentation.selectProjectedCollectionVisualizer(collection.elementType,
+      presentation.bindSavedReference(parent), presentation.bindSavedReference(slot));
   if (!current()) return;
   return realizeSelectedCollection(selection.selected, materialized, current, stage);
 }

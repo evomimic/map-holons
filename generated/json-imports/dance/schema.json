@@ -308,6 +308,12 @@
           "name": "InstanceRelationships",
           "target": [
             {
+              "$ref": "(HolonLoadResponse.DanceResponseType)-[LoadRequest]->(LoadRequest.Projection)"
+            },
+            {
+              "$ref": "(HolonLoadResponse.DanceResponseType)-[HasDiagnostic]->(LoadDiagnostic.Projection)"
+            },
+            {
               "$ref": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)"
             },
             {
@@ -438,6 +444,9 @@
             },
             {
               "$ref": "(DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(DanceInvocation.HolonType)-[LoadRequest]->(LoadRequest.Projection)"
             }
           ]
         }
@@ -4585,7 +4594,7 @@
         "TypeNamePlural": "LoadDiagnostics",
         "DisplayName": "Load Diagnostic",
         "DisplayNamePlural": "Load Diagnostics",
-        "Description": "Action-owned diagnostic display values; real subject references remain separately bound to the originating load transaction."
+        "Description": "Transient inspection view of an operational error, validation finding, or parser issue. Preserves the supplied diagnostic fields and links available original evidence and affected subjects within the owning loader context; it is never staged or committed as imported content."
       },
       "relationships": [
         {
@@ -4624,6 +4633,65 @@
             },
             {
               "$ref": "Severity.PropertyType"
+            },
+            {
+              "$ref": "RuleIdentity.PropertyType"
+            },
+            {
+              "$ref": "RuleCode.PropertyType"
+            },
+            {
+              "$ref": "ConstraintIdentity.PropertyType"
+            },
+            {
+              "$ref": "ConstraintTypeIdentity.PropertyType"
+            },
+            {
+              "$ref": "SubjectKind.PropertyType"
+            },
+            {
+              "$ref": "HolonIdentity.PropertyType"
+            },
+            {
+              "$ref": "MemberName.PropertyType"
+            },
+            {
+              "$ref": "TargetIdentity.PropertyType"
+            },
+            {
+              "$ref": "DescriptorIdentity.PropertyType"
+            },
+            {
+              "$ref": "ErrorType.PropertyType"
+            },
+            {
+              "$ref": "ErrorMessage.PropertyType"
+            },
+            {
+              "$ref": "DiagnosticCategory.PropertyType"
+            },
+            {
+              "$ref": "ParserIssueKind.PropertyType"
+            },
+            {
+              "$ref": "SourceLine.PropertyType"
+            },
+            {
+              "$ref": "SourceColumn.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(LoadDiagnostic.Projection)-[DiagnosticSubject]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(LoadDiagnostic.Projection)-[DiagnosticEvidence]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(LoadDiagnostic.Projection)-[SourceError]->(DiagnosticEvidenceValue.Projection)"
             }
           ]
         }
@@ -4899,6 +4967,1879 @@
           "target": [
             {
               "$ref": "LoadValidationSource.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiagnosticCategory.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DiagnosticCategory",
+        "TypeNamePlural": "DiagnosticCategoryProperties",
+        "DisplayName": "DiagnosticCategory",
+        "DisplayNamePlural": "DiagnosticCategory Properties",
+        "Description": "Identifies whether a diagnostic arose from an operational error, a staged validation finding, an unattached validation finding, a parser issue, a preparation failure, or an invocation failure. Describes its origin rather than its severity or commit outcome."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ParserIssueKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ParserIssueKind",
+        "TypeNamePlural": "ParserIssueKindProperties",
+        "DisplayName": "ParserIssueKind",
+        "DisplayNamePlural": "ParserIssueKind Properties",
+        "Description": "Original parser classification: IoFailure, JsonDecodingFailure, StructuralValidationFailure, or HolonConstructionFailure. Distinguishes reading input, decoding JSON, checking loader structure, and constructing the transient load graph; absent for non-parser diagnostics."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SourceLine.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SourceLine",
+        "TypeNamePlural": "SourceLineProperties",
+        "DisplayName": "SourceLine",
+        "DisplayNamePlural": "SourceLine Properties",
+        "Description": "One-based line number in the original UTF-8 source, preserved exactly from the parser location. Absent when the parser supplies no location; not a line in reformatted or reconstructed JSON."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SourceColumn.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SourceColumn",
+        "TypeNamePlural": "SourceColumnProperties",
+        "DisplayName": "SourceColumn",
+        "DisplayNamePlural": "SourceColumn Properties",
+        "Description": "UTF-8 byte column within SourceLine, preserved exactly from the parser. Normally one-based, with zero permitted at early end-of-input; not a Unicode character count or an absolute file byte offset. Absent when the parser supplies no location."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadDiagnostic.Projection)-[DiagnosticSubject]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DiagnosticSubject",
+        "TypeNamePlural": "DiagnosticSubjectRelationships",
+        "DisplayName": "DiagnosticSubject",
+        "DisplayNamePlural": "DiagnosticSubject Relationships",
+        "Description": "Links a diagnostic to the actual holon affected by the reported condition, using the supplied bound reference in the loader context. Absent when no affected subject is available; never inferred from a source key, filename, or error-carrier identity.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[DiagnosticSubjectOf]->(LoadDiagnostic.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[DiagnosticSubjectOf]->(LoadDiagnostic.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DiagnosticSubjectOf",
+        "TypeNamePlural": "DiagnosticSubjectOfRelationships",
+        "DisplayName": "DiagnosticSubjectOf",
+        "DisplayNamePlural": "DiagnosticSubjectOf Relationships",
+        "Description": "Inverse of DiagnosticSubject: diagnostics that explicitly identify this holon as affected by a reported condition. Does not include diagnostics merely using this holon as their evidence carrier.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadDiagnostic.Projection)-[DiagnosticEvidence]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DiagnosticEvidence",
+        "TypeNamePlural": "DiagnosticEvidenceRelationships",
+        "DisplayName": "DiagnosticEvidence",
+        "DisplayNamePlural": "DiagnosticEvidence Relationships",
+        "Description": "Links a diagnostic to its original operational-error carrier, unattached finding carrier, or staged holon retaining validation findings. Preserves access to authoritative evidence; the evidence carrier need not be the affected subject. Absent when no original holon carrier exists.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[DiagnosticEvidenceOf]->(LoadDiagnostic.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[DiagnosticEvidenceOf]->(LoadDiagnostic.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DiagnosticEvidenceOf",
+        "TypeNamePlural": "DiagnosticEvidenceOfRelationships",
+        "DisplayName": "DiagnosticEvidenceOf",
+        "DisplayNamePlural": "DiagnosticEvidenceOf Relationships",
+        "Description": "Inverse of DiagnosticEvidence: diagnostic inspection views supported by evidence retained on this holon. This relationship records evidentiary provenance and does not assert that the carrier is itself affected.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[HasDiagnostic]->(LoadDiagnostic.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasDiagnostic",
+        "TypeNamePlural": "HasDiagnosticRelationships",
+        "DisplayName": "HasDiagnostic",
+        "DisplayNamePlural": "HasDiagnostic Relationships",
+        "Description": "Diagnostic inspection holons associated with an actual load response, covering operational errors, staged validation findings, and unattached validation findings. Complements the original error and validation relationships without replacing their authoritative evidence.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LoadDiagnostic.Projection)-[HasDiagnosticOf]->(HolonLoadResponse.DanceResponseType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadDiagnostic.Projection)-[HasDiagnosticOf]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasDiagnosticOf",
+        "TypeNamePlural": "HasDiagnosticOfRelationships",
+        "DisplayName": "HasDiagnosticOf",
+        "DisplayNamePlural": "HasDiagnosticOf Relationships",
+        "Description": "Inverse of HasDiagnostic: actual load responses that include this diagnostic inspection holon. Distinguishes response-associated diagnostics from parser diagnostics belonging to a preparation-failure report.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiagnosticEvidenceValue.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DiagnosticEvidenceValue",
+        "TypeNamePlural": "DiagnosticEvidenceValues",
+        "DisplayName": "Diagnostic Evidence Value",
+        "DisplayNamePlural": "Diagnostic Evidence Values",
+        "Description": "One value in a structured source-error tree. Value kind distinguishes objects, arrays, strings, numbers, booleans, and null; member names preserve object fields or array positions. Child values remain individually navigable, including empty containers and null values."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "EvidenceValueKind.PropertyType"
+            },
+            {
+              "$ref": "EvidenceScalarValue.PropertyType"
+            },
+            {
+              "$ref": "MemberName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DiagnosticEvidenceValue.Projection)-[EvidenceMembers]->(DiagnosticEvidenceValue.Projection)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EvidenceValueKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "EvidenceValueKind",
+        "TypeNamePlural": "EvidenceValueKindProperties",
+        "DisplayName": "EvidenceValueKind",
+        "DisplayNamePlural": "EvidenceValueKind Properties",
+        "Description": "Original value kind in structured diagnostic evidence: object, array, string, number, boolean, or null. Distinguishes empty containers, absent scalar content, and literal null without relying on a display string."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EvidenceScalarValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "EvidenceScalarValue",
+        "TypeNamePlural": "EvidenceScalarValueProperties",
+        "DisplayName": "EvidenceScalarValue",
+        "DisplayNamePlural": "EvidenceScalarValue Properties",
+        "Description": "Exact scalar content of a structured evidence value. Strings retain their original text; numbers and booleans use their canonical text with EvidenceValueKind preserving the scalar type. Absent for objects, arrays, and null; an empty string remains an explicit value."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadDiagnostic.Projection)-[SourceError]->(DiagnosticEvidenceValue.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SourceError",
+        "TypeNamePlural": "SourceErrorRelationships",
+        "DisplayName": "SourceError",
+        "DisplayNamePlural": "SourceError Relationships",
+        "Description": "Structured underlying error supplied by the parser, distinct from its contextual diagnostic Message. Preserves the original error variant and every nested field as navigable evidence values; absent when no underlying error was supplied.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DiagnosticEvidenceValue.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DiagnosticEvidenceValue.Projection)-[SourceErrorOf]->(LoadDiagnostic.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DiagnosticEvidenceValue.Projection)-[SourceErrorOf]->(LoadDiagnostic.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SourceErrorOf",
+        "TypeNamePlural": "SourceErrorOfRelationships",
+        "DisplayName": "SourceErrorOf",
+        "DisplayNamePlural": "SourceErrorOf Relationships",
+        "Description": "Diagnostics whose underlying source error is represented by this evidence tree root.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DiagnosticEvidenceValue.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DiagnosticEvidenceValue.Projection)-[EvidenceMembers]->(DiagnosticEvidenceValue.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "EvidenceMembers",
+        "TypeNamePlural": "EvidenceMembersRelationships",
+        "DisplayName": "EvidenceMembers",
+        "DisplayNamePlural": "EvidenceMembers Relationships",
+        "Description": "Immediate members of an object or array in structured diagnostic evidence. Each child preserves its original object field name or zero-based array index in MemberName; array order is reconstructed from those indices, independent of relationship enumeration order.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DiagnosticEvidenceValue.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DiagnosticEvidenceValue.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DiagnosticEvidenceValue.Projection)-[EvidenceMemberOf]->(DiagnosticEvidenceValue.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DiagnosticEvidenceValue.Projection)-[EvidenceMemberOf]->(DiagnosticEvidenceValue.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "EvidenceMemberOf",
+        "TypeNamePlural": "EvidenceMemberOfRelationships",
+        "DisplayName": "EvidenceMemberOf",
+        "DisplayNamePlural": "EvidenceMemberOf Relationships",
+        "Description": "Container evidence values that directly contain this value as an object field or array element.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DiagnosticEvidenceValue.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DiagnosticEvidenceValue.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadRequest.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadRequest",
+        "TypeNamePlural": "LoadRequests",
+        "DisplayName": "Load Request",
+        "DisplayNamePlural": "Load Requests",
+        "Description": "Retained transient submission attempt, created before parsing. Owns exact source snapshots and links its prepared load set, diagnostics, and actual response when available; it is never staged or committed."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "LoadRequestStatus.PropertyType"
+            },
+            {
+              "$ref": "Message.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(LoadRequest.Projection)-[SubmittedSources]->(LoadSourceSet.Projection)"
+            },
+            {
+              "$ref": "(LoadRequest.Projection)-[PreparedLoadSet]->(HolonLoadSet.HolonType)"
+            },
+            {
+              "$ref": "(LoadRequest.Projection)-[LoadResponse]->(HolonLoadResponse.DanceResponseType)"
+            },
+            {
+              "$ref": "(LoadRequest.Projection)-[Diagnostics]->(LoadDiagnostic.Projection)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadSourceSet.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadSourceSet",
+        "TypeNamePlural": "LoadSourceSets",
+        "DisplayName": "Load Sources",
+        "DisplayNamePlural": "Load Source Sets",
+        "Description": "Exact input sources retained for one submission attempt, inspectable through ordinary collection navigation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(LoadSourceSet.Projection)-[Sources]->(LoadSource.Projection)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadSource.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadSource",
+        "TypeNamePlural": "LoadSources",
+        "DisplayName": "Load Source",
+        "DisplayNamePlural": "Load Sources",
+        "Description": "Filename and exact original contents submitted for preparation; retained transiently without rereading the native file."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Filename.PropertyType"
+            },
+            {
+              "$ref": "SourceContents.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadRequestStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadRequestStatus",
+        "TypeNamePlural": "LoadRequestStatusProperties",
+        "DisplayName": "LoadRequestStatus",
+        "DisplayNamePlural": "LoadRequestStatus Properties",
+        "Description": "Observed submission phase: Preparing, Prepared, Invoking, PreparationFailed, InvocationFailed, or Responded. InvocationFailed does not assert that no persistence occurred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SourceContents.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SourceContents",
+        "TypeNamePlural": "SourceContentsProperties",
+        "DisplayName": "SourceContents",
+        "DisplayNamePlural": "SourceContents Properties",
+        "Description": "Exact retained source contents submitted for preparation, without reformatting or rereading the source file."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadRequest.Projection)-[SubmittedSources]->(LoadSourceSet.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SubmittedSources",
+        "TypeNamePlural": "SubmittedSourcesRelationships",
+        "DisplayName": "SubmittedSources",
+        "DisplayNamePlural": "SubmittedSources Relationships",
+        "Description": "Retained exact source snapshots for this submission attempt.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadSourceSet.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LoadSourceSet.Projection)-[SubmittedFor]->(LoadRequest.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadSourceSet.Projection)-[SubmittedFor]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SubmittedFor",
+        "TypeNamePlural": "SubmittedForRelationships",
+        "DisplayName": "SubmittedFor",
+        "DisplayNamePlural": "SubmittedFor Relationships",
+        "Description": "Inverse of SubmittedSources; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadSourceSet.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadSourceSet.Projection)-[Sources]->(LoadSource.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Sources",
+        "TypeNamePlural": "SourcesRelationships",
+        "DisplayName": "Sources",
+        "DisplayNamePlural": "Sources Relationships",
+        "Description": "Sources supplied by the user for this submission attempt.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadSourceSet.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadSource.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LoadSource.Projection)-[SourceIn]->(LoadSourceSet.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadSource.Projection)-[SourceIn]->(LoadSourceSet.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SourceIn",
+        "TypeNamePlural": "SourceInRelationships",
+        "DisplayName": "SourceIn",
+        "DisplayNamePlural": "SourceIn Relationships",
+        "Description": "Inverse of Sources; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadSource.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadSourceSet.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadRequest.Projection)-[PreparedLoadSet]->(HolonLoadSet.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreparedLoadSet",
+        "TypeNamePlural": "PreparedLoadSetRelationships",
+        "DisplayName": "PreparedLoadSet",
+        "DisplayNamePlural": "PreparedLoadSet Relationships",
+        "Description": "Actual prepared execution payload, present only after preparation succeeds.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonLoadSet.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonLoadSet.HolonType)-[PreparedFor]->(LoadRequest.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadSet.HolonType)-[PreparedFor]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreparedFor",
+        "TypeNamePlural": "PreparedForRelationships",
+        "DisplayName": "PreparedFor",
+        "DisplayNamePlural": "PreparedFor Relationships",
+        "Description": "Inverse of PreparedLoadSet; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonLoadSet.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadRequest.Projection)-[LoadResponse]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadResponse",
+        "TypeNamePlural": "LoadResponseRelationships",
+        "DisplayName": "LoadResponse",
+        "DisplayNamePlural": "LoadResponse Relationships",
+        "Description": "Actual returned load response; absent when invocation returned no usable response.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonLoadResponse.DanceResponseType)-[ResponseFor]->(LoadRequest.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[ResponseFor]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResponseFor",
+        "TypeNamePlural": "ResponseForRelationships",
+        "DisplayName": "ResponseFor",
+        "DisplayNamePlural": "ResponseFor Relationships",
+        "Description": "Inverse of LoadResponse; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[LoadRequest]->(LoadRequest.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadRequest",
+        "TypeNamePlural": "LoadRequestRelationships",
+        "DisplayName": "LoadRequest",
+        "DisplayNamePlural": "LoadRequest Relationships",
+        "Description": "Retained submission attempt that produced this response.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LoadRequest.Projection)-[RequestForResponse]->(HolonLoadResponse.DanceResponseType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadRequest.Projection)-[RequestForResponse]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestForResponse",
+        "TypeNamePlural": "RequestForResponseRelationships",
+        "DisplayName": "RequestForResponse",
+        "DisplayNamePlural": "RequestForResponse Relationships",
+        "Description": "Inverse of LoadRequest; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadRequest.Projection)-[Diagnostics]->(LoadDiagnostic.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Diagnostics",
+        "TypeNamePlural": "DiagnosticsRelationships",
+        "DisplayName": "Diagnostics",
+        "DisplayNamePlural": "Diagnostics Relationships",
+        "Description": "Typed preparation or invocation failure evidence retained in the loader context.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LoadDiagnostic.Projection)-[DiagnosticsForRequest]->(LoadRequest.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadDiagnostic.Projection)-[DiagnosticsForRequest]->(LoadRequest.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DiagnosticsForRequest",
+        "TypeNamePlural": "DiagnosticsForRequestRelationships",
+        "DisplayName": "DiagnosticsForRequest",
+        "DisplayNamePlural": "DiagnosticsForRequest Relationships",
+        "Description": "Inverse of Diagnostics; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadDiagnostic.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[LoadRequest]->(LoadRequest.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadRequest",
+        "TypeNamePlural": "LoadRequestRelationships",
+        "DisplayName": "LoadRequest",
+        "DisplayNamePlural": "LoadRequest Relationships",
+        "Description": "Retained submission attempt completed within the admitted runtime invocation.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LoadRequest.Projection)-[RequestForInvocation]->(DanceInvocation.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadRequest.Projection)-[RequestForInvocation]->(DanceInvocation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestForInvocation",
+        "TypeNamePlural": "RequestForInvocationRelationships",
+        "DisplayName": "RequestForInvocation",
+        "DisplayNamePlural": "RequestForInvocation Relationships",
+        "Description": "Inverse of LoadRequest; retained transient presentation links are authored on their declared source.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
             }
           ]
         },

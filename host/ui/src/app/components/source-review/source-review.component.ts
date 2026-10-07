@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, ViewChild, type SimpleChanges } from '@angular/core';
 import type { ContentSet } from '../../../dahn/deps/map-sdk';
 import type { SourceDiscovery } from '../../services/loader-source';
 import { loadImportValidator } from './import-schema';
@@ -12,6 +12,10 @@ import { SourceReviewState } from './source-review-state';
         <p role="status" aria-live="polite">{{ statusText() }}</p>
         @if (state.schemaError()) { <p role="alert">Validation unavailable: {{ state.schemaError() }}</p> }
       </header>
+      <label class="select-all"><input type="checkbox" [attr.aria-label]="allSelected() ? 'Deselect all files' : 'Select all files'"
+        [checked]="allSelected()" [indeterminate]="hasSelection() && !allSelected()"
+        [disabled]="state.terminal() || state.entries().length === 0 || acquiring"
+        (change)="state.selectAll($any($event.target).checked)">{{ allSelected() ? 'Deselect All' : 'Select All' }}</label>
       <div class="sources" tabindex="0" aria-label="Source files and diagnostics">
         @if (state.entries().length === 0) { <p>No JSON files remain in this request.</p> }
         @for (entry of state.entries(); track entry.id) {
@@ -32,8 +36,9 @@ import { SourceReviewState } from './source-review-state';
         <details><summary>Validation details</summary><p>JSON syntax and bootstrap-import.schema.json are checked against the retained file contents. Semantic validation occurs during loading.</p></details>
       </div>
       <footer>
+        <button type="button" (click)="addFiles.emit()" [disabled]="state.terminal() || acquiring || state.phase() === 'validating'">Add Files</button>
         <button type="button" (click)="remove()" [disabled]="state.terminal() || !hasSelection()">Remove selected</button>
-        <button class="primary" type="button" (click)="submit()" [disabled]="!state.canSubmit()">Submit selected</button>
+        <button class="primary" type="button" (click)="submit()" [disabled]="acquiring || !state.canSubmit()">Submit selected</button>
         <button #cancelButton type="button" (click)="cancel()" [disabled]="state.terminal()">Cancel</button>
       </footer>
     </section>`,
@@ -68,16 +73,19 @@ import { SourceReviewState } from './source-review-state';
 })
 export class SourceReviewComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) discovery!: SourceDiscovery;
+  @Input() acquiring = false;
+  @Output() addFiles = new EventEmitter<void>();
   @Output() submitted = new EventEmitter<ContentSet>();
   @Output() cancelled = new EventEmitter<void>();
   @ViewChild('cancelButton') private cancelButton?: ElementRef<HTMLButtonElement>;
   readonly state = new SourceReviewState();
-  ngOnChanges(): void { if (this.discovery) void this.state.replace(this.discovery, loadImportValidator); }
+  ngOnChanges(changes: SimpleChanges): void { if (changes['discovery'] && this.discovery) void this.state.replace(this.discovery, loadImportValidator); }
   ngOnDestroy(): void { this.state.dispose(); }
   filename(path: string): string { return path.split(/[\\/]/).pop() || path; }
+  allSelected(): boolean { return this.state.entries().length > 0 && this.state.entries().every(entry => entry.selected); }
   hasSelection(): boolean { return this.state.entries().some(entry => entry.selected); }
   remove(): void { this.state.removeSelected(); this.cancelButton?.nativeElement.focus(); }
-  submit(): void { const content = this.state.submit(); if (content) this.submitted.emit(content); }
+  submit(): void { if (this.acquiring) return; const content = this.state.submit(); if (content) this.submitted.emit(content); }
   cancel(): void { if (this.state.cancel()) this.cancelled.emit(); }
   statusText(): string {
     switch (this.state.phase()) {

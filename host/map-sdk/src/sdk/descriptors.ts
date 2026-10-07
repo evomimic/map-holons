@@ -4,6 +4,7 @@ import { readInstanceProperties, readPropertyValueKind, readDescriptorCardinalit
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
+const holonDescriptorReferences = new WeakMap<HolonDescriptorHandle, HolonReference>();
 const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, HolonReference>();
 
 /** Opaque SDK handle for a holon type descriptor. */
@@ -24,6 +25,7 @@ export class HolonDescriptorHandle {
     }
 
     this.#reference = reference;
+    holonDescriptorReferences.set(this, reference);
   }
 
   /** User-facing name of this HolonType. */
@@ -225,3 +227,10 @@ export interface EffectiveCardinality {
 }
 
 export type ScalarValueKind = 'StringValue' | 'BooleanValue' | 'IntegerValue' | 'EnumValue' | 'BytesValue' | 'AnyBaseValue';
+
+/** Internal binding bridge; callers retain the opaque descriptor handle. */
+export function unwrapHolonDescriptorHandle(handle: HolonDescriptorHandle): HolonReference {
+  const reference = holonDescriptorReferences.get(handle);
+  if (!reference) throw new TypeError('Invalid HolonDescriptorHandle');
+  return reference;
+}

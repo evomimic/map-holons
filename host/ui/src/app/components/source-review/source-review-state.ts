@@ -61,6 +61,32 @@ export class SourceReviewState {
     }
   }
 
+  /** Append snapshots without revalidating or resetting the retained review. */
+  async append(discovery: SourceDiscovery, loadValidator: () => Promise<SourceValidator>): Promise<void> {
+    if (this.terminal()) return;
+    const retained = this.entries();
+    const paths = new Set(retained.map(entry => entry.path));
+    const incoming = new SourceReviewState();
+    const revision = ++this.revision;
+    this.phase.set('validating');
+    await incoming.replace({
+      sources: discovery.sources.filter(source => !paths.has(source.path)),
+      issues: discovery.issues.filter(issue => !paths.has(issue.path)),
+    }, loadValidator);
+    if (revision !== this.revision || this.terminal()) return;
+    // Read current entries: removals and selection changes during validation survive.
+    this.entries.update(entries => [...entries, ...incoming.entries()]);
+    this.notices.update(notices => [...notices, ...incoming.notices()]);
+    this.schemaError.set(incoming.schemaError());
+    this.phase.set(incoming.phase());
+  }
+
+  selectAll(selected: boolean): void {
+    if (this.terminal()) return;
+    this.edited = true;
+    this.entries.update(entries => entries.map(entry => ({ ...entry, selected })));
+  }
+
   toggle(id: string, selected: boolean): void {
     if (this.terminal()) return;
     this.edited = true;

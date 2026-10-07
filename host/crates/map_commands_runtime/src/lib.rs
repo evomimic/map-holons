@@ -1,4 +1,6 @@
 mod holon_handler;
+mod load_request_completion;
+mod prepared_load_description;
 mod runtime;
 mod runtime_session;
 mod space_handler;

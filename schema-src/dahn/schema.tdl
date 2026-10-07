@@ -350,7 +350,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:433086df38ce2fd7f45ec2e12096eb3d10c59c64bf97f188debcc219cb276b4d"
+  VisualizerArtifactDigest "sha256:cfd252151a5613a4e9e097dcf0e6cb2b22884bfc1f52cac6500010234fe7ee50"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1088,6 +1088,7 @@ instance LoadHolons.NodeVisualizer {
   type NodeVisualizer.HolonType
   relationships {
     ApplicableToType -> HolonLoadResponse.DanceResponseType
+    HasSlot -> [LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.CollectionsSlot]
     ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
   }
 }
@@ -1096,7 +1097,28 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:95da485d9a4b86ff54d1ac77967d1a0f597b4f2c4cadd131c620208a5e4fd091"
+  VisualizerArtifactDigest "sha256:4a346279b4dc5c79d5c42db4a18c147cd0804b87b4e37b4224dff894f31b771f"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
+}
+
+instance LoadHolonsResult.PropertyMapSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> PropertyMapVisualizer.HolonType
+  }
+}
+
+instance LoadHolonsResult.ActionsSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+  }
+}
+
+instance LoadHolonsResult.CollectionsSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> CollectionVisualizer.HolonType
+  }
 }

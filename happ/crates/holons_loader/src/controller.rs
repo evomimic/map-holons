@@ -428,8 +428,16 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_set - commit");
 
+        // Retain descriptor handles while namespace lookup is still permitted.
+        let commit_response_descriptor = crate::response_descriptor::resolve_response_descriptor(
+            context,
+            "CommitResponse.Projection",
+        )?;
         let guest_commit_started_at = performance_timestamp_micros();
-        let commit_response = context.commit()?;
+        let mut commit_response = context.commit()?;
+        if let Some(descriptor) = commit_response_descriptor {
+            commit_response.with_descriptor(descriptor)?;
+        }
         let guest_commit_micros = elapsed_micros(guest_commit_started_at);
         // Commit status is driven by the explicit CommitRequestStatus property emitted by
         // commit() (authoritative), while counts are retained for summary/diagnostics.
@@ -515,11 +523,33 @@ impl HolonLoaderController {
         // Retain the original Commit carriers, including findings without a staged subject.
         let mut response_reference = response_reference;
         response_reference
-            .add_related_holons("LoadCommitResponse", vec![commit_response.into()])?;
+            .add_related_holons("LoadCommitResponse", vec![commit_response.clone().into()])?;
+        let mut diagnostics = Vec::new();
+        let unattached = commit_response
+            .related_holons("HasValidationFinding")?
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        for carrier in unattached {
+            diagnostics.push(crate::diagnostics::unattached(context, carrier)?);
+        }
         let mut source_carriers = Vec::new();
         for (staged, key) in staged_sources {
             if staged.validation_findings()?.is_empty() {
                 continue;
+            }
+            for finding in staged.validation_findings()? {
+                let mut diagnostic =
+                    crate::diagnostics::finding(context, &finding, staged.clone().into())?;
+                diagnostic.with_property_value("LoaderHolonKey", key.clone())?;
+                if let Some(source) = provenance_index.get(&key) {
+                    diagnostic.with_property_value("Filename", source.filename.clone())?;
+                    if let Some(offset) = source.start_utf8_byte_offset {
+                        diagnostic.with_property_value("StartUtf8ByteOffset", offset)?;
+                    }
+                }
+                diagnostics.push(diagnostic);
             }
             let Some(source) = provenance_index.get(&key) else {
                 continue;
@@ -543,6 +573,7 @@ impl HolonLoaderController {
             source_carriers.push(carrier.into());
         }
         response_reference.add_related_holons("HasValidationSource", source_carriers)?;
+        response_reference.add_related_holons("HasDiagnostic", diagnostics)?;
 
         info!(
             "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={} {}",
@@ -839,6 +870,12 @@ impl HolonLoaderController {
             let error_refs: Vec<HolonReference> =
                 transient_error_references.into_iter().map(HolonReference::Transient).collect();
 
+            let diagnostics = error_refs
+                .iter()
+                .cloned()
+                .map(|reference| crate::diagnostics::operational(context, reference))
+                .collect::<Result<Vec<_>, _>>()?;
+            response_reference.add_related_holons("HasDiagnostic", diagnostics)?;
             response_reference
                 .add_related_holons(CoreRelationshipTypeName::HasLoadError, error_refs)?;
         }

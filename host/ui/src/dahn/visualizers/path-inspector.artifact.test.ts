@@ -302,7 +302,7 @@ it('preserves topology, budgets, responsive state, geometry and lineage across p
   expect(element.view.scale).toBe(1);
   const bounds = element.layoutBounds.get('active');
   expect(element.viewport.scrollLeft).toBe(element.view.paddingX + bounds.x + bounds.width / 2 - element.view.viewportWidth / 2);
-  expect(element.viewport.scrollTop).toBe(element.view.paddingY + bounds.y + bounds.height / 2 - element.view.viewportHeight / 2);
+  expect(element.viewport.scrollTop).toBe(element.view.paddingY + bounds.y);
   expect(allocate).not.toHaveBeenCalled();
   expect(f.restore).not.toHaveBeenCalled();
   expect(snapshot()).toEqual(before);
@@ -667,4 +667,31 @@ it('keeps a first downward traversal locked to the left edge without inserting c
   expect(element.view.visibility(element.layoutBounds.get(root.id)).state).toBe('visible');
   expect(element.view.visibility(element.layoutBounds.get(child.id)).state).toBe('visible');
   expect(root.element.setNodeInspectorAllocation.mock.lastCall![0]).toMatchObject({ vertical: 'partial-height', horizontal: 'full-width' });
+});
+
+it('keeps an oversized inspector header visible on traversal, restoration and actual-size expansion', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-oversized-header', class extends Path {});
+  const element = document.createElement('test-path-oversized-header') as any;
+  const node = () => Object.assign(document.createElement('section'), {
+    getNodeInspectorExtents: () => ({ horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
+      vertical: { 'full-height': 900, 'partial-height': 360, 'minimal-height': 48 } }),
+    setNodeInspectorAllocation: vi.fn(),
+  });
+  const source = { id: 'source', rowId: 'shared', column: 1, element: node() };
+  const target = { id: 'target', rowId: 'shared', column: 2, element: node(), provenance: { kind: 'singular-relationship', parentOccurrenceId: 'source' } };
+  let publish: any;
+  element.setContext({ navigation: { subscribe(render: any) { publish = render; render([source], { occurrenceId: 'source', mode: 'restore' }); return () => {}; } } });
+  element.viewportWidth = 1100; element.viewportHeight = 600;
+  publish([source, target], { occurrenceId: 'target', mode: 'traverse' });
+  const bounds = element.layoutBounds.get('target');
+  expect(bounds.height).toBeGreaterThan(element.view.viewportHeight);
+  expect(element.viewport.scrollTop).toBe(bounds.y);
+  expect(element.viewport.scrollLeft).toBeGreaterThan(0);
+  element.view.position(element.viewport.scrollLeft, 180);
+  publish([source, target], { occurrenceId: 'target', mode: 'restore' });
+  expect(element.viewport.scrollTop).toBe(bounds.y);
+  element.view.position(element.viewport.scrollLeft, 180);
+  element.view.actualSize(bounds);
+  expect(element.viewport.scrollTop).toBe(bounds.y);
 });

@@ -1,3 +1,4 @@
+import { referenceBelongsTo } from './references';
 import { createCommittedHolonsReview, type CommittedHolonsReview } from './committed-review';
 import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
@@ -21,6 +22,8 @@ import {
 } from './references';
 import {
   unwrapPropertyDescriptorHandle,
+  HolonDescriptorHandle,
+  unwrapHolonDescriptorHandle,
   type PropertyDescriptorHandle,
 } from './descriptors';
 import {
@@ -96,6 +99,9 @@ export class MapTransaction {
 
     mapTransactionTxIds.set(this, txId);
   }
+
+  /** Whether a handle was bound through this context, without exposing wire identity. */
+  owns(reference: HolonReference): boolean { return referenceBelongsTo(reference, txIdFor(this)); }
 
   async commit(): Promise<void> {
     await internalTransaction.commit(txIdFor(this));
@@ -371,14 +377,23 @@ export class MapTransaction {
    * Executes a prepared request through the explicitly affording HolonSpace.
    * Use a dedicated loader transaction: Complete closes it, while other outcomes
    * leave it open. The response and staged evidence remain available for review.
+   * An optional retained LoadRequest is linked and completed inside the admitted
+   * runtime operation, before the response crosses back to the client.
    */
   async invokeLoadHolons(
     affordingSpace: HolonReference,
     request: TransientHolonReference,
+    retainedRequest?: HolonReference,
   ): Promise<HolonReference> {
     const requestWire = unwrapHolonReference(request);
     if (!('Transient' in requestWire) || requestWire.Transient.tx_id !== txIdFor(this)) {
       throw new Error('Prepared HolonLoadSet must belong to this transaction');
+    }
+    if (retainedRequest) {
+      const retainedWire = unwrapHolonReference(retainedRequest);
+      if (!('Transient' in retainedWire) || retainedWire.Transient.tx_id !== txIdFor(this)) {
+        throw new Error('Retained LoadRequest must belong to this transaction');
+      }
     }
     const descriptor = await this.getSavedHolonByBaseKey('DanceInvocation.HolonType');
     if (descriptor === null) throw new Error('DanceInvocation descriptor is unavailable');
@@ -387,6 +402,7 @@ export class MapTransaction {
     await invocation.withPropertyValue('DanceName' as PropertyName, { StringValue: 'LoadHolons' });
     await invocation.addRelatedHolons('AffordingHolon' as RelationshipName, [affordingSpace]);
     await invocation.addRelatedHolons('Request' as RelationshipName, [request]);
+    if (retainedRequest) await invocation.addRelatedHolons('LoadRequest' as RelationshipName, [retainedRequest]);
     const response = await this.danceV2(invocation);
     this.completedLoadSpace = affordingSpace;
     return response;
@@ -419,14 +435,18 @@ export class MapTransaction {
     return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
   }
 
-  /** Select for action-owned value rows using their declared projection type.
+  /** Select using an element descriptor without transporting retained members.
+   * Supports described relationship collections and action-owned value rows.
    * The empty member envelope is a type witness, not the projected row membership.
    * Values and activation identities remain owned by the presentation producer.
    */
-  async selectProjectedCollectionVisualizer(elementType: HolonReference, parentVisualizer: HolonReference, slot: HolonReference): Promise<VisualizerSelection> {
+  async selectProjectedCollectionVisualizer(elementType: HolonReference | HolonDescriptorHandle, parentVisualizer: HolonReference, slot: HolonReference): Promise<VisualizerSelection> {
     const txId = txIdFor(this);
+    const descriptor = elementType instanceof HolonDescriptorHandle
+      ? this.bindSavedReference(unwrapHolonDescriptorHandle(elementType))
+      : elementType;
     const wire = await internalTransaction.selectCollectionVisualizer(txId, {
-      collection: { element_type: unwrapHolonReference(elementType), members: { state: 'Fetched', members: [], keyed_index: {} } },
+      collection: { element_type: unwrapHolonReference(descriptor), members: { state: 'Fetched', members: [], keyed_index: {} } },
       parent_visualizer: unwrapHolonReference(parentVisualizer), slot: unwrapHolonReference(slot),
     });
     return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };

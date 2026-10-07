@@ -56,7 +56,9 @@ export default class PathInspectorElement extends HTMLElement {
     const source = this.layoutBounds.get(occurrence?.provenance?.parentOccurrenceId ?? occurrence?.parentOccurrenceId);
     const view = this.view;
     const coordinate = (axis, dimension, viewport, scroll, surface) => {
-      let position = target[axis] * view.scale + target[dimension] * view.scale / 2 - viewport / 2;
+      // Keep the header reachable when the full inspector cannot fit vertically.
+      const extent = dimension === 'height' ? Math.min(target[dimension] * view.scale, viewport) : target[dimension] * view.scale;
+      let position = target[axis] * view.scale + extent / 2 - viewport / 2;
       if (source) {
         const start = Math.min(source[axis], target[axis]) * view.scale;
         const end = Math.max(source[axis] + source[dimension], target[axis] + target[dimension]) * view.scale;
@@ -827,7 +829,7 @@ export class SurfaceView {
     // Attention is bounded by the real surface; never manufacture origin margins.
     this.render();
     this.position(this.paddingX + (bounds.x + bounds.width / 2) * this.scale - this.viewportWidth / 2,
-      this.paddingY + (bounds.y + bounds.height / 2) * this.scale - this.viewportHeight / 2);
+      this.paddingY + bounds.y * this.scale + Math.min(bounds.height * this.scale, this.viewportHeight) / 2 - this.viewportHeight / 2);
     return true;
   }
   actualSize(bounds) {

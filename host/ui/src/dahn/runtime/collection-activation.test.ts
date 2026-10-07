@@ -407,3 +407,27 @@ it('refreshes an open collection from fresh membership on semantic invalidation'
   expect(f.owner.relatedHolons).toHaveBeenLastCalledWith('Owns', { requireFresh: true });
   f.activation.dispose();
 });
+
+it('selects in the open presentation context while retaining committed loader members for reads and activation', async () => {
+  const f = fixture();
+  const retained = collection(1); f.owner.describedRelatedHolons.mockResolvedValue(retained);
+  f.transaction.getSavedHolonByBaseKey.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
+  f.transaction.selectCollectionVisualizer.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
+  const type = {}, parent = {}, slot = {};
+  const bind = vi.fn((ref: unknown) => ref === retained.elementType ? type : ref === f.parent ? parent : ref);
+  const presentation = { getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
+    selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: { key: async () => 'table' } })) };
+  const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation);
+  const updates: CollectionUpdate[] = [];
+  activation.activate(tab('Sources'), 'slot', (update: CollectionUpdate) => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
+  expect(presentation.selectProjectedCollectionVisualizer).toHaveBeenCalledWith(retained.elementType, parent, slot);
+  expect(f.transaction.getSavedHolonByBaseKey).not.toHaveBeenCalled();
+  expect(f.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();
+  const element = updates.at(-1)!.content!; document.body.append(element);
+  const inspected = vi.fn(); element.addEventListener('dahn-inspect-holon', inspected);
+  const row = element.querySelector('tbody tr')!;
+  row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(inspected.mock.calls[0][0].detail.reference).toBe([...retained][0]);
+  activation.dispose();
+});

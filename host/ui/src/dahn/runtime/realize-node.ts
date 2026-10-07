@@ -34,6 +34,7 @@ export async function realizeNode(
   canvas: CanvasApi,
   onStage?: (stage: string) => void,
   actionInteractions?: ActionInteractions,
+  presentationTransaction: MapTransaction = transaction,
 ): Promise<RealizedNode> {
   onStage?.('materialize node');
   const nodeImplementation = await materialized.realize(selectedVisualizer);
@@ -209,7 +210,7 @@ export async function realizeNode(
     ...affordances.singularRelationships,
     ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
   ]);
-  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery);
+  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction);
   try {
     element.setContext({
       collectionActivation,

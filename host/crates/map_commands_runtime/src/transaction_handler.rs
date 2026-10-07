@@ -57,17 +57,44 @@ pub async fn handle_transaction(
             Ok(MapResult::DanceResponse(response))
         }
         TransactionAction::DanceV2 { invocation } => {
-            if invocation.dance_name()?.to_string() == "LoadHolons" {
-                let resolved =
-                    holons_core::dances::resolve_dance_v2_invocation(invocation.clone())?;
-                let bound = resolved.bound_invocation();
-                let request = bound.request().ok_or_else(|| {
-                    HolonError::InvalidParameter("LoadHolons requires a prepared request".into())
-                })?;
-                session.admission(context.tx_id())?.submit(request)?;
+            let is_load = invocation.dance_name()?.to_string() == "LoadHolons";
+            let mut completion = if is_load {
+                super::load_request_completion::LoadRequestCompletion::from_invocation(
+                    context,
+                    &invocation,
+                )?
+            } else {
+                None
+            };
+            let result = async {
+                if is_load {
+                    let resolved =
+                        holons_core::dances::resolve_dance_v2_invocation(invocation.clone())?;
+                    let request = resolved.bound_invocation().request().ok_or_else(|| {
+                        HolonError::InvalidParameter(
+                            "LoadHolons requires a prepared request".into(),
+                        )
+                    })?;
+                    session.admission(context.tx_id())?.submit(request)?;
+                }
+                execute_dance_v2(context, invocation).await
             }
-            let response = execute_dance_v2(context, invocation).await?;
-            Ok(MapResult::Reference(HolonReference::from(response)))
+            .await;
+            match result {
+                Ok(response) => {
+                    let response = HolonReference::from(response);
+                    if let Some(completion) = completion.as_mut() {
+                        completion.responded(response.clone())?;
+                    }
+                    Ok(MapResult::Reference(response))
+                }
+                Err(error) => {
+                    if let Some(completion) = completion.as_mut() {
+                        completion.failed(context, &error)?;
+                    }
+                    Err(error)
+                }
+            }
         }
         TransactionAction::SelectCollectionVisualizer { collection, parent_visualizer, slot } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::select_collection_visualizer(
@@ -87,6 +114,10 @@ pub async fn handle_transaction(
             session.admission(context.tx_id())?.begin_preparation()?;
             let request =
                 holons_loader_client::prepare_holons_from_files(context.clone(), content_set)?;
+            super::prepared_load_description::describe_prepared_load(
+                context,
+                request.clone().into(),
+            )?;
             session
                 .admission(context.tx_id())?
                 .prepared(HolonReference::Transient(request.clone()))?;
