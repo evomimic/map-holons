@@ -103,8 +103,8 @@ impl StagedReference {
     /// Called during create/clone staging and descriptor attachment.
     ///
     /// Existing sole ownership by the current space is a no-op. Otherwise, inherited ownership
-    /// is replaced on the staged copy. `OwnedBy` is definitional, so replacement marks an update
-    /// for a new version owned by the current space; the saved source keeps its original ownership.
+    /// is replaced on the staged copy. Creates retain their lifecycle; updates classify the
+    /// replacement through the effective `OwnedBy` declaration's `IsDefinitional` value.
     /// Relationship targets are not stamped or versioned by this operation.
     ///
     /// Without a subject descriptor or a current space, authored ownership is left unchanged.
