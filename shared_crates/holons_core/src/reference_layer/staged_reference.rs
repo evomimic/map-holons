@@ -99,13 +99,19 @@ impl StagedRefAccessKey {
 }
 
 impl StagedReference {
-    /// Ensures a described staged holon has its version-bound `OwnedBy` relationship to the
-    /// transaction's current HolonSpace.
+    /// Sets a described staged holon's sole `OwnedBy` target to the current HolonSpace.
+    /// Called during create/clone staging and descriptor attachment.
     ///
-    /// Undescribed creates intentionally remain relationless: commit cannot resolve an inverse
-    /// for relationship content without a source descriptor. This method is also called when a
-    /// descriptor is attached after staging, so ordinary creates receive ownership before commit.
+    /// Existing sole ownership by the current space is a no-op. Otherwise, inherited ownership
+    /// is replaced on the staged copy. `OwnedBy` is definitional, so replacement marks an update
+    /// for a new version owned by the current space; the saved source keeps its original ownership.
+    /// Relationship targets are not stamped or versioned by this operation.
+    ///
+    /// Without a subject descriptor or a current space, authored ownership is left unchanged.
+    /// Creates may be stamped during descriptor assembly; updates require the effective
+    /// `OwnedBy` declaration and propagate classification errors before changing ownership.
     pub(crate) fn ensure_current_space_ownership(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         let source = HolonReference::Staged(self.clone());
         match source.holon_descriptor() {
             Ok(_) => {}
@@ -117,25 +123,42 @@ impl StagedReference {
             return Ok(());
         };
         let space_id = space.holon_id()?;
-        let owned_by = source.related_holons(CoreRelationshipTypeName::OwnedBy)?;
-        let has_current_space = owned_by
+        let relationship_name = CoreRelationshipTypeName::OwnedBy.as_relationship_name();
+        let owned_by = source.related_holons(&relationship_name)?;
+        let owners = owned_by
             .read()
             .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
             .get_members()
-            .iter()
-            .any(|owner| owner.holon_id().is_ok_and(|owner_id| owner_id == space_id));
+            .clone();
+        // An unsaved owner cannot be the current space, so it is replaced rather than an error.
+        if owners.len() == 1 && owners[0].holon_id().is_ok_and(|owner_id| owner_id == space_id) {
+            return Ok(());
+        }
 
-        if !has_current_space {
-            // Ownership is version-bound even when its declaration is still being assembled.
-            self.add_related_holons_with_classification(
-                CoreRelationshipTypeName::OwnedBy.as_relationship_name(),
-                Self::related_holons_with_keys(vec![space])?,
-                RelationshipMutationPolicy {
-                    effect: RelationshipMutationEffect::DefinitionalChange,
-                    duplicate_policy: DuplicatePolicy::Ungoverned,
-                },
+        let effect = if self.staged_state()? == StagedState::ForCreate {
+            RelationshipMutationEffect::PreserveLifecycle
+        } else {
+            RelationshipMutationEffect::from_definitional(
+                effective_relationship_declaration(&source, relationship_name.clone())?
+                    .is_definitional()?,
+            )
+        };
+        let existing_entries = Self::related_holons_with_keys(owners)?;
+        let current_entries = Self::related_holons_with_keys(vec![space])?;
+        // Replace cloned ownership rather than adding a second owner. The saved
+        // version remains owned by its original space; only the staged copy changes.
+        if !existing_entries.is_empty() {
+            self.remove_related_holons_with_classification(
+                &relationship_name,
+                existing_entries,
+                effect,
             )?;
         }
+        self.add_related_holons_with_classification(
+            relationship_name,
+            current_entries,
+            RelationshipMutationPolicy { effect, duplicate_policy: DuplicatePolicy::Ungoverned },
+        )?;
         Ok(())
     }
 
@@ -1588,7 +1611,7 @@ mod tests {
             )],
             std::collections::HashMap::new(),
         );
-        let (descriptor, _) = staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+        let (descriptor, _) = staged_relationship_descriptor(&context, "OwnedBy", Some(true))?;
         let mut source = staged_update_source(&context, descriptor.clone())?;
         context.set_space_holon_id(HolonId::Local(space_id))?;
         source.with_descriptor(descriptor.clone().into())?;
@@ -1598,6 +1621,180 @@ mod tests {
         source.with_descriptor(descriptor.into())?;
         assert_eq!(source.staged_state()?, StagedState::ForUpdate);
         assert_eq!(relationship_member_count(&source, "OwnedBy")?, 1);
+        Ok(())
+    }
+
+    fn ownership_fixture(
+        owners: &[u8],
+        is_definitional: Option<bool>,
+    ) -> (Arc<TransactionContext>, crate::SmartReference) {
+        use crate::core_shared_objects::holon::SavedHolon;
+        use std::collections::HashMap;
+
+        let id = |byte| HolonId::Local(LocalId(vec![byte]));
+        let holons = [
+            (210, "current-space", "HolonSpace"),
+            (211, "original-space", "HolonSpace"),
+            (212, "owned-type", "OwnedType"),
+            (213, "owned-by", "OwnedBy"),
+            (214, "declared-root", "DeclaredRelationshipType"),
+            (215, "saved-source", "SavedSource"),
+            (216, "related-to", "RelatedTo"),
+            (217, "described-by", "DescribedBy"),
+        ]
+        .into_iter()
+        .map(|(byte, key, name)| {
+            let mut properties = PropertyMap::new();
+            properties.insert(
+                CorePropertyTypeName::Key.as_property_name(),
+                BaseValue::StringValue(MapString(key.into())),
+            );
+            properties.insert(
+                CorePropertyTypeName::TypeName.as_property_name(),
+                BaseValue::StringValue(MapString(name.into())),
+            );
+            let flag = match byte {
+                213 => is_definitional,
+                217 => Some(true),
+                _ => Some(false),
+            };
+            if let Some(flag) = flag {
+                properties.insert(
+                    CorePropertyTypeName::IsDefinitional.as_property_name(),
+                    BaseValue::BooleanValue(base_types::MapBoolean(flag)),
+                );
+            }
+            properties.insert(
+                CorePropertyTypeName::AllowsDuplicates.as_property_name(),
+                BaseValue::BooleanValue(base_types::MapBoolean(false)),
+            );
+            SavedHolon::new(LocalId(vec![byte]), properties, None, base_types::MapInteger(1))
+        })
+        .collect();
+        let relationships = HashMap::from([
+            ((id(215), "DescribedBy".to_relationship_name()), vec![id(212)]),
+            (
+                (id(215), "OwnedBy".to_relationship_name()),
+                owners.iter().map(|byte| id(*byte)).collect(),
+            ),
+            (
+                (id(212), "InstanceRelationships".to_relationship_name()),
+                vec![id(213), id(216), id(217)],
+            ),
+            ((id(213), "Extends".to_relationship_name()), vec![id(214)]),
+            ((id(216), "Extends".to_relationship_name()), vec![id(214)]),
+            ((id(217), "Extends".to_relationship_name()), vec![id(214)]),
+        ]);
+        let context = build_context_with_saved_holons(holons, relationships);
+        context.set_space_holon_id(id(210)).expect("current space");
+        let saved = crate::SmartReference::new_from_id(context.space_read_handle(), id(215));
+        (context, saved)
+    }
+
+    fn owner_ids(reference: &HolonReference) -> Result<Vec<HolonId>, HolonError> {
+        let collection = reference.related_holons(CoreRelationshipTypeName::OwnedBy)?;
+        let owners = collection.read().expect("ownership snapshot").get_members().clone();
+        owners.iter().map(ReadableHolon::holon_id).collect()
+    }
+
+    #[test]
+    fn ownership_stamping_replaces_inherited_owners_without_changing_saved_source(
+    ) -> Result<(), HolonError> {
+        for owners in [&[211][..], &[210, 211][..], &[210, 210][..]] {
+            let (context, saved) = ownership_fixture(owners, Some(true));
+            let original = HolonReference::from(saved.clone());
+            let before = original.into_model()?.property_map;
+            let original_owners = owner_ids(&original)?;
+            let mut staged = context.mutation().stage_new_version(saved)?;
+            assert_eq!(staged.staged_state()?, StagedState::ForUpdate);
+            staged.with_descriptor(original.get_descriptor()?.expect("saved descriptor"))?;
+            assert_eq!(staged.staged_state()?, StagedState::ForUpdateNewVersion);
+            assert_eq!(
+                owner_ids(&HolonReference::from(&staged))?,
+                vec![HolonId::Local(LocalId(vec![210]))]
+            );
+            assert_eq!(staged.versioned_source_id()?, Some(LocalId(vec![215])));
+            assert_eq!(staged.into_model()?.property_map, before);
+            assert_eq!(owner_ids(&original)?, original_owners);
+            assert_eq!(original.into_model()?.property_map, before);
+            staged.ensure_current_space_ownership()?;
+            assert_eq!(relationship_member_count(&staged, "OwnedBy")?, 1);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn ownership_stamping_and_foreign_targets_preserve_current_owner_update_scope(
+    ) -> Result<(), HolonError> {
+        let (context, saved) = ownership_fixture(&[210], Some(true));
+        let original = HolonReference::from(saved.clone());
+        let mut staged = context.mutation().stage_new_version(saved)?;
+        let ownership = staged.related_holons(CoreRelationshipTypeName::OwnedBy)?;
+        staged.ensure_current_space_ownership()?;
+        assert_eq!(staged.staged_state()?, StagedState::ForUpdate);
+        assert!(Arc::ptr_eq(
+            &ownership,
+            &staged.related_holons(CoreRelationshipTypeName::OwnedBy)?
+        ));
+
+        let (foreign_context, foreign) = ownership_fixture(&[211], Some(true));
+        let foreign = HolonReference::from(foreign);
+        let foreign_owners = owner_ids(&foreign)?;
+        // Saved references may be relationship targets without staging or stamping them.
+        staged.add_related_holons("RelatedTo", vec![foreign.clone()])?;
+        staged.ensure_current_space_ownership()?;
+        assert_eq!(staged.staged_state()?, StagedState::ForUpdateGraphOnly);
+        assert_eq!(owner_ids(&foreign)?, foreign_owners);
+        assert!(foreign_context.staged_references()?.is_empty());
+        assert_eq!(owner_ids(&original)?, vec![HolonId::Local(LocalId(vec![210]))]);
+        Ok(())
+    }
+
+    #[test]
+    fn independent_clone_replaces_foreign_ownership_and_remains_for_create(
+    ) -> Result<(), HolonError> {
+        let (context, saved) = ownership_fixture(&[211], Some(true));
+        let original = HolonReference::from(saved);
+        let clone = context.mutation().stage_new_from_clone(original.clone(), "clone".into())?;
+        assert_eq!(clone.staged_state()?, StagedState::ForCreate);
+        assert_eq!(
+            owner_ids(&HolonReference::from(clone))?,
+            vec![HolonId::Local(LocalId(vec![210]))]
+        );
+        assert_eq!(owner_ids(&original)?, vec![HolonId::Local(LocalId(vec![211]))]);
+        Ok(())
+    }
+
+    #[test]
+    fn ownership_classification_errors_preserve_inherited_ownership() -> Result<(), HolonError> {
+        let (context, _) = ownership_fixture(&[211], None);
+        let mut transient = new_test_holon(&context, "malformed-contract-subject")?;
+        transient.add_related_holons(
+            CoreRelationshipTypeName::OwnedBy,
+            vec![HolonReference::smart_from_id(
+                context.space_read_handle(),
+                HolonId::Local(LocalId(vec![211])),
+            )],
+        )?;
+        let mut staged = context.mutation().stage_new_holon(transient)?;
+        force_staged_reference_for_update(&context, &staged)?;
+        // Attach the malformed contract after staging so this test reaches ownership accounting.
+        staged.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::smart_from_id(
+                context.space_read_handle(),
+                HolonId::Local(LocalId(vec![212])),
+            )],
+        )?;
+        assert!(matches!(
+            staged.ensure_current_space_ownership(),
+            Err(HolonError::EmptyField(name)) if name == "IsDefinitional"
+        ));
+        assert_eq!(staged.staged_state()?, StagedState::ForUpdate);
+        assert_eq!(
+            owner_ids(&HolonReference::from(staged))?,
+            vec![HolonId::Local(LocalId(vec![211]))]
+        );
         Ok(())
     }
 
