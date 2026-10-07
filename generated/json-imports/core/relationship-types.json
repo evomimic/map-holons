@@ -490,7 +490,6 @@
         "DisplayName": "OwnedBy",
         "DisplayNamePlural": "OwnedBy Relationships",
         "Description": "Identifies the current holon space that owns a holon; infrastructure supplies this relationship.",
-        "IsDefinitional": true,
         "DeletionSemantic": "Block",
         "TargetBinding": "Version"
       },

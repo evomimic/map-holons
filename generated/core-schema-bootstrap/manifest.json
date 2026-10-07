@@ -75,7 +75,7 @@
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "a6f40a3aa33bb21dfda3596e1622b81ccec11c013050ace6e854ff34e98a0617"
+      "sha256": "a0d2159c42231d80fe7f19af6c8f7c9250b092ca0ef41868e8c00048b0d6b977"
     },
     {
       "path": "imports/core/root.json",

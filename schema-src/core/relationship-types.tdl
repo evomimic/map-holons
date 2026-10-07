@@ -148,7 +148,7 @@ inverse relationship (TypeDescriptor)-[Instances]->(HolonType.TypeDescriptor) {
   }
 }
 
-def relationship (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType) {
+relationship (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
