@@ -32,7 +32,7 @@ const holonReferenceWires = new WeakMap<HolonReference, HolonReferenceWire>();
 const HOLON_REFERENCE_CONSTRUCTION = Symbol('HolonReferenceConstruction');
 
 /**
- * Public handle for a staged or persisted holon target.
+ * Public handle for a transient, staged, or persisted holon target.
  *
  * The bound transaction id and wire reference stay internal so the public SDK
  * can delegate each method to exactly one MAP command.
@@ -66,6 +66,22 @@ export class HolonReference implements WritableHolon {
   async summarize(): Promise<string> {
     const value = await internalHolon.summarize(txIdFor(this), wireRefFor(this));
     return extractString(value);
+  }
+
+  /** Compare target identity without resolving the holon or exposing its wire representation.
+   * Transaction-local targets include their owning pool; saved targets include their Space.
+   */
+  equals(other: HolonReference): boolean {
+    const left = wireRefFor(this);
+    const right = wireRefFor(other);
+    if ('Transient' in left) return 'Transient' in right && left.Transient.tx_id === right.Transient.tx_id && left.Transient.id === right.Transient.id;
+    if ('Staged' in left) return 'Staged' in right && left.Staged.tx_id === right.Staged.tx_id && left.Staged.id === right.Staged.id;
+    if (!('Smart' in right)) return false;
+    const a = left.Smart.holon_id;
+    const b = right.Smart.holon_id;
+    const sameBytes = (x: number[], y: number[]) => x.length === y.length && x.every((value, index) => value === y[index]);
+    if ('Local' in a) return 'Local' in b && sameBytes(a.Local, b.Local);
+    return 'External' in b && sameBytes(a.External.space_id, b.External.space_id) && sameBytes(a.External.local_id, b.External.local_id);
   }
 
   holonId(): Promise<HolonId> {
@@ -317,3 +333,6 @@ export async function readInstanceProperties(reference: HolonReference) {
 export async function readPropertyValueKind(reference: HolonReference): Promise<string> {
   return extractString(await internalHolon.readPropertyValueKind(txIdFor(reference), wireRefFor(reference)));
 }
+
+/** Internal context comparison; transaction routing remains hidden from clients. */
+export function referenceBelongsTo(reference: HolonReference, txId: TxId): boolean { return txIdFor(reference) === txId; }

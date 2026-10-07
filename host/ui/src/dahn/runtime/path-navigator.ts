@@ -16,7 +16,6 @@ interface Occurrence extends PathOccurrence {
   horizontalAlternatives: Occurrence[];
   singular: SingularNavigationState;
   collections: Map<CollectionAffordance, string>;
-  subjectIdentity?: string;
   /** Zero-based projection row, independent of traversal depth. */
   row: number;
   column: number;
@@ -54,6 +53,7 @@ export class PathNavigator implements PathNavigation {
     private readonly nodeSlot: HolonReference,
     private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void) => Promise<RealizedNode>,
     private readonly openExploration?: (anchor: HolonReference) => void,
+    private readonly contextFor: (subject: HolonReference) => MapTransaction = () => transaction,
   ) {
     this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
     this.focus = { occurrenceId: this.root.id, mode: 'restore' };
@@ -254,9 +254,9 @@ export class PathNavigator implements PathNavigation {
     }
   }
 
-  private occurrence(node: RealizedNode, subject: HolonReference, selectedVisualizer: HolonReference, row: number, column: number, provenance?: TraversalProvenance, subjectIdentity?: string): Occurrence {
+  private occurrence(node: RealizedNode, subject: HolonReference, selectedVisualizer: HolonReference, row: number, column: number, provenance?: TraversalProvenance): Occurrence {
     const occurrence: Occurrence = {
-      id: identity(), rowId: `row-${row}`, columnId: `column-${column}`, row, column, subject, subjectIdentity,
+      id: identity(), rowId: `row-${row}`, columnId: `column-${column}`, row, column, subject,
       order: nextOccurrence, traversalGroups: new Map(),
       selectedVisualizer, provenance, element: node.element, node, pending: false,
       generation: 0, traversed: false, alternatives: [], horizontalAlternatives: [], singular: { state: 'unresolved' }, collections: new Map(),
@@ -394,7 +394,7 @@ export class PathNavigator implements PathNavigation {
     owner.requestAxis = 'vertical';
     owner.message = undefined;
     owner.retry = undefined;
-    const known = this.continuations(owner).find(item => item.subject === intent.reference
+    const known = this.continuations(owner).find(item => item.subject.equals(intent.reference)
       && item.provenance?.kind === 'collection-member' && item.provenance.collectionOccurrenceId === collectionOccurrenceId);
     if (known) {
       this.cancelAttempt(false);
@@ -411,30 +411,15 @@ export class PathNavigator implements PathNavigation {
     void (async () => {
       let candidate: RealizedNode | undefined;
       try {
-        // The live Collection supplied a member handle. Identity resolution can
-        // still reveal a retained occurrence after a fresh collection reload.
-        const id = await work.run(async () => current() ? intent.reference.holonId() : undefined);
-        if (!current() || !id) return;
-        // SDK handles can change on reload. Compare semantic ID, including
-        // external Space identity, never a display label.
-        const subjectIdentity = JSON.stringify('Local' in id ? ['local', id.Local] : ['external', id.External.space_id, id.External.local_id]);
-        const retained = this.continuations(owner).find(item => item.subjectIdentity === subjectIdentity
-          && item.provenance?.kind === 'collection-member' && item.provenance.collectionOccurrenceId === collectionOccurrenceId);
-        if (retained) {
-          this.cancelAttempt(false);
-          this.focus = { occurrenceId: retained.id, mode: 'restore' };
-          this.publish();
-          return;
-        }
         await painted;
         if (!current()) return;
         await work.realize(async () => {
           if (!current()) return;
-          const selection = await this.transaction.selectVisualizer({ subject: intent.reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
+          const selection = await this.contextFor(intent.reference).selectVisualizer({ subject: intent.reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
           if (!current()) return;
           candidate = await this.realize(intent.reference, selection.selected);
           if (!current()) { candidate.collectionActivation.dispose(); return; }
-          this.commitDestination(owner, this.occurrence(candidate, intent.reference, selection.selected, destination.row, destination.column, provenance, subjectIdentity), destination);
+          this.commitDestination(owner, this.occurrence(candidate, intent.reference, selection.selected, destination.row, destination.column, provenance), destination);
         });
       } catch (error) {
         candidate?.collectionActivation.dispose();
@@ -522,7 +507,7 @@ export class PathNavigator implements PathNavigation {
         }
         // A bound target establishes existence. Retained handles can restore
         // immediately; refreshed handles are compared by semantic ID below.
-        const known = [owner.right, ...owner.horizontalAlternatives].find(item => item?.subject === reference && item.provenance?.affordance === affordance);
+        const known = [owner.right, ...owner.horizontalAlternatives].find(item => item?.subject.equals(reference) && item.provenance?.affordance === affordance);
         this.check = undefined;
         if (!destination) this.cancelAttempt(false);
         accepted = true;
@@ -539,29 +524,18 @@ export class PathNavigator implements PathNavigation {
         }
         destination ??= this.reserveDestination(owner, 'horizontal', `Opening ${affordance.label}…`, this.traversal(owner, affordance));
         const painted = destinationPaint();
-        profile?.next('target identity');
-        const id = await work.run(async () => current() ? reference.holonId() : undefined);
-        if (!current() || !id) return;
-        const subjectIdentity = JSON.stringify('Local' in id ? ['local', id.Local] : ['external', id.External.space_id, id.External.local_id]);
-        const retained = [owner.right, ...owner.horizontalAlternatives].find(item => item?.subjectIdentity === subjectIdentity && item.provenance?.affordance === affordance);
-        if (retained) {
-          this.cancelAttempt(false);
-          this.focus = { occurrenceId: retained.id, mode: 'restore' };
-          this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
-          outcome = 'retained'; this.publish(); return;
-        }
         await painted;
         if (!current()) return;
         await work.realize(async () => {
           if (!current()) return;
           profile?.next('select node');
-          const selection = await this.transaction.selectVisualizer({ subject: reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
+          const selection = await this.contextFor(reference).selectVisualizer({ subject: reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
           if (!current()) return;
           candidate = await this.realize(reference, selection.selected, stage => profile?.next(stage));
           if (!current()) { candidate.collectionActivation.dispose(); return; }
           outcome = 'new node'; profile?.next('install node');
           const provenance: SingularProvenance = { kind: 'singular-relationship', parentOccurrenceId: owner.id, affordance, traversal: this.traversal(owner, affordance) };
-          this.commitDestination(owner, this.occurrence(candidate, reference, selection.selected, destination!.row, destination!.column, provenance, subjectIdentity), destination!);
+          this.commitDestination(owner, this.occurrence(candidate, reference, selection.selected, destination!.row, destination!.column, provenance), destination!);
           this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
         });
       } catch (error) {

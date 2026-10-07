@@ -22,10 +22,10 @@
 .load-holons-result { padding: 1.5rem; overflow-wrap: anywhere; }
 .load-holons-result h2 { margin: 0 0 .5rem; font-size: 1.375rem; font-weight: 600; }
 .load-holons-result p { margin: 0; color: var(--dahn-muted-text-color); }
-.load-holons-result dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 1.5rem 0 0; }
-.load-holons-result dl > div { padding: 1rem; background: var(--dahn-panel-surface-background); border: 1px solid var(--dahn-slot-border-color); border-radius: var(--dahn-panel-corner-radius); }
+.load-holons-result dl { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 0; }
+.load-holons-result dl > div { display: flex; align-items: baseline; gap: .5rem; padding: .375rem .75rem; background: var(--dahn-panel-surface-background); border: 1px solid var(--dahn-slot-border-color); border-radius: var(--dahn-panel-corner-radius); }
 .load-holons-result dt { font-size: .8125rem; color: var(--dahn-muted-text-color); }
-.load-holons-result dd { margin: .375rem 0 0; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.load-holons-result dd { margin: 0; font-size: .875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .load-holons-result details { margin-top: 1.25rem; }
 .load-holons-result summary { cursor: pointer; font-weight: 600; }
 .load-holons-result ul { padding-left: 1.25rem; }
@@ -41,7 +41,7 @@
 @media (prefers-reduced-motion: reduce) { .load-holons-spinner { animation: none; } }
 
 .load-diagnostics { padding: 0 1.5rem 1.5rem; min-width: 0; }
-.load-diagnostics > div > section { height: 22rem !important; max-height: 50vh; margin-top: .75rem; }
+.load-diagnostics > div > section { min-height: 0; flex: 1 1 auto; margin-top: .5rem; }
 .load-diagnostic-detail { border-top: 1px solid var(--dahn-slot-border-color); margin-top: 1rem; padding-top: .5rem; overflow-wrap: anywhere; }
 .load-diagnostic-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8125rem; }
 .load-diagnostic-detail dt { font-weight: 600; margin-top: .5rem; }
@@ -49,7 +49,7 @@
 
 .load-results { padding: 0 1.5rem 1.5rem; min-width: 0; }
 .load-results [hidden] { display: none !important; }
-.load-results > section[aria-label="Committed holons"] { height: 24rem; max-height: 55vh; }
+
 
 .load-holons-steps { display: inline-block; text-align: left; margin: 1rem auto; padding-left: 1.5rem; }
 .load-holons-steps li { padding: .25rem 0; color: var(--dahn-muted-text-color); }
@@ -62,12 +62,14 @@
 }
 .load-holons-tab .load-holons-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
-/* Keep the load node and its bounded collection above the expanded member path.
-   The tab scrolls as a whole; spare height must not stretch the collection. */
+/* The summary keeps its content height; result collections consume the remaining
+   Node allocation, including space granted by inspector expansion. */
 .load-holons-tab .load-holons-result { flex: 0 0 auto; }
-.load-holons-tab .load-results { display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; }
-.load-results > section[aria-label="Committed holons"] { flex: 0 0 auto; height: 22rem; max-height: 50vh; }
+.load-holons-tab .load-results { display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-height: 0; }
+.load-results > section[aria-label="Committed holons"] { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .load-results > .load-diagnostics { padding: 0; }
 
 .load-result-path { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .load-holons-content:has(> .load-result-path) { overflow: hidden; }
+
+.load-results > .load-diagnostics, .load-diagnostics > div { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }

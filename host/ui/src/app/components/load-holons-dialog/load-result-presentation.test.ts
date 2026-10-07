@@ -15,7 +15,8 @@ function fixture(complete = true, present?: (...args: any[]) => Promise<any>) {
   const transaction = { bindSavedReference: vi.fn(ref => ref), getSavedHolonByBaseKey: vi.fn(async () => ({})) };
   const review = { transaction, readMembers: vi.fn(async () => entries), dispose: vi.fn(async () => {}) };
   const loader = { openCommittedReview: vi.fn(async () => review) };
-  const diagnostics = { element: document.createElement('section'), dispose: vi.fn(async () => {}) };
+  let countListener: ((count: number | undefined) => void) | undefined;
+  const diagnostics = { subscribeCount: (listener: (count: number | undefined) => void) => { countListener = listener; listener(undefined); return () => { countListener = undefined; }; }, element: document.createElement('section'), dispose: vi.fn(async () => {}) };
   diagnostics.element.textContent = 'Diagnostic evidence';
   const response = {};
   const summary = document.createElement('section'); summary.textContent = 'Load complete';
@@ -25,7 +26,7 @@ function fixture(complete = true, present?: (...args: any[]) => Promise<any>) {
   })) };
   view = new LoadResultPresentation(binding as never, diagnostics, loader as never, complete, { response: response as never, summary });
   document.body.append(view.element);
-  return { reference, transaction, review, loader, diagnostics, path, binding, response, summary };
+  return { reference, transaction, review, loader, diagnostics, path, binding, response, summary, publishCount: (count: number | undefined) => countListener?.(count) };
 }
 it('uses the response root and expands keyless saved members in that same path', async () => {
   const f = fixture(); await tick();
@@ -68,4 +69,15 @@ it('waits for pending root realization before releasing the review', async () =>
   await tick(); const closing = view.dispose(); await tick();
   expect(f.review.dispose).not.toHaveBeenCalled(); finish(f.path); await closing;
   expect(f.path.dispose).toHaveBeenCalledOnce(); expect(f.review.dispose).toHaveBeenCalledOnce();
+});
+
+it('hides only confirmed-zero diagnostics and restores an unavailable-count tab', async () => {
+  const f = fixture(false); await tick();
+  const tab = view.element.querySelector<HTMLButtonElement>('[data-result-role="diagnostics"]')!;
+  f.publishCount(0); expect(tab.hidden).toBe(true);
+  const committed = view.element.querySelector<HTMLButtonElement>('[data-result-role="committed"]')!;
+  expect(committed.textContent).toBe('Committed Holons (1)');
+  expect(committed.getAttribute('aria-selected')).toBe('true');
+  f.publishCount(undefined); expect(tab.hidden).toBe(false); expect(tab.textContent).toBe('Diagnostics (…)');
+  f.publishCount(3); expect(tab.textContent).toBe('Diagnostics (3)');
 });

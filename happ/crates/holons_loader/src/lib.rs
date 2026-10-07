@@ -1,4 +1,5 @@
 pub mod controller;
+mod diagnostics;
 mod enum_materialization;
 mod errors;
 pub mod loader_holon_mapper;

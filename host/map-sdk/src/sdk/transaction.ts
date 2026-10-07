@@ -1,3 +1,4 @@
+import { referenceBelongsTo } from './references';
 import { createCommittedHolonsReview, type CommittedHolonsReview } from './committed-review';
 import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
@@ -96,6 +97,9 @@ export class MapTransaction {
 
     mapTransactionTxIds.set(this, txId);
   }
+
+  /** Whether a handle was bound through this context, without exposing wire identity. */
+  owns(reference: HolonReference): boolean { return referenceBelongsTo(reference, txIdFor(this)); }
 
   async commit(): Promise<void> {
     await internalTransaction.commit(txIdFor(this));

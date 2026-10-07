@@ -292,6 +292,10 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                 .clone();
             assert_eq!(commits.len(), 1);
             let commit = &commits[0];
+            assert_eq!(
+                commit.holon_descriptor().unwrap().header().type_name().unwrap().0,
+                "CommitResponse"
+            );
             let subjects = commit
                 .related_holons("RejectedHolons")
                 .unwrap()
@@ -334,6 +338,51 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                     finding_count as i64
                 )))
             );
+            let diagnostics = response
+                .related_holons("HasDiagnostic")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .clone();
+            assert_eq!(diagnostics.len(), finding_count);
+            for diagnostic in diagnostics {
+                assert!(matches!(diagnostic, HolonReference::Transient(_)));
+                assert_eq!(
+                    diagnostic.holon_descriptor().unwrap().header().type_name().unwrap().0,
+                    "LoadDiagnostic"
+                );
+                assert!(diagnostic.property_value("Message").unwrap().is_some());
+                let evidence = diagnostic
+                    .related_holons("DiagnosticEvidence")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                assert_eq!(evidence.len(), 1);
+                assert!(subjects.contains(&evidence[0]) || unattached.contains(&evidence[0]));
+                let affected = diagnostic
+                    .related_holons("DiagnosticSubject")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                if subjects.contains(&evidence[0]) {
+                    assert_eq!(affected, evidence);
+                    assert_eq!(
+                        string(&diagnostic, "DiagnosticCategory"),
+                        "Staged validation finding"
+                    );
+                } else {
+                    assert!(affected.is_empty());
+                    assert_eq!(
+                        string(&diagnostic, "DiagnosticCategory"),
+                        "Unattached validation finding"
+                    );
+                }
+            }
             if contents.contains("Unattached.HolonType") {
                 assert!(
                     !unattached.is_empty(),

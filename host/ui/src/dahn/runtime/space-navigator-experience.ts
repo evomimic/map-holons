@@ -1,3 +1,6 @@
+import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
+import { NodeRelationshipDiscovery } from './relationship-discovery';
+import { TRAVERSE_RELATIONSHIP_EVENT } from '../contracts/visualizers';
 import type { ActionActivation, ActionBinding, ActionInteractions } from './action-activation';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
@@ -82,7 +85,13 @@ export class SpaceNavigatorExperience {
       const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
       if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
       const { theme, canvas } = this.binding;
-      root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, childVisualizers: children });
+      const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
+      const discovery = new NodeRelationshipDiscovery(review, subject, affordances.singularRelationships);
+      root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, childVisualizers: children,
+        nodeAffordances: affordances, relationshipDiscovery: discovery,
+        activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
+      });
+      discovery.startAfterDisplay(root);
       signal.throwIfAborted();
       // The response retains its loader binding. Descendants are saved references
       // owned by the review; neither context is serialized or rebound as transient data.
@@ -90,9 +99,10 @@ export class SpaceNavigatorExperience {
       const reviewParent = review.bindSavedReference(path);
       const reviewSlot = review.bindSavedReference(slot);
       const navigation = new PathNavigator(review, reviewParent,
-        { element: root, collectionActivation: collections, singularRelationships: [] },
+        { element: root, collectionActivation: { ...collections, dispose: () => { discovery.dispose(); collections.dispose(); } }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships },
         subject, review.bindSavedReference(selected), reviewSlot,
-        (member, visualizer, stage) => realizeNode(review, reviewRuntime, member, visualizer, theme, canvas, stage));
+        (member, visualizer, stage) => realizeNode(transaction.owns(member) ? transaction : review, reviewRuntime, member, visualizer, theme, canvas, stage),
+        undefined, member => transaction.owns(member) ? transaction : review);
       try {
         const pathImplementation = await materialized.realize(parent);
         if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) throw new Error('Invalid RootedNavigation implementation');

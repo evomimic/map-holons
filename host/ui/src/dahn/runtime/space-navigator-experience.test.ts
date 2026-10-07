@@ -19,7 +19,7 @@ class NavigationElement extends HTMLElement {
     });
   }
 }
-const reference = (name: string) => ({ key: vi.fn(async () => name), versionedKey: vi.fn(async () => name) }) as unknown as HolonReference;
+const reference = (name: string) => ({ key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
 let binding: SpaceNavigatorBinding;
 let experience: SpaceNavigatorExperience;
 let roots: Array<{ element: HTMLElement; collectionActivation: { dispose: ReturnType<typeof vi.fn> }; singularRelationships: [] }>;
@@ -187,7 +187,7 @@ it('selects the response Node in its loader context and expands saved members wi
     mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
     const present = openLoadHolons.mock.calls[0][0].presentResult;
     const response = reference('Response'), member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
-    const loader = { committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })) };
+    const loader = { owns: (ref: unknown) => ref === response, committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })) };
     const review = { bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
     const collection = document.createElement('section'), properties = document.createElement('section');
     const affordance = { kind: 'result', label: 'Committed holons', role: 'committed' };

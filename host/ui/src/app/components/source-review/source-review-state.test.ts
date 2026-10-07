@@ -127,3 +127,20 @@ it('retains removal and selection when preparation fails before invocation', asy
   expect(state.canSubmit()).toBe(true);
   expect(state.submit()).toEqual(content);
 });
+
+it('appends new snapshots without refreshing duplicates or resetting retained selection', async () => {
+  const state = new SourceReviewState();
+  const validate = async () => (content: string) => ({ valid: content !== 'bad', diagnostics: [] });
+  await state.replace({ sources: [{ id: '/a', path: '/a', content: 'old' }], issues: [] }, validate);
+  state.toggle('/a', false);
+  await state.append({ sources: [{ id: '/a', path: '/a', content: 'new' }, { id: '/b', path: '/b', content: 'bad' }, { id: '/c', path: '/c', content: 'good' }], issues: [] }, validate);
+  expect(state.entries().map(entry => [entry.path, entry.source?.content, entry.selected])).toEqual([
+    ['/a', 'old', false], ['/b', 'bad', true], ['/c', 'good', false],
+  ]);
+  state.selectAll(true); expect(state.entries().every(entry => entry.selected)).toBe(true);
+  expect(state.canSubmit()).toBe(false);
+  state.selectAll(false); expect(state.entries().some(entry => entry.selected)).toBe(false);
+  state.toggle('/a', true); state.removeSelected();
+  await state.append({ sources: [{ id: '/a', path: '/a', content: 'new' }], issues: [] }, validate);
+  expect(state.entries().find(entry => entry.id === '/a')?.source?.content).toBe('new');
+});

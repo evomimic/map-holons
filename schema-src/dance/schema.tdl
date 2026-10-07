@@ -117,6 +117,7 @@ holon HolonLoadResponse.DanceResponseType {
       LoadCommitStatus.PropertyType
     ]
     InstanceRelationships -> [
+      (HolonLoadResponse.DanceResponseType)-[HasDiagnostic]->(LoadDiagnostic.Projection),
       (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError),
       (HolonLoadResponse.DanceResponseType)-[LoadCommitResponse]->(CommitResponse.Projection),
       (HolonLoadResponse.DanceResponseType)-[HasValidationSource]->(LoadValidationSource.Projection)
@@ -1549,13 +1550,29 @@ holon LoadDiagnostic.Projection {
   type MetaHolonType.MetaTypeDescriptor
   extends Projection.HolonType
   header {
-    description: "Action-owned diagnostic display values; real subject references remain separately bound to the originating load transaction."
+    description: "Transient inspection view of an operational error, validation finding, or parser issue. Preserves the supplied diagnostic fields and links available original evidence and affected subjects within the owning loader context; it is never staged or committed as imported content."
     display_name: "Load Diagnostic"
     display_plural: "Load Diagnostics"
     plural: "LoadDiagnostics"
   }
   relationships {
-    InstanceProperties -> [Message.PropertyType, Filename.PropertyType, LoaderHolonKey.PropertyType, StartUtf8ByteOffset.PropertyType, ViolationKind.PropertyType, Severity.PropertyType]
+    InstanceProperties -> [Message.PropertyType, Filename.PropertyType, LoaderHolonKey.PropertyType, StartUtf8ByteOffset.PropertyType, ViolationKind.PropertyType, Severity.PropertyType, RuleIdentity.PropertyType, RuleCode.PropertyType, ConstraintIdentity.PropertyType, ConstraintTypeIdentity.PropertyType, SubjectKind.PropertyType, HolonIdentity.PropertyType, MemberName.PropertyType, TargetIdentity.PropertyType, DescriptorIdentity.PropertyType, ErrorType.PropertyType, ErrorMessage.PropertyType, DiagnosticCategory.PropertyType, ParserIssueKind.PropertyType, SourceLine.PropertyType, SourceColumn.PropertyType]
+    InstanceRelationships -> [(LoadDiagnostic.Projection)-[DiagnosticSubject]->(HolonType.TypeDescriptor), (LoadDiagnostic.Projection)-[DiagnosticEvidence]->(HolonType.TypeDescriptor), (LoadDiagnostic.Projection)-[SourceError]->(DiagnosticEvidenceValue.Projection)]
+  }
+}
+
+holon LoadDiagnosticReport.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Transient root for inspecting diagnostics when source preparation fails before a load response exists. Reports preparation failure without inventing commit status or committed results, and uses the same result Node Visualizer as an actual load response."
+    display_name: "Load Diagnostic Report"
+    display_plural: "Load Diagnostic Reports"
+    plural: "LoadDiagnosticReports"
+  }
+  relationships {
+    InstanceProperties -> Message.PropertyType
+    InstanceRelationships -> (LoadDiagnosticReport.Projection)-[Diagnostics]->(LoadDiagnostic.Projection)
   }
 }
 
@@ -1638,6 +1655,299 @@ inverse relationship (HolonType.TypeDescriptor)-[HasLoadValidationSource]->(Load
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target LoadValidationSource.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+property DiagnosticCategory.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Identifies whether a diagnostic arose from an operational error, a staged validation finding, an unattached validation finding, or a parser issue. Describes its origin rather than its severity or commit outcome."
+    display_name: "DiagnosticCategory"
+    display_plural: "DiagnosticCategory Properties"
+    plural: "DiagnosticCategoryProperties"
+  }
+}
+
+property ParserIssueKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Original parser classification: IoFailure, JsonDecodingFailure, StructuralValidationFailure, or HolonConstructionFailure. Distinguishes reading input, decoding JSON, checking loader structure, and constructing the transient load graph; absent for non-parser diagnostics."
+    display_name: "ParserIssueKind"
+    display_plural: "ParserIssueKind Properties"
+    plural: "ParserIssueKindProperties"
+  }
+}
+
+property SourceLine.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  header {
+    description: "One-based line number in the original UTF-8 source, preserved exactly from the parser location. Absent when the parser supplies no location; not a line in reformatted or reconstructed JSON."
+    display_name: "SourceLine"
+    display_plural: "SourceLine Properties"
+    plural: "SourceLineProperties"
+  }
+}
+
+property SourceColumn.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  header {
+    description: "UTF-8 byte column within SourceLine, preserved exactly from the parser. Normally one-based, with zero permitted at early end-of-input; not a Unicode character count or an absolute file byte offset. Absent when the parser supplies no location."
+    display_name: "SourceColumn"
+    display_plural: "SourceColumn Properties"
+    plural: "SourceColumnProperties"
+  }
+}
+
+relationship (LoadDiagnostic.Projection)-[DiagnosticSubject]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  header {
+    description: "Links a diagnostic to the actual holon affected by the reported condition, using the supplied bound reference in the loader context. Absent when no affected subject is available; never inferred from a source key, filename, or error-carrier identity."
+    display_name: "DiagnosticSubject"
+    display_plural: "DiagnosticSubject Relationships"
+    plural: "DiagnosticSubjectRelationships"
+  }
+  source LoadDiagnostic.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> (HolonType.TypeDescriptor)-[DiagnosticSubjectOf]->(LoadDiagnostic.Projection)
+  }
+}
+inverse relationship (HolonType.TypeDescriptor)-[DiagnosticSubjectOf]->(LoadDiagnostic.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  header {
+    description: "Inverse of DiagnosticSubject: diagnostics that explicitly identify this holon as affected by a reported condition. Does not include diagnostics merely using this holon as their evidence carrier."
+    display_name: "DiagnosticSubjectOf"
+    display_plural: "DiagnosticSubjectOf Relationships"
+    plural: "DiagnosticSubjectOfRelationships"
+  }
+  source HolonType.TypeDescriptor
+  target LoadDiagnostic.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (LoadDiagnostic.Projection)-[DiagnosticEvidence]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  header {
+    description: "Links a diagnostic to its original operational-error carrier, unattached finding carrier, or staged holon retaining validation findings. Preserves access to authoritative evidence; the evidence carrier need not be the affected subject. Absent when no original holon carrier exists."
+    display_name: "DiagnosticEvidence"
+    display_plural: "DiagnosticEvidence Relationships"
+    plural: "DiagnosticEvidenceRelationships"
+  }
+  source LoadDiagnostic.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> (HolonType.TypeDescriptor)-[DiagnosticEvidenceOf]->(LoadDiagnostic.Projection)
+  }
+}
+inverse relationship (HolonType.TypeDescriptor)-[DiagnosticEvidenceOf]->(LoadDiagnostic.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  header {
+    description: "Inverse of DiagnosticEvidence: diagnostic inspection views supported by evidence retained on this holon. This relationship records evidentiary provenance and does not assert that the carrier is itself affected."
+    display_name: "DiagnosticEvidenceOf"
+    display_plural: "DiagnosticEvidenceOf Relationships"
+    plural: "DiagnosticEvidenceOfRelationships"
+  }
+  source HolonType.TypeDescriptor
+  target LoadDiagnostic.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (LoadDiagnosticReport.Projection)-[Diagnostics]->(LoadDiagnostic.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  header {
+    description: "Diagnostic inspection holons belonging to a preparation-failure report created when no load response exists. Members preserve parser categories, source locations, and available underlying evidence; membership does not imply staged or committed content."
+    display_name: "Diagnostics"
+    display_plural: "Diagnostics Relationships"
+    plural: "DiagnosticsRelationships"
+  }
+  source LoadDiagnosticReport.Projection
+  target LoadDiagnostic.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (LoadDiagnostic.Projection)-[DiagnosticsOf]->(LoadDiagnosticReport.Projection)
+  }
+}
+inverse relationship (LoadDiagnostic.Projection)-[DiagnosticsOf]->(LoadDiagnosticReport.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  header {
+    description: "Inverse of Diagnostics: preparation-failure reports that include this diagnostic. Connects a diagnostic to its no-response report rather than fabricating a load response."
+    display_name: "DiagnosticsOf"
+    display_plural: "DiagnosticsOf Relationships"
+    plural: "DiagnosticsOfRelationships"
+  }
+  source LoadDiagnostic.Projection
+  target LoadDiagnosticReport.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (HolonLoadResponse.DanceResponseType)-[HasDiagnostic]->(LoadDiagnostic.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  header {
+    description: "Diagnostic inspection holons associated with an actual load response, covering operational errors, staged validation findings, and unattached validation findings. Complements the original error and validation relationships without replacing their authoritative evidence."
+    display_name: "HasDiagnostic"
+    display_plural: "HasDiagnostic Relationships"
+    plural: "HasDiagnosticRelationships"
+  }
+  source HolonLoadResponse.DanceResponseType
+  target LoadDiagnostic.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (LoadDiagnostic.Projection)-[HasDiagnosticOf]->(HolonLoadResponse.DanceResponseType)
+  }
+}
+inverse relationship (LoadDiagnostic.Projection)-[HasDiagnosticOf]->(HolonLoadResponse.DanceResponseType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  header {
+    description: "Inverse of HasDiagnostic: actual load responses that include this diagnostic inspection holon. Distinguishes response-associated diagnostics from parser diagnostics belonging to a preparation-failure report."
+    display_name: "HasDiagnosticOf"
+    display_plural: "HasDiagnosticOf Relationships"
+    plural: "HasDiagnosticOfRelationships"
+  }
+  source LoadDiagnostic.Projection
+  target HolonLoadResponse.DanceResponseType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+holon DiagnosticEvidenceValue.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "One value in a structured source-error tree. Value kind distinguishes objects, arrays, strings, numbers, booleans, and null; member names preserve object fields or array positions. Child values remain individually navigable, including empty containers and null values."
+    display_name: "Diagnostic Evidence Value"
+    display_plural: "Diagnostic Evidence Values"
+    plural: "DiagnosticEvidenceValues"
+  }
+  relationships {
+    InstanceProperties -> [EvidenceValueKind.PropertyType, EvidenceScalarValue.PropertyType, MemberName.PropertyType]
+    InstanceRelationships -> (DiagnosticEvidenceValue.Projection)-[EvidenceMembers]->(DiagnosticEvidenceValue.Projection)
+  }
+}
+
+property EvidenceValueKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Original value kind in structured diagnostic evidence: object, array, string, number, boolean, or null. Distinguishes empty containers, absent scalar content, and literal null without relying on a display string."
+    display_name: "EvidenceValueKind"
+    display_plural: "EvidenceValueKind Properties"
+    plural: "EvidenceValueKindProperties"
+  }
+}
+
+property EvidenceScalarValue.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Exact scalar content of a structured evidence value. Strings retain their original text; numbers and booleans use their canonical text with EvidenceValueKind preserving the scalar type. Absent for objects, arrays, and null; an empty string remains an explicit value."
+    display_name: "EvidenceScalarValue"
+    display_plural: "EvidenceScalarValue Properties"
+    plural: "EvidenceScalarValueProperties"
+  }
+}
+
+relationship (LoadDiagnostic.Projection)-[SourceError]->(DiagnosticEvidenceValue.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  header {
+    description: "Structured underlying error supplied by the parser, distinct from its contextual diagnostic Message. Preserves the original error variant and every nested field as navigable evidence values; absent when no underlying error was supplied."
+    display_name: "SourceError"
+    display_plural: "SourceError Relationships"
+    plural: "SourceErrorRelationships"
+  }
+  source LoadDiagnostic.Projection
+  target DiagnosticEvidenceValue.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> (DiagnosticEvidenceValue.Projection)-[SourceErrorOf]->(LoadDiagnostic.Projection)
+  }
+}
+
+inverse relationship (DiagnosticEvidenceValue.Projection)-[SourceErrorOf]->(LoadDiagnostic.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  header {
+    description: "Diagnostics whose underlying source error is represented by this evidence tree root."
+    display_name: "SourceErrorOf"
+    display_plural: "SourceErrorOf Relationships"
+    plural: "SourceErrorOfRelationships"
+  }
+  source DiagnosticEvidenceValue.Projection
+  target LoadDiagnostic.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (DiagnosticEvidenceValue.Projection)-[EvidenceMembers]->(DiagnosticEvidenceValue.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  header {
+    description: "Immediate members of an object or array in structured diagnostic evidence. Each child preserves its original object field name or zero-based array index in MemberName; array order is reconstructed from those indices, independent of relationship enumeration order."
+    display_name: "EvidenceMembers"
+    display_plural: "EvidenceMembers Relationships"
+    plural: "EvidenceMembersRelationships"
+  }
+  source DiagnosticEvidenceValue.Projection
+  target DiagnosticEvidenceValue.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (DiagnosticEvidenceValue.Projection)-[EvidenceMemberOf]->(DiagnosticEvidenceValue.Projection)
+  }
+}
+
+inverse relationship (DiagnosticEvidenceValue.Projection)-[EvidenceMemberOf]->(DiagnosticEvidenceValue.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  header {
+    description: "Container evidence values that directly contain this value as an object field or array element."
+    display_name: "EvidenceMemberOf"
+    display_plural: "EvidenceMemberOf Relationships"
+    plural: "EvidenceMemberOfRelationships"
+  }
+  source DiagnosticEvidenceValue.Projection
+  target DiagnosticEvidenceValue.Projection
   deletion_semantic Allow
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint

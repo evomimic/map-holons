@@ -1,3 +1,4 @@
+import { semanticWork } from '../../../dahn/runtime/semantic-work';
 import { LoadResultPresentation } from './load-result-presentation';
 import { LoadDiagnosticPresentation, type DiagnosticPresentation, type MountDiagnostics } from './load-diagnostic-presentation';
 import { readLoadDiagnostics, parserLoadDiagnostics } from './load-diagnostics';
@@ -5,6 +6,7 @@ import { ApplicationRef, EnvironmentInjector, Injectable, createComponent, injec
 import { MapClient, type ContentSet, type HolonReference, type MapTransaction } from '../../../dahn/deps/map-sdk';
 import type { ActionBinding, ActionInteraction, ActionInteractions } from '../../../dahn/runtime/action-activation';
 import { NativeLoaderSourceAdapter, type SourceDiscovery, type SourceSelectionMode } from '../../services/loader-source';
+import { loadImportValidator } from '../source-review/import-schema';
 import { SourceReviewComponent } from '../source-review/source-review.component';
 import { loaderFailureDetail, presentLoaderResult } from '../json-data-uploader/loader-result.presenter';
 
@@ -15,20 +17,23 @@ export class LoadHolonsDialogService implements ActionInteractions {
   private readonly environmentInjector = inject(EnvironmentInjector);
 
   openLoadHolons(binding: ActionBinding): ActionInteraction {
-    return new LoadHolonsDialog(binding, new MapClient(), new NativeLoaderSourceAdapter(), (host, discovery, submit, cancel) => {
+    return new LoadHolonsDialog(binding, new MapClient(), new NativeLoaderSourceAdapter(), (host, discovery, submit, cancel, addFiles) => {
       const component = createComponent(SourceReviewComponent, { hostElement: host, environmentInjector: this.environmentInjector });
       component.setInput('discovery', discovery);
       const submitted = component.instance.submitted.subscribe(submit);
       const cancelled = component.instance.cancelled.subscribe(cancel);
+      const added = component.instance.addFiles.subscribe(addFiles);
       this.application.attachView(component.hostView);
       try { component.changeDetectorRef.detectChanges(); }
       catch (error) {
-        submitted.unsubscribe(); cancelled.unsubscribe();
+        submitted.unsubscribe(); cancelled.unsubscribe(); added.unsubscribe();
         this.application.detachView(component.hostView); component.destroy();
         throw error;
       }
-      return { resume: () => component.instance.state.resumeAfterPreparationFailure(), dispose: () => {
-        submitted.unsubscribe(); cancelled.unsubscribe();
+      return { append: async discovery => { await component.instance.state.append(discovery, loadImportValidator); component.changeDetectorRef.detectChanges(); },
+        setAcquiring: value => { component.setInput('acquiring', value); component.changeDetectorRef.detectChanges(); },
+        resume: () => component.instance.state.resumeAfterPreparationFailure(), dispose: () => {
+        submitted.unsubscribe(); cancelled.unsubscribe(); added.unsubscribe();
         this.application.detachView(component.hostView);
         component.destroy();
       } };
@@ -36,7 +41,7 @@ export class LoadHolonsDialogService implements ActionInteractions {
   }
 }
 
-type MountReview = (host: HTMLElement, discovery: SourceDiscovery, submit: (content: ContentSet) => void, cancel: () => void) => { dispose(): void; resume(): void };
+type MountReview = (host: HTMLElement, discovery: SourceDiscovery, submit: (content: ContentSet) => void, cancel: () => void, addFiles: () => void) => { dispose(): void; resume(): void; append?(discovery: SourceDiscovery): Promise<void>; setAcquiring?(value: boolean): void };
 
 /** Presentation owns one dedicated transaction from acquisition until explicit dismissal. */
 export class LoadHolonsDialog implements ActionInteraction {
@@ -67,8 +72,8 @@ export class LoadHolonsDialog implements ActionInteraction {
 
   constructor(private readonly binding: ActionBinding, private readonly client: MapClient,
     private readonly sources: NativeLoaderSourceAdapter, private readonly mountReview: MountReview,
-    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read, load) => {
-      const diagnostics = new LoadDiagnosticPresentation(binding, client, read);
+    private readonly mountDiagnostics: MountDiagnostics = (binding, client, read, load, preparation) => {
+      const diagnostics = new LoadDiagnosticPresentation(binding, client, read, preparation);
       return load ? new LoadResultPresentation(binding, diagnostics, load.transaction, load.complete, { response: load.response, summary: load.summary }) : diagnostics;
     }) {
     this.dialog = document.createElement(binding.mountPresentation ? 'section' : 'dialog');
@@ -147,18 +152,20 @@ export class LoadHolonsDialog implements ActionInteraction {
     } catch (error) { if (this.current(generation)) this.status.textContent = loaderFailureDetail(error); }
   }
 
-  private async acquire(mode: SourceSelectionMode): Promise<void> {
+  private async acquire(mode: SourceSelectionMode, append = false): Promise<void> {
     if (this.picking || this.busy || this.disposed || this.disposing) return;
     const generation = this.generation;
     this.picking = true;
+    this.mountedReview?.setAcquiring?.(true);
     this.status.textContent = 'Selecting and reading sources…';
     try {
       const selection = await this.sources.select(mode);
       if (!this.current(generation)) return;
-      if (selection.status === 'cancelled') { await this.dispose(); return; }
-      this.review(selection.discovery);
+      if (selection.status === 'cancelled') { if (!append) await this.dispose(); else this.status.textContent = 'Review the retained source contents.'; return; }
+      if (append) { await this.mountedReview?.append?.(selection.discovery); this.status.textContent = 'Review the retained source contents.'; }
+      else this.review(selection.discovery);
     } catch (error) { if (this.current(generation)) this.status.textContent = loaderFailureDetail(error); }
-    finally { this.picking = false; }
+    finally { this.picking = false; if (this.current(generation)) { this.mountedReview?.setAcquiring?.(false); } }
   }
 
   private review(discovery: SourceDiscovery): void {
@@ -168,11 +175,11 @@ export class LoadHolonsDialog implements ActionInteraction {
     this.closeButton.parentElement!.hidden = true;
     this.content.append(host);
     this.status.textContent = 'Review the retained source contents.';
-    this.mountedReview = this.mountReview(host, discovery, content => { void this.submit(content); }, () => { void this.dispose(); });
+    this.mountedReview = this.mountReview(host, discovery, content => { void this.submit(content); }, () => { void this.dispose(); }, () => { void this.acquire('files', true); });
   }
 
   private async submit(content: ContentSet): Promise<void> {
-    if (this.terminal || this.busy || !this.transaction || !this.target || this.disposed || this.disposing) return;
+    if (this.terminal || this.busy || this.picking || !this.transaction || !this.target || this.disposed || this.disposing) return;
     const generation = this.generation;
     this.busy = true; this.closeButton.disabled = true;
     this.started = Date.now();
@@ -269,7 +276,7 @@ export class LoadHolonsDialog implements ActionInteraction {
       if (!invoked) {
         this.content.replaceChildren(...reviewNodes);
         this.mountedReview?.resume();
-        this.diagnostics = this.mountDiagnostics(this.binding, this.client, async () => parserLoadDiagnostics(error));
+        this.diagnostics = this.mountDiagnostics(this.binding, this.client, async () => parserLoadDiagnostics(error), undefined, this.transaction);
         this.content.prepend(this.diagnostics.element);
         this.dialog.focus();
         phase = `Preparation failed: ${loaderFailureDetail(error)}`;
@@ -294,7 +301,10 @@ export class LoadHolonsDialog implements ActionInteraction {
     try {
       await this.initializing;
       await this.diagnostics?.dispose(); this.diagnostics = undefined;
-      await this.transaction?.dispose();
+      if (this.transaction) {
+        const resume = await semanticWork(this.transaction).pauseAndDrain();
+        try { await this.transaction.dispose(); } finally { resume(); }
+      }
       this.themeObserver.disconnect();
       this.disposed = true; ++this.generation;
       this.response = undefined; this.target = undefined; this.transaction = undefined;

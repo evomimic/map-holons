@@ -1,4 +1,4 @@
-import { extractNumber, extractString, readLoadValidationDiagnostics, readParserDiagnostics,
+import { extractNumber, extractString, readParserDiagnostics,
   type HolonReference } from '../../../dahn/deps/map-sdk';
 import type { TablePresentation } from '../../../dahn/contracts/table-presentation';
 import { loaderFailureDetail } from '../json-data-uploader/loader-result.presenter';
@@ -6,6 +6,7 @@ import { loaderFailureDetail } from '../json-data-uploader/loader-result.present
 export type DiagnosticLocation = { kind: 'byte'; offset: number } | { kind: 'line-column'; line: number; column: number };
 export interface LoadDiagnosticRow {
   id: string;
+  reference?: HolonReference;
   category: string;
   message: string | null;
   filename: string | null;
@@ -21,43 +22,28 @@ export interface LoadDiagnostics { rows: LoadDiagnosticRow[]; readFailures: stri
 export async function readLoadDiagnostics(response: HolonReference): Promise<LoadDiagnostics> {
   const rows: LoadDiagnosticRow[] = [], readFailures: string[] = [];
   try {
-    const errors = await response.relatedHolons('HasLoadError');
-    for (const [index, carrier] of errors.members.entries()) {
+    const diagnostics = await response.relatedHolons('HasDiagnostic');
+    for (const reference of diagnostics) {
       const read = async (name: string) => {
-        try { const value = await carrier.propertyValue(name); return value === null ? null : extractString(value); }
-        catch (error) { readFailures.push(`Operational error ${index + 1}, ${name}: ${loaderFailureDetail(error)}`); return null; }
+        try { return await reference.propertyValue(name); }
+        catch (error) { readFailures.push(`${name}: ${loaderFailureDetail(error)}`); return null; }
       };
-      let offset: number | null = null;
-      try {
-        const value = await carrier.propertyValue('StartUtf8ByteOffset');
-        if (value !== null) { offset = extractNumber(value); if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid byte offset'); }
-      } catch (error) { offset = null; readFailures.push(`Operational error ${index + 1}, location: ${loaderFailureDetail(error)}`); }
-      rows.push({ id: `operational-${index}`, category: 'Operational error', message: await read('ErrorMessage'),
-        filename: await read('Filename'), subjectKey: await read('LoaderHolonKey'),
-        location: offset === null ? null : { kind: 'byte', offset }, subject: null,
-        details: { errorType: await read('ErrorType') } });
+      const string = async (name: string) => { const value = await read(name); return value === null ? null : extractString(value); };
+      const offset = await read('StartUtf8ByteOffset');
+      const subjects = await reference.relatedHolons('DiagnosticSubject');
+      if (subjects.length > 1) throw new Error('Diagnostic has multiple affected subjects');
+      rows.push({ id: `diagnostic-${rows.length}`, reference,
+        category: await string('DiagnosticCategory') ?? 'Diagnostic', message: await string('Message'),
+        filename: await string('Filename'), subjectKey: await string('LoaderHolonKey'),
+        location: offset === null ? null : { kind: 'byte', offset: extractNumber(offset) },
+        subject: subjects.members[0] ?? null, details: null });
     }
-    const count = await response.propertyValue('ErrorCount');
-    if (count === null) throw new Error('ErrorCount is unavailable');
-    const expected = extractNumber(count);
-    if (!Number.isSafeInteger(expected) || expected < 0 || expected !== errors.members.length) {
-      throw new Error(`Operational diagnostic count mismatch: expected ${expected}, read ${errors.members.length}`);
-    }
-  } catch (error) { readFailures.push(`Operational diagnostics: ${loaderFailureDetail(error)}`); }
-  try {
-    const validation = await readLoadValidationDiagnostics(response);
-    for (const [index, item] of validation.findings.entries()) {
-      let subjectKey = item.source?.loaderHolonKey ?? null;
-      if (subjectKey === null && item.subject) {
-        try { subjectKey = await item.subject.key(); }
-        catch (error) { readFailures.push(`Validation finding ${index + 1}, subject key: ${loaderFailureDetail(error)}`); }
-      }
-      rows.push({ id: `validation-${index}`, category: item.subject ? 'Staged validation finding' : 'Unattached validation finding',
-        message: item.finding.message, filename: item.source?.filename ?? null, subjectKey,
-        location: item.source?.startUtf8ByteOffset == null ? null : { kind: 'byte', offset: item.source.startUtf8ByteOffset },
-        subject: item.subject, details: item.finding });
-    }
-  } catch (error) { readFailures.push(`Validation diagnostics: ${loaderFailureDetail(error)}`); }
+    const errors = await response.propertyValue('ErrorCount');
+    const violations = await response.propertyValue('ValidationViolationCount');
+    if (errors === null || violations === null) throw new Error('Diagnostic counts are unavailable');
+    const expected = extractNumber(errors) + extractNumber(violations);
+    if (expected !== rows.length) throw new Error(`Diagnostic count mismatch: expected ${expected}, read ${rows.length}`);
+  } catch (error) { readFailures.push(loaderFailureDetail(error)); }
   return { rows, readFailures };
 }
 

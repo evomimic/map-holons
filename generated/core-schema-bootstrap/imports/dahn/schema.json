@@ -3720,6 +3720,9 @@
           "target": [
             {
               "$ref": "HolonLoadResponse.DanceResponseType"
+            },
+            {
+              "$ref": "LoadDiagnosticReport.Projection"
             }
           ]
         },
@@ -3746,7 +3749,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:95da485d9a4b86ff54d1ac77967d1a0f597b4f2c4cadd131c620208a5e4fd091",
+        "VisualizerArtifactDigest": "sha256:bac84d190fb71367206e7d15d41ae9a8f04d009363136eacb776c4541e4814f3",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

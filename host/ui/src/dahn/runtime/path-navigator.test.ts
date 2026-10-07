@@ -25,6 +25,8 @@ const relationship = (name: string, maximum: number | null = null) => ({ directi
 function subject(name: string) {
   return {
     holonId: async () => ({ Local: [...name].map(char => char.charCodeAt(0)) }),
+    testIdentity: name,
+    equals(other: unknown): boolean { return this.testIdentity === (other as { testIdentity: string }).testIdentity; },
     key: async () => name,
     versionedKey: async () => name,
     propertyValue: vi.fn(async () => ({ StringValue: name })),
@@ -887,15 +889,24 @@ it('keeps disappearance on retry in the existing horizontal destination', async 
   destination.cancel(); expect(f.destination()).toBeUndefined();
 });
 
-it('localizes a target disappearing during identity resolution and refreshes discovery', async () => {
+it('navigates a reference without requesting a persistent HolonId', async () => {
+  const f = await fixture();
+  const readId = vi.spyOn(f.b, 'holonId').mockRejectedValue(new Error('Transient holons have no persistent ID'));
+  await right(f, f.path()[0], 1);
+  expect(f.path()).toHaveLength(2);
+  expect(f.path()[1].subject).toBe(f.b);
+  expect(readId).not.toHaveBeenCalled();
+});
+
+it('localizes a target disappearing during visualizer selection and refreshes discovery', async () => {
   const f = await fixture(); const root = f.path()[0];
-  vi.spyOn(f.b, 'holonId').mockRejectedValueOnce(new Error('Target no longer exists'));
+  f.selectVisualizer.mockRejectedValueOnce(new Error('Target no longer exists'));
   const refresh = vi.spyOn(f.root.relationshipDiscovery!, 'retry');
   await right(f, root, 1);
   expect(f.destination()?.message).toContain('Target no longer exists');
   expect(f.destination()?.retry).toBeDefined();
   expect(f.destination()?.axis).toBe('horizontal');
-  expect(nodeSelections(f)).toHaveLength(0);
+  expect(nodeSelections(f)).toHaveLength(1);
   expect(refresh).toHaveBeenCalledWith(f.root.singularRelationships[1]);
   expect(f.element.querySelector('[data-lineage-child]')).toBeNull();
 });

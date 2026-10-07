@@ -17,24 +17,20 @@ function fixture(read: () => Promise<LoadDiagnostics>) {
   view = new LoadDiagnosticPresentation(origin as never, client as never, read); document.body.append(view.element);
   return { transaction, client, origin };
 }
-it('uses a separate presentation transaction and inspects only the retained actual subject', async () => {
-  const subject = { availableProperties: vi.fn(async () => [{ propertyName: async () => 'Title' }]), propertyValue: vi.fn(async () => ({ StringValue: 'retained staged value' })) };
-  const data = { rows: [{ id: 'finding', category: 'Staged validation finding', message: 'required field', filename: null, subjectKey: null, location: null, subject, details: { severity: 'Error' } }], readFailures: [] };
-  const f = fixture(async () => data as never); await tick();
-  expect(f.transaction.bindLoadTarget).toHaveBeenCalledWith(f.origin.subject);
-  expect(f.transaction.bindSavedReference).toHaveBeenCalledWith(f.origin.visualizer);
+it('materializes the collection separately and sends the diagnostic handle to ordinary navigation', async () => {
+  const reference = {}, subject = {};
+  const data = { rows: [{ id: 'finding', reference, category: 'Staged validation finding', message: 'required field', filename: null, subjectKey: null, location: null, subject, details: {} }], readFailures: [] };
+  const f = fixture(async () => data as never); const inspect = vi.fn(); view.setInspect(inspect); await tick();
   expect(bindings[0].transaction).toBe(f.transaction);
-  bindings[0].projection.activate('finding');
-  const inspect = [...view.element.querySelectorAll('button')].find(button => button.textContent === 'Inspect subject')!;
-  inspect.click(); await tick();
-  expect(subject.propertyValue).toHaveBeenCalledWith('Title'); expect(view.element.textContent).toContain('retained staged value');
+  bindings[0].projection.activate('finding'); expect(inspect).toHaveBeenCalledWith(reference);
+  expect(view.element.textContent).not.toContain('Inspect subject');
   await view.dispose(); expect(f.transaction.dispose).toHaveBeenCalledOnce();
 });
-it('shows diagnostic details without a subject and explicit read failure feedback with retry', async () => {
-  const read = vi.fn(async () => ({ rows: [{ id: 'parser', category: 'Parser issue', message: 'invalid JSON', filename: 'x', subjectKey: null, location: null, subject: null, details: {} }], readFailures: ['validation read denied'] }));
-  fixture(read); await tick(); bindings[0].projection.activate('parser');
-  expect(view.element.textContent).toContain('invalid JSON'); expect(view.element.textContent).toContain('validation read denied');
-  expect(view.element.textContent).not.toContain('No diagnostics reported'); expect(view.element.textContent).not.toContain('Inspect subject');
+it('retains explicit read failure feedback and retries without treating missing evidence as zero', async () => {
+  const read = vi.fn(async () => ({ rows: [], readFailures: ['validation read denied'] }));
+  fixture(read); const counts = vi.fn(); view.subscribeCount(counts); await tick();
+  expect(view.element.textContent).toContain('validation read denied');
+  expect(counts).not.toHaveBeenCalledWith(0);
   view.element.querySelector<HTMLButtonElement>('button')!.click(); await tick(); expect(read).toHaveBeenCalledTimes(2);
 });
 it('waits for evidence acquisition before releasing state and never opens a transaction after dismissal', async () => {
@@ -48,13 +44,9 @@ it('reports an explicit empty state without changing an outcome', async () => {
   expect(view.element.textContent).toContain('No diagnostics reported'); expect(bindings[0].projection.presentation.rowIds).toEqual([]);
 });
 
-it('waits for a running subject read before releasing presentation and loader-dependent views', async () => {
-  let finish!: (value: never[]) => void;
-  const subject = { availableProperties: vi.fn(() => new Promise<never[]>(done => { finish = done; })) };
-  const f = fixture(async () => ({ rows: [{ id: 'subject', category: 'Validation', message: 'missing', filename: null, subjectKey: null, location: null, subject: subject as never, details: {} }], readFailures: [] }));
-  await tick(); bindings[0].projection.activate('subject');
-  view.element.querySelector<HTMLButtonElement>('button')!.click(); await tick();
-  const closing = view.dispose(); await tick(); expect(f.transaction.dispose).not.toHaveBeenCalled();
-  finish([]); await closing; expect(f.transaction.dispose).toHaveBeenCalledOnce();
-  expect(view.element.isConnected).toBe(false);
+it('revokes activation on disposal', async () => {
+  const reference = {};
+  fixture(async () => ({ rows: [{ id: 'diagnostic', reference: reference as never, category: 'Validation', message: 'missing', filename: null, subjectKey: null, location: null, subject: null, details: {} }], readFailures: [] }));
+  const inspect = vi.fn(); view.setInspect(inspect); await tick();
+  await view.dispose(); bindings[0].projection.activate('diagnostic'); expect(inspect).not.toHaveBeenCalled();
 });

@@ -221,7 +221,12 @@ fn nonrejected_responses_expose_zero_validation_count() -> Result<(), HolonError
 #[test]
 fn loader_responses_and_errors_use_canonical_descriptors() -> Result<(), HolonError> {
     let context = context();
-    for key in ["HolonLoadResponse.DanceResponseType", "HolonLoadError.HolonError"] {
+    for key in [
+        "HolonLoadResponse.DanceResponseType",
+        "HolonLoadError.HolonError",
+        "LoadDiagnostic.Projection",
+        "CommitResponse.Projection",
+    ] {
         let descriptor = context.mutation().new_holon(Some(key.into()))?;
         context.mutation().stage_new_holon(descriptor)?;
     }
