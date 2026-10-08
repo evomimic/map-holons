@@ -35,6 +35,10 @@ describe('Holon Inspector visualizer artifact', () => {
     element.setSpatialBudget({ height: 46 });
     expect(element.querySelector('[data-holon-inspector-collection-region]').inert).toBe(true);
     element.updateCollection({ state: 'loaded', content: collection });
+    expect(element.getVisualizerComposition().find((region: any) => region.label === 'Properties')?.element).toBe(properties);
+    expect(element.getVisualizerComposition().find((region: any) => region.label === 'Active Collection View')?.element).toBe(collection);
+    expect(element.getVisualizerComposition().find((region: any) => region.label === 'Collection Tabs')?.element).toBe(element.querySelector('[data-holon-inspector-collection-tab-bar]'));
+    expect(element.getVisualizerComposition().find((region: any) => region.label === 'Vertical Rail')?.element).toBe(element.querySelector('[data-holon-inspector-single-value-rail]'));
     expect(element.querySelector('[data-holon-inspector-collection-region]').style.display).toBe('none');
     element.setSpatialBudget({ height: 500 });
     expect(element.querySelector('[data-holon-inspector-body]').style.display).toBe('grid');

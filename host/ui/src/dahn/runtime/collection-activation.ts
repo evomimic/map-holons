@@ -3,7 +3,7 @@ import { NavigationProfile } from './navigation-profile';
 import { destinationPaint } from './destination-paint';
 import { semanticWork } from './semantic-work';
 import type { NodeRelationshipDiscovery } from './relationship-discovery';
-import { INSPECT_HOLON_EVENT, type InspectHolonIntent } from '../contracts/visualizers';
+import { INSPECT_HOLON_EVENT, type InspectHolonIntent, type VisualizerContext } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
 import type { HolonReference, MapTransaction } from '../deps';
 import { realizeCollection, type CollectionElement } from './realize-collection';
@@ -56,6 +56,7 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly materialized: MaterializedVisualizerRuntime,
     private readonly discovery?: NodeRelationshipDiscovery,
     private readonly presentation: MapTransaction = transaction,
+    private readonly valueContext?: Pick<VisualizerContext, 'theme' | 'canvas'>,
   ) {
     this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
       const selected = this.selected; const slot = this.selectedSlot; const publish = this.presentationUpdate;
@@ -169,7 +170,7 @@ export class NodeCollectionActivation implements CollectionActivation {
               this.materialized, current, name => {
                 stage = name;
                 if (name === 'Artifact materialization') profile?.next('collection artifact materialization');
-              }, this.presentation);
+              }, this.presentation, this.valueContext);
             if (!element) return;
             profile?.next('collection ordering');
             stage = 'Property retrieval / presentation';

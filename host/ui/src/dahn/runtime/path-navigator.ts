@@ -1,4 +1,4 @@
-import { revokeVisualizerInformationControls } from './visualizer-information-control';
+import { registerVisualizerInspection, revokeVisualizerInformationControls } from './visualizer-information-control';
 import { placeTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
 import { destinationPaint } from './destination-paint';
 import { NavigationProfile } from './navigation-profile';
@@ -265,18 +265,22 @@ export class PathNavigator implements PathNavigation {
     };
     const control = node.element as VisualizerElement;
     if (this.inspectVisualizer && control.setVisualizerInformationHandler) {
+      let displayName = 'Visualizer';
+      const target = (invoker: HTMLElement): VisualizerInspectionTarget => ({ occurrenceId: occurrence.id, context: this,
+        owner: this.parentVisualizer, slot: this.nodeSlot, subject, selectedVisualizer, displayName,
+        element: node.element, invoker,
+        isLive: () => !this.disposed && this.path().includes(occurrence) && node.element.isConnected });
       const invoke = (invoker: HTMLElement) => {
         if (this.disposed || !this.path().includes(occurrence) || !node.element.isConnected) return;
-        this.inspectVisualizer!({ occurrenceId: occurrence.id, context: this,
-          owner: this.parentVisualizer, slot: this.nodeSlot, subject, selectedVisualizer,
-          element: node.element, invoker,
-          isLive: () => !this.disposed && this.path().includes(occurrence) && node.element.isConnected });
+        this.inspectVisualizer!(target(invoker));
       };
       control.setVisualizerInformationHandler(invoke, 'Visualizer');
+      registerVisualizerInspection(node.element, () => target(node.element.querySelector<HTMLElement>('[data-visualizer-information]') ?? node.element));
       void semanticWork(this.contextFor(subject)).run(async () => {
         const name = await selectedVisualizer.propertyValue('DisplayName');
         return name && 'StringValue' in name ? name.StringValue : await selectedVisualizer.key() ?? await selectedVisualizer.versionedKey();
       }).then(name => {
+        displayName = name;
         if (!this.disposed && this.path().includes(occurrence)) control.setVisualizerInformationHandler?.(invoke, name);
       }).catch(() => { /* The information action remains available if its label cannot be read. */ });
     }

@@ -14,6 +14,8 @@ const implementations = [
   ['LoadHolonsActionTypeScript.VisualizerImplementation', 'load-holons-action.js'],
   ['UnsupportedActionTypeScript.VisualizerImplementation', 'unsupported-action.js'],
   ['DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation', 'properties.js'],
+  ['GenericPropertyTypeScript.VisualizerImplementation', 'property.js'],
+  ['ScalarValueTypeScript.VisualizerImplementation', 'scalar-value.js'],
 ];
 
 describe('registered navigation artifact integrity', () => {

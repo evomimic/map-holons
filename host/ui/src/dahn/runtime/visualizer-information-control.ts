@@ -1,10 +1,54 @@
 import type { HolonReference, MapTransaction } from '../deps';
-import type { VisualizerInspectionTarget } from '../contracts/visualizers';
+import type { VisualizerElement, VisualizerInspectionEntry, VisualizerInspectionTarget, VisualizerPresentationRegion } from '../contracts/visualizers';
 
 export const VISUALIZER_INFORMATION_EVENT = 'dahn-visualizer-information';
 
+const selections = new WeakMap<HTMLElement, () => VisualizerInspectionTarget>();
+const regionIdentities = new WeakMap<HTMLElement, string>();
+
+/** Register an owner-bound selection whose invoker is supplied by the implementation. */
+export function registerVisualizerInspection(element: HTMLElement, target: () => VisualizerInspectionTarget): void {
+  selections.set(element, target);
+}
+
+/** Read the selection captured at realization, never reconstruct it from the DOM. */
+export function selectedVisualizerInspection(element: HTMLElement): VisualizerInspectionTarget | undefined {
+  return selections.get(element)?.();
+}
+
+/** Resolve implementation-declared regions against the actual live child selections. */
+export function visualizerInspectionEntries(target: VisualizerInspectionTarget, regions: readonly VisualizerPresentationRegion[]): readonly VisualizerInspectionEntry[] {
+  return regions.filter(region => region.element.isConnected && target.element.contains(region.element)).map(region => {
+    const selected = selectedVisualizerInspection(region.element);
+    if (!regionIdentities.has(region.element)) regionIdentities.set(region.element, crypto.randomUUID());
+    return {
+      label: region.label, ownership: selected ? 'selected' : 'implementation', displayName: selected?.displayName,
+      inspect: () => {
+        if (!target.isLive() || !region.element.isConnected || !target.element.contains(region.element)) return;
+        if (selected) return selected.isLive() ? withVisualizerComposition(selected) : undefined;
+        const owned: VisualizerInspectionTarget = {
+          ...target, occurrenceId: `${target.occurrenceId}/region-${regionIdentities.get(region.element)}`, element: region.element,
+          regionLabel: region.label,
+          isLive: () => target.isLive() && region.element.isConnected && target.element.contains(region.element),
+          composition: () => visualizerInspectionEntries(owned, region.children
+            ?? (region.element as VisualizerElement).getVisualizerComposition?.() ?? []),
+        };
+        return owned;
+      },
+    };
+  });
+}
+
+/** Composition remains occurrence-local and is read afresh when disclosure is opened. */
+export function withVisualizerComposition(target: VisualizerInspectionTarget): VisualizerInspectionTarget {
+  if (target.composition || !(target.element as VisualizerElement).getVisualizerComposition) return target;
+  return { ...target, composition: () => visualizerInspectionEntries(target,
+    (target.element as VisualizerElement).getVisualizerComposition?.() ?? []) };
+}
+
 /** Revoke nested slot invokers when their containing presentation is retired. */
 export function revokeVisualizerInformationControls(element: HTMLElement): void {
+  selections.delete(element);
   for (const control of element.querySelectorAll('[data-visualizer-information-control]')) control.remove();
 }
 
@@ -13,6 +57,7 @@ export async function bindVisualizerInformationControl(
   element: HTMLElement, transaction: MapTransaction, subject: VisualizerInspectionTarget['subject'],
   owner: HolonReference, slot: HolonReference, selectedVisualizer: HolonReference,
   placement: 'start' | 'end' = 'end',
+  regionLabel?: string,
 ): Promise<void> {
   const value = await selectedVisualizer.propertyValue('DisplayName');
   const displayName = value && 'StringValue' in value ? value.StringValue
@@ -38,13 +83,15 @@ export async function bindVisualizerInformationControl(
   for (const name of ['mouseleave', 'blur']) button.addEventListener(name, () => show(false));
   button.addEventListener('keydown', event => { if (event.key === 'Escape') show(false); });
   const occurrenceId = `visualizer-slot-${crypto.randomUUID()}`;
+  const target = (): VisualizerInspectionTarget => ({
+    occurrenceId, context: transaction, owner, slot, subject, selectedVisualizer, displayName, regionLabel,
+    element, invoker: button, isLive: () => element.isConnected && element.contains(button),
+  });
+  selections.set(element, target);
   button.addEventListener('click', event => {
     event.stopPropagation(); show(false);
     if (!element.isConnected) return;
-    element.dispatchEvent(new CustomEvent<VisualizerInspectionTarget>(VISUALIZER_INFORMATION_EVENT, { bubbles: true, composed: true, detail: {
-      occurrenceId, context: transaction, owner, slot, subject, selectedVisualizer,
-      element, invoker: button, isLive: () => element.isConnected && element.contains(button),
-    } }));
+    element.dispatchEvent(new CustomEvent<VisualizerInspectionTarget>(VISUALIZER_INFORMATION_EVENT, { bubbles: true, composed: true, detail: withVisualizerComposition(target()) }));
   });
   container.append(button, tooltip);
   element.style.position = 'relative';

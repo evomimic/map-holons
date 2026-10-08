@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "7e7f3bc43e1f4cb46a00ca65e9211d739525bfb2b1ca4756389add91536136f8"
+      "sha256": "34fcb18d355ce64f02b6d493bd4293a5b2b384cf983332ac220e82e188a526dd"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -3702,6 +3702,10 @@
     {
       "key": "VisualizerSlot.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "VisualizerSlotDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "VisualizerUsage.HolonType",

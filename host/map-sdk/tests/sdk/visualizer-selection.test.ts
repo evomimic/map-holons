@@ -48,6 +48,24 @@ it('refuses to move transaction-local diagnostic subjects into a presentation tr
   expect(() => createMapTransaction(42).bindSavedReference(createHolonReference(41, subject))).toThrow('persisted Smart');
 });
 
+it('binds canonical saved property descriptors through the public lookup before Value selection', async () => {
+  const tx = createMapTransaction(41);
+  const reference = createHolonReference(41, subject);
+  const lookup = vi.spyOn(tx, 'getSavedHolonByBaseKey').mockResolvedValue(reference);
+  const property = await tx.getSavedPropertyDescriptorByBaseKey('Key.PropertyType');
+  select.mockResolvedValue({ selected, requested_kind: 'Value', alternatives_available: false });
+  await tx.selectValueVisualizer(property!, createHolonReference(41, parent), createHolonReference(41, slot));
+  expect(lookup).toHaveBeenCalledWith('Key.PropertyType');
+  expect(select).toHaveBeenLastCalledWith(41, { subject, parent_visualizer: parent, slot, requested_kind: 'Value' });
+  lookup.mockResolvedValue(null);
+  expect(await tx.getSavedPropertyDescriptorByBaseKey('Missing.PropertyType')).toBeNull();
+});
+
+it('does not borrow a transaction-local PropertyDescriptor from another context', async () => {
+  const property = createPropertyDescriptorHandle(createHolonReference(41, subject));
+  expect(() => createMapTransaction(42).selectValueVisualizer(property, createHolonReference(42, parent), createHolonReference(42, slot))).toThrow('persisted Smart');
+});
+
 it('selects retained collection types in a fresh context without sending loader-bound membership', async () => {
   const typeWire: HolonReferenceWire = { Smart: { holon_id: { Local: [8] }, smart_property_values: null } };
   const elementType = createHolonDescriptorHandle(createHolonReference(41, typeWire));

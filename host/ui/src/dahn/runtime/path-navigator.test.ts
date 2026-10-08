@@ -1,4 +1,5 @@
 import { destinationPaint } from './destination-paint';
+import { selectedVisualizerInspection, withVisualizerComposition } from './visualizer-information-control';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,7 +19,7 @@ const artifacts = Object.fromEntries(await Promise.all(
   ['holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
-const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
+const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
 const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
 const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
@@ -60,6 +61,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     selectValueVisualizer: vi.fn(async () => ({ selected: visualizers.value })),
     selectCollectionVisualizer: vi.fn(async () => ({ selected: visualizers.collection })),
     getSavedHolonByBaseKey: vi.fn(async () => ({})),
+    getSavedPropertyDescriptorByBaseKey: vi.fn(async () => ({ ...property, propertyName: async () => 'Key', displayName: async () => 'Key' })),
   } as unknown as MapTransaction;
   const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
@@ -1294,6 +1296,13 @@ it('binds information to distinct occurrences of the same subject and their sele
   (f.root.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
   const first = inspect.mock.calls[0][0];
   expect(first.selectedVisualizer).toBe(visualizers.node);
+  const pathRegions = f.element.getVisualizerComposition!();
+  const rootRegion = pathRegions.find((region: any) => region.label === 'Root Node');
+  expect(rootRegion!.element).toBe(f.root.element);
+  const rootInspection = withVisualizerComposition(selectedVisualizerInspection(rootRegion!.element)!);
+  expect(rootInspection.selectedVisualizer).toBe(first.selectedVisualizer);
+  expect(rootInspection.composition!().map(entry => entry.label)).toEqual(expect.arrayContaining(['Title Bar', 'Vertical Rail', 'Collection Tabs', 'Properties']));
+  expect(pathRegions.find(region => region.label === 'View controls')!.children!.map(region => region.label)).toEqual(['Zoom out', 'Zoom in', 'Zoom to Fit', 'Actual Size']);
   const alternate = selected('alternate-inspector');
   artifacts['alternate-inspector'] = artifacts['holon-inspector'];
   f.selectVisualizer.mockImplementation(async request => ({ selected: request.requestedKind === 'node' ? alternate : visualizers[request.requestedKind] }));
@@ -1311,6 +1320,7 @@ it('binds information to distinct occurrences of the same subject and their sele
   expect(second.selectedVisualizer).toBe(alternate);
   f.navigation.close!(second.occurrenceId);
   expect(second.isLive()).toBe(false); expect(first.isLive()).toBe(true);
+  expect(selectedVisualizerInspection(child.element)).toBeUndefined();
   f.navigation.dispose();
 });
 

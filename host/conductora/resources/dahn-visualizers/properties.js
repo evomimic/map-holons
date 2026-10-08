@@ -5,6 +5,7 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
   // PropertyMap slot report: intrinsic content height at the granted width.
   getPreferredContentHeight() { return this.preferredContentHeight; }
   frame = null;
+  getVisualizerComposition() { return this.composition ?? []; }
 
   connectedCallback() {
     this.observeLayout();
@@ -43,6 +44,7 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
       gap: 'var(--dahn-properties-row-gap)',
     });
     const children = context.childVisualizers ?? new Map();
+    this.composition = [...children].map(([label, element]) => ({ label, element }));
     this.rows = [];
     if (children.size === 0) properties.textContent = 'No properties';
     for (const [name, child] of children) {

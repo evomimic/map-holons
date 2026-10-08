@@ -92,6 +92,10 @@ describe('Theme', () => {
         '--dahn-canvas-gap': '16px',
         '--dahn-canvas-surface-background': '#f7f5ef',
       },
+      tokenAssignmentValues: {
+        'CanvasGap.DesignToken@1': '16px',
+        'CanvasSurfaceBackground.DesignToken@1': '#f7f5ef',
+      },
     });
   });
 

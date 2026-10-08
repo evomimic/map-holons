@@ -11,6 +11,15 @@ it('retains the summary and collections through Path Inspector compression and r
   collections.dataset.selectedRow = 'retained';
   node.setContext({ title: 'Load Holons', childVisualizers: new Map([['properties', properties], ['collections', collections]]) });
   document.body.append(node);
+  const inspect = vi.fn();
+  expect(node.setVisualizerInformationHandler).toBeTypeOf('function');
+  node.setVisualizerInformationHandler(inspect, 'Load Holons Inspector');
+  const information = node.querySelector('[data-visualizer-information]') as HTMLButtonElement;
+  expect(information.hidden).toBe(false);
+  expect(information.getAttribute('aria-label')).toBe('Visualizer information: Load Holons Inspector');
+  information.click(); expect(inspect).toHaveBeenCalledWith(information);
+  node.setVisualizerInformationHandler(undefined, 'Load Holons Inspector');
+  expect(information.hidden).toBe(true);
   const restore = vi.fn(); node.setOccurrenceRestorationHandler(restore);
   const extents = node.getNodeInspectorExtents();
   expect(extents.vertical['full-height']).toBeGreaterThan(extents.vertical['partial-height']);

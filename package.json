@@ -22,6 +22,8 @@
 
   "build": "npm run build:happ && npm run build:host",
   "build:host": "npm run build:house-troupe && npm run build -w map-host",
+    "build:node-visualizers": "node scripts/build-node-visualizers.mjs",
+    "prebuild:house-troupe": "npm run build:node-visualizers",
     "build:happ": "npm run build:happ -w map-happ",
     "web:review": "npm run web:review -w map-host",
     "web:test": "npm run web:test:dahn -w map-host",
@@ -33,6 +35,7 @@
     "fmt:sweetests": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all",
     "fmt:sweetests:check": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check",
 
+    "pretest": "npm run deps:check",
     "test": "npm run test:unit && npm run sweetest",
     "test:unit": "npm run test:unit:shared && npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run test:unit -w map-happ && npm run test:unit:sweetests && npm run web:typecheck && npm run web:test && npm run typecheck -w map-sdk && npm run test -w map-sdk",
     "test:unit:shared": "bash scripts/test-shared-crates.sh",

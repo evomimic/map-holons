@@ -135,7 +135,7 @@ export async function realizeNode(
               propertyPresentation: { propertyName, value },
             });
 
-            await bindVisualizerInformationControl(renderedValue, transaction, subject, propertySelection.selected, valueSlot, valueSelection.selected);
+            await bindVisualizerInformationControl(renderedValue, transaction, subject, propertySelection.selected, valueSlot, valueSelection.selected, 'start');
             return renderedValue;
           });
           const propertyElement = document.createElement(propertyTag) as HTMLElement & {
@@ -221,7 +221,7 @@ export async function realizeNode(
     ...affordances.singularRelationships,
     ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
   ]);
-  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction);
+  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction, { theme, canvas });
   try {
     element.setContext({
       collectionActivation,

@@ -1,5 +1,14 @@
 export default class PathInspectorElement extends HTMLElement {
   static compositionSlots = { node: 'PathInspector.RootNodeSlot' };
+  getVisualizerComposition() {
+    return [
+      ...(this.viewControls ? [{ label: 'View controls', element: this.viewControls,
+        children: this.viewButtons.map(element => ({ label: element.textContent, element })) }] : []),
+      ...(this.occurrences ?? []).map((item, index) => ({
+        label: !item.parentOccurrenceId && !item.provenance ? 'Root Node' : `Node ${index + 1}`, element: item.element,
+      })),
+    ];
+  }
   constructor() {
     super();
     this.addEventListener('dahn-spatial-extents-changed', event => {
@@ -621,6 +630,7 @@ export default class PathInspectorElement extends HTMLElement {
   }
   createViewControls() {
     const controls = document.createElement('div');
+    this.viewControls = controls;
     controls.setAttribute('role', 'group');
     controls.setAttribute('aria-label', 'Navigation view');
     Object.assign(controls.style, { display: 'flex', width: '100%', minWidth: '0', overflowX: 'auto', alignItems: 'center', gap: 'var(--dahn-control-gap)' });

@@ -41,7 +41,9 @@ export class SpaceNavigatorExperience {
 
   constructor(private readonly binding: SpaceNavigatorBinding) {
     this.element = new ExplorationTabs((anchor, signal) => this.realize(anchor, signal));
-    this.information = new VisualizerInformationRegion(binding, this.element);
+    this.information = new VisualizerInformationRegion(binding, this.element, reference => {
+      if (!semanticWork(binding.transaction).paused) void this.element.open(reference);
+    });
     this.element.auxiliaryHost.append(this.information.element);
     this.element.addEventListener(VISUALIZER_INFORMATION_EVENT, event => {
       event.stopPropagation();
@@ -129,6 +131,15 @@ export class SpaceNavigatorExperience {
         element.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
           navigation, childVisualizers: new Map([['root-node', root]]),
           onInspectHolon: intent => navigation.inspect(intent), onTraverseRelationship: intent => navigation.traverseRelationship(intent) });
+        const slots = await this.binding.dancer.relatedHolons('HasExperienceVisualizerSlot');
+        for (const slot of slots) {
+          if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') {
+            await bindVisualizerInformationControl(element, review, subject,
+              review.bindSavedReference(this.binding.dancer), review.bindSavedReference(slot), parent);
+            break;
+          }
+        }
+        signal.throwIfAborted();
         return { element, title: 'Load Holons', inspect: (intent: Parameters<PathNavigator['inspect']>[0]) => navigation.inspect(intent),
           dispose: () => { navigation.dispose(); element.remove(); } };
       } catch (error) { navigation.dispose(); throw error; }

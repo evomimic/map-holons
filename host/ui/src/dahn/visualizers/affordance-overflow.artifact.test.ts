@@ -22,6 +22,22 @@ async function artifact(name: string) {
   const module = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
   return document.createElement(defineCustomElementOnce(`test-overflow-${name}`, module.default)) as HTMLElement & { setContext(context: unknown): void };
 }
+it('reports ActionGroup ownership and its actual selected Action children through overflow movement', async () => {
+  const element = await artifact('actions') as any;
+  const child = document.createElement('button'); child.textContent = 'Run';
+  element.setContext({ actions: [{ kind: 'group', label: 'Tools', children: [{ id: 'run', label: 'Run' }] }], childVisualizers: new Map([['run', child]]) });
+  document.body.append(element);
+  const group = element.getVisualizerComposition()[0];
+  expect(group.label).toBe('Tools'); expect(group.element.getAttribute('role')).toBe('group');
+  expect(group.children).toEqual([{ label: 'Run', element: child }]);
+  const row = element.querySelector('[data-overflow-row]');
+  Object.defineProperty(row, 'clientWidth', { get: () => 50 });
+  measure(group.element, 200); measure(row.querySelector('[data-overflow-more]'), 100);
+  flush(); row.querySelector('[data-overflow-more]').click();
+  expect(group.element.isConnected).toBe(true);
+  expect(group.element.contains(child)).toBe(true);
+  expect(element.getVisualizerComposition()[0]).toBe(group);
+});
 it.each(['actions', 'holon-inspector'])('keeps %s horizontal controls in one row and exposes only spillovers in the disclosure', async name => {
   const element = await artifact(name);
   const items = ['One', 'Two', 'Three'].map(label => ({ label, id: label }));

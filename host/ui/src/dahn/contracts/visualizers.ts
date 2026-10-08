@@ -11,7 +11,7 @@ import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
 import type { TablePresentation } from './table-presentation';
-import type { BaseValue, HolonReference, DescribedHolonCollection } from '../deps';
+import type { BaseValue, HolonReference, DescribedHolonCollection, PropertyDescriptorHandle } from '../deps';
 
 /** Inspection intent delivered to the Path Inspector, never a MAP command.
  * The source element identifies a live Collection occurrence, independent of
@@ -42,6 +42,8 @@ export const TRAVERSE_RELATIONSHIP_EVENT = 'dahn-traverse-relationship';
  * A null handler revokes delivery when their owning lifecycle is superseded.
  */
 export interface CollectionInteractionElement extends HTMLElement {
+  /** One descriptor-selected factory per column; row layout remains Collection-owned. */
+  setColumnValueVisualizerProvider?(provider: (property: PropertyDescriptorHandle, name: string) => Promise<ColumnValuePresentation>, identityProperty: () => Promise<PropertyDescriptorHandle | null>): void;
   /** Opaque implementation-owned view state; never semantic membership or handles. */
   getCollectionViewState?(): unknown;
   /** Restore view state after fresh projection; implementations validate their own format. */
@@ -95,6 +97,29 @@ export interface VisualizerInspectionTarget {
   readonly element: HTMLElement;
   readonly invoker: HTMLElement;
   readonly isLive: () => boolean;
+  readonly displayName?: string;
+  /** A region can be owned by this definition without occupying an independent slot. */
+  readonly regionLabel?: string;
+  readonly composition?: () => readonly VisualizerInspectionEntry[];
+}
+
+export interface ColumnValuePresentation {
+  create(value: BaseValue | null, subject?: HolonReference, missingValueLabel?: string): HTMLElement;
+  bindInformation(heading: HTMLElement): Promise<void>;
+}
+
+/** Implementation-supplied structure; selected identities come from realization bindings. */
+export interface VisualizerPresentationRegion {
+  readonly label: string;
+  readonly element: HTMLElement;
+  readonly children?: readonly VisualizerPresentationRegion[];
+}
+
+export interface VisualizerInspectionEntry {
+  readonly label: string;
+  readonly ownership: 'selected' | 'implementation';
+  readonly displayName?: string;
+  readonly inspect: () => VisualizerInspectionTarget | undefined;
 }
 
 /**
@@ -117,6 +142,12 @@ export interface VisualizerContext {
   navigation?: PathNavigation;
   /** Context of the presentation being inspected, distinct from the definition subject. */
   visualizerInspection?: VisualizerInspectionTarget;
+  /** Read-only navigation within the information session, never Visualizer choice. */
+  onInspectVisualizer?: (target: VisualizerInspectionTarget) => void;
+  /** Realize child information inside an owner-provided disclosure without replacing its parent. */
+  mountVisualizerInformation?: (target: VisualizerInspectionTarget, host: HTMLElement) => Promise<void>;
+  /** Explore the inspected definition through the experience's ordinary tab lifecycle. */
+  onExploreVisualizer?: () => void;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
@@ -152,6 +183,7 @@ export interface VisualizerContext {
   propertyPresentation?: {
     propertyName: string;
     value: BaseValue | null;
+    missingValueLabel?: string;
   };
 }
 
@@ -160,6 +192,8 @@ export interface VisualizerContext {
  */
 export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorParticipant> {
   setContext(context: VisualizerContext): void;
+  /** The implementation describes its actual regions, including implementation-owned ones. */
+  getVisualizerComposition?(): readonly VisualizerPresentationRegion[];
   /** Owner-supplied action; controls never reconstruct selection or occurrence identity. */
   setVisualizerInformationHandler?(handler: ((invoker: HTMLElement) => void) | undefined, displayName: string): void;
   /** Reflects active and attempted singular navigation without rebuilding the Node. */

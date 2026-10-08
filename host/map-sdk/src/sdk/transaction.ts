@@ -21,6 +21,7 @@ import {
   unwrapTransientHolonReference,
 } from './references';
 import {
+  createPropertyDescriptorHandle,
   unwrapPropertyDescriptorHandle,
   HolonDescriptorHandle,
   unwrapHolonDescriptorHandle,
@@ -228,6 +229,12 @@ export class MapTransaction {
       const wireRef = await internalTransaction.getSavedHolonByBaseKey(txId, key);
       return createHolonReference(txId, wireRef);
     });
+  }
+
+  /** Bind a saved property descriptor for descriptor-owned value presentation. */
+  async getSavedPropertyDescriptorByBaseKey(key: string): Promise<PropertyDescriptorHandle | null> {
+    const reference = await this.getSavedHolonByBaseKey(key);
+    return reference === null ? null : createPropertyDescriptorHandle(reference);
   }
 
   async getStagedHolonByBaseKey(key: string): Promise<HolonReference | null> {
@@ -499,8 +506,9 @@ export class MapTransaction {
     parentVisualizer: HolonReference,
     slot: HolonReference,
   ): Promise<VisualizerSelection> {
+    const reference = unwrapPropertyDescriptorHandle(property);
     return this.selectVisualizer({
-      subject: unwrapPropertyDescriptorHandle(property),
+      subject: this.owns(reference) ? reference : this.bindSavedReference(reference),
       requestedKind: 'value',
       slot,
       parentVisualizer,
