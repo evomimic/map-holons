@@ -812,6 +812,54 @@ impl DancesTestCase {
         Ok(new_token)
     }
 
+    /// Attaches a descriptor and declares its expected defaults explicitly.
+    /// Replacement removes prior DescribedBy targets; defaults preserve authored values.
+    pub fn add_with_descriptor_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        descriptor: TestReference,
+        expected_defaults: PropertyMap,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Attach descriptor and populate defaults".into());
+        let descriptor = fixture_holons.resolve_target_token_to_head(&descriptor)?;
+        let source = fixture_holons.derive_next_source(&step_token)?;
+        let mut snapshot = fixture_holons.copy_fixture_snapshot(source.snapshot())?;
+        let name = CoreRelationshipTypeName::DescribedBy;
+        let existing = snapshot
+            .related_holons(&name)?
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        if !existing.is_empty() {
+            snapshot.remove_related_holons(&name, existing)?;
+        }
+        let target = fixture_holons.resolve_expected_relationship_target(&descriptor)?;
+        snapshot.add_related_holons(name, vec![target])?;
+        for (name, value) in expected_defaults {
+            if snapshot.property_value(&name)?.is_none() {
+                snapshot.with_property_value(name, value)?;
+            }
+        }
+        let expected = ExpectedSnapshot::new(snapshot, source.state());
+        if expected_error.is_none() {
+            fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        }
+        let token = fixture_holons.mint_test_reference(source, expected);
+        self.steps.push(DanceTestStep::WithDescriptor {
+            step_token: token.clone(),
+            descriptor,
+            expected_error,
+            description,
+        });
+        Ok(token)
+    }
+
     // Advance head (no new logical holon).
     pub fn add_remove_properties_step(
         &mut self,

@@ -104,8 +104,10 @@ pub fn make_load_error_holons(
 ///
 /// This function creates a new transient holon and populates it with the
 /// standard error fields (e.g., `error_type`, `error_message`).
-/// If a `descriptor` is provided, it is attached via `with_descriptor()` to identify
-/// the holon's type (typically `HolonErrorType`). If `descriptor` is `None`, the holon
+/// If a `descriptor` is provided, it is attached by authoring `DescribedBy` directly
+/// to identify the holon's type (typically `HolonErrorType`). No defaults are
+/// attempted: diagnostics must remain available even when the descriptor belongs
+/// to the malformed graph being reported. If `descriptor` is `None`, the holon
 /// is left untyped but still contains all relevant error details.
 ///
 /// # Arguments
@@ -119,7 +121,7 @@ pub fn make_load_error_holons(
 ///
 /// # Behavior
 /// - Always calls `create_empty_error_holon()` to allocate a new transient holon.
-/// - Applies `with_descriptor()` only if a descriptor is provided.
+/// - Authors `DescribedBy` without default population if a descriptor is provided.
 /// - Uses `populate_error_fields()` to fill in diagnostic fields.
 ///
 /// Use this helper to create both typed and untyped error holons from a single entry point.
@@ -130,7 +132,8 @@ pub fn make_error_holon(
 ) -> Result<TransientReference, HolonError> {
     let mut transient_reference = create_empty_error_holon(context)?;
     if let Some(desc) = descriptor {
-        transient_reference.with_descriptor(desc)?;
+        transient_reference
+            .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![desc])?;
     }
     populate_error_fields(&mut transient_reference, err)?;
     Ok(transient_reference)
@@ -169,4 +172,74 @@ fn populate_error_fields(
     )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_reporting_preserves_diagnostics_with_a_malformed_staged_descriptor(
+    ) -> Result<(), HolonError> {
+        let context = crate::controller::tests::context();
+        let transient =
+            context.mutation().new_holon(Some(MapString("HolonLoadError.HolonError".into())))?;
+        let mut descriptor = context.mutation().stage_new_holon(transient)?;
+        let malformed_property =
+            context.mutation().new_holon(Some(MapString("Malformed.PropertyType".into())))?;
+        let malformed_property = context.mutation().stage_new_holon(malformed_property)?;
+        descriptor.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![malformed_property.into()],
+        )?;
+
+        // The missing property TypeName makes descriptor-assisted initialization fail.
+        let mut probe = context.mutation().new_holon(Some(MapString("default-probe".into())))?;
+        let failure = probe.with_descriptor(descriptor.clone().into()).unwrap_err();
+        assert!(!matches!(failure, HolonError::MissingDescribedBy { .. }));
+
+        let original_error = HolonError::InvalidParameter("malformed import".into());
+        let loader_key = MapString("source-loader".into());
+        let mut provenance = ProvenanceIndex::new();
+        provenance.insert(
+            loader_key.clone(),
+            FileProvenance {
+                filename: MapString("broken.json".into()),
+                start_utf8_byte_offset: Some(42),
+            },
+        );
+        let errors = make_load_error_holons(
+            &context,
+            Some(descriptor.clone().into()),
+            &[ErrorWithContext::new(original_error.clone()).with_loader_key(loader_key.clone())],
+            Some(&provenance),
+        )?;
+        assert_eq!(errors.len(), 1);
+        let error_holon = &errors[0];
+        assert_eq!(
+            HolonReference::from(error_holon.clone()).get_descriptor()?,
+            Some(descriptor.into())
+        );
+        assert_eq!(
+            error_holon.property_value(ErrorType)?,
+            Some(BaseValue::StringValue(MapString("invalid_parameter".into())))
+        );
+        assert_eq!(
+            error_holon.property_value(ErrorMessage)?,
+            Some(BaseValue::StringValue(MapString(original_error.to_string())))
+        );
+        assert_eq!(
+            error_holon.property_value(CorePropertyTypeName::LoaderHolonKey)?,
+            Some(BaseValue::StringValue(loader_key))
+        );
+        assert_eq!(
+            error_holon.property_value(CorePropertyTypeName::Filename)?,
+            Some(BaseValue::StringValue(MapString("broken.json".into())))
+        );
+        assert_eq!(
+            error_holon.property_value(CorePropertyTypeName::StartUtf8ByteOffset)?,
+            Some(BaseValue::IntegerValue(MapInteger(42)))
+        );
+        Ok(())
+    }
 }

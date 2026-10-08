@@ -7,7 +7,9 @@ mod fixture;
 use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
 use holons_core::core_shared_objects::{holon::ValidationState, Holon};
-use holons_core::{Descriptor, HolonReference, PropertyDescriptor, ValueDescriptor, WritableHolon};
+use holons_core::{
+    Descriptor, HolonReference, PropertyDescriptor, ReadableHolon, ValueDescriptor, WritableHolon,
+};
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
 use super::*;
@@ -87,6 +89,30 @@ fn subject_gate_replaces_all_outcomes_and_accepts_corrected_retry() -> Result<()
         missing_title.commit_errors()?,
         vec![HolonError::NotImplemented("prior persistence failure".into())]
     );
+    Ok(())
+}
+
+#[test]
+fn subject_gate_rejects_removed_attachment_default_without_refilling() -> Result<(), HolonError> {
+    let mut fixture = Fixture::new()?;
+    fixture
+        .nodes
+        .get_mut("Title.PropertyType")
+        .unwrap()
+        .with_property_value("DefaultValue", "default title")?;
+    let mut subject = fixture.staged_subject("removed-default")?;
+    assert_eq!(
+        subject.property_value("Title")?,
+        Some(BaseValue::StringValue(MapString("default title".into())))
+    );
+    subject.remove_property_value("Title")?;
+    // A prior successful assessment never suppresses the fresh assessment.
+    subject.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+    let report = validate_subject_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(!report.is_accepted());
+    assert!(report.violations.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation {code} if code == "DS-PROP-001")));
+    assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+    assert_eq!(subject.property_value("Title")?, None);
     Ok(())
 }
 

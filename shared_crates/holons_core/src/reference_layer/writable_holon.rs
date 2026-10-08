@@ -5,15 +5,6 @@ use base_types::ToBaseValue;
 use core_types::HolonError;
 use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
 
-/// Whether construction defaults could be fully resolved during this pass.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CompletionOutcome {
-    /// All applicable defaults were considered; this does not establish validity.
-    Completed,
-    /// A governing descriptor is not attached yet; retry after reference resolution.
-    DeferredNoDescriptor,
-}
-
 /// Public façade for write operations (ergonomic + complete).
 ///
 /// Accepts any types implementing [`ToRelationshipName`] or [`ToPropertyName`].
@@ -23,13 +14,27 @@ pub enum CompletionOutcome {
 /// This is the trait you should import and use in call sites.
 /// Implementors only need to implement [`WritableHolonImpl`].
 pub trait WritableHolon: WritableHolonImpl {
-    /// Populates applicable effective defaults without overwriting authored
-    /// values.
+    /// Attempts to populate defaults on a best-effort, idempotent basis.
     ///
-    /// Missing descriptors, including those needed by property descriptors, defer
-    /// completion while preserving progress on other properties. All other errors
-    /// propagate. Retrying after reference resolution is safe and idempotent.
-    fn populate_defaults(&mut self) -> Result<CompletionOutcome, HolonError>
+    /// Preserves every existing property value, including earlier defaults, and
+    /// fills only absent required properties with an available effective default.
+    /// Optional properties and required properties without defaults stay absent.
+    /// Repeated attempts over unchanged inputs perform no further property writes.
+    ///
+    /// A missing subject descriptor (`HolonError::MissingDescribedBy`) makes this
+    /// attempt a no-op. The same error while assessing a property skips that
+    /// property and continues with independent properties. Skipped properties are
+    /// not recorded; Commit validation assesses any resulting omission.
+    /// Every other descriptor-read or property-write error propagates immediately;
+    /// partial writes are not rolled back. Success does not establish completeness
+    /// or validity, and this operation does not change validation state.
+    ///
+    /// A later explicit call can reconsider omissions, including refilling a
+    /// removed property. Already populated values remain explicit even if the
+    /// descriptor changes. Commit, reads, and restoration never invoke this
+    /// operation; Commit validates the actual explicit state without supplying
+    /// defaults.
+    fn populate_defaults(&mut self) -> Result<(), HolonError>
     where
         Self: ReadableHolon,
     {
@@ -37,26 +42,33 @@ pub trait WritableHolon: WritableHolonImpl {
             match self.holon_descriptor().and_then(|descriptor| descriptor.instance_properties()) {
                 Ok(properties) => properties,
                 Err(HolonError::MissingDescribedBy { .. }) => {
-                    return Ok(CompletionOutcome::DeferredNoDescriptor);
+                    return Ok(());
                 }
                 Err(error) => return Err(error),
             };
-        let mut outcome = CompletionOutcome::Completed;
         for property in properties {
             match property.populate_default_if_required_and_absent(self) {
-                Ok(()) => {}
-                Err(HolonError::MissingDescribedBy { .. }) => {
-                    outcome = CompletionOutcome::DeferredNoDescriptor;
-                }
+                Ok(()) | Err(HolonError::MissingDescribedBy { .. }) => {}
                 Err(error) => return Err(error),
             }
         }
-        Ok(outcome)
+        Ok(())
     }
 
     /// Adds one or more related holons under the given relationship.
     ///
+    /// # Descriptor attachment
+    ///
+    /// Authoring `DescribedBy` directly here attaches a descriptor without itself
+    /// attempting default population. This supports internal assembly, such as
+    /// loader relationship assembly, and tests that need attachment without
+    /// defaults. Normal creation seeking descriptor-assisted initialization should
+    /// use [`Self::with_descriptor`]. Later staging (`stage_new_holon`), cloning,
+    /// an explicit [`Self::populate_defaults`] call, or the loader's final pass may
+    /// still populate defaults on this holon.
+    ///
     /// # Ergonomics
+    ///
     /// Accepts any type implementing [`ToRelationshipName`], so you can pass:
     /// - `&str` / `String` (e.g. `"friends"`)
     /// - [`RelationshipName`] or `&RelationshipName`
@@ -127,12 +139,26 @@ pub trait WritableHolon: WritableHolonImpl {
         WritableHolonImpl::remove_property_value_impl(self, name.to_property_name())
     }
 
-    /// Attaches a descriptor holon to this holon.
+    /// Replaces any existing descriptor, then attempts [`Self::populate_defaults`].
     ///
-    /// This is a plain forwarder; no ergonomic conversion is applied.
-    #[inline]
-    fn with_descriptor(&mut self, descriptor: HolonReference) -> Result<(), HolonError> {
-        WritableHolonImpl::with_descriptor_impl(self, descriptor)
+    /// Use this path for descriptor-assisted initialization. Direct `DescribedBy`
+    /// authoring through [`Self::add_related_holons`] attaches without itself
+    /// attempting defaults.
+    /// Changing the descriptor of an existing staged holon produces a new version.
+    /// Reattaching the same descriptor preserves the edge and still attempts defaults.
+    ///
+    /// An attachment error is returned without attempting defaults. After a
+    /// successful attachment, default population follows its best-effort error
+    /// contract: an error may leave the descriptor attached and some defaults
+    /// written. These changes are not rolled back.
+    fn with_descriptor(&mut self, descriptor: HolonReference) -> Result<(), HolonError>
+    where
+        Self: ReadableHolon,
+    {
+        WritableHolonImpl::with_descriptor_impl(self, descriptor)?;
+        // Attachment locks are released here; defaults use ordinary property writes so
+        // staged mutation accounting and versioning apply unchanged.
+        self.populate_defaults()
     }
 
     /// Attaches a predecessor holon to this holon.

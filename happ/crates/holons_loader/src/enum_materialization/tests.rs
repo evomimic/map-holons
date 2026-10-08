@@ -138,9 +138,9 @@ fn completion_materializes_imported_tokens_and_inherited_defaults_without_coerci
         .with_property_value("InvalidToken", " version ")?
         .with_property_value("Text", "Version")?;
     relate(&mut subject, "DescribedBy", &owner)?;
-    // Attaching DescribedBy may already have populated the inherited string default.
+    // Direct relationship authoring leaves the inherited default for the final pass.
     for _ in 0..2 {
-        let (_, errors) = complete_loaded_values(&context)?;
+        let errors = complete_loaded_values(&context)?;
         assert!(errors.is_empty(), "{errors:?}");
         for (name, token) in [
             ("InheritedChoice", "Version"),
@@ -190,7 +190,7 @@ fn unresolved_value_type_is_a_completion_error_with_source_provenance() -> Resul
     let mut p = node(&context, "Broken.PropertyType", "Broken")?;
     relate(&mut p, "Extends", &property_root)?;
     p.with_property_value("DefaultValue", "Version")?;
-    let (_, errors) = complete_loaded_values(&context)?;
+    let errors = complete_loaded_values(&context)?;
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].source_loader_key, Some(MapString("Broken.PropertyType".into())));
     assert!(matches!(errors[0].error, HolonError::MissingRequiredRelationship { .. }));
@@ -198,5 +198,70 @@ fn unresolved_value_type_is_a_completion_error_with_source_provenance() -> Resul
         p.property_value("DefaultValue")?,
         Some(BaseValue::StringValue(MapString("Version".into())))
     );
+    Ok(())
+}
+
+#[test]
+fn materialization_continues_when_an_independent_property_lacks_a_descriptor(
+) -> Result<(), HolonError> {
+    let context = context();
+    let enum_root = node(&context, "EnumValueType.ValueType", "Enum")?;
+    let property_root = node(&context, "PropertyType.TypeDescriptor", "Property")?;
+    let choice = property(&context, "Choice", &property_root, &enum_root)?;
+    let unresolved = node(&context, "Unresolved.PropertyType", "Unresolved")?;
+    let mut owner = node(&context, "Owner.HolonType", "Owner")?;
+    relate(&mut owner, "InstanceProperties", &choice)?;
+    relate(&mut owner, "InstanceProperties", &unresolved)?;
+    let mut subject = node(&context, "subject", "Subject")?;
+    subject.with_property_value("Choice", "Version")?;
+    subject.with_descriptor(owner.into())?;
+    let errors = complete_loaded_values(&context)?;
+    assert!(errors.is_empty(), "{errors:?}");
+    assert_eq!(subject.property_value("Unresolved")?, None);
+    assert_eq!(
+        subject.property_value("Choice")?,
+        Some(BaseValue::EnumValue(MapEnumValue(MapString("Version".into()))))
+    );
+    Ok(())
+}
+
+#[test]
+fn final_pass_materializes_enum_defaults_copied_during_attachment() -> Result<(), HolonError> {
+    let context = context();
+    let enum_root = node(&context, "EnumValueType.ValueType", "Enum")?;
+    let property_root = node(&context, "PropertyType.TypeDescriptor", "Property")?;
+    let mut choice = property(&context, "Choice", &property_root, &enum_root)?;
+    choice
+        .with_property_value("IsValueRequired", true)?
+        .with_property_value("DefaultValue", "Version")?;
+    let mut owner = node(&context, "Owner.HolonType", "Owner")?;
+    relate(&mut owner, "InstanceProperties", &choice)?;
+    let mut subject = node(&context, "subject", "Subject")?;
+    subject.with_descriptor(owner.into())?;
+    assert_eq!(
+        subject.property_value("Choice")?,
+        Some(BaseValue::StringValue(MapString("Version".into())))
+    );
+    let errors = complete_loaded_values(&context)?;
+    assert!(errors.is_empty(), "{errors:?}");
+    assert_eq!(
+        choice.property_value("DefaultValue")?,
+        Some(BaseValue::EnumValue(MapEnumValue(MapString("Version".into()))))
+    );
+    assert_eq!(subject.property_value("Choice")?, choice.property_value("DefaultValue")?);
+    Ok(())
+}
+
+#[test]
+fn final_pass_leaves_undescribed_holons_untouched() -> Result<(), HolonError> {
+    let context = context();
+    node(&context, "EnumValueType.ValueType", "Enum")?;
+    node(&context, "PropertyType.TypeDescriptor", "Property")?;
+    let mut subject = node(&context, "undescribed", "Subject")?;
+    subject.with_property_value("Authored", "Version")?;
+    let before = subject.into_model()?;
+    let errors = complete_loaded_values(&context)?;
+    assert!(errors.is_empty(), "{errors:?}");
+    assert_eq!(subject.into_model()?, before);
     Ok(())
 }

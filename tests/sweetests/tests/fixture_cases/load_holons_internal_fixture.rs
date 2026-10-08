@@ -6,7 +6,7 @@
 //!
 //! Scope: loader-controller behavior only — empty bundles, undescribed loader holons,
 //! duplicate-key failure, response metrics, error holons, and `LoadCommitStatus`.
-//! Missing descriptors defer default population, then block persistence at Commit. Named
+//! Undescribed holons skip default population and are rejected at Commit. Named
 //! relationship endpoints resolve independently of descriptor-aware validation.
 //!
 //! ## Fixture Progression (combined)
@@ -73,7 +73,7 @@ fn build_empty_bundle(
 
 /// Build a HolonLoaderBundle with **N minimal undescribed LoaderHolons (nodes only)**.
 /// Each member is created with its **instance key string**; no relationship references.
-/// This exercises Pass-1 staging followed by deferred completion and successful node commit.
+/// This exercises Pass-1 staging followed by best-effort default population and Commit rejection.
 fn build_nodes_only_bundle(
     context: &Arc<TransactionContext>,
     bundle_key: &str,
@@ -240,7 +240,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(n_nodes as i64), // holons_staged
         MapInteger(0),              // holons_committed: rejected before writes
         MapInteger(0),              // links_created
-        MapInteger(0),              // errors_encountered (completion deferred)
+        MapInteger(0),              // errors_encountered (no descriptor is a Commit finding)
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
         ExpectedLoadStatus::Rejected,

@@ -1,5 +1,319 @@
 use super::*;
 use crate::controller::tests::context;
+use core_types::{HolonId, LocalId};
+use holons_core::core_shared_objects::transient_holon_manager::ToHolonCloneModel;
+use holons_core::core_shared_objects::{
+    holon::{SavedHolon, StagedHolon, StagedState},
+    space_manager::HolonSpaceManager,
+    Holon, ServiceRoutingPolicy,
+};
+use holons_core::reference_layer::HolonServiceApi;
+use std::any::Any;
+use std::collections::HashMap;
+
+/// Supplies one described saved source so promotion exercises the real nursery path.
+#[derive(Debug)]
+struct SavedSourceService {
+    holons: HashMap<HolonId, SavedHolon>,
+    relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+}
+
+impl HolonServiceApi for SavedSourceService {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn relationship_cache_policy(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &HolonId,
+        _: &RelationshipName,
+    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+        Ok(holons_core::RelationshipCachePolicy::Fresh)
+    }
+
+    fn fetch_holon_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<Holon, HolonError> {
+        self.holons
+            .get(id)
+            .cloned()
+            .map(Holon::Saved)
+            .ok_or_else(|| HolonError::HolonNotFound(id.to_string()))
+    }
+
+    fn fetch_related_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<HolonCollection, HolonError> {
+        let mut collection = HolonCollection::new_existing();
+        if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
+            collection.add_references(
+                targets
+                    .iter()
+                    .map(|id| {
+                        HolonReference::smart_from_id(context.space_read_handle(), id.clone())
+                    })
+                    .collect(),
+            )?;
+        }
+        Ok(collection)
+    }
+
+    fn fetch_all_related_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
+        let mut relationships = RelationshipMap::new_empty();
+        for (id, name) in self.relationships.keys() {
+            if id == source {
+                let collection = self.fetch_related_holons_internal(context, source, name)?;
+                relationships.insert(name.clone(), Arc::new(std::sync::RwLock::new(collection)));
+            }
+        }
+        Ok(relationships)
+    }
+
+    fn commit_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &[StagedReference],
+    ) -> Result<TransientReference, HolonError> {
+        panic!("unexpected commit")
+    }
+
+    fn delete_holon_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &LocalId,
+    ) -> Result<(), HolonError> {
+        panic!("unexpected delete")
+    }
+
+    fn get_all_holons_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+    ) -> Result<HolonCollection, HolonError> {
+        panic!("unexpected storage enumeration")
+    }
+
+    fn load_holons_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: TransientReference,
+    ) -> Result<TransientReference, HolonError> {
+        panic!("unexpected load")
+    }
+}
+
+#[test]
+fn saved_write_source_without_a_staged_match_is_promoted_and_reused() {
+    let id = HolonId::Local(LocalId(vec![201]));
+    let mut properties = PropertyMap::new();
+    properties.insert(CorePropertyTypeName::Key.as_property_name(), "saved-source".to_base_value());
+    properties.insert("Title".to_property_name(), "Authored title".to_base_value());
+    let source = SavedHolon::new(id.local_id().clone(), properties.clone(), None, MapInteger(1));
+    let mut descriptor_properties = PropertyMap::new();
+    descriptor_properties
+        .insert(CorePropertyTypeName::Key.as_property_name(), "SavedSourceType".to_base_value());
+    descriptor_properties.insert(
+        CorePropertyTypeName::TypeName.as_property_name(),
+        "SavedSourceType".to_base_value(),
+    );
+    let descriptor =
+        SavedHolon::new(LocalId(vec![202]), descriptor_properties, None, MapInteger(1));
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(SavedSourceService {
+            holons: HashMap::from([
+                (id.clone(), source),
+                (HolonId::Local(LocalId(vec![202])), descriptor),
+            ]),
+            relationships: HashMap::from([(
+                (id.clone(), CoreRelationshipTypeName::DescribedBy.as_relationship_name()),
+                vec![HolonId::Local(LocalId(vec![202]))],
+            )]),
+        }),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    let saved = HolonReference::smart_with_key(
+        context.space_read_handle(),
+        id.clone(),
+        "saved-source".into(),
+    );
+    assert!(matches!(
+        context.lookup().get_staged_holons_by_base_key(&"saved-source".into()),
+        Err(HolonError::HolonNotFound(_))
+    ));
+
+    let promoted = LoaderRefResolver::resolve_staged_write_source(&context, &saved).unwrap();
+    assert!(promoted.is_in_state(&context, StagedState::ForUpdate).unwrap());
+    assert_eq!(promoted.into_model().unwrap().property_map, properties);
+    assert_eq!(saved.into_model().unwrap().property_map, properties);
+    let reused = LoaderRefResolver::resolve_staged_write_source(&context, &saved).unwrap();
+    assert_eq!(reused, promoted);
+    assert_eq!(
+        context.lookup().get_staged_holons_by_base_key(&"saved-source".into()).unwrap().len(),
+        1
+    );
+}
+
+struct SavedRelationshipFixture {
+    context: Arc<TransactionContext>,
+    source: HolonReference,
+    descriptor: HolonReference,
+    existing_target: HolonReference,
+}
+
+impl SavedRelationshipFixture {
+    fn new(name: &str, is_definitional: Option<bool>) -> Self {
+        let id = |byte| HolonId::Local(LocalId(vec![byte]));
+        let mut holons = HashMap::new();
+        for (byte, key, type_name) in [
+            (201, "saved-source", "SavedSource"),
+            (202, "SavedSourceType", "SavedSourceType"),
+            (203, "DescribedBy.RelationshipType", "DescribedBy"),
+            (204, "DeclaredRelationshipType.RelationshipType", "DeclaredRelationshipType"),
+            (205, "AuthoredEdge.RelationshipType", name),
+            (206, "saved-target", "SavedTarget"),
+        ] {
+            let mut properties = PropertyMap::new();
+            properties.insert(CorePropertyTypeName::Key.as_property_name(), key.to_base_value());
+            properties.insert(
+                CorePropertyTypeName::TypeName.as_property_name(),
+                type_name.to_base_value(),
+            );
+            if byte == 203 || byte == 205 {
+                if let Some(flag) = if byte == 203 { Some(true) } else { is_definitional } {
+                    properties.insert(
+                        CorePropertyTypeName::IsDefinitional.as_property_name(),
+                        flag.to_base_value(),
+                    );
+                }
+            }
+            holons.insert(
+                id(byte),
+                SavedHolon::new(LocalId(vec![byte]), properties, None, MapInteger(1)),
+            );
+        }
+        let relationships = HashMap::from([
+            ((id(201), "DescribedBy".to_relationship_name()), vec![id(202)]),
+            ((id(201), name.to_relationship_name()), vec![id(206)]),
+            ((id(202), "InstanceRelationships".to_relationship_name()), vec![id(203), id(205)]),
+            ((id(203), "Extends".to_relationship_name()), vec![id(204)]),
+            ((id(205), "Extends".to_relationship_name()), vec![id(204)]),
+        ]);
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(SavedSourceService { holons, relationships }),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context =
+            space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+        let source = HolonReference::smart_with_key(
+            context.space_read_handle(),
+            id(201),
+            "saved-source".into(),
+        );
+        let descriptor = HolonReference::smart_with_key(
+            context.space_read_handle(),
+            id(202),
+            "SavedSourceType".into(),
+        );
+        let existing_target = HolonReference::smart_with_key(
+            context.space_read_handle(),
+            id(206),
+            "saved-target".into(),
+        );
+        Self { context, source, descriptor, existing_target }
+    }
+}
+
+#[test]
+fn saved_relationship_imports_preserve_replays_and_account_for_additions() {
+    for (name, is_definitional) in
+        [("InstanceProperties", Some(true)), ("AuthoredBy", Some(false)), ("Unresolved", None)]
+    {
+        let f = SavedRelationshipFixture::new(name, is_definitional);
+        let source = LoaderRefResolver::resolve_staged_write_source(&f.context, &f.source).unwrap();
+        let properties = f.source.into_model().unwrap().property_map;
+        assert_eq!(
+            LoaderRefResolver::write_bootstrap_relationship(
+                source.clone(),
+                &"DescribedBy".to_relationship_name(),
+                vec![f.descriptor.clone()],
+            )
+            .unwrap(),
+            0,
+            "reattaching the saved descriptor creates no edge"
+        );
+        assert_eq!(
+            LoaderRefResolver::write_assembled_relationship(
+                source.clone(),
+                &name.to_relationship_name(),
+                vec![f.existing_target.clone(), f.existing_target.clone()],
+            )
+            .unwrap(),
+            0,
+            "cloned saved targets must not be appended again"
+        );
+        assert!(source.is_in_state(&f.context, StagedState::ForUpdate).unwrap());
+
+        let added = node(&f.context, "added-target");
+        for expected_count in [1, 0] {
+            assert_eq!(
+                LoaderRefResolver::write_assembled_relationship(
+                    source.clone(),
+                    &name.to_relationship_name(),
+                    vec![f.existing_target.clone(), added.clone().into(), added.clone().into()],
+                )
+                .unwrap(),
+                expected_count
+            );
+            if expected_count > 0 {
+                assert_eq!(source.staged_state().unwrap(), StagedState::ForUpdate);
+                source.account_for_assembled_relationship_change(name).unwrap();
+            }
+            let state = if is_definitional == Some(false) {
+                StagedState::ForUpdateGraphOnly
+            } else {
+                StagedState::ForUpdateNewVersion
+            };
+            assert!(source.is_in_state(&f.context, state).unwrap());
+            assert_eq!(source.related_holons(name).unwrap().read().unwrap().get_members().len(), 2);
+            assert_eq!(source.into_model().unwrap().property_map, properties);
+        }
+        assert_eq!(f.source.into_model().unwrap().property_map, properties);
+        assert_eq!(f.source.related_holons(name).unwrap().read().unwrap().get_members().len(), 1);
+    }
+}
+
+#[test]
+fn saved_descriptor_replacement_is_version_producing() {
+    let f = SavedRelationshipFixture::new("AuthoredBy", Some(false));
+    let source = LoaderRefResolver::resolve_staged_write_source(&f.context, &f.source).unwrap();
+    let replacement = node(&f.context, "ReplacementType");
+    assert_eq!(
+        LoaderRefResolver::write_bootstrap_relationship(
+            source.clone(),
+            &"DescribedBy".to_relationship_name(),
+            vec![replacement.clone().into()],
+        )
+        .unwrap(),
+        1
+    );
+    assert!(source.is_in_state(&f.context, StagedState::ForUpdateNewVersion).unwrap());
+    assert_eq!(HolonReference::from(&source).get_descriptor().unwrap(), Some(replacement.into()));
+    assert_eq!(f.source.get_descriptor().unwrap(), Some(f.descriptor));
+}
 
 fn node(context: &Arc<TransactionContext>, key: &str) -> StagedReference {
     let mut transient = context.mutation().new_holon(Some(key.into())).unwrap();
@@ -174,4 +488,99 @@ fn bootstrap_subpasses_count_their_own_endpoint_work() {
     assert_eq!(result.metrics.extends.endpoint_resolution_calls, 1);
     assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 0);
     assert_eq!(result.metrics.described_by.elapsed_micros, 0, "no HDK clock in unit tests");
+}
+
+/// Accounting must see declarations authored later in the same assembly pass.
+#[test]
+fn promoted_source_accounts_against_later_declarations() {
+    for (name, is_definitional) in [("AuthoredBy", false), ("AuthoredBy", true), ("Extends", true)]
+    {
+        let saved = SavedRelationshipFixture::new(name, Some(is_definitional));
+        let source =
+            LoaderRefResolver::resolve_staged_write_source(&saved.context, &saved.source).unwrap();
+        let contract = node(&saved.context, "ImportedContract");
+        let mut declaration = node(&saved.context, name);
+        let root = node(&saved.context, "DeclaredRelationshipType");
+        edge(&mut declaration, "Extends", &root);
+        declaration
+            .with_property_value(CorePropertyTypeName::IsDefinitional, is_definitional)
+            .unwrap();
+        let target = node(&saved.context, "new-target");
+        // Model the promoted source with an imported descriptor binding, independently
+        // of descriptor replacement accounting, which has its own regression test.
+        let mut model = source.holon_clone_model().unwrap();
+        let mut descriptors = HolonCollection::new_existing();
+        descriptors.add_references(vec![(&contract).into()]).unwrap();
+        model.relationships.as_mut().unwrap().insert(
+            "DescribedBy".to_relationship_name(),
+            Arc::new(std::sync::RwLock::new(descriptors)),
+        );
+        *source.get_holon_to_commit(&saved.context).unwrap().write().unwrap() = Holon::Staged(
+            StagedHolon::new_for_update_from_clone_model(
+                model,
+                saved.source.holon_id().unwrap().local_id().clone(),
+            )
+            .unwrap(),
+        );
+        let fixture = Fixture {
+            context: saved.context.clone(),
+            book: source.clone(),
+            person: target.clone(),
+            book_type: contract.clone(),
+            declared: declaration.clone(),
+        };
+        let use_reference = fixture.reference(&source, name, &target);
+        let declaration_reference =
+            fixture.reference(&contract, "InstanceRelationships", &declaration);
+        let result = LoaderRefResolver::resolve_relationships(
+            &saved.context,
+            vec![use_reference, declaration_reference],
+        )
+        .unwrap();
+        assert!(result.errors.is_empty(), "{:?}", result.errors);
+        assert_eq!(result.links_created, 2);
+        assert_eq!(
+            source.staged_state().unwrap(),
+            if is_definitional {
+                StagedState::ForUpdateNewVersion
+            } else {
+                StagedState::ForUpdateGraphOnly
+            }
+        );
+        // Replayed edges produce no additional accounting or version promotion.
+        let replay = LoaderRefResolver::resolve_relationships(
+            &saved.context,
+            vec![fixture.reference(&source, name, &target)],
+        )
+        .unwrap();
+        assert!(replay.errors.is_empty());
+        assert_eq!(replay.links_created, 0);
+    }
+}
+
+#[test]
+fn promoted_source_undeclared_addition_preserves_lifecycle() {
+    let saved = SavedRelationshipFixture::new("AuthoredBy", Some(false));
+    let source =
+        LoaderRefResolver::resolve_staged_write_source(&saved.context, &saved.source).unwrap();
+    let target = node(&saved.context, "new-target");
+    let fixture = Fixture {
+        context: saved.context.clone(),
+        book: source.clone(),
+        person: target.clone(),
+        book_type: node(&saved.context, "unused-contract"),
+        declared: node(&saved.context, "unused-declaration"),
+    };
+    let result = LoaderRefResolver::resolve_relationships(
+        &saved.context,
+        vec![fixture.reference(&source, "UnknownRelationship", &target)],
+    )
+    .unwrap();
+    assert!(result.errors.is_empty(), "{:?}", result.errors);
+    assert_eq!(result.links_created, 1);
+    assert_eq!(source.staged_state().unwrap(), StagedState::ForUpdate);
+    assert_eq!(
+        source.related_holons("UnknownRelationship").unwrap().read().unwrap().get_members(),
+        &vec![HolonReference::from(target)]
+    );
 }

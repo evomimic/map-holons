@@ -26,6 +26,7 @@ pub mod schema_validation_executor;
 pub mod stage_new_from_clone_executor;
 pub mod stage_new_holon_executor;
 pub mod stage_new_version_executor;
+pub mod with_descriptor_executor;
 pub mod with_properties_executor;
 
 // pub use abandon_staged_changes_executor::*;

@@ -379,19 +379,11 @@ impl HolonLoaderController {
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // VALUE COMPLETION: materialize enums and retry defaults after Pass-2 resolution
-        // over the exact nursery-staged set.
+        // Final default-population and enum-materialization pass over the exact
+        // nursery-staged set after Pass-2 relationship resolution.
         // ─────────────────────────────────────────────────────────────────────
         let default_population_started_at = performance_timestamp_micros();
-        let (deferred_count, population_errors) =
-            crate::enum_materialization::complete_loaded_values(context)?;
-
-        if deferred_count > 0 {
-            warn!(
-                "Default population deferred for {} staged holon(s) with unresolved descriptors",
-                deferred_count
-            );
-        }
+        let population_errors = crate::enum_materialization::complete_loaded_values(context)?;
 
         if !population_errors.is_empty() {
             let population_error_count = population_errors.len() as i64;
@@ -414,7 +406,7 @@ impl HolonLoaderController {
                 total_loader_holons,
                 LoadCommitStatus::Skipped,
                 format!(
-                    "Value completion reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
+                    "Default population and enum materialization reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
                     population_error_count, total_holons_staged, links_created
                 ),
                 error_holons,
