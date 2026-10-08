@@ -23,7 +23,7 @@ function collection(count: number) {
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture(populated = false) {
   const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
-  const selected = { key: async () => 'table' };
+  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) };
   const slot = {};
   const parent = {};
   const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })) };
@@ -416,7 +416,7 @@ it('selects in the open presentation context while retaining committed loader me
   const type = {}, parent = {}, slot = {};
   const bind = vi.fn((ref: unknown) => ref === retained.elementType ? type : ref === f.parent ? parent : ref);
   const presentation = { getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
-    selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: { key: async () => 'table' } })) };
+    selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } })) };
   const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation);
   const updates: CollectionUpdate[] = [];
   activation.activate(tab('Sources'), 'slot', (update: CollectionUpdate) => updates.push(update));

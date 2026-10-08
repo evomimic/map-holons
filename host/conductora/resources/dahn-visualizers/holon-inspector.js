@@ -21,6 +21,14 @@ export default class HolonInspectorElement extends HTMLElement {
       button.dataset.singularState = state.attempted === affordance ? state.state : state.active === affordance ? 'loaded' : 'unresolved';
     }
   }
+  setVisualizerInformationHandler(handler, displayName) {
+    this.visualizerInformation = handler;
+    this.visualizerDisplayName = displayName;
+    if (!this.visualizerControl) return;
+    this.visualizerControl.hidden = !handler;
+    this.visualizerControl.setAttribute('aria-label', `Visualizer information: ${displayName}`);
+    this.visualizerTooltip.textContent = displayName;
+  }
   setOccurrenceRestorationHandler(handler) { this.restoreOccurrence = handler; }
   setOccurrenceAttentionHandler(handler) { this.occurrenceAttention = handler; this.updateMaximizeControls(); }
   setOccurrenceAttentionState(maximized) { this.occurrenceMaximized = maximized; this.updateMaximizeControls(); }
@@ -463,7 +471,12 @@ export default class HolonInspectorElement extends HTMLElement {
     titleControl.type = 'button';
     titleControl.textContent = this.titleText;
     Object.assign(titleControl.style, { width: '100%', height: '100%', minHeight: '40px', textAlign: 'left', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer', padding: '0 var(--dahn-slot-padding)' });
-    titleControl.addEventListener('click', () => { if ((this.verticalState ? this.verticalState !== 'full-height' : (this.allocatedHeight ?? Infinity) < 280) || (this.horizontalState ? this.horizontalState !== 'full-width' : (this.allocatedWidth ?? Infinity) < 300)) this.restoreOccurrence?.(); });
+    titleControl.addEventListener('click', () => {
+      // Recover the local composition before asking the parent to restore its grant.
+      if (this.maximizedRegion) this.requestRegion('restore');
+      if ((this.verticalState ? this.verticalState !== 'full-height' : (this.allocatedHeight ?? Infinity) < 280)
+        || (this.horizontalState ? this.horizontalState !== 'full-width' : (this.allocatedWidth ?? Infinity) < 300)) this.restoreOccurrence?.();
+    });
     title.style.display = 'flex';
     titleControl.style.flex = '1 1 0'; titleControl.style.minWidth = '0';
     this.closeButton = document.createElement('button');
@@ -489,6 +502,33 @@ export default class HolonInspectorElement extends HTMLElement {
     this.inspectorMaximizeButton.style.alignSelf = 'center';
     title.style.flexWrap = 'wrap';
     title.append(this.inspectorMaximizeButton);
+    const information = document.createElement('span');
+    information.style.cssText = 'position:relative;display:inline-flex;align-items:center;';
+    this.visualizerControl = document.createElement('button');
+    this.visualizerControl.type = 'button';
+    this.visualizerControl.textContent = 'v';
+    this.visualizerControl.dataset.visualizerInformation = 'true';
+    this.visualizerControl.style.cssText = 'border:var(--dahn-slot-border-width,1px) solid var(--dahn-action-text-color);border-radius:50%;box-sizing:border-box;width:18px;height:18px;padding:0;font:12px/16px sans-serif;text-transform:none;color:var(--dahn-action-text-color);background:var(--dahn-action-surface-background);';
+    this.visualizerTooltip = document.createElement('span');
+    this.visualizerTooltip.setAttribute('role', 'tooltip');
+    this.visualizerTooltip.hidden = true;
+    this.visualizerTooltip.setAttribute('popover', 'manual');
+    this.visualizerTooltip.style.cssText = 'position:absolute;bottom:calc(100% + 4px);right:0;z-index:10;white-space:nowrap;padding:var(--dahn-slot-padding,.5rem);background:var(--dahn-panel-surface-background);color:var(--dahn-canvas-text-color);border:1px solid var(--dahn-slot-border-color);pointer-events:none;';
+    const tooltip = show => {
+      this.visualizerTooltip.hidden = !show;
+      if (show && this.visualizerTooltip.showPopover) {
+        this.visualizerTooltip.showPopover();
+        const rect = this.visualizerControl.getBoundingClientRect();
+        Object.assign(this.visualizerTooltip.style, { position: 'fixed', margin: '0', right: 'auto', left: `${rect.left}px`, top: 'auto', bottom: `${window.innerHeight - rect.top + 4}px` });
+      } else if (!show && this.visualizerTooltip.hidePopover) this.visualizerTooltip.hidePopover();
+    };
+    for (const event of ['mouseenter', 'focus']) this.visualizerControl.addEventListener(event, () => tooltip(true));
+    for (const event of ['mouseleave', 'blur']) this.visualizerControl.addEventListener(event, () => tooltip(false));
+    this.visualizerControl.addEventListener('keydown', event => { if (event.key === 'Escape') tooltip(false); });
+    this.visualizerControl.addEventListener('click', () => this.visualizerInformation?.(this.visualizerControl));
+    information.append(this.visualizerControl, this.visualizerTooltip);
+    title.append(information);
+    this.setVisualizerInformationHandler(this.visualizerInformation, this.visualizerDisplayName ?? 'Visualizer');
     this.presentationStatus = document.createElement('span');
     this.presentationStatus.setAttribute('role', 'status');
     this.presentationStatus.hidden = true;

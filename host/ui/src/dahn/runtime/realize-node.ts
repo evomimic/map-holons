@@ -1,3 +1,4 @@
+import { bindVisualizerInformationControl } from './visualizer-information-control';
 import { ActionActivation, type ActionInteractions } from './action-activation';
 import type { ActionNode } from '../contracts/actions';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
@@ -58,10 +59,11 @@ export async function realizeNode(
   const affordances = await classifyNodeAffordances(view);
   const propertiesElement = await renderVisualizerRegion('Properties', async () => {
     onStage?.('select and materialize Properties');
+    const propertiesSlot = await materialized.slot(selectedVisualizer, 'propertyMap');
     const propertiesSelection = await transaction.selectVisualizer({
       subject,
       requestedKind: 'propertyMap',
-      slot: await materialized.slot(selectedVisualizer, 'propertyMap'),
+      slot: propertiesSlot,
       parentVisualizer: selectedVisualizer,
     });
     const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
@@ -85,10 +87,11 @@ export async function realizeNode(
         return renderVisualizerRegion(propertyName, async () => {
           // Resolve this property through the selected descriptor and value contracts.
           onStage?.(`property ${propertyName}: select Property`);
+          const propertySlot = await materialized.slot(propertiesSelection.selected, 'property');
           const propertySelection = await transaction.selectPropertyVisualizer(
             propertyDescriptor,
             propertiesSelection.selected,
-            await materialized.slot(propertiesSelection.selected, 'property'),
+            propertySlot,
           );
           onStage?.(`property ${propertyName}: materialize Property`);
           const propertyImplementation = await materialized.realize(propertySelection.selected);
@@ -106,7 +109,8 @@ export async function realizeNode(
           const value = await subject.propertyValue(propertyName);
           const valueElement = await renderVisualizerRegion(propertyName, async () => {
             onStage?.(`property ${propertyName}: select Value`);
-            const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected, await materialized.slot(propertySelection.selected, 'value'));
+            const valueSlot = await materialized.slot(propertySelection.selected, 'value');
+            const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected, valueSlot);
             onStage?.(`property ${propertyName}: materialize Value`);
             const valueImplementation = await materialized.realize(valueSelection.selected);
             if (typeof valueImplementation !== 'function' || !(valueImplementation.prototype instanceof HTMLElement)) {
@@ -131,6 +135,7 @@ export async function realizeNode(
               propertyPresentation: { propertyName, value },
             });
 
+            await bindVisualizerInformationControl(renderedValue, transaction, subject, propertySelection.selected, valueSlot, valueSelection.selected);
             return renderedValue;
           });
           const propertyElement = document.createElement(propertyTag) as HTMLElement & {
@@ -146,6 +151,7 @@ export async function realizeNode(
             propertyPresentation: { propertyName, value },
             childVisualizers: new Map([['value', valueElement]]),
           });
+          await bindVisualizerInformationControl(propertyElement, transaction, subject, propertiesSelection.selected, propertySlot, propertySelection.selected, 'start');
           return propertyElement;
         });
       });
@@ -163,14 +169,16 @@ export async function realizeNode(
       canvas,
       childVisualizers: propertyVisualizers,
     });
+    await bindVisualizerInformationControl(propertiesElement, transaction, subject, selectedVisualizer, propertiesSlot, propertiesSelection.selected);
     return propertiesElement;
   });
   const actionActivations: ActionActivation[] = [];
   onStage?.('select and materialize Actions');
   const actionsElement = await renderVisualizerRegion('Node actions', async () => {
+    const actionSlot = await materialized.slot(selectedVisualizer, 'action');
     const selection = await transaction.selectVisualizer({
       subject, requestedKind: 'actionBar', parentVisualizer: selectedVisualizer,
-      slot: await materialized.slot(selectedVisualizer, 'action'),
+      slot: actionSlot,
     });
     const implementation = await materialized.realize(selection.selected);
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
@@ -184,7 +192,8 @@ export async function realizeNode(
         if (action.kind === 'group') { await compose(action.children ?? []); continue; }
         children.set(action.id, await renderVisualizerRegion(action.label, async () => {
           if (!action.dance) throw new Error('Action has no bound Dance descriptor');
-          const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', parentVisualizer: selection.selected, slot: await materialized.slot(selection.selected, 'action') });
+          const childSlot = await materialized.slot(selection.selected, 'action');
+          const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', parentVisualizer: selection.selected, slot: childSlot });
           const implementation = await materialized.realize(selected.selected);
           if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Action is not an HTMLElement constructor');
           const tag = defineCustomElementOnce('map-selected-action', implementation as CustomElementConstructor);
@@ -192,12 +201,14 @@ export async function realizeNode(
           const activation = new ActionActivation({ subject, dance: action.dance, visualizer: selected.selected, occurrence: child, label: action.label });
           actionActivations.push(activation);
           child.setContext({ target: { reference: subject }, holon: view, actions: [], theme, canvas, actionActivation: activation, actionInteractions });
+          await bindVisualizerInformationControl(child, transaction, action.dance, selection.selected, childSlot, selected.selected);
           return child;
         }));
       }
     };
     await compose(affordances.actions);
     element.setContext({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas, childVisualizers: children });
+    await bindVisualizerInformationControl(element, transaction, subject, selectedVisualizer, actionSlot, selection.selected);
     return element;
   });
   onStage?.('compose node');

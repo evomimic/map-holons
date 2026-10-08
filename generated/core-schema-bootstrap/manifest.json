@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "d72d3df9e121c8b4fa7665345acebe7d5a197fe56a15fa8c56f964c8dff624d3"
+      "sha256": "7e7f3bc43e1f4cb46a00ca65e9211d739525bfb2b1ca4756389add91536136f8"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -3665,6 +3665,10 @@
     },
     {
       "key": "VisualizerArtifactHandle.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "VisualizerDescription.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {

@@ -11,7 +11,7 @@ import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
 import type { TablePresentation } from './table-presentation';
-import type { BaseValue, HolonReference } from '../deps';
+import type { BaseValue, HolonReference, DescribedHolonCollection } from '../deps';
 
 /** Inspection intent delivered to the Path Inspector, never a MAP command.
  * The source element identifies a live Collection occurrence, independent of
@@ -84,6 +84,19 @@ export interface VisualizerDefinition {
   load: () => Promise<void>;
 }
 
+/** Immutable semantic target supplied by the occurrence's composition owner. */
+export interface VisualizerInspectionTarget {
+  readonly occurrenceId: string;
+  readonly context: object;
+  readonly owner: HolonReference;
+  readonly slot: HolonReference;
+  readonly subject: HolonReference | DescribedHolonCollection;
+  readonly selectedVisualizer: HolonReference;
+  readonly element: HTMLElement;
+  readonly invoker: HTMLElement;
+  readonly isLive: () => boolean;
+}
+
 /**
  * Common context passed into Web Component visualizers.
  */
@@ -102,6 +115,8 @@ export interface VisualizerContext {
   activateRelationship?: (affordance: RelationshipAffordance) => void;
   /** Retained navigation topology projected by the selected Path Inspector. */
   navigation?: PathNavigation;
+  /** Context of the presentation being inspected, distinct from the definition subject. */
+  visualizerInspection?: VisualizerInspectionTarget;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
@@ -145,6 +160,8 @@ export interface VisualizerContext {
  */
 export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorParticipant> {
   setContext(context: VisualizerContext): void;
+  /** Owner-supplied action; controls never reconstruct selection or occurrence identity. */
+  setVisualizerInformationHandler?(handler: ((invoker: HTMLElement) => void) | undefined, displayName: string): void;
   /** Reflects active and attempted singular navigation without rebuilding the Node. */
   setSingularNavigationState?(state: SingularNavigationState): void;
   /** Content extents in unscaled CSS pixels. Preferred sizes are soft targets.

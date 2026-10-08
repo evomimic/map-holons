@@ -32,6 +32,7 @@ export class ExplorationTabs extends HTMLElement {
   readonly actions = document.createElement('div');
   private readonly tablist = document.createElement('div');
   private readonly panels = document.createElement('div');
+  readonly auxiliaryHost = document.createElement('div');
   private readonly feedback = document.createElement('div');
   private active?: ExplorationTab;
   private activationRevision = 0;
@@ -58,7 +59,10 @@ export class ExplorationTabs extends HTMLElement {
     const toolbar = document.createElement('div');
     Object.assign(toolbar.style, { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--dahn-control-gap)', flexWrap: 'wrap' });
     toolbar.append(this.tablist, this.actions);
-    this.append(toolbar, this.feedback, this.panels);
+    this.auxiliaryHost.style.cssText = 'position:relative;display:flex;flex:1 1 auto;min-width:0;min-height:0;';
+    this.panels.dataset['explorationNavigation'] = 'true';
+    this.auxiliaryHost.append(this.panels);
+    this.append(toolbar, this.feedback, this.auxiliaryHost);
   }
 
   getSpatialExtents() {

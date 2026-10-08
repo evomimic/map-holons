@@ -44,6 +44,7 @@ let injector: ReturnType<typeof Injector.create>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
   fixture.begin.mockResolvedValue(fixture.transaction);
   fixture.realize.mockReset().mockResolvedValue(class extends HTMLElement { setContext() {} });
   fixture.realizeNode.mockReset();

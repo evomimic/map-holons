@@ -230,6 +230,17 @@
           ]
         },
         {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DisplayName.PropertyType"
+            },
+            {
+              "$ref": "VisualizerDescription.PropertyType"
+            }
+          ]
+        },
+        {
           "name": "InstanceRelationships",
           "target": [
             {
@@ -343,7 +354,10 @@
     {
       "key": "MAP.BootstrapCanvasVisualizer",
       "type": "CanvasVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "MAP",
+        "VisualizerDescription": "Provides a starting place for opening your spaces and getting to work."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -433,28 +447,16 @@
     {
       "key": "HolonInspector.NodeVisualizer",
       "type": "NodeVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Holon Inspector",
+        "VisualizerDescription": "See the details of an item, explore its connections, and find the actions you can take."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
-            },
-            {
-              "$ref": "DanceType.HolonType"
-            },
-            {
-              "$ref": "DanceResponseType.HolonType"
-            },
-            {
-              "$ref": "CommandType.HolonType"
-            },
-            {
-              "$ref": "OperatorType.HolonType"
-            },
-            {
-              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -622,28 +624,16 @@
     {
       "key": "GenericActions.ActionBarVisualizer",
       "type": "ActionBarVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Generic Actions",
+        "VisualizerDescription": "Keeps the actions available for this item together so you can find what to do next."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
-            },
-            {
-              "$ref": "DanceType.HolonType"
-            },
-            {
-              "$ref": "DanceResponseType.HolonType"
-            },
-            {
-              "$ref": "CommandType.HolonType"
-            },
-            {
-              "$ref": "OperatorType.HolonType"
-            },
-            {
-              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -722,7 +712,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:9777d81926b3f906fdb8100738d487d27745fdef0382303c97008752c272961f",
+        "VisualizerArtifactDigest": "sha256:f00f39d57930fa72db0498044b8c27f2a21b11188dc86111cd3b845b4902bda0",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -818,28 +808,16 @@
     {
       "key": "PathInspector.RootedNavigationVisualizer",
       "type": "RootedNavigationVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Path Inspector",
+        "VisualizerDescription": "Follow connections between items while keeping the path you have explored in view."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
-            },
-            {
-              "$ref": "DanceType.HolonType"
-            },
-            {
-              "$ref": "DanceResponseType.HolonType"
-            },
-            {
-              "$ref": "CommandType.HolonType"
-            },
-            {
-              "$ref": "OperatorType.HolonType"
-            },
-            {
-              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -1024,28 +1002,16 @@
     {
       "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizer",
       "type": "PropertyMapVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Default Property Map",
+        "VisualizerDescription": "Shows an item’s details as a readable list of names and values."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
-            },
-            {
-              "$ref": "DanceType.HolonType"
-            },
-            {
-              "$ref": "DanceResponseType.HolonType"
-            },
-            {
-              "$ref": "CommandType.HolonType"
-            },
-            {
-              "$ref": "OperatorType.HolonType"
-            },
-            {
-              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -1146,7 +1112,10 @@
     {
       "key": "GenericProperty.PropertyVisualizer",
       "type": "PropertyVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Generic Property",
+        "VisualizerDescription": "Pairs the name of a detail with its value so you can understand it at a glance."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1246,7 +1215,10 @@
     {
       "key": "StringValue.ValueVisualizer",
       "type": "ValueVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "String Value",
+        "VisualizerDescription": "Shows a value as readable text."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1269,7 +1241,10 @@
     {
       "key": "IntegerValue.ValueVisualizer",
       "type": "ValueVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Integer Value",
+        "VisualizerDescription": "Shows a whole-number value."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1292,7 +1267,10 @@
     {
       "key": "BooleanValue.ValueVisualizer",
       "type": "ValueVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Boolean Value",
+        "VisualizerDescription": "Shows whether a value is true or false."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1315,7 +1293,10 @@
     {
       "key": "EnumValue.ValueVisualizer",
       "type": "ValueVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Enum Value",
+        "VisualizerDescription": "Shows the named option recorded for a value."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1341,7 +1322,10 @@
     {
       "key": "BytesValue.ValueVisualizer",
       "type": "ValueVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Bytes Value",
+        "VisualizerDescription": "Shows the amount of binary data stored in a value."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1419,7 +1403,10 @@
     {
       "key": "UnsupportedAction.ActionVisualizer",
       "type": "ActionVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Unsupported Action",
+        "VisualizerDescription": "Shows an available action and explains when it cannot yet be run here."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -1453,7 +1440,10 @@
     {
       "key": "LoadHolons.ActionVisualizer",
       "type": "ActionVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Load Holons",
+        "VisualizerDescription": "Helps you choose data to load, review the results, and explore the items that were added."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -3047,7 +3037,10 @@
     {
       "key": "LoadHolons.NodeVisualizer",
       "type": "NodeVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Load Holons",
+        "VisualizerDescription": "Summarizes a data load so you can review any problems and explore the items that were added."
+      },
       "relationships": [
         {
           "name": "ApplicableToType",
@@ -3132,6 +3125,43 @@
           "target": [
             {
               "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerDescription",
+        "TypeNamePlural": "VisualizerDescriptions",
+        "DisplayName": "Visualizer description",
+        "DisplayNamePlural": "Visualizer descriptions",
+        "Description": "Optional human-readable explanation of a shared Visualizer definition's purpose."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         }

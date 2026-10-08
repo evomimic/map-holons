@@ -1,3 +1,4 @@
+import { bindCollectionVisualizerInformation } from './realize-collection';
 import { NavigationProfile } from './navigation-profile';
 import { destinationPaint } from './destination-paint';
 import { semanticWork } from './semantic-work';
@@ -176,6 +177,7 @@ export class NodeCollectionActivation implements CollectionActivation {
             if (!current()) return;
             profile?.next('collection property retrieval and presentation');
             await element.setCollection(collection, affordance.label, { isOrdered });
+            await bindCollectionVisualizerInformation(element);
             if (!current()) return;
             profile?.next('collection mount');
             element.restoreCollectionViewState?.(this.viewStates.get(affordance));

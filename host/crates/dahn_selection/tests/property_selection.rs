@@ -18,6 +18,7 @@ use std::{any::Any, collections::HashMap, sync::Arc};
 struct Graph {
     edges: HashMap<(u8, String), Vec<u8>>,
     anchors: Vec<u8>,
+    holon_root: Option<u8>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
@@ -50,6 +51,8 @@ impl HolonServiceApi for Graph {
     ) -> Result<SmartReference, HolonError> {
         let id = match key.0.as_str() {
             "TableCollectionVisualizer.CollectionVisualizer" => 20,
+            "Dancer.HolonType" => 40,
+            "RootedNavigationVisualizer.HolonType" => 41,
             _ => panic!("unexpected canonical role lookup {key}"),
         };
         match Self::reference(context, id) {
@@ -69,7 +72,11 @@ impl HolonServiceApi for Graph {
         );
         properties.insert(
             PropertyName("Key".into()),
-            BaseValue::StringValue(MapString(format!("node-{}", id.local_id().0[0]))),
+            BaseValue::StringValue(MapString(if self.holon_root == Some(id.local_id().0[0]) {
+                "HolonType.TypeDescriptor".into()
+            } else {
+                format!("node-{}", id.local_id().0[0])
+            })),
         );
         properties.insert(
             PropertyName("TypeName".into()),
@@ -89,7 +96,17 @@ impl HolonServiceApi for Graph {
                 .get(&(id.local_id().0[0], name.to_string()))
                 .into_iter()
                 .flatten()
-                .map(|id| Self::reference(context, *id))
+                .map(|id| {
+                    if self.holon_root == Some(*id) {
+                        HolonReference::smart_with_key(
+                            context.space_read_handle(),
+                            HolonId::Local(LocalId(vec![*id])),
+                            MapString("HolonType.TypeDescriptor".into()),
+                        )
+                    } else {
+                        Self::reference(context, *id)
+                    }
+                })
                 .collect(),
         )?;
         Ok(result)
@@ -306,7 +323,8 @@ fn slot_graph() -> Graph {
     let mut graph = Graph::default();
     graph.edge(1, "Extends", &[2]);
     graph.edge(2, "Extends", &[3]);
-    graph.anchors.push(2);
+    graph.anchors.extend([2, 3]);
+    graph.holon_root = Some(3);
     graph.edge(30, "AcceptsVisualizerType", &[10]);
     graph.edge(31, "AcceptsVisualizerType", &[11]);
     graph.edge(40, "HasSlot", &[30]);
@@ -326,16 +344,37 @@ fn slot_selection_filters_by_accepted_type_and_prefers_leaf() {
 }
 
 #[test]
-fn slot_selection_evaluates_anchor_but_never_crosses_it() {
+fn slot_selection_prefers_eligible_family_default_and_falls_back_to_holon_type() {
     let mut graph = slot_graph();
     graph.edge(1, "HasApplicableVisualizer", &[21]);
     graph.edge(2, "HasApplicableVisualizer", &[20]);
+    graph.edge(3, "HasApplicableVisualizer", &[22]);
     assert_eq!(slot_select(graph, 30, None).unwrap(), 20);
     let mut graph = slot_graph();
+    // An ineligible family-level candidate does not block the HolonType default.
+    graph.edge(2, "HasApplicableVisualizer", &[21]);
     graph.edge(3, "HasApplicableVisualizer", &[20]);
-    assert!(
-        matches!(slot_select(graph, 30, None), Err(HolonError::NotImplemented(message)) if message.contains("TypeKind"))
-    );
+    assert_eq!(slot_select(graph, 30, None).unwrap(), 20);
+}
+
+#[test]
+fn slot_selection_never_searches_above_holon_type() {
+    let mut graph = slot_graph();
+    graph.edge(3, "Extends", &[4]);
+    graph.edge(4, "HasApplicableVisualizer", &[20]);
+    assert!(matches!(slot_select(graph, 30, None),
+        Err(HolonError::NotImplemented(message)) if message.contains("HolonType")));
+}
+
+#[test]
+fn slot_selection_does_not_bypass_ambiguous_family_candidates_for_a_generic_default() {
+    let mut graph = slot_graph();
+    graph.edge(2, "HasApplicableVisualizer", &[20, 22]);
+    graph.edge(3, "HasApplicableVisualizer", &[20]);
+    assert!(matches!(
+        slot_select(graph, 30, None),
+        Err(HolonError::MultipleRelatedHolons { count: 2, .. })
+    ));
 }
 
 #[test]
@@ -359,7 +398,8 @@ fn node_selection_starts_at_described_type_and_falls_back_through_extends() {
         // Subject 1 is an ordinary response; descriptor 4 is its concrete type.
         graph.edge(1, "DescribedBy", &[4]);
         graph.edge(4, "Extends", &[2]);
-        graph.edge(2, "HasApplicableVisualizer", &[22]);
+        graph.edge(2, "HasApplicableVisualizer", &[21]);
+        graph.edge(3, "HasApplicableVisualizer", &[22]);
         if specialized {
             graph.edge(4, "HasApplicableVisualizer", &[20]);
         }
@@ -370,4 +410,44 @@ fn node_selection_starts_at_described_type_and_falls_back_through_extends() {
             if specialized { 20 } else { 22 }
         );
     }
+}
+
+#[test]
+fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
+    let mut graph = Graph::default();
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(44, "DescribedBy", &[45]);
+    graph.edge(44, "AffordsDancer", &[43]);
+    graph.edge(43, "DescribedBy", &[40]);
+    graph.edge(43, "HasExperienceVisualizerSlot", &[50, 47]);
+    graph.edge(50, "AcceptsVisualizerType", &[42]);
+    graph.edge(47, "AcceptsVisualizerType", &[41]);
+    graph.edge(45, "HasApplicableVisualizer", &[46, 49, 51]);
+    graph.edge(46, "DescribedBy", &[41]);
+    graph.edge(46, "HasSlot", &[48]);
+    graph.edge(48, "AcceptsVisualizerType", &[10]);
+    graph.edge(49, "DescribedBy", &[10]);
+    graph.edge(51, "DescribedBy", &[42]);
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(graph),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    let selected = dahn_selection::select_home_dancer(
+        &context,
+        dahn_selection::HomeDancerSelectionContext {
+            active_holon_space: Graph::reference(&context, 44),
+            selected_theme: Graph::reference(&context, 1),
+            selected_meta_design_system: Graph::reference(&context, 1),
+            runtime: dahn_selection::HomeDancerRuntime::Local,
+            person: None,
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(selected.dancer.holon_id().unwrap().local_id().0, vec![43]);
+    assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
+    assert_eq!(selected.root_node_visualizer.holon_id().unwrap().local_id().0, vec![49]);
 }

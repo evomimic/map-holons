@@ -1,3 +1,4 @@
+import { VISUALIZER_INFORMATION_EVENT, bindVisualizerInformationControl } from './visualizer-information-control';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
 import { TRAVERSE_RELATIONSHIP_EVENT } from '../contracts/visualizers';
@@ -5,7 +6,7 @@ import type { ActionActivation, ActionBinding, ActionInteractions } from './acti
 import type { HolonReference, MapTransaction } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
 import type { CanvasApi } from '../contracts/canvas';
-import type { VisualizerElement } from '../contracts/visualizers';
+import type { VisualizerInspectionTarget, VisualizerElement } from '../contracts/visualizers';
 import { DahnHolonView } from '../map-adapter/dahn-holon-view';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import { ExplorationTabs, type ExplorationPresentation } from './exploration-tabs';
@@ -14,6 +15,7 @@ import { PathNavigator } from './path-navigator';
 import { realizeNode, type RealizedNode } from './realize-node';
 import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
 import { SdkVisualizerMaterializer } from '../map-adapter/sdk-visualizer-materializer';
+import { VisualizerInformationRegion } from './visualizer-information-region';
 import { semanticWork } from './semantic-work';
 
 export interface SpaceNavigatorBinding {
@@ -35,9 +37,17 @@ export interface SpaceNavigatorBinding {
 export class SpaceNavigatorExperience {
   readonly element: ExplorationTabs;
   private first = true;
+  private readonly information: VisualizerInformationRegion;
 
   constructor(private readonly binding: SpaceNavigatorBinding) {
     this.element = new ExplorationTabs((anchor, signal) => this.realize(anchor, signal));
+    this.information = new VisualizerInformationRegion(binding, this.element);
+    this.element.auxiliaryHost.append(this.information.element);
+    this.element.addEventListener(VISUALIZER_INFORMATION_EVENT, event => {
+      event.stopPropagation();
+      this.information.inspect((event as CustomEvent<VisualizerInspectionTarget>).detail);
+    });
+    this.element.actions.append(this.information.toggle);
     const home = document.createElement('button');
     home.type = 'button';
     home.textContent = 'Explore HolonSpace';
@@ -64,7 +74,7 @@ export class SpaceNavigatorExperience {
 
   openInitial(): Promise<void> { return this.element.open(this.binding.holonSpace); }
   canDismiss(): boolean { return this.element.canDismiss(); }
-  dispose(): void { this.element.dispose(); }
+  dispose(): void { if (!this.canDismiss()) return; this.information.dispose(); this.element.dispose(); }
 
 
   private async presentResult(request: Parameters<NonNullable<ActionBinding['presentResult']>>[0], path: HolonReference) {
@@ -110,7 +120,7 @@ export class SpaceNavigatorExperience {
         rootNode,
         subject, review.bindSavedReference(selected), reviewSlot,
         (member, visualizer, stage) => realizeNode(contextFor(member), reviewRuntime, member, visualizer, theme, canvas, stage, undefined, review),
-        undefined, contextFor);
+        undefined, contextFor, target => this.information.inspect(target));
       try {
         const pathImplementation = await materialized.realize(parent);
         if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) throw new Error('Invalid RootedNavigation implementation');
@@ -136,8 +146,10 @@ export class SpaceNavigatorExperience {
       let selectedNode = this.binding.initialNodeVisualizer;
       if (!initial) {
         const slots = [...await dancer.relatedHolons('HasExperienceVisualizerSlot')];
-        if (slots.length !== 1) throw new Error(`Expected one Dancer experience slot, found ${slots.length}`);
-        selectedPath = (await transaction.selectVisualizer({ subject: anchor, slot: slots[0], requestedKind: 'rootedNavigation' })).selected;
+        const roots = [];
+        for (const slot of slots) if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') roots.push(slot);
+        if (roots.length !== 1) throw new Error(`Expected one navigation slot, found ${roots.length}`);
+        selectedPath = (await transaction.selectVisualizer({ subject: anchor, slot: roots[0], requestedKind: 'rootedNavigation' })).selected;
       }
       signal.throwIfAborted();
       const implementation = await materialized.realize(selectedPath);
@@ -166,7 +178,8 @@ export class SpaceNavigatorExperience {
         signal.throwIfAborted();
         navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot,
           (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, actionInteractions),
-          subject => { if (!work.paused) void this.element.open(subject); });
+          subject => { if (!work.paused) void this.element.open(subject); },
+          undefined, target => this.information.inspect(target));
         element = document.createElement(tag) as VisualizerElement;
         element.setContext({
           title, experience: { dancer, holonSpace: this.binding.holonSpace }, target: { reference: anchor }, holon: new DahnHolonView(anchor), actions: [], theme, canvas,
@@ -174,6 +187,13 @@ export class SpaceNavigatorExperience {
           onInspectHolon: intent => navigation!.inspect(intent),
           onTraverseRelationship: intent => navigation!.traverseRelationship(intent),
         });
+        const navigationSlots = await dancer.relatedHolons('HasExperienceVisualizerSlot');
+        for (const slot of navigationSlots) {
+          if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') {
+            await bindVisualizerInformationControl(element, transaction, anchor, dancer, slot, selectedPath);
+            break;
+          }
+        }
         const retainedNavigation = navigation;
         const retainedElement = element;
         return { element, title, canDismiss: () => retainedNavigation.canDismiss(), dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };

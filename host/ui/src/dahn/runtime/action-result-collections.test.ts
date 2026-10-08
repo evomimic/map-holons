@@ -13,7 +13,7 @@ function fixture(role: string, count = 2) {
   const collection = { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [{ propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false }] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
   const slot = { key: async () => role === 'diagnostics' ? 'LoadHolons.DiagnosticsSlot' : 'LoadHolons.CommittedHolonsSlot' };
   const parent = { key: async () => 'action', relatedHolons: vi.fn(async () => [slot]) };
-  const transaction = { selectCollectionVisualizer: vi.fn(async () => ({ selected: { key: async () => 'table' } })), dispose: vi.fn() };
+  const transaction = { selectCollectionVisualizer: vi.fn(async () => ({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } })), dispose: vi.fn() };
   const materialize = vi.fn(async (ref: unknown) => ({ source: ref === parent ? action : source, format: 'ESModule' as const, entrypoint: 'default' }));
   const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   return { binding: { role, label: role, collection, transaction, parentVisualizer: parent, materialized, isOrdered: false }, slot, parent, transaction, materialize, members };
@@ -58,7 +58,7 @@ it('revokes pending work on context invalidation without disposing the borrowed 
   const f = fixture('diagnostics'); let release!: (value: { selected: { key: () => Promise<string> } }) => void;
   f.transaction.selectCollectionVisualizer.mockImplementation(() => new Promise(resolve => { release = resolve; }));
   mount([f]); await vi.waitFor(() => expect(release).toBeDefined());
-  semanticWork(f.transaction as never).invalidate(); release({ selected: { key: async () => 'table' } });
+  semanticWork(f.transaction as never).invalidate(); release({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(owner.element.textContent).toContain('Semantic context changed'); expect(table()).toBeFalsy();
   owner.dispose(); expect(f.transaction.dispose).not.toHaveBeenCalled();
@@ -86,7 +86,7 @@ it('does not mount a late selection after the action owner is disposed', async (
   const f = fixture('diagnostics'); let release!: (value: { selected: { key: () => Promise<string> } }) => void;
   f.transaction.selectCollectionVisualizer.mockImplementation(() => new Promise(resolve => { release = resolve; }));
   mount([f]); await vi.waitFor(() => expect(release).toBeDefined());
-  owner.dispose(); release({ selected: { key: async () => 'table' } });
+  owner.dispose(); release({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(owner.element.querySelector('table')).toBeNull();
   expect(f.materialize).toHaveBeenCalledTimes(1);
@@ -95,7 +95,7 @@ it('does not mount a late selection after the action owner is disposed', async (
 it('selects projected rows normally and keeps producer order until explicit user sorting', async () => {
   const a = fixture('diagnostics'), b = fixture('committed');
   const activate = vi.fn(); const elementType = { key: async () => 'LoadDiagnostic.Projection' };
-  const select = vi.fn(async () => ({ selected: { key: async () => 'table' } }));
+  const select = vi.fn(async () => ({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } }));
   Object.assign(a.transaction, { selectProjectedCollectionVisualizer: select });
   const projected = { ...a.binding, collection: undefined, projection: { elementType, activate, presentation: {
     kind: 'record', displayName: 'Diagnostics', rowIds: ['ten', 'two', 'missing'], defaultRowOrder: ['two', 'ten', 'missing'],

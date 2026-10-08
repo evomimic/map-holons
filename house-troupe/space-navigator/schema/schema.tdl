@@ -27,7 +27,7 @@ instance SpaceNavigator.Dancer {
   relationships {
     OffersDance -> MaterializeVisualizer.DanceType
     AffordedByHolonSpace -> MAP.CoreSchemaSpace
-    HasExperienceVisualizerSlot -> SpaceNavigator.RootedNavigationSlot
+    HasExperienceVisualizerSlot -> [SpaceNavigator.RootedNavigationSlot, SpaceNavigator.VisualizerInformationSlot]
     Requires -> [
       "MAP DAHN Schema-v0.1.0",
       "MAP Space Navigator Schema-v0.1.0"
@@ -44,6 +44,8 @@ instance SpaceNavigator.RootedNavigationSlot {
 
 instance SpaceNavigator.CanvasVisualizer {
   type CanvasVisualizer.HolonType
+  DisplayName "Space Navigator"
+  VisualizerDescription "Explore the items in your space and follow their connections while keeping your place."
   relationships {
     ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
@@ -67,6 +69,8 @@ instance SpaceNavigator.CanvasVisualizer {
 
 instance TableCollectionVisualizer.CollectionVisualizer {
   type CollectionVisualizer.HolonType
+  DisplayName "Table Collection"
+  VisualizerDescription "Compare a group of items in a table. Sort the rows and open an item to see more."
   relationships {
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
@@ -102,6 +106,55 @@ instance TableCollectionTypeScript.VisualizerImplementation {
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.table-collection"
   VisualizerArtifactDigest "sha256:4c39fedf4b1182342910590d2bb9a008765930e87ebb572927c0c5ea4cfb0419"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+// This presentation is selected only by the information slot, not ordinary Node slots.
+holon VisualizerInspector.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Read-only semantic inspection of a shared Visualizer definition in an auxiliary experience region."
+    display_name: "Visualizer Inspector"
+    display_plural: "Visualizer Inspectors"
+    plural: "VisualizerInspectors"
+  }
+}
+
+instance SpaceNavigator.VisualizerInformationSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> VisualizerInspector.HolonType
+  }
+}
+
+instance VisualizerInspector.Visualizer {
+  type VisualizerInspector.HolonType
+  DisplayName "Visualizer Inspector"
+  VisualizerDescription "Explains the view you are using and what it helps you do."
+  relationships {
+    ApplicableToType -> Visualizer.HolonType
+    ConsumesDesignToken -> [
+      CanvasTextColor.DesignToken,
+      PanelSurfaceBackground.DesignToken,
+      SlotPadding.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotBorderColor.DesignToken,
+      ActionTextColor.DesignToken,
+      ActionSurfaceBackground.DesignToken,
+      ActionPaddingBlock.DesignToken,
+      ActionPaddingInline.DesignToken,
+    ]
+    ImplementedBy -> VisualizerInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance VisualizerInspectorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.visualizer-inspector"
+  VisualizerArtifactDigest "sha256:10bdd96bbcd95235893b742fba8a37850dcbe5a259dedd6438f5767273c5f1ea"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

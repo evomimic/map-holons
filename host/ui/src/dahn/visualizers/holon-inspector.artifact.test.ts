@@ -315,3 +315,25 @@ it('keeps full extents above contextual extents after late theme or collection m
   const report = node.getNodeInspectorExtents().vertical;
   expect(report['full-height']).toBeGreaterThanOrEqual(report['partial-height']);
 });
+
+it('exposes an owner-bound circled V with the selected name above the control on focus', async () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  const Node = await loadHolonInspector();
+  customElements.define('test-node-visualizer-information', class extends Node {});
+  const element = document.createElement('test-node-visualizer-information') as any;
+  element.setContext({ title: 'Subject' }); document.body.append(element);
+  const invoke = vi.fn();
+  element.setVisualizerInformationHandler(invoke, 'Specialized Visualizer');
+  const control = element.querySelector('[data-visualizer-information]') as HTMLButtonElement;
+  expect(control.textContent).toBe('v');
+  expect(control.getAttribute('aria-label')).toBe('Visualizer information: Specialized Visualizer');
+  control.focus();
+  const tooltip = element.querySelector('[role=tooltip]') as HTMLElement;
+  expect(tooltip.hidden).toBe(false); expect(tooltip.textContent).toBe('Specialized Visualizer');
+  expect(tooltip.style.bottom).not.toBe('');
+  control.click(); expect(invoke).toHaveBeenCalledWith(control);
+  element.setVisualizerInformationHandler(undefined, 'Specialized Visualizer');
+  expect(control.hidden).toBe(true);
+  element.remove();
+  vi.unstubAllGlobals();
+});

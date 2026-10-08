@@ -89,6 +89,7 @@ abstract holon Visualizer.HolonType {
     plural: "Visualizers"
   }
   relationships {
+    InstanceProperties -> [DisplayName.PropertyType, VisualizerDescription.PropertyType]
     InstanceRelationships -> [
       (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType),
       (Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor),
@@ -139,6 +140,8 @@ instance MAP.BootstrapCanvas {
 
 instance MAP.BootstrapCanvasVisualizer {
   type CanvasVisualizer.HolonType
+  DisplayName "MAP"
+  VisualizerDescription "Provides a starting place for opening your spaces and getting to work."
   relationships {
     ConsumesDesignToken -> [
       ViewControlSurfaceBackground.DesignToken,
@@ -177,6 +180,8 @@ instance MAP.BootstrapCanvasTypeScript.VisualizerImplementation {
 // specific Node candidate and is discovered only through Type applicability.
 instance HolonInspector.NodeVisualizer {
   type NodeVisualizer.HolonType
+  DisplayName "Holon Inspector"
+  VisualizerDescription "See the details of an item, explore its connections, and find the actions you can take."
   relationships {
     ConsumesDesignToken -> [
       RelationshipNavigationSurfaceBackground.DesignToken,
@@ -203,7 +208,7 @@ instance HolonInspector.NodeVisualizer {
       SlotBorderWidth.DesignToken,
       SlotPadding.DesignToken,
     ]
-    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
+    ApplicableToType -> HolonType.TypeDescriptor
     HasSlot -> [HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot]
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
   }
@@ -239,8 +244,10 @@ instance HolonInspector.SingleValueSlot {
 
 instance GenericActions.ActionBarVisualizer {
   type ActionBarVisualizer.HolonType
+  DisplayName "Generic Actions"
+  VisualizerDescription "Keeps the actions available for this item together so you can find what to do next."
   relationships {
-    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
+    ApplicableToType -> HolonType.TypeDescriptor
     ConsumesDesignToken -> [
       ActionCornerRadius.DesignToken,
       ActionPaddingBlock.DesignToken,
@@ -273,7 +280,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:9777d81926b3f906fdb8100738d487d27745fdef0382303c97008752c272961f"
+  VisualizerArtifactDigest "sha256:f00f39d57930fa72db0498044b8c27f2a21b11188dc86111cd3b845b4902bda0"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -316,6 +323,8 @@ holon RootedNavigationVisualizer.HolonType {
 // realize that root without becoming a Node Visualizer itself.
 instance PathInspector.RootedNavigationVisualizer {
   type RootedNavigationVisualizer.HolonType
+  DisplayName "Path Inspector"
+  VisualizerDescription "Follow connections between items while keeping the path you have explored in view."
   relationships {
     ConsumesDesignToken -> [
       ViewControlSurfaceBackground.DesignToken,
@@ -333,7 +342,7 @@ instance PathInspector.RootedNavigationVisualizer {
       SlotBorderWidth.DesignToken,
       SlotPadding.DesignToken,
     ]
-    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
+    ApplicableToType -> HolonType.TypeDescriptor
     HasSlot -> PathInspector.RootNodeSlot
     ImplementedBy -> PathInspectorTypeScript.VisualizerImplementation
   }
@@ -393,6 +402,8 @@ holon PropertyVisualizer.HolonType {
 // it through its Property Viewer slot without a bootstrap fallback.
 instance DefaultPropertyMapVisualizer.PropertyMapVisualizer {
   type PropertyMapVisualizer.HolonType
+  DisplayName "Default Property Map"
+  VisualizerDescription "Shows an item’s details as a readable list of names and values."
   relationships {
     ConsumesDesignToken -> [
       ActionCornerRadius.DesignToken,
@@ -411,7 +422,7 @@ instance DefaultPropertyMapVisualizer.PropertyMapVisualizer {
       SlotBorderStyle.DesignToken,
       SlotBorderWidth.DesignToken,
     ]
-    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
+    ApplicableToType -> HolonType.TypeDescriptor
     HasSlot -> DefaultPropertyMapVisualizer.PropertySlot
     ImplementedBy -> DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation
   }
@@ -438,6 +449,8 @@ instance DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation {
 // name/value row and its Value slot, never set-level layout or spatial budget.
 instance GenericProperty.PropertyVisualizer {
   type PropertyVisualizer.HolonType
+  DisplayName "Generic Property"
+  VisualizerDescription "Pairs the name of a detail with its value so you can understand it at a glance."
   relationships {
     ConsumesDesignToken -> [
       MutedTextColor.DesignToken,
@@ -482,6 +495,8 @@ holon ValueVisualizer.HolonType {
 // implementation while retaining distinct ValueVisualizer identity.
 instance StringValue.ValueVisualizer {
   type ValueVisualizer.HolonType
+  DisplayName "String Value"
+  VisualizerDescription "Shows a value as readable text."
   relationships {
     ApplicableToType -> StringValueType.ValueType
     ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
@@ -490,6 +505,8 @@ instance StringValue.ValueVisualizer {
 
 instance IntegerValue.ValueVisualizer {
   type ValueVisualizer.HolonType
+  DisplayName "Integer Value"
+  VisualizerDescription "Shows a whole-number value."
   relationships {
     ApplicableToType -> IntegerValueType.ValueType
     ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
@@ -498,6 +515,8 @@ instance IntegerValue.ValueVisualizer {
 
 instance BooleanValue.ValueVisualizer {
   type ValueVisualizer.HolonType
+  DisplayName "Boolean Value"
+  VisualizerDescription "Shows whether a value is true or false."
   relationships {
     ApplicableToType -> BooleanValueType.ValueType
     ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
@@ -506,6 +525,8 @@ instance BooleanValue.ValueVisualizer {
 
 instance EnumValue.ValueVisualizer {
   type ValueVisualizer.HolonType
+  DisplayName "Enum Value"
+  VisualizerDescription "Shows the named option recorded for a value."
   relationships {
     ApplicableToType -> [EnumValueType.ValueType, MapEnumValueType.EnumValueType]
     ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
@@ -514,6 +535,8 @@ instance EnumValue.ValueVisualizer {
 
 instance BytesValue.ValueVisualizer {
   type ValueVisualizer.HolonType
+  DisplayName "Bytes Value"
+  VisualizerDescription "Shows the amount of binary data stored in a value."
   relationships {
     ApplicableToType -> BytesValueType.ValueType
     ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
@@ -549,6 +572,8 @@ instance GenericActions.ActionSlot {
 
 instance UnsupportedAction.ActionVisualizer {
   type ActionVisualizer.HolonType
+  DisplayName "Unsupported Action"
+  VisualizerDescription "Shows an available action and explains when it cannot yet be run here."
   relationships {
     ApplicableToType -> DanceType.HolonType
     ImplementedBy -> UnsupportedActionTypeScript.VisualizerImplementation
@@ -566,6 +591,8 @@ instance UnsupportedActionTypeScript.VisualizerImplementation {
 
 instance LoadHolons.ActionVisualizer {
   type ActionVisualizer.HolonType
+  DisplayName "Load Holons"
+  VisualizerDescription "Helps you choose data to load, review the results, and explore the items that were added."
   relationships {
     HasSlot -> [LoadHolons.DiagnosticsSlot, LoadHolons.CommittedHolonsSlot]
     ApplicableToType -> LoadHolons.DanceType
@@ -1086,6 +1113,8 @@ inverse relationship (DesignToken.HolonType)-[ConsumedByVisualizer]->(Visualizer
 // The response's concrete type selects this Node before the generic ancestor.
 instance LoadHolons.NodeVisualizer {
   type NodeVisualizer.HolonType
+  DisplayName "Load Holons"
+  VisualizerDescription "Summarizes a data load so you can review any problems and explore the items that were added."
   relationships {
     ApplicableToType -> HolonLoadResponse.DanceResponseType
     HasSlot -> [LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.CollectionsSlot]
@@ -1120,5 +1149,17 @@ instance LoadHolonsResult.CollectionsSlot {
   type VisualizerSlot.HolonType
   relationships {
     AcceptsVisualizerType -> CollectionVisualizer.HolonType
+  }
+}
+
+property VisualizerDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Optional human-readable explanation of a shared Visualizer definition's purpose."
+    display_name: "Visualizer description"
+    display_plural: "Visualizer descriptions"
+    plural: "VisualizerDescriptions"
   }
 }

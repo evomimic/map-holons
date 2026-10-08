@@ -1,3 +1,4 @@
+import { bindCollectionVisualizerInformation } from './realize-collection';
 import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
 import type { ActionBinding } from './action-activation';
@@ -115,6 +116,7 @@ export class ActionResultCollections {
             if (current() && this.active === role && element.isConnected) binding.projection!.activate(id);
           });
         } else await element.setCollection(binding.collection, binding.label, { isOrdered: binding.isOrdered });
+            await bindCollectionVisualizerInformation(element);
         if (!current()) return;
         element.setInspectHolonHandler(reference => {
           if (current() && this.active === role && element.isConnected) this.inspect({ reference, source: element, result: binding, origin: this.origin });

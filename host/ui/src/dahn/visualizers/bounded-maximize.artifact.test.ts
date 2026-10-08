@@ -222,3 +222,21 @@ it('reports a refused Inspector request without changing the toggle and hides Co
   node.updateCollection({ state: 'loaded', content: document.createElement('section') });
   expect(node.collectionsMaximizeButton.hidden).toBe(false);
 });
+
+it.each(['full-height', 'partial-height'])('restores the Properties pane from the title bar with a maximized Collection and %s allocation', async vertical => {
+  const { node, properties, collection } = await inspector();
+  node.setNodeInspectorAllocation({ width: 800, height: 720, vertical, horizontal: 'full-width' });
+  const restoreOccurrence = vi.fn(() => node.setNodeInspectorAllocation({ width: 800, height: 720, vertical: 'full-height', horizontal: 'full-width' })); node.setOccurrenceRestorationHandler(restoreOccurrence);
+  node.requestRegion('maximize', 'collections');
+  expect(node.body.inert).toBe(true);
+  expect(node.body.style.display).toBe('none');
+  node.titleControl.click();
+  expect(node.body.style.display).toBe('grid');
+  expect(node.body.inert).toBe(false);
+  expect(node.maximizedRegion).toBeUndefined();
+  expect(node.contains(properties)).toBe(true);
+  expect(node.contains(collection)).toBe(true);
+  expect(properties.dataset.selection).toBe('property retained');
+  expect(collection.dataset.selection).toBe('row retained');
+  expect(restoreOccurrence).toHaveBeenCalledTimes(vertical === 'full-height' ? 0 : 1);
+});

@@ -19,17 +19,18 @@ class NavigationElement extends HTMLElement {
     });
   }
 }
-const reference = (name: string) => ({ key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
+const reference = (name: string) => ({ propertyValue: async () => ({ StringValue: name }), key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
 let binding: SpaceNavigatorBinding;
 let experience: SpaceNavigatorExperience;
 let roots: Array<{ element: HTMLElement; collectionActivation: { dispose: ReturnType<typeof vi.fn> }; singularRelationships: [] }>;
 beforeEach(() => {
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
   roots = [];
   mocks.realizeNode.mockReset().mockImplementation(async () => {
     const root = { element: document.createElement('div'), collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn() }, singularRelationships: [] as [] };
     roots.push(root); return root;
   });
-  const dancerSlot = reference('Dancer slot'), nodeSlot = reference('Node slot');
+  const dancerSlot = reference('SpaceNavigator.RootedNavigationSlot'), nodeSlot = reference('Node slot');
   const path = reference('Path'), node = reference('Node');
   binding = {
     transaction: { selectVisualizer: vi.fn(async request => ({ selected: request.requestedKind === 'node' ? node : path })), commit: vi.fn(), stageNewHolon: vi.fn(), stageNewVersion: vi.fn(), abandon: vi.fn() } as never,
@@ -40,7 +41,7 @@ beforeEach(() => {
   };
   experience = new SpaceNavigatorExperience(binding); document.body.append(experience.element);
 });
-afterEach(() => { experience.dispose(); document.body.replaceChildren(); });
+afterEach(() => { experience.dispose(); document.body.replaceChildren(); vi.unstubAllGlobals(); });
 const navigations = () => [...experience.element.querySelectorAll('[role="tabpanel"] > *')] as NavigationElement[];
 
 it('binds a fresh root through the Dancer slot while sharing execution, materialization and inherited context', async () => {

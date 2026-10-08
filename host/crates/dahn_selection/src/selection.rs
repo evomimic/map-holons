@@ -97,11 +97,39 @@ pub fn select_home_dancer(
         if !equals_or_extends(&candidate_type, &dancer_type)? {
             continue;
         }
-        let dancer_slot = require_single_related(
-            &candidate,
-            DancerRelationshipTypeName::HasExperienceVisualizerSlot,
-            "Dancer experience VisualizerSlot",
-        )?;
+        let navigation_type =
+            HolonReference::Smart(context.lookup().get_saved_holon_by_key(&MapString::from(
+                "RootedNavigationVisualizer.HolonType",
+            ))?);
+        let slots =
+            candidate.related_holons(DancerRelationshipTypeName::HasExperienceVisualizerSlot)?;
+        let slots = slots
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        let mut navigation_slots = Vec::new();
+        for slot in slots {
+            let accepted = slot.related_holons(DahnRelationshipTypeName::AcceptsVisualizerType)?;
+            let accepted = accepted
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .get_members()
+                .clone();
+            for accepted_type in accepted {
+                if equals_or_extends(&accepted_type, &navigation_type)? {
+                    navigation_slots.push(slot.clone());
+                    break;
+                }
+            }
+        }
+        if navigation_slots.len() != 1 {
+            return Err(HolonError::InvalidParameter(format!(
+                "Dancer must declare one RootedNavigation slot, found {}",
+                navigation_slots.len()
+            )));
+        }
+        let dancer_slot = navigation_slots.remove(0);
         let subject_type = selection_context.active_holon_space.holon_descriptor()?.holon().clone();
         match select_for_slot(subject_type.clone(), &dancer_slot) {
             Ok(rooted_navigation_visualizer) => {
@@ -214,7 +242,7 @@ pub fn select_visualizer(
     Ok(VisualizerSelection { selected, requested_kind, alternatives_available: false })
 }
 
-/// Select at the nearest compatible level, never crossing the nearest local TKD.
+/// Select at the nearest compatible level, including a generic HolonType default.
 fn select_for_slot(
     subject_type: HolonReference,
     slot: &HolonReference,
@@ -261,12 +289,9 @@ fn select_for_slot(
                 })
             }
         }
-        if holons_core::descriptors::HolonDescriptor::from_holon(descriptor)
-            .header()
-            .defines_instance_type_kind()?
-        {
+        if descriptor.key()?.is_some_and(|key| key.0 == "HolonType.TypeDescriptor") {
             return Err(HolonError::NotImplemented(
-                "No slot-compatible Visualizer at or below the subject TypeKind definer".into(),
+                "No slot-compatible Visualizer at or below HolonType".into(),
             ));
         }
     }
