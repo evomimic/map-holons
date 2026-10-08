@@ -48,9 +48,15 @@ it.each(['holon-inspector', 'load-holons-inspector'])('%s obeys the same title-b
   expect(information.getAttribute('aria-pressed')).toBe('true');
   allocation('full-height', 'minimal-width', 64); expect(title.style.writingMode).toBe('vertical-rl');
   expect(explore.hidden).toBe(true); expect(maximize.hidden).toBe(true); expect(close.hidden).toBe(false);
-  allocation('minimal-height', 'minimal-width', 64, 48); expect(title.textContent).toBe('MCSS');
-  expect(title.style.writingMode).toBe('horizontal-tb'); expect(information.hidden).toBe(false);
-  allocation('full-height', 'full-width'); explore.focus(); node.setOccurrenceExplorationHandler(undefined);
+  expect(information.hidden).toBe(true); expect(bar.style.flexDirection).toBe('column');
+  allocation('minimal-height', 'full-width', 240, 64);
+  expect((title.firstElementChild as HTMLElement).style.webkitLineClamp).toBe('2'); expect(information.hidden).toBe(true);
+  allocation('minimal-height', 'minimal-width', 96, 64); expect(title.textContent).toBe('MAP.CoreSchemaSpace');
+  expect(node.getNodeInspectorExtents().vertical['minimal-height']).toBe(64);
+  expect(node.getNodeInspectorExtents().horizontal['minimal-width']).toBe(96);
+  expect(title.style.writingMode).toBe('horizontal-tb'); expect(information.hidden).toBe(true);
+  node.setVisualizerInformationHandler(inspected, 'Selected Node'); expect(information.hidden).toBe(true);
+  allocation('full-height', 'full-width'); expect(information.hidden).toBe(false); explore.focus(); node.setOccurrenceExplorationHandler(undefined);
   expect(explore.hidden).toBe(true); expect(document.activeElement).toBe(title);
   node.setVisualizerInformationHandler(undefined, 'Selected Node'); expect(information.hidden).toBe(true);
 });

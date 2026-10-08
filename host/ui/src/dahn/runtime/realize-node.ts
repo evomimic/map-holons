@@ -64,7 +64,7 @@ export async function realizeNode(
       subject,
       requestedKind: 'propertyMap',
       slot: propertiesSlot,
-      parentVisualizer: selectedVisualizer,
+      owner: { visualizer: selectedVisualizer }, theme: theme.reference,
     });
     const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
     if (
@@ -92,6 +92,7 @@ export async function realizeNode(
             propertyDescriptor,
             propertiesSelection.selected,
             propertySlot,
+            theme.reference,
           );
           onStage?.(`property ${propertyName}: materialize Property`);
           const propertyImplementation = await materialized.realize(propertySelection.selected);
@@ -110,7 +111,7 @@ export async function realizeNode(
           const valueElement = await renderVisualizerRegion(propertyName, async () => {
             onStage?.(`property ${propertyName}: select Value`);
             const valueSlot = await materialized.slot(propertySelection.selected, 'value');
-            const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected, valueSlot);
+            const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected, valueSlot, theme.reference);
             onStage?.(`property ${propertyName}: materialize Value`);
             const valueImplementation = await materialized.realize(valueSelection.selected);
             if (typeof valueImplementation !== 'function' || !(valueImplementation.prototype instanceof HTMLElement)) {
@@ -177,7 +178,7 @@ export async function realizeNode(
   const actionsElement = await renderVisualizerRegion('Node actions', async () => {
     const actionSlot = await materialized.slot(selectedVisualizer, 'action');
     const selection = await transaction.selectVisualizer({
-      subject, requestedKind: 'actionBar', parentVisualizer: selectedVisualizer,
+      subject, requestedKind: 'actionBar', owner: { visualizer: selectedVisualizer }, theme: theme.reference,
       slot: actionSlot,
     });
     const implementation = await materialized.realize(selection.selected);
@@ -193,7 +194,7 @@ export async function realizeNode(
         children.set(action.id, await renderVisualizerRegion(action.label, async () => {
           if (!action.dance) throw new Error('Action has no bound Dance descriptor');
           const childSlot = await materialized.slot(selection.selected, 'action');
-          const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', parentVisualizer: selection.selected, slot: childSlot });
+          const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', owner: { visualizer: selection.selected }, theme: theme.reference, slot: childSlot });
           const implementation = await materialized.realize(selected.selected);
           if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Action is not an HTMLElement constructor');
           const tag = defineCustomElementOnce('map-selected-action', implementation as CustomElementConstructor);

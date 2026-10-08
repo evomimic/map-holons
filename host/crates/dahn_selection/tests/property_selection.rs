@@ -1,4 +1,4 @@
-use base_types::{BaseValue, MapInteger, MapString};
+use base_types::{BaseValue, MapEnumValue, MapInteger, MapString};
 use core_types::{HolonError, HolonId, LocalId, PropertyMap, PropertyName, RelationshipName};
 use holons_core::core_shared_objects::{
     holon::{Holon, SavedHolon},
@@ -10,7 +10,7 @@ use holons_core::{
     RelationshipCachePolicy, RelationshipMap, ServiceRoutingPolicy, SmartReference,
     StagedReference, TransientReference,
 };
-use map_commands_contract::{VisualizerKind, VisualizerSelectionRequest};
+use map_commands_contract::{VisualizerKind, VisualizerOwner, VisualizerSelectionRequest};
 use std::{any::Any, collections::HashMap, sync::Arc};
 
 /// A persisted graph fixture accessed through the real bound reference layer.
@@ -19,6 +19,7 @@ struct Graph {
     edges: HashMap<(u8, String), Vec<u8>>,
     anchors: Vec<u8>,
     holon_root: Option<u8>,
+    unavailable: Vec<u8>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
@@ -33,6 +34,13 @@ impl Graph {
     }
 }
 impl HolonServiceApi for Graph {
+    fn visualizer_artifact_available_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        candidate: &HolonReference,
+    ) -> Result<bool, HolonError> {
+        Ok(!self.unavailable.contains(&candidate.holon_id()?.local_id().0[0]))
+    }
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -66,6 +74,18 @@ impl HolonServiceApi for Graph {
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let mut properties = PropertyMap::new();
+        properties.insert(
+            PropertyName("VisualizerImplementationRuntime".into()),
+            BaseValue::EnumValue(MapEnumValue("TypeScript".into())),
+        );
+        for (name, value) in [
+            ("VisualizerModuleFormat", "ESModule"),
+            ("VisualizerImplementationKey", "fixture.implementation"),
+            ("Entrypoint", "default"),
+            ("VisualizerArtifactDigest", "sha256:fixture"),
+        ] {
+            properties.insert(PropertyName(name.into()), BaseValue::StringValue(value.into()));
+        }
         properties.insert(
             PropertyName("DefinesInstanceTypeKind".into()),
             BaseValue::BooleanValue(self.anchors.contains(&id.local_id().0[0]).into()),
@@ -168,6 +188,11 @@ fn select(
         _ => unreachable!(),
     };
     graph.edge(30, "AcceptsVisualizerType", &[role]);
+    graph.edge(40, "HasSlot", &[30]);
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for candidate in [20, 21, 22] {
+        graph.edge(candidate, "ImplementedBy", &[70]);
+    }
     if inherited {
         graph.edge(start, "HasApplicableVisualizer", &[]);
         graph.edge(start, "Extends", &[5]);
@@ -175,6 +200,10 @@ fn select(
     graph.edge(if inherited { 5 } else { start }, "HasApplicableVisualizer", candidates);
     for candidate in candidates {
         graph.edge(*candidate, "DescribedBy", &[role]);
+    }
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for candidate in [20, 21, 22] {
+        graph.edge(candidate, "ImplementedBy", &[70]);
     }
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
@@ -188,7 +217,8 @@ fn select(
         VisualizerSelectionRequest {
             subject: Graph::reference(&context, subject),
             requested_kind: kind,
-            parent_visualizer: None,
+            owner: VisualizerOwner::Visualizer(Graph::reference(&context, 40)),
+            theme: Graph::reference(&context, 60),
             slot: Graph::reference(&context, 30),
         },
     )?;
@@ -218,7 +248,7 @@ fn reports_missing_and_ambiguous_candidates_for_every_role() {
         VisualizerKind::Action,
     ] {
         assert!(
-            matches!(select(kind, &[], false, &[4]), Err(HolonError::NotImplemented(message)) if message.contains("No applicable"))
+            matches!(select(kind, &[], false, &[4]), Err(HolonError::NotImplemented(message)) if message.contains("No viable"))
         );
         assert!(matches!(
             select(kind, &[20, 22], false, &[4]),
@@ -247,6 +277,10 @@ fn select_collection(
     graph.edge(3, "AcceptsVisualizerType", &[14]);
     graph.edge(20, "DescribedBy", &[14]);
     graph.edge(5, "DescribedBy", &[if compatible_member { 4 } else { 6 }]);
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for candidate in [20, 21, 22] {
+        graph.edge(candidate, "ImplementedBy", &[70]);
+    }
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
@@ -295,11 +329,15 @@ fn slot_select(graph: Graph, slot: u8, parent: Option<u8>) -> Result<u8, HolonEr
 }
 
 fn slot_select_kind(
-    graph: Graph,
+    mut graph: Graph,
     slot: u8,
     parent: Option<u8>,
     kind: VisualizerKind,
 ) -> Result<u8, HolonError> {
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for candidate in [20, 21, 22] {
+        graph.edge(candidate, "ImplementedBy", &[70]);
+    }
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
@@ -313,7 +351,8 @@ fn slot_select_kind(
             subject: Graph::reference(&context, 1),
             requested_kind: kind,
             slot: Graph::reference(&context, slot),
-            parent_visualizer: parent.map(|id| Graph::reference(&context, id)),
+            owner: VisualizerOwner::Visualizer(Graph::reference(&context, parent.unwrap_or(40))),
+            theme: Graph::reference(&context, 60),
         },
     )?;
     Ok(result.selected.holon_id()?.local_id().0[0])
@@ -363,7 +402,7 @@ fn slot_selection_never_searches_above_holon_type() {
     graph.edge(3, "Extends", &[4]);
     graph.edge(4, "HasApplicableVisualizer", &[20]);
     assert!(matches!(slot_select(graph, 30, None),
-        Err(HolonError::NotImplemented(message)) if message.contains("HolonType")));
+        Err(HolonError::NotImplemented(message)) if message.contains("permitted descriptor lineage")));
 }
 
 #[test]
@@ -428,6 +467,10 @@ fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
     graph.edge(48, "AcceptsVisualizerType", &[10]);
     graph.edge(49, "DescribedBy", &[10]);
     graph.edge(51, "DescribedBy", &[42]);
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for candidate in [20, 21, 22] {
+        graph.edge(candidate, "ImplementedBy", &[70]);
+    }
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
@@ -450,4 +493,233 @@ fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
     assert_eq!(selected.dancer.holon_id().unwrap().local_id().0, vec![43]);
     assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
     assert_eq!(selected.root_node_visualizer.holon_id().unwrap().local_id().0, vec![49]);
+}
+
+fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for candidate in [20, 21, 22] {
+        graph.edge(candidate, "ImplementedBy", &[70]);
+    }
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(graph),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
+}
+fn candidate_request(context: &Arc<TransactionContext>) -> VisualizerSelectionRequest {
+    VisualizerSelectionRequest {
+        subject: Graph::reference(context, 1),
+        requested_kind: VisualizerKind::Property,
+        owner: VisualizerOwner::Visualizer(Graph::reference(context, 40)),
+        slot: Graph::reference(context, 30),
+        theme: Graph::reference(context, 60),
+    }
+}
+#[test]
+fn discovery_retains_general_alternatives_and_all_declaration_provenance() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20, 20]);
+    graph.edge(2, "HasApplicableVisualizer", &[20, 22]);
+    graph.edge(3, "HasApplicableVisualizer", &[22]);
+    // The HolonType parent must not be read by discovery.
+    graph.edge(3, "Extends", &[4, 5]);
+    let context = candidate_context(graph);
+    let discovery = dahn_selection::discover_visualizers(
+        &context,
+        candidate_request(&context),
+        Some(Graph::reference(&context, 22)),
+    )
+    .unwrap();
+    assert_eq!(discovery.ancestry.len(), 3);
+    assert_eq!(discovery.candidates.len(), 2);
+    assert_eq!(discovery.candidates[0].declared_on.len(), 2);
+    assert_eq!(discovery.candidates[1].declared_on.len(), 2);
+    assert_eq!(
+        discovery.current_selection.unwrap().assessment,
+        map_commands_contract::VisualizerAssessment::Viable
+    );
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, candidate_request(&context)).unwrap().selected,
+        Graph::reference(&context, 20)
+    );
+    assert_eq!(
+        dahn_selection::choose_visualizer(
+            &context,
+            candidate_request(&context),
+            Graph::reference(&context, 22)
+        )
+        .unwrap()
+        .selected,
+        Graph::reference(&context, 22)
+    );
+}
+#[test]
+fn explicit_choice_survives_automatic_ambiguity_but_not_theme_incompatibility() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20, 22]);
+    let context = candidate_context(graph);
+    assert!(matches!(
+        dahn_selection::select_visualizer(&context, candidate_request(&context)),
+        Err(HolonError::MultipleRelatedHolons { .. })
+    ));
+    assert!(dahn_selection::choose_visualizer(
+        &context,
+        candidate_request(&context),
+        Graph::reference(&context, 22)
+    )
+    .is_ok());
+    // A later command sees changed facts; the earlier choice is no authorization token.
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20, 22]);
+    graph.edge(22, "ConsumesDesignToken", &[80]);
+    let context = candidate_context(graph);
+    let discovery = dahn_selection::discover_visualizers(
+        &context,
+        candidate_request(&context),
+        Some(Graph::reference(&context, 22)),
+    )
+    .unwrap();
+    assert_eq!(
+        discovery.current_selection.unwrap().assessment,
+        map_commands_contract::VisualizerAssessment::IncompatibleTheme
+    );
+    assert!(dahn_selection::choose_visualizer(
+        &context,
+        candidate_request(&context),
+        Graph::reference(&context, 22)
+    )
+    .is_err());
+}
+#[test]
+fn discovery_separates_a_no_longer_applicable_current_choice() {
+    let context = candidate_context(slot_graph());
+    let discovery = dahn_selection::discover_visualizers(
+        &context,
+        candidate_request(&context),
+        Some(Graph::reference(&context, 20)),
+    )
+    .unwrap();
+    assert!(discovery.candidates.is_empty());
+    let current = discovery.current_selection.unwrap();
+    assert!(current.declared_on.is_empty());
+    assert_eq!(current.assessment, map_commands_contract::VisualizerAssessment::NoLongerApplicable);
+    assert!(dahn_selection::choose_visualizer(
+        &context,
+        candidate_request(&context),
+        current.visualizer
+    )
+    .is_err());
+}
+#[test]
+fn automatic_success_is_lazy_but_discovery_reports_malformed_ancestry() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    graph.edge(1, "Extends", &[2, 3]);
+    let context = candidate_context(graph);
+    assert!(dahn_selection::select_visualizer(&context, candidate_request(&context)).is_ok());
+    assert!(
+        dahn_selection::discover_visualizers(&context, candidate_request(&context), None).is_err()
+    );
+}
+#[test]
+fn dancer_owner_uses_experience_slots_and_theme_tokens_are_exact_identities() {
+    let mut graph = slot_graph();
+    graph.edge(40, "HasSlot", &[]);
+    graph.edge(40, "HasExperienceVisualizerSlot", &[30]);
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    graph.edge(20, "ConsumesDesignToken", &[80]);
+    graph.edge(61, "DefinesDesignToken", &[80]);
+    let context = candidate_context(graph);
+    let mut request = candidate_request(&context);
+    assert!(dahn_selection::select_visualizer(&context, request).is_err());
+    request = candidate_request(&context);
+    request.owner = VisualizerOwner::Dancer(Graph::reference(&context, 40));
+    assert!(dahn_selection::select_visualizer(&context, request).is_ok());
+}
+
+#[test]
+fn unavailable_local_artifacts_are_visible_but_cannot_be_chosen() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    graph.edge(2, "HasApplicableVisualizer", &[22]);
+    graph.unavailable.push(20);
+    let context = candidate_context(graph);
+    let discovery =
+        dahn_selection::discover_visualizers(&context, candidate_request(&context), None).unwrap();
+    assert_eq!(
+        discovery.candidates[0].assessment,
+        map_commands_contract::VisualizerAssessment::ImplementationUnavailable
+    );
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, candidate_request(&context)).unwrap().selected,
+        Graph::reference(&context, 22)
+    );
+    assert!(dahn_selection::choose_visualizer(
+        &context,
+        candidate_request(&context),
+        Graph::reference(&context, 20)
+    )
+    .is_err());
+}
+#[test]
+fn malformed_implementation_is_an_evaluation_error_not_a_rejection() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    let context = candidate_context(graph);
+    // Fresh relationship reads allow changed declarations to be tested through the reference layer.
+    let mut malformed = slot_graph();
+    malformed.edge(1, "HasApplicableVisualizer", &[20]);
+    malformed.edge(60, "ForMetaDesignSystem", &[61]);
+    malformed.edge(20, "ImplementedBy", &[70, 71]);
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(malformed),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let malformed_context =
+        space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    assert!(
+        dahn_selection::discover_visualizers(&context, candidate_request(&context), None).is_ok()
+    );
+    assert!(matches!(
+        dahn_selection::discover_visualizers(
+            &malformed_context,
+            candidate_request(&malformed_context),
+            None
+        ),
+        Err(HolonError::MultipleRelatedHolons { .. })
+    ));
+}
+
+#[test]
+fn node_discovery_uses_the_subjects_described_type_and_allows_a_general_choice() {
+    let mut graph = slot_graph();
+    graph.edge(1, "DescribedBy", &[4]);
+    graph.edge(1, "HasApplicableVisualizer", &[22]);
+    graph.edge(4, "Extends", &[2]);
+    graph.edge(4, "HasApplicableVisualizer", &[20]);
+    graph.edge(3, "HasApplicableVisualizer", &[22]);
+    let context = candidate_context(graph);
+    let request = || {
+        let mut request = candidate_request(&context);
+        request.requested_kind = VisualizerKind::Node;
+        request
+    };
+    let discovery = dahn_selection::discover_visualizers(&context, request(), None).unwrap();
+    assert_eq!(discovery.ancestry[0], Graph::reference(&context, 4));
+    assert_eq!(discovery.candidates.len(), 2);
+    assert_eq!(discovery.candidates[1].declared_on.len(), 1);
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, request()).unwrap().selected,
+        Graph::reference(&context, 20)
+    );
+    assert_eq!(
+        dahn_selection::choose_visualizer(&context, request(), Graph::reference(&context, 22))
+            .unwrap()
+            .selected,
+        Graph::reference(&context, 22)
+    );
 }

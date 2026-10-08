@@ -39,7 +39,7 @@ beforeEach(() => {
     dancer: { ...reference('Dancer'), relatedHolons: vi.fn(async () => [dancerSlot]) } as never,
     holonSpace: reference('HolonSpace'), initialNavigationVisualizer: path, initialNodeVisualizer: node,
     materialized: { realize: vi.fn(async () => NavigationElement), slot: vi.fn(async () => nodeSlot) } as never,
-    theme: {} as never, canvas: {} as never,
+    theme: { reference: reference('Theme') } as never, canvas: {} as never,
   };
   experience = new SpaceNavigatorExperience(binding); document.body.append(experience.element);
 });
@@ -58,7 +58,7 @@ it('binds a fresh root through the Dancer slot while sharing execution, material
   expect(source.occurrences[0].element).toBe(sourceElement);
   expect(sourceElement.isConnected).toBe(true);
   expect(binding.transaction.selectVisualizer).toHaveBeenNthCalledWith(1, expect.objectContaining({ requestedKind: 'rootedNavigation', subject: binding.holonSpace }));
-  expect(binding.transaction.selectVisualizer).toHaveBeenNthCalledWith(2, expect.objectContaining({ requestedKind: 'node', subject: binding.holonSpace, parentVisualizer: binding.initialNavigationVisualizer }));
+  expect(binding.transaction.selectVisualizer).toHaveBeenNthCalledWith(2, expect.objectContaining({ requestedKind: 'node', subject: binding.holonSpace, owner: { visualizer: binding.initialNavigationVisualizer }, theme: binding.theme.reference }));
   for (const call of mocks.realizeNode.mock.calls) {
     expect(call[0]).toBe(binding.transaction); expect(call[1]).toBe(binding.materialized);
     expect(call[4]).toBe(binding.theme); expect(call[5]).toBe(binding.canvas);
@@ -200,7 +200,7 @@ it('selects the response Node in its loader context and expands saved members wi
     expect(nodeControl.hidden).toBe(false); nodeControl.click();
     expect(inspect).toHaveBeenCalledWith(expect.objectContaining({ subject: response, selectedVisualizer: resultNode, slot }));
     inspect.mockRestore();
-    expect(loader.selectVisualizer).toHaveBeenCalledWith({ subject: response, requestedKind: 'node', slot, parentVisualizer: binding.initialNavigationVisualizer });
+    expect(loader.selectVisualizer).toHaveBeenCalledWith({ subject: response, requestedKind: 'node', slot, owner: { visualizer: binding.initialNavigationVisualizer }, theme: binding.theme.reference });
     expect(path.element.occurrences[0].subject).toBe(response);
     path.inspect({ reference: member, source: collection });
     await vi.waitFor(() => expect(path.element.occurrences).toHaveLength(2));

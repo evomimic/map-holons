@@ -3,14 +3,14 @@ import { buildRequest } from '../request-context';
 import {
   expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
   expectRedoToMarkerComplete, expectReference, expectReferences, expectUndoComplete,
-  expectUndoToMarkerComplete, expectValue, expectVisualizerSelection,
+  expectUndoToMarkerComplete, expectValue, expectVisualizerSelection, expectVisualizerDiscovery,
 } from '../result-decoders';
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
   BaseValue, ContentSet, DanceRequestWire, DanceV2InvocationWire, DanceResponseWire,
   HolonCollectionWire, HolonId, HolonReferenceWire, LocalId, MapResultWire,
   SmartReferenceWire, TransactionActionWire, TransientReferenceWire, TxId,
-  VisualizerSelectionRequestWire, VisualizerSelectionWire,
+  VisualizerSelectionRequestWire, VisualizerSelectionWire, VisualizerDiscoveryWire,
 } from '../wire-types';
 
 // ===========================================
@@ -471,4 +471,11 @@ export function selectCollectionVisualizer(
 /** Retrieve Saved Nursery membership without resolving saved properties in the loader context. */
 export function getCommittedHolons(txId: TxId): Promise<HolonCollectionWire> {
   return runTransactionCommand(txId, 'GetCommittedHolons', expectCollection);
+}
+
+export function discoverVisualizers(txId: TxId, request: VisualizerSelectionRequestWire, current_selection: HolonReferenceWire | null): Promise<VisualizerDiscoveryWire> {
+  return runTransactionCommand(txId, { DiscoverVisualizers: { request, current_selection } }, expectVisualizerDiscovery);
+}
+export function chooseVisualizer(txId: TxId, request: VisualizerSelectionRequestWire, candidate: HolonReferenceWire): Promise<VisualizerSelectionWire> {
+  return runTransactionCommand(txId, { ChooseVisualizer: { request, candidate } }, expectVisualizerSelection);
 }

@@ -124,7 +124,7 @@ export class VisualizerInformationRegion {
     for (const slot of slots) if (await slot.key() === 'SpaceNavigator.VisualizerInformationSlot') matches.push(slot);
     if (matches.length !== 1) throw new Error('Space Navigator requires one Visualizer information slot.');
     const subject = transaction.owns(target.selectedVisualizer) ? target.selectedVisualizer : transaction.bindSavedReference(target.selectedVisualizer);
-    const selection = await transaction.selectVisualizer({ subject, requestedKind: 'node', slot: matches[0] });
+    const selection = await transaction.selectVisualizer({ subject, requestedKind: 'node', slot: matches[0], owner: { dancer }, theme: theme.reference });
     const implementation = await materialized.realize(selection.selected);
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Visualizer inspector is not an HTMLElement constructor.');
     if (!current()) return;

@@ -4,6 +4,7 @@ import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
   HolonReferenceWire,
+  VisualizerSelectionRequestWire, VisualizerCandidateWire,
   HolonId,
   LocalId,
   PropertyName,
@@ -58,8 +59,21 @@ export interface VisualizerSelectionRequest {
   slot: HolonReference;
   subject: HolonReference;
   requestedKind: VisualizerKind;
-  /** Selected parent whose HasSlot must contain the supplied slot. */
-  parentVisualizer?: HolonReference;
+  owner: VisualizerOwner;
+  theme: HolonReference;
+}
+
+export type VisualizerOwner = { visualizer: HolonReference } | { dancer: HolonReference };
+export type VisualizerAssessment = 'viable' | 'incompatible_slot' | 'incompatible_theme' | 'implementation_unavailable' | 'no_longer_applicable';
+export interface VisualizerCandidate {
+  visualizer: HolonReference;
+  declaredOn: readonly HolonReference[];
+  assessment: VisualizerAssessment;
+}
+export interface VisualizerDiscovery {
+  candidates: readonly VisualizerCandidate[];
+  currentSelection: VisualizerCandidate | null;
+  ancestry: readonly HolonReference[];
 }
 
 /** Rust-selected semantic Visualizer reference for a visualization request. */
@@ -463,20 +477,41 @@ export class MapTransaction {
     const txId = txIdFor(this);
     const wire = await internalTransaction.selectVisualizer(
       txId,
-      {
-        subject: unwrapHolonReference(request.subject),
-        slot: unwrapHolonReference(request.slot),
-        requested_kind: toVisualizerKindWire(request.requestedKind),
-        parent_visualizer: request.parentVisualizer === undefined
-          ? null
-          : unwrapHolonReference(request.parentVisualizer),
-      },
+      this.selectionRequestWire(request),
     );
     return {
       selected: createHolonReference(txId, wire.selected),
       requestedKind: fromVisualizerKindWire(wire.requested_kind),
       alternativesAvailable: wire.alternatives_available,
     };
+  }
+
+  private selectionRequestWire(request: VisualizerSelectionRequest): VisualizerSelectionRequestWire {
+    const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
+    return {
+      subject: bind(request.subject), slot: bind(request.slot), theme: bind(request.theme),
+      requested_kind: toVisualizerKindWire(request.requestedKind),
+      owner: 'visualizer' in request.owner ? { Visualizer: bind(request.owner.visualizer) } : { Dancer: bind(request.owner.dancer) },
+    };
+  }
+
+  /** Enumerates alternatives without changing the selection or claiming mounted state. */
+  async discoverVisualizers(request: VisualizerSelectionRequest, currentSelection?: HolonReference): Promise<VisualizerDiscovery> {
+    const txId = txIdFor(this);
+    const current = currentSelection === undefined ? null : unwrapHolonReference(this.owns(currentSelection) ? currentSelection : this.bindSavedReference(currentSelection));
+    const result = await internalTransaction.discoverVisualizers(txId, this.selectionRequestWire(request), current);
+    const bind = (candidate: VisualizerCandidateWire): VisualizerCandidate => ({
+      visualizer: createHolonReference(txId, candidate.visualizer),
+      declaredOn: candidate.declared_on.map(reference => createHolonReference(txId, reference)), assessment: candidate.assessment,
+    });
+    return { candidates: result.candidates.map(bind), currentSelection: result.current_selection === null ? null : bind(result.current_selection), ancestry: result.ancestry.map(reference => createHolonReference(txId, reference)) };
+  }
+
+  /** Authorizes a current explicit choice; does not persist preference or replace UI. */
+  async chooseVisualizer(request: VisualizerSelectionRequest, candidate: HolonReference): Promise<VisualizerSelection> {
+    const txId = txIdFor(this);
+    const result = await internalTransaction.chooseVisualizer(txId, this.selectionRequestWire(request), unwrapHolonReference(this.owns(candidate) ? candidate : this.bindSavedReference(candidate)));
+    return { selected: createHolonReference(txId, result.selected), requestedKind: fromVisualizerKindWire(result.requested_kind), alternativesAvailable: result.alternatives_available };
   }
 
   /**
@@ -487,12 +522,14 @@ export class MapTransaction {
     property: PropertyDescriptorHandle,
     parentVisualizer: HolonReference,
     slot: HolonReference,
+    theme: HolonReference,
   ): Promise<VisualizerSelection> {
     return this.selectVisualizer({
       subject: unwrapPropertyDescriptorHandle(property),
       requestedKind: 'property',
       slot,
-      parentVisualizer,
+      owner: { visualizer: parentVisualizer },
+      theme,
     });
   }
 
@@ -505,13 +542,15 @@ export class MapTransaction {
     property: PropertyDescriptorHandle,
     parentVisualizer: HolonReference,
     slot: HolonReference,
+    theme: HolonReference,
   ): Promise<VisualizerSelection> {
     const reference = unwrapPropertyDescriptorHandle(property);
     return this.selectVisualizer({
       subject: this.owns(reference) ? reference : this.bindSavedReference(reference),
       requestedKind: 'value',
       slot,
-      parentVisualizer,
+      owner: { visualizer: parentVisualizer },
+      theme,
     });
   }
 

@@ -27,7 +27,7 @@ beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconne
 afterEach(() => { owner?.dispose(); document.body.replaceChildren(); vi.unstubAllGlobals(); });
 function mount(fixtures: ReturnType<typeof fixture>[]) {
   const inspect = vi.fn();
-  owner = new ActionResultCollections({ subject: {}, dance: {}, occurrence: document.createElement('div'), label: 'Load' } as never, fixtures.map(f => f.binding) as never, { cssCustomProperties: { '--dahn-canvas-text-color': 'red' } } as never, inspect);
+  owner = new ActionResultCollections({ subject: {}, dance: {}, occurrence: document.createElement('div'), label: 'Load' } as never, fixtures.map(f => f.binding) as never, { reference: {} as never, cssCustomProperties: { '--dahn-canvas-text-color': 'red' } } as never, inspect);
   document.body.append(owner.element); return inspect;
 }
 const table = () => owner.element.querySelector('[role="tabpanel"]:not([hidden]) table');
@@ -112,7 +112,7 @@ it('selects projected rows normally and keeps producer order until explicit user
     defaultOrderLabel: 'Source location', missingValueLabel: 'Not available',
     columns: [{ id: 'value', displayName: 'Message', valueType: 'StringValue', values: [{ StringValue: 'A' }, { StringValue: 'Z' }, null] }],
   } } };
-  owner = new ActionResultCollections({ occurrence: document.createElement('div') } as never, [projected, b.binding] as never, { cssCustomProperties: {} }, vi.fn());
+  owner = new ActionResultCollections({ occurrence: document.createElement('div') } as never, [projected, b.binding] as never, { reference: {} as never, cssCustomProperties: {} } as never, vi.fn());
   document.body.append(owner.element); await vi.waitFor(() => expect(table()).toBeTruthy());
   expect(select).toHaveBeenCalledWith(elementType, a.parent, a.slot);
   expect(a.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();

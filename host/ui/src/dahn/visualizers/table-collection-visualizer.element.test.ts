@@ -12,6 +12,7 @@ const TableCollectionVisualizerElement = artifact.default as new () => TableColl
 
 
 const THEME: DahnTheme = {
+  reference: {} as never,
   themeKey: 'DAHN.DefaultTheme',
   themeVersionedKey: 'DAHN.DefaultTheme@1',
   metaDesignSystemKey: 'DAHN.DefaultMetaDesignSystem',

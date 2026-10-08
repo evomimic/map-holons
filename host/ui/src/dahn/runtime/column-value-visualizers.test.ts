@@ -29,7 +29,7 @@ function fixture(identityOnly = false) {
   const table = reference('Table'), slot = reference('Table.ValueSlot'), text = reference('Text Value'), integer = reference('Integer Value');
   const transaction = { selectValueVisualizer: vi.fn(async property => ({ selected: property === count ? integer : text })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => key) } as unknown as MapTransaction;
   const materialized = { slot: vi.fn(async () => slot), realize: vi.fn(async selected => selected === integer ? IntegerValue : TextValue) } as unknown as MaterializedVisualizerRuntime;
-  configureColumnValueVisualizers(element as CollectionInteractionElement, transaction, collection, table, materialized, () => true);
+  configureColumnValueVisualizers(element as CollectionInteractionElement, transaction, collection, table, materialized, () => true, { theme: { reference: table } as never });
   return { element, collection, transaction, materialized, table, slot, text, integer, members, count };
 }
 beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()); });

@@ -23,6 +23,7 @@ export type {
   VisualizerKind,
   VisualizerSelection,
   VisualizerSelectionRequest,
+  VisualizerOwner, VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery,
 } from './transaction';
 export {
   DomainError,

@@ -6,7 +6,7 @@ use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInvocation, DanceRequest};
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
-use super::{CommandLifecyclePolicy, MutationClassification};
+use super::{CommandLifecyclePolicy, MutationClassification, VisualizerSelectionRequest};
 
 /// Transaction-scoped domain command.
 ///
@@ -63,6 +63,13 @@ pub enum TransactionAction {
 
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
     SelectVisualizer { request: VisualizerSelectionRequest },
+    /// Enumerates applicability without selecting or materializing an implementation.
+    DiscoverVisualizers {
+        request: VisualizerSelectionRequest,
+        current_selection: Option<HolonReference>,
+    },
+    /// Revalidates one explicit choice against the current request context.
+    ChooseVisualizer { request: VisualizerSelectionRequest, candidate: HolonReference },
     /// Select for a described plural subject and a specific parent slot.
     SelectCollectionVisualizer {
         collection: super::DescribedHolonCollection,
@@ -152,25 +159,6 @@ pub enum VisualizerKind {
     Action,
 }
 
-/// Input to the Rust-owned DAHN Selector Function.
-///
-/// This command ingress binds a Holon-backed subject. For `PropertyMap`, it is
-/// the holon whose descriptor defines the property set; for `Property` and
-/// `Value`, it is the resolved PropertyDescriptor holon. A raw PropertyMap
-/// entry is deliberately not a selector subject because it has no descriptor
-/// or declared ValueType provenance.
-/// The supplied slot governs accepted Visualizer types. The kind discriminates
-/// subject projection only; it is not a canonical role-identity lookup.
-#[derive(Debug)]
-pub struct VisualizerSelectionRequest {
-    pub subject: HolonReference,
-    pub requested_kind: VisualizerKind,
-    /// When present, Rust verifies the supplied slot belongs to this parent.
-    pub parent_visualizer: Option<HolonReference>,
-    /// Specific composition slot whose accepted types govern selection.
-    pub slot: HolonReference,
-}
-
 impl TransactionAction {
     pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
@@ -197,7 +185,11 @@ impl TransactionAction {
             }
             // Selection only reads the retained subject and descriptor graph.
             // Materialization still creates invocation holons and requires an open context.
-            TransactionAction::SelectVisualizer { .. } => CommandLifecyclePolicy::holon_read_only(),
+            TransactionAction::SelectVisualizer { .. }
+            | TransactionAction::DiscoverVisualizers { .. }
+            | TransactionAction::ChooseVisualizer { .. } => {
+                CommandLifecyclePolicy::holon_read_only()
+            }
             TransactionAction::SelectCollectionVisualizer { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
@@ -243,6 +235,8 @@ impl TransactionAction {
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
+            TransactionAction::DiscoverVisualizers { .. } => "discover_visualizers",
+            TransactionAction::ChooseVisualizer { .. } => "choose_visualizer",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",
             TransactionAction::GetSavedHolonByBaseKey { .. } => "get_saved_holon_by_base_key",

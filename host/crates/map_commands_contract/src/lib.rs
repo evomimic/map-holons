@@ -4,6 +4,8 @@ mod map_command;
 mod map_result;
 mod space_command;
 mod transaction_command;
+mod visualizer_selection;
+pub use visualizer_selection::*;
 
 pub use command_lifecycle_policy::*;
 pub use holon_command::*;

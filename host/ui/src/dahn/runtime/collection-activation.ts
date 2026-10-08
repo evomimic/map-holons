@@ -56,7 +56,7 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly materialized: MaterializedVisualizerRuntime,
     private readonly discovery?: NodeRelationshipDiscovery,
     private readonly presentation: MapTransaction = transaction,
-    private readonly valueContext?: Pick<VisualizerContext, 'theme' | 'canvas'>,
+    private readonly valueContext?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
   ) {
     this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
       const selected = this.selected; const slot = this.selectedSlot; const publish = this.presentationUpdate;

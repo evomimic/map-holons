@@ -83,7 +83,9 @@ function themeFixture(): ReferenceFixture {
 
 describe('Theme', () => {
   it('projects the complete Theme assignment graph to fixed CSS custom properties', async () => {
-    const resolved = await new Theme(reference(themeFixture())).toCssCustomProperties();
+    const semanticTheme = reference(themeFixture());
+    const resolved = await new Theme(semanticTheme).toCssCustomProperties();
+    expect(resolved.reference).toBe(semanticTheme);
 
     expect(resolved).toMatchObject({
       themeKey: 'DAHN.DefaultTheme',

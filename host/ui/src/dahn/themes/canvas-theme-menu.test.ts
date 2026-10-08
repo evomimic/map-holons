@@ -3,6 +3,7 @@ import type { DahnTheme } from '../contracts/themes';
 import { createCanvasThemeMenu } from './canvas-theme-menu';
 
 const ocean: DahnTheme = {
+  reference: {} as never,
   themeKey: 'Demo1.DeepOceanTheme', themeVersionedKey: 'ocean@1',
   metaDesignSystemKey: 'Demo1.MetaDesignSystem', metaDesignSystemVersionedKey: 'demo@1',
   cssCustomProperties: { '--dahn-canvas-surface-background': '#0c1724' },

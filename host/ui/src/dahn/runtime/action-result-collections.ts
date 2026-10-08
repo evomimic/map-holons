@@ -51,7 +51,7 @@ export class ActionResultCollections {
   private disposed = false;
 
   constructor(private readonly origin: ActionBinding, results: readonly ActionResultCollection[],
-    theme: Pick<DahnTheme, 'cssCustomProperties'>, private readonly inspect: (intent: ActionResultInspection) => void) {
+    private readonly theme: DahnTheme | Pick<DahnTheme, 'cssCustomProperties'>, private readonly inspect: (intent: ActionResultInspection) => void) {
     if (new Set(results.map(result => result.role)).size !== results.length) throw new Error('Duplicate result roles');
     this.element.setAttribute('aria-label', 'Action results');
     Object.assign(this.element.style, { display: 'flex', flexDirection: 'column', minHeight: '0', height: '100%', overflow: 'hidden' });
@@ -114,9 +114,9 @@ export class ActionResultCollections {
         if (!current()) return;
         const element = binding.projection
           ? await realizeProjectedCollection(binding.transaction, binding.projection.elementType, binding.parentVisualizer,
-            slot, binding.materialized, current, name => { stage = name; })
+            slot, binding.materialized, current, name => { stage = name; }, 'reference' in this.theme ? { theme: this.theme } : undefined)
           : await realizeCollection(binding.transaction, binding.collection, binding.parentVisualizer,
-            slot, binding.materialized, current, name => { stage = name; });
+            slot, binding.materialized, current, name => { stage = name; }, binding.transaction, 'reference' in this.theme ? { theme: this.theme } : undefined);
         if (!element || !current()) return;
         stage = 'Collection presentation';
         if (binding.projection) {

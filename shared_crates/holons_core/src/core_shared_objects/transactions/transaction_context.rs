@@ -412,6 +412,14 @@ impl TransactionContext {
         self.get_holon_service().ensure_local_holon_space_internal(self)
     }
 
+    /// Queries the context-specific implementation backend without materializing code.
+    pub fn visualizer_artifact_available(
+        self: &Arc<Self>,
+        visualizer: &HolonReference,
+    ) -> Result<bool, HolonError> {
+        self.get_holon_service().visualizer_artifact_available_internal(self, visualizer)
+    }
+
     /// Materializes the executable artifact for a selected Visualizer through
     /// the execution-context-specific Holon service.
     pub fn materialize_visualizer(

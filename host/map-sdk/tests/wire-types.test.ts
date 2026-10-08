@@ -22,7 +22,7 @@ const fixtureFiles = readdirSync(fixturesDir).sort();
 
 describe('wire type fixtures', () => {
   it('discovers the generated fixture set', () => {
-    expect(fixtureFiles.length).toBe(49);
+    expect(fixtureFiles.length).toBe(53);
   });
 
   for (const fixtureFile of fixtureFiles) {
@@ -217,4 +217,17 @@ it('rejects malformed effective cardinality bounds at ingress', () => {
     expect(isMapResultWire({ EffectiveCardinality: bounds })).toBe(false);
   }
   expect(isMapResultWire({ EffectiveCardinality: { minimum: 0, maximum: 0 } })).toBe(true);
+});
+
+
+it('requires typed owner and semantic Theme for every generic selection operation', () => {
+  const reference = { Smart: { holon_id: { Local: [8] }, smart_property_values: null } };
+  const request = { subject: reference, requested_kind: 'Node', owner: { Visualizer: reference }, slot: reference, theme: reference };
+  expect(isTransactionActionWire({ SelectVisualizer: request })).toBe(true);
+  expect(isTransactionActionWire({ DiscoverVisualizers: { request, current_selection: null } })).toBe(true);
+  expect(isTransactionActionWire({ ChooseVisualizer: { request, candidate: reference } })).toBe(true);
+  expect(isTransactionActionWire({ SelectVisualizer: { ...request, owner: undefined } })).toBe(false);
+  expect(isTransactionActionWire({ SelectVisualizer: { ...request, theme: undefined } })).toBe(false);
+  expect(isTransactionActionWire({ SelectVisualizer: { ...request, owner: { Visualizer: reference, Dancer: reference } } })).toBe(false);
+  expect(isMapResultWire({ VisualizerDiscovery: { candidates: [{ visualizer: reference, declared_on: [], assessment: 'unknown' }], current_selection: null, ancestry: [] } })).toBe(false);
 });

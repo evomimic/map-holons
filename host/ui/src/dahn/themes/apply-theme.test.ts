@@ -3,6 +3,7 @@ import { applyTheme } from './apply-theme';
 import type { DahnTheme } from '../contracts/themes';
 
 const THEME: DahnTheme = {
+  reference: {} as never,
   themeKey: 'DAHN.DefaultTheme',
   themeVersionedKey: 'DAHN.DefaultTheme@1',
   metaDesignSystemKey: 'DAHN.DefaultMetaDesignSystem',

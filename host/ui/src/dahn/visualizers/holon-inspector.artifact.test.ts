@@ -136,7 +136,7 @@ it('composes both axes without losing mounted state or compact restoration', asy
   expect(properties.parentElement.inert).toBe(false);
 });
 
-it('uses the key and its initials at compressed extents while preserving the full accessible title', async () => {
+it('uses the readable key at compressed extents while preserving the full accessible title', async () => {
   const Node = await loadHolonInspector();
   customElements.define('test-node-responsive-title', class extends Node {});
   const element = document.createElement('test-node-responsive-title') as any;
@@ -146,8 +146,8 @@ it('uses the key and its initials at compressed extents while preserving the ful
     [600, 500, 'Theme: Demo1.DeepOceanTheme'],
     [180, 500, 'Demo1.DeepOceanTheme'],
     [62, 500, 'Demo1.DeepOceanTheme'],
-    [62, 46, 'DDOT'],
-    [600, 46, 'Theme: Demo1.DeepOceanTheme'],
+    [96, 64, 'Demo1.DeepOceanTheme'],
+    [600, 64, 'Demo1.DeepOceanTheme'],
     [600, 500, 'Theme: Demo1.DeepOceanTheme'],
   ]) {
     element.setSpatialBudget({ width, height });
@@ -159,7 +159,7 @@ it('uses the key and its initials at compressed extents while preserving the ful
   element.setSpatialBudget({ width: 180, height: 500 });
   expect(element.querySelector('header button').textContent).toBe('alpha:Beta-key_name');
   element.setSpatialBudget({ width: 62, height: 46 });
-  expect(element.querySelector('header button').textContent).toBe('ABKN');
+  expect(element.querySelector('header button').textContent).toBe('alpha:Beta-key_name');
 });
 
 it('shows relationship descriptions on rail buttons and collection tabs with label fallback', async () => {

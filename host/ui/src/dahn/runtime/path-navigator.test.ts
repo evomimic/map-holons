@@ -65,8 +65,9 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
   } as unknown as MapTransaction;
   const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
+  const theme = { reference: selected("Theme") };
   const realize = vi.fn(async (ref: HolonReference, selected: HolonReference) => {
-    const node = await realizeNode(transaction, runtime, ref, selected, {} as never, {} as never);
+    const node = await realizeNode(transaction, runtime, ref, selected, theme as never, {} as never);
     // These topology fixtures start after discovery; deferred population is covered separately.
     for (const affordance of node.singularRelationships) node.relationshipDiscovery?.record(affordance, 1);
     const element = node.element as typeof node.element & { relationshipControls: Map<any, unknown> };
@@ -75,7 +76,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
   });
   const root = await realize(rootSubject as never, visualizers.node);
   const parent = selected('path-inspector');
-  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize, openExploration, undefined, inspectVisualizer);
+  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), () => theme.reference, realize, openExploration, undefined, inspectVisualizer);
   let occurrences: readonly PathOccurrence[] = [];
   let destination: import('../contracts/path-navigation').PathDestination | undefined;
   navigation.subscribe((path, _, pending) => { occurrences = [...path]; destination = pending; });
@@ -83,7 +84,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
   const element = document.createElement(defineCustomElementOnce('test-vertical-path', Path)) as VisualizerElement;
   element.setContext({ navigation, onInspectHolon: intent => navigation.inspect(intent), onTraverseRelationship: intent => navigation.traverseRelationship(intent), childVisualizers: new Map([['root-node', root.element]]) } as never);
   document.body.append(element);
-  return { navigation, element, root, rootSubject, a, b, transaction, selectVisualizer, runtime, materialize, realize, parent, destination: () => destination, path: () => occurrences };
+  return { navigation, element, root, rootSubject, a, b, transaction, selectVisualizer, runtime, materialize, realize, parent, theme, destination: () => destination, path: () => occurrences };
 }
 async function openCollection(element: HTMLElement, index = 0) {
   element.querySelectorAll<HTMLButtonElement>('[role=tab]')[index].click();
@@ -144,7 +145,7 @@ describe('vertical traversal through selected artifacts', () => {
     rows[0].click(); expect(nodeSelections(f)).toHaveLength(0);
     activate(rows[0]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(2));
-    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), parentVisualizer: f.parent });
+    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), owner: { visualizer: f.parent }, theme: expect.objectContaining({ key: expect.any(Function) }) });
     const child = f.path()[1];
     expect(child.subject).toBe(f.a); expect(child.id).not.toBe(f.path()[0].id);
     expect(child.selectedVisualizer).toBe(visualizers.node);
@@ -404,7 +405,7 @@ describe('singular traversal through selected artifacts', () => {
     expect(a.rowId).toBe(root.rowId); expect(a.column).toBe(2);
     expect(a.provenance).toMatchObject({ kind: 'singular-relationship', parentOccurrenceId: root.id, affordance: { label: 'First' } });
     expect(a.provenance).not.toHaveProperty('collectionOccurrenceId');
-    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), parentVisualizer: f.parent });
+    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), owner: { visualizer: f.parent }, theme: expect.objectContaining({ key: expect.any(Function) }) });
     expect(rail(root.element).getAttribute('aria-pressed')).toBe('true');
     const calls = nodeSelections(f).length;
     await right(f, root);
@@ -619,7 +620,7 @@ describe('recursive horizontal navigation', () => {
         expect(f.element.querySelector(`[data-lineage-child="${item.id}"]`)?.getAttribute('data-lineage-parent')).toBe(chain[index - 1].id);
       }
     }
-    expect(nodeSelections(f).map(([request]) => request)).toEqual([f.a, f.b, c].map(subject => ({ subject, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), parentVisualizer: f.parent })));
+    expect(nodeSelections(f).map(([request]) => request)).toEqual([f.a, f.b, c].map(subject => ({ subject, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), owner: { visualizer: f.parent }, theme: expect.objectContaining({ key: expect.any(Function) }) })));
     expect(f.a.relatedHolons).toHaveBeenCalledWith('First');
     expect(f.b.relatedHolons).toHaveBeenCalledWith('First');
     expect(c.relatedHolons).not.toHaveBeenCalled();
@@ -1336,4 +1337,16 @@ it('provides independently bound information controls for composed Properties, P
   expect(targets.every(target => target.subject === f.rootSubject && target.isLive())).toBe(true);
   f.navigation.dispose();
   expect(targets.every(target => !target.isLive())).toBe(true);
+});
+
+
+it('uses the active semantic Theme after an explicit Theme change', async () => {
+  const f = await fixture();
+  const rows = await openCollection(f.root.element);
+  const next = selected('Next Theme');
+  f.theme.reference = next;
+  activate(rows[0]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+  expect(nodeSelections(f)[0][0].theme).toBe(next);
+  expect(vi.mocked(f.transaction.selectPropertyVisualizer).mock.calls.at(-1)?.[3]).toBe(next);
 });

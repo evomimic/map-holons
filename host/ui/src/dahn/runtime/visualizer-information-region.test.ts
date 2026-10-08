@@ -16,7 +16,7 @@ function fixture(explore?: (reference: VisualizerInspectionTarget['selectedVisua
   const binding = {
     transaction: { owns: () => true, selectVisualizer: vi.fn(async () => ({ selected: ref('Custom Inspector') })), stageNewHolon: vi.fn(), commit: vi.fn(), abandon: vi.fn() },
     dancer: { relatedHolons: async () => [ref('SpaceNavigator.VisualizerInformationSlot')] },
-    materialized: { realize: vi.fn(async () => Inspector) }, theme: {}, canvas: {}, holonSpace: ref('Space'),
+    materialized: { realize: vi.fn(async () => Inspector) }, theme: { reference: ref("Theme") }, canvas: {}, holonSpace: ref('Space'),
   } as unknown as SpaceNavigatorBinding;
   const region = new VisualizerInformationRegion(binding, host, explore);
   host.append(region.element, region.toggle);
@@ -62,7 +62,7 @@ it('realizes nested information in its disclosure without replacing or highlight
   await parent.context.mountVisualizerInformation(child, host);
   const nested = host.querySelector('map-visualizer-inspector') as any;
   expect(nested.context.visualizerInspection).toBe(child);
-  expect(f.binding.transaction.selectVisualizer).toHaveBeenLastCalledWith({ subject: child.selectedVisualizer, requestedKind: 'node', slot: expect.any(Object) });
+  expect(f.binding.transaction.selectVisualizer).toHaveBeenLastCalledWith({ subject: child.selectedVisualizer, requestedKind: 'node', slot: expect.any(Object), owner: { dancer: f.binding.dancer }, theme: f.binding.theme.reference });
   expect(parent.isConnected).toBe(true);
   expect(parent.context.visualizerInspection).toBe(f.target);
   expect(f.target.invoker.dataset['visualizerInspected']).toBe('true');
@@ -86,7 +86,7 @@ it('selects a custom definition presentation through the Dancer slot and retains
   f.region.toggle.focus();
   expect(inspector.context.visualizerInspection).toBe(f.target);
   expect(f.region.element.style.width).toBe(width);
-  expect(f.binding.transaction.selectVisualizer).toHaveBeenCalledWith({ subject: f.target.selectedVisualizer, requestedKind: 'node', slot: expect.any(Object) });
+  expect(f.binding.transaction.selectVisualizer).toHaveBeenCalledWith({ subject: f.target.selectedVisualizer, requestedKind: 'node', slot: expect.any(Object), owner: { dancer: f.binding.dancer }, theme: f.binding.theme.reference });
   for (const name of ['stageNewHolon', 'commit', 'abandon']) expect((f.binding.transaction as any)[name]).not.toHaveBeenCalled();
   f.region.dispose();
 });

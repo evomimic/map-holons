@@ -190,7 +190,8 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
         VisualizerSelectionRequest {
             subject: subject.clone(),
             requested_kind: VisualizerKind::Node,
-            parent_visualizer: None,
+            owner: map_commands_contract::VisualizerOwner::Visualizer(subject.clone()),
+            theme: subject.clone(),
             slot: subject.clone(),
         },
     );
@@ -201,9 +202,10 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
                 action: TransactionAction::SelectVisualizer {
                     request: VisualizerSelectionRequest {
                         slot: subject.clone(),
+                        owner: map_commands_contract::VisualizerOwner::Visualizer(subject.clone()),
+                        theme: subject.clone(),
                         subject,
                         requested_kind: VisualizerKind::Node,
-                        parent_visualizer: None,
                     },
                 },
             }),

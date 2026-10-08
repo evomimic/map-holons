@@ -8,6 +8,8 @@ function createNodeTitleBar(options) {
   const titleControl = document.createElement("button");
   titleControl.type = "button";
   titleControl.style.cssText = "flex:1 1 0;min-width:0;height:100%;min-height:40px;text-align:left;font:inherit;color:inherit;background:transparent;border:0;cursor:pointer;";
+  const titleText = document.createElement("span");
+  titleControl.append(titleText);
   const iconButton = (label, path, attribute, action) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -75,13 +77,29 @@ function createNodeTitleBar(options) {
     const partial = state.vertical ? state.vertical !== "full-height" : (state.height ?? Infinity) < 280;
     const narrow = state.horizontal ? state.horizontal !== "full-width" : (state.width ?? Infinity) < 300;
     const compactWidth = state.horizontal ? state.horizontal === "minimal-width" : (state.width ?? Infinity) < 100;
-    titleControl.textContent = compactWidth && compact ? keyInitials(options.holonKey ?? options.title) : narrow ? options.holonKey ?? options.title : options.title;
-    titleControl.style.fontSize = compactWidth && compact ? "var(--dahn-canvas-font-size)" : "inherit";
+    titleText.textContent = compact || narrow ? options.holonKey ?? options.title : options.title;
+    element.style.flexDirection = compactWidth && !compact ? "column" : "row";
+    element.style.flexWrap = "nowrap";
+    titleControl.style.width = compactWidth && !compact ? "100%" : "";
+    titleControl.style.height = compactWidth && !compact ? "auto" : "100%";
+    titleControl.style.minHeight = compactWidth && !compact ? "0" : "40px";
+    titleControl.style.fontSize = compact || narrow ? "var(--dahn-canvas-font-size)" : "inherit";
+    titleControl.style.lineHeight = compact || narrow ? "1.2" : "";
     titleControl.style.padding = compactWidth ? "0 var(--dahn-control-gap)" : "0 var(--dahn-slot-padding)";
     titleControl.style.writingMode = compactWidth && !compact ? "vertical-rl" : "horizontal-tb";
     titleControl.style.textOverflow = "ellipsis";
-    titleControl.style.whiteSpace = "nowrap";
+    titleControl.style.whiteSpace = compact || compactWidth ? "normal" : "nowrap";
+    titleControl.style.overflowWrap = compact || compactWidth ? "anywhere" : "";
     titleControl.style.overflow = "hidden";
+    titleControl.style.display = "block";
+    titleText.style.display = compact ? "-webkit-box" : "block";
+    titleText.style.overflow = "hidden";
+    titleText.style.maxHeight = compact ? "2.4em" : "";
+    titleText.style.webkitBoxOrient = compact ? "vertical" : "";
+    titleText.style.webkitLineClamp = compact ? "2" : "";
+    visualizerControl.hidden = !information || compact || compactWidth;
+    holder.style.display = visualizerControl.hidden ? "none" : "inline-flex";
+    if (visualizerControl.hidden) tooltip(false);
     titleControl.setAttribute("aria-expanded", String(!partial && !narrow));
     titleControl.setAttribute("aria-label", `${partial || narrow ? "Restore occurrence: " : ""}${options.title}`);
     titleControl.title = options.title;
@@ -94,21 +112,17 @@ function createNodeTitleBar(options) {
     maximizeButton.title = label;
     maximizeButton.setAttribute("aria-pressed", String(!!state.maximized));
     maximizeButton.querySelector("path").setAttribute("d", state.maximized ? "M19 5l-6 6m0-5v5h5 M5 19l6-6m-5 0h5v5" : "M14 5h5v5 M19 5l-6 6 M10 19H5v-5 M5 19l6-6");
-    if ([exploreButton, closeButton, maximizeButton].some((button) => button.hidden && button === document.activeElement)) titleControl.focus();
+    if ([exploreButton, closeButton, maximizeButton, visualizerControl].some((button) => button.hidden && button === document.activeElement)) titleControl.focus();
   };
   const setInformation = (handler, displayName) => {
     information = handler;
-    visualizerControl.hidden = !handler;
+    update({});
     visualizerControl.setAttribute("aria-label", `Visualizer information: ${displayName}`);
     visualizerTooltip.textContent = displayName;
   };
   update({});
   setInformation(void 0, "Visualizer");
   return { element, titleControl, exploreButton, closeButton, maximizeButton, visualizerControl, visualizerTooltip, presentationStatus, update, setInformation };
-}
-function keyInitials(key) {
-  const words = key.replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, "$1 $2").replace(/([\p{Ll}\p{Nd}])(\p{Lu})/gu, "$1 $2").match(/[\p{L}\p{N}]+/gu);
-  return words?.map((word) => Array.from(word)[0]).join("").toLocaleUpperCase() || key;
 }
 
 // host/conductora/visualizer-src/holon-inspector.js
@@ -308,8 +322,8 @@ var HolonInspectorElement = class extends HTMLElement {
     const { title, gap, collection, body } = this.inspectorHeightParts();
     const partial = title + gap + collection;
     return {
-      vertical: { "full-height": this.fullHeight = Math.max(this.fullHeight ?? partial + gap + body, partial), "partial-height": partial, "minimal-height": 48 },
-      horizontal: { "full-width": 800, "partial-width": 240, "minimal-width": 64 }
+      vertical: { "full-height": this.fullHeight = Math.max(this.fullHeight ?? partial + gap + body, partial), "partial-height": partial, "minimal-height": 64 },
+      horizontal: { "full-width": 800, "partial-width": 240, "minimal-width": 96 }
     };
   }
   setNodeInspectorAllocation(allocation) {
@@ -399,11 +413,10 @@ var HolonInspectorElement = class extends HTMLElement {
     const minimum = parseFloat(getComputedStyle(probe).fontSize) || 12;
     probe.remove();
     for (const control of controls) {
-      control.style.fontSize = control === this.titleControl && this.horizontalState === "minimal-width" && this.verticalState === "minimal-height" ? "var(--dahn-canvas-font-size)" : "inherit";
+      control.style.fontSize = control === this.titleControl && compressed ? "var(--dahn-canvas-font-size)" : "inherit";
       if (!compressed || !control.clientWidth || !control.clientHeight) continue;
       const normal = parseFloat(getComputedStyle(control).fontSize) || minimum;
-      const vertical = getComputedStyle(control).writingMode.startsWith("vertical");
-      const fits = () => vertical ? control.scrollHeight <= control.clientHeight : control.scrollWidth <= control.clientWidth;
+      const fits = () => control.scrollHeight <= control.clientHeight && control.scrollWidth <= control.clientWidth;
       let size = Math.max(minimum, normal);
       control.style.fontSize = `${size}px`;
       while (!fits() && size > minimum) {

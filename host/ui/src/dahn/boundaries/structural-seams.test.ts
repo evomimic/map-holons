@@ -7,6 +7,7 @@ import type {
 } from '../index';
 
 const THEME: DahnTheme = {
+  reference: {} as never,
   themeKey: 'DAHN.DefaultTheme',
   themeVersionedKey: 'DAHN.DefaultTheme@1',
   metaDesignSystemKey: 'DAHN.DefaultMetaDesignSystem',

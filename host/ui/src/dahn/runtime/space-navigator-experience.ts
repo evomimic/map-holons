@@ -89,7 +89,7 @@ export class SpaceNavigatorExperience {
       // Selection reads retained evidence; realization creates invocation holons.
       // Keep saved selection inputs bound to the response's archived context.
       const selected = (await transaction.selectVisualizer({
-        subject, parentVisualizer: transaction.bindSavedReference(parent),
+        subject, owner: { visualizer: transaction.bindSavedReference(parent) }, theme: this.binding.theme.reference,
         slot: transaction.bindSavedReference(slot), requestedKind: 'node',
       })).selected;
       const { theme, canvas } = this.binding;
@@ -120,7 +120,7 @@ export class SpaceNavigatorExperience {
       const reviewSlot = review.bindSavedReference(slot);
       const navigation = new PathNavigator(review, reviewParent,
         rootNode,
-        subject, review.bindSavedReference(selected), reviewSlot,
+        subject, review.bindSavedReference(selected), reviewSlot, () => theme.reference,
         (member, visualizer, stage) => realizeNode(contextFor(member), reviewRuntime, member, visualizer, theme, canvas, stage, undefined, review),
         undefined, contextFor, target => this.information.inspect(target));
       try {
@@ -160,7 +160,7 @@ export class SpaceNavigatorExperience {
         const roots = [];
         for (const slot of slots) if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') roots.push(slot);
         if (roots.length !== 1) throw new Error(`Expected one navigation slot, found ${roots.length}`);
-        selectedPath = (await transaction.selectVisualizer({ subject: anchor, slot: roots[0], requestedKind: 'rootedNavigation' })).selected;
+        selectedPath = (await transaction.selectVisualizer({ subject: anchor, slot: roots[0], requestedKind: 'rootedNavigation', owner: { dancer }, theme: theme.reference })).selected;
       }
       signal.throwIfAborted();
       const implementation = await materialized.realize(selectedPath);
@@ -169,7 +169,7 @@ export class SpaceNavigatorExperience {
       }
       const tag = defineCustomElementOnce('map-rooted-navigation-visualizer', implementation as CustomElementConstructor);
       const nodeSlot = await materialized.slot(selectedPath, 'node');
-      if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, parentVisualizer: selectedPath, requestedKind: 'node' })).selected;
+      if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' })).selected;
       signal.throwIfAborted();
       const actionInteractions: ActionInteractions | undefined = this.binding.actionInteractions && {
         openLoadHolons: binding => this.binding.actionInteractions!.openLoadHolons({
@@ -187,7 +187,7 @@ export class SpaceNavigatorExperience {
         signal.throwIfAborted();
         const title = (await anchor.key()) ?? await anchor.versionedKey();
         signal.throwIfAborted();
-        navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot,
+        navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot, () => theme.reference,
           (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, actionInteractions),
           subject => { if (!work.paused) void this.element.open(subject); },
           undefined, target => this.information.inspect(target));

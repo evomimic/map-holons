@@ -104,6 +104,18 @@ pub async fn handle_transaction(
                 slot,
             )?))
         }
+        TransactionAction::DiscoverVisualizers { request, current_selection } => {
+            Ok(MapResult::VisualizerDiscovery(dahn_selection::discover_visualizers(
+                context,
+                request,
+                current_selection,
+            )?))
+        }
+        TransactionAction::ChooseVisualizer { request, candidate } => {
+            Ok(MapResult::VisualizerSelection(dahn_selection::choose_visualizer(
+                context, request, candidate,
+            )?))
+        }
         TransactionAction::SelectVisualizer { request } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::select_visualizer(context, request)?))
         }

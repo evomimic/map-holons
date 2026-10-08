@@ -4,10 +4,12 @@
 //! caller's transaction-bound runtime context; it retains neither session
 //! state nor a cache of semantic resources.
 
+mod candidates;
 mod selection;
+pub use candidates::{choose_visualizer, discover_visualizers, select_visualizer};
 
 pub use selection::{
-    select_bootstrap_canvas, select_collection_visualizer, select_home_dancer, select_visualizer,
+    select_bootstrap_canvas, select_collection_visualizer, select_home_dancer,
     BootstrapCanvasSelection, HomeDancerRuntime, HomeDancerSelection, HomeDancerSelectionContext,
     RuntimeCanvasVisualizer,
 };

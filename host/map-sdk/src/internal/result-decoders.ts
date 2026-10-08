@@ -9,6 +9,7 @@ import type {
   MapResultWire,
   QualifiedRelationshipWire,
   VisualizerSelectionWire,
+  VisualizerDiscoveryWire,
   TxId,
 } from './wire-types';
 
@@ -244,4 +245,9 @@ export function expectDescribedCollection(result: MapResultWire) {
 export function expectValidationFindings(result: MapResultWire): CommitValidationViolationWire[] {
   if (typeof result === 'object' && 'ValidationFindings' in result) return result.ValidationFindings;
   throw unexpectedResultVariant('ValidationFindings', result);
+}
+
+export function expectVisualizerDiscovery(result: MapResultWire): VisualizerDiscoveryWire {
+  if (typeof result === 'object' && result !== null && 'VisualizerDiscovery' in result) return result.VisualizerDiscovery;
+  throw unexpectedResultVariant('VisualizerDiscovery', result);
 }

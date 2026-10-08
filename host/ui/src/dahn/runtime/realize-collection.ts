@@ -26,7 +26,7 @@ export async function realizeCollection(
   transaction: MapTransaction, collection: DescribedHolonCollection,
   parent: HolonReference, slot: HolonReference, materialized: MaterializedVisualizerRuntime,
   current: () => boolean, stage: (name: string) => void, presentation: MapTransaction = transaction,
-  context?: Pick<VisualizerContext, 'theme' | 'canvas'>,
+  context?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
 ): Promise<CollectionElement | undefined> {
   stage('Visualizer selection');
   // Selection needs the saved element type, not the loader-bound member handles.
@@ -46,7 +46,7 @@ export async function realizeCollection(
 export async function realizeProjectedCollection(
   transaction: MapTransaction, elementType: HolonReference, parent: HolonReference, slot: HolonReference,
   materialized: MaterializedVisualizerRuntime, current: () => boolean, stage: (name: string) => void,
-  context?: Pick<VisualizerContext, 'theme' | 'canvas'>,
+  context?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
 ): Promise<CollectionElement | undefined> {
   stage('Visualizer selection');
   const selection = await transaction.selectProjectedCollectionVisualizer(elementType, parent, slot);

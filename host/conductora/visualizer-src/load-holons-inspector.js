@@ -166,11 +166,16 @@ export default class LoadHolonsInspector extends HTMLElement {
     const lineHeight = parseFloat(getComputedStyle(this).lineHeight) || 20;
     const rows = collection?.getCollectionViewportHeight(5) || 8 * (lineHeight + 8);
     this.collectionHeight = rows + 48;
-    const title = this.heading?.getBoundingClientRect().height || 64;
+    // A compressed vertical title reports its strip length, not header height.
+    // Preserve the normal measurement so it cannot inflate the shared Path row.
+    if (this.allocation?.horizontal !== 'minimal-width' && this.allocation?.vertical !== 'minimal-height') {
+      this.normalTitleHeight = this.heading?.getBoundingClientRect().height || this.normalTitleHeight;
+    }
+    const title = this.normalTitleHeight || 64;
     const properties = Math.max(280, this.propertyContentHeight());
     return {
-      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
-      vertical: { 'full-height': title + properties + 12 + this.collectionHeight, 'partial-height': title + this.collectionHeight, 'minimal-height': 48 },
+      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 96 },
+      vertical: { 'full-height': title + properties + 12 + this.collectionHeight, 'partial-height': title + this.collectionHeight, 'minimal-height': 64 },
     };
   }
   // The PropertyMap fills its granted region; intrinsic reports size that region.

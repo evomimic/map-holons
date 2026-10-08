@@ -21,6 +21,7 @@ function collection(count: number) {
   const members = Array.from({ length: count }, (_, index) => ({ key: async () => `row-${index}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
   return { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
+const valueContext = { theme: { reference: {} } } as never;
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture(populated = false) {
   const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
@@ -32,7 +33,7 @@ function fixture(populated = false) {
   const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })), selectValueVisualizer: vi.fn(async () => ({ selected: value })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => property('Key')) };
   const materialize = vi.fn(async (reference: unknown) => ({ source: reference === value ? valueSource : tableSource, format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
-  const activation = new NodeCollectionActivation(transaction as never, owner as never, parent as never, runtime, populated ? { population: () => ({ state: 'populated', count: 2 }), record: vi.fn(), dispose: vi.fn() } as never : undefined);
+  const activation = new NodeCollectionActivation(transaction as never, owner as never, parent as never, runtime, populated ? { population: () => ({ state: 'populated', count: 2 }), record: vi.fn(), dispose: vi.fn() } as never : undefined, undefined, valueContext);
   return { activation, owner, transaction, runtime, materialize, slot, parent, selected, valueSlot };
 }
 beforeEach(() => {
@@ -67,7 +68,7 @@ describe('selected collection activation', () => {
     f.activation.activate(a, 'slot', publish); await wait(); expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
     f.activation.activate(b, 'slot', publish); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(2)); await wait();
     f.activation.activate(a, 'slot', publish); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(3)); await wait();
-    const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
+    const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime, undefined, undefined, valueContext);
     second.activate(a, 'slot', vi.fn()); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(4));
   });
 
@@ -152,7 +153,7 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
   expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
   expect(members[1].propertyValue).toHaveBeenCalledTimes(1);
 
-  const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
+  const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime, undefined, undefined, valueContext);
   const updates: CollectionUpdate[] = [];
   second.activate(tab('A'), 'slot', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
@@ -240,7 +241,7 @@ it('restores independent tab sorts after fresh projection and keeps sorted activ
   expect(received).toHaveBeenCalledOnce();
   const restoredB = await activate(b);
   expect(restoredB.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
-  const other = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
+  const other = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime, undefined, undefined, valueContext);
   other.activate(a, 'slot', publish);
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
   expect(updates.at(-1)!.content!.querySelector('[aria-sort]')?.getAttribute('aria-sort')).toBe('ascending');
@@ -422,7 +423,7 @@ it('selects in the open presentation context while retaining committed loader me
   const presentation = { getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
     selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: f.selected })),
     selectValueVisualizer: f.transaction.selectValueVisualizer, getSavedPropertyDescriptorByBaseKey: f.transaction.getSavedPropertyDescriptorByBaseKey };
-  const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation);
+  const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation, valueContext);
   const updates: CollectionUpdate[] = [];
   activation.activate(tab('Sources'), 'slot', (update: CollectionUpdate) => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
