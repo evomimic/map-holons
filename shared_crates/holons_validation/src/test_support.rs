@@ -191,7 +191,7 @@ impl Fixture {
             fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;
         }
-        // Standalone subject tests bind only subject rules. The binding inventory
+        // Subject fixtures bind only subject rules. The binding inventory
         // still resolves all descriptor and Schema rule identities for placement checks.
         for rule in [
             CoreValidationRuleName::AtMostOneDirectParent,
@@ -286,12 +286,6 @@ impl Fixture {
         let target = self.nodes[target].clone();
         self.nodes.get_mut(source).unwrap().add_related_holons(relationship, vec![target])?;
         Ok(())
-    }
-
-    pub fn subject(&self) -> Result<HolonReference, HolonError> {
-        let mut subject = self.context.mutation().new_holon(Some(MapString("subject".into())))?;
-        subject.with_descriptor(self.nodes["Contract"].clone())?;
-        Ok(subject.into())
     }
 
     /// Stages and describes a subject. Contract declares no Title default, so
@@ -394,4 +388,155 @@ impl Fixture {
             )?);
         Ok(staged)
     }
+}
+
+pub(super) fn c2_kind_roots(
+    fixture: &mut Fixture,
+) -> Result<holons_core::DescriptorKindRoots, HolonError> {
+    use type_names::CorePropertyTypeName;
+    fixture.node("MetaHolonType.MetaTypeDescriptor")?;
+    fixture.link(
+        "MetaTypeDescriptor.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "MetaHolonType.MetaTypeDescriptor",
+        CoreRelationshipTypeName::Extends,
+        "MetaTypeDescriptor.HolonType",
+    )?;
+    for (key, anchor) in [
+        ("TypeDescriptor", false),
+        ("HolonType.TypeDescriptor", true),
+        ("MetaTypeDescriptor.HolonType", false),
+        ("MetaHolonType.MetaTypeDescriptor", false),
+        ("PropertyType.TypeDescriptor", true),
+        ("Contract", false),
+    ] {
+        fixture
+            .nodes
+            .get_mut(key)
+            .unwrap()
+            .with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, anchor)?;
+    }
+    fixture
+        .nodes
+        .get_mut("HolonType.TypeDescriptor")
+        .unwrap()
+        .with_property_value(CorePropertyTypeName::IsAbstractType, true)?;
+    holons_core::DescriptorKindRoots::from_resolved(
+        &fixture.context,
+        fixture.nodes["TypeDescriptor"].clone(),
+        fixture.nodes["HolonType.TypeDescriptor"].clone(),
+        fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
+        fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone(),
+    )
+}
+
+/// Complete the roots and member structure consumed by prospective Commit assessment.
+pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
+    let mut fixture = Fixture::new()?;
+    c2_kind_roots(&mut fixture)?;
+    for key in [
+        "Schema.HolonType",
+        "Rule.HolonType",
+        "ConstraintType.HolonType",
+        "StringLengthConstraint.ConstraintType",
+        "BytesLengthConstraint.ConstraintType",
+        "NumericRangeConstraint.ConstraintType",
+        "ItemCountConstraint.ConstraintType",
+        "CardinalityConstraint.ConstraintType",
+        "UniqueItemsConstraint.ConstraintType",
+        "ValueType.TypeDescriptor",
+        "DeclaredRelationshipType.RelationshipType",
+    ] {
+        fixture.node(key)?;
+    }
+    fixture.link(
+        "DeclaredRelationshipType",
+        CoreRelationshipTypeName::Extends,
+        "DeclaredRelationshipType.RelationshipType",
+    )?;
+    fixture.link(
+        "DeclaredRelationshipType.RelationshipType",
+        CoreRelationshipTypeName::Extends,
+        "TypeDescriptor",
+    )?;
+    fixture.link(
+        "ValueType.TypeDescriptor",
+        CoreRelationshipTypeName::Extends,
+        "TypeDescriptor",
+    )?;
+    // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
+    for (_, _, key) in RULES[2..].iter() {
+        let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
+        fixture
+            .nodes
+            .get_mut(*key)
+            .unwrap()
+            .remove_related_holons(CoreRelationshipTypeName::Extends, vec![type_descriptor])?;
+        fixture.link(key, CoreRelationshipTypeName::Extends, "ValueType.TypeDescriptor")?;
+        fixture.nodes.get_mut(*key).unwrap().with_property_value("IsAbstractType", true)?;
+    }
+    for key in [
+        "Title.PropertyType",
+        "Key.PropertyType",
+        "DeclaredRelationshipType",
+        "DescribedBy.Relationship",
+    ] {
+        fixture
+            .nodes
+            .get_mut(key)
+            .unwrap()
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+    }
+    for key in [
+        "PropertyType.TypeDescriptor",
+        "ValueType.TypeDescriptor",
+        "DeclaredRelationshipType.RelationshipType",
+        "StringValueType.ValueType",
+    ] {
+        fixture
+            .nodes
+            .get_mut(key)
+            .unwrap()
+            .with_property_value("DefinesInstanceTypeKind", true)?
+            .with_property_value("IsAbstractType", true)?;
+    }
+    fixture.link(
+        "DescribedBy.Relationship",
+        CoreRelationshipTypeName::SourceType,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "DescribedBy.Relationship",
+        CoreRelationshipTypeName::TargetType,
+        "HolonType.TypeDescriptor",
+    )?;
+    for rule in [
+        CoreValidationRuleName::AtMostOneDirectParent,
+        CoreValidationRuleName::AcyclicExtendsLineage,
+        CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
+        CoreValidationRuleName::UniqueTypeDescriptorRoot,
+        CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
+        CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
+        CoreValidationRuleName::TypeDescriptorRootKindException,
+        CoreValidationRuleName::DescribingCategoryCompatibility,
+        CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
+        CoreValidationRuleName::NoInheritedMemberRedeclaration,
+        CoreValidationRuleName::UniqueSemanticMemberNames,
+        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
+        CoreValidationRuleName::ContractMemberKindCompatibility,
+        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
+        CoreValidationRuleName::SchemaDependenciesAcyclic,
+        CoreValidationRuleName::CrossSchemaDependenciesDeclared,
+    ] {
+        fixture.node(rule.as_str())?;
+        fixture.link(
+            rule.as_str(),
+            CoreRelationshipTypeName::DescribedBy,
+            "HolonValidationRule.HolonType",
+        )?;
+    }
+    Ok(fixture)
 }

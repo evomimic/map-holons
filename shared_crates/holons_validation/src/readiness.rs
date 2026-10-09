@@ -319,19 +319,8 @@ pub(crate) fn construct_assessment(
     Ok(ConstructedAssessment { prepared, workset, packages, collector })
 }
 
-#[cfg(test)]
-pub(crate) fn assess_constructed(
-    context: &Arc<TransactionContext>,
-    candidates: &[StagedReference],
-    reader: &ProspectiveDescriptorReader,
-    roots: &ReadinessContext,
-    constructed: ConstructedAssessment,
-) -> Result<CommitValidationReport, HolonError> {
-    Ok(assess_constructed_observed(context, candidates, reader, roots, constructed, &mut |_| {})?
-        .report)
-}
-
-fn assess_constructed_observed(
+/// Consumes prepared packages and records findings without installing outcomes.
+pub(crate) fn assess_constructed_observed(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
     reader: &ProspectiveDescriptorReader,
@@ -501,7 +490,7 @@ fn assess_constructed_observed(
                 reader,
                 &path(&subject.subject),
                 &mut collector,
-                Some(&packages),
+                &packages,
             );
             subject.bindings =
                 recover(result, &subject.subject, &mut collector)?.unwrap_or_default();
@@ -553,7 +542,7 @@ fn assess_constructed_observed(
                 reader,
                 &path(&view.schema),
                 &mut collector,
-                Some(&packages),
+                &packages,
             );
             if let Some(bindings) = recover(result, &view.schema, &mut collector)? {
                 prospective_validation::dispatch_schema(
@@ -666,7 +655,7 @@ fn assess_prepared(
                 &roots.universal,
                 reader,
                 collector,
-                Some(packages),
+                packages,
             );
             recover(result, &subject.subject, collector)?;
         }

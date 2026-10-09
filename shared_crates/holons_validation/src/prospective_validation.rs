@@ -3,8 +3,7 @@ use crate::{
     assessment_support::{blocked, path, recover},
     commitments::{required_key, ResolvedConstraint},
     contexts::{BindingDispatchRoute, SubjectLevel},
-    handlers::{finding, rule_violation},
-    validators::compatible_binding_with_reader,
+    handlers::{finding, native_rule_kind, rule_violation},
     ConstraintTypeKey, DescriptorRuleProducts, PreparedRuleSubject, ResolvedValidationBinding,
     RuleOutcome, StaticConstraintRegistry, StaticRuleHandler, StaticRuleRegistry,
     ValidationCollector, ValidationInvocation, ValidationRuleKey, ValueValidationContext,
@@ -17,6 +16,7 @@ use holons_core::{
     AssessmentReadError, ContractContributions, DescribingTypeResolution, Descriptor,
     DescriptorReader, HolonDescriptor, HolonReference, PropertyDescriptor,
     ProspectiveDescriptorReader, ReadableHolon, UniversalDescriptorContract, ValueDescriptor,
+    ValueDescriptorKind,
 };
 use std::collections::HashSet;
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName};
@@ -34,17 +34,10 @@ pub(crate) fn prepare_bindings(
     reader: &ProspectiveDescriptorReader,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<Vec<PreparedBinding>, AssessmentReadError> {
     let mut result = Vec::new();
-    let contributions = match packages {
-        Some(packages) => packages.effective(descriptor, true, reader)?,
-        None => effective_relationship_targets_with_reader(
-            descriptor,
-            CoreRelationshipTypeName::ValidationBindings,
-            reader,
-        )?,
-    };
+    let contributions = packages.effective(descriptor, true, reader)?;
     for contribution in contributions {
         let binding = ResolvedValidationBinding::from(contribution);
         let key = ValidationRuleKey(required_key(&binding.rule)?);
@@ -88,6 +81,65 @@ pub(crate) fn prepare_bindings(
         }
     }
     Ok(result)
+}
+
+/// Checks binding placement and rule-family lineage in the selected descriptor view.
+pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
+    binding: &ResolvedValidationBinding,
+    family: &HolonDescriptor,
+    key: &ValidationRuleKey,
+    governing: &HolonReference,
+    level: SubjectLevel,
+    context: &ValueValidationContext,
+    reader: &R,
+) -> Result<bool, R::Error> {
+    use holons_core::descriptors::equals_or_extends_with_reader;
+    let roots = &context.bindings;
+    if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
+        // A familiar key on another reference cannot impersonate a canonical rule.
+        if !holons_core::same_definition(
+            &reader.select(&binding.rule)?,
+            &reader.select(&root.rule)?,
+        ) || root.level != level
+            || !equals_or_extends_with_reader(family.holon(), &root.family, reader)?
+            || !equals_or_extends_with_reader(
+                binding.declaring_descriptor.holon(),
+                &root.descriptor_family,
+                reader,
+            )?
+        {
+            return Ok(false);
+        }
+        if let Some(expected) = native_rule_kind(root.name) {
+            holons_core::reference_layer::assert_reference_transaction_compatible(
+                governing,
+                &context.context,
+            )?;
+            return Ok(ValueDescriptor::from_holon(reader.select(governing)?)
+                .value_kind_with_reader(reader)?
+                == ValueDescriptorKind::BaseValue(expected));
+        }
+        return Ok(true);
+    }
+    // A family may have roots at several declaring descriptors or subject levels.
+    // Inspect all matching roots so their registration order cannot change placement.
+    let mut matched_family = false;
+    let mut admitted = false;
+    for root in &roots.entries {
+        if equals_or_extends_with_reader(family.holon(), &root.family, reader)? {
+            matched_family = true;
+            if root.level == level
+                && equals_or_extends_with_reader(
+                    binding.declaring_descriptor.holon(),
+                    &root.descriptor_family,
+                    reader,
+                )?
+            {
+                admitted = true;
+            }
+        }
+    }
+    Ok(!matched_family || admitted)
 }
 
 pub(crate) fn dispatch_schema(
@@ -178,16 +230,9 @@ fn subject_constraints(
     path: &ValidationSubjectPath,
     reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), AssessmentReadError> {
-    let contributions = match packages {
-        Some(packages) => packages.effective(descriptor, false, reader)?,
-        None => effective_relationship_targets_with_reader(
-            descriptor,
-            CoreRelationshipTypeName::Constraints,
-            reader,
-        )?,
-    };
+    let contributions = packages.effective(descriptor, false, reader)?;
     for contribution in contributions {
         collector.observations.effective_constraint_count += 1;
         let constraint = ResolvedConstraint::with_reader(contribution, reader)?;
@@ -214,30 +259,6 @@ fn subject_constraints(
 
 /// Conformance of H through D(H), never through the contract H defines for its instances.
 /// The caller has already diagnosed the governing structure and established readiness.
-#[cfg(test)]
-pub(crate) fn assess_subject(
-    subject: &HolonReference,
-    descriptor: &HolonReference,
-    bindings: &[PreparedBinding],
-    values: &ValueValidationContext,
-    universal: &UniversalDescriptorContract,
-    reader: &ProspectiveDescriptorReader,
-    collector: &mut ValidationCollector,
-) -> Result<(), AssessmentReadError> {
-    let contributions = ContractContributions::resolve_with_reader(descriptor, reader)?;
-    assess_prepared_subject(
-        subject,
-        descriptor,
-        &contributions,
-        bindings,
-        values,
-        universal,
-        reader,
-        collector,
-        None,
-    )
-}
-
 /// Consumes a constructed contract without rediscovering its effective member surface.
 pub(crate) fn assess_prepared_subject(
     subject: &HolonReference,
@@ -248,7 +269,7 @@ pub(crate) fn assess_prepared_subject(
     universal: &UniversalDescriptorContract,
     reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), AssessmentReadError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();
@@ -299,7 +320,7 @@ fn assess_property(
     universal: &UniversalDescriptorContract,
     reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), AssessmentReadError> {
     let value = subject.property_value(name)?;
     let path = ValidationSubjectPath::Property {

@@ -569,115 +569,6 @@ fn operational_scope_failure_preserves_prior_installed_outcomes() -> Result<(), 
     Ok(())
 }
 
-/// Complete the roots and member structure consumed by prospective Commit assessment.
-fn readiness_fixture() -> Result<Fixture, HolonError> {
-    let mut fixture = Fixture::new()?;
-    c2_kind_roots(&mut fixture)?;
-    for key in [
-        "Schema.HolonType",
-        "Rule.HolonType",
-        "ConstraintType.HolonType",
-        "StringLengthConstraint.ConstraintType",
-        "BytesLengthConstraint.ConstraintType",
-        "NumericRangeConstraint.ConstraintType",
-        "ItemCountConstraint.ConstraintType",
-        "CardinalityConstraint.ConstraintType",
-        "UniqueItemsConstraint.ConstraintType",
-        "ValueType.TypeDescriptor",
-        "DeclaredRelationshipType.RelationshipType",
-    ] {
-        fixture.node(key)?;
-    }
-    fixture.link(
-        "DeclaredRelationshipType",
-        CoreRelationshipTypeName::Extends,
-        "DeclaredRelationshipType.RelationshipType",
-    )?;
-    fixture.link(
-        "DeclaredRelationshipType.RelationshipType",
-        CoreRelationshipTypeName::Extends,
-        "TypeDescriptor",
-    )?;
-    fixture.link(
-        "ValueType.TypeDescriptor",
-        CoreRelationshipTypeName::Extends,
-        "TypeDescriptor",
-    )?;
-    // StringValueType's prior direct TypeDescriptor edge is replaced, never supplemented.
-    let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
-    fixture
-        .nodes
-        .get_mut("StringValueType.ValueType")
-        .unwrap()
-        .remove_related_holons(CoreRelationshipTypeName::Extends, vec![type_descriptor])?;
-    fixture.link(
-        "StringValueType.ValueType",
-        CoreRelationshipTypeName::Extends,
-        "ValueType.TypeDescriptor",
-    )?;
-    for key in [
-        "Title.PropertyType",
-        "Key.PropertyType",
-        "DeclaredRelationshipType",
-        "DescribedBy.Relationship",
-    ] {
-        fixture
-            .nodes
-            .get_mut(key)
-            .unwrap()
-            .with_property_value("DefinesInstanceTypeKind", false)?;
-    }
-    for key in [
-        "PropertyType.TypeDescriptor",
-        "ValueType.TypeDescriptor",
-        "DeclaredRelationshipType.RelationshipType",
-        "StringValueType.ValueType",
-    ] {
-        fixture
-            .nodes
-            .get_mut(key)
-            .unwrap()
-            .with_property_value("DefinesInstanceTypeKind", true)?
-            .with_property_value("IsAbstractType", true)?;
-    }
-    fixture.link(
-        "DescribedBy.Relationship",
-        CoreRelationshipTypeName::SourceType,
-        "HolonType.TypeDescriptor",
-    )?;
-    fixture.link(
-        "DescribedBy.Relationship",
-        CoreRelationshipTypeName::TargetType,
-        "HolonType.TypeDescriptor",
-    )?;
-    for rule in [
-        CoreValidationRuleName::AtMostOneDirectParent,
-        CoreValidationRuleName::AcyclicExtendsLineage,
-        CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
-        CoreValidationRuleName::UniqueTypeDescriptorRoot,
-        CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
-        CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
-        CoreValidationRuleName::TypeDescriptorRootKindException,
-        CoreValidationRuleName::DescribingCategoryCompatibility,
-        CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
-        CoreValidationRuleName::NoInheritedMemberRedeclaration,
-        CoreValidationRuleName::UniqueSemanticMemberNames,
-        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
-        CoreValidationRuleName::ContractMemberKindCompatibility,
-        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-        CoreValidationRuleName::SchemaDependenciesAcyclic,
-        CoreValidationRuleName::CrossSchemaDependenciesDeclared,
-    ] {
-        fixture.node(rule.as_str())?;
-        fixture.link(
-            rule.as_str(),
-            CoreRelationshipTypeName::DescribedBy,
-            "HolonValidationRule.HolonType",
-        )?;
-    }
-    Ok(fixture)
-}
-
 #[test]
 fn staged_descriptor_with_unnamed_effective_member_reports_contract_finding(
 ) -> Result<(), HolonError> {
@@ -1082,13 +973,15 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = crate::readiness::assess_constructed(
+    let report = crate::readiness::assess_constructed_observed(
         &fixture.context,
         &candidates,
         &reader,
         &roots,
         constructed,
-    )?;
+        &mut |_| {},
+    )?
+    .report;
     assert!(report.is_accepted(), "{:?}", report);
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())
@@ -1127,13 +1020,15 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = crate::readiness::assess_constructed(
+    let report = crate::readiness::assess_constructed_observed(
         &fixture.context,
         &candidates,
         &reader,
         &roots,
         constructed,
-    )?;
+        &mut |_| {},
+    )?
+    .report;
     assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())

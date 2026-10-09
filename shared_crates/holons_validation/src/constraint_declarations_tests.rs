@@ -24,7 +24,14 @@ fn roots(fixture: &Fixture) -> ConstraintDeclarationRoots {
 }
 
 fn fixture() -> Result<Fixture, HolonError> {
-    let mut fixture = Fixture::new()?;
+    add_constraint_definitions(Fixture::new()?)
+}
+
+fn fixture_with_commit_roots() -> Result<Fixture, HolonError> {
+    add_constraint_definitions(readiness_fixture()?)
+}
+
+fn add_constraint_definitions(mut fixture: Fixture) -> Result<Fixture, HolonError> {
     fixture.node("ConstraintType.HolonType")?;
     fixture.link(
         "ConstraintType.HolonType",
@@ -336,7 +343,7 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
 #[test]
 fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
 ) -> Result<(), HolonError> {
-    let mut fixture = fixture()?;
+    let mut fixture = fixture_with_commit_roots()?;
     let constraint = configured(&mut fixture, "Configured", UNIQUE)?;
     fixture.link(
         "StringValueType.ValueType",
@@ -349,19 +356,13 @@ fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
         .assess_constraint(&constraint, &mut collector)?);
     assert_eq!(collector.observations().effective_constraint_count, 0);
     assert!(collector.into_report().is_accepted());
-    let context = ValueValidationContext::resolve(&fixture.context)?;
-    let descriptor =
-        ValueDescriptor::from_holon(fixture.nodes["StringValueType.ValueType"].clone());
-    let value = BaseValue::StringValue(MapString("value".into()));
-    let mut collector = ValidationCollector::default();
-    validate_value(
-        ValueValidationSubject { descriptor: &descriptor, value: &value, path: &value_path() },
-        &context,
-        &mut collector,
-    )?;
-    assert_eq!(collector.observations().effective_constraint_count, 1);
-    assert_eq!(collector.observations().constraint_declaration_count, 0);
-    assert!(collector.into_report().violations.iter().any(|finding| matches!(
+    let mut subject = fixture.staged_subject("configured-value")?;
+    subject.with_property_value("Title", "value")?;
+    subject.remove_property_value("Key")?;
+    let assessment = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert_eq!(assessment.observations.effective_constraint_count, 1);
+    assert_eq!(assessment.observations.constraint_declaration_count, 0);
+    assert!(assessment.report.violations.iter().any(|finding| matches!(
         finding.kind,
         CommitValidationViolationKind::UnsupportedConstraintType { .. }
     )));
