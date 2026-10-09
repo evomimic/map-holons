@@ -38,12 +38,14 @@ pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
 pub use prospective::{
     competing_replacement_findings, resolve_validation_anchor, resolve_validation_anchor_in_view,
 };
-pub use readiness::{validate_commit_candidates, validate_commit_candidates_with_observer};
+pub use readiness::{
+    assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_observer,
+};
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
     StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,
 };
-pub use report::CommitValidationReport;
+pub use report::{CommitAssessment, CommitValidationReport};
 pub use schema_rules::SchemaRuleProducts;
 pub use subjects::{
     HolonValidationSubject, PreparedRuleSubject, PropertyValidationSubject, ValueValidationSubject,

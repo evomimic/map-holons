@@ -7,8 +7,9 @@ use crate::{
     prospective_validation::{self, PreparedBinding},
     schema_rules::{self, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
-    CommitValidationReport, ConstraintDeclarationAssessment, ConstraintDeclarationRoots,
-    ContractKindRoots, DescriptorRuleProducts, ValidationCollector, ValueValidationContext,
+    CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
+    ConstraintDeclarationRoots, ContractKindRoots, DescriptorRuleProducts, ValidationCollector,
+    ValueValidationContext,
 };
 use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
@@ -89,7 +90,8 @@ struct SubjectPreparation {
     is_schema: bool,
 }
 
-/// Report-only until the final installation. A scope is discarded in full on operational failure.
+/// Assesses all candidates and installs their validation outcomes after a completed pass.
+/// A scope is discarded in full on operational failure, preserving prior outcomes.
 /// No unchanged Schema is staged; no saved definition is mutated. The view may include an
 /// unchanged ForUpdate candidate whose eventual persistence outcome is NoAction.
 pub fn validate_commit_candidates(
@@ -104,11 +106,29 @@ pub fn validate_commit_candidates(
 pub fn validate_commit_candidates_with_observer(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
-    mut observer: impl FnMut(crate::AssessmentPhase),
+    observer: impl FnMut(crate::AssessmentPhase),
 ) -> Result<CommitValidationReport, HolonError> {
+    let assessment = assess_commit_candidates_with_observer(context, candidates, observer)?;
+    PreparedAssessment::from_scope(candidates, assessment.report)?.install_outcomes()
+}
+
+/// Assesses the prospective Commit view without installing outcomes or mutating staged holons.
+/// Operational errors invalidate the entire assessment and return no partial report.
+pub fn assess_commit_candidates(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+) -> Result<CommitAssessment, HolonError> {
+    assess_commit_candidates_with_observer(context, candidates, |_| {})
+}
+
+fn assess_commit_candidates_with_observer(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+    mut observer: impl FnMut(crate::AssessmentPhase),
+) -> Result<CommitAssessment, HolonError> {
     observer(crate::AssessmentPhase::Construction);
     if candidates.is_empty() {
-        return Ok(CommitValidationReport::default());
+        return Ok(CommitAssessment::default());
     }
     crate::orchestration::check_candidates(candidates)?;
     let reader = ProspectiveDescriptorReader::new(context, candidates)?;
@@ -126,18 +146,27 @@ pub fn validate_commit_candidates_with_observer(
                 "Required validation anchors have contested prospective content.".into(),
             );
         }
-        return PreparedAssessment::from_scope(candidates, collector.into_report())?
-            .install_outcomes();
+        return finish_assessment(candidates, collector);
     };
     let constructed = construct_assessment(context, candidates, &reader, &roots, collector)?;
     assess_constructed_observed(context, candidates, &reader, &roots, constructed, &mut observer)
+}
+
+/// Preserve Commit's carrier grouping and finding order without installing outcomes.
+fn finish_assessment(
+    candidates: &[StagedReference],
+    collector: ValidationCollector,
+) -> Result<CommitAssessment, HolonError> {
+    let observations = collector.observations().clone();
+    let report = PreparedAssessment::from_scope(candidates, collector.into_report())?.into_report();
+    Ok(CommitAssessment { report, observations })
 }
 
 fn classify(governing: &holons_core::ValidExtendsLineage<'_>, root: &HolonReference) -> bool {
     governing.members().iter().any(|member| holons_core::same_definition(member, root))
 }
 
-/// Immutable prepared inputs and their cache leases live until outcome installation finishes.
+/// Immutable prepared inputs and their cache leases live until assessment finishes.
 pub(crate) struct ConstructedAssessment {
     prepared: Vec<SubjectPreparation>,
     workset: SchemaWorkset,
@@ -298,7 +327,8 @@ pub(crate) fn assess_constructed(
     roots: &ReadinessContext,
     constructed: ConstructedAssessment,
 ) -> Result<CommitValidationReport, HolonError> {
-    assess_constructed_observed(context, candidates, reader, roots, constructed, &mut |_| {})
+    Ok(assess_constructed_observed(context, candidates, reader, roots, constructed, &mut |_| {})?
+        .report)
 }
 
 fn assess_constructed_observed(
@@ -308,7 +338,7 @@ fn assess_constructed_observed(
     roots: &ReadinessContext,
     constructed: ConstructedAssessment,
     observer: &mut impl FnMut(crate::AssessmentPhase),
-) -> Result<CommitValidationReport, HolonError> {
+) -> Result<CommitAssessment, HolonError> {
     observer(crate::AssessmentPhase::PackageValidation);
     let ConstructedAssessment { mut prepared, workset, mut packages, mut collector } = constructed;
     let kinds = roots.kinds.clone().with_reader(reader);
@@ -595,7 +625,7 @@ fn assess_constructed_observed(
             );
         }
     }
-    PreparedAssessment::from_scope(candidates, collector.into_report())?.install_outcomes()
+    finish_assessment(candidates, collector)
 }
 
 /// Definition groups use constructed peer contracts provisionally. Ordinary instances

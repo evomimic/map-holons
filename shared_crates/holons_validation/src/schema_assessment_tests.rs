@@ -784,6 +784,67 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
 }
 
 #[test]
+fn report_only_commit_assessment_preserves_outcomes_and_matches_validation(
+) -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?;
+    let mut subject = fixture.staged_subject("report-only-instance")?;
+    let candidates = std::slice::from_ref(&subject);
+    let initial = assess_commit_candidates(&fixture.context, candidates)?;
+    assert!(!initial.report.is_accepted());
+    assert_eq!(subject.validation_state()?, ValidationState::ValidationRequired);
+    assert!(subject.validation_findings()?.is_empty());
+    let rejected = validate_commit_candidates(&fixture.context, candidates)?;
+    assert_eq!(initial.report, rejected);
+
+    subject.with_property_value("Title", "ready")?;
+    // Content mutation requires revalidation. Establish a prior outcome to prove assessment
+    // preserves both the state and findings even when the newly assessed report differs.
+    subject.replace_validation_outcome(ValidationState::Invalid, rejected.violations.clone())?;
+    let title = subject.property_value("Title")?;
+    let candidates = std::slice::from_ref(&subject);
+    let accepted = assess_commit_candidates(&fixture.context, candidates)?;
+    assert!(accepted.report.is_accepted());
+    assert!(accepted
+        .observations
+        .discovered_rule_keys
+        .contains(CoreValidationRuleName::NoUndescribedProperties.as_str()));
+    assert!(accepted
+        .observations
+        .dispatched_rule_keys
+        .contains(CoreValidationRuleName::NoUndescribedProperties.as_str()));
+    assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+    assert_eq!(subject.validation_findings()?, rejected.violations);
+    assert_eq!(subject.property_value("Title")?, title);
+    assert_eq!(accepted.report, validate_commit_candidates(&fixture.context, candidates)?);
+    assert_eq!(subject.validation_state()?, ValidationState::Validated);
+    assert!(subject.validation_findings()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn report_only_contested_anchors_preserve_outcomes_and_commit_report() -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let candidates = [
+        fixture.staged_subject("independent-report-only")?,
+        fixture.replacement("MetaTypeDescriptor.HolonType")?,
+        fixture.replacement("MetaTypeDescriptor.HolonType")?,
+    ];
+    let before = candidates
+        .iter()
+        .map(|candidate| Ok((candidate.validation_state()?, candidate.validation_findings()?)))
+        .collect::<Result<Vec<_>, HolonError>>()?;
+    let assessment = assess_commit_candidates(&fixture.context, &candidates)?;
+    assert!(!assessment.report.is_accepted());
+    assert!(!assessment.report.unattached_findings()?.is_empty());
+    for (candidate, (state, findings)) in candidates.iter().zip(before) {
+        assert_eq!(candidate.validation_state()?, state);
+        assert_eq!(candidate.validation_findings()?, findings);
+    }
+    assert_eq!(assessment.report, validate_commit_candidates(&fixture.context, &candidates)?);
+    Ok(())
+}
+
+#[test]
 fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let subject = fixture.staged_subject("previously-rejected")?;
@@ -799,6 +860,9 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
         CoreRelationshipTypeName::InstanceProperties,
         vec![foreign.nodes["Title.PropertyType"].clone()],
     )?;
+    assert!(assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject)).is_err());
+    assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+    assert_eq!(subject.validation_findings()?, old.violations);
     assert!(crate::readiness::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)

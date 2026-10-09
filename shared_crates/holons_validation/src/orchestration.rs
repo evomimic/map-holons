@@ -70,6 +70,11 @@ impl<'a> PreparedAssessment<'a> {
         self.candidate_findings.push((candidate, start..self.report.violation_count()));
     }
 
+    /// Returns the associated report without installing staged outcomes.
+    pub(crate) fn into_report(self) -> CommitValidationReport {
+        self.report
+    }
+
     /// Called only after every assessment succeeds; errors before this leave outcomes untouched.
     pub(crate) fn install_outcomes(self) -> Result<CommitValidationReport, HolonError> {
         let Self { report, candidate_findings } = self;
