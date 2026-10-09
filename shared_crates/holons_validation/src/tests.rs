@@ -349,6 +349,47 @@ fn all_five_native_handlers_accept_and_reject_without_configured_evaluation(
 }
 
 #[test]
+fn bytes_binding_is_discovered_dispatched_and_rejects_a_mismatched_value_kind(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    select_title_value_type(&mut fixture, "BytesValueType.ValueType")?;
+    let mut subject = fixture.staged_subject("bytes-probe")?;
+    subject.with_property_value("Title", BaseValue::BytesValue(MapBytes(vec![0, 1, 127, 255])))?;
+    let candidates = std::slice::from_ref(&subject);
+    let accepted = assess_commit_candidates(&fixture.context, candidates)?;
+    let rule = CoreValidationRuleName::BaseValueKindMatchesBytes.as_str();
+    assert!(accepted.observations.discovered_rule_keys.contains(rule));
+    assert!(accepted.observations.dispatched_rule_keys.contains(rule));
+    assert_eq!(accepted.observations.effective_constraint_count, 0);
+    assert!(accepted.report.is_accepted(), "{:?}", accepted.report);
+
+    subject.with_property_value("Title", 42_i64)?;
+    let candidates = std::slice::from_ref(&subject);
+    let rejected = assess_commit_candidates(&fixture.context, candidates)?;
+    assert!(rejected.observations.discovered_rule_keys.contains(rule));
+    assert!(rejected.observations.dispatched_rule_keys.contains(rule));
+    assert_eq!(rejected.report.violation_count(), 1);
+    let finding = &rejected.report.violations[0];
+    assert!(matches!(&finding.kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "BaseValueKindMismatch"));
+    assert_eq!(finding.rule_key.as_deref(), Some(rule));
+    assert_eq!(
+        finding.subject,
+        ValidationSubjectPath::Value {
+            holon_identity: subject.reference_id_string(),
+            property: "Title".into(),
+        }
+    );
+    assert_eq!(
+        finding.descriptor_identity,
+        Some(fixture.nodes["BytesValueType.ValueType"].reference_id_string())
+    );
+    assert_eq!(validate_commit_candidates(&fixture.context, candidates)?, rejected.report);
+    assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+    Ok(())
+}
+
+#[test]
 fn full_contract_traversal_assesses_absent_required_properties() -> Result<(), HolonError> {
     let fixture = readiness_fixture()?;
     let mut subject = fixture.staged_subject("subject")?;

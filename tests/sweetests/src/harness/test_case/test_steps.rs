@@ -420,9 +420,6 @@ pub enum DanceTestStep {
     VerifyValidationBindingsDescriptorContract {
         description: String,
     },
-    VerifySchemaValidationConformance {
-        description: String,
-    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -667,9 +664,6 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyValidationBindingsDescriptorContract { description } => {
-                write!(f, "{description}")
-            }
-            DanceTestStep::VerifySchemaValidationConformance { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {
