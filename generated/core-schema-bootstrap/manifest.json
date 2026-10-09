@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "1ac27c598e92dbb2cda0049602c98316cf21c009fdcbbc39f99d266d16a2cc28"
+      "sha256": "acb1f710fb0adc1f9d42941f7f1700ec9542045ec7f8fba496acccd313b1d520"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -135,6 +135,14 @@
     }
   ],
   "required_holons": [
+    {
+      "key": "(ActionGroupOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ActionSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
     {
       "key": "(Canvas.HolonType)-[ContainsVisualizer]->(Visualizer.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
@@ -648,6 +656,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(PropertySalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -764,6 +776,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(RelationshipSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -848,6 +864,14 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(TypeDescriptor)-[HasSlotPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[HasVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -920,7 +944,11 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "key": "(VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[HasVisualizerPreference]->(VisualizerSlotPreference.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -928,7 +956,43 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)",
+      "key": "(VisualizerSlotPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ActionGroupOverrides]->(ActionGroupOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ActionSalienceOverrides]->(ActionSalienceOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[PreferredBySlot]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[RelationshipSalienceOverrides]->(RelationshipSalienceOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -952,6 +1016,10 @@
       "type": "DesignToken.HolonType"
     },
     {
+      "key": "ActionGroupOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "ActionHoverSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType"
     },
@@ -962,6 +1030,10 @@
     {
       "key": "ActionPaddingInline.DesignToken",
       "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ActionSalienceOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "ActionSurfaceBackground.DesignToken",
@@ -2980,6 +3052,10 @@
       "type": "DesignToken.HolonType"
     },
     {
+      "key": "PropertySalienceOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "PropertyType.TypeDescriptor",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -3141,6 +3217,10 @@
     },
     {
       "key": "RelationshipRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "RelationshipSalienceOverride.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
@@ -3706,6 +3786,10 @@
     {
       "key": "VisualizerSlotDescription.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "VisualizerSlotPreference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "VisualizerUsage.HolonType",

@@ -23,6 +23,8 @@ export type {
   VisualizerKind,
   VisualizerSelection,
   VisualizerSelectionRequest,
+  VisualizerUsageSelection,
+  VisualizerChoiceOrigin,
   VisualizerOwner, VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery,
 } from './transaction';
 export {

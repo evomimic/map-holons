@@ -15,3 +15,8 @@ mod tests;
 
 #[cfg(test)]
 mod collection_tests;
+
+mod usage_transactions;
+
+#[cfg(test)]
+mod usage_tests;
