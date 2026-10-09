@@ -12,6 +12,12 @@ export default class LoadHolonsInspector extends HTMLElement {
     });
   }
   static compositionSlots = { propertyMap: 'LoadHolonsResult.PropertyMapSlot', action: 'LoadHolonsResult.ActionsSlot' };
+  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation }; }
+  restoreNodeCollectionSelection(affordance) {
+    const tab = this.collectionControls.get(affordance);
+    if (!tab) throw new Error('Selected collection is unavailable.');
+    const disabled = tab.disabled; tab.disabled = false; tab.click(); tab.disabled = disabled;
+  }
   setContext(context) {
     this.unsubscribe?.();
     this.style.cssText = 'display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-panel-corner-radius);background:var(--dahn-canvas-surface-background);color:var(--dahn-canvas-text-color);';
@@ -131,6 +137,7 @@ export default class LoadHolonsInspector extends HTMLElement {
         button.title = state.state === 'failed' ? state.message : affordance.description || affordance.label;
       }
     });
+    this.ready = Promise.resolve();
   }
   setVisualizerInformationHandler(handler, displayName) {
     this.visualizerInformation = handler;

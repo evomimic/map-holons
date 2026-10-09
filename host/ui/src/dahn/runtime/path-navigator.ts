@@ -1,4 +1,4 @@
-import { registerVisualizerInspection, revokeVisualizerInformationControls } from './visualizer-information-control';
+import { registerVisualizerInspection, revokeVisualizerInformationControls, selectedVisualizerInspection } from './visualizer-information-control';
 import { placeTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
 import { destinationPaint } from './destination-paint';
 import { NavigationProfile } from './navigation-profile';
@@ -7,6 +7,7 @@ import type { PathDestination, PathFocus, PathNavigation, PathOccurrence, Vertic
 import type { CollectionAffordance, RelationshipAffordance } from '../contracts/affordances';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { RealizedNode } from './realize-node';
+import { reportSuccessfulVisualizerUse } from './successful-visualizer-use';
 import { semanticWork } from './semantic-work';
 
 interface Occurrence extends PathOccurrence {
@@ -21,6 +22,8 @@ interface Occurrence extends PathOccurrence {
   row: number;
   column: number;
   generation: number;
+  choiceGeneration?: number;
+  choiceAbort?: AbortController;
   traversed: boolean;
   order: number;
   traversalGroups: Map<object, TraversalPresentation>;
@@ -53,10 +56,11 @@ export class PathNavigator implements PathNavigation {
     selectedVisualizer: HolonReference,
     private readonly nodeSlot: HolonReference,
     private readonly selectionTheme: () => HolonReference,
-    private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void) => Promise<RealizedNode>,
+    private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void, usage?: HolonReference) => Promise<RealizedNode>,
     private readonly openExploration?: (anchor: HolonReference) => void,
     private readonly contextFor: (subject: HolonReference) => MapTransaction = () => transaction,
     private readonly inspectVisualizer?: (target: VisualizerInspectionTarget) => void,
+    private readonly replacementPublished?: (node: RealizedNode, root: boolean) => void,
   ) {
     this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
     this.focus = { occurrenceId: this.root.id, mode: 'restore' };
@@ -64,6 +68,7 @@ export class PathNavigator implements PathNavigation {
       this.cancelCheck();
       this.cancelAttempt(false);
       for (const occurrence of this.path()) {
+        occurrence.choiceAbort?.abort();
         ++occurrence.generation;
         occurrence.pending = false;
         occurrence.message = undefined;
@@ -264,13 +269,27 @@ export class PathNavigator implements PathNavigation {
       selectedVisualizer, provenance, element: node.element, node, pending: false,
       generation: 0, traversed: false, alternatives: [], horizontalAlternatives: [], singular: { state: 'unresolved' }, collections: new Map(),
     };
+    this.bindOccurrence(occurrence);
+    return occurrence;
+  }
+
+  private bindOccurrence(occurrence: Occurrence): void {
+    const { node, subject, selectedVisualizer } = occurrence;
+    node.relationshipDiscovery?.startAfterDisplay(node.element);
     const control = node.element as VisualizerElement;
     if (this.inspectVisualizer && control.setVisualizerInformationHandler) {
       let displayName = 'Visualizer';
       const target = (invoker: HTMLElement): VisualizerInspectionTarget => ({ occurrenceId: occurrence.id, context: this,
         owner: this.parentVisualizer, slot: this.nodeSlot, subject, selectedVisualizer, displayName,
         element: node.element, invoker,
-        isLive: () => !this.disposed && this.path().includes(occurrence) && node.element.isConnected });
+        choices: node.supportsReplacement ? {
+          discover: () => semanticWork(this.contextFor(subject)).run(() => this.contextFor(subject).discoverVisualizers({
+            subject, requestedKind: 'node', owner: { visualizer: this.parentVisualizer },
+            slot: this.nodeSlot, theme: this.selectionTheme(),
+          }, selectedVisualizer)),
+          choose: (candidate, current, signal) => this.replaceVisualizer(occurrence, node, candidate, current, signal),
+        } : undefined,
+        isLive: () => !this.disposed && this.path().includes(occurrence) && occurrence.node === node && node.element.isConnected });
       const invoke = (invoker: HTMLElement) => {
         if (this.disposed || !this.path().includes(occurrence) || !node.element.isConnected) return;
         this.inspectVisualizer!(target(invoker));
@@ -282,7 +301,7 @@ export class PathNavigator implements PathNavigation {
         return name && 'StringValue' in name ? name.StringValue : await selectedVisualizer.key() ?? await selectedVisualizer.versionedKey();
       }).then(name => {
         displayName = name;
-        if (!this.disposed && this.path().includes(occurrence)) control.setVisualizerInformationHandler?.(invoke, name);
+        if (!this.disposed && this.path().includes(occurrence) && occurrence.node === node) control.setVisualizerInformationHandler?.(invoke, name);
       }).catch(() => { /* The information action remains available if its label cannot be read. */ });
     }
     node.collectionActivation.setBeforeChange(() => {
@@ -301,7 +320,122 @@ export class PathNavigator implements PathNavigation {
       this.publish();
       return true;
     });
-    return occurrence;
+  }
+
+  /** Preparation never mutates the live occurrence; publication retains its owner identity. */
+  private async replaceVisualizer(occurrence: Occurrence, prior: RealizedNode, candidate: HolonReference, sessionCurrent: () => boolean, signal?: AbortSignal): Promise<VisualizerInspectionTarget> {
+    occurrence.choiceAbort?.abort();
+    const cancellation = occurrence.choiceAbort = new AbortController();
+    const abort = () => cancellation.abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+    const choice = occurrence.choiceGeneration = (occurrence.choiceGeneration ?? 0) + 1;
+    const generation = occurrence.generation;
+    const transaction = this.contextFor(occurrence.subject);
+    const work = semanticWork(transaction), revision = work.revision;
+    const invalidateChoice = work.onInvalidate(abort);
+    const current = () => !cancellation.signal.aborted && sessionCurrent() && !this.disposed && !work.paused && revision === work.revision
+      && this.path().includes(occurrence) && occurrence.node === prior && prior.element.isConnected
+      && choice === occurrence.choiceGeneration && generation === occurrence.generation;
+    const requireCurrent = () => { if (!current()) throw new Error('This Visualizer choice was cancelled or superseded.'); };
+    const request = { subject: occurrence.subject, requestedKind: 'node' as const,
+      owner: { visualizer: this.parentVisualizer }, slot: this.nodeSlot, theme: this.selectionTheme() };
+    let prepared: RealizedNode | undefined;
+    let published = false;
+    try {
+      requireCurrent();
+      if (!this.dismissible(occurrence)) throw new Error('Finish the active interaction before changing this Visualizer.');
+      if (this.check?.owner === occurrence || this.attempt?.owner === occurrence) throw new Error('Finish navigation before changing this Visualizer.');
+      const selection = await work.realize(async () => {
+        requireCurrent();
+        const selected = await transaction.chooseVisualizer(request, candidate);
+        requireCurrent();
+        const usage = await transaction.selectVisualizerUsage(request, selected.selected);
+        requireCurrent();
+        prepared = await this.realize(occurrence.subject, selected.selected, undefined, usage.usage);
+        if (!prepared.ready) throw new Error('Selected Node has no explicit initialization promise.');
+        await untilCancelled(prepared.ready, cancellation.signal);
+        requireCurrent();
+        if (prepared.element.querySelector('[data-dahn-region-state="unavailable"]')) throw new Error('A required Node region could not be initialized.');
+        return { selected: selected.selected, usage };
+      });
+      requireCurrent();
+      const state = await prior.collectionActivation.captureViewState?.();
+      if (state) {
+        const active = await prepared!.collectionActivation.restoreViewState?.(state);
+        requireCurrent();
+        if (active) {
+          const element = prepared!.element as VisualizerElement;
+          if (!element.restoreNodeCollectionSelection) throw new Error('Selected Node cannot restore the active collection.');
+          element.restoreNodeCollectionSelection(active);
+          await untilCancelled(prepared!.collectionActivation.settled?.() ?? Promise.resolve(), cancellation.signal);
+        }
+      }
+      requireCurrent();
+      if (!this.dismissible(occurrence)) throw new Error('Finish the active interaction before changing this Visualizer.');
+      const oldControl = prior.element as VisualizerElement, newControl = prepared!.element as VisualizerElement;
+      const allocation = oldControl.getNodeInspectorAllocation?.();
+      if (!allocation || !newControl.setNodeInspectorAllocation || !newControl.getNodeInspectorExtents || !newControl.setVisualizerInformationHandler) throw new Error('Node allocation participation is unavailable.');
+      const extents = newControl.getNodeInspectorExtents();
+      if (![...Object.values(extents.vertical), ...Object.values(extents.horizontal)].every(value => Number.isFinite(value) && value >= 0)) throw new Error('Selected Node supplied invalid extents.');
+      newControl.setNodeInspectorAllocation(allocation);
+      // Rebind descriptor-classified rail targets rather than carrying old affordance objects.
+      const rebind = async (old: RelationshipAffordance | undefined) => {
+        if (!old) return undefined;
+        const name = await old.relationship.descriptor.relationshipName();
+        for (const item of prepared!.singularRelationships) if (item.relationship.direction === old.relationship.direction
+          && await item.relationship.descriptor.relationshipName() === name) return item;
+        throw new Error('Selected Node cannot preserve the active relationship.');
+      };
+      const singular = { ...occurrence.singular, active: await rebind(occurrence.singular.active), attempted: await rebind(occurrence.singular.attempted) };
+      const affordances = new Map<CollectionAffordance | RelationshipAffordance, CollectionAffordance | RelationshipAffordance>();
+      const collections = new Map<CollectionAffordance, string>();
+      for (const [old, identity] of occurrence.collections) {
+        if (old.kind !== 'relationship') throw new Error('Collection selection cannot be transferred.');
+        const name = await old.relationship.descriptor.relationshipName();
+        let replacement: CollectionAffordance | undefined;
+        for (const item of prepared!.collectionAffordances ?? []) if (item.kind === 'relationship'
+          && item.relationship.direction === old.relationship.direction && await item.relationship.descriptor.relationshipName() === name) replacement = item;
+        if (!replacement) throw new Error('Selected Node cannot preserve a retained collection target.');
+        affordances.set(old, replacement); collections.set(replacement, identity);
+      }
+      for (const child of this.continuations(occurrence)) if (child.provenance?.kind === 'singular-relationship') {
+        affordances.set(child.provenance.affordance, (await rebind(child.provenance.affordance))!);
+      }
+      const provenance = this.continuations(occurrence).map(child => ({ child, prior: child.provenance,
+        next: child.provenance && { ...child.provenance, affordance: affordances.get(child.provenance.affordance) ?? child.provenance.affordance } as TraversalProvenance }));
+      const groups = new Map([...occurrence.traversalGroups].map(([item, group]) => [affordances.get(item as RelationshipAffordance) ?? item, group]));
+      requireCurrent();
+      if (!this.dismissible(occurrence)) throw new Error('Finish the active interaction before changing this Visualizer.');
+      if (this.check?.owner === occurrence || this.attempt?.owner === occurrence) throw new Error('Finish navigation before changing this Visualizer.');
+      newControl.setNodeInspectorAllocation(oldControl.getNodeInspectorAllocation!()!);
+      // Edits to the live table during asynchronous preparation win over the earlier snapshot.
+      prepared!.collectionActivation.restoreCurrentViewState?.(prior.collectionActivation.captureCurrentViewState?.());
+      const previous = { node: prior, element: occurrence.element, selectedVisualizer: occurrence.selectedVisualizer,
+        visualizerUsage: occurrence.visualizerUsage, singular: occurrence.singular, collections: occurrence.collections, traversalGroups: occurrence.traversalGroups };
+      Object.assign(occurrence, { node: prepared, element: prepared!.element, selectedVisualizer: selection.selected,
+        visualizerUsage: selection.usage.usage, singular, collections, traversalGroups: groups });
+      for (const item of provenance) item.child.provenance = item.next;
+      try {
+        this.bindOccurrence(occurrence);
+        newControl.setSingularNavigationState?.(singular);
+        this.publish();
+      }
+      catch (error) { Object.assign(occurrence, previous); for (const item of provenance) item.child.provenance = item.prior; this.bindOccurrence(occurrence); this.publish(); throw error; }
+      published = true;
+      ++occurrence.generation;
+      this.replacementPublished?.(prepared!, occurrence === this.root);
+      try { this.disposeNode(prior); } catch (error) { console.error('[DAHN] Retired Node cleanup failed', error); }
+      reportSuccessfulVisualizerUse(transaction, request, selection.selected, selection.usage, occurrence.id);
+      const target = selectedVisualizerInspection(prepared!.element);
+      if (!target) throw new Error('Replacement has no Visualizer information binding.');
+      return target;
+    } finally {
+      invalidateChoice();
+      signal?.removeEventListener('abort', abort);
+      if (occurrence.choiceAbort === cancellation) occurrence.choiceAbort = undefined;
+      if (prepared && !published) { this.disposeNode(prepared); prepared.element.remove(); }
+    }
   }
 
   private projection(): PathOccurrence[] {
@@ -593,12 +727,17 @@ export class PathNavigator implements PathNavigation {
 
   canDismiss(): boolean { return this.path().every(item => this.dismissible(item)); }
 
+  private disposeNode(node: RealizedNode): void {
+    (node.element as VisualizerElement).setVisualizerInformationHandler?.(undefined, 'Visualizer');
+    revokeVisualizerInformationControls(node.element);
+    if (node.dispose) node.dispose();
+    else { node.collectionActivation.dispose(); for (const action of node.actionActivations ?? []) void action.dispose().catch(console.error); }
+  }
+
   private release(occurrence: Occurrence): void {
-    (occurrence.element as VisualizerElement).setVisualizerInformationHandler?.(undefined, 'Visualizer');
-    revokeVisualizerInformationControls(occurrence.element);
-    for (const action of occurrence.node.actionActivations ?? []) void action.dispose().catch(console.error);
+    occurrence.choiceAbort?.abort();
     ++occurrence.generation;
-    occurrence.node.collectionActivation.dispose();
+    this.disposeNode(occurrence.node);
     for (const child of this.continuations(occurrence)) this.release(child);
   }
 
@@ -611,4 +750,14 @@ export class PathNavigator implements PathNavigation {
     if (this.root) this.release(this.root);
     this.listeners.clear();
   }
+}
+
+/** Cancellation releases preparation even if an implementation never resolves readiness. */
+function untilCancelled<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const cancel = () => reject(new Error('This Visualizer choice was cancelled or superseded.'));
+    void promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', cancel));
+    if (signal.aborted) { cancel(); return; }
+    signal.addEventListener('abort', cancel, { once: true });
+  });
 }

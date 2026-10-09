@@ -1,4 +1,7 @@
 export type {
+  VisualizerDiscovery,
+  VisualizerSelectionRequest,
+  VisualizerUsageSelection,
   BaseValue,
   AvailableRelationshipHandle,
   DescribedHolonCollection,

@@ -420,10 +420,7 @@ export default class PathInspectorElement extends HTMLElement {
   }
   renderPath(occurrences, focus, destination) {
     const previousBounds = this.layoutBounds;
-    for (const item of occurrences) {
-      const prior = this.occurrences.find(previous => previous.id === item.id);
-      if (prior && prior.element !== item.element) this.bandMetrics.delete(item.id);
-    }
+    // Same-occurrence replacements retain their parent-owned band allocation basis.
     const viewportStart = this.view && { x: this.viewport.scrollLeft - this.view.paddingX, y: this.viewport.scrollTop - this.view.paddingY };
     if (this.traversalTransition && (focus?.occurrenceId !== this.traversalTransition.targetId || focus?.mode === 'restore')) this.stopTraversalTransition();
     const recoverFocus = [...this.regions.values()].some(region => region.contains(document.activeElement));

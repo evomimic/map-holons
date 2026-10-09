@@ -124,7 +124,7 @@ pub async fn handle_transaction(
                 selected,
             )?))
         }
-        TransactionAction::RecordVisualizerUse { request, selected, usage, origin } => {
+        TransactionAction::RecordVisualizerUse { request, selected, usage, origin, report } => {
             session.usage_transactions.record(
                 session.space_manager(),
                 context,
@@ -132,6 +132,7 @@ pub async fn handle_transaction(
                 selected,
                 usage,
                 origin,
+                report,
             )?;
             Ok(MapResult::None)
         }

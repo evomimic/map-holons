@@ -121,7 +121,7 @@ export class SpaceNavigatorExperience {
       const navigation = new PathNavigator(review, reviewParent,
         rootNode,
         subject, review.bindSavedReference(selected), reviewSlot, () => theme.reference,
-        (member, visualizer, stage) => realizeNode(contextFor(member), reviewRuntime, member, visualizer, theme, canvas, stage, undefined, review),
+        (member, visualizer, stage, usage) => realizeNode(contextFor(member), reviewRuntime, member, visualizer, theme, canvas, stage, undefined, review, usage),
         undefined, contextFor, target => this.information.inspect(target));
       try {
         const pathImplementation = await materialized.realize(parent);
@@ -188,9 +188,10 @@ export class SpaceNavigatorExperience {
         const title = (await anchor.key()) ?? await anchor.versionedKey();
         signal.throwIfAborted();
         navigation = new PathNavigator(transaction, selectedPath, root, anchor, selectedNode, nodeSlot, () => theme.reference,
-          (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, actionInteractions),
+          (subject, selected, onStage, usage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage, actionInteractions, transaction, usage),
           subject => { if (!work.paused) void this.element.open(subject); },
-          undefined, target => this.information.inspect(target));
+          undefined, target => this.information.inspect(target),
+          (node, isRoot) => { if (initial && isRoot) this.rootActions = node.actionActivations ?? []; });
         element = document.createElement(tag) as VisualizerElement;
         element.setContext({
           title, experience: { dancer, holonSpace: this.binding.holonSpace }, target: { reference: anchor }, holon: new DahnHolonView(anchor), actions: [], theme, canvas,

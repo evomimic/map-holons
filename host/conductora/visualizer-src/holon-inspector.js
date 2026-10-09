@@ -25,7 +25,7 @@ export default class HolonInspectorElement extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot' };
+  static compositionSlots = { propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', collection: 'HolonInspector.CollectionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute('aria-pressed', String(state.active === affordance));
@@ -179,7 +179,9 @@ export default class HolonInspectorElement extends HTMLElement {
       horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 96 },
     };
   }
+  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation }; }
   setNodeInspectorAllocation(allocation) {
+    this.allocation = { ...allocation };
     this.verticalState = allocation.vertical;
     this.horizontalState = allocation.horizontal;
     this.setSpatialBudget(allocation);
@@ -228,6 +230,7 @@ export default class HolonInspectorElement extends HTMLElement {
     if (this.isConnected) this.scheduleLayout();
   }
   connectedCallback() {
+    if (this.discovery && !this.unsubscribeDiscovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (!this.layouts) return;
     this.observer?.disconnect();
     this.observer = new ResizeObserver(() => this.scheduleLayout());
@@ -237,7 +240,7 @@ export default class HolonInspectorElement extends HTMLElement {
   disconnectedCallback() {
     this.unsubscribeDiscovery?.();
     this.unsubscribeDiscovery = undefined;
-    this.collectionActivation?.dispose();
+    if (!this.retainRealizationOnDisconnect) this.collectionActivation?.dispose();
     this.observer?.disconnect();
     if (this.frame != null) cancelAnimationFrame(this.frame);
     this.frame = null;
@@ -308,7 +311,7 @@ export default class HolonInspectorElement extends HTMLElement {
       button.setAttribute('aria-controls', this.collectionPanelId);
       const activate = () => {
         if (!this.canNavigateRelationship(item)) return;
-        this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => {
+        this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, update => {
           if (update.placement !== 'source' && update.state !== 'unresolved') {
             this.activeCollection = item;
             this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
@@ -318,6 +321,15 @@ export default class HolonInspectorElement extends HTMLElement {
         });
       };
       button.addEventListener('click', activate);
+      this.collectionSelections.set(item, () => {
+        // Contracted state restoration does not wait for fresh population discovery.
+        this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, update => {
+          this.activeCollection = item;
+          this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
+          this.collectionViewer.setAttribute('aria-labelledby', button.id);
+          this.updateCollection(update);
+        });
+      });
       button.addEventListener('keydown', event => {
         const visible = this.collectionControls.filter(control => !control.inert);
         const index = visible.indexOf(button);
@@ -430,11 +442,19 @@ export default class HolonInspectorElement extends HTMLElement {
     this.scheduleLayout();
   }
 
+  restoreNodeCollectionSelection(affordance) {
+    const select = this.collectionSelections.get(affordance);
+    if (!select) throw new Error('Collection selection is not supported by this Node.');
+    select();
+  }
+
   setContext(context) {
     this.disconnectedCallback();
     this.maximizedRegion = undefined;
     this.collectionActivation = context.collectionActivation;
+    this.retainRealizationOnDisconnect = context.retainRealizationOnDisconnect;
     this.collectionControls = [];
+    this.collectionSelections = new Map();
     this.relationshipControls = new Map();
     this.discovery = context.relationshipDiscovery;
     this.showEmpty = false;
@@ -602,6 +622,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.adaptBudget();
     if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();
+    this.ready = Promise.resolve();
   }
 }
 

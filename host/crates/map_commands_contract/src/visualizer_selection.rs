@@ -50,6 +50,8 @@ pub struct VisualizerDiscovery {
 pub struct VisualizerUsageSelection {
     pub usage: HolonReference,
     pub initialized: bool,
+    /// Host-session scope for publication ordering, independent of transaction identity.
+    pub report_session: String,
 }
 
 /// Why a presentation was selected. Exploration never rewrites explicit preference.
@@ -58,4 +60,13 @@ pub enum VisualizerChoiceOrigin {
     Automatic,
     Explicit,
     Exploratory,
+}
+
+/// Correlation of one published choice. Sequence is shared by the local presentation client,
+/// across occurrences and transactions, and is allocated only at publication.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VisualizerUseReport {
+    pub session: String,
+    pub occurrence_id: String,
+    pub sequence: u64,
 }

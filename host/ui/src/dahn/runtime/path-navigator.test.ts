@@ -16,10 +16,10 @@ vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) 
 
 const importer = (source: string) => import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const artifacts = Object.fromEntries(await Promise.all(
-  ['holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
+  ['holon-inspector', 'connections-first-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
-const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
+const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'ConnectionsFirstInspector.PropertyMapSlot', 'ConnectionsFirstInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
 const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
 const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
@@ -56,6 +56,10 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
   }
   const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'propertyMap' | 'actionBar' }) => ({ selected: visualizers[request.requestedKind] }));
   const transaction = {
+    chooseVisualizer: vi.fn(async (_request, candidate) => ({ selected: candidate })),
+    discoverVisualizers: vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] })),
+    selectVisualizerUsage: vi.fn(async () => ({ usage: selected('usage'), initialized: false, reportSession: 'test-session' })),
+    recordVisualizerUse: vi.fn(async () => {}),
     selectVisualizer,
     selectPropertyVisualizer: vi.fn(async () => ({ selected: visualizers.property })),
     selectValueVisualizer: vi.fn(async () => ({ selected: visualizers.value })),
@@ -66,8 +70,8 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
   const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   const theme = { reference: selected("Theme") };
-  const realize = vi.fn(async (ref: HolonReference, selected: HolonReference) => {
-    const node = await realizeNode(transaction, runtime, ref, selected, theme as never, {} as never);
+  const realize = vi.fn(async (ref: HolonReference, selected: HolonReference, _stage?: unknown, usage?: HolonReference) => {
+    const node = await realizeNode(transaction, runtime, ref, selected, theme as never, {} as never, undefined, undefined, transaction, usage);
     // These topology fixtures start after discovery; deferred population is covered separately.
     for (const affordance of node.singularRelationships) node.relationshipDiscovery?.record(affordance, 1);
     const element = node.element as typeof node.element & { relationshipControls: Map<any, unknown> };
@@ -1349,4 +1353,137 @@ it('uses the active semantic Theme after an explicit Theme change', async () => 
   await vi.waitFor(() => expect(f.path()).toHaveLength(2));
   expect(nodeSelections(f)[0][0].theme).toBe(next);
   expect(vi.mocked(f.transaction.selectPropertyVisualizer).mock.calls.at(-1)?.[3]).toBe(next);
+});
+
+
+describe('explicit occurrence Visualizer choice', () => {
+  const alternate = selected('connections-first-inspector');
+  const targetOf = (f: Awaited<ReturnType<typeof fixture>>, index = 0) => selectedVisualizerInspection(f.path()[index].element)!;
+
+  it('replaces just the captured repeated subject and retains identity, topology, allocation, collection state and usage', async () => {
+    const f = await fixture(undefined, () => {});
+    await openCollection(f.root.element);
+    const table = f.root.element.querySelector('table')!;
+    table.querySelector<HTMLButtonElement>('th button')!.click();
+    const beforeState = await f.root.collectionActivation.captureViewState!();
+    await right(f, f.path()[0], 2); // Same subject through a different occurrence.
+    const other = f.path()[1], otherElement = other.element;
+    const target = targetOf(f); const originalElement = f.path()[0].element;
+    const id = f.path()[0].id, rowId = f.path()[0].rowId, columnId = f.path()[0].columnId;
+    const allocation = (originalElement as VisualizerElement).getNodeInspectorAllocation!();
+    const replacement = await target.choices!.choose(alternate, () => true);
+    expect(replacement.occurrenceId).toBe(id);
+    expect(target.isLive()).toBe(false);
+    expect(f.path()[0]).toMatchObject({ id, rowId, columnId, selectedVisualizer: alternate });
+    expect(f.path()[0].subject).toBe(f.rootSubject);
+    expect(f.path()[0].visualizerUsage).toBeDefined();
+    expect(other.element).toBe(otherElement);
+    expect(other.subject).toBe(f.rootSubject);
+    expect((f.path()[0].element as VisualizerElement).getNodeInspectorAllocation!()).toEqual(allocation);
+    expect(f.path()[0].element.dataset.visualizerId).toBe('connections-first-inspector');
+    expect(f.path()[0].element.querySelector('[role=tab][aria-selected=true]')).not.toBeNull();
+    const snapshot = await (f.path()[0] as any).node.collectionActivation.captureViewState();
+    expect(snapshot).toEqual(beforeState);
+    expect(f.transaction.recordVisualizerUse).toHaveBeenCalledTimes(1);
+    expect(f.transaction.recordVisualizerUse).toHaveBeenCalledWith(expect.objectContaining({ subject: f.rootSubject }), alternate,
+      f.path()[0].visualizerUsage, 'explicit', expect.objectContaining({ occurrenceId: id, sequence: expect.any(Number) }));
+    const selections = vi.mocked(f.transaction.selectVisualizerUsage).mock.calls.length;
+    f.navigation.restore(id);
+    expect(f.transaction.selectVisualizerUsage).toHaveBeenCalledTimes(selections);
+    f.navigation.dispose();
+  });
+
+  it.each(['authorization', 'usage', 'materialization', 'initialization', 'allocation'])('keeps the old presentation usable after %s failure and records no use', async stage => {
+    const f = await fixture(undefined, () => {}); const old = f.path()[0].element;
+    if (stage === 'authorization') vi.mocked(f.transaction.chooseVisualizer).mockRejectedValueOnce(new Error(stage));
+    if (stage === 'usage') vi.mocked(f.transaction.selectVisualizerUsage).mockRejectedValueOnce(new Error(stage));
+    if (stage === 'materialization') f.realize.mockRejectedValueOnce(new Error(stage));
+    if (stage === 'initialization' || stage === 'allocation') {
+      const realize = f.realize.getMockImplementation()!;
+      f.realize.mockImplementationOnce(async (...args) => {
+        const node = await realize(...args);
+        if (stage === 'initialization') node.ready = Promise.reject(new Error(stage));
+        else (node.element as VisualizerElement).setNodeInspectorAllocation = () => { throw new Error(stage); };
+        return node;
+      });
+    }
+    await expect(targetOf(f).choices!.choose(alternate, () => true)).rejects.toThrow(stage);
+    expect(f.path()[0].element).toBe(old); expect(old.isConnected).toBe(true);
+    expect(f.transaction.recordVisualizerUse).not.toHaveBeenCalled(); f.navigation.dispose();
+  });
+
+  it.each(['cancel', 'close', 'compete'])('disposes late initialization after %s without publishing or reporting it', async kind => {
+    const f = await fixture(undefined, () => {}); const old = f.path()[0].element;
+    const gate = deferred<void>(); const original = f.realize.getMockImplementation()!;
+    let candidate: Awaited<ReturnType<typeof original>> | undefined;
+    f.realize.mockImplementationOnce(async (...args) => { candidate = await original(...args); candidate.ready = gate.promise; return candidate; });
+    let current = true;
+    const target = targetOf(f);
+    const pending = target.choices!.choose(alternate, () => current);
+    const rejection = expect(pending).rejects.toThrow(/cancelled|superseded/);
+    await vi.waitFor(() => expect(candidate).toBeDefined());
+    let later: Promise<unknown> | undefined;
+    if (kind === 'cancel') current = false;
+    if (kind === 'close') f.navigation.close(target.occurrenceId);
+    if (kind === 'compete') later = target.choices!.choose(visualizers.node, () => true);
+    gate.resolve(); await rejection; await later;
+    expect(candidate!.element.isConnected).toBe(false);
+    if (kind === 'cancel') expect(f.path()[0].element).toBe(old);
+    expect(f.transaction.recordVisualizerUse).toHaveBeenCalledTimes(kind === 'compete' ? 1 : 0);
+    f.navigation.dispose();
+  });
+
+  it('rechecks action dismissal after initialization while leaving external staged state intact', async () => {
+    const f = await fixture(undefined, () => {});
+    const gate = deferred<void>(); const realize = f.realize.getMockImplementation()!;
+    let prepared = false; let dismissible = true;
+    f.root.actionActivations = [{ canDismiss: () => dismissible, dispose: vi.fn(async () => {}) }] as never;
+    f.realize.mockImplementationOnce(async (...args) => { const node = await realize(...args); node.ready = gate.promise; prepared = true; return node; });
+    const target = targetOf(f); const pending = target.choices!.choose(alternate, () => true);
+    const rejected = expect(pending).rejects.toThrow('active interaction');
+    await vi.waitFor(() => expect(prepared).toBe(true)); dismissible = false; gate.resolve(); await rejected;
+    expect(f.path()[0].element).toBe(f.root.element); expect(f.transaction.recordVisualizerUse).not.toHaveBeenCalled();
+    dismissible = true; f.navigation.dispose();
+  });
+});
+
+it('recovers the working Node after synchronous owner publication failure without recording successful use', async () => {
+  const f = await fixture(undefined, () => {}); const target = selectedVisualizerInspection(f.root.element)!;
+  let fail = true;
+  const unsubscribe = f.navigation.subscribe(path => {
+    if (path[0].selectedVisualizer !== visualizers.node && fail) { fail = false; throw new Error('mount failed'); }
+  });
+  await expect(target.choices!.choose(selected('connections-first-inspector'), () => true)).rejects.toThrow('mount failed');
+  expect(f.path()[0].element).toBe(f.root.element); expect(f.root.element.isConnected).toBe(true);
+  expect(f.transaction.recordVisualizerUse).not.toHaveBeenCalled();
+  await openCollection(f.root.element);
+  unsubscribe(); f.navigation.dispose();
+});
+
+it('cancels an unresolved initialization promise and releases preparation without waiting for the implementation', async () => {
+  const f = await fixture(undefined, () => {}); const original = f.realize.getMockImplementation()!;
+  let prepared: Awaited<ReturnType<typeof original>> | undefined;
+  f.realize.mockImplementationOnce(async (...args) => {
+    prepared = await original(...args); prepared.ready = new Promise(() => {}); return prepared;
+  });
+  const controller = new AbortController();
+  const target = selectedVisualizerInspection(f.root.element)!;
+  const pending = target.choices!.choose(selected('connections-first-inspector'), () => true, controller.signal);
+  const rejected = expect(pending).rejects.toThrow('cancelled');
+  await vi.waitFor(() => expect(prepared).toBeDefined()); controller.abort(); await rejected;
+  expect(prepared!.element.isConnected).toBe(false);
+  expect(f.path()[0].element).toBe(f.root.element); expect(f.transaction.recordVisualizerUse).not.toHaveBeenCalled();
+  f.navigation.dispose();
+});
+
+
+it('materializes a real alternative with a different expanded layout and independently owned child slots', async () => {
+  const f = await fixture(undefined, () => {});
+  const alternate = await f.realize(f.rootSubject as never, selected('connections-first-inspector'));
+  (alternate.element as VisualizerElement).setNodeInspectorAllocation!({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' });
+  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('1');
+  expect((alternate.element as any).propertyViewer.style.gridRow).toBe('2');
+  expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
+  expect((await f.runtime.realize(selected('connections-first-inspector')) as any).compositionSlots.collection).toBe('ConnectionsFirstInspector.CollectionsSlot');
+  alternate.dispose?.(); f.navigation.dispose();
 });

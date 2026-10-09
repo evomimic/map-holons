@@ -116,6 +116,13 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         .unwrap();
     for (kind, subject, parent, slot, expected) in [
         (
+            map_commands_contract::VisualizerKind::Node,
+            space.clone(),
+            "PathInspector.RootedNavigationVisualizer",
+            "PathInspector.RootNodeSlot",
+            "ConnectionsFirstInspector.NodeVisualizer",
+        ),
+        (
             map_commands_contract::VisualizerKind::ActionBar,
             space,
             "HolonInspector.NodeVisualizer",
@@ -175,6 +182,58 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .iter()
             .any(|candidate| candidate.visualizer == selection.selected
                 && !candidate.declared_on.is_empty()));
+        if kind == map_commands_contract::VisualizerKind::Node {
+            for key in ["ConnectionsFirstInspector.NodeVisualizer", "HolonInspector.NodeVisualizer"]
+            {
+                assert!(discovery
+                    .candidates
+                    .iter()
+                    .any(|candidate| candidate.visualizer == saved(key)
+                        && candidate.assessment
+                            == map_commands_contract::VisualizerAssessment::Viable));
+                command(
+                    &runtime,
+                    &context,
+                    TransactionAction::ChooseVisualizer {
+                        request: selection_request(),
+                        candidate: saved(key),
+                    },
+                )
+                .await
+                .unwrap();
+                let mut invocation = context
+                    .mutation()
+                    .new_holon(Some("materialize-node-alternative".into()))
+                    .unwrap();
+                invocation.with_descriptor(saved("DanceInvocation.HolonType")).unwrap();
+                invocation.with_property_value("DanceName", "MaterializeVisualizer").unwrap();
+                invocation.add_related_holons("AffordingHolon", vec![saved(key)]).unwrap();
+                let MapResult::Reference(response) = command(
+                    &runtime,
+                    &context,
+                    TransactionAction::DanceV2 {
+                        invocation: DanceInvocation::new(invocation.into()).unwrap(),
+                    },
+                )
+                .await
+                .unwrap() else {
+                    panic!("materialized Node")
+                };
+                let bodies = response.related_holons("ResponseBody").unwrap();
+                let projection = bodies.read().unwrap().get_members()[0].clone();
+                let handle = string(&projection, "VisualizerArtifactHandle");
+                assert!(matches!(
+                    command(
+                        &runtime,
+                        &context,
+                        TransactionAction::FetchArtifact { handle: handle.into() }
+                    )
+                    .await
+                    .unwrap(),
+                    MapResult::Value(base_types::BaseValue::BytesValue(_))
+                ));
+            }
+        }
         let MapResult::VisualizerSelection(explicit) = command(
             &runtime,
             &context,
@@ -234,6 +293,11 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                 selected: selection.selected.clone(),
                 usage: usage.usage.clone(),
                 origin: map_commands_contract::VisualizerChoiceOrigin::Explicit,
+                report: map_commands_contract::VisualizerUseReport {
+                    session: usage.report_session.clone(),
+                    occurrence_id: format!("canonical-{slot}"),
+                    sequence: 1,
+                },
             },
         )
         .await

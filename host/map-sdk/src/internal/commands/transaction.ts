@@ -485,6 +485,6 @@ export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRe
   return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected } }, expectVisualizerUsageSelection);
 }
 /** Caller reports a successfully admitted presentation; failed mounts must not report. */
-export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory'): Promise<void> {
-  return runTransactionCommand(txId, { RecordVisualizerUse: { request, selected, usage, origin } }, expectNone);
+export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory', report: { session: string; occurrence_id: string; sequence: number }): Promise<void> {
+  return runTransactionCommand(txId, { RecordVisualizerUse: { request, selected, usage, origin, report } }, expectNone);
 }

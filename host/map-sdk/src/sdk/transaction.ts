@@ -87,7 +87,10 @@ export interface VisualizerSelection {
 export interface VisualizerUsageSelection {
   usage: HolonReference;
   initialized: boolean;
+  reportSession: string;
 }
+export interface VisualizerUseReport { readonly session: string; readonly occurrenceId: string; readonly sequence: number }
+
 export type VisualizerChoiceOrigin = 'automatic' | 'explicit' | 'exploratory';
 
 /** Typed metadata returned by the MaterializeVisualizer Dance. */
@@ -526,14 +529,14 @@ export class MapTransaction {
     const txId = txIdFor(this);
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
     const result = await internalTransaction.selectVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected));
-    return { usage: createHolonReference(txId, result.usage), initialized: result.initialized };
+    return { usage: createHolonReference(txId, result.usage), initialized: result.initialized, reportSession: result.report_session };
   }
 
   /** Report successful presentation only. Exploration never establishes remembered preference. */
-  async recordVisualizerUse(request: VisualizerSelectionRequest, selected: HolonReference, usage: HolonReference, origin: VisualizerChoiceOrigin): Promise<void> {
+  async recordVisualizerUse(request: VisualizerSelectionRequest, selected: HolonReference, usage: HolonReference, origin: VisualizerChoiceOrigin, report: VisualizerUseReport): Promise<void> {
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
     const origins = { automatic: 'Automatic', explicit: 'Explicit', exploratory: 'Exploratory' } as const;
-    await internalTransaction.recordVisualizerUse(txIdFor(this), this.selectionRequestWire(request), bind(selected), bind(usage), origins[origin]);
+    await internalTransaction.recordVisualizerUse(txIdFor(this), this.selectionRequestWire(request), bind(selected), bind(usage), origins[origin], { session: report.session, occurrence_id: report.occurrenceId, sequence: report.sequence });
   }
 
   /**

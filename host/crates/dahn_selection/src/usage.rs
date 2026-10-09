@@ -160,9 +160,11 @@ pub fn selection(
     context: &Arc<TransactionContext>,
     usage: HolonReference,
     initialized: bool,
+    report_session: &str,
 ) -> Result<VisualizerUsageSelection, HolonError> {
     Ok(VisualizerUsageSelection {
         usage: HolonReference::smart_from_id(context.space_read_handle(), usage.holon_id()?),
         initialized,
+        report_session: report_session.into(),
     })
 }

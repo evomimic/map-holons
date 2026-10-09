@@ -101,7 +101,9 @@ it('binds independently committed usage and reports explicit versus exploratory 
   const request = { subject: createHolonReference(41, subject), requestedKind: 'node' as const,
     owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
   const visualizer = createHolonReference(41, selected);
-  selectUsage.mockResolvedValue({ usage, initialized: true });
+  selectUsage.mockResolvedValue({ usage, initialized: true, report_session: 'session' });
+  const report = { session: 'session', occurrenceId: 'node-1', sequence: 1 };
+  const wireReport = { session: 'session', occurrence_id: 'node-1', sequence: 1 };
   const commit = vi.spyOn(tx, 'commit');
   const prepared = await tx.selectVisualizerUsage(request, visualizer);
   expect(unwrapHolonReference(prepared.usage)).toEqual(usage);
@@ -110,10 +112,10 @@ it('binds independently committed usage and reports explicit versus exploratory 
   expect(commit).not.toHaveBeenCalled();
   expect(recordUse).not.toHaveBeenCalled();
   recordUse.mockResolvedValue(undefined);
-  await tx.recordVisualizerUse(request, visualizer, prepared.usage, 'explicit');
-  expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Explicit');
-  await tx.recordVisualizerUse(request, visualizer, prepared.usage, 'exploratory');
-  expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Exploratory');
+  await tx.recordVisualizerUse(request, visualizer, prepared.usage, 'explicit', report);
+  expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Explicit', wireReport);
+  await tx.recordVisualizerUse(request, visualizer, prepared.usage, 'exploratory', report);
+  expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Exploratory', wireReport);
   selectUsage.mockRejectedValue(new Error('Usage commit incomplete'));
   await expect(tx.selectVisualizerUsage(request, visualizer)).rejects.toThrow('Usage commit incomplete');
 });

@@ -668,6 +668,231 @@
       ]
     },
     {
+      "key": "ConnectionsFirstInspector.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType",
+      "properties": {
+        "DisplayName": "Connections First Inspector",
+        "VisualizerDescription": "Places single connections above the detail fields in an expanded card. Keeps the action bar and related collection tabs, with the same compression and navigation controls."
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "RelationshipNavigationTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ControlGap.DesignToken"
+            },
+            {
+              "$ref": "FocusRingColor.DesignToken"
+            },
+            {
+              "$ref": "FocusRingWidth.DesignToken"
+            },
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            },
+            {
+              "$ref": "NodeHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "ConnectionsFirstInspector.PropertyMapSlot"
+            },
+            {
+              "$ref": "ConnectionsFirstInspector.ActionsSlot"
+            },
+            {
+              "$ref": "ConnectionsFirstInspector.CollectionsSlot"
+            },
+            {
+              "$ref": "ConnectionsFirstInspector.SingleValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ConnectionsFirstInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConnectionsFirstInspector.PropertyMapSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Show the details recorded for this item."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "PropertyMapVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConnectionsFirstInspector.ActionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Show the actions available for this item and provide access to them."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionBarVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConnectionsFirstInspector.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Present a group of related items so you can examine its members and open an item."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConnectionsFirstInspector.SingleValueSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Inspect the item reached through a connection that has a single destination."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "NodeVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "HolonInspector.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
@@ -876,8 +1101,29 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:aadd179605d03c2a3c76af7fa0a13e7107ba1fbb73b17a685c02928fcc240307",
+        "VisualizerArtifactDigest": "sha256:ca850d4363f24f00e2a7c5033c417cdf0fc40d34f0f582108c95a91cce44d442",
         "VisualizerImplementationKey": "dahn.holon-inspector",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConnectionsFirstInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:da18b585cc4c70c1f44c89816990bb4b650c946ff55f06e8ce4699d9f3954aea",
+        "VisualizerImplementationKey": "dahn.connections-first-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       },
@@ -1122,7 +1368,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:804edf401d594a7632d807428984fddf19c61227dd6b142fd3bdd4b3ce609eee",
+        "VisualizerArtifactDigest": "sha256:a4c30de8251b44f7fd7c420c0326ff3691edff2ea9cb5968859983a28e99e15a",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3796,7 +4042,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:f2c53581f3ba247009c5146468dd6e4eca6703751192c41447d4c7357f38e7d1",
+        "VisualizerArtifactDigest": "sha256:0b3ba1af98497685cad160e2b8fed2c74aa9f8e12d156a96745a2990f6c687fd",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

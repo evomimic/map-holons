@@ -14,6 +14,8 @@ export class VisualizerInformationRegion {
   private target?: VisualizerInspectionTarget;
   private revision = 0;
   private open = false;
+  private choosing = false;
+  private choiceAbort?: AbortController;
   private readonly observer: MutationObserver;
   private readonly mobile = window.matchMedia('(max-width: 700px)');
   private readonly adapt = () => {
@@ -35,7 +37,7 @@ export class VisualizerInformationRegion {
     this.close.textContent = 'Close visualizer info';
     for (const button of [this.toggle, this.close]) button.style.cssText = 'font:inherit;color:var(--dahn-action-text-color);background:var(--dahn-action-surface-background);padding:var(--dahn-action-padding-block) var(--dahn-action-padding-inline);';
     this.toggle.setAttribute('aria-expanded', 'false');
-    this.toggle.addEventListener('click', () => { this.setOpen(!this.open); if (this.open) this.close.focus(); });
+    this.toggle.addEventListener('click', () => { if (this.open) { this.setOpen(false); this.choiceAbort?.abort(); ++this.revision; } else if (this.target?.isLive()) this.inspect(this.target); else { this.setOpen(true); this.close.focus(); } });
     this.close.addEventListener('click', () => { this.setOpen(false); this.dismiss(); });
     this.element.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.preventDefault(); this.setOpen(false); this.dismiss(); }
@@ -56,7 +58,7 @@ export class VisualizerInformationRegion {
     this.element.append(this.close, this.content);
     this.content.textContent = 'Select a Visualizer information control to inspect its presentation.';
     this.observer = new MutationObserver(() => {
-      if (this.target && !this.target.isLive()) {
+      if (this.target && !this.target.isLive() && !this.choosing) {
         if (this.mobile.matches) this.setOpen(false);
         this.dismiss();
       }
@@ -93,6 +95,7 @@ export class VisualizerInformationRegion {
   /** New invocation replaces only this information session, never navigation or selection. */
   inspect(target: VisualizerInspectionTarget): void {
     if (!target.isLive()) return;
+    this.choiceAbort?.abort();
     target = withVisualizerComposition(target);
     this.markTarget(false);
     this.target = target;
@@ -129,9 +132,51 @@ export class VisualizerInformationRegion {
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Visualizer inspector is not an HTMLElement constructor.');
     if (!current()) return;
     const element = document.createElement(defineCustomElementOnce('map-visualizer-inspector', implementation as CustomElementConstructor)) as VisualizerElement;
+    const retainFocus = host.contains(document.activeElement);
     host.replaceChildren(element);
     element.setContext({ target: { reference: subject }, holon: new DahnHolonView(subject), visualizerInspection: target,
       onInspectVisualizer: child => this.inspect(child),
+      discoverVisualizerChoices: target.choices ? async () => {
+        if (!current()) throw new Error('The inspected occurrence is no longer live.');
+        const result = await target.choices!.discover();
+        if (!current()) throw new Error('This information session was superseded.');
+        return result;
+      } : undefined,
+      inspectVisualizerCandidate: target.choices ? async (candidate, previewHost) => {
+        if (!current()) return;
+        const preview = { ...target, selectedVisualizer: candidate, choices: undefined,
+          composition: () => [], regionLabel: undefined };
+        await semanticWork(transaction).realize(() => this.mountInspection(preview, previewHost, revision));
+      } : undefined,
+      chooseVisualizerCandidate: target.choices ? async (candidate, signal) => {
+        if (!current() || !this.open || signal.aborted) throw new Error('This information session was closed.');
+        this.choiceAbort?.abort();
+        const cancellation = this.choiceAbort = new AbortController();
+        const abort = () => cancellation.abort();
+        signal.addEventListener('abort', abort, { once: true });
+        this.choosing = true;
+        try {
+          const replacement = await target.choices!.choose(candidate, () => current() && this.open && !signal.aborted, cancellation.signal);
+          if (revision !== this.revision || !this.open || !replacement.isLive()) return;
+          this.markTarget(false);
+          this.target = replacement;
+          this.markTarget(true);
+          // Refresh the selected identity without another invocation or stealing focus.
+          const next = ++this.revision;
+          try { await semanticWork(transaction).realize(() => this.mountInspection(replacement, host, next)); }
+          catch (error) {
+            if (next !== this.revision || !replacement.isLive()) return;
+            const status = document.createElement('p'); status.setAttribute('role', 'status');
+            status.textContent = `Visualizer changed. Unable to refresh its information: ${error instanceof Error ? error.message : String(error)}`;
+            const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry information';
+            retry.addEventListener('click', () => this.inspect(replacement)); host.replaceChildren(status, retry);
+          }
+        } finally {
+          signal.removeEventListener('abort', abort);
+          if (this.choiceAbort === cancellation) { this.choiceAbort = undefined; this.choosing = false; }
+          if (this.target && !this.target.isLive()) this.dismiss();
+        }
+      } : undefined,
       mountVisualizerInformation: (child, childHost) => current()
         ? semanticWork(transaction).realize(() => this.mountInspection(child, childHost, revision))
         : Promise.resolve(),
@@ -139,10 +184,15 @@ export class VisualizerInformationRegion {
         if (current() && !semanticWork(transaction).paused) this.explore!(subject);
       } : undefined,
       experience: { dancer, holonSpace: this.binding.holonSpace }, actions: [], theme, canvas });
-    await (element as VisualizerElement & { ready?: Promise<void> }).ready;
+    await element.ready;
+    if (retainFocus && current() && document.activeElement === document.body) {
+      const heading = element.querySelector<HTMLElement>('h2') ?? element;
+      heading.tabIndex = -1; heading.focus();
+    }
   }
 
   dismiss(): void {
+    this.choiceAbort?.abort();
     ++this.revision;
     this.markTarget(false);
     this.returnFocus();

@@ -8,6 +8,7 @@ const implementations = [
   ['LoadHolonsInspectorTypeScript.VisualizerImplementation', 'load-holons-inspector.js'],
   ['PathInspectorTypeScript.VisualizerImplementation', 'path-inspector.js'],
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
+  ['ConnectionsFirstInspectorTypeScript.VisualizerImplementation', 'connections-first-inspector.js'],
   ['VisualizerInspectorTypeScript.VisualizerImplementation', 'visualizer-inspector.js'],
   ['TableCollectionTypeScript.VisualizerImplementation', 'table-collection.js'],
   ['GenericActionsTypeScript.VisualizerImplementation', 'actions.js'],
@@ -47,4 +48,16 @@ it('offers rooted navigation at every TypeKind boundary supported by the generic
     .relationships.find((r: any) => r.name === 'ApplicableToType').target.map((t: any) => t.$ref);
   const roots = applicability('PathInspector.RootedNavigationVisualizer');
   for (const type of applicability('HolonInspector.NodeVisualizer')) expect(roots).toContain(type);
+});
+
+it('gives each local Node alternative independent child slots with exactly one Visualizer owner', async () => {
+  const generated = JSON.parse(await readFile(resolve(repository, 'generated/json-imports/dahn/schema.json'), 'utf8'));
+  const targets = (holon: any, relation: string): string[] => holon.relationships?.find((item: any) => item.name === relation)?.target.map((item: any) => item.$ref) ?? [];
+  const original = targets(generated.holons.find((holon: any) => holon.key === 'HolonInspector.NodeVisualizer'), 'HasSlot');
+  const alternate = targets(generated.holons.find((holon: any) => holon.key === 'ConnectionsFirstInspector.NodeVisualizer'), 'HasSlot');
+  expect(alternate).toHaveLength(original.length);
+  for (const slot of [...original, ...alternate]) {
+    expect(generated.holons.filter((holon: any) => targets(holon, 'HasSlot').includes(slot))).toHaveLength(1);
+  }
+  expect(alternate.some(slot => original.includes(slot))).toBe(false);
 });

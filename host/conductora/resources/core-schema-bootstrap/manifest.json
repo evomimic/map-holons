@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "acb1f710fb0adc1f9d42941f7f1700ec9542045ec7f8fba496acccd313b1d520"
+      "sha256": "754825a1fc127abe78de34810d2dfc1d222d660cde8cf1d03d14bee5157b63d7"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -1298,6 +1298,30 @@
     {
       "key": "ConcreteDescribingType.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ConnectionsFirstInspector.ActionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "ConnectionsFirstInspector.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "ConnectionsFirstInspector.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType"
+    },
+    {
+      "key": "ConnectionsFirstInspector.PropertyMapSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "ConnectionsFirstInspector.SingleValueSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "ConnectionsFirstInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "Constraint.HolonType",

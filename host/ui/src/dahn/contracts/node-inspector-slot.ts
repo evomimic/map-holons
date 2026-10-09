@@ -19,5 +19,6 @@ export interface NodeInspectorParticipant {
   /** Initial source-plus-target height, excluding the connecting channel and parent framing. */
   setInitialCompositionHeight?(height: number): void;
   getNodeInspectorExtents(): NodeInspectorExtents;
+  getNodeInspectorAllocation?(): NodeInspectorAllocation | undefined;
   setNodeInspectorAllocation(allocation: NodeInspectorAllocation): void;
 }

@@ -44,6 +44,7 @@ export interface PathOccurrence {
   column?: number;
   subject: HolonReference;
   selectedVisualizer: HolonReference;
+  visualizerUsage?: HolonReference;
   provenance?: TraversalProvenance;
   element: HTMLElement;
   message?: string;

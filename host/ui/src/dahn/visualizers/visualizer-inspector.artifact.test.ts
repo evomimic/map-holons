@@ -204,3 +204,35 @@ it('keeps selected children inside bundled components inspectable and removes re
   rail.remove();
   await vi.waitFor(() => expect(element.querySelector('[data-visualizer-child-information]')).toBeNull());
 });
+
+it('separates candidate inspection from choice, respects viability and cancels preparation', async () => {
+  const element = document.createElement('test-semantic-visualizer-inspector') as any;
+  document.body.append(element);
+  const refs: Record<string, any> = {};
+  for (const key of ['Current', 'Alternative', 'Unavailable']) refs[key] = { key: async () => key, propertyValue: async () => ({ StringValue: key }), equals: (other: any) => other === refs[key] };
+  const inspect = vi.fn(async () => {});
+  let signal: AbortSignal | undefined;
+  let finish!: () => void;
+  const choose = vi.fn(async (_candidate: unknown, cancellation: AbortSignal) => { signal = cancellation; await new Promise<void>(resolve => { finish = resolve; }); });
+  element.setContext({
+    holon: { key: async () => 'Current', propertyValue: async () => ({ StringValue: 'Current' }), availableProperties: async () => [], availableRelationships: async () => [] },
+    visualizerInspection: { selectedVisualizer: refs.Current, occurrenceId: 'captured', isLive: () => true,
+      slot: { propertyValue: async () => null, key: async () => 'Slot', relatedHolons: async () => [] }, subject: { key: async () => 'Subject' } },
+    discoverVisualizerChoices: vi.fn(async () => ({ candidates: [
+      { visualizer: refs.Current, assessment: 'viable' }, { visualizer: refs.Alternative, assessment: 'viable' },
+      { visualizer: refs.Unavailable, assessment: 'implementation_unavailable' },
+    ] })), inspectVisualizerCandidate: inspect, chooseVisualizerCandidate: choose,
+  });
+  await element.ready;
+  await vi.waitFor(() => expect(element.querySelectorAll('[data-choose-visualizer]')).toHaveLength(2));
+  const choices = element.querySelectorAll('[data-choose-visualizer]');
+  expect(choices[1].disabled).toBe(true);
+  element.querySelector('[data-inspect-visualizer-candidate]').click();
+  expect(inspect).toHaveBeenCalledWith(refs.Alternative, expect.any(HTMLElement));
+  expect(choose).not.toHaveBeenCalled();
+  choices[0].click();
+  expect(choose).toHaveBeenCalledWith(refs.Alternative, expect.any(AbortSignal));
+  expect(element.textContent).toContain('Preparing Alternative');
+  [...element.querySelectorAll('button')].find(button => button.textContent === 'Cancel choice').click();
+  expect(signal?.aborted).toBe(true); finish();
+});

@@ -78,6 +78,7 @@ pub enum TransactionAction {
         selected: HolonReference,
         usage: HolonReference,
         origin: super::VisualizerChoiceOrigin,
+        report: super::VisualizerUseReport,
     },
     /// Select for a described plural subject and a specific parent slot.
     SelectCollectionVisualizer {

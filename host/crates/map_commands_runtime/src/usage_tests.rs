@@ -400,6 +400,7 @@ fn successful_explicit_use_remembers_preference_exploration_does_not() -> Result
         reference(&caller, 20),
         first.usage.clone(),
         VisualizerChoiceOrigin::Explicit,
+        report(&service),
     )?;
     let alternate =
         service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
@@ -410,6 +411,7 @@ fn successful_explicit_use_remembers_preference_exploration_does_not() -> Result
         reference(&caller, 21),
         alternate.usage,
         VisualizerChoiceOrigin::Exploratory,
+        report(&service),
     )?;
     let preferences =
         dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
@@ -427,7 +429,8 @@ fn successful_explicit_use_remembers_preference_exploration_does_not() -> Result
             request(&caller, 4, 30),
             reference(&caller, 20),
             first.usage,
-            VisualizerChoiceOrigin::Explicit
+            VisualizerChoiceOrigin::Explicit,
+            report(&service),
         )
         .is_err());
     Ok(())
@@ -480,7 +483,8 @@ fn incomplete_outcome_finishes_before_a_new_preference_supersedes_it() -> Result
             request(&caller, 2, 30),
             reference(&caller, 20),
             first.usage,
-            VisualizerChoiceOrigin::Explicit
+            VisualizerChoiceOrigin::Explicit,
+            report(&service),
         )
         .is_err());
     service.record(
@@ -490,10 +494,93 @@ fn incomplete_outcome_finishes_before_a_new_preference_supersedes_it() -> Result
         reference(&caller, 21),
         second.usage.clone(),
         VisualizerChoiceOrigin::Explicit,
+        report(&service),
     )?;
     let preferences =
         dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
     assert_eq!(preferences.len(), 1);
     assert_eq!(dahn_selection::usage::single(&preferences[0], "PreferredUsage")?, second.usage);
+    Ok(())
+}
+
+fn report(service: &UsageTransactions) -> map_commands_contract::VisualizerUseReport {
+    static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    map_commands_contract::VisualizerUseReport {
+        session: service.report_session.clone(),
+        occurrence_id: "test-node".into(),
+        sequence: SEQUENCE.fetch_add(1, Ordering::SeqCst),
+    }
+}
+
+#[test]
+fn delayed_choice_from_another_occurrence_cannot_undo_newer_preference() -> Result<(), HolonError> {
+    let (_, space, caller) = setup();
+    let service = UsageTransactions::default();
+    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let second =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
+    let old = report(&service);
+    let mut newer = report(&service);
+    newer.occurrence_id = "another-node".into();
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 21),
+        second.usage.clone(),
+        VisualizerChoiceOrigin::Explicit,
+        newer.clone(),
+    )?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        first.usage.clone(),
+        VisualizerChoiceOrigin::Explicit,
+        old,
+    )?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 21),
+        second.usage.clone(),
+        VisualizerChoiceOrigin::Explicit,
+        newer.clone(),
+    )?;
+    let preferences =
+        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
+    assert_eq!(preferences.len(), 1);
+    assert_eq!(dahn_selection::usage::single(&preferences[0], "PreferredUsage")?, second.usage);
+    assert!(service
+        .record(
+            &space,
+            &caller,
+            request(&caller, 2, 30),
+            reference(&caller, 20),
+            first.usage.clone(),
+            VisualizerChoiceOrigin::Explicit,
+            newer
+        )
+        .is_err());
+    assert_eq!(
+        dahn_selection::usage::VisualizerUsage::from_holon(&caller, first.usage.clone())?
+            .selected_slots()?,
+        vec![reference(&caller, 30)]
+    );
+    let mut expired = report(&service);
+    expired.session = "expired".into();
+    assert!(service
+        .record(
+            &space,
+            &caller,
+            request(&caller, 2, 30),
+            reference(&caller, 21),
+            second.usage,
+            VisualizerChoiceOrigin::Explicit,
+            expired
+        )
+        .is_err());
     Ok(())
 }
