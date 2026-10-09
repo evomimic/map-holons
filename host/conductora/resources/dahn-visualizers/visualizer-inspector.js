@@ -1,7 +1,8 @@
 /** A semantic Visualizer definition view, separate from usage configuration and history. */
 export default class VisualizerInspector extends HTMLElement {
   setContext(context) {
-    this.compositionObserver?.disconnect();
+    for (const observer of this.compositionObservers ?? []) observer.disconnect();
+    this.compositionObservers = new Set();
     this.context = context;
     this.style.cssText = 'display:block;min-width:0;color:var(--dahn-canvas-text-color);font:inherit;overflow-wrap:anywhere;';
     this.dataset.visualizerInspector = 'true';
@@ -48,7 +49,7 @@ export default class VisualizerInspector extends HTMLElement {
         region.textContent = `${target.regionLabel} — presented by ${heading.textContent}.`;
         region.style.cssText = 'line-height:1.5;margin:16px 0;'; this.append(region);
       }
-      if (target?.composition && context.mountVisualizerInformation) this.renderComposition(context);
+      if (target?.composition && context.mountVisualizerInformation) this.renderComposition(context, target, this, name?.StringValue ?? key);
       const technical = document.createElement('details');
       technical.dataset.visualizerTechnicalDetails = 'true';
       technical.style.cssText = 'margin-top:24px;padding-top:16px;border-top:1px solid var(--dahn-slot-border-color);';
@@ -129,26 +130,26 @@ export default class VisualizerInspector extends HTMLElement {
       const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry'; retry.addEventListener('click', () => this.setContext(context)); this.append(retry);
     }
   }
-  renderComposition(context) {
+  renderComposition(context, target, container, ownerName) {
     const details = document.createElement('details'); details.dataset.visualizerPresentationStructure = 'true';
     details.style.cssText = 'margin-top:20px;';
     const summary = document.createElement('summary'); summary.textContent = 'Presentation structure'; summary.style.cursor = 'pointer';
     const explanation = document.createElement('p');
-    explanation.textContent = 'Expand an entry to see its purpose and presentation.';
+    explanation.textContent = 'Entries marked Bundled Component cannot be selected separately. Expand other entries to inspect their selected Visualizer.';
     explanation.style.cssText = 'font-size:.9rem;line-height:1.5;color:var(--dahn-muted-text-color);';
     const list = document.createElement('ul'); list.style.cssText = 'list-style:none;padding:0;margin:8px 0;';
     const empty = document.createElement('p'); empty.textContent = 'No separate presentations are currently open.';
     details.append(summary, explanation, list, empty);
     const rows = new Map();
     const update = () => {
-      if (this.context !== context || !context.visualizerInspection.isLive()) return;
-      const entries = context.visualizerInspection.composition();
+      if (this.context !== context || !target.isLive()) return;
+      const entries = target.composition();
       const current = entries.map(entry => ({ entry, target: entry.inspect() })).filter(item => item.target);
       const identities = new Set(current.map(item => item.target.occurrenceId));
       for (const [identity, row] of rows) {
         if (identities.has(identity)) continue;
         const recoverFocus = row.item.contains(document.activeElement);
-        row.item.remove(); rows.delete(identity);
+        row.dispose?.(); row.item.remove(); rows.delete(identity);
         if (recoverFocus) summary.focus();
       }
       for (const { entry, target } of current) {
@@ -159,7 +160,8 @@ export default class VisualizerInspector extends HTMLElement {
           const title = document.createElement('summary');
           title.style.cssText = 'font:inherit;text-align:left;cursor:pointer;padding:8px;color:var(--dahn-action-text-color);background:var(--dahn-action-surface-background);margin:4px 0;';
           const body = document.createElement('div'); body.style.cssText = 'margin:0 0 12px 8px;padding-left:8px;border-left:1px solid var(--dahn-slot-border-color);';
-          const note = document.createElement('small'); note.textContent = 'Presented by the containing Visualizer';
+          const note = document.createElement('small');
+          note.textContent = `Included in ${ownerName}. This component has no independent VisualizerSlot and cannot be selected separately.`;
           note.style.cssText = 'display:block;color:var(--dahn-muted-text-color);margin:8px 0;';
           const host = document.createElement('div');
           body.append(note, host); accordion.append(title, body); item.append(accordion);
@@ -169,6 +171,11 @@ export default class VisualizerInspector extends HTMLElement {
             if (!accordion.open || row.loaded || row.loading || this.context !== context) return;
             const child = row.entry.inspect();
             if (!child?.isLive()) { update(); return; }
+            if (row.entry.ownership === 'implementation') {
+              if (child.composition) row.dispose = this.renderComposition(context, child, host, ownerName);
+              row.loaded = true;
+              return;
+            }
             row.loading = true; host.setAttribute('aria-busy', 'true'); host.textContent = 'Loading information…';
             try {
               await context.mountVisualizerInformation(child, host);
@@ -184,17 +191,23 @@ export default class VisualizerInspector extends HTMLElement {
           accordion.addEventListener('toggle', load);
         }
         row.entry = entry;
-        row.title.textContent = entry.ownership === 'selected' ? `${entry.label} · ${entry.displayName ?? 'Selected Visualizer'}` : entry.label;
+        row.title.textContent = entry.ownership === 'selected' ? `${entry.label} · ${entry.displayName ?? 'Selected Visualizer'}` : `${entry.label} · Bundled Component`;
         row.note.style.display = entry.ownership === 'implementation' ? 'block' : 'none';
       }
       empty.hidden = current.length > 0;
+      if (container !== this) details.hidden = current.length === 0;
     };
-    update(); this.append(details);
+    update(); container.append(details);
     details.addEventListener('toggle', update);
-    this.compositionObserver = new MutationObserver(update);
-    this.compositionObserver.observe(context.visualizerInspection.element, { childList: true, subtree: true });
+    const observer = new MutationObserver(update);
+    this.compositionObservers.add(observer);
+    observer.observe(target.element, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect(); this.compositionObservers.delete(observer);
+      for (const row of rows.values()) row.dispose?.();
+    };
   }
-  disconnectedCallback() { this.context = undefined; this.compositionObserver?.disconnect(); }
+  disconnectedCallback() { this.context = undefined; for (const observer of this.compositionObservers ?? []) observer.disconnect(); }
 }
 function present(value) {
   if (value === null) return 'Not provided';
