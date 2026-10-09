@@ -280,3 +280,11 @@ pub fn choose_visualizer(
         "Explicit Visualizer is no longer applicable in the permitted ancestry".into(),
     ))
 }
+
+/// Resolve the semantic descriptor used for applicability and usage matching.
+/// Value subjects use the selected value type, rather than the property's meta-type.
+pub fn usage_subject_type(
+    request: &VisualizerSelectionRequest,
+) -> Result<HolonReference, HolonError> {
+    Ok(resolve(request)?.start)
+}

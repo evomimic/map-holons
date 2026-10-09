@@ -10,6 +10,7 @@ use holons_core::TransientReference;
 use crate::ExecutionPolicy;
 
 pub struct RuntimeSession {
+    pub(crate) usage_transactions: crate::usage_transactions::UsageTransactions,
     space_manager: Arc<HolonSpaceManager>,
     recovery: Option<Arc<SessionReceptor>>,
     admissions:
@@ -24,6 +25,7 @@ impl RuntimeSession {
         recovery: Option<Arc<SessionReceptor>>,
     ) -> Self {
         Self {
+            usage_transactions: Default::default(),
             space_manager,
             recovery,
             admissions: Default::default(),

@@ -44,3 +44,18 @@ pub struct VisualizerDiscovery {
     pub current_selection: Option<VisualizerCandidate>,
     pub ancestry: Vec<HolonReference>,
 }
+
+/// A persisted configuration anchor, prepared but not evidence of successful use.
+#[derive(Debug)]
+pub struct VisualizerUsageSelection {
+    pub usage: HolonReference,
+    pub initialized: bool,
+}
+
+/// Why a presentation was selected. Exploration never rewrites explicit preference.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VisualizerChoiceOrigin {
+    Automatic,
+    Explicit,
+    Exploratory,
+}

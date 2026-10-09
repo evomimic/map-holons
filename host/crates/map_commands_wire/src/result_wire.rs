@@ -40,6 +40,7 @@ pub enum MapResultWire {
 
     VisualizerSelection(VisualizerSelectionWire),
     VisualizerDiscovery(VisualizerDiscoveryWire),
+    VisualizerUsageSelection(VisualizerUsageSelectionWire),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
@@ -117,6 +118,12 @@ impl From<MapResult> for MapResultWire {
             MapResult::RedoToMarkerComplete => MapResultWire::RedoToMarkerComplete,
             MapResult::TransactionCreated { tx_id } => MapResultWire::TransactionCreated { tx_id },
             MapResult::Reference(r) => MapResultWire::Reference(HolonReferenceWire::from(&r)),
+            MapResult::VisualizerUsageSelection(selection) => {
+                Self::VisualizerUsageSelection(VisualizerUsageSelectionWire {
+                    usage: selection.usage.into(),
+                    initialized: selection.initialized,
+                })
+            }
             MapResult::VisualizerSelection(selection) => {
                 MapResultWire::VisualizerSelection(VisualizerSelectionWire {
                     selected: HolonReferenceWire::from(&selection.selected),
@@ -251,4 +258,11 @@ pub struct VisualizerDiscoveryWire {
     pub candidates: Vec<VisualizerCandidateWire>,
     pub current_selection: Option<VisualizerCandidateWire>,
     pub ancestry: Vec<HolonReferenceWire>,
+}
+
+/// Committed usage projected at the transport boundary, not a private-transaction handle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerUsageSelectionWire {
+    pub usage: HolonReferenceWire,
+    pub initialized: bool,
 }

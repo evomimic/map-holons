@@ -82,6 +82,7 @@ export type MapResultWire =
   | { Reference: HolonReferenceWire }
   | { VisualizerSelection: VisualizerSelectionWire }
   | { VisualizerDiscovery: VisualizerDiscoveryWire }
+  | { VisualizerUsageSelection: VisualizerUsageSelectionWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { DescribedCollection: DescribedHolonCollectionWire }
@@ -112,6 +113,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
         (Number.isSafeInteger(value.EffectiveCardinality['maximum']) && (value.EffectiveCardinality['maximum'] as number) >= (value.EffectiveCardinality['minimum'] as number)))) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
     (hasSingleKey(value, 'VisualizerSelection') && isVisualizerSelectionWire(value.VisualizerSelection)) ||
+    (hasSingleKey(value, 'VisualizerUsageSelection') && isVisualizerUsageSelectionWire(value.VisualizerUsageSelection)) ||
     (hasSingleKey(value, 'VisualizerDiscovery') && isVisualizerDiscoveryWire(value.VisualizerDiscovery)) ||
     (hasSingleKey(value, 'References') &&
       Array.isArray(value.References) &&
@@ -150,4 +152,12 @@ export function isVisualizerDiscoveryWire(value: unknown): value is VisualizerDi
   return isRecord(value) && Array.isArray(value['candidates']) && value['candidates'].every(isVisualizerCandidateWire) &&
     (value['current_selection'] === null || isVisualizerCandidateWire(value['current_selection'])) &&
     Array.isArray(value['ancestry']) && value['ancestry'].every(isHolonReferenceWire);
+}
+
+export interface VisualizerUsageSelectionWire {
+  usage: HolonReferenceWire;
+  initialized: boolean;
+}
+export function isVisualizerUsageSelectionWire(value: unknown): value is VisualizerUsageSelectionWire {
+  return isRecord(value) && isHolonReferenceWire(value['usage']) && typeof value['initialized'] === 'boolean';
 }

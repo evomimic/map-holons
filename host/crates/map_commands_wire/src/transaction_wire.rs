@@ -86,6 +86,16 @@ pub enum TransactionActionWire {
         request: VisualizerSelectionRequestWire,
         candidate: HolonReferenceWire,
     },
+    SelectVisualizerUsage {
+        request: VisualizerSelectionRequestWire,
+        selected: HolonReferenceWire,
+    },
+    RecordVisualizerUse {
+        request: VisualizerSelectionRequestWire,
+        selected: HolonReferenceWire,
+        usage: HolonReferenceWire,
+        origin: VisualizerChoiceOriginWire,
+    },
     SelectCollectionVisualizer {
         collection: crate::DescribedHolonCollectionWire,
         parent_visualizer: HolonReferenceWire,
@@ -305,6 +315,20 @@ impl TransactionActionWire {
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
             }
+            TransactionActionWire::SelectVisualizerUsage { request, selected } => {
+                Ok(TransactionAction::SelectVisualizerUsage {
+                    request: request.bind(context)?,
+                    selected: selected.bind(context)?,
+                })
+            }
+            TransactionActionWire::RecordVisualizerUse { request, selected, usage, origin } => {
+                Ok(TransactionAction::RecordVisualizerUse {
+                    request: request.bind(context)?,
+                    selected: selected.bind(context)?,
+                    usage: usage.bind(context)?,
+                    origin: origin.into(),
+                })
+            }
             TransactionActionWire::SelectCollectionVisualizer {
                 collection,
                 parent_visualizer,
@@ -383,6 +407,24 @@ impl TransactionActionWire {
             TransactionActionWire::DeleteHolon { local_id } => {
                 Ok(TransactionAction::DeleteHolon { local_id })
             }
+        }
+    }
+}
+
+/// Explicit choice is distinguished from automatic and exploratory presentation.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum VisualizerChoiceOriginWire {
+    Automatic,
+    Explicit,
+    Exploratory,
+}
+
+impl From<VisualizerChoiceOriginWire> for map_commands_contract::VisualizerChoiceOrigin {
+    fn from(value: VisualizerChoiceOriginWire) -> Self {
+        match value {
+            VisualizerChoiceOriginWire::Automatic => Self::Automatic,
+            VisualizerChoiceOriginWire::Explicit => Self::Explicit,
+            VisualizerChoiceOriginWire::Exploratory => Self::Exploratory,
         }
     }
 }
