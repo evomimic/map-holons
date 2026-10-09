@@ -1,8 +1,8 @@
 use super::*;
 use crate::{
     assessment_support::path,
-    orchestration::PreparedAssessment,
-    schema_rules::{cross_schema_references, dependency_cycles, SchemaRuleProducts},
+    outcomes::PreparedAssessment,
+    schema_rules::{cross_schema_references_prepared, dependency_cycles, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
 };
 use holons_core::{
@@ -200,13 +200,21 @@ fn direct_dependencies_are_required_for_components_and_owned_rules() -> Result<(
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
     fixture.node(rule.as_str())?;
@@ -253,13 +261,21 @@ fn schema_references_ignore_space_instances_and_schema_targets() -> Result<(), H
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     assert!(!products.has_findings());
     assert!(collector.into_report().is_accepted());
@@ -299,13 +315,21 @@ fn same_schema_component_reference_needs_no_dependency() -> Result<(), HolonErro
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     assert!(!products.has_findings());
     assert!(collector.into_report().is_accepted());
@@ -340,7 +364,22 @@ fn direct_dependency_covers_cross_schema_component_reference() -> Result<(), Hol
         .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
         .unwrap();
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(&fixture.context, &reader, a, &workset, &mut products, &mut collector)?;
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
+        &fixture.context,
+        &reader,
+        a,
+        &workset,
+        &mut products,
+        &mut collector,
+        &packages,
+    )?;
     assert!(!products.has_findings());
     assert!(collector.into_report().is_accepted());
     Ok(())
@@ -367,13 +406,21 @@ fn missing_target_ownership_keeps_its_own_finding() -> Result<(), HolonError> {
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     assert!(!products.has_findings());
     let report = collector.into_report();
@@ -422,7 +469,22 @@ fn ambiguous_target_ownership_blocks_once_per_target() -> Result<(), HolonError>
         .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
         .unwrap();
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(&fixture.context, &reader, a, &workset, &mut products, &mut collector)?;
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
+        &fixture.context,
+        &reader,
+        a,
+        &workset,
+        &mut products,
+        &mut collector,
+        &packages,
+    )?;
     assert!(!products.has_findings());
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 2);
@@ -569,115 +631,6 @@ fn operational_scope_failure_preserves_prior_installed_outcomes() -> Result<(), 
     Ok(())
 }
 
-/// Complete the roots and member structure consumed by prospective Commit assessment.
-fn readiness_fixture() -> Result<Fixture, HolonError> {
-    let mut fixture = Fixture::new()?;
-    c2_kind_roots(&mut fixture)?;
-    for key in [
-        "Schema.HolonType",
-        "Rule.HolonType",
-        "ConstraintType.HolonType",
-        "StringLengthConstraint.ConstraintType",
-        "BytesLengthConstraint.ConstraintType",
-        "NumericRangeConstraint.ConstraintType",
-        "ItemCountConstraint.ConstraintType",
-        "CardinalityConstraint.ConstraintType",
-        "UniqueItemsConstraint.ConstraintType",
-        "ValueType.TypeDescriptor",
-        "DeclaredRelationshipType.RelationshipType",
-    ] {
-        fixture.node(key)?;
-    }
-    fixture.link(
-        "DeclaredRelationshipType",
-        CoreRelationshipTypeName::Extends,
-        "DeclaredRelationshipType.RelationshipType",
-    )?;
-    fixture.link(
-        "DeclaredRelationshipType.RelationshipType",
-        CoreRelationshipTypeName::Extends,
-        "TypeDescriptor",
-    )?;
-    fixture.link(
-        "ValueType.TypeDescriptor",
-        CoreRelationshipTypeName::Extends,
-        "TypeDescriptor",
-    )?;
-    // StringValueType's prior direct TypeDescriptor edge is replaced, never supplemented.
-    let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
-    fixture
-        .nodes
-        .get_mut("StringValueType.ValueType")
-        .unwrap()
-        .remove_related_holons(CoreRelationshipTypeName::Extends, vec![type_descriptor])?;
-    fixture.link(
-        "StringValueType.ValueType",
-        CoreRelationshipTypeName::Extends,
-        "ValueType.TypeDescriptor",
-    )?;
-    for key in [
-        "Title.PropertyType",
-        "Key.PropertyType",
-        "DeclaredRelationshipType",
-        "DescribedBy.Relationship",
-    ] {
-        fixture
-            .nodes
-            .get_mut(key)
-            .unwrap()
-            .with_property_value("DefinesInstanceTypeKind", false)?;
-    }
-    for key in [
-        "PropertyType.TypeDescriptor",
-        "ValueType.TypeDescriptor",
-        "DeclaredRelationshipType.RelationshipType",
-        "StringValueType.ValueType",
-    ] {
-        fixture
-            .nodes
-            .get_mut(key)
-            .unwrap()
-            .with_property_value("DefinesInstanceTypeKind", true)?
-            .with_property_value("IsAbstractType", true)?;
-    }
-    fixture.link(
-        "DescribedBy.Relationship",
-        CoreRelationshipTypeName::SourceType,
-        "HolonType.TypeDescriptor",
-    )?;
-    fixture.link(
-        "DescribedBy.Relationship",
-        CoreRelationshipTypeName::TargetType,
-        "HolonType.TypeDescriptor",
-    )?;
-    for rule in [
-        CoreValidationRuleName::AtMostOneDirectParent,
-        CoreValidationRuleName::AcyclicExtendsLineage,
-        CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
-        CoreValidationRuleName::UniqueTypeDescriptorRoot,
-        CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
-        CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
-        CoreValidationRuleName::TypeDescriptorRootKindException,
-        CoreValidationRuleName::DescribingCategoryCompatibility,
-        CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
-        CoreValidationRuleName::NoInheritedMemberRedeclaration,
-        CoreValidationRuleName::UniqueSemanticMemberNames,
-        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
-        CoreValidationRuleName::ContractMemberKindCompatibility,
-        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-        CoreValidationRuleName::SchemaDependenciesAcyclic,
-        CoreValidationRuleName::CrossSchemaDependenciesDeclared,
-    ] {
-        fixture.node(rule.as_str())?;
-        fixture.link(
-            rule.as_str(),
-            CoreRelationshipTypeName::DescribedBy,
-            "HolonValidationRule.HolonType",
-        )?;
-    }
-    Ok(fixture)
-}
-
 #[test]
 fn staged_descriptor_with_unnamed_effective_member_reports_contract_finding(
 ) -> Result<(), HolonError> {
@@ -751,13 +704,13 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
     let mut fixture = readiness_fixture()?;
     let mut subject = fixture.staged_subject("instance")?;
     subject.with_property_value("Title", "ready")?;
-    assert!(crate::readiness::validate_commit_candidates(
+    assert!(crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )?
     .is_accepted());
     fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
-    let report = crate::readiness::validate_commit_candidates(
+    let report = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject),
     )?;
@@ -774,7 +727,7 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
         .get_mut("Title.PropertyType")
         .unwrap()
         .with_property_value("TypeName", "Title")?;
-    assert!(crate::readiness::validate_commit_candidates(
+    assert!(crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )?
@@ -784,10 +737,71 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
 }
 
 #[test]
+fn report_only_commit_assessment_preserves_outcomes_and_matches_validation(
+) -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?;
+    let mut subject = fixture.staged_subject("report-only-instance")?;
+    let candidates = std::slice::from_ref(&subject);
+    let initial = assess_commit_candidates(&fixture.context, candidates)?;
+    assert!(!initial.report.is_accepted());
+    assert_eq!(subject.validation_state()?, ValidationState::ValidationRequired);
+    assert!(subject.validation_findings()?.is_empty());
+    let rejected = validate_commit_candidates(&fixture.context, candidates)?;
+    assert_eq!(initial.report, rejected);
+
+    subject.with_property_value("Title", "ready")?;
+    // Content mutation requires revalidation. Establish a prior outcome to prove assessment
+    // preserves both the state and findings even when the newly assessed report differs.
+    subject.replace_validation_outcome(ValidationState::Invalid, rejected.violations.clone())?;
+    let title = subject.property_value("Title")?;
+    let candidates = std::slice::from_ref(&subject);
+    let accepted = assess_commit_candidates(&fixture.context, candidates)?;
+    assert!(accepted.report.is_accepted());
+    assert!(accepted
+        .observations
+        .discovered_rule_keys
+        .contains(CoreValidationRuleName::NoUndescribedProperties.as_str()));
+    assert!(accepted
+        .observations
+        .dispatched_rule_keys
+        .contains(CoreValidationRuleName::NoUndescribedProperties.as_str()));
+    assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+    assert_eq!(subject.validation_findings()?, rejected.violations);
+    assert_eq!(subject.property_value("Title")?, title);
+    assert_eq!(accepted.report, validate_commit_candidates(&fixture.context, candidates)?);
+    assert_eq!(subject.validation_state()?, ValidationState::Validated);
+    assert!(subject.validation_findings()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn report_only_contested_anchors_preserve_outcomes_and_commit_report() -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let candidates = [
+        fixture.staged_subject("independent-report-only")?,
+        fixture.replacement("MetaTypeDescriptor.HolonType")?,
+        fixture.replacement("MetaTypeDescriptor.HolonType")?,
+    ];
+    let before = candidates
+        .iter()
+        .map(|candidate| Ok((candidate.validation_state()?, candidate.validation_findings()?)))
+        .collect::<Result<Vec<_>, HolonError>>()?;
+    let assessment = assess_commit_candidates(&fixture.context, &candidates)?;
+    assert!(!assessment.report.is_accepted());
+    assert!(!assessment.report.unattached_findings()?.is_empty());
+    for (candidate, (state, findings)) in candidates.iter().zip(before) {
+        assert_eq!(candidate.validation_state()?, state);
+        assert_eq!(candidate.validation_findings()?, findings);
+    }
+    assert_eq!(assessment.report, validate_commit_candidates(&fixture.context, &candidates)?);
+    Ok(())
+}
+
+#[test]
 fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let subject = fixture.staged_subject("previously-rejected")?;
-    let old = crate::readiness::validate_commit_candidates(
+    let old = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject),
     )?;
@@ -799,7 +813,10 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
         CoreRelationshipTypeName::InstanceProperties,
         vec![foreign.nodes["Title.PropertyType"].clone()],
     )?;
-    assert!(crate::readiness::validate_commit_candidates(
+    assert!(assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject)).is_err());
+    assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+    assert_eq!(subject.validation_findings()?, old.violations);
+    assert!(crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )
@@ -852,7 +869,7 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
         "MetaHolonType.MetaTypeDescriptor",
     )?;
     let candidate = staged(&fixture.nodes["StagedComponent"]);
-    let report = crate::readiness::validate_commit_candidates(
+    let report = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&candidate),
     )?;
@@ -965,7 +982,7 @@ fn contested_shared_anchors_use_transaction_carriers_in_either_candidate_order(
                     assert!(candidate
                         .validation_findings()?
                         .iter()
-                        .all(|finding| crate::orchestration::subject_identity(&finding.subject)
+                        .all(|finding| crate::outcomes::subject_identity(&finding.subject)
                             == Some(candidate.reference_id_string().as_str())));
                 }
                 let outcomes = [
@@ -990,7 +1007,8 @@ fn scoped_installation_uses_the_same_distinct_candidate_check_as_commit() -> Res
     let fixture = Fixture::new()?;
     let candidate = fixture.staged_subject("repeated")?;
     let candidates = [candidate.clone(), candidate.clone()];
-    let expected = crate::orchestration::check_candidates(&candidates).unwrap_err();
+    let expected =
+        crate::commit_assessment::require_distinct_live_candidates(&candidates).unwrap_err();
     let Err(actual) =
         PreparedAssessment::from_scope(&candidates, CommitValidationReport::default())
     else {
@@ -1008,9 +1026,9 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![subject];
     let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
-    let roots = crate::readiness::ReadinessContext::resolve(&fixture.context, &reader)
+    let roots = crate::commit_assessment::ReadinessContext::resolve(&fixture.context, &reader)
         .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
-    let constructed = crate::readiness::construct_assessment(
+    let constructed = crate::commit_assessment::construct_assessment(
         &fixture.context,
         &candidates,
         &reader,
@@ -1018,13 +1036,7 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = crate::readiness::assess_constructed(
-        &fixture.context,
-        &candidates,
-        &reader,
-        &roots,
-        constructed,
-    )?;
+    let report = constructed.assess(|_| {})?.0.into_report();
     assert!(report.is_accepted(), "{:?}", report);
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())
@@ -1053,9 +1065,9 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![descriptor, subject];
     let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
-    let roots = crate::readiness::ReadinessContext::resolve(&fixture.context, &reader)
+    let roots = crate::commit_assessment::ReadinessContext::resolve(&fixture.context, &reader)
         .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
-    let constructed = crate::readiness::construct_assessment(
+    let constructed = crate::commit_assessment::construct_assessment(
         &fixture.context,
         &candidates,
         &reader,
@@ -1063,13 +1075,7 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = crate::readiness::assess_constructed(
-        &fixture.context,
-        &candidates,
-        &reader,
-        &roots,
-        constructed,
-    )?;
+    let report = constructed.assess(|_| {})?.0.into_report();
     assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())

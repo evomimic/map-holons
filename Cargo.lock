@@ -3544,7 +3544,6 @@ dependencies = [
  "holons_loader_client",
  "holons_prelude",
  "holons_trust_channel",
- "holons_validation",
  "integrity_core_types",
  "map_commands_contract",
  "map_commands_runtime",

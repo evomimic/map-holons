@@ -109,18 +109,6 @@ pub(crate) fn dependency_cycles(
 }
 
 /// Cross-schema declarations are local edges. Transitive lookup never licenses an edge.
-#[cfg(test)]
-pub(crate) fn cross_schema_references(
-    context: &Arc<TransactionContext>,
-    reader: &ProspectiveDescriptorReader,
-    view: &ProspectiveSchema,
-    workset: &SchemaWorkset,
-    products: &mut SchemaRuleProducts,
-    collector: &mut ValidationCollector,
-) -> Result<(), HolonError> {
-    cross_schema_references_prepared(context, reader, view, workset, products, collector, None)
-}
-
 pub(crate) fn cross_schema_references_prepared(
     context: &Arc<TransactionContext>,
     reader: &ProspectiveDescriptorReader,
@@ -128,7 +116,7 @@ pub(crate) fn cross_schema_references_prepared(
     workset: &SchemaWorkset,
     products: &mut SchemaRuleProducts,
     collector: &mut ValidationCollector,
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
     let Some(dependencies) =
         recover(schema_dependencies_with_reader(&view.schema, reader), &view.schema, collector)?
@@ -144,14 +132,7 @@ pub(crate) fn cross_schema_references_prepared(
     let mut ambiguous = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
     let mut missing_dependencies = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
     for source in view.components.iter().chain(&view.rules) {
-        let Some(edges) = recover(
-            match packages {
-                Some(packages) => packages.authored(source, reader),
-                None => authored_targets(source, reader),
-            },
-            &view.schema,
-            collector,
-        )?
+        let Some(edges) = recover(packages.authored(source, reader), &view.schema, collector)?
         else {
             continue;
         };

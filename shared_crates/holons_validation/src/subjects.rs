@@ -1,26 +1,5 @@
 use core_types::{BaseValue, ValidationSubjectPath};
-use holons_core::{HolonReference, PropertyDescriptor, ValueDescriptor};
-
-/// A holon whose governing descriptor is resolved at bootstrap navigation.
-///
-/// Descriptor discovery belongs to `validate_holon` so missing and ambiguous
-/// `DescribedBy` can become semantic findings instead of construction errors.
-#[derive(Clone, Copy)]
-pub struct HolonValidationSubject<'a> {
-    /// Bound runtime handle; transient, staged, and saved subjects are supported.
-    pub holon: &'a HolonReference,
-}
-
-/// One effective property, including the absence of a populated value.
-#[derive(Clone, Copy)]
-pub struct PropertyValidationSubject<'a> {
-    /// The complete-contract member governing this property.
-    pub descriptor: &'a PropertyDescriptor,
-    /// Absent properties must still reach required-property validation.
-    pub value: Option<&'a BaseValue>,
-    /// Property diagnostic path, with no parent navigation capability.
-    pub path: &'a ValidationSubjectPath,
-}
+use holons_core::ValueDescriptor;
 
 /// A populated native value and its selected value-type descriptor.
 #[derive(Clone, Copy)]
@@ -34,7 +13,7 @@ pub struct ValueValidationSubject<'a> {
 }
 
 /// Read-only inputs prepared through the Commit assessment's prospective reader.
-/// Keeping the facts here lets the existing handlers evaluate both entry paths.
+/// Handlers consume these facts without navigating to containing subjects.
 pub enum PreparedRuleSubject {
     /// Populated names absent from the selected effective contract.
     Holon { undescribed_properties: Vec<core_types::PropertyName> },

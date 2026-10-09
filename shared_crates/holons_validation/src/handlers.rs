@@ -2,7 +2,7 @@ use core_types::{
     CommitValidationViolation, CommitValidationViolationKind, HolonError, ValidationSeverity,
     ValidationSubjectPath,
 };
-use holons_core::{Descriptor, ReadableHolon, ValueDescriptorKind};
+use holons_core::ValueDescriptorKind;
 use type_names::CoreValidationRuleName;
 
 use crate::commitments::{declaring_identity, required_key};
@@ -51,15 +51,6 @@ pub(crate) fn required_property_presence(
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
     let (binding, path, missing_required, name, identity) = match invocation {
-        ValidationInvocation::Property { binding, subject, context } => (
-            binding,
-            subject.path,
-            subject.value.is_none()
-                && context.enforce_minimum
-                && subject.descriptor.is_required()?,
-            subject.descriptor.property_name()?.to_string(),
-            subject.descriptor.holon().reference_id_string(),
-        ),
         ValidationInvocation::Prepared {
             binding,
             path,
@@ -86,10 +77,6 @@ pub(crate) fn no_undescribed_properties(
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
     let (binding, path, names) = match invocation {
-        ValidationInvocation::Holon { binding, subject, descriptor: _, path } => {
-            let names = subject.holon.undescribed_property_names()?;
-            (binding, path, names)
-        }
         ValidationInvocation::Prepared {
             binding,
             path,
@@ -112,19 +99,6 @@ pub(crate) fn base_value_kind_matches(
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
     let (binding, path, expected, actual, identity) = match invocation {
-        ValidationInvocation::Value { binding, subject, context } => (
-            binding,
-            subject.path,
-            {
-                holons_core::reference_layer::assert_reference_transaction_compatible(
-                    subject.descriptor.holon(),
-                    &context.context,
-                )?;
-                subject.descriptor.value_kind()?
-            },
-            subject.value.kind(),
-            subject.descriptor.holon().reference_id_string(),
-        ),
         ValidationInvocation::Prepared {
             binding,
             path,

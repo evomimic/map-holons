@@ -1,5 +1,15 @@
 use core_types::{CommitValidationViolation, HolonError};
 
+/// Report and coverage evidence from a completed, report-only Commit assessment.
+/// Producing this result leaves staged validation outcomes and content untouched.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CommitAssessment {
+    /// Complete findings, including aggregates without a staged outcome carrier.
+    pub report: CommitValidationReport,
+    /// Rule discovery, dispatch, and assessment coverage evidence.
+    pub observations: crate::ValidationObservations,
+}
+
 /// Complete, in-memory assessment containing only identity-based diagnostics.
 ///
 /// This is deliberately not serializable. All currently authored commitments are

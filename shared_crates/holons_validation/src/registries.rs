@@ -1,10 +1,8 @@
 use core_types::{HolonError, ValidationSubjectPath};
-use holons_core::HolonDescriptor;
 use type_names::CoreValidationRuleName;
 
 use crate::{
-    descriptor_rules, handlers, HolonValidationSubject, PropertyValidationContext,
-    PropertyValidationSubject, ResolvedConstraint, ResolvedValidationBinding, ValidationCollector,
+    descriptor_rules, handlers, ResolvedConstraint, ResolvedValidationBinding, ValidationCollector,
     ValueValidationContext, ValueValidationSubject,
 };
 
@@ -30,40 +28,11 @@ pub enum ValidationInvocation<'a> {
         path: &'a ValidationSubjectPath,
         products: &'a crate::schema_rules::SchemaRuleProducts,
     },
-    /// Whole-holon policy against its governing descriptor.
-    Holon {
-        /// Selected effective binding, including declaration provenance.
-        binding: &'a ResolvedValidationBinding,
-        /// Bound subject being assessed.
-        subject: HolonValidationSubject<'a>,
-        /// Governing descriptor discovered at bootstrap navigation.
-        descriptor: &'a HolonDescriptor,
-        /// Identity-only diagnostic path.
-        path: &'a ValidationSubjectPath,
-    },
     /// Descriptor-kernel products prepared once for one subject assessment.
     Descriptor {
         binding: &'a ResolvedValidationBinding,
         path: &'a ValidationSubjectPath,
         products: &'a descriptor_rules::DescriptorRuleProducts,
-    },
-    /// Complete-contract property, even when its value is absent.
-    Property {
-        /// Selected effective binding.
-        binding: &'a ResolvedValidationBinding,
-        /// Property-local subject without a containing holon.
-        subject: PropertyValidationSubject<'a>,
-        /// Minimum enforcement and lower-level services.
-        context: &'a PropertyValidationContext<'a>,
-    },
-    /// Native value without upward navigation to a property or holon.
-    Value {
-        /// Selected effective binding.
-        binding: &'a ResolvedValidationBinding,
-        /// Populated value and selected descriptor.
-        subject: ValueValidationSubject<'a>,
-        /// Immutable descriptor roots used for kind classification.
-        context: &'a ValueValidationContext,
     },
 }
 

@@ -1,32 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{resolve_core_descriptor, HolonReference, UniversalDescriptorContract};
+use holons_core::HolonReference;
 use type_names::CoreValidationRuleName;
 
-/// Immutable execution dependencies for one holon-validation pass.
-///
-/// Resolve once after input completion. These are transaction-bound identities,
-/// not cached descriptor contents. Discard the context before schema mutation or
-/// transaction replacement. Subjects must belong to that same transaction snapshot.
-pub struct HolonValidationContext {
-    pub(crate) universal: UniversalDescriptorContract,
-    pub(crate) values: ValueValidationContext,
-}
-
-/// Property-local dependencies and the minimum decision supplied by holon validation.
-///
-/// The Boolean is the result of `EnforceMinimum(H, M)`, not a parent handle. A
-/// standalone caller must compute it from the same completed input snapshot.
-pub struct PropertyValidationContext<'a> {
-    /// Whether this contract member must enforce its declared minimum.
-    pub enforce_minimum: bool,
-    /// Immutable lower-level services shared throughout the pass.
-    pub values: &'a ValueValidationContext,
-}
-
-/// Descriptor services shared by subject validators, including standalone value assessment.
+/// Immutable descriptor services shared by prepared subject assessments.
 ///
 /// The binding anchors cover the complete rule inventory so all entry points use the same
 /// compatibility rules. They reference schema definitions, never containing subject
@@ -34,23 +12,6 @@ pub struct PropertyValidationContext<'a> {
 pub struct ValueValidationContext {
     pub(crate) context: Arc<TransactionContext>,
     pub(crate) bindings: BindingRoots,
-}
-
-impl HolonValidationContext {
-    /// Resolves the Core anchors through ordinary transaction-scoped lookup.
-    /// All binding anchors must already be loaded and completed. Missing or ambiguous
-    /// anchors prevent constructing a reliable pass and return an operational error.
-    pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Ok(Self {
-            universal: UniversalDescriptorContract::resolve(context)?,
-            values: ValueValidationContext::resolve(context)?,
-        })
-    }
-
-    /// Borrows the value-local services for direct property/value assessment.
-    pub fn value_context(&self) -> &ValueValidationContext {
-        &self.values
-    }
 }
 
 impl ValueValidationContext {
@@ -63,11 +24,6 @@ impl ValueValidationContext {
             context: Arc::clone(context),
             bindings: BindingRoots::resolve_in_view(context, reader)?,
         })
-    }
-
-    /// Resolves immutable anchors for a standalone value or property pass.
-    pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Ok(Self { context: Arc::clone(context), bindings: BindingRoots::resolve(context)? })
     }
 }
 
@@ -101,10 +57,6 @@ pub(crate) struct BindingRoots {
 }
 
 impl BindingRoots {
-    fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Self::resolve_using(|key| resolve_core_descriptor(context, key))
-    }
-
     fn resolve_in_view(
         context: &Arc<TransactionContext>,
         reader: &holons_core::ProspectiveDescriptorReader,
