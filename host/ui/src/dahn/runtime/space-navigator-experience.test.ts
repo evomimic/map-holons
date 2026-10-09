@@ -4,6 +4,8 @@ import type { HolonReference } from '../deps';
 import type { VisualizerContext } from '../contracts/visualizers';
 import type { PathOccurrence } from '../contracts/path-navigation';
 import { semanticWork } from './semantic-work';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 const mocks = vi.hoisted(() => ({ realizeNode: vi.fn() }));
 vi.mock('./realize-node', () => ({ realizeNode: mocks.realizeNode }));
@@ -19,17 +21,18 @@ class NavigationElement extends HTMLElement {
     });
   }
 }
-const reference = (name: string) => ({ key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
+const reference = (name: string) => ({ propertyValue: async () => ({ StringValue: name }), key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
 let binding: SpaceNavigatorBinding;
 let experience: SpaceNavigatorExperience;
 let roots: Array<{ element: HTMLElement; collectionActivation: { dispose: ReturnType<typeof vi.fn> }; singularRelationships: [] }>;
 beforeEach(() => {
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
   roots = [];
   mocks.realizeNode.mockReset().mockImplementation(async () => {
     const root = { element: document.createElement('div'), collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn() }, singularRelationships: [] as [] };
     roots.push(root); return root;
   });
-  const dancerSlot = reference('Dancer slot'), nodeSlot = reference('Node slot');
+  const dancerSlot = reference('SpaceNavigator.RootedNavigationSlot'), nodeSlot = reference('Node slot');
   const path = reference('Path'), node = reference('Node');
   binding = {
     transaction: { selectVisualizer: vi.fn(async request => ({ selected: request.requestedKind === 'node' ? node : path })), commit: vi.fn(), stageNewHolon: vi.fn(), stageNewVersion: vi.fn(), abandon: vi.fn() } as never,
@@ -40,7 +43,7 @@ beforeEach(() => {
   };
   experience = new SpaceNavigatorExperience(binding); document.body.append(experience.element);
 });
-afterEach(() => { experience.dispose(); document.body.replaceChildren(); });
+afterEach(() => { experience.dispose(); document.body.replaceChildren(); vi.unstubAllGlobals(); });
 const navigations = () => [...experience.element.querySelectorAll('[role="tabpanel"] > *')] as NavigationElement[];
 
 it('binds a fresh root through the Dancer slot while sharing execution, materialization and inherited context', async () => {
@@ -164,11 +167,8 @@ it('supplies action-owned inspection and refresh without replacing the explorati
 
 it('selects the response Node in its loader context and expands saved members within its rooted path', async () => {
   const { MaterializedVisualizerRuntime } = await import('./materialized-visualizer-runtime');
-  class ResultNode extends HTMLElement {
-    setContext(context: VisualizerContext) { this.append(...context.childVisualizers!.values()); }
-    getNodeInspectorExtents() { return { horizontal: { 'full-width': 900, 'partial-width': 600, 'minimal-width': 120 }, vertical: { 'full-height': 760, 'partial-height': 600, 'minimal-height': 48 } }; }
-    setNodeInspectorAllocation() {}
-  }
+  const source = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/load-holons-inspector.js'), 'utf8');
+  const ResultNode = (await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)).default;
   const resultNode = reference('Selected result node'), slot = reference('Node slot');
   const loaderMaterializations: unknown[] = [];
   const realize = vi.spyOn(MaterializedVisualizerRuntime.prototype, 'realize').mockImplementation(async function(this: any, selected) {
@@ -194,6 +194,12 @@ it('selects the response Node in its loader context and expands saved members wi
     const lifecycle = { setBeforeChange: vi.fn(), sourceAffordance: (source: HTMLElement) => source === collection ? affordance : undefined, close: vi.fn(), dispose: vi.fn() };
     const path = await present({ transaction: loader, review, subject: response, children: new Map([['properties', properties], ['collections', collection]]), collections: lifecycle, signal: new AbortController().signal });
     document.body.append(path.element);
+    expect(path.element.querySelector('[data-visualizer-information-control]')).not.toBeNull();
+    const inspect = vi.spyOn((experience as any).information, 'inspect').mockImplementation(() => {});
+    const nodeControl = path.element.querySelector('[data-visualizer-information]') as HTMLButtonElement;
+    expect(nodeControl.hidden).toBe(false); nodeControl.click();
+    expect(inspect).toHaveBeenCalledWith(expect.objectContaining({ subject: response, selectedVisualizer: resultNode, slot }));
+    inspect.mockRestore();
     expect(loader.selectVisualizer).toHaveBeenCalledWith({ subject: response, requestedKind: 'node', slot, parentVisualizer: binding.initialNavigationVisualizer });
     expect(path.element.occurrences[0].subject).toBe(response);
     path.inspect({ reference: member, source: collection });

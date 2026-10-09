@@ -83,6 +83,9 @@
           "target": [
             {
               "$ref": "SpaceNavigator.RootedNavigationSlot"
+            },
+            {
+              "$ref": "SpaceNavigator.VisualizerInformationSlot"
             }
           ]
         },
@@ -110,7 +113,9 @@
     {
       "key": "SpaceNavigator.RootedNavigationSlot",
       "type": "VisualizerSlot.HolonType",
-      "properties": {},
+      "properties": {
+        "VisualizerSlotDescription": "Explore an item and follow its connections while retaining the context of where you started."
+      },
       "relationships": [
         {
           "name": "AcceptsVisualizerType",
@@ -125,7 +130,10 @@
     {
       "key": "SpaceNavigator.CanvasVisualizer",
       "type": "CanvasVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Space Navigator",
+        "VisualizerDescription": "Organizes explorations into tabs, each with its own navigation view, alongside a collapsible information sidebar."
+      },
       "relationships": [
         {
           "name": "ConsumesDesignToken",
@@ -187,8 +195,19 @@
     {
       "key": "TableCollectionVisualizer.CollectionVisualizer",
       "type": "CollectionVisualizer.HolonType",
-      "properties": {},
+      "properties": {
+        "DisplayName": "Table Collection",
+        "VisualizerDescription": "Aligns items in rows and their properties in columns for comparison. Column headings sort the rows; More columns changes which properties are shown. Open a row to inspect its item."
+      },
       "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
         {
           "name": "ConsumesDesignToken",
           "target": [
@@ -237,10 +256,35 @@
           ]
         },
         {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "TableCollection.ValueSlot"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
               "$ref": "TableCollectionTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TableCollection.ValueSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Present the values of one property across all items in this column, using the same presentation for every row."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
             }
           ]
         }
@@ -262,8 +306,123 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:4c39fedf4b1182342910590d2bb9a008765930e87ebb572927c0c5ea4cfb0419",
+        "VisualizerArtifactDigest": "sha256:c210d3d20ee0a4b351122ab6d04f48723f4adde2e2070c7541c946b31f0f7db3",
         "VisualizerImplementationKey": "dahn.table-collection",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
+      "key": "VisualizerInspector.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "VisualizerInspector",
+        "TypeNamePlural": "VisualizerInspectors",
+        "DisplayName": "Visualizer Inspector",
+        "DisplayNamePlural": "Visualizer Inspectors",
+        "Description": "Read-only semantic inspection of a shared Visualizer definition in an auxiliary experience region."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Space Navigator Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.VisualizerInformationSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Explain the purpose of a part of the view and the visualizer currently presenting it, with access to further details."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "VisualizerInspector.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerInspector.Visualizer",
+      "type": "VisualizerInspector.HolonType",
+      "properties": {
+        "DisplayName": "Visualizer Inspector",
+        "VisualizerDescription": "Shows the slot’s purpose and the current visualizer’s approach first. Expand presentation structure entries to inspect child presentations in place. Technical details stay collapsed, and the explore icon opens the visualizer as an item."
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "VisualizerInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:6d8183628771f14f60f846a6304bc8c2301f436244d3acd813e5edf42a7ef165",
+        "VisualizerImplementationKey": "dahn.visualizer-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }

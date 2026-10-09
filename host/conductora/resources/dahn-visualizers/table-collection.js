@@ -39,6 +39,33 @@ function assertPresentation(presentation) {
 }
 /** Read-only collection renderer with occurrence-local selection and inspection intent. */
 export default class TableCollectionVisualizerElement extends HTMLElement {
+    static compositionSlots = { value: 'TableCollection.ValueSlot' };
+    getVisualizerComposition() {
+        return [...(this.columnHeadings ?? [])].map(([id, element]) => ({ label: this.presentation.columns.find(column => column.id === id).displayName, element }));
+    }
+    setColumnValueVisualizerProvider(provider, identityProperty) {
+        this.columnValueProvider = provider;
+        this.identityProperty = identityProperty;
+    }
+    async columnPresentations(columns, properties) {
+        const generation = this.generation;
+        const presentations = new Map();
+        if (this.columnValueProvider) for (const column of columns) {
+            if (generation !== this.generation) return presentations;
+            const property = properties.get(column.id);
+            if (property) presentations.set(column.id, await this.columnValueProvider(property, column.displayName));
+        }
+        return presentations;
+    }
+    async bindColumnInformation() {
+        const generation = this.generation;
+        for (const [id, presentation] of this.columnValues) {
+            if (generation !== this.generation) return;
+            const heading = this.columnHeadings.get(id);
+            if (heading) await presentation.bindInformation(heading);
+        }
+        if (generation === this.generation) this.fitColumns();
+    }
     generation = 0;
     members = new Map();
     selectedRow = undefined;
@@ -93,11 +120,24 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.sortStatus.textContent = column ? `Sorted by ${column.displayName}, ${this.sort.direction}` : this.presentation.defaultRowOrder ? (this.presentation.defaultOrderLabel ?? 'Default order') : this.presentation.manualOrderUnavailable ? 'Manual order unavailable · supplied order' : 'Supplied order';
         this.fitColumns();
     }
-    setProjection(presentation) { this.setContext({ collectionPresentation: presentation }); }
+    setProjection(presentation, properties) {
+        if (!properties || !this.columnValueProvider) { this.setContext({ collectionPresentation: presentation }); return; }
+        return this.setDescriptorProjection(presentation, properties);
+    }
+    async setDescriptorProjection(presentation, properties) {
+        const generation = ++this.generation;
+        const columnValues = await this.columnPresentations(presentation.columns, properties);
+        if (generation !== this.generation) return;
+        this.setContext({ collectionPresentation: presentation, columnValues });
+        await this.bindColumnInformation();
+    }
     setActivateRowHandler(handler) { this.activateProjectedRow = handler; }
     setInspectHolonHandler(handler) {
         this.inspectHolon = handler;
-        if (handler === null) this.members.clear();
+        if (handler === null) {
+            this.members.clear(); ++this.generation;
+            for (const control of this.querySelectorAll('[data-visualizer-information-control]')) control.remove();
+        }
     }
     selectRow(row) {
         this.selectedRow = row.dataset.rowId;
@@ -135,9 +175,12 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const keyed = [...keys.values()].some(key => key !== null);
         const members = new Map();
         const columns = [];
+        const properties = new Map();
         for (const property of await collection.elementType.instanceProperties()) {
             if (await property.isArray()) continue;
-            columns.push({ id: await property.propertyName(), displayName: await property.displayName(), valueType: await property.valueKind(), values: [] });
+            const id = await property.propertyName();
+            properties.set(id, property);
+            columns.push({ id, displayName: await property.displayName(), valueType: await property.valueKind(), values: [] });
         }
         // Descriptor classification anchors can expose no instance columns.
         // Keep their holon members identifiable through the public bound handle,
@@ -145,6 +188,8 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const identityOnly = columns.length === 0;
         if (identityOnly || (keyed && !columns.some(column => column.id === 'Key'))) {
             columns.unshift({ id: 'Key', displayName: 'Key', valueType: 'StringValue', values: [] });
+            const property = await this.identityProperty?.();
+            if (property) properties.set('Key', property);
         }
         const keyIndex = columns.findIndex(column => column.id === 'Key');
         if (keyIndex > 0) columns.unshift(...columns.splice(keyIndex, 1));
@@ -162,8 +207,10 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             }
         }
         if (generation !== this.generation) return;
-        this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns, defaultSortColumnId: keyed && !ordering.isOrdered ? 'Key' : undefined, manualOrderUnavailable: ordering.isOrdered } });
-        this.members = members;
+        const columnValues = await this.columnPresentations(columns, properties);
+        if (generation !== this.generation) return;
+        this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns, defaultSortColumnId: keyed && !ordering.isOrdered ? 'Key' : undefined, manualOrderUnavailable: ordering.isOrdered }, columnValues, memberBindings: members });
+        await this.bindColumnInformation();
     }
     getCollectionViewportHeight(count = 5) {
         const pixel = value => parseFloat(value) || 0;
@@ -228,9 +275,10 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         assertPresentation(presentation);
         this.activateProjectedRow = null;
         this.presentation = presentation;
+        this.columnValues = context.columnValues ?? new Map();
         this.sort = this.defaultSort();
         ++this.generation;
-        this.members.clear();
+        this.members = context.memberBindings ?? new Map();
         this.selectedRow = undefined;
         this.dataset['visualizerId'] = 'table-collection';
         this.dataset['collectionKind'] = presentation.kind;
@@ -259,11 +307,13 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         table.style.width = 'max-content';
         this.table = table;
         const headerRow = document.createElement('tr');
+        this.columnHeadings = new Map();
         for (const column of presentation.columns) {
             const header = document.createElement('th');
             header.scope = 'col';
             header.style.fontWeight = 'var(--dahn-table-header-font-weight)';
             header.dataset['columnId'] = column.id;
+            this.columnHeadings.set(column.id, header);
             if (eligible(column)) {
                 const control = document.createElement('button');
                 control.type = 'button';
@@ -345,7 +395,9 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             for (const column of presentation.columns) {
                 const cell = document.createElement('td');
                 cell.dataset['columnId'] = column.id;
-                cell.textContent = column.values[rowIndex] === null ? (presentation.missingValueLabel ?? 'n/a') : formatStaticValue(column.values[rowIndex]);
+                const valuePresentation = this.columnValues.get(column.id);
+                if (valuePresentation) cell.append(valuePresentation.create(column.values[rowIndex], this.members.get(rowId), presentation.missingValueLabel ?? 'n/a'));
+                else cell.textContent = column.values[rowIndex] === null ? (presentation.missingValueLabel ?? 'n/a') : formatStaticValue(column.values[rowIndex]);
                 cell.title = cell.textContent;
                 cell.style.borderBottom =
                     'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';

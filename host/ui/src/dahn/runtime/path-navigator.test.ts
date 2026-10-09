@@ -1,4 +1,5 @@
 import { destinationPaint } from './destination-paint';
+import { selectedVisualizerInspection, withVisualizerComposition } from './visualizer-information-control';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,7 @@ import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import type { PathOccurrence } from '../contracts/path-navigation';
 import type { HolonReference, MapTransaction } from '../deps';
-import type { VisualizerElement } from '../contracts/visualizers';
+import type { VisualizerElement, VisualizerInspectionTarget } from '../contracts/visualizers';
 
 vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) }));
 
@@ -18,7 +19,7 @@ const artifacts = Object.fromEntries(await Promise.all(
   ['holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
-const selected = (key: string) => ({ key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
+const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
 const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
 const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
@@ -47,7 +48,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-async function fixture(openExploration?: (anchor: HolonReference) => void) {
+async function fixture(openExploration?: (anchor: HolonReference) => void, inspectVisualizer?: (target: VisualizerInspectionTarget) => void) {
   const rootSubject = subject('root'); const a = subject('A'); const b = subject('B');
   for (const ref of [rootSubject, a, b]) {
     ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
@@ -60,6 +61,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void) {
     selectValueVisualizer: vi.fn(async () => ({ selected: visualizers.value })),
     selectCollectionVisualizer: vi.fn(async () => ({ selected: visualizers.collection })),
     getSavedHolonByBaseKey: vi.fn(async () => ({})),
+    getSavedPropertyDescriptorByBaseKey: vi.fn(async () => ({ ...property, propertyName: async () => 'Key', displayName: async () => 'Key' })),
   } as unknown as MapTransaction;
   const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
@@ -73,7 +75,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void) {
   });
   const root = await realize(rootSubject as never, visualizers.node);
   const parent = selected('path-inspector');
-  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize, openExploration);
+  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize, openExploration, undefined, inspectVisualizer);
   let occurrences: readonly PathOccurrence[] = [];
   let destination: import('../contracts/path-navigation').PathDestination | undefined;
   navigation.subscribe((path, _, pending) => { occurrences = [...path]; destination = pending; });
@@ -149,7 +151,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(child.provenance).toMatchObject({ kind: 'collection-member', parentOccurrenceId: f.path()[0].id, affordance: { label: 'Members' } });
     expect(child.provenance!.collectionOccurrenceId).not.toBe(child.id);
     expect(child.element.textContent).toContain('Example: A');
-    expect(child.element.querySelector('[data-dahn-scalar-value]')?.textContent).toBe('A');
+    expect(child.element.querySelector('[data-dahn-scalar-value]')?.firstChild?.textContent).toBe('A');
     expect(f.root.element.querySelector('table')).toBe(table);
     expect(rows[0].getAttribute('aria-selected')).toBe('true');
     expect(f.root.element.querySelector('[aria-selected=true][role=tab]')?.textContent).toBe('Members (3)');
@@ -1286,4 +1288,52 @@ it('compacts vertical traversal groups without discarding surviving descendant g
   expect(child.column).toBe(first.column! + 1);
   expect(child.row).toBe(first.row);
   expect(child.provenance?.parentOccurrenceId).toBe(first.id);
+});
+
+it('binds information to distinct occurrences of the same subject and their selected definitions', async () => {
+  const inspect = vi.fn();
+  const f = await fixture(undefined, inspect);
+  (f.root.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
+  const first = inspect.mock.calls[0][0];
+  expect(first.selectedVisualizer).toBe(visualizers.node);
+  const pathRegions = f.element.getVisualizerComposition!();
+  const rootRegion = pathRegions.find((region: any) => region.label === 'Root Node');
+  expect(rootRegion!.element).toBe(f.root.element);
+  const rootInspection = withVisualizerComposition(selectedVisualizerInspection(rootRegion!.element)!);
+  expect(rootInspection.selectedVisualizer).toBe(first.selectedVisualizer);
+  expect(rootInspection.composition!().map(entry => entry.label)).toEqual(expect.arrayContaining(['Title Bar', 'Vertical Rail', 'Collection Tabs', 'Properties']));
+  expect(pathRegions.find(region => region.label === 'View controls')!.children!.map(region => region.label)).toEqual(['Zoom out', 'Zoom in', 'Zoom to Fit', 'Actual Size']);
+  const alternate = selected('alternate-inspector');
+  artifacts['alternate-inspector'] = artifacts['holon-inspector'];
+  f.selectVisualizer.mockImplementation(async request => ({ selected: request.requestedKind === 'node' ? alternate : visualizers[request.requestedKind] }));
+  const rows = await openCollection(f.root.element);
+  activate(rows[2]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+  const child = f.path()[1];
+  (child.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
+  const second = inspect.mock.calls[1][0];
+  expect(second.subject).toBe(first.subject);
+  expect(second.occurrenceId).not.toBe(first.occurrenceId);
+  expect(second.selectedVisualizer).toBe(alternate);
+  expect(second.slot).toBeDefined(); expect(second.owner).toBe(f.parent);
+  f.navigation.restore(first.occurrenceId);
+  expect(second.selectedVisualizer).toBe(alternate);
+  f.navigation.close!(second.occurrenceId);
+  expect(second.isLive()).toBe(false); expect(first.isLive()).toBe(true);
+  expect(selectedVisualizerInspection(child.element)).toBeUndefined();
+  f.navigation.dispose();
+});
+
+
+it('provides independently bound information controls for composed Properties, Property, Value and Actions slots', async () => {
+  const f = await fixture();
+  const targets: VisualizerInspectionTarget[] = [];
+  f.element.addEventListener('dahn-visualizer-information', event => targets.push((event as CustomEvent).detail));
+  const controls = [...f.root.element.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')];
+  expect(controls).toHaveLength(4);
+  for (const button of controls) button.click();
+  expect(new Set(targets.map(target => target.selectedVisualizer))).toEqual(new Set([visualizers.propertyMap, visualizers.property, visualizers.value, visualizers.actionBar]));
+  expect(targets.every(target => target.subject === f.rootSubject && target.isLive())).toBe(true);
+  f.navigation.dispose();
+  expect(targets.every(target => !target.isLive())).toBe(true);
 });

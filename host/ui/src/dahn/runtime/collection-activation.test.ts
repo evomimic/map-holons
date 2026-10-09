@@ -12,6 +12,7 @@ import type { CollectionAffordance } from '../contracts/affordances';
 vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) }));
 
 const tableSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/table-collection.js'), 'utf8');
+const valueSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/scalar-value.js'), 'utf8');
 const nodeSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/holon-inspector.js'), 'utf8');
 const importer = (source: string) => import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const wait = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
@@ -23,14 +24,16 @@ function collection(count: number) {
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture(populated = false) {
   const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
-  const selected = { key: async () => 'table' };
+  const valueSlot = { key: async () => 'TableCollection.ValueSlot' };
+  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async () => [valueSlot] };
+  const value = { key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
   const slot = {};
   const parent = {};
-  const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })) };
-  const materialize = vi.fn(async () => ({ source: tableSource, format: 'ESModule' as const, entrypoint: 'default' }));
+  const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })), selectValueVisualizer: vi.fn(async () => ({ selected: value })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => property('Key')) };
+  const materialize = vi.fn(async (reference: unknown) => ({ source: reference === value ? valueSource : tableSource, format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   const activation = new NodeCollectionActivation(transaction as never, owner as never, parent as never, runtime, populated ? { population: () => ({ state: 'populated', count: 2 }), record: vi.fn(), dispose: vi.fn() } as never : undefined);
-  return { activation, owner, transaction, runtime, materialize, slot, parent };
+  return { activation, owner, transaction, runtime, materialize, slot, parent, selected, valueSlot };
 }
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
@@ -54,7 +57,8 @@ describe('selected collection activation', () => {
     expect([...element.querySelectorAll('th')].map(cell => cell.querySelector('[data-sort-toggle]')?.textContent ?? cell.textContent)).toEqual(['Key heading', 'Name heading']);
     expect(element.querySelectorAll('tbody tr')).toHaveLength(count);
     if (count) expect(element.textContent).toContain('n/a');
-    expect(f.materialize).toHaveBeenCalledOnce();
+    expect(f.materialize).toHaveBeenCalledTimes(2);
+    expect(f.transaction.selectValueVisualizer).toHaveBeenCalledTimes(2);
   });
 
   it('rereads on return, does nothing on active-tab activation, and keeps occurrences independent', async () => {
@@ -416,7 +420,8 @@ it('selects in the open presentation context while retaining committed loader me
   const type = {}, parent = {}, slot = {};
   const bind = vi.fn((ref: unknown) => ref === retained.elementType ? type : ref === f.parent ? parent : ref);
   const presentation = { getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
-    selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: { key: async () => 'table' } })) };
+    selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: f.selected })),
+    selectValueVisualizer: f.transaction.selectValueVisualizer, getSavedPropertyDescriptorByBaseKey: f.transaction.getSavedPropertyDescriptorByBaseKey };
   const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation);
   const updates: CollectionUpdate[] = [];
   activation.activate(tab('Sources'), 'slot', (update: CollectionUpdate) => updates.push(update));

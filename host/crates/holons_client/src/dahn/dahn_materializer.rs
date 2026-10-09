@@ -148,6 +148,7 @@ impl DahnMaterializer {
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "PathInspector.RootedNavigationVisualizer" => "path-inspector.js",
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
+            "VisualizerInspector.Visualizer" => "visualizer-inspector.js",
             "LoadHolons.NodeVisualizer" => "load-holons-inspector.js",
             "GenericActions.ActionBarVisualizer" => "actions.js",
             "LoadHolons.ActionVisualizer" => "load-holons-action.js",

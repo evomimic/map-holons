@@ -109,6 +109,7 @@ export class Theme {
     }
 
     const customProperties: Record<string, string> = {};
+    const tokenAssignmentValues: Record<string, string> = {};
     const assignedTokenKeys = new Set<string>();
     for (const assignment of assignments.members) {
       const token = await requireRelated(assignment, 'ForDesignToken');
@@ -125,6 +126,7 @@ export class Theme {
       assertSafeCssValue(presentationValue);
       assertDesignTokenType(presentationValue, expectedTokens.get(tokenKey)!);
       customProperties[cssCustomPropertyName(tokenName)] = presentationValue;
+      tokenAssignmentValues[tokenKey] = presentationValue;
       assignedTokenKeys.add(tokenKey);
     }
 
@@ -150,6 +152,7 @@ export class Theme {
       metaDesignSystemKey,
       metaDesignSystemVersionedKey,
       cssCustomProperties: Object.freeze(customProperties),
+      tokenAssignmentValues: Object.freeze(tokenAssignmentValues),
     });
   }
 }

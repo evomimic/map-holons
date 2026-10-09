@@ -17,7 +17,7 @@ it('integrates occurrence controls in one header and retains the rail during ver
     relationshipDiscovery: { subscribe: (callback: () => void) => { callback(); return () => {}; }, population: () => ({ state: 'populated', count: 1 }) } });
   node.setOccurrenceClosureHandler(close); node.setOccurrenceExplorationHandler(explore); node.setOccurrenceRestorationHandler(restore);
   expect(node.querySelectorAll('header')).toHaveLength(1);
-  node.querySelector('[aria-label="Close branch"]').click();
+  node.querySelector('[data-close-occurrence]').click();
   node.querySelector('[aria-label="Explore from here"]').click();
   expect(close).toHaveBeenCalledOnce(); expect(explore).toHaveBeenCalledOnce();
   Object.defineProperty(properties, 'scrollHeight', { value: 360 });

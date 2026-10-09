@@ -2,7 +2,7 @@ export default class ScalarValueVisualizerElement extends HTMLElement {
   setContext(context) {
     this.dataset.dahnScalarValue = 'true';
     const value = context.propertyPresentation?.value;
-    this.textContent = value === null || value === undefined ? '' : present(value);
+    this.textContent = value === null || value === undefined ? context.propertyPresentation?.missingValueLabel ?? '' : present(value);
   }
 }
 

@@ -5,4 +5,6 @@ export interface DahnTheme {
   metaDesignSystemKey: string;
   metaDesignSystemVersionedKey: string;
   cssCustomProperties: Readonly<Record<string, string>>;
+  /** Validated ThemeTokenAssignment PresentationValues keyed by exact token version. */
+  tokenAssignmentValues?: Readonly<Record<string, string>>;
 }

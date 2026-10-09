@@ -39,7 +39,15 @@ describe('Property presentation artifacts', () => {
     const valueSlot = property.querySelector('[data-dahn-property-value]') as HTMLElement;
     expect(slot.contains(property)).toBe(true);
     expect(valueSlot.contains(value)).toBe(true);
+    expect(value.style.display).toBe('block');
+    expect(value.style.minWidth).toBe('0');
+    expect(value.style.boxSizing).toBe('border-box');
     expect(property.querySelector('[data-dahn-property-name]')?.textContent).toBe('Title');
+    expect((properties as any).getVisualizerComposition()).toEqual([{ label: 'Title', element: property }]);
+    expect((property as any).getVisualizerComposition()).toEqual([
+      { label: 'Property name', element: property.querySelector('[data-dahn-property-name]') },
+      { label: 'Value', element: value },
+    ]);
     expect(valueSlot.style.border).toBe('');
     for (const region of [slot]) {
       expect(region.style.borderBottom).toContain('--dahn-slot-border-width');

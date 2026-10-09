@@ -1,7 +1,8 @@
+import { registerVisualizerInspection, revokeVisualizerInformationControls } from './visualizer-information-control';
 import { placeTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
 import { destinationPaint } from './destination-paint';
 import { NavigationProfile } from './navigation-profile';
-import type { InspectHolonIntent, TraverseRelationshipIntent, SingularNavigationState, VisualizerElement } from '../contracts/visualizers';
+import type { InspectHolonIntent, TraverseRelationshipIntent, SingularNavigationState, VisualizerElement, VisualizerInspectionTarget } from '../contracts/visualizers';
 import type { PathDestination, PathFocus, PathNavigation, PathOccurrence, VerticalProvenance, TraversalProvenance, SingularProvenance, TraversalPresentation } from '../contracts/path-navigation';
 import type { CollectionAffordance, RelationshipAffordance } from '../contracts/affordances';
 import type { HolonReference, MapTransaction } from '../deps';
@@ -54,6 +55,7 @@ export class PathNavigator implements PathNavigation {
     private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void) => Promise<RealizedNode>,
     private readonly openExploration?: (anchor: HolonReference) => void,
     private readonly contextFor: (subject: HolonReference) => MapTransaction = () => transaction,
+    private readonly inspectVisualizer?: (target: VisualizerInspectionTarget) => void,
   ) {
     this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
     this.focus = { occurrenceId: this.root.id, mode: 'restore' };
@@ -261,6 +263,27 @@ export class PathNavigator implements PathNavigation {
       selectedVisualizer, provenance, element: node.element, node, pending: false,
       generation: 0, traversed: false, alternatives: [], horizontalAlternatives: [], singular: { state: 'unresolved' }, collections: new Map(),
     };
+    const control = node.element as VisualizerElement;
+    if (this.inspectVisualizer && control.setVisualizerInformationHandler) {
+      let displayName = 'Visualizer';
+      const target = (invoker: HTMLElement): VisualizerInspectionTarget => ({ occurrenceId: occurrence.id, context: this,
+        owner: this.parentVisualizer, slot: this.nodeSlot, subject, selectedVisualizer, displayName,
+        element: node.element, invoker,
+        isLive: () => !this.disposed && this.path().includes(occurrence) && node.element.isConnected });
+      const invoke = (invoker: HTMLElement) => {
+        if (this.disposed || !this.path().includes(occurrence) || !node.element.isConnected) return;
+        this.inspectVisualizer!(target(invoker));
+      };
+      control.setVisualizerInformationHandler(invoke, 'Visualizer');
+      registerVisualizerInspection(node.element, () => target(node.element.querySelector<HTMLElement>('[data-visualizer-information]') ?? node.element));
+      void semanticWork(this.contextFor(subject)).run(async () => {
+        const name = await selectedVisualizer.propertyValue('DisplayName');
+        return name && 'StringValue' in name ? name.StringValue : await selectedVisualizer.key() ?? await selectedVisualizer.versionedKey();
+      }).then(name => {
+        displayName = name;
+        if (!this.disposed && this.path().includes(occurrence)) control.setVisualizerInformationHandler?.(invoke, name);
+      }).catch(() => { /* The information action remains available if its label cannot be read. */ });
+    }
     node.collectionActivation.setBeforeChange(() => {
       if (this.disposed) return false;
       if (this.attempt?.owner === occurrence && this.attempt.axis === 'vertical') {
@@ -570,6 +593,8 @@ export class PathNavigator implements PathNavigation {
   canDismiss(): boolean { return this.path().every(item => this.dismissible(item)); }
 
   private release(occurrence: Occurrence): void {
+    (occurrence.element as VisualizerElement).setVisualizerInformationHandler?.(undefined, 'Visualizer');
+    revokeVisualizerInformationControls(occurrence.element);
     for (const action of occurrence.node.actionActivations ?? []) void action.dispose().catch(console.error);
     ++occurrence.generation;
     occurrence.node.collectionActivation.dispose();

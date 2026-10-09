@@ -1,5 +1,6 @@
 export default class PropertyVisualizerElement extends HTMLElement {
   static compositionSlots = { value: 'GenericProperty.ValueSlot' };
+  getVisualizerComposition() { return this.composition ?? []; }
   setContext(context) {
     this.dataset.dahnProperty = 'true';
     this.style.display = 'grid';
@@ -19,8 +20,15 @@ export default class PropertyVisualizerElement extends HTMLElement {
     value.style.minWidth = '0';
     const valueVisualizer = context.childVisualizers?.get('value');
     if (valueVisualizer !== undefined) {
+      // A block box gives wrapping values one stable boundary for their info control.
+      valueVisualizer.style.display = 'block';
+      valueVisualizer.style.minWidth = '0';
+      valueVisualizer.style.boxSizing = 'border-box';
       value.append(valueVisualizer);
     }
+
+    this.composition = [{ label: 'Property name', element: name },
+      ...(valueVisualizer ? [{ label: 'Value', element: valueVisualizer }] : [])];
 
     this.replaceChildren(name, value);
   }

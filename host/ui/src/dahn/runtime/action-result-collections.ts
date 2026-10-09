@@ -1,10 +1,12 @@
-import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
+import { bindCollectionVisualizerInformation } from './realize-collection';
+import type { DescribedHolonCollection, HolonReference, MapTransaction, PropertyDescriptorHandle } from '../deps';
 import type { DahnTheme } from '../contracts/themes';
 import type { ActionBinding } from './action-activation';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 import type { TablePresentation } from '../contracts/table-presentation';
 import { realizeProjectedCollection, realizeCollection, type CollectionElement } from './realize-collection';
 import { semanticWork } from './semantic-work';
+import type { VisualizerPresentationRegion } from '../contracts/visualizers';
 
 interface ActionResultBase {
   /** Composition role declared by the selected Action Visualizer implementation. */
@@ -20,7 +22,7 @@ interface ActionResultBase {
 
 export type ActionResultCollection = ActionResultBase & (
   { collection: DescribedHolonCollection; projection?: never } |
-  { collection?: never; projection: { elementType: HolonReference; presentation: TablePresentation; activate(id: string): void } }
+  { collection?: never; projection: { elementType: HolonReference; presentation: TablePresentation; properties?: ReadonlyMap<string, PropertyDescriptorHandle>; activate(id: string): void } }
 );
 
 export interface ActionResultInspection {
@@ -33,7 +35,14 @@ export interface ActionResultInspection {
 /** Action-owned collection occurrences. Hiding a role retains its live view state;
  * closing the owner revokes all intents without disposing borrowed transactions. */
 export class ActionResultCollections {
-  readonly element = document.createElement('section');
+  readonly element = Object.assign(document.createElement('section'), {
+    getVisualizerComposition: (): readonly VisualizerPresentationRegion[] => [
+      ...(this.tabs ? [{ label: 'Collection Tabs', element: this.tabs }] : []),
+      ...[...this.occurrences.values()].flatMap(occurrence => occurrence.content
+        ? [{ label: occurrence.binding.label, element: occurrence.content }] : []),
+    ],
+  });
+  private tabs?: HTMLElement;
   private readonly occurrences = new Map<string, {
     binding: ActionResultCollection; tab: HTMLButtonElement; panel: HTMLElement;
     content?: CollectionElement; generation: number; loaded: boolean; unsubscribe: () => void;
@@ -48,6 +57,7 @@ export class ActionResultCollections {
     Object.assign(this.element.style, { display: 'flex', flexDirection: 'column', minHeight: '0', height: '100%', overflow: 'hidden' });
     for (const [name, value] of Object.entries(theme.cssCustomProperties)) this.element.style.setProperty(name, value);
     const tabs = document.createElement('div'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Result collections');
+    this.tabs = tabs;
     // A single collection is already selected; its owner supplies the view label.
     tabs.hidden = results.length < 2;
     this.element.append(tabs);
@@ -110,11 +120,12 @@ export class ActionResultCollections {
         if (!element || !current()) return;
         stage = 'Collection presentation';
         if (binding.projection) {
-          element.setProjection!(binding.projection.presentation);
+          await element.setProjection!(binding.projection.presentation, binding.projection.properties);
           element.setActivateRowHandler!(id => {
             if (current() && this.active === role && element.isConnected) binding.projection!.activate(id);
           });
         } else await element.setCollection(binding.collection, binding.label, { isOrdered: binding.isOrdered });
+            await bindCollectionVisualizerInformation(element);
         if (!current()) return;
         element.setInspectHolonHandler(reference => {
           if (current() && this.active === role && element.isConnected) this.inspect({ reference, source: element, result: binding, origin: this.origin });

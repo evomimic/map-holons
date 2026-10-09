@@ -27,7 +27,7 @@ instance SpaceNavigator.Dancer {
   relationships {
     OffersDance -> MaterializeVisualizer.DanceType
     AffordedByHolonSpace -> MAP.CoreSchemaSpace
-    HasExperienceVisualizerSlot -> SpaceNavigator.RootedNavigationSlot
+    HasExperienceVisualizerSlot -> [SpaceNavigator.RootedNavigationSlot, SpaceNavigator.VisualizerInformationSlot]
     Requires -> [
       "MAP DAHN Schema-v0.1.0",
       "MAP Space Navigator Schema-v0.1.0"
@@ -37,6 +37,7 @@ instance SpaceNavigator.Dancer {
 
 instance SpaceNavigator.RootedNavigationSlot {
   type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Explore an item and follow its connections while retaining the context of where you started."
   relationships {
     AcceptsVisualizerType -> RootedNavigationVisualizer.HolonType
   }
@@ -44,6 +45,8 @@ instance SpaceNavigator.RootedNavigationSlot {
 
 instance SpaceNavigator.CanvasVisualizer {
   type CanvasVisualizer.HolonType
+  DisplayName "Space Navigator"
+  VisualizerDescription "Organizes explorations into tabs, each with its own navigation view, alongside a collapsible information sidebar."
   relationships {
     ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
@@ -67,7 +70,11 @@ instance SpaceNavigator.CanvasVisualizer {
 
 instance TableCollectionVisualizer.CollectionVisualizer {
   type CollectionVisualizer.HolonType
+  DisplayName "Table Collection"
+  VisualizerDescription "Aligns items in rows and their properties in columns for comparison. Column headings sort the rows; More columns changes which properties are shown. Open a row to inspect its item."
   relationships {
+    HasSlot -> TableCollection.ValueSlot
+    ApplicableToType -> HolonCollection.HolonType
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
       ActionHoverSurfaceBackground.DesignToken,
@@ -88,6 +95,14 @@ instance TableCollectionVisualizer.CollectionVisualizer {
   }
 }
 
+instance TableCollection.ValueSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Present the values of one property across all items in this column, using the same presentation for every row."
+  relationships {
+    AcceptsVisualizerType -> ValueVisualizer.HolonType
+  }
+}
+
 instance SpaceNavigatorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
@@ -101,7 +116,57 @@ instance TableCollectionTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.table-collection"
-  VisualizerArtifactDigest "sha256:4c39fedf4b1182342910590d2bb9a008765930e87ebb572927c0c5ea4cfb0419"
+  VisualizerArtifactDigest "sha256:c210d3d20ee0a4b351122ab6d04f48723f4adde2e2070c7541c946b31f0f7db3"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+// This presentation is selected only by the information slot, not ordinary Node slots.
+holon VisualizerInspector.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Read-only semantic inspection of a shared Visualizer definition in an auxiliary experience region."
+    display_name: "Visualizer Inspector"
+    display_plural: "Visualizer Inspectors"
+    plural: "VisualizerInspectors"
+  }
+}
+
+instance SpaceNavigator.VisualizerInformationSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Explain the purpose of a part of the view and the visualizer currently presenting it, with access to further details."
+  relationships {
+    AcceptsVisualizerType -> VisualizerInspector.HolonType
+  }
+}
+
+instance VisualizerInspector.Visualizer {
+  type VisualizerInspector.HolonType
+  DisplayName "Visualizer Inspector"
+  VisualizerDescription "Shows the slot’s purpose and the current visualizer’s approach first. Expand presentation structure entries to inspect child presentations in place. Technical details stay collapsed, and the explore icon opens the visualizer as an item."
+  relationships {
+    ApplicableToType -> Visualizer.HolonType
+    ConsumesDesignToken -> [
+      CanvasTextColor.DesignToken,
+      PanelSurfaceBackground.DesignToken,
+      SlotPadding.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotBorderColor.DesignToken,
+      ActionTextColor.DesignToken,
+      ActionSurfaceBackground.DesignToken,
+      ActionPaddingBlock.DesignToken,
+      ActionPaddingInline.DesignToken,
+    ]
+    ImplementedBy -> VisualizerInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance VisualizerInspectorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.visualizer-inspector"
+  VisualizerArtifactDigest "sha256:6d8183628771f14f60f846a6304bc8c2301f436244d3acd813e5edf42a7ef165"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

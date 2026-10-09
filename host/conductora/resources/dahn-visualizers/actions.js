@@ -1,4 +1,5 @@
 export default class ActionsElement extends HTMLElement {
+  getVisualizerComposition() { return this.composition ?? []; }
   static compositionSlots = { action: "GenericActions.ActionSlot" };
   connectedCallback() {
     if (!this.layout) return;
@@ -21,21 +22,25 @@ export default class ActionsElement extends HTMLElement {
   setContext(context) {
     this.dataset.dahnNodeActions = 'true';
     this.disconnectedCallback();
-    const compose = actions => actions.map(action => {
+    this.composition = [];
+    const compose = (actions, regions) => actions.map(action => {
       if (action.kind !== 'group') {
         const child = context.childVisualizers?.get(action.id);
         if (!child) throw new Error(`Missing selected Action Visualizer: ${action.id}`);
         child.dataset.actionId = action.id;
+        regions.push({ label: action.label, element: child });
         return child;
       }
       const group = document.createElement('div');
       group.setAttribute('role', 'group');
       group.setAttribute('aria-label', action.label);
       Object.assign(group.style, { display: 'flex', alignItems: 'stretch', gap: 'var(--dahn-control-gap)', borderInlineStart: '1px solid var(--dahn-slot-border-color)', paddingInlineStart: 'var(--dahn-control-gap)' });
-      group.append(...compose(action.children ?? []));
+      const children = [];
+      regions.push({ label: action.label, element: group, children });
+      group.append(...compose(action.children ?? [], children));
       return group;
     });
-    const controls = compose(context.actions);
+    const controls = compose(context.actions, this.composition);
     this.layout = horizontalOverflow(this, controls, 'More actions', [...(context.childVisualizers?.values() ?? [])]);
     if (this.isConnected) this.connectedCallback();
     if (controls.length === 0) this.textContent = 'No actions';
