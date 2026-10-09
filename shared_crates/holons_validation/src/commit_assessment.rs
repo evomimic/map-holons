@@ -9,7 +9,7 @@ use crate::{
     subject_assessment::{self, PreparedBinding},
     CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
     ConstraintDeclarationRoots, ContractKindRoots, DescriptorRuleProducts, ValidationCollector,
-    ValueValidationContext,
+    ValidationObservations, ValueValidationContext,
 };
 use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
@@ -108,8 +108,8 @@ pub fn validate_commit_candidates_with_observer(
     candidates: &[StagedReference],
     observer: impl FnMut(crate::AssessmentPhase),
 ) -> Result<CommitValidationReport, HolonError> {
-    let assessment = assess_commit_candidates_with_observer(context, candidates, observer)?;
-    PreparedAssessment::from_scope(candidates, assessment.report)?.install_outcomes()
+    let (assessment, _) = assess_commit_candidates_with_observer(context, candidates, observer)?;
+    assessment.install_outcomes()
 }
 
 /// Assesses the prospective Commit view without installing outcomes or mutating staged holons.
@@ -118,17 +118,19 @@ pub fn assess_commit_candidates(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
 ) -> Result<CommitAssessment, HolonError> {
-    assess_commit_candidates_with_observer(context, candidates, |_| {})
+    let (assessment, observations) =
+        assess_commit_candidates_with_observer(context, candidates, |_| {})?;
+    Ok(CommitAssessment { report: assessment.into_report(), observations })
 }
 
-fn assess_commit_candidates_with_observer(
+fn assess_commit_candidates_with_observer<'a>(
     context: &Arc<TransactionContext>,
-    candidates: &[StagedReference],
+    candidates: &'a [StagedReference],
     mut observer: impl FnMut(crate::AssessmentPhase),
-) -> Result<CommitAssessment, HolonError> {
+) -> Result<(PreparedAssessment<'a>, ValidationObservations), HolonError> {
     observer(crate::AssessmentPhase::Construction);
     if candidates.is_empty() {
-        return Ok(CommitAssessment::default());
+        return Ok((PreparedAssessment::default(), ValidationObservations::default()));
     }
     require_distinct_live_candidates(candidates)?;
     let reader = ProspectiveDescriptorReader::new(context, candidates)?;
@@ -152,13 +154,12 @@ fn assess_commit_candidates_with_observer(
 }
 
 /// Preserve Commit's carrier grouping and finding order without installing outcomes.
-fn finish_assessment(
-    candidates: &[StagedReference],
+fn finish_assessment<'a>(
+    candidates: &'a [StagedReference],
     collector: ValidationCollector,
-) -> Result<CommitAssessment, HolonError> {
-    let observations = collector.observations().clone();
-    let report = PreparedAssessment::from_scope(candidates, collector.into_report())?.into_report();
-    Ok(CommitAssessment { report, observations })
+) -> Result<(PreparedAssessment<'a>, ValidationObservations), HolonError> {
+    let (report, observations) = collector.into_parts();
+    Ok((PreparedAssessment::from_scope(candidates, report)?, observations))
 }
 
 fn classify(governing: &holons_core::ValidExtendsLineage<'_>, root: &HolonReference) -> bool {
@@ -166,9 +167,9 @@ fn classify(governing: &holons_core::ValidExtendsLineage<'_>, root: &HolonRefere
 }
 
 /// Immutable prepared inputs and their cache leases live until assessment finishes.
-pub(crate) struct ConstructedAssessment<'a> {
+pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     context: &'a Arc<TransactionContext>,
-    candidates: &'a [StagedReference],
+    candidates: &'candidates [StagedReference],
     reader: &'a ProspectiveDescriptorReader,
     roots: &'a ReadinessContext,
     prepared: Vec<SubjectPreparation>,
@@ -177,13 +178,13 @@ pub(crate) struct ConstructedAssessment<'a> {
     collector: ValidationCollector,
 }
 
-pub(crate) fn construct_assessment<'a>(
+pub(crate) fn construct_assessment<'a, 'candidates>(
     context: &'a Arc<TransactionContext>,
-    candidates: &'a [StagedReference],
+    candidates: &'candidates [StagedReference],
     reader: &'a ProspectiveDescriptorReader,
     roots: &'a ReadinessContext,
     mut collector: ValidationCollector,
-) -> Result<ConstructedAssessment<'a>, HolonError> {
+) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
     let kinds = roots.kinds.clone().with_reader(reader);
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
@@ -331,12 +332,12 @@ pub(crate) fn construct_assessment<'a>(
     })
 }
 
-impl ConstructedAssessment<'_> {
+impl<'candidates> ConstructedAssessment<'_, 'candidates> {
     /// Consumes prepared packages and records findings without installing outcomes.
     pub(crate) fn assess(
         self,
         mut observer: impl FnMut(crate::AssessmentPhase),
-    ) -> Result<CommitAssessment, HolonError> {
+    ) -> Result<(PreparedAssessment<'candidates>, ValidationObservations), HolonError> {
         observer(crate::AssessmentPhase::PackageValidation);
         let Self {
             context,
@@ -543,7 +544,7 @@ impl ConstructedAssessment<'_> {
                 &workset,
                 &mut products,
                 &mut collector,
-                Some(&packages),
+                &packages,
             )?;
             if products.has_findings() {
                 invalid.insert(id.clone());

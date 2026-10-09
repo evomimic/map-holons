@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     assessment_support::path,
     outcomes::PreparedAssessment,
-    schema_rules::{cross_schema_references, dependency_cycles, SchemaRuleProducts},
+    schema_rules::{cross_schema_references_prepared, dependency_cycles, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
 };
 use holons_core::{
@@ -200,13 +200,21 @@ fn direct_dependencies_are_required_for_components_and_owned_rules() -> Result<(
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
     fixture.node(rule.as_str())?;
@@ -253,13 +261,21 @@ fn schema_references_ignore_space_instances_and_schema_targets() -> Result<(), H
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     assert!(!products.has_findings());
     assert!(collector.into_report().is_accepted());
@@ -299,13 +315,21 @@ fn same_schema_component_reference_needs_no_dependency() -> Result<(), HolonErro
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     assert!(!products.has_findings());
     assert!(collector.into_report().is_accepted());
@@ -340,7 +364,22 @@ fn direct_dependency_covers_cross_schema_component_reference() -> Result<(), Hol
         .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
         .unwrap();
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(&fixture.context, &reader, a, &workset, &mut products, &mut collector)?;
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
+        &fixture.context,
+        &reader,
+        a,
+        &workset,
+        &mut products,
+        &mut collector,
+        &packages,
+    )?;
     assert!(!products.has_findings());
     assert!(collector.into_report().is_accepted());
     Ok(())
@@ -367,13 +406,21 @@ fn missing_target_ownership_keeps_its_own_finding() -> Result<(), HolonError> {
         &mut collector,
     )?;
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
         &fixture.context,
         &reader,
         &workset.schemas[0],
         &workset,
         &mut products,
         &mut collector,
+        &packages,
     )?;
     assert!(!products.has_findings());
     let report = collector.into_report();
@@ -422,7 +469,22 @@ fn ambiguous_target_ownership_blocks_once_per_target() -> Result<(), HolonError>
         .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
         .unwrap();
     let mut products = SchemaRuleProducts::default();
-    cross_schema_references(&fixture.context, &reader, a, &workset, &mut products, &mut collector)?;
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &reader,
+        &[],
+        &[],
+        &workset,
+    )?;
+    cross_schema_references_prepared(
+        &fixture.context,
+        &reader,
+        a,
+        &workset,
+        &mut products,
+        &mut collector,
+        &packages,
+    )?;
     assert!(!products.has_findings());
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 2);
@@ -974,7 +1036,7 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = constructed.assess(|_| {})?.report;
+    let report = constructed.assess(|_| {})?.0.into_report();
     assert!(report.is_accepted(), "{:?}", report);
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())
@@ -1013,7 +1075,7 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = constructed.assess(|_| {})?.report;
+    let report = constructed.assess(|_| {})?.0.into_report();
     assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())

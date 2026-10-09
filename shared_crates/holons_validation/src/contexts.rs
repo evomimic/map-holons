@@ -1,8 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
-use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{resolve_core_descriptor, HolonReference};
+use holons_core::HolonReference;
 use type_names::CoreValidationRuleName;
 
 /// Immutable descriptor services shared by prepared subject assessments.
@@ -25,11 +24,6 @@ impl ValueValidationContext {
             context: Arc::clone(context),
             bindings: BindingRoots::resolve_in_view(context, reader)?,
         })
-    }
-
-    /// Resolves immutable binding anchors from the current transaction view.
-    pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Ok(Self { context: Arc::clone(context), bindings: BindingRoots::resolve(context)? })
     }
 }
 
@@ -63,10 +57,6 @@ pub(crate) struct BindingRoots {
 }
 
 impl BindingRoots {
-    fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Self::resolve_using(|key| resolve_core_descriptor(context, key))
-    }
-
     fn resolve_in_view(
         context: &Arc<TransactionContext>,
         reader: &holons_core::ProspectiveDescriptorReader,

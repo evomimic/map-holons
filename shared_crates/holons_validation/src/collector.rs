@@ -43,6 +43,11 @@ impl ValidationCollector {
         &self.violations
     }
 
+    /// Consumes completed findings and observations without copying coverage evidence.
+    pub(crate) fn into_parts(self) -> (CommitValidationReport, ValidationObservations) {
+        (CommitValidationReport::from_candidate(self.violations), self.observations)
+    }
+
     /// Finishes a successfully completed pass; do not call after an operational error.
     pub fn into_report(self) -> CommitValidationReport {
         CommitValidationReport::from_candidate(self.violations)

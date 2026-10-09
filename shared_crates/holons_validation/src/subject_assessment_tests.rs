@@ -91,7 +91,7 @@ fn abstract_subject(fixture: &Fixture) -> Result<holons_core::StagedReference, H
     Ok(subject)
 }
 
-/// Reader selection is part of the production binding check, including replacement families.
+/// Mirrors `prepare_bindings` selection to test compatibility under reordered binding roots.
 fn compatible_binding_in_view(
     binding: &ResolvedValidationBinding,
     governing: &HolonReference,
@@ -236,8 +236,10 @@ fn subject_gate_assessment_error_installs_no_partial_outcomes() -> Result<(), Ho
             Ok(candidate.get_holon_to_commit(&fixture.context)?.read().unwrap().clone())
         })
         .collect::<Result<Vec<_>, HolonError>>()?;
-    assert!(assess_commit_candidates(&fixture.context, &candidates).is_err());
-    assert!(validate_commit_candidates(&fixture.context, &candidates).is_err());
+    let assessment_error = assess_commit_candidates(&fixture.context, &candidates).unwrap_err();
+    let validation_error = validate_commit_candidates(&fixture.context, &candidates).unwrap_err();
+    assert!(matches!(assessment_error, HolonError::CrossTransactionReference { .. }));
+    assert_eq!(assessment_error, validation_error);
     for (candidate, before) in candidates.iter().zip(before) {
         assert_eq!(*candidate.get_holon_to_commit(&fixture.context)?.read().unwrap(), before);
     }
@@ -1727,9 +1729,6 @@ fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result
     let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
     let first = competing_replacement_findings(&reader);
     assert_eq!(first.len(), 2);
-    let context = ValueValidationContext::resolve(&fixture.context);
-    // The old key lookup is deliberately not the prospective resolution path.
-    assert!(matches!(context, Err(HolonError::DuplicateError(..))));
     let resolved = holons_core::descriptors::resolve_core_descriptor_with_reader(
         &fixture.context,
         key,
