@@ -36,7 +36,8 @@
     "fmt:sweetests:check": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check",
 
     "pretest": "npm run deps:check",
-    "test": "npm run test:unit && npm run sweetest",
+    "test": "bash scripts/test-run.sh",
+    "test:run": "npm run test:unit && npm run sweetest",
     "test:unit": "npm run test:unit:shared && npm run test:unit:schema && npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run test:unit -w map-happ && npm run test:unit:sweetests && npm run web:typecheck && npm run web:test && npm run typecheck -w map-sdk && npm run test -w map-sdk",
     "test:unit:shared": "bash scripts/test-shared-crates.sh",
     "test:unit:schema": "cargo test --manifest-path tools/map-schema/Cargo.toml --test validation_binding_inventory",
