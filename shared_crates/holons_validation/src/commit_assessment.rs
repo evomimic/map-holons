@@ -3,10 +3,10 @@ use crate::{
     assessment_support::{blocked, path, recover, recover_transaction, targets},
     contexts::SubjectLevel,
     handlers::finding,
-    orchestration::PreparedAssessment,
-    prospective_validation::{self, PreparedBinding},
+    outcomes::PreparedAssessment,
     schema_rules::{self, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
+    subject_assessment::{self, PreparedBinding},
     CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
     ConstraintDeclarationRoots, ContractKindRoots, DescriptorRuleProducts, ValidationCollector,
     ValueValidationContext,
@@ -130,7 +130,7 @@ fn assess_commit_candidates_with_observer(
     if candidates.is_empty() {
         return Ok(CommitAssessment::default());
     }
-    crate::orchestration::check_candidates(candidates)?;
+    require_distinct_live_candidates(candidates)?;
     let reader = ProspectiveDescriptorReader::new(context, candidates)?;
     let mut collector = ValidationCollector::default();
     for finding in crate::competing_replacement_findings(&reader) {
@@ -148,8 +148,7 @@ fn assess_commit_candidates_with_observer(
         }
         return finish_assessment(candidates, collector);
     };
-    let constructed = construct_assessment(context, candidates, &reader, &roots, collector)?;
-    assess_constructed_observed(context, candidates, &reader, &roots, constructed, &mut observer)
+    construct_assessment(context, candidates, &reader, &roots, collector)?.assess(&mut observer)
 }
 
 /// Preserve Commit's carrier grouping and finding order without installing outcomes.
@@ -167,20 +166,24 @@ fn classify(governing: &holons_core::ValidExtendsLineage<'_>, root: &HolonRefere
 }
 
 /// Immutable prepared inputs and their cache leases live until assessment finishes.
-pub(crate) struct ConstructedAssessment {
+pub(crate) struct ConstructedAssessment<'a> {
+    context: &'a Arc<TransactionContext>,
+    candidates: &'a [StagedReference],
+    reader: &'a ProspectiveDescriptorReader,
+    roots: &'a ReadinessContext,
     prepared: Vec<SubjectPreparation>,
     workset: SchemaWorkset,
     packages: crate::descriptor_package::DescriptorPackages,
     collector: ValidationCollector,
 }
 
-pub(crate) fn construct_assessment(
-    context: &Arc<TransactionContext>,
-    candidates: &[StagedReference],
-    reader: &ProspectiveDescriptorReader,
-    roots: &ReadinessContext,
+pub(crate) fn construct_assessment<'a>(
+    context: &'a Arc<TransactionContext>,
+    candidates: &'a [StagedReference],
+    reader: &'a ProspectiveDescriptorReader,
+    roots: &'a ReadinessContext,
     mut collector: ValidationCollector,
-) -> Result<ConstructedAssessment, HolonError> {
+) -> Result<ConstructedAssessment<'a>, HolonError> {
     let kinds = roots.kinds.clone().with_reader(reader);
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
@@ -316,310 +319,333 @@ pub(crate) fn construct_assessment(
         &package_subjects,
         &workset,
     )?;
-    Ok(ConstructedAssessment { prepared, workset, packages, collector })
+    Ok(ConstructedAssessment {
+        context,
+        candidates,
+        reader,
+        roots,
+        prepared,
+        workset,
+        packages,
+        collector,
+    })
 }
 
-/// Consumes prepared packages and records findings without installing outcomes.
-pub(crate) fn assess_constructed_observed(
-    context: &Arc<TransactionContext>,
-    candidates: &[StagedReference],
-    reader: &ProspectiveDescriptorReader,
-    roots: &ReadinessContext,
-    constructed: ConstructedAssessment,
-    observer: &mut impl FnMut(crate::AssessmentPhase),
-) -> Result<CommitAssessment, HolonError> {
-    observer(crate::AssessmentPhase::PackageValidation);
-    let ConstructedAssessment { mut prepared, workset, mut packages, mut collector } = constructed;
-    let kinds = roots.kinds.clone().with_reader(reader);
-    let mut prepared_index = HashMap::new();
-    for (index, subject) in prepared.iter().enumerate() {
-        prepared_index
-            .insert(ProspectiveIdentity::for_reference(&subject.subject, context)?, index);
-    }
-    // Defined contracts are prepared before any subject consumes them. Include unstaged
-    // governors, whose malformed definitions must block rather than escape as a read error.
-    let mut invalid = HashSet::new();
-    let mut checked_contracts = HashSet::new();
-    for index in 0..prepared.len() {
-        let mut contracts = Vec::new();
-        if prepared[index].is_descriptor {
-            contracts.push(prepared[index].subject.clone());
+impl ConstructedAssessment<'_> {
+    /// Consumes prepared packages and records findings without installing outcomes.
+    pub(crate) fn assess(
+        self,
+        mut observer: impl FnMut(crate::AssessmentPhase),
+    ) -> Result<CommitAssessment, HolonError> {
+        observer(crate::AssessmentPhase::PackageValidation);
+        let Self {
+            context,
+            candidates,
+            reader,
+            roots,
+            mut prepared,
+            workset,
+            mut packages,
+            mut collector,
+        } = self;
+        let kinds = roots.kinds.clone().with_reader(reader);
+        let mut prepared_index = HashMap::new();
+        for (index, subject) in prepared.iter().enumerate() {
+            prepared_index
+                .insert(ProspectiveIdentity::for_reference(&subject.subject, context)?, index);
         }
-        if let DescribingTypeResolution::Unique(descriptor) =
-            &prepared[index].prerequisites.describing_type
-        {
-            contracts.push(descriptor.clone());
-        }
-        for descriptor in contracts {
-            let identity = ProspectiveIdentity::for_reference(&descriptor, context)?;
-            if !checked_contracts.insert(identity.clone()) {
-                continue;
+        // Defined contracts are prepared before any subject consumes them. Include unstaged
+        // governors, whose malformed definitions must block rather than escape as a read error.
+        let mut invalid = HashSet::new();
+        let mut checked_contracts = HashSet::new();
+        for index in 0..prepared.len() {
+            let mut contracts = Vec::new();
+            if prepared[index].is_descriptor {
+                contracts.push(prepared[index].subject.clone());
             }
-            let mut products = DescriptorRuleProducts::default();
-            let diagnosis = holons_core::ExtendsLineageDiagnosis::assess_with_reader(
-                &descriptor,
-                &kinds.type_descriptor,
-                reader,
-            );
-            let Some(diagnosis) = recover(diagnosis, &descriptor, &mut collector)? else {
-                invalid.insert(identity);
-                continue;
-            };
-            if diagnosis.valid_lineage().is_none() {
-                invalid.insert(identity);
-                blocked(
-                    &mut collector,
-                    &prepared[index].subject,
-                    format!(
-                        "Governing descriptor {} has a malformed Extends lineage.",
-                        descriptor.reference_id_string()
-                    ),
-                );
-                continue;
+            if let DescribingTypeResolution::Unique(descriptor) =
+                &prepared[index].prerequisites.describing_type
+            {
+                contracts.push(descriptor.clone());
             }
-            if let Some(contributions) = recover(
-                ContractContributions::resolve_with_reader(&descriptor, reader),
-                &descriptor,
-                &mut collector,
-            )? {
-                recover(
-                    products.prepare_contract(&contributions, &kinds, &roots.contracts, &reader),
+            for descriptor in contracts {
+                let identity = ProspectiveIdentity::for_reference(&descriptor, context)?;
+                if !checked_contracts.insert(identity.clone()) {
+                    continue;
+                }
+                let mut products = DescriptorRuleProducts::default();
+                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess_with_reader(
                     &descriptor,
-                    &mut collector,
-                )?;
-            }
-            if products.has_findings() {
-                invalid.insert(identity.clone());
-            }
-            if let Some(index) = prepared_index.get(&identity) {
-                prepared[*index].products.append(products);
-            } else if products.has_findings() {
-                blocked(&mut collector, &descriptor, "Saved governing contract has invalid effective member definitions; correct its descriptor commitments.".into());
-            }
-        }
-    }
-    // Each Schema gets its own declaration memo and collector scope. Shared reusable rules
-    // are checked once in that Schema, with their original ownership and subject intact.
-    let mut declaration_members = HashSet::new();
-    for view in &workset.schemas {
-        let Some(mut declarations) = recover(
-            ConstraintDeclarationAssessment::new(&roots.constraints, reader),
-            &view.schema,
-            &mut collector,
-        )?
-        else {
-            continue;
-        };
-        for descriptor in &view.components {
-            declaration_members.insert(ProspectiveIdentity::for_reference(descriptor, context)?);
-            let Some(diagnosis) = recover(
-                holons_core::ExtendsLineageDiagnosis::assess_with_reader(
-                    descriptor,
                     &kinds.type_descriptor,
                     reader,
-                ),
-                descriptor,
+                );
+                let Some(diagnosis) = recover(diagnosis, &descriptor, &mut collector)? else {
+                    invalid.insert(identity);
+                    continue;
+                };
+                if diagnosis.valid_lineage().is_none() {
+                    invalid.insert(identity);
+                    blocked(
+                        &mut collector,
+                        &prepared[index].subject,
+                        format!(
+                            "Governing descriptor {} has a malformed Extends lineage.",
+                            descriptor.reference_id_string()
+                        ),
+                    );
+                    continue;
+                }
+                if let Some(contributions) = recover(
+                    ContractContributions::resolve_with_reader(&descriptor, reader),
+                    &descriptor,
+                    &mut collector,
+                )? {
+                    recover(
+                        products.prepare_contract(
+                            &contributions,
+                            &kinds,
+                            &roots.contracts,
+                            &reader,
+                        ),
+                        &descriptor,
+                        &mut collector,
+                    )?;
+                }
+                if products.has_findings() {
+                    invalid.insert(identity.clone());
+                }
+                if let Some(index) = prepared_index.get(&identity) {
+                    prepared[*index].products.append(products);
+                } else if products.has_findings() {
+                    blocked(&mut collector, &descriptor, "Saved governing contract has invalid effective member definitions; correct its descriptor commitments.".into());
+                }
+            }
+        }
+        // Each Schema gets its own declaration memo and collector scope. Shared reusable rules
+        // are checked once in that Schema, with their original ownership and subject intact.
+        let mut declaration_members = HashSet::new();
+        for view in &workset.schemas {
+            let Some(mut declarations) = recover(
+                ConstraintDeclarationAssessment::new(&roots.constraints, reader),
+                &view.schema,
                 &mut collector,
             )?
             else {
                 continue;
             };
-            let Some(lineage) = diagnosis.valid_lineage() else {
-                continue;
-            };
-            let mut products = DescriptorRuleProducts::default();
-            let result = declarations.assess_descriptor(lineage, &mut products, &mut collector);
-            recover(result, descriptor, &mut collector)?;
-            if let Some(index) =
-                prepared_index.get(&ProspectiveIdentity::for_reference(descriptor, context)?)
-            {
-                prepared[*index].products.append(products);
-            }
-        }
-        for rule in &view.rules {
-            declaration_members.insert(ProspectiveIdentity::for_reference(rule, context)?);
-            assess_configured_rule(
-                rule,
-                &roots.constraints.constraint_type,
-                reader,
-                &mut declarations,
-                &mut collector,
-            )?;
-        }
-    }
-    // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
-    let mut orphan_declarations = recover_transaction(
-        ConstraintDeclarationAssessment::new(&roots.constraints, reader),
-        &mut collector,
-    )?;
-    for subject in &mut prepared {
-        if !declaration_members
-            .contains(&ProspectiveIdentity::for_reference(&subject.subject, context)?)
-        {
-            if subject.is_descriptor {
-                if let Some(lineage) = subject.prerequisites.subject_lineage.valid_lineage() {
-                    if let Some(declarations) = &mut orphan_declarations {
-                        let result = declarations.assess_descriptor(
-                            lineage,
-                            &mut subject.products,
-                            &mut collector,
-                        );
-                        recover(result, &subject.subject, &mut collector)?;
-                    }
-                }
-            } else if subject.is_constraint {
-                if let Some(declarations) = &mut orphan_declarations {
-                    let result = declarations.assess_constraint(&subject.subject, &mut collector);
-                    recover(result, &subject.subject, &mut collector)?;
+            for descriptor in &view.components {
+                declaration_members
+                    .insert(ProspectiveIdentity::for_reference(descriptor, context)?);
+                let Some(diagnosis) = recover(
+                    holons_core::ExtendsLineageDiagnosis::assess_with_reader(
+                        descriptor,
+                        &kinds.type_descriptor,
+                        reader,
+                    ),
+                    descriptor,
+                    &mut collector,
+                )?
+                else {
+                    continue;
+                };
+                let Some(lineage) = diagnosis.valid_lineage() else {
+                    continue;
+                };
+                let mut products = DescriptorRuleProducts::default();
+                let result = declarations.assess_descriptor(lineage, &mut products, &mut collector);
+                recover(result, descriptor, &mut collector)?;
+                if let Some(index) =
+                    prepared_index.get(&ProspectiveIdentity::for_reference(descriptor, context)?)
+                {
+                    prepared[*index].products.append(products);
                 }
             }
-        }
-        if subject.products.has_findings() {
-            invalid.insert(ProspectiveIdentity::for_reference(&subject.subject, context)?);
-        }
-        if let Some(governing) = subject
-            .prerequisites
-            .governing_lineage
-            .as_ref()
-            .and_then(|lineage| lineage.valid_lineage())
-        {
-            let result = prospective_validation::prepare_bindings(
-                governing.subject(),
-                SubjectLevel::Holon,
-                &roots.values,
-                reader,
-                &path(&subject.subject),
-                &mut collector,
-                &packages,
-            );
-            subject.bindings =
-                recover(result, &subject.subject, &mut collector)?.unwrap_or_default();
-        }
-        prospective_validation::dispatch_descriptor(
-            &subject.bindings,
-            &subject.products,
-            &subject.subject,
-            &mut collector,
-        )?;
-    }
-    let cycles =
-        schema_rules::dependency_cycles(context, reader, &workset.schemas, &mut collector)?;
-    for view in &workset.schemas {
-        collector.observations.schema_assessment_count += 1;
-        let mut products = SchemaRuleProducts::default();
-        let id = ProspectiveIdentity::for_reference(&view.schema, context)?;
-        if let Some(Some(witness)) = cycles.get(&id) {
-            products.record(CoreValidationRuleName::SchemaDependenciesAcyclic, format!("Schema {} reaches a versioned DependsOn cycle containing {}; remove the cyclic dependency.", view.schema.reference_id_string(), witness.reference_id_string()));
-        }
-        schema_rules::cross_schema_references_prepared(
-            context,
-            reader,
-            view,
-            &workset,
-            &mut products,
-            &mut collector,
-            Some(&packages),
-        )?;
-        if products.has_findings() {
-            invalid.insert(id.clone());
-        }
-        if let Some(index) = prepared_index.get(&id) {
-            prospective_validation::dispatch_schema(
-                &prepared[*index].bindings,
-                &products,
-                &view.schema,
-                &mut collector,
-            )?;
-        } else if let Some(DescribingTypeResolution::Unique(descriptor)) = recover(
-            resolve_describing_type_with_reader(&view.schema, reader),
-            &view.schema,
-            &mut collector,
-        )? {
-            let result = prospective_validation::prepare_bindings(
-                &descriptor,
-                SubjectLevel::Holon,
-                &roots.values,
-                reader,
-                &path(&view.schema),
-                &mut collector,
-                &packages,
-            );
-            if let Some(bindings) = recover(result, &view.schema, &mut collector)? {
-                prospective_validation::dispatch_schema(
-                    &bindings,
-                    &products,
-                    &view.schema,
+            for rule in &view.rules {
+                declaration_members.insert(ProspectiveIdentity::for_reference(rule, context)?);
+                assess_configured_rule(
+                    rule,
+                    &roots.constraints.constraint_type,
+                    reader,
+                    &mut declarations,
                     &mut collector,
                 )?;
             }
         }
-    }
-    // Preparation is complete before any subject consumes commitments. Readiness
-    // propagation indexes references once and consumes only newly added findings.
-    let (order, mut readiness) =
-        commitment_order(context, reader, &prepared, &workset, &mut collector)?;
-    for identity in invalid {
-        readiness.invalidate(identity);
-    }
-    readiness.observe(&collector);
-    let is_definition = |subject: &SubjectPreparation| {
-        subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema
-    };
-    // Each strongly connected group establishes conformance before ordinary consumers run.
-    for group in &order {
-        for &index in group {
-            let subject = &prepared[index];
-            if !is_definition(subject) {
-                continue;
+        // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
+        let mut orphan_declarations = recover_transaction(
+            ConstraintDeclarationAssessment::new(&roots.constraints, reader),
+            &mut collector,
+        )?;
+        for subject in &mut prepared {
+            if !declaration_members
+                .contains(&ProspectiveIdentity::for_reference(&subject.subject, context)?)
+            {
+                if subject.is_descriptor {
+                    if let Some(lineage) = subject.prerequisites.subject_lineage.valid_lineage() {
+                        if let Some(declarations) = &mut orphan_declarations {
+                            let result = declarations.assess_descriptor(
+                                lineage,
+                                &mut subject.products,
+                                &mut collector,
+                            );
+                            recover(result, &subject.subject, &mut collector)?;
+                        }
+                    }
+                } else if subject.is_constraint {
+                    if let Some(declarations) = &mut orphan_declarations {
+                        let result =
+                            declarations.assess_constraint(&subject.subject, &mut collector);
+                        recover(result, &subject.subject, &mut collector)?;
+                    }
+                }
             }
-            assess_prepared(
-                context,
-                subject,
-                reader,
-                roots,
-                &packages,
-                &mut readiness,
-                &mut collector,
-            )?;
-        }
-    }
-    packages.finish(&readiness.invalid);
-    observer(crate::AssessmentPhase::InstanceValidation);
-    for group in &order {
-        for &index in group {
-            let subject = &prepared[index];
-            if is_definition(subject) {
-                continue;
+            if subject.products.has_findings() {
+                invalid.insert(ProspectiveIdentity::for_reference(&subject.subject, context)?);
             }
-            assess_prepared(
-                context,
-                subject,
-                reader,
-                roots,
-                &packages,
-                &mut readiness,
-                &mut collector,
-            )?;
-        }
-    }
-    // Mutually describing commitments are legal. If a later conformance check
-    // invalidates an earlier dependent, expose that blocking result without re-evaluation.
-    for subject in &prepared {
-        let id = ProspectiveIdentity::for_reference(&subject.subject, context)?;
-        if readiness.invalid.contains(&id) && !readiness.diagnosed.contains(&id) {
-            blocked(
-                &mut collector,
+            if let Some(governing) = subject
+                .prerequisites
+                .governing_lineage
+                .as_ref()
+                .and_then(|lineage| lineage.valid_lineage())
+            {
+                let result = subject_assessment::prepare_bindings(
+                    governing.subject(),
+                    SubjectLevel::Holon,
+                    &roots.values,
+                    reader,
+                    &path(&subject.subject),
+                    &mut collector,
+                    &packages,
+                );
+                subject.bindings =
+                    recover(result, &subject.subject, &mut collector)?.unwrap_or_default();
+            }
+            subject_assessment::dispatch_descriptor(
+                &subject.bindings,
+                &subject.products,
                 &subject.subject,
-                "A required prospective commitment did not establish readiness.".into(),
-            );
+                &mut collector,
+            )?;
         }
+        let cycles =
+            schema_rules::dependency_cycles(context, reader, &workset.schemas, &mut collector)?;
+        for view in &workset.schemas {
+            collector.observations.schema_assessment_count += 1;
+            let mut products = SchemaRuleProducts::default();
+            let id = ProspectiveIdentity::for_reference(&view.schema, context)?;
+            if let Some(Some(witness)) = cycles.get(&id) {
+                products.record(CoreValidationRuleName::SchemaDependenciesAcyclic, format!("Schema {} reaches a versioned DependsOn cycle containing {}; remove the cyclic dependency.", view.schema.reference_id_string(), witness.reference_id_string()));
+            }
+            schema_rules::cross_schema_references_prepared(
+                context,
+                reader,
+                view,
+                &workset,
+                &mut products,
+                &mut collector,
+                Some(&packages),
+            )?;
+            if products.has_findings() {
+                invalid.insert(id.clone());
+            }
+            if let Some(index) = prepared_index.get(&id) {
+                subject_assessment::dispatch_schema(
+                    &prepared[*index].bindings,
+                    &products,
+                    &view.schema,
+                    &mut collector,
+                )?;
+            } else if let Some(DescribingTypeResolution::Unique(descriptor)) = recover(
+                resolve_describing_type_with_reader(&view.schema, reader),
+                &view.schema,
+                &mut collector,
+            )? {
+                let result = subject_assessment::prepare_bindings(
+                    &descriptor,
+                    SubjectLevel::Holon,
+                    &roots.values,
+                    reader,
+                    &path(&view.schema),
+                    &mut collector,
+                    &packages,
+                );
+                if let Some(bindings) = recover(result, &view.schema, &mut collector)? {
+                    subject_assessment::dispatch_schema(
+                        &bindings,
+                        &products,
+                        &view.schema,
+                        &mut collector,
+                    )?;
+                }
+            }
+        }
+        // Preparation is complete before any subject consumes commitments. Readiness
+        // propagation indexes references once and consumes only newly added findings.
+        let (order, mut readiness) =
+            commitment_order(context, reader, &prepared, &workset, &mut collector)?;
+        for identity in invalid {
+            readiness.invalidate(identity);
+        }
+        readiness.observe(&collector);
+        let is_definition = |subject: &SubjectPreparation| {
+            subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema
+        };
+        // Each strongly connected group establishes conformance before ordinary consumers run.
+        for group in &order {
+            for &index in group {
+                let subject = &prepared[index];
+                if !is_definition(subject) {
+                    continue;
+                }
+                assess_candidate(
+                    context,
+                    subject,
+                    reader,
+                    roots,
+                    &packages,
+                    &mut readiness,
+                    &mut collector,
+                )?;
+            }
+        }
+        packages.finish(&readiness.invalid);
+        observer(crate::AssessmentPhase::InstanceValidation);
+        for group in &order {
+            for &index in group {
+                let subject = &prepared[index];
+                if is_definition(subject) {
+                    continue;
+                }
+                assess_candidate(
+                    context,
+                    subject,
+                    reader,
+                    roots,
+                    &packages,
+                    &mut readiness,
+                    &mut collector,
+                )?;
+            }
+        }
+        // Mutually describing commitments are legal. If a later conformance check
+        // invalidates an earlier dependent, expose that blocking result without re-evaluation.
+        for subject in &prepared {
+            let id = ProspectiveIdentity::for_reference(&subject.subject, context)?;
+            if readiness.invalid.contains(&id) && !readiness.diagnosed.contains(&id) {
+                blocked(
+                    &mut collector,
+                    &subject.subject,
+                    "A required prospective commitment did not establish readiness.".into(),
+                );
+            }
+        }
+        finish_assessment(candidates, collector)
     }
-    finish_assessment(candidates, collector)
 }
 
 /// Definition groups use constructed peer contracts provisionally. Ordinary instances
 /// reach this operation only after package readiness has been established.
-fn assess_prepared(
+fn assess_candidate(
     context: &Arc<TransactionContext>,
     subject: &SubjectPreparation,
     reader: &ProspectiveDescriptorReader,
@@ -646,7 +672,7 @@ fn assess_prepared(
         } else if let Some(contract) =
             recover(package.contract.clone(), &subject.subject, collector)?
         {
-            let result = prospective_validation::assess_prepared_subject(
+            let result = subject_assessment::assess_holon(
                 &subject.subject,
                 &package.root,
                 &contract,
@@ -712,7 +738,7 @@ impl ReadinessPropagation {
     }
     fn observe(&mut self, collector: &ValidationCollector) {
         for finding in &collector.violations()[self.observed..] {
-            if let Some(identity) = crate::orchestration::subject_identity(&finding.subject)
+            if let Some(identity) = crate::outcomes::subject_identity(&finding.subject)
                 .and_then(|name| self.names.get(name))
                 .cloned()
             {
@@ -813,4 +839,20 @@ fn commitment_order(
             observed: 0,
         },
     ))
+}
+
+/// Require live, distinct candidates before constructing an assessment or installing outcomes.
+pub(crate) fn require_distinct_live_candidates(
+    candidates: &[StagedReference],
+) -> Result<(), HolonError> {
+    let mut seen = HashSet::new();
+    for candidate in candidates {
+        if !candidate.is_live_validation_candidate()? || !seen.insert(candidate.temporary_id()) {
+            return Err(HolonError::InvalidParameter(format!(
+                "Commit validation requires distinct live candidates: {}",
+                candidate.reference_id_string()
+            )));
+        }
+    }
+    Ok(())
 }

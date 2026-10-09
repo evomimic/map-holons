@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     assessment_support::path,
-    orchestration::PreparedAssessment,
+    outcomes::PreparedAssessment,
     schema_rules::{cross_schema_references, dependency_cycles, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
 };
@@ -642,13 +642,13 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
     let mut fixture = readiness_fixture()?;
     let mut subject = fixture.staged_subject("instance")?;
     subject.with_property_value("Title", "ready")?;
-    assert!(crate::readiness::validate_commit_candidates(
+    assert!(crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )?
     .is_accepted());
     fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
-    let report = crate::readiness::validate_commit_candidates(
+    let report = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject),
     )?;
@@ -665,7 +665,7 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
         .get_mut("Title.PropertyType")
         .unwrap()
         .with_property_value("TypeName", "Title")?;
-    assert!(crate::readiness::validate_commit_candidates(
+    assert!(crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )?
@@ -739,7 +739,7 @@ fn report_only_contested_anchors_preserve_outcomes_and_commit_report() -> Result
 fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let subject = fixture.staged_subject("previously-rejected")?;
-    let old = crate::readiness::validate_commit_candidates(
+    let old = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject),
     )?;
@@ -754,7 +754,7 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
     assert!(assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject)).is_err());
     assert_eq!(subject.validation_state()?, ValidationState::Invalid);
     assert_eq!(subject.validation_findings()?, old.violations);
-    assert!(crate::readiness::validate_commit_candidates(
+    assert!(crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )
@@ -807,7 +807,7 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
         "MetaHolonType.MetaTypeDescriptor",
     )?;
     let candidate = staged(&fixture.nodes["StagedComponent"]);
-    let report = crate::readiness::validate_commit_candidates(
+    let report = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&candidate),
     )?;
@@ -920,7 +920,7 @@ fn contested_shared_anchors_use_transaction_carriers_in_either_candidate_order(
                     assert!(candidate
                         .validation_findings()?
                         .iter()
-                        .all(|finding| crate::orchestration::subject_identity(&finding.subject)
+                        .all(|finding| crate::outcomes::subject_identity(&finding.subject)
                             == Some(candidate.reference_id_string().as_str())));
                 }
                 let outcomes = [
@@ -945,7 +945,8 @@ fn scoped_installation_uses_the_same_distinct_candidate_check_as_commit() -> Res
     let fixture = Fixture::new()?;
     let candidate = fixture.staged_subject("repeated")?;
     let candidates = [candidate.clone(), candidate.clone()];
-    let expected = crate::orchestration::check_candidates(&candidates).unwrap_err();
+    let expected =
+        crate::commit_assessment::require_distinct_live_candidates(&candidates).unwrap_err();
     let Err(actual) =
         PreparedAssessment::from_scope(&candidates, CommitValidationReport::default())
     else {
@@ -963,9 +964,9 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![subject];
     let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
-    let roots = crate::readiness::ReadinessContext::resolve(&fixture.context, &reader)
+    let roots = crate::commit_assessment::ReadinessContext::resolve(&fixture.context, &reader)
         .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
-    let constructed = crate::readiness::construct_assessment(
+    let constructed = crate::commit_assessment::construct_assessment(
         &fixture.context,
         &candidates,
         &reader,
@@ -973,15 +974,7 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = crate::readiness::assess_constructed_observed(
-        &fixture.context,
-        &candidates,
-        &reader,
-        &roots,
-        constructed,
-        &mut |_| {},
-    )?
-    .report;
+    let report = constructed.assess(|_| {})?.report;
     assert!(report.is_accepted(), "{:?}", report);
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())
@@ -1010,9 +1003,9 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![descriptor, subject];
     let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
-    let roots = crate::readiness::ReadinessContext::resolve(&fixture.context, &reader)
+    let roots = crate::commit_assessment::ReadinessContext::resolve(&fixture.context, &reader)
         .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
-    let constructed = crate::readiness::construct_assessment(
+    let constructed = crate::commit_assessment::construct_assessment(
         &fixture.context,
         &candidates,
         &reader,
@@ -1020,15 +1013,7 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
         ValidationCollector::default(),
     )?;
     let before = fixture.backend_relationship_reads();
-    let report = crate::readiness::assess_constructed_observed(
-        &fixture.context,
-        &candidates,
-        &reader,
-        &roots,
-        constructed,
-        &mut |_| {},
-    )?
-    .report;
+    let report = constructed.assess(|_| {})?.report;
     assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
     Ok(())

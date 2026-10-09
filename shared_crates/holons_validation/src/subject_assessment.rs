@@ -8,7 +8,9 @@ use crate::{
     RuleOutcome, StaticConstraintRegistry, StaticRuleHandler, StaticRuleRegistry,
     ValidationCollector, ValidationInvocation, ValidationRuleKey, ValueValidationContext,
 };
-use core_types::{CommitValidationViolationKind, HolonError, PropertyName, ValidationSubjectPath};
+use core_types::{
+    BaseValue, CommitValidationViolationKind, HolonError, PropertyName, ValidationSubjectPath,
+};
 use holons_core::{
     descriptors::{
         effective_relationship_targets_with_reader, resolve_describing_type_with_reader,
@@ -37,7 +39,7 @@ pub(crate) fn prepare_bindings(
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<Vec<PreparedBinding>, AssessmentReadError> {
     let mut result = Vec::new();
-    let contributions = packages.effective(descriptor, true, reader)?;
+    let contributions = packages.effective_bindings(descriptor, reader)?;
     for contribution in contributions {
         let binding = ResolvedValidationBinding::from(contribution);
         let key = ValidationRuleKey(required_key(&binding.rule)?);
@@ -232,7 +234,7 @@ fn subject_constraints(
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), AssessmentReadError> {
-    let contributions = packages.effective(descriptor, false, reader)?;
+    let contributions = packages.effective_constraints(descriptor, reader)?;
     for contribution in contributions {
         collector.observations.effective_constraint_count += 1;
         let constraint = ResolvedConstraint::with_reader(contribution, reader)?;
@@ -260,7 +262,7 @@ fn subject_constraints(
 /// Conformance of H through D(H), never through the contract H defines for its instances.
 /// The caller has already diagnosed the governing structure and established readiness.
 /// Consumes a constructed contract without rediscovering its effective member surface.
-pub(crate) fn assess_prepared_subject(
+pub(crate) fn assess_holon(
     subject: &HolonReference,
     descriptor: &HolonReference,
     contributions: &ContractContributions,
@@ -368,26 +370,39 @@ fn assess_property(
             holon_identity: subject.reference_id_string(),
             property: name.to_string(),
         };
-        let bindings = prepare_bindings(
-            descriptor.holon(),
-            SubjectLevel::Value,
-            values,
-            reader,
-            &path,
-            collector,
-            packages,
-        )?;
-        subject_constraints(descriptor.holon(), &path, reader, collector, packages)?;
-        holons_core::reference_layer::assert_reference_transaction_compatible(
-            descriptor.holon(),
-            &values.context,
-        )?;
-        let facts = PreparedRuleSubject::Value {
-            expected: descriptor.value_kind_with_reader(reader)?,
-            actual: value.kind(),
-            descriptor_identity: descriptor.holon().reference_id_string(),
-        };
-        dispatch_subject(&bindings, &facts, &path, collector)?;
+        assess_value(&value, &descriptor, &path, values, reader, collector, packages)?;
     }
+    Ok(())
+}
+
+fn assess_value(
+    value: &BaseValue,
+    descriptor: &ValueDescriptor,
+    path: &ValidationSubjectPath,
+    values: &ValueValidationContext,
+    reader: &ProspectiveDescriptorReader,
+    collector: &mut ValidationCollector,
+    packages: &crate::descriptor_package::DescriptorPackages,
+) -> Result<(), AssessmentReadError> {
+    let bindings = prepare_bindings(
+        descriptor.holon(),
+        SubjectLevel::Value,
+        values,
+        reader,
+        path,
+        collector,
+        packages,
+    )?;
+    subject_constraints(descriptor.holon(), path, reader, collector, packages)?;
+    holons_core::reference_layer::assert_reference_transaction_compatible(
+        descriptor.holon(),
+        &values.context,
+    )?;
+    let facts = PreparedRuleSubject::Value {
+        expected: descriptor.value_kind_with_reader(reader)?,
+        actual: value.kind(),
+        descriptor_identity: descriptor.holon().reference_id_string(),
+    };
+    dispatch_subject(&bindings, &facts, path, collector)?;
     Ok(())
 }

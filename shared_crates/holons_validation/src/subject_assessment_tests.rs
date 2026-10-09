@@ -107,7 +107,7 @@ fn compatible_binding_in_view(
     else {
         return Ok(false);
     };
-    crate::prospective_validation::compatible_binding_with_reader(
+    crate::subject_assessment::compatible_binding_with_reader(
         binding,
         &holons_core::HolonDescriptor::from_holon(family),
         &key,
@@ -886,7 +886,7 @@ fn malformed_member_contract_reports_findings_and_installs_outcomes() -> Result<
 
 #[test]
 fn aggregate_only_report_rejects_without_installing_staged_outcomes() -> Result<(), HolonError> {
-    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let mut assessment = crate::outcomes::PreparedAssessment::default();
     let aggregate = core_types::CommitValidationViolation {
         kind: CommitValidationViolationKind::RuleViolation { code: "AggregateTest".into() },
         rule_key: None,
@@ -914,7 +914,7 @@ fn aggregate_findings_do_not_leak_into_candidate_outcomes() -> Result<(), HolonE
         validate_commit_candidates(&fixture.context, std::slice::from_ref(&invalid))?;
     let mut aggregate = candidate_report.violations[0].clone();
     aggregate.subject = ValidationSubjectPath::Holon { holon_identity: "unstaged-schema".into() };
-    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let mut assessment = crate::outcomes::PreparedAssessment::default();
     assessment.push_aggregate(aggregate.clone());
     assessment.record_candidate(&invalid, candidate_report.clone());
     assessment.push_aggregate(aggregate.clone());
@@ -938,7 +938,7 @@ fn identical_candidate_and_aggregate_findings_keep_distinct_carriers() -> Result
     let candidate_report =
         validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
     let finding = candidate_report.violations[0].clone();
-    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let mut assessment = crate::outcomes::PreparedAssessment::default();
     assessment.record_candidate(&candidate, candidate_report);
     assessment.push_aggregate(finding.clone());
 
@@ -1453,7 +1453,7 @@ fn invalidated_unattached_position_returns_error_without_panicking() -> Result<(
         descriptor_identity: None,
         message: "Schema finding".into(),
     };
-    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let mut assessment = crate::outcomes::PreparedAssessment::default();
     assessment.push_aggregate(finding);
     let mut report = assessment.install_outcomes()?;
     report.violations.clear();
@@ -1780,7 +1780,7 @@ fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result
     }
     // Commit orchestration prepares an assessment before installing outcomes. Its
     // two-phase carrier installs and replaces these per-candidate findings.
-    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let mut assessment = crate::outcomes::PreparedAssessment::default();
     for candidate in &candidates {
         let report = CommitValidationReport::from_candidate(
             findings.iter().filter(|finding| matches!(&finding.subject, ValidationSubjectPath::Holon { holon_identity } if holon_identity == &candidate.reference_id_string())).cloned().collect(),
@@ -1793,7 +1793,7 @@ fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result
     }
     let retry = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
     assert!(competing_replacement_findings(&retry).is_empty());
-    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let mut assessment = crate::outcomes::PreparedAssessment::default();
     assessment.record_candidate(&candidates[0], CommitValidationReport::default());
     assert!(assessment.install_outcomes()?.is_accepted());
     Ok(())

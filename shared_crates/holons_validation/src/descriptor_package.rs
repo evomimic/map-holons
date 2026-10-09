@@ -232,22 +232,31 @@ impl DescriptorPackages {
         Ok(Self { packages, definitions, authored, _content: content })
     }
 
-    pub fn effective(
+    pub fn effective_bindings(
         &self,
         reference: &HolonReference,
-        bindings: bool,
         reader: &ProspectiveDescriptorReader,
     ) -> Result<Vec<EffectiveRelationshipMember>, AssessmentReadError> {
+        self.prepared_definition(reference, reader)?.bindings.clone()
+    }
+
+    pub fn effective_constraints(
+        &self,
+        reference: &HolonReference,
+        reader: &ProspectiveDescriptorReader,
+    ) -> Result<Vec<EffectiveRelationshipMember>, AssessmentReadError> {
+        self.prepared_definition(reference, reader)?.constraints.clone()
+    }
+
+    fn prepared_definition(
+        &self,
+        reference: &HolonReference,
+        reader: &ProspectiveDescriptorReader,
+    ) -> Result<&PreparedDefinition, AssessmentReadError> {
         let selected = reader.select(reference)?;
-        let definition = self
-            .definitions
+        self.definitions
             .get(&content_identity(&selected))
-            .ok_or_else(|| HolonError::InvalidState("Definition was not prepared".into()))?;
-        if bindings {
-            definition.bindings.clone()
-        } else {
-            definition.constraints.clone()
-        }
+            .ok_or_else(|| HolonError::InvalidState("Definition was not prepared".into()).into())
     }
 
     pub fn authored(

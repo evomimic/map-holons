@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Range,
-};
+use std::{collections::HashMap, ops::Range};
 
 use core_types::{
     CommitValidationViolation, CommitValidationViolationKind, HolonError, ValidationSubjectPath,
@@ -26,7 +23,7 @@ impl<'a> PreparedAssessment<'a> {
         candidates: &'a [StagedReference],
         report: CommitValidationReport,
     ) -> Result<Self, HolonError> {
-        check_candidates(candidates)?;
+        crate::commit_assessment::require_distinct_live_candidates(candidates)?;
         // Diagnostic strings route findings; candidate distinctness uses temporary IDs
         // in the shared input check above.
         let indices: HashMap<_, _> = candidates
@@ -105,17 +102,4 @@ pub(crate) fn subject_identity(subject: &ValidationSubjectPath) -> Option<&str> 
         ValidationSubjectPath::Relationship { source_identity, .. } => Some(source_identity),
         ValidationSubjectPath::Transaction => None,
     }
-}
-
-pub(crate) fn check_candidates(candidates: &[StagedReference]) -> Result<(), HolonError> {
-    let mut seen = HashSet::new();
-    for candidate in candidates {
-        if !candidate.is_live_validation_candidate()? || !seen.insert(candidate.temporary_id()) {
-            return Err(HolonError::InvalidParameter(format!(
-                "Commit validation requires distinct live candidates: {}",
-                candidate.reference_id_string()
-            )));
-        }
-    }
-    Ok(())
 }
