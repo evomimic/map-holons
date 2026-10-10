@@ -4,7 +4,7 @@
     "Transaction": {
       "tx_id": 41,
       "action": {
-        "DiscoverVisualizers": {
+        "FindVisualizerUsage": {
           "request": {
             "subject": {
               "Staged": {
@@ -34,8 +34,16 @@
               }
             }
           },
-          "current_selection": null,
-          "retain_evidence": false
+          "selected": {
+            "Smart": {
+              "holon_id": {
+                "Local": [
+                  20
+                ]
+              },
+              "smart_property_values": null
+            }
+          }
         }
       }
     }

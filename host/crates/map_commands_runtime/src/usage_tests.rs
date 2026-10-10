@@ -97,6 +97,9 @@ impl HolonServiceApi for Store {
         let n = match key.0.as_str() {
             "VisualizerUsage.HolonType" => 100,
             "VisualizerSlotPreference.HolonType" => 101,
+            "VisualizerDiscovery.Projection" => 150,
+            "VisualizerDiscoveryLevel.Projection" => 151,
+            "VisualizerDiscoveryCandidate.Projection" => 152,
             _ => return Err(HolonError::InvalidParameter(format!("Unexpected anchor {key}"))),
         };
         let HolonReference::Smart(value) = reference(context, n) else { unreachable!() };
@@ -316,6 +319,160 @@ fn request(
         slot: reference(context, slot),
         theme: reference(context, 60),
     }
+}
+
+#[test]
+fn finding_usage_never_initializes_or_commits_and_preserves_existing_configuration(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let usages = UsageTransactions::default();
+    for _ in 0..2 {
+        assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
+    }
+    assert!(store.commits.lock().unwrap().is_empty());
+    let initialized =
+        usages.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    assert!(initialized.initialized);
+    let commits = store.commits.lock().unwrap().len();
+    let found = usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.unwrap();
+    assert!(!found.initialized);
+    assert_eq!(found.usage.holon_id()?, initialized.usage.holon_id()?);
+    assert_eq!(store.commits.lock().unwrap().len(), commits);
+    Ok(())
+}
+
+#[test]
+fn finding_usage_does_not_resume_a_failed_initialization_commit() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let usages = UsageTransactions::default();
+    store.fail.store(true, Ordering::SeqCst);
+    assert!(usages
+        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
+        .is_err());
+    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
+    assert!(store.commits.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn finding_usage_does_not_expose_or_retry_a_partially_persisted_initialization(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let usages = UsageTransactions::default();
+    store.incomplete.store(true, Ordering::SeqCst);
+    assert!(usages
+        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
+        .is_err());
+    let commits = store.commits.lock().unwrap().len();
+    assert!(commits > 0);
+    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
+    assert_eq!(store.commits.lock().unwrap().len(), commits);
+    usages.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_some());
+    Ok(())
+}
+
+#[test]
+fn discovery_projection_resolves_each_record_type_once() -> Result<(), HolonError> {
+    use crate::discovery_evidence::DiscoveryEvidence;
+    use map_commands_contract::{
+        DiscoveryStopReason, VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery,
+    };
+    let (store, space, source) = setup();
+    let evidence = DiscoveryEvidence::default();
+    let captured = VisualizerDiscovery {
+        candidates: (20..40)
+            .map(|n| VisualizerCandidate {
+                visualizer: reference(&source, n),
+                declared_on: vec![reference(&source, 1)],
+                assessment: VisualizerAssessment::Viable,
+            })
+            .collect(),
+        current_selection: None,
+        ancestry: (1..5).map(|n| reference(&source, n)).collect(),
+        stop_reason: DiscoveryStopReason::LineageExhausted,
+        snapshot: None,
+    };
+    let key = evidence.retain(source.tx_id(), request(&source, 2, 30), &captured)?;
+    let destination = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    store.anchor_reads.lock().unwrap().clear();
+    let projection = evidence.project(&destination, &key)?;
+    assert_eq!(
+        projection.related_holons("DiscoveryCandidates")?.read().unwrap().get_count(),
+        MapInteger(20)
+    );
+    assert_eq!(
+        store.anchor_reads.lock().unwrap().len(),
+        3,
+        "Projection descriptor lookups must not grow with the number of captured records"
+    );
+    Ok(())
+}
+
+#[test]
+fn discovery_projection_consumes_captured_facts_without_rediscovery() -> Result<(), HolonError> {
+    use crate::discovery_evidence::DiscoveryEvidence;
+    use map_commands_contract::{
+        DiscoveryStopReason, VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery,
+    };
+    let (store, space, source) = setup();
+    let evidence = DiscoveryEvidence::default();
+    let candidate = VisualizerCandidate {
+        visualizer: reference(&source, 20),
+        declared_on: vec![reference(&source, 1)],
+        assessment: VisualizerAssessment::Viable,
+    };
+    let captured = VisualizerDiscovery {
+        candidates: vec![candidate.clone()],
+        current_selection: Some(candidate),
+        ancestry: vec![reference(&source, 1)],
+        stop_reason: DiscoveryStopReason::LineageExhausted,
+        snapshot: None,
+    };
+    let key = evidence.retain(source.tx_id(), request(&source, 2, 30), &captured)?;
+    // Later graph changes cannot alter the recorded candidate/declaration assessment.
+    store.edge(1, "HasApplicableVisualizer", &[]);
+    let destination = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    assert!(evidence.release(&destination.tx_id(), &key).is_err());
+    store.relationship_reads.lock().unwrap().clear();
+    let projection = evidence.project(&destination, &key)?;
+    let levels = projection.related_holons("DiscoveryLevels")?;
+    assert_eq!(levels.read().unwrap().get_count(), MapInteger(1));
+    assert_eq!(
+        levels
+            .read()
+            .unwrap()
+            .get_by_index(0)?
+            .property_value(&PropertyName("DiscoveryLevelIndex".into()))?,
+        Some(BaseValue::IntegerValue(MapInteger(0)))
+    );
+    let candidates = projection.related_holons("DiscoveryCandidates")?;
+    assert_eq!(candidates.read().unwrap().get_count(), MapInteger(1));
+    assert_eq!(
+        candidates
+            .read()
+            .unwrap()
+            .get_by_index(0)?
+            .property_value(&PropertyName("DiscoveryAssessment".into()))?,
+        Some(BaseValue::StringValue("viable".into()))
+    );
+    assert_eq!(
+        projection.property_value(&PropertyName("DiscoveryStopReason".into()))?,
+        Some(BaseValue::StringValue("lineage_exhausted".into()))
+    );
+    assert!(!store
+        .relationship_reads
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|(source, name)| name == "HasApplicableVisualizer"
+            || (*source == 1 && name == "Extends")));
+    assert!(evidence.project(&destination, &key).is_err());
+    evidence.release(&source.tx_id(), &key)?;
+    let key = evidence.retain(source.tx_id(), request(&source, 2, 30), &captured)?;
+    evidence.release_transaction(&source.tx_id())?;
+    assert!(evidence.project(&destination, &key).is_err());
+    Ok(())
 }
 #[test]
 fn usage_persists_independently_and_reuses_by_type_across_instances_slots_and_restart(

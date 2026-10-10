@@ -286,7 +286,7 @@ export class PathNavigator implements PathNavigation {
           discover: () => semanticWork(this.contextFor(subject)).run(() => this.contextFor(subject).discoverVisualizers({
             subject, requestedKind: 'node', owner: { visualizer: this.parentVisualizer },
             slot: this.nodeSlot, theme: this.selectionTheme(),
-          }, selectedVisualizer)),
+          }, selectedVisualizer, true)),
           choose: node.supportsReplacement ? (candidate, current, signal) => this.replaceVisualizer(occurrence, node, candidate, current, signal) : undefined,
           replacementUnavailableReason: node.supportsReplacement ? undefined : 'This result view can be inspected, but changing its Visualizer is not yet supported. Its owner must preserve the result and collection state.',
         },

@@ -146,6 +146,7 @@ instance VisualizerInspector.Visualizer {
   DisplayName "Visualizer Inspector"
   VisualizerDescription "Shows the slot’s purpose and the current visualizer’s approach first. Expand presentation structure entries to inspect child presentations in place. Technical details stay collapsed, and the explore icon opens the visualizer as an item."
   relationships {
+    HasSlot -> VisualizerInspector.DiscoveryExplorerSlot
     ApplicableToType -> Visualizer.HolonType
     ConsumesDesignToken -> [
       CanvasTextColor.DesignToken,
@@ -166,7 +167,64 @@ instance VisualizerInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.visualizer-inspector"
-  VisualizerArtifactDigest "sha256:ccbebea7314389e124987f379f0e19c0bf84b35fdaac93eebd5f975709e83d22"
+  VisualizerArtifactDigest "sha256:89e373b26677dc286bdd66ae71d22f2b6bbc1f8082d4af186a506f5dad70ee21"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+// This owner's contract requires captured evidence, separate Inspect/Choose,
+// bounded allocation, initialization, dismissal, and a nested information action.
+holon DiscoveryExplorerVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends StructureVisualizer.HolonType
+  header {
+    description: "Structure Visualizer fulfilling the discovery explanation explorer participation contract."
+    display_name: "Discovery Explorer Visualizer"
+    display_plural: "Discovery Explorer Visualizers"
+    plural: "DiscoveryExplorerVisualizers"
+  }
+}
+
+instance VisualizerInspector.DiscoveryExplorerSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Explain the authoritative chain that identified the current Visualizer and its alternatives."
+  relationships {
+    AcceptsVisualizerType -> DiscoveryExplorerVisualizer.HolonType
+  }
+}
+
+instance DiscoveryTree.StructureVisualizer {
+  type DiscoveryExplorerVisualizer.HolonType
+  DisplayName "Discovery Tree"
+  VisualizerDescription "Groups candidate declarations by the descriptor levels Rust visited."
+  relationships {
+    ApplicableToType -> VisualizerDiscovery.Projection
+    ImplementedBy -> DiscoveryTreeTypeScript.VisualizerImplementation
+  }
+}
+instance DiscoveryTreeTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.discovery-tree"
+  VisualizerArtifactDigest "sha256:c56a741b44a3dd5b1047f188ac858a720d4d75e2b24f8539281272b826b7efc5"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance DiscoveryLevels.StructureVisualizer {
+  type DiscoveryExplorerVisualizer.HolonType
+  DisplayName "Discovery Level List"
+  VisualizerDescription "Lists descriptor levels and candidate declarations in traversal order."
+  relationships {
+    ApplicableToType -> Projection.HolonType
+    ImplementedBy -> DiscoveryLevelsTypeScript.VisualizerImplementation
+  }
+}
+instance DiscoveryLevelsTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.discovery-levels"
+  VisualizerArtifactDigest "sha256:b60b699806992b1746ff0c236782e32ef86250543247b233111344a82404c5a5"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

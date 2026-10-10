@@ -1,5 +1,6 @@
 /** A semantic Visualizer definition view, separate from usage configuration and history. */
 export default class VisualizerInspector extends HTMLElement {
+  static compositionSlots = { discovery: 'VisualizerInspector.DiscoveryExplorerSlot' };
   setContext(context) {
     for (const observer of this.compositionObservers ?? []) observer.disconnect();
     this.compositionObservers = new Set();
@@ -57,6 +58,7 @@ export default class VisualizerInspector extends HTMLElement {
       const technicalSummary = document.createElement('summary'); technicalSummary.textContent = 'Technical details';
       technicalSummary.style.cssText = 'cursor:pointer;color:var(--dahn-muted-text-color);font-size:.9rem;';
       technical.append(technicalSummary); this.append(technical);
+      if (context.mountDiscoveryExplorer) this.renderDiscovery(context, technical);
       const definition = document.createElement('p'); definition.textContent = `Shared Visualizer definition · ${key}`;
       definition.style.cssText = 'margin:8px 0;color:var(--dahn-muted-text-color);font-size:.85rem;';
       technical.append(definition);
@@ -131,11 +133,47 @@ export default class VisualizerInspector extends HTMLElement {
       const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry'; retry.addEventListener('click', () => this.setContext(context)); this.append(retry);
     }
   }
+  renderDiscovery(context, technical) {
+    const host = document.createElement('section'); host.dataset.discoveryExplorerHost = 'true';
+    let loaded = false, loading = false, refreshing = false;
+    const load = async (refresh = false) => {
+      context.onTechnicalDetailsChanged?.(technical.open);
+      if (!technical.open || (loaded && !refresh) || loading || this.context !== context) return;
+      loading = true; host.textContent = 'Opening discovery explanation…';
+      try {
+        if (refresh) await context.refreshDiscoveryExplorer?.();
+        if (this.context !== context || !host.isConnected) return;
+        await context.mountDiscoveryExplorer(host); loaded = true;
+        if (refresh && context.discoverVisualizerChoices) {
+          this.querySelector('[data-visualizer-choices]')?.remove();
+          await this.renderChoices(context);
+        }
+      }
+      catch (error) {
+        loaded = false;
+        if (this.context !== context || !host.isConnected) return;
+        host.textContent = `Unable to explain discovery: ${error.message ?? error}`;
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry explanation'; retry.addEventListener('click', () => void load()); host.append(retry);
+      } finally { loading = false; }
+    };
+    if (context.refreshDiscoveryExplorer) {
+      const refresh = document.createElement('button'); refresh.type = 'button'; refresh.textContent = 'Refresh discovery';
+      refresh.addEventListener('click', async () => {
+        if (refreshing || loading) return;
+        refreshing = true; refresh.disabled = true;
+        try { await load(true); } finally { refreshing = false; refresh.disabled = false; }
+      });
+      technical.append(refresh);
+    }
+    technical.append(host); technical.addEventListener('toggle', () => void load());
+    technical.open = context.technicalDetailsOpen ?? false;
+    if (technical.open) void load();
+  }
   async renderChoices(context) {
     const section = document.createElement('section'); section.dataset.visualizerChoices = 'true';
     const heading = document.createElement('h3'); heading.textContent = 'Alternative Visualizers';
     const status = document.createElement('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-atomic', 'true'); status.textContent = 'Finding alternatives…';
-    const list = document.createElement('ul'); list.style.cssText = 'list-style:none;padding:0;';
+    const list = document.createElement('ul'); list.style.cssText = 'display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:16px 0;';
     section.append(heading, status, list); this.append(section);
     const current = () => this.context === context && this.isConnected && context.visualizerInspection.isLive();
     const load = async () => {
@@ -150,9 +188,9 @@ export default class VisualizerInspector extends HTMLElement {
         for (const candidate of alternatives) {
           const name = await displayName(candidate.visualizer);
           if (!current()) return;
-          const row = document.createElement('li'), label = document.createElement('p'); label.textContent = name;
-          row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--dahn-slot-border-color);';
-          label.style.cssText = 'font-weight:600;margin:0 0 8px;';
+          const row = document.createElement('li'), label = document.createElement('h4'); label.textContent = name;
+          row.style.cssText = 'padding:16px;border:1px solid var(--dahn-slot-border-color);border-left:4px solid var(--dahn-action-text-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
+          label.style.cssText = 'font-size:1.2em;font-weight:700;line-height:1.35;margin:0 0 12px;';
           const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect';
           const choose = document.createElement('button'); choose.type = 'button'; choose.textContent = 'Choose';
           for (const button of [inspect, choose]) button.style.cssText = 'font:inherit;padding:8px 12px;margin-right:8px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;';
@@ -182,6 +220,7 @@ export default class VisualizerInspector extends HTMLElement {
             indicator.style.cssText = 'width:100%;height:6px;accent-color:var(--dahn-action-text-color);';
             const message = document.createElement('span'); message.textContent = `Changing to ${name}…`;
             status.dataset.visualizerChoiceProgress = 'true'; status.setAttribute('role', 'status');
+            row.append(status);
             status.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
             status.replaceChildren(message, indicator, cancel);
             try {
@@ -201,7 +240,9 @@ export default class VisualizerInspector extends HTMLElement {
               if (current()) for (const [index, button] of [...section.querySelectorAll('[data-choose-visualizer]')].entries()) button.disabled = alternatives[index].assessment !== 'viable';
             }
           });
-          row.prepend(label); row.append(inspect, choose, preview); list.append(row);
+          const actions = document.createElement('div'); actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+          for (const button of [inspect, choose]) button.style.marginRight = '0';
+          actions.append(inspect, choose); row.prepend(label); row.append(actions, preview); list.append(row);
         }
       } catch (error) {
         if (!current()) return;
@@ -289,7 +330,8 @@ export default class VisualizerInspector extends HTMLElement {
       for (const row of rows.values()) row.dispose?.();
     };
   }
-  disconnectedCallback() { this.choiceController?.abort(); this.context = undefined; for (const observer of this.compositionObservers ?? []) observer.disconnect(); }
+  dispose() { this.choiceController?.abort(); this.choiceController = undefined; this.choicePending = false; this.context = undefined; for (const observer of this.compositionObservers ?? []) observer.disconnect(); this.compositionObservers?.clear(); }
+  disconnectedCallback() { this.dispose(); }
 }
 function present(value) {
   if (value === null) return 'Not provided';

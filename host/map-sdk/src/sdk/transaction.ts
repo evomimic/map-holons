@@ -40,6 +40,7 @@ import {
 export type VisualizerKind =
   | 'canvas'
   | 'node'
+  | 'structure'
   | 'rootedNavigation'
   | 'collection'
   | 'propertyMap'
@@ -74,6 +75,16 @@ export interface VisualizerDiscovery {
   candidates: readonly VisualizerCandidate[];
   currentSelection: VisualizerCandidate | null;
   ancestry: readonly HolonReference[];
+  stopReason: 'holon_type_boundary' | 'lineage_exhausted';
+  /** Single-use projection of the authoritative result; release when unused. */
+  evidence?: {
+    /** Required projection context when captured references are transaction-local.
+     * Borrowed from the source owner; consumers must not dispose this transaction. */
+    readonly projectionTransaction?: MapTransaction;
+    project(destination: MapTransaction): Promise<HolonReference>;
+    dispose(): Promise<void>;
+  };
+
 }
 
 /** Rust-selected semantic Visualizer reference for a visualization request. */
@@ -506,15 +517,41 @@ export class MapTransaction {
   }
 
   /** Enumerates alternatives without changing the selection or claiming mounted state. */
-  async discoverVisualizers(request: VisualizerSelectionRequest, currentSelection?: HolonReference): Promise<VisualizerDiscovery> {
+  async discoverVisualizers(request: VisualizerSelectionRequest, currentSelection?: HolonReference, retainEvidence = false): Promise<VisualizerDiscovery> {
     const txId = txIdFor(this);
     const current = currentSelection === undefined ? null : unwrapHolonReference(this.owns(currentSelection) ? currentSelection : this.bindSavedReference(currentSelection));
-    const result = await internalTransaction.discoverVisualizers(txId, this.selectionRequestWire(request), current);
+    const result = await internalTransaction.discoverVisualizers(txId, this.selectionRequestWire(request), current, retainEvidence);
     const bind = (candidate: VisualizerCandidateWire): VisualizerCandidate => ({
       visualizer: createHolonReference(txId, candidate.visualizer),
       declaredOn: candidate.declared_on.map(reference => createHolonReference(txId, reference)), assessment: candidate.assessment,
     });
-    return { candidates: result.candidates.map(bind), currentSelection: result.current_selection === null ? null : bind(result.current_selection), ancestry: result.ancestry.map(reference => createHolonReference(txId, reference)) };
+    const snapshot = result.snapshot;
+    let released = false;
+    const capturedReferences = [request.subject, request.slot, request.theme,
+      'visualizer' in request.owner ? request.owner.visualizer : request.owner.dancer,
+      ...result.ancestry.map(reference => createHolonReference(txId, reference)),
+      ...(result.current_selection ? [result.current_selection.visualizer, ...result.current_selection.declared_on].map(reference => createHolonReference(txId, reference)) : []),
+      ...result.candidates.flatMap(candidate => [candidate.visualizer, ...candidate.declared_on]).map(reference => createHolonReference(txId, reference))];
+    const projectionTransaction = capturedReferences.some(reference => !('Smart' in unwrapHolonReference(reference))) ? this : undefined;
+    const evidence = snapshot === null ? undefined : {
+      projectionTransaction,
+      project: async (destination: MapTransaction) => {
+        if (released) throw new Error('Discovery evidence has already been released or projected.');
+        if (projectionTransaction && txIdFor(destination) !== txId) throw new Error('Transaction-local discovery evidence must be projected in its source transaction.');
+        released = true;
+        try {
+          const destinationId = txIdFor(destination);
+          return createHolonReference(destinationId, await internalTransaction.projectVisualizerDiscovery(destinationId, snapshot));
+        } catch (error) {
+          await internalTransaction.releaseVisualizerDiscovery(txId, snapshot).catch(() => {});
+          throw error;
+        }
+      },
+      dispose: async () => {
+        if (!released) { released = true; await internalTransaction.releaseVisualizerDiscovery(txId, snapshot); }
+      },
+    };
+    return { candidates: result.candidates.map(bind), currentSelection: result.current_selection === null ? null : bind(result.current_selection), ancestry: result.ancestry.map(reference => createHolonReference(txId, reference)), stopReason: result.stop_reason, evidence };
   }
 
   /** Authorizes a current explicit choice; does not persist preference or replace UI. */
@@ -525,6 +562,14 @@ export class MapTransaction {
   }
 
   /** Select/initialize persisted usage without committing this transaction's edits. */
+  /** Read existing configuration; absence does not create or persist a usage. */
+  async findVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection | null> {
+    const txId = txIdFor(this);
+    const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
+    const result = await internalTransaction.findVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected));
+    return result === null ? null : { usage: createHolonReference(txId, result.usage), initialized: false, reportSession: result.report_session };
+  }
+
   async selectVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection> {
     const txId = txIdFor(this);
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
@@ -607,6 +652,7 @@ function toSmartReferenceWire(currentVersion: SmartReference): SmartReferenceWir
 function toVisualizerKindWire(kind: VisualizerKind):
   | 'Canvas'
   | 'Node'
+  | 'Structure'
   | 'RootedNavigation'
   | 'Collection'
   | 'PropertyMap'
@@ -620,7 +666,8 @@ function toVisualizerKindWire(kind: VisualizerKind):
   return `${kind[0].toUpperCase()}${kind.slice(1)}` as
     | 'Canvas'
     | 'Node'
-    | 'RootedNavigation'
+    | 'Structure'
+  | 'RootedNavigation'
     | 'Collection'
     | 'PropertyMap'
     | 'Property'

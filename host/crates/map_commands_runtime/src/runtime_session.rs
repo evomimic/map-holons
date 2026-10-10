@@ -10,6 +10,7 @@ use holons_core::TransientReference;
 use crate::ExecutionPolicy;
 
 pub struct RuntimeSession {
+    pub(crate) discoveries: crate::discovery_evidence::DiscoveryEvidence,
     pub(crate) usage_transactions: crate::usage_transactions::UsageTransactions,
     space_manager: Arc<HolonSpaceManager>,
     recovery: Option<Arc<SessionReceptor>>,
@@ -25,6 +26,7 @@ impl RuntimeSession {
         recovery: Option<Arc<SessionReceptor>>,
     ) -> Self {
         Self {
+            discoveries: Default::default(),
             usage_transactions: Default::default(),
             space_manager,
             recovery,
@@ -229,6 +231,7 @@ impl RuntimeSession {
     pub async fn dispose_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {
         let session = self.get_client_session(tx_id)?;
         self.admission(*tx_id)?.dispose()?;
+        self.discoveries.release_transaction(tx_id)?;
         session.context().dispose()?;
         session.cleanup().await?;
         self.active_sessions
@@ -433,6 +436,27 @@ mod tests {
         let id = session.begin_transaction().await.unwrap();
         let context = session.get_transaction(&id).unwrap();
         let reference = context.mutation().new_holon(Some("retained-request".into())).unwrap();
+        let retained: holons_core::HolonReference = reference.clone().into();
+        let snapshot = session
+            .discoveries
+            .retain(
+                id,
+                map_commands_contract::VisualizerSelectionRequest {
+                    subject: retained.clone(),
+                    requested_kind: map_commands_contract::VisualizerKind::Structure,
+                    owner: map_commands_contract::VisualizerOwner::Visualizer(retained.clone()),
+                    slot: retained.clone(),
+                    theme: retained,
+                },
+                &map_commands_contract::VisualizerDiscovery {
+                    candidates: vec![],
+                    current_selection: None,
+                    ancestry: vec![],
+                    stop_reason: map_commands_contract::DiscoveryStopReason::LineageExhausted,
+                    snapshot: None,
+                },
+            )
+            .unwrap();
         let admission = session.admission(id).unwrap();
         let lease = admission.enter(false).unwrap();
         assert!(session.dispose_transaction(&id).await.is_err());
@@ -445,6 +469,10 @@ mod tests {
             holons_core::core_shared_objects::transactions::TransactionLifecycleState::Disposed
         );
         assert!(holons_core::ReadableHolon::key(&reference).is_err());
+        let destination_id = session.begin_transaction().await.unwrap();
+        let destination = session.get_transaction(&destination_id).unwrap();
+        assert!(session.discoveries.project(&destination, &snapshot).is_err());
+        session.dispose_transaction(&destination_id).await.unwrap();
     }
 
     #[tokio::test]

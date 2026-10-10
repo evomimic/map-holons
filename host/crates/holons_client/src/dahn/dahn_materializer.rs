@@ -173,6 +173,8 @@ impl DahnMaterializer {
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
             "ConnectionsFirstInspector.NodeVisualizer" => "connections-first-inspector.js",
             "VisualizerInspector.Visualizer" => "visualizer-inspector.js",
+            "DiscoveryTree.StructureVisualizer" => "discovery-tree.js",
+            "DiscoveryLevels.StructureVisualizer" => "discovery-levels.js",
             "LoadHolons.NodeVisualizer" => "load-holons-inspector.js",
             "GenericActions.ActionBarVisualizer" => "actions.js",
             "LoadHolons.ActionVisualizer" => "load-holons-action.js",

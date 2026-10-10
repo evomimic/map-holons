@@ -5,6 +5,7 @@ import type { SpaceNavigatorBinding } from './space-navigator-experience';
 
 class Inspector extends HTMLElement {
   setContext(context: unknown) { (this as any).context = context; }
+  dispose = vi.fn();
 }
 const ref = (key: string) => ({ key: async () => key });
 function fixture(explore?: (reference: VisualizerInspectionTarget['selectedVisualizer']) => void) {
@@ -34,6 +35,9 @@ it('marks only the inspected occurrence while information is visible', () => {
   f.region.toggle.click();
   expect(f.target.invoker.getAttribute('aria-pressed')).toBe('false');
   f.region.toggle.click();
+  expect(f.target.invoker.getAttribute('aria-pressed')).toBe('false');
+  expect(f.region.element.textContent).toContain('Select a Visualizer');
+  f.region.inspect(f.target);
   expect(f.target.invoker.getAttribute('aria-pressed')).toBe('true');
   const secondInvoker = document.createElement('button'); f.host.append(secondInvoker);
   f.region.inspect({ ...f.target, occurrenceId: 'B', invoker: secondInvoker });
@@ -210,4 +214,113 @@ it('refreshes a published choice under its retained occurrence without dismissin
   expect((f.region.element.querySelector('map-visualizer-inspector') as any).context.visualizerInspection.selectedVisualizer).toBe(replacement.selectedVisualizer);
   expect(f.region.element.textContent).not.toContain('Select a Visualizer');
   expect(invoker.dataset.visualizerInspected).toBe('true'); f.region.dispose();
+});
+
+it('suspends a parent presentation and unwinds nested inspection without retargeting the original', async () => {
+  const f = fixture(); f.region.inspect(f.target);
+  await vi.waitFor(() => expect(f.region.element.querySelector('map-visualizer-inspector')).not.toBeNull());
+  const parent = f.region.element.querySelector('map-visualizer-inspector') as any;
+  parent.context.onTechnicalDetailsChanged(true);
+  parent.context.onInspectVisualizer({ ...f.target, occurrenceId: 'explorer', selectedVisualizer: ref('Explorer') });
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any).context.visualizerInspection.occurrenceId).toBe('explorer'));
+  expect(parent.dispose).toHaveBeenCalledOnce(); expect(parent.isConnected).toBe(false);
+  const nested = f.region.element.querySelector('map-visualizer-inspector') as any;
+  const back = [...f.region.element.querySelectorAll('button')].find(button => button.textContent === 'Back to previous information')!;
+  back.click();
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any).context.visualizerInspection).toBe(f.target));
+  expect(nested.dispose).toHaveBeenCalledOnce(); expect(nested.isConnected).toBe(false);
+  expect((f.region.element.querySelector('map-visualizer-inspector') as any).context.technicalDetailsOpen).toBe(true);
+  f.region.dispose();
+});
+
+it('releases retained evidence on main-area replacement, including discovery resolving after disposal', async () => {
+  const f = fixture(); const release = vi.fn(async () => {});
+  let finish!: (value: unknown) => void;
+  const target = { ...f.target, choices: { discover: vi.fn(() => new Promise<any>(resolve => { finish = resolve; })) } };
+  f.region.inspect(target);
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.discoverVisualizerChoices).toBeTypeOf('function'));
+  const parent = f.region.element.querySelector('map-visualizer-inspector') as any;
+  const pending = parent.context.discoverVisualizerChoices().catch((error: Error) => error);
+  f.region.inspect({ ...f.target, occurrenceId: 'new main target' });
+  finish({ candidates: [], ancestry: [], currentSelection: null, evidence: { dispose: release } });
+  expect((await pending).message).toContain('superseded');
+  await vi.waitFor(() => expect(release).toHaveBeenCalledOnce());
+  expect(parent.dispose).toHaveBeenCalledOnce();
+  f.region.dispose(); expect(release).toHaveBeenCalledOnce();
+});
+
+it('clears the complete nested chain on top-level target closure and revokes retired callbacks', async () => {
+  const f = fixture(); f.region.inspect(f.target);
+  await vi.waitFor(() => expect(f.region.element.querySelector('map-visualizer-inspector')).not.toBeNull());
+  const parent = f.region.element.querySelector('map-visualizer-inspector') as any;
+  const retired = parent.context.onInspectVisualizer;
+  retired({ ...f.target, occurrenceId: 'nested' });
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any).context.visualizerInspection.occurrenceId).toBe('nested'));
+  const nested = f.region.element.querySelector('map-visualizer-inspector') as any;
+  f.closeTarget();
+  await vi.waitFor(() => expect(f.region.element.textContent).toContain('Select a Visualizer'));
+  expect(nested.dispose).toHaveBeenCalledOnce();
+  retired(f.target); expect(f.region.element.querySelector('map-visualizer-inspector')).toBeNull();
+  f.region.dispose(); expect(nested.dispose).toHaveBeenCalledOnce();
+});
+
+it('bounds recursive entry before allocating another presentation', async () => {
+  const f = fixture(); f.region.inspect(f.target);
+  for (let depth = 1; depth < 8; depth++) {
+    await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.visualizerInspection.occurrenceId).toBe(depth === 1 ? 'A' : String(depth - 1)));
+    (f.region.element.querySelector('map-visualizer-inspector') as any).context.onInspectVisualizer({ ...f.target, occurrenceId: String(depth) });
+  }
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.visualizerInspection.occurrenceId).toBe('7'));
+  const count = vi.mocked(f.binding.transaction.selectVisualizer).mock.calls.length;
+  (f.region.element.querySelector('map-visualizer-inspector') as any).context.onInspectVisualizer({ ...f.target, occurrenceId: 'over limit' });
+  expect(f.binding.transaction.selectVisualizer).toHaveBeenCalledTimes(count);
+  expect((document.activeElement as HTMLElement).title).toContain('eight'); f.region.dispose();
+});
+
+it('unwinds an invalid nested target to its surviving parent', async () => {
+  const f = fixture(); f.region.inspect(f.target); let live = true;
+  await vi.waitFor(() => expect(f.region.element.querySelector('map-visualizer-inspector')).not.toBeNull());
+  (f.region.element.querySelector('map-visualizer-inspector') as any).context.onInspectVisualizer({ ...f.target, occurrenceId: 'nested', isLive: () => live });
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.visualizerInspection.occurrenceId).toBe('nested'));
+  const nested = f.region.element.querySelector('map-visualizer-inspector') as any;
+  live = false; f.host.append(document.createElement('span'));
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.visualizerInspection).toBe(f.target));
+  expect(nested.dispose).toHaveBeenCalledOnce(); f.region.dispose();
+});
+
+it('keeps inline child discovery separate from its parent and releases both owned snapshots', async () => {
+  const f = fixture(); const parentRelease = vi.fn(async () => {}), childRelease = vi.fn(async () => {});
+  const parentResult = { candidates: ['parent'], evidence: { dispose: parentRelease } };
+  const childResult = { candidates: ['child'], evidence: { dispose: childRelease } };
+  const parentTarget = { ...f.target, choices: { discover: vi.fn(async () => parentResult) } } as unknown as VisualizerInspectionTarget;
+  const childTarget = { ...f.target, occurrenceId: 'child', choices: { discover: vi.fn(async () => childResult) } } as unknown as VisualizerInspectionTarget;
+  f.region.inspect(parentTarget);
+  await vi.waitFor(() => expect(f.region.element.querySelector('map-visualizer-inspector')).not.toBeNull());
+  const parent = f.region.element.querySelector('map-visualizer-inspector') as any;
+  const host = document.createElement('div'); parent.append(host);
+  await parent.context.mountVisualizerInformation(childTarget, host);
+  const child = host.querySelector('map-visualizer-inspector') as any;
+  expect(await parent.context.discoverVisualizerChoices()).toBe(parentResult);
+  expect(await child.context.discoverVisualizerChoices()).toBe(childResult);
+  f.region.dispose();
+  await vi.waitFor(() => { expect(parentRelease).toHaveBeenCalledOnce(); expect(childRelease).toHaveBeenCalledOnce(); });
+});
+
+it('replaces an inline child without retargeting or revoking the enclosing Inspector', async () => {
+  const explore = vi.fn(), f = fixture(explore); f.region.inspect(f.target);
+  await vi.waitFor(() => expect(f.region.element.querySelector('map-visualizer-inspector')).not.toBeNull());
+  const parent = f.region.element.querySelector('map-visualizer-inspector') as any;
+  const childHost = document.createElement('div'); parent.append(childHost);
+  const replacement = { ...f.target, occurrenceId: 'child', selectedVisualizer: ref('New child') } as unknown as VisualizerInspectionTarget;
+  const target = { ...f.target, occurrenceId: 'child', choices: { discover: vi.fn(), choose: vi.fn(async () => replacement) } } as unknown as VisualizerInspectionTarget;
+  await parent.context.mountVisualizerInformation(target, childHost);
+  const child = childHost.querySelector('map-visualizer-inspector') as any;
+  const stale = child.context.onExploreVisualizer;
+  await child.context.chooseVisualizerCandidate(replacement.selectedVisualizer, new AbortController().signal);
+  expect((childHost.querySelector('map-visualizer-inspector') as any).context.visualizerInspection).toBe(replacement);
+  expect(parent.isConnected).toBe(true);
+  expect(parent.context.visualizerInspection).toBe(f.target);
+  stale(); expect(explore).not.toHaveBeenCalled();
+  parent.context.onExploreVisualizer(); expect(explore).toHaveBeenCalledWith(f.target.selectedVisualizer);
+  f.region.dispose();
 });
