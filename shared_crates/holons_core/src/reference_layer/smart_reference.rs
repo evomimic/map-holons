@@ -1,6 +1,7 @@
 use derive_new::new;
 use std::{
     fmt,
+    hash::{Hash, Hasher},
     sync::{Arc, RwLock},
 };
 use tracing::trace;
@@ -492,3 +493,12 @@ impl PartialEq for SmartReference {
 }
 
 impl Eq for SmartReference {}
+
+// Hashes only the `HolonId`. Equal references always share it, so the
+// local-space check in `eq` refines equality without breaking `Hash`/`Eq`
+// consistency; cached property hints are excluded, as in `eq`.
+impl Hash for SmartReference {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.holon_id.hash(state);
+    }
+}
