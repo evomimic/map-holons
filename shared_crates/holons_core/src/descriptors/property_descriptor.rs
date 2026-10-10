@@ -734,6 +734,137 @@ mod tests {
         Ok(())
     }
 
+    const CONTROLLED_READ_FAILURE: &str = "controlled property read failure";
+
+    /// A readable holon whose property reads fail with a controlled error and
+    /// are counted; every other read delegates to a real transient holon.
+    struct FailingPropertyRead {
+        inner: crate::reference_layer::TransientReference,
+        reads: std::cell::Cell<usize>,
+    }
+
+    impl FailingPropertyRead {
+        fn new(inner: crate::reference_layer::TransientReference) -> Self {
+            Self { inner, reads: std::cell::Cell::new(0) }
+        }
+    }
+
+    impl crate::reference_layer::readable_impl::ReadableHolonImpl for FailingPropertyRead {
+        fn all_related_holons_impl(&self) -> Result<crate::RelationshipMap, HolonError> {
+            self.inner.all_related_holons_impl()
+        }
+
+        fn holon_id_impl(&self) -> Result<core_types::HolonId, HolonError> {
+            self.inner.holon_id_impl()
+        }
+
+        fn predecessor_impl(&self) -> Result<Option<HolonReference>, HolonError> {
+            self.inner.predecessor_impl()
+        }
+
+        fn property_value_impl(
+            &self,
+            _property_name: &PropertyName,
+        ) -> Result<Option<core_types::PropertyValue>, HolonError> {
+            self.reads.set(self.reads.get() + 1);
+            Err(HolonError::FailedToAcquireLock(CONTROLLED_READ_FAILURE.to_string()))
+        }
+
+        fn key_impl(&self) -> Result<Option<MapString>, HolonError> {
+            self.inner.key_impl()
+        }
+
+        fn related_holons_impl(
+            &self,
+            relationship_name: &core_types::RelationshipName,
+        ) -> Result<
+            std::sync::Arc<std::sync::RwLock<crate::core_shared_objects::HolonCollection>>,
+            HolonError,
+        > {
+            self.inner.related_holons_impl(relationship_name)
+        }
+
+        fn versioned_key_impl(&self) -> Result<MapString, HolonError> {
+            self.inner.versioned_key_impl()
+        }
+
+        fn property_map_impl(&self) -> Result<core_types::PropertyMap, HolonError> {
+            self.inner.property_map_impl()
+        }
+
+        fn summarize_impl(&self) -> Result<String, HolonError> {
+            self.inner.summarize_impl()
+        }
+
+        fn into_model_impl(&self) -> Result<core_types::HolonNodeModel, HolonError> {
+            self.inner.into_model_impl()
+        }
+
+        fn is_accessible_impl(
+            &self,
+            access_type: crate::core_shared_objects::holon::state::AccessType,
+        ) -> Result<(), HolonError> {
+            self.inner.is_accessible_impl(access_type)
+        }
+
+        fn is_committed_source_impl(&self) -> Result<bool, HolonError> {
+            self.inner.is_committed_source_impl()
+        }
+
+        fn holon_reference_impl(&self) -> HolonReference {
+            self.inner.holon_reference_impl()
+        }
+    }
+
+    fn assert_controlled_read_failure(result: Result<Option<EffectiveValue>, HolonError>) {
+        match result {
+            Err(HolonError::FailedToAcquireLock(message)) => {
+                assert_eq!(message, CONTROLLED_READ_FAILURE)
+            }
+            other => panic!("expected the controlled read failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn effective_value_propagates_a_read_error_despite_an_available_default(
+    ) -> Result<(), HolonError> {
+        let (descriptor, holon) = mode_fixture(None)?;
+        assert_eq!(
+            descriptor.effective_value(&holon)?,
+            Some(EffectiveValue::Default(BaseValue::StringValue(MapString("Fast".into())))),
+            "precondition: the property has a usable default"
+        );
+
+        let failing = FailingPropertyRead::new(holon);
+        assert_controlled_read_failure(descriptor.effective_value(&failing));
+        assert_eq!(failing.reads.get(), 1, "the authored value is read once, not retried");
+        Ok(())
+    }
+
+    #[test]
+    fn effective_value_does_not_attempt_the_default_after_a_read_error() -> Result<(), HolonError> {
+        // No local DefaultValue and two Extends targets: any default lookup
+        // fails with its own error. The read error must surface instead.
+        let context = build_context();
+        let parent_a = new_descriptor_holon(&context, "parent-a", "ParentA", "Property")?;
+        let parent_b = new_descriptor_holon(&context, "parent-b", "ParentB", "Property")?;
+        let mut property = new_descriptor_holon(&context, "mode", "Mode", "Property")?;
+        property.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![parent_a.into(), parent_b.into()],
+        )?;
+        let descriptor = PropertyDescriptor::from_holon(property.into());
+        assert!(
+            descriptor.effective_default_value().is_err(),
+            "precondition: the default lookup itself fails"
+        );
+
+        let failing = FailingPropertyRead::new(new_test_holon(&context, "unreadable")?);
+        assert_controlled_read_failure(descriptor.effective_value(&failing));
+        assert_eq!(failing.reads.get(), 1);
+        Ok(())
+    }
+
     #[test]
     fn structural_accessors_return_declared_values() -> Result<(), HolonError> {
         let context = build_context();
