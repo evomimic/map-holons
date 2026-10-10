@@ -41,6 +41,18 @@ fn generate_fixtures() {
         slot: staged_reference(41, uuid_b()),
         theme: staged_reference(41, uuid_a()),
     };
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-structure-selection.json",
+        &response(
+            151,
+            Ok(MapResultWire::VisualizerSelection(map_commands_wire::VisualizerSelectionWire {
+                selected: staged_reference(41, uuid_b()),
+                requested_kind: map_commands_wire::VisualizerKindWire::Structure,
+                alternatives_available: true,
+            })),
+        ),
+    );
     for (name, action) in [
         (
             "request-select-visualizer-usage.json",

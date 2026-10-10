@@ -64,6 +64,12 @@ export type VisualizerKindWire =
   | 'ActionBar'
   | 'Action';
 
+/** Shared classification guard for both command requests and selection responses. */
+export function isVisualizerKindWire(value: unknown): value is VisualizerKindWire {
+  return typeof value === 'string' &&
+    ['Canvas', 'Node', 'Structure', 'RootedNavigation', 'Collection', 'PropertyMap', 'Property', 'Value', 'ActionBar', 'Action'].includes(value);
+}
+
 /**
  * Current Holon-backed wire ingress for a visualization request.
  *
@@ -413,5 +419,5 @@ export function isVisualizerSelectionRequestWire(value: unknown): value is Visua
   const owner = value['owner'];
   return isRecord(owner) && ((hasSingleKey(owner, 'Visualizer') && isHolonReferenceWire(owner.Visualizer)) ||
     (hasSingleKey(owner, 'Dancer') && isHolonReferenceWire(owner.Dancer))) &&
-    ['Canvas', 'Node', 'Structure', 'RootedNavigation', 'Collection', 'PropertyMap', 'Property', 'Value', 'ActionBar', 'Action'].includes(value['requested_kind'] as string);
+    isVisualizerKindWire(value['requested_kind']);
 }

@@ -15,7 +15,7 @@ import {
   isNumber,
   isRecord,
 } from './references';
-import type { VisualizerKindWire } from './commands';
+import { type VisualizerKindWire, isVisualizerKindWire } from './commands';
 
 export interface DescribedHolonCollectionWire {
   members: HolonCollectionWire;
@@ -40,14 +40,7 @@ export interface VisualizerSelectionWire {
 
 function isVisualizerSelectionWire(value: unknown): value is VisualizerSelectionWire {
   return isRecord(value) && isHolonReferenceWire(value['selected']) &&
-    (value['requested_kind'] === 'Canvas' ||
-      value['requested_kind'] === 'Node' ||
-      value['requested_kind'] === 'RootedNavigation' ||
-      value['requested_kind'] === 'Collection' ||
-      value['requested_kind'] === 'PropertyMap' ||
-      value['requested_kind'] === 'Property' ||
-      value['requested_kind'] === 'Value' ||
-      value['requested_kind'] === 'ActionBar' || value['requested_kind'] === 'Action') &&
+    isVisualizerKindWire(value['requested_kind']) &&
     typeof value['alternatives_available'] === 'boolean';
 }
 
