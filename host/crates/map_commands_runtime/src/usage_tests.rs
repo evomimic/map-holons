@@ -322,6 +322,57 @@ fn request(
 }
 
 #[test]
+fn finding_usage_never_initializes_or_commits_and_preserves_existing_configuration(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let usages = UsageTransactions::default();
+    for _ in 0..2 {
+        assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
+    }
+    assert!(store.commits.lock().unwrap().is_empty());
+    let initialized =
+        usages.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    assert!(initialized.initialized);
+    let commits = store.commits.lock().unwrap().len();
+    let found = usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.unwrap();
+    assert!(!found.initialized);
+    assert_eq!(found.usage.holon_id()?, initialized.usage.holon_id()?);
+    assert_eq!(store.commits.lock().unwrap().len(), commits);
+    Ok(())
+}
+
+#[test]
+fn finding_usage_does_not_resume_a_failed_initialization_commit() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let usages = UsageTransactions::default();
+    store.fail.store(true, Ordering::SeqCst);
+    assert!(usages
+        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
+        .is_err());
+    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
+    assert!(store.commits.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn finding_usage_does_not_expose_or_retry_a_partially_persisted_initialization(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let usages = UsageTransactions::default();
+    store.incomplete.store(true, Ordering::SeqCst);
+    assert!(usages
+        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
+        .is_err());
+    let commits = store.commits.lock().unwrap().len();
+    assert!(commits > 0);
+    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
+    assert_eq!(store.commits.lock().unwrap().len(), commits);
+    usages.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_some());
+    Ok(())
+}
+
+#[test]
 fn discovery_projection_resolves_each_record_type_once() -> Result<(), HolonError> {
     use crate::discovery_evidence::DiscoveryEvidence;
     use map_commands_contract::{

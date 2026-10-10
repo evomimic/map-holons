@@ -125,6 +125,12 @@ pub async fn handle_transaction(
                 context, request, candidate,
             )?))
         }
+        TransactionAction::FindVisualizerUsage { request, selected } => {
+            Ok(match session.usage_transactions.find(context, request, selected)? {
+                Some(usage) => MapResult::VisualizerUsageSelection(usage),
+                None => MapResult::None,
+            })
+        }
         TransactionAction::SelectVisualizerUsage { request, selected } => {
             Ok(MapResult::VisualizerUsageSelection(session.usage_transactions.select(
                 session.space_manager(),

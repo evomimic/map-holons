@@ -55,6 +55,13 @@ fn generate_fixtures() {
     );
     for (name, action) in [
         (
+            "request-find-visualizer-usage.json",
+            TransactionActionWire::FindVisualizerUsage {
+                request: selection_request.clone(),
+                selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
+            },
+        ),
+        (
             "request-select-visualizer-usage.json",
             TransactionActionWire::SelectVisualizerUsage {
                 request: selection_request.clone(),

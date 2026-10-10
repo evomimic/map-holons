@@ -487,6 +487,11 @@ export function chooseVisualizer(txId: TxId, request: VisualizerSelectionRequest
 }
 
 /** Prepare persisted usage without committing the interaction transaction. */
+/** Find saved configuration without initializing usage or performing a commit. */
+export function findVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire) {
+  return runTransactionCommand(txId, { FindVisualizerUsage: { request, selected } }, result => result === 'None' ? null : expectVisualizerUsageSelection(result));
+}
+
 export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire) {
   return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected } }, expectVisualizerUsageSelection);
 }

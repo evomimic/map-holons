@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-const { select, selectCollection, discover, choose, selectUsage, recordUse, project, release } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn(), discover: vi.fn(), choose: vi.fn(), selectUsage: vi.fn(), recordUse: vi.fn(), project: vi.fn(), release: vi.fn() }));
-vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection, discoverVisualizers: discover, chooseVisualizer: choose, selectVisualizerUsage: selectUsage, recordVisualizerUse: recordUse, projectVisualizerDiscovery: project, releaseVisualizerDiscovery: release }));
+const { select, selectCollection, discover, choose, selectUsage, findUsage, recordUse, project, release } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn(), discover: vi.fn(), choose: vi.fn(), selectUsage: vi.fn(), findUsage: vi.fn(), recordUse: vi.fn(), project: vi.fn(), release: vi.fn() }));
+vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection, discoverVisualizers: discover, chooseVisualizer: choose, selectVisualizerUsage: selectUsage, findVisualizerUsage: findUsage, recordVisualizerUse: recordUse, projectVisualizerDiscovery: project, releaseVisualizerDiscovery: release }));
 import { createMapTransaction } from '../../src/sdk/transaction';
 import { createHolonReference, unwrapHolonReference } from '../../src/sdk/references';
 import { createPropertyDescriptorHandle, createHolonDescriptorHandle } from '../../src/sdk/descriptors';
@@ -141,4 +141,17 @@ it('projects retained evidence into its destination once without repeating disco
   project.mockRejectedValueOnce(new Error('destination closed'));
   await expect(failed.project(destination)).rejects.toThrow('destination closed');
   expect(release).toHaveBeenCalledTimes(2);
+});
+
+it('finds existing usage without initializing it and binds its saved reference', async () => {
+  const tx = createMapTransaction(41);
+  const request = { subject: createHolonReference(41, subject), requestedKind: 'node' as const,
+    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  findUsage.mockResolvedValueOnce(null);
+  expect(await tx.findVisualizerUsage(request, createHolonReference(41, selected))).toBeNull();
+  findUsage.mockResolvedValueOnce({ usage: selected, initialized: false, report_session: 'session' });
+  const result = await tx.findVisualizerUsage(request, createHolonReference(41, selected));
+  expect(unwrapHolonReference(result!.usage)).toEqual(selected);
+  expect(result!.initialized).toBe(false);
+  expect(result!.reportSession).toBe('session');
 });

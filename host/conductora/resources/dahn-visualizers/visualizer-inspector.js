@@ -173,7 +173,7 @@ export default class VisualizerInspector extends HTMLElement {
     const section = document.createElement('section'); section.dataset.visualizerChoices = 'true';
     const heading = document.createElement('h3'); heading.textContent = 'Alternative Visualizers';
     const status = document.createElement('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-atomic', 'true'); status.textContent = 'Finding alternatives…';
-    const list = document.createElement('ul'); list.style.cssText = 'list-style:none;padding:0;';
+    const list = document.createElement('ul'); list.style.cssText = 'display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:16px 0;';
     section.append(heading, status, list); this.append(section);
     const current = () => this.context === context && this.isConnected && context.visualizerInspection.isLive();
     const load = async () => {
@@ -188,9 +188,9 @@ export default class VisualizerInspector extends HTMLElement {
         for (const candidate of alternatives) {
           const name = await displayName(candidate.visualizer);
           if (!current()) return;
-          const row = document.createElement('li'), label = document.createElement('p'); label.textContent = name;
-          row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--dahn-slot-border-color);';
-          label.style.cssText = 'font-weight:600;margin:0 0 8px;';
+          const row = document.createElement('li'), label = document.createElement('h4'); label.textContent = name;
+          row.style.cssText = 'padding:16px;border:1px solid var(--dahn-slot-border-color);border-left:4px solid var(--dahn-action-text-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
+          label.style.cssText = 'font-size:1.2em;font-weight:700;line-height:1.35;margin:0 0 12px;';
           const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect';
           const choose = document.createElement('button'); choose.type = 'button'; choose.textContent = 'Choose';
           for (const button of [inspect, choose]) button.style.cssText = 'font:inherit;padding:8px 12px;margin-right:8px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;';
@@ -239,7 +239,9 @@ export default class VisualizerInspector extends HTMLElement {
               if (current()) for (const [index, button] of [...section.querySelectorAll('[data-choose-visualizer]')].entries()) button.disabled = alternatives[index].assessment !== 'viable';
             }
           });
-          row.prepend(label); row.append(inspect, choose, preview); list.append(row);
+          const actions = document.createElement('div'); actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+          for (const button of [inspect, choose]) button.style.marginRight = '0';
+          actions.append(inspect, choose); row.prepend(label); row.append(actions, preview); list.append(row);
         }
       } catch (error) {
         if (!current()) return;

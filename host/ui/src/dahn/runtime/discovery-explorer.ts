@@ -95,11 +95,11 @@ export class DiscoveryExplorerOwner {
       // Its composition declaration requires no second artifact or private pool.
       this.slot = await this.binding.materialized.slot(transaction.bindSavedReference(this.inspector), 'discovery');
       this.selected = (await transaction.selectVisualizer(this.request())).selected;
-      this.usage = await transaction.selectVisualizerUsage(this.request(), this.selected);
+      this.usage = await transaction.findVisualizerUsage(this.request(), this.selected) ?? undefined;
     })());
   }
 
-  private async prepare(selected: HolonReference, usage: VisualizerUsageSelection): Promise<{ element: VisualizerElement; transaction: MapTransaction }> {
+  private async prepare(selected: HolonReference, usage?: VisualizerUsageSelection): Promise<{ element: VisualizerElement; transaction: MapTransaction }> {
     const transaction = await this.client.beginTransaction();
     let element: VisualizerElement | undefined;
     try {
@@ -110,7 +110,7 @@ export class DiscoveryExplorerOwner {
       element = document.createElement(defineCustomElementOnce('map-discovery-explorer', implementation as CustomElementConstructor)) as VisualizerElement;
       if (!element.setSpatialBudget || !element.setVisualizerInformationHandler || !element.dispose) throw new Error('Selected explorer does not fulfill its Structure slot participation contract.');
       element.setContext({ target: { reference: this.subject! }, holon: new DahnHolonView(this.subject!),
-        discoveryExplorer: { evidence: this.evidence!, state: this.state }, visualizerUsage: usage.usage,
+        discoveryExplorer: { evidence: this.evidence!, state: this.state }, visualizerUsage: usage?.usage,
         ...this.callbacks, actions: [], theme: this.binding.theme, canvas: this.binding.canvas });
       if (!element.ready) throw new Error('Selected explorer has no explicit initialization signal.');
       await element.ready;
@@ -131,7 +131,7 @@ export class DiscoveryExplorerOwner {
       if (this.disposed || !this.target.isLive() || !host.isConnected || generation !== this.generation) return;
       this.callbacks = callbacks;
       this.allocation = { width: host.clientWidth || 320, height: 600 };
-      const mounted = await this.prepare(this.selected!, this.usage!);
+      const mounted = await this.prepare(this.selected!, this.usage);
       if (this.disposed || !this.target.isLive() || !host.isConnected || generation !== this.generation) {
         try { mounted.element.dispose?.(); }
         finally { mounted.element.remove(); await mounted.transaction.dispose(); }
@@ -145,7 +145,7 @@ export class DiscoveryExplorerOwner {
       mounted.element.setVisualizerInformationHandler?.(invoker => this.inspect(this.inspectionTarget(invoker, mounted.element)), label);
       if (this.explicitPending) {
         this.explicitPending = false;
-        reportSuccessfulVisualizerUse(this.evidenceTransaction!, this.request(), this.selected!, this.usage!, `${this.target.occurrenceId}:discovery`);
+        if (this.usage) reportSuccessfulVisualizerUse(this.evidenceTransaction!, this.request(), this.selected!, this.usage, `${this.target.occurrenceId}:discovery`);
       }
     })());
   }
@@ -215,7 +215,7 @@ export class DiscoveryExplorerOwner {
       const choices = await this.evidenceTransaction!.discoverVisualizers(this.request(), previous);
       if (choices.candidates.some(candidate => candidate.assessment === 'viable' && candidate.visualizer.equals(previous))) {
         this.selected = (await this.evidenceTransaction!.chooseVisualizer(this.request(), previous)).selected;
-        this.usage = await this.evidenceTransaction!.selectVisualizerUsage(this.request(), this.selected);
+        this.usage = await this.evidenceTransaction!.findVisualizerUsage(this.request(), this.selected) ?? undefined;
       }
     }
     const present = (reference: HolonReference) => this.evidence!.levels.some(level => level.descriptor.equals(reference))

@@ -35,6 +35,7 @@ function fixture() {
     DiscoveryLevels: [level], DiscoveryCandidates: [candidate], DiscoveryCurrentVisualizer: [selected], DiscoveryEndpoint: [descriptor],
   });
   const evidenceTx = {
+    findVisualizerUsage: vi.fn(async (): Promise<any> => null),
     selectVisualizer: vi.fn(async () => ({ selected })),
     chooseVisualizer: vi.fn(async () => ({ selected: alternative })),
     selectVisualizerUsage: vi.fn(async () => ({ usage: reference('Usage'), reportSession: 'session' })),
@@ -80,6 +81,25 @@ it('reads captured indices/provenance without performing discovery or inheritanc
   expect(f.evidenceTx.discoverVisualizers).not.toHaveBeenCalled(); f.owner.dispose();
 });
 
+it('opens a read-only explanation without initializing or committing a new usage', async () => {
+  const f = fixture();
+  f.evidenceTx.selectVisualizerUsage.mockRejectedValueOnce(new Error('unexpected persisted usage initialization'));
+  await f.owner.mount(f.host, {});
+  expect(f.evidenceTx.selectVisualizerUsage).not.toHaveBeenCalled();
+  expect((f.host.firstElementChild as Explorer).context.visualizerUsage).toBeUndefined();
+  f.owner.dispose();
+});
+
+it('renders with an existing usage without invoking its initializer', async () => {
+  const f = fixture();
+  const usage = reference('Saved personalized usage');
+  f.evidenceTx.findVisualizerUsage.mockResolvedValueOnce({ usage, initialized: false, reportSession: 'session' });
+  await f.owner.mount(f.host, {});
+  expect((f.host.firstElementChild as Explorer).context.visualizerUsage).toBe(usage);
+  expect(f.evidenceTx.selectVisualizerUsage).not.toHaveBeenCalled();
+  f.owner.dispose();
+});
+
 it('releases suspended presentations, retains evidence/state and reports explorer choice only on restored publication', async () => {
   const f = fixture(); await f.owner.mount(f.host, {});
   const first = f.host.firstElementChild as Explorer;
@@ -95,7 +115,7 @@ it('releases suspended presentations, retains evidence/state and reports explore
   await f.owner.mount(f.host, {});
   expect((f.host.firstElementChild as Explorer).context.discoveryExplorer.state.selected).toBe(f.descriptor);
   expect(f.discovery.evidence.project).toHaveBeenCalledOnce(); expect(f.evidenceTx.selectVisualizer).toHaveBeenCalledOnce();
-  expect(f.evidenceTx.selectVisualizerUsage).toHaveBeenCalledTimes(2);
+  expect(f.evidenceTx.selectVisualizerUsage).toHaveBeenCalledOnce();
   expect(f.evidenceTx.recordVisualizerUse).toHaveBeenCalledOnce();
   f.owner.dispose(); f.owner.dispose();
   await vi.waitFor(() => expect(f.evidenceTx.dispose).toHaveBeenCalledOnce());
@@ -135,5 +155,6 @@ it('refreshes only explicitly, preserves surviving selection and invalidates an 
   expect(refreshed.evidence.project).toHaveBeenCalledOnce();
   expect(f.owner.state.selected).toBe(f.descriptor); expect(f.owner.state.preview).toBeUndefined();
   expect(f.owner.state.notice).toContain('absent');
+  expect(f.evidenceTx.selectVisualizerUsage).not.toHaveBeenCalled();
   expect(f.discovery.evidence.dispose).toHaveBeenCalledOnce(); f.owner.dispose();
 });

@@ -548,6 +548,14 @@ export class MapTransaction {
   }
 
   /** Select/initialize persisted usage without committing this transaction's edits. */
+  /** Read existing configuration; absence does not create or persist a usage. */
+  async findVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection | null> {
+    const txId = txIdFor(this);
+    const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
+    const result = await internalTransaction.findVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected));
+    return result === null ? null : { usage: createHolonReference(txId, result.usage), initialized: false, reportSession: result.report_session };
+  }
+
   async selectVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection> {
     const txId = txIdFor(this);
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));

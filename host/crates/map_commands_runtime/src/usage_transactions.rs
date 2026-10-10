@@ -102,6 +102,33 @@ fn resume_pending(
 }
 
 impl UsageTransactions {
+    /// Read existing configuration only. Unlike selection/initialization, this
+    /// path never opens a private transaction or retries pending commits.
+    pub(crate) fn find(
+        &self,
+        caller: &Arc<TransactionContext>,
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+    ) -> Result<Option<VisualizerUsageSelection>, HolonError> {
+        let subject_type = dahn_selection::usage_subject_type(&request)?;
+        let slot = saved(caller, &request.slot)?;
+        dahn_selection::choose_visualizer(caller, request, selected.clone())?;
+        let visualizer = saved(caller, &selected)?;
+        let descriptor = saved(caller, &subject_type)?;
+        // An incomplete initialization may already have persisted some records.
+        // Never expose it as usable configuration or retry its commit on a read.
+        let pending = self.pending.lock().map_err(lock_error)?;
+        let key = Operation::Initialize(selected.holon_id()?, subject_type.holon_id()?);
+        if pending.contains_key(&key) {
+            return Ok(None);
+        }
+        let found = find_usage(&visualizer, &descriptor, &slot)?;
+        drop(pending);
+        found
+            .map(|usage| selection(caller, usage.holon().clone(), false, &self.report_session))
+            .transpose()
+    }
+
     pub(crate) fn select(
         &self,
         space: &Arc<HolonSpaceManager>,

@@ -75,6 +75,8 @@ pub enum TransactionAction {
     },
     /// Revalidates one explicit choice against the current request context.
     ChooseVisualizer { request: VisualizerSelectionRequest, candidate: HolonReference },
+    /// Find an existing usage without creating records or resuming pending writes.
+    FindVisualizerUsage { request: VisualizerSelectionRequest, selected: HolonReference },
     /// Prepare persisted usage in an independent transaction; leave this transaction untouched.
     SelectVisualizerUsage { request: VisualizerSelectionRequest, selected: HolonReference },
     /// Report successful presentation; failed/cancelled mounts must not invoke this action.
@@ -208,7 +210,8 @@ impl TransactionAction {
             }
             TransactionAction::SelectVisualizer { .. }
             | TransactionAction::DiscoverVisualizers { .. }
-            | TransactionAction::ChooseVisualizer { .. } => {
+            | TransactionAction::ChooseVisualizer { .. }
+            | TransactionAction::FindVisualizerUsage { .. } => {
                 CommandLifecyclePolicy::holon_read_only()
             }
             // The caller only supplies retained evidence, including committed load results.
@@ -266,6 +269,7 @@ impl TransactionAction {
             TransactionAction::ReleaseVisualizerDiscovery { .. } => "release_visualizer_discovery",
             TransactionAction::DiscoverVisualizers { .. } => "discover_visualizers",
             TransactionAction::ChooseVisualizer { .. } => "choose_visualizer",
+            TransactionAction::FindVisualizerUsage { .. } => "find_visualizer_usage",
             TransactionAction::SelectVisualizerUsage { .. } => "select_visualizer_usage",
             TransactionAction::RecordVisualizerUse { .. } => "record_visualizer_use",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",

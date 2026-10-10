@@ -94,6 +94,10 @@ pub enum TransactionActionWire {
         request: VisualizerSelectionRequestWire,
         candidate: HolonReferenceWire,
     },
+    FindVisualizerUsage {
+        request: VisualizerSelectionRequestWire,
+        selected: HolonReferenceWire,
+    },
     SelectVisualizerUsage {
         request: VisualizerSelectionRequestWire,
         selected: HolonReferenceWire,
@@ -326,6 +330,12 @@ impl TransactionActionWire {
             }
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
+            }
+            TransactionActionWire::FindVisualizerUsage { request, selected } => {
+                Ok(TransactionAction::FindVisualizerUsage {
+                    request: request.bind(context)?,
+                    selected: selected.bind(context)?,
+                })
             }
             TransactionActionWire::SelectVisualizerUsage { request, selected } => {
                 Ok(TransactionAction::SelectVisualizerUsage {
