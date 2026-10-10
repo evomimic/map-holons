@@ -14,6 +14,7 @@ interface InspectionFrame {
   discovery?: Promise<VisualizerDiscovery>;
   explorer?: DiscoveryExplorerOwner;
   mounts: Set<VisualizerElement>;
+  children: Map<string, InspectionFrame>;
   disposed: boolean;
   restoreFocus?: boolean;
 }
@@ -79,7 +80,10 @@ export class VisualizerInformationRegion {
       const invalid = this.frames.findIndex(frame => !frame.target.isLive());
       if (invalid === 0) { if (this.mobile.matches) this.setOpen(false); this.dismiss(); }
       else if (invalid > 0) { while (this.frames.length > invalid) this.releaseFrame(this.frames.pop()!); this.showFrame(true); }
-      for (const frame of this.frames) for (const element of frame.mounts) if (!element.isConnected) this.releaseElement(frame, element);
+      for (const root of this.frames) for (const frame of this.ownedFrames(root)) {
+        for (const [identity, child] of frame.children) if (!child.target.isLive()) { this.releaseFrame(child); frame.children.delete(identity); }
+        for (const element of frame.mounts) if (!element.isConnected) this.releaseElement(frame, element);
+      }
     });
     this.observer.observe(host, { childList: true, subtree: true });
     const style = document.createElement('style');
@@ -120,14 +124,21 @@ export class VisualizerInformationRegion {
   }
 
   private frame(target: VisualizerInspectionTarget): InspectionFrame {
-    return { target: withVisualizerComposition(target), technicalOpen: false, mounts: new Set(), disposed: false };
+    return { target: withVisualizerComposition(target), technicalOpen: false, mounts: new Set(), children: new Map(), disposed: false };
   }
 
   private releaseFrame(frame: InspectionFrame): void {
     frame.disposed = true; frame.explorer?.dispose();
+    for (const child of frame.children.values()) this.releaseFrame(child);
+    frame.children.clear();
     for (const element of frame.mounts) this.releaseElement(frame, element);
     frame.mounts.clear();
     if (!frame.explorer) void frame.discovery?.then(result => result.evidence?.dispose()).catch(console.error);
+  }
+
+  private *ownedFrames(frame: InspectionFrame): Generator<InspectionFrame> {
+    yield frame;
+    for (const child of frame.children.values()) yield* this.ownedFrames(child);
   }
 
   private releaseElement(frame: InspectionFrame, element: VisualizerElement): void {
@@ -141,9 +152,10 @@ export class VisualizerInformationRegion {
     if (this.frames.length >= 8) { this.back.title = 'The information nesting limit is eight sessions. Return before opening another.'; this.back.focus(); return; }
     this.choiceAbort?.abort(); this.markTarget(false);
     const parent = this.frames.at(-1);
-    parent?.explorer?.suspend();
-    if (parent) for (const element of parent.mounts) this.releaseElement(parent, element);
-    parent?.mounts.clear();
+    if (parent) for (const frame of this.ownedFrames(parent)) {
+      frame.explorer?.suspend();
+      for (const element of frame.mounts) this.releaseElement(frame, element);
+    }
     this.frames.push(this.frame(target)); this.showFrame();
   }
 
@@ -179,11 +191,12 @@ export class VisualizerInformationRegion {
   }
 
   /** Every nested definition is selected through the same experience-owned information slot. */
-  private async mountInspection(target: VisualizerInspectionTarget, host: HTMLElement, revision: number): Promise<void> {
+  private async mountInspection(target: VisualizerInspectionTarget, host: HTMLElement, revision: number, frame = this.frames.at(-1)): Promise<void> {
     target = withVisualizerComposition(target);
     const { transaction, dancer, materialized, theme, canvas } = this.binding;
-    const frame = this.frames.at(-1)!;
-    const current = () => !frame.disposed && revision === this.revision && target.isLive() && host.isConnected;
+    if (!frame) return;
+    let presentation: VisualizerElement | undefined;
+    const current = () => !frame.disposed && revision === this.revision && target.isLive() && host.isConnected && (!presentation || presentation.isConnected);
     if (!current()) return;
     const slots = [...await dancer.relatedHolons('HasExperienceVisualizerSlot')];
     const matches = [];
@@ -195,9 +208,19 @@ export class VisualizerInformationRegion {
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Visualizer inspector is not an HTMLElement constructor.');
     if (!current()) return;
     const element = document.createElement(defineCustomElementOnce('map-visualizer-inspector', implementation as CustomElementConstructor)) as VisualizerElement;
+    presentation = element;
     const retainFocus = host.contains(document.activeElement);
-    for (const prior of host.querySelectorAll<VisualizerElement>('map-visualizer-inspector')) this.releaseElement(frame, prior);
+    for (const prior of frame.mounts) if (host.contains(prior)) this.releaseElement(frame, prior);
     host.replaceChildren(element); frame.mounts.add(element);
+    const mountChild = (child: VisualizerInspectionTarget, childHost: HTMLElement) => {
+      if (!current()) return Promise.resolve();
+      let childFrame = frame.children.get(child.occurrenceId);
+      if (childFrame && (childFrame.target.context !== child.context || !(childFrame.target.selectedVisualizer === child.selectedVisualizer || childFrame.target.selectedVisualizer.equals(child.selectedVisualizer)))) {
+        this.releaseFrame(childFrame); childFrame = undefined;
+      }
+      if (!childFrame) { childFrame = this.frame(child); frame.children.set(child.occurrenceId, childFrame); }
+      return semanticWork(transaction).realize(() => this.mountInspection(child, childHost, revision, childFrame));
+    };
     const discover = async () => {
       if (!current()) throw new Error('The inspected occurrence is no longer live.');
       frame.discovery ??= target.choices!.discover().catch(error => { frame.discovery = undefined; throw error; });
@@ -215,20 +238,23 @@ export class VisualizerInformationRegion {
         try {
           const replacement = await target.choices!.choose!(candidate, () => current() && this.open && !signal.aborted, cancellation.signal);
           if (revision !== this.revision || !this.open || !replacement.isLive()) return;
-          this.markTarget(false);
+          const outer = frame === this.frames.at(-1);
+          if (outer) this.markTarget(false);
           frame.explorer?.dispose(); frame.explorer = undefined;
+          for (const child of frame.children.values()) this.releaseFrame(child);
+          frame.children.clear();
           if (!frame.explorer) void frame.discovery?.then(result => result.evidence?.dispose()).catch(console.error);
           frame.discovery = undefined;
-          frame.target = replacement; this.target = replacement;
-          this.markTarget(true);
+          frame.target = replacement;
+          if (outer) { this.target = replacement; this.markTarget(true); }
           // Refresh the selected identity without another invocation or stealing focus.
-          const next = ++this.revision;
+          const next = outer ? ++this.revision : this.revision;
           const profile = NavigationProfile.start();
           let outcome = 'visualizer information refresh failed';
           try {
             await semanticWork(transaction).realize(async () => {
               profile?.begin('refresh visualizer information');
-              await this.mountInspection(replacement, host, next);
+              await this.mountInspection(replacement, host, next, frame);
             });
             outcome = 'visualizer information refreshed';
           }
@@ -270,8 +296,8 @@ export class VisualizerInformationRegion {
         frame.explorer ??= new DiscoveryExplorerOwner(this.binding, target, selection.selected, result, child => this.push(child));
         try { await frame.explorer.mount(childHost, { inspectVisualizerCandidate: async (candidate, previewHost) => {
           if (!current()) return;
-          const preview = { ...target, selectedVisualizer: candidate, choices: undefined, composition: () => [], regionLabel: undefined };
-          await semanticWork(transaction).realize(() => this.mountInspection(preview, previewHost, revision));
+          const preview = { ...target, occurrenceId: `${target.occurrenceId}:preview:${await candidate.key()}`, selectedVisualizer: candidate, choices: undefined, composition: () => [], regionLabel: undefined };
+          await mountChild(preview, previewHost);
         }, chooseVisualizerCandidate: async (candidate, signal) => { await choose(candidate, signal); } }); }
         catch (error) {
           if (current()) {
@@ -287,14 +313,12 @@ export class VisualizerInformationRegion {
       discoverVisualizerChoices: target.choices ? discover : undefined,
       inspectVisualizerCandidate: target.choices ? async (candidate, previewHost) => {
         if (!current()) return;
-        const preview = { ...target, selectedVisualizer: candidate, choices: undefined,
+        const preview = { ...target, occurrenceId: `${target.occurrenceId}:preview:${await candidate.key()}`, selectedVisualizer: candidate, choices: undefined,
           composition: () => [], regionLabel: undefined };
-        await semanticWork(transaction).realize(() => this.mountInspection(preview, previewHost, revision));
+        await mountChild(preview, previewHost);
       } : undefined,
       chooseVisualizerCandidate: target.choices?.choose ? choose : undefined,
-      mountVisualizerInformation: (child, childHost) => current()
-        ? semanticWork(transaction).realize(() => this.mountInspection(child, childHost, revision))
-        : Promise.resolve(),
+      mountVisualizerInformation: mountChild,
       onExploreVisualizer: this.explore ? () => {
         if (current() && !semanticWork(transaction).paused) this.explore!(subject);
       } : undefined,
