@@ -56,6 +56,11 @@ fn generate_fixtures() {
                 selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
                 usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
                 origin: map_commands_wire::VisualizerChoiceOriginWire::Explicit,
+                report: map_commands_wire::VisualizerUseReportWire {
+                    session: "presentation-session".into(),
+                    occurrence_id: "node-1".into(),
+                    sequence: 1,
+                },
             },
         ),
         (
@@ -166,6 +171,7 @@ fn generate_fixtures() {
                 map_commands_wire::VisualizerUsageSelectionWire {
                     usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
                     initialized: true,
+                    report_session: "presentation-session".into(),
                 },
             )),
         ),

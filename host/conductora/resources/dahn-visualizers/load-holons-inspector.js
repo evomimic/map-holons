@@ -137,6 +137,30 @@ var LoadHolonsInspector = class extends HTMLElement {
     });
   }
   static compositionSlots = { propertyMap: "LoadHolonsResult.PropertyMapSlot", action: "LoadHolonsResult.ActionsSlot" };
+  static usesOwnedResultSummary = true;
+  setNodeOwnedSummary(content) {
+    this.propertyVisualizer = content;
+    this.properties.replaceChildren(content);
+  }
+  setNodeOwnedCollection(content) {
+    this.collections.replaceChildren(this.collectionsExpand, this.discoveryStatus, content);
+    Object.assign(content.style, { flex: "1 1 0", minHeight: "0", height: "auto" });
+    this.hasCollections = true;
+    this.collectionsExpand.hidden = false;
+    this.collectionsExpand.style.display = "block";
+    if (this.allocation) this.setNodeInspectorAllocation(this.allocation);
+  }
+  getNodeInspectorAllocation() {
+    return this.allocation && { ...this.allocation };
+  }
+  restoreNodeCollectionSelection(affordance) {
+    const tab = this.collectionControls.get(affordance);
+    if (!tab) throw new Error("Selected collection is unavailable.");
+    const disabled = tab.disabled;
+    tab.disabled = false;
+    tab.click();
+    tab.disabled = disabled;
+  }
   setContext(context) {
     this.unsubscribe?.();
     this.style.cssText = "display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-panel-corner-radius);background:var(--dahn-canvas-surface-background);color:var(--dahn-canvas-text-color);";
@@ -286,6 +310,7 @@ var LoadHolonsInspector = class extends HTMLElement {
         button.title = state.state === "failed" ? state.message : affordance.description || affordance.label;
       }
     });
+    this.ready = Promise.resolve();
   }
   setVisualizerInformationHandler(handler, displayName) {
     this.visualizerInformation = handler;

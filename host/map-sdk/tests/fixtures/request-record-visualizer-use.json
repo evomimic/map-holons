@@ -54,7 +54,12 @@
               "smart_property_values": null
             }
           },
-          "origin": "Explicit"
+          "origin": "Explicit",
+          "report": {
+            "session": "presentation-session",
+            "occurrence_id": "node-1",
+            "sequence": 1
+          }
         }
       }
     }

@@ -95,6 +95,7 @@ pub enum TransactionActionWire {
         selected: HolonReferenceWire,
         usage: HolonReferenceWire,
         origin: VisualizerChoiceOriginWire,
+        report: VisualizerUseReportWire,
     },
     SelectCollectionVisualizer {
         collection: crate::DescribedHolonCollectionWire,
@@ -321,14 +322,23 @@ impl TransactionActionWire {
                     selected: selected.bind(context)?,
                 })
             }
-            TransactionActionWire::RecordVisualizerUse { request, selected, usage, origin } => {
-                Ok(TransactionAction::RecordVisualizerUse {
-                    request: request.bind(context)?,
-                    selected: selected.bind(context)?,
-                    usage: usage.bind(context)?,
-                    origin: origin.into(),
-                })
-            }
+            TransactionActionWire::RecordVisualizerUse {
+                request,
+                selected,
+                usage,
+                origin,
+                report,
+            } => Ok(TransactionAction::RecordVisualizerUse {
+                request: request.bind(context)?,
+                selected: selected.bind(context)?,
+                usage: usage.bind(context)?,
+                origin: origin.into(),
+                report: map_commands_contract::VisualizerUseReport {
+                    session: report.session,
+                    occurrence_id: report.occurrence_id,
+                    sequence: report.sequence,
+                },
+            }),
             TransactionActionWire::SelectCollectionVisualizer {
                 collection,
                 parent_visualizer,
@@ -427,4 +437,12 @@ impl From<VisualizerChoiceOriginWire> for map_commands_contract::VisualizerChoic
             VisualizerChoiceOriginWire::Exploratory => Self::Exploratory,
         }
     }
+}
+
+/// Publication identity; retry delivery must retain every field.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerUseReportWire {
+    pub session: String,
+    pub occurrence_id: String,
+    pub sequence: u64,
 }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::descriptors::Descriptor;
 use holons_core::{HolonReference, ReadableHolon, StagedReference, WritableHolon};
 use map_commands_contract::VisualizerUsageSelection;
 
@@ -15,7 +16,7 @@ pub struct VisualizerUsage {
 /// Read relationship members after releasing the collection guard.
 pub fn related(reference: &HolonReference, name: &str) -> Result<Vec<HolonReference>, HolonError> {
     Ok(reference
-        .related_holons_with_hint(name, holons_core::RelationshipReadHint::RequireFresh)?
+        .related_holons(name)?
         .read()
         .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
         .get_members()
@@ -100,22 +101,26 @@ pub fn instances(
     Ok(found)
 }
 
-/// Resolve prior slot association first, then apply deterministic zero/one/many matching.
+/// Match the selected Visualizer's usages by exact subject descriptor identity.
+/// Prior slot associations disambiguate multiple matching configurations.
 pub fn find_usage(
-    context: &Arc<TransactionContext>,
     visualizer: &HolonReference,
     subject_type: &HolonReference,
     slot: &HolonReference,
 ) -> Result<Option<VisualizerUsage>, HolonError> {
     let mut matches = Vec::new();
+    for holon in related(visualizer, "UsedByVisualizerUsage")? {
+        if single(&holon, "ForSubjectType")? == *subject_type {
+            matches.push(VisualizerUsage { holon });
+        }
+    }
+    if matches.len() <= 1 {
+        return Ok(matches.pop());
+    }
     let mut associated = Vec::new();
-    for holon in instances(context, "VisualizerUsage.HolonType")? {
-        let usage = VisualizerUsage::from_holon(context, holon)?;
-        if usage.visualizer()? == *visualizer && usage.subject_type()? == *subject_type {
-            if usage.selected_slots()?.contains(slot) {
-                associated.push(usage.clone());
-            }
-            matches.push(usage);
+    for usage in &matches {
+        if usage.selected_slots()?.contains(slot) {
+            associated.push(usage.clone());
         }
     }
     let applicable = if associated.is_empty() { &matches } else { &associated };
@@ -144,12 +149,19 @@ pub fn initialize_usage(
     visualizer: HolonReference,
     subject_type: HolonReference,
 ) -> Result<StagedReference, HolonError> {
+    let usage_type = visualizer
+        .holon_descriptor()?
+        .resolve_available_relationship("UsedByVisualizerUsage")?
+        .descriptor
+        .target_type()?
+        .holon()
+        .clone();
     let mut usage = context.mutation().new_holon(Some(record_key(
         "visualizer-usage",
         &visualizer,
         &subject_type,
     )?))?;
-    usage.add_related_holons("DescribedBy", vec![anchor(context, "VisualizerUsage.HolonType")?])?;
+    usage.add_related_holons("DescribedBy", vec![usage_type])?;
     usage.add_related_holons("UsesVisualizer", vec![visualizer])?;
     usage.add_related_holons("ForSubjectType", vec![subject_type])?;
     context.mutation().stage_new_holon(usage)
@@ -160,9 +172,11 @@ pub fn selection(
     context: &Arc<TransactionContext>,
     usage: HolonReference,
     initialized: bool,
+    report_session: &str,
 ) -> Result<VisualizerUsageSelection, HolonError> {
     Ok(VisualizerUsageSelection {
         usage: HolonReference::smart_from_id(context.space_read_handle(), usage.holon_id()?),
         initialized,
+        report_session: report_session.into(),
     })
 }

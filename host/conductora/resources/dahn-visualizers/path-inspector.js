@@ -203,7 +203,7 @@ export default class PathInspectorElement extends HTMLElement {
     if (request.operation !== 'maximize') return { status: 'unsupported', reason: 'Unknown attention operation.' };
     if (this.attention?.id === occurrence.id) return { status: 'already-satisfied' };
     if (this.attention) return { status: 'refused', reason: 'Restore the visible occurrence before maximizing a sibling.' };
-    if (!this.view?.ready || occurrence.pending || occurrence.cancel) return { status: 'refused', reason: 'Occurrence or viewport is not ready.' };
+    if (!this.view?.ready || occurrence.pending || occurrence.visualizerReplacement || occurrence.cancel) return { status: 'refused', reason: 'Occurrence or viewport is not ready.' };
     this.attention = { id: occurrence.id, view: { scale: this.view.scale, x: this.viewport.scrollLeft, y: this.viewport.scrollTop } };
     this.applyAttentionProjection();
     return { status: 'applied', value: undefined };
@@ -418,12 +418,56 @@ export default class PathInspectorElement extends HTMLElement {
     this.traversalTransition = new TraversalTransition(this, source, frontier, bounds, viewportStart);
     this.traversalTransition.start();
   }
+  clearVisualizerReplacement(region) {
+    const overlay = region.querySelector(':scope > [data-visualizer-replacement]');
+    const restoreFocus = overlay?.contains(document.activeElement);
+    for (const { element, visibility, priority, inert, ariaHidden } of region.replacementMask ?? []) {
+      if (visibility) element.style.setProperty('visibility', visibility, priority);
+      else element.style.removeProperty('visibility');
+      element.inert = inert;
+      if (ariaHidden === null) element.removeAttribute('aria-hidden');
+      else element.setAttribute('aria-hidden', ariaHidden);
+    }
+    delete region.replacementMask;
+    overlay?.remove();
+    if (restoreFocus && region.isConnected) region.focus({ preventScroll: true });
+  }
+
+  showVisualizerReplacement(region, replacement) {
+    if (!replacement) { this.clearVisualizerReplacement(region); return; }
+    let overlay = region.querySelector(':scope > [data-visualizer-replacement]');
+    if (!overlay) {
+      const moveFocus = region.contains(document.activeElement);
+      region.replacementMask = [...region.children].map(element => ({ element,
+        visibility: element.style.getPropertyValue('visibility'), priority: element.style.getPropertyPriority('visibility'),
+        inert: element.inert, ariaHidden: element.getAttribute('aria-hidden') }));
+      // Preserve the prior Node's dimensions and realization, while blanking its allocation.
+      for (const { element } of region.replacementMask) {
+        element.style.setProperty('visibility', 'hidden'); element.inert = true; element.setAttribute('aria-hidden', 'true');
+      }
+      overlay = document.createElement('div'); overlay.dataset.visualizerReplacement = 'true';
+      Object.assign(overlay.style, { position: 'absolute', inset: '0', zIndex: '3', display: 'flex',
+        flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px',
+        boxSizing: 'border-box', background: 'var(--dahn-panel-surface-background)', color: 'var(--dahn-action-text-color)' });
+      const message = document.createElement('div'); message.dataset.preparingVisualizer = 'true';
+      message.setAttribute('role', 'status'); message.setAttribute('aria-atomic', 'true');
+      Object.assign(message.style, { fontSize: '1.4rem', fontWeight: '600', textAlign: 'center' });
+      const progress = document.createElement('progress'); progress.setAttribute('aria-label', 'Preparing visualizer');
+      Object.assign(progress.style, { width: 'min(280px, 100%)', accentColor: 'var(--dahn-action-text-color)' });
+      const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel choice';
+      Object.assign(cancel.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)',
+        padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', borderRadius: 'var(--dahn-action-corner-radius)', cursor: 'pointer' });
+      cancel.addEventListener('click', () => overlay.cancelChoice?.());
+      overlay.append(message, progress, cancel); region.append(overlay);
+      if (moveFocus) cancel.focus({ preventScroll: true });
+    }
+    overlay.cancelChoice = replacement.cancel;
+    overlay.querySelector('[data-preparing-visualizer]').textContent = replacement.message;
+  }
+
   renderPath(occurrences, focus, destination) {
     const previousBounds = this.layoutBounds;
-    for (const item of occurrences) {
-      const prior = this.occurrences.find(previous => previous.id === item.id);
-      if (prior && prior.element !== item.element) this.bandMetrics.delete(item.id);
-    }
+    // Same-occurrence replacements retain their parent-owned band allocation basis.
     const viewportStart = this.view && { x: this.viewport.scrollLeft - this.view.paddingX, y: this.viewport.scrollTop - this.view.paddingY };
     if (this.traversalTransition && (focus?.occurrenceId !== this.traversalTransition.targetId || focus?.mode === 'restore')) this.stopTraversalTransition();
     const recoverFocus = [...this.regions.values()].some(region => region.contains(document.activeElement));
@@ -461,7 +505,7 @@ export default class PathInspectorElement extends HTMLElement {
     }
     const live = new Set(all.map(occurrence => occurrence.id));
     for (const [id, region] of this.regions) {
-      if (!live.has(id)) { region.remove(); this.regions.delete(id); }
+      if (!live.has(id)) { this.clearVisualizerReplacement(region); region.remove(); this.regions.delete(id); }
     }
     all.forEach((occurrence, index) => {
       let region = this.regions.get(occurrence.id);
@@ -485,6 +529,7 @@ export default class PathInspectorElement extends HTMLElement {
       region.style.display = occurrence.occluded ? 'none' : 'flex';
       region.inert = !!occurrence.occluded;
       if (region.nodeElement !== occurrence.element) {
+        this.clearVisualizerReplacement(region);
         region.nodeElement?.remove();
         region.querySelector('[data-close-branch]')?.remove();
         region.querySelector('[data-explore-from-here]')?.remove();
@@ -545,7 +590,7 @@ export default class PathInspectorElement extends HTMLElement {
       const traversalLabel = traversal?.label ?? occurrence.provenance?.affordance?.label;
       if (traversalLabel) region.setAttribute('aria-description', `Reached through ${traversalLabel}${traversal?.qualifier ? ` (${traversal.qualifier})` : ''}`);
       else region.removeAttribute('aria-description');
-      region.setAttribute('aria-busy', String(!!occurrence.pending));
+      region.setAttribute('aria-busy', String(!!occurrence.pending || !!occurrence.visualizerReplacement));
       const status = region.querySelector(':scope > [data-path-occurrence-status]');
       status.hidden = !occurrence.message;
       const floatingStatus = occurrence.requestAxis === 'horizontal' || occurrence.axis === 'horizontal';
@@ -569,6 +614,7 @@ export default class PathInspectorElement extends HTMLElement {
         Object.assign(cancel.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
         status.append(cancel);
       }
+      this.showVisualizerReplacement(region, occurrence.visualizerReplacement);
     });
     this.pendingFrontier = destination?.id ?? this.pendingFrontier;
     this.allocateRows();

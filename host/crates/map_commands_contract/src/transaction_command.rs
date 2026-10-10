@@ -78,6 +78,7 @@ pub enum TransactionAction {
         selected: HolonReference,
         usage: HolonReference,
         origin: super::VisualizerChoiceOrigin,
+        report: super::VisualizerUseReport,
     },
     /// Select for a described plural subject and a specific parent slot.
     SelectCollectionVisualizer {
@@ -199,10 +200,11 @@ impl TransactionAction {
             | TransactionAction::ChooseVisualizer { .. } => {
                 CommandLifecyclePolicy::holon_read_only()
             }
+            // The caller only supplies retained evidence, including committed load results.
             // Writes are confined to an independent usage transaction, never this caller's nursery.
             TransactionAction::SelectVisualizerUsage { .. }
             | TransactionAction::RecordVisualizerUse { .. } => {
-                CommandLifecyclePolicy::transaction_read_only()
+                CommandLifecyclePolicy::holon_read_only()
             }
             TransactionAction::SelectCollectionVisualizer { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()

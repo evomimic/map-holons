@@ -157,7 +157,8 @@ export function isVisualizerDiscoveryWire(value: unknown): value is VisualizerDi
 export interface VisualizerUsageSelectionWire {
   usage: HolonReferenceWire;
   initialized: boolean;
+  report_session: string;
 }
 export function isVisualizerUsageSelectionWire(value: unknown): value is VisualizerUsageSelectionWire {
-  return isRecord(value) && isHolonReferenceWire(value['usage']) && typeof value['initialized'] === 'boolean';
+  return isRecord(value) && isHolonReferenceWire(value['usage']) && typeof value['initialized'] === 'boolean' && typeof value['report_session'] === 'string';
 }

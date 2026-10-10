@@ -158,3 +158,56 @@ it('keeps mobile focus within visible information controls when nested disclosur
   expect(document.activeElement).toBe(f.region.element.querySelector('button'));
   f.region.dispose();
 });
+
+it('keeps candidate inspection read-only and binds choice to the captured live session', async () => {
+  const f = fixture();
+  const candidate = ref('Alternative') as any;
+  const discover = vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] }));
+  let allowed!: () => boolean;
+  const choose = vi.fn(async (_candidate, current) => { allowed = current; throw new Error('admission failed'); });
+  const target = { ...f.target, choices: { discover, choose } };
+  f.region.inspect(target);
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.discoverVisualizerChoices).toBeTypeOf('function'));
+  const inspector = f.region.element.querySelector('map-visualizer-inspector') as any;
+  await inspector.context.discoverVisualizerChoices(); expect(discover).toHaveBeenCalledOnce();
+  const preview = document.createElement('div'); inspector.append(preview);
+  await inspector.context.inspectVisualizerCandidate(candidate, preview);
+  const nested = preview.querySelector('map-visualizer-inspector') as any;
+  expect(nested.context.visualizerInspection.selectedVisualizer).toBe(candidate);
+  expect(nested.context.chooseVisualizerCandidate).toBeUndefined(); expect(choose).not.toHaveBeenCalled();
+  const controller = new AbortController();
+  await expect(inspector.context.chooseVisualizerCandidate(candidate, controller.signal)).rejects.toThrow('admission failed');
+  expect(allowed()).toBe(true); controller.abort(); expect(allowed()).toBe(false);
+  f.region.dismiss();
+  await expect(inspector.context.discoverVisualizerChoices()).rejects.toThrow('no longer live');
+  expect(discover).toHaveBeenCalledOnce(); f.region.dispose();
+});
+
+it('exposes discovery and preview without granting an unsupported replacement', async () => {
+  const f = fixture();
+  const discover = vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] }));
+  f.region.inspect({ ...f.target, choices: { discover, replacementUnavailableReason: 'Custom result owner' } });
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.discoverVisualizerChoices).toBeTypeOf('function'));
+  const context = (f.region.element.querySelector('map-visualizer-inspector') as any).context;
+  await context.discoverVisualizerChoices();
+  expect(discover).toHaveBeenCalledOnce();
+  expect(context.inspectVisualizerCandidate).toBeTypeOf('function');
+  expect(context.chooseVisualizerCandidate).toBeUndefined();
+  f.region.dispose();
+});
+
+it('refreshes a published choice under its retained occurrence without dismissing the information session', async () => {
+  const f = fixture(); const source = document.createElement('div'), invoker = document.createElement('button'); source.append(invoker);
+  const replacement = { ...f.target, selectedVisualizer: ref('Alternative'), element: source, invoker,
+    isLive: () => source.isConnected } as unknown as VisualizerInspectionTarget;
+  const choose = vi.fn(async () => { f.target.element.replaceWith(source); return replacement; });
+  f.region.inspect({ ...f.target, choices: { discover: vi.fn(), choose } });
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.chooseVisualizerCandidate).toBeTypeOf('function'));
+  const inspector = f.region.element.querySelector('map-visualizer-inspector') as any;
+  const choiceControl = document.createElement('button'); inspector.append(choiceControl); choiceControl.focus();
+  await inspector.context.chooseVisualizerCandidate(replacement.selectedVisualizer, new AbortController().signal);
+  expect(f.region.element.contains(document.activeElement)).toBe(true);
+  expect((f.region.element.querySelector('map-visualizer-inspector') as any).context.visualizerInspection.selectedVisualizer).toBe(replacement.selectedVisualizer);
+  expect(f.region.element.textContent).not.toContain('Select a Visualizer');
+  expect(invoker.dataset.visualizerInspected).toBe('true'); f.region.dispose();
+});

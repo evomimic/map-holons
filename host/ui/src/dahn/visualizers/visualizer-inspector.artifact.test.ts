@@ -204,3 +204,99 @@ it('keeps selected children inside bundled components inspectable and removes re
   rail.remove();
   await vi.waitFor(() => expect(element.querySelector('[data-visualizer-child-information]')).toBeNull());
 });
+
+it('separates candidate inspection from choice, respects viability and cancels preparation', async () => {
+  const element = document.createElement('test-semantic-visualizer-inspector') as any;
+  document.body.append(element);
+  const refs: Record<string, any> = {};
+  for (const key of ['Current', 'Alternative', 'Unavailable']) refs[key] = { key: async () => key, propertyValue: async () => ({ StringValue: key }), equals: (other: any) => other === refs[key] };
+  const inspect = vi.fn(async () => {});
+  let signal: AbortSignal | undefined;
+  let finish!: () => void;
+  const choose = vi.fn(async (_candidate: unknown, cancellation: AbortSignal) => { signal = cancellation; await new Promise<void>(resolve => { finish = resolve; }); });
+  element.setContext({
+    holon: { key: async () => 'Current', propertyValue: async () => ({ StringValue: 'Current' }), availableProperties: async () => [], availableRelationships: async () => [] },
+    visualizerInspection: { selectedVisualizer: refs.Current, occurrenceId: 'captured', isLive: () => true,
+      slot: { propertyValue: async () => null, key: async () => 'Slot', relatedHolons: async () => [] }, subject: { key: async () => 'Subject' } },
+    discoverVisualizerChoices: vi.fn(async () => ({ candidates: [
+      { visualizer: refs.Current, assessment: 'viable' }, { visualizer: refs.Alternative, assessment: 'viable' },
+      { visualizer: refs.Unavailable, assessment: 'implementation_unavailable' },
+    ] })), inspectVisualizerCandidate: inspect, chooseVisualizerCandidate: choose,
+  });
+  await element.ready;
+  await vi.waitFor(() => expect(element.querySelectorAll('[data-choose-visualizer]')).toHaveLength(1));
+  const choices = element.querySelectorAll('[data-choose-visualizer]');
+  expect(element.textContent).not.toContain('Unavailable');
+  element.querySelector('[data-inspect-visualizer-candidate]').click();
+  expect(inspect).toHaveBeenCalledWith(refs.Alternative, expect.any(HTMLElement));
+  expect(choose).not.toHaveBeenCalled();
+  choices[0].click();
+  expect(choose).toHaveBeenCalledWith(refs.Alternative, expect.any(AbortSignal));
+  expect(choices[0].textContent).toBe('Changing…');
+  expect(choices[0].disabled).toBe(true);
+  expect(choices[0].getAttribute('aria-busy')).toBe('true');
+  const progress = element.querySelector('[data-visualizer-choice-progress]');
+  expect(progress.getAttribute('role')).toBe('status');
+  expect(progress.textContent).toContain('Changing to Alternative…');
+  expect(progress.querySelector('progress')).not.toBeNull();
+  choices[0].click();
+  expect(choose).toHaveBeenCalledOnce();
+  [...element.querySelectorAll('button')].find(button => button.textContent === 'Cancel choice').click();
+  expect(signal?.aborted).toBe(true); finish();
+  await vi.waitFor(() => expect(choices[0].textContent).toBe('Choose'));
+  expect(choices[0].disabled).toBe(false);
+  expect(choices[0].hasAttribute('aria-busy')).toBe(false);
+  expect(progress.querySelector('progress')).toBeNull();
+  expect(progress.textContent).toBe('Choice cancelled.');
+});
+
+it('shows inspectable alternatives when the result owner cannot replace its presentation', async () => {
+  const element = document.createElement('test-semantic-visualizer-inspector') as any;
+  document.body.append(element);
+  const current = { equals: (other: unknown) => other === current };
+  const alternative = { key: async () => 'Holon Inspector', propertyValue: async () => ({ StringValue: 'Holon Inspector' }), equals: (other: unknown) => other === alternative };
+  const inspect = vi.fn(async () => {});
+  element.setContext({
+    holon: { key: async () => 'Load Holons', propertyValue: async () => ({ StringValue: 'Load Holons' }), availableProperties: async () => [], availableRelationships: async () => [] },
+    visualizerInspection: { selectedVisualizer: current, isLive: () => true,
+      choices: { replacementUnavailableReason: 'Result replacement is not yet supported.' },
+      slot: { propertyValue: async () => null, key: async () => 'Node slot', relatedHolons: async () => [] }, subject: { key: async () => 'Result' } },
+    discoverVisualizerChoices: async () => ({ candidates: [{ visualizer: alternative, assessment: 'viable' }] }),
+    inspectVisualizerCandidate: inspect,
+  });
+  await element.ready;
+  await vi.waitFor(() => expect(element.querySelector('[data-choose-visualizer]')).not.toBeNull());
+  expect(element.textContent).toContain('Holon Inspector');
+  expect(element.textContent).toContain('Result replacement is not yet supported.');
+  expect(element.querySelector('[data-choose-visualizer]').disabled).toBe(true);
+  element.querySelector('[data-inspect-visualizer-candidate]').click();
+  expect(inspect).toHaveBeenCalledWith(alternative, expect.any(HTMLElement));
+});
+
+it('reports choice failure and restores the button for retry', async () => {
+  const element = document.createElement('test-semantic-visualizer-inspector') as any;
+  document.body.append(element);
+  const current = { equals: (other: unknown) => other === current };
+  const alternative = { key: async () => 'Holon Inspector', propertyValue: async () => ({ StringValue: 'Holon Inspector' }), equals: (other: unknown) => other === alternative };
+  const choose = vi.fn().mockRejectedValueOnce(new Error('Usage unavailable')).mockResolvedValueOnce(undefined);
+  element.setContext({
+    holon: { key: async () => 'Load Holons', propertyValue: async () => ({ StringValue: 'Load Holons' }), availableProperties: async () => [], availableRelationships: async () => [] },
+    visualizerInspection: { selectedVisualizer: current, isLive: () => true,
+      slot: { propertyValue: async () => null, key: async () => 'Node slot', relatedHolons: async () => [] }, subject: { key: async () => 'Result' } },
+    discoverVisualizerChoices: async () => ({ candidates: [{ visualizer: alternative, assessment: 'viable' }] }),
+    chooseVisualizerCandidate: choose,
+  });
+  await element.ready;
+  await vi.waitFor(() => expect(element.querySelector('[data-choose-visualizer]')).not.toBeNull());
+  const button = element.querySelector('[data-choose-visualizer]') as HTMLButtonElement;
+  button.click();
+  await vi.waitFor(() => expect(element.querySelector('[data-visualizer-choice-progress]').textContent).toContain('Usage unavailable'));
+  const status = element.querySelector('[data-visualizer-choice-progress]');
+  expect(status.getAttribute('role')).toBe('alert');
+  expect(status.querySelector('progress')).toBeNull();
+  expect(button.disabled).toBe(false); expect(button.textContent).toBe('Choose');
+  button.click();
+  await vi.waitFor(() => expect(status.textContent).toBe('Visualizer changed to Holon Inspector.'));
+  expect(status.getAttribute('role')).toBe('status');
+  expect(choose).toHaveBeenCalledTimes(2);
+});

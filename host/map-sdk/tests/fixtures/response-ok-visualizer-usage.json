@@ -13,7 +13,8 @@
             "smart_property_values": null
           }
         },
-        "initialized": true
+        "initialized": true,
+        "report_session": "presentation-session"
       }
     }
   }

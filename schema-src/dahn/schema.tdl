@@ -214,6 +214,76 @@ instance HolonInspector.NodeVisualizer {
   }
 }
 
+// A nearer HolonSpace alternative preserves the existing automatic specificity policy.
+// Interactive discovery still offers the generic Holon Inspector from its ancestor.
+instance ConnectionsFirstInspector.NodeVisualizer {
+  type NodeVisualizer.HolonType
+  DisplayName "Connections First Inspector"
+  VisualizerDescription "Places single connections above the detail fields in an expanded card. Keeps the action bar and related collection tabs, with the same compression and navigation controls."
+  relationships {
+    ConsumesDesignToken -> [
+      RelationshipNavigationSurfaceBackground.DesignToken,
+      RelationshipNavigationTextColor.DesignToken,
+      ActionCornerRadius.DesignToken,
+      ActionHoverSurfaceBackground.DesignToken,
+      ActionPaddingBlock.DesignToken,
+      ActionPaddingInline.DesignToken,
+      ActionSurfaceBackground.DesignToken,
+      ActionTextColor.DesignToken,
+      CanvasGap.DesignToken,
+      CanvasHeadingFontWeight.DesignToken,
+      CanvasSurfaceBackground.DesignToken,
+      CanvasTextColor.DesignToken,
+      ControlGap.DesignToken,
+      FocusRingColor.DesignToken,
+      FocusRingWidth.DesignToken,
+      InspectorRailWidth.DesignToken,
+      NodeHeadingFontSize.DesignToken,
+      PanelCornerRadius.DesignToken,
+      PanelSurfaceBackground.DesignToken,
+      SlotBorderColor.DesignToken,
+      SlotBorderStyle.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotPadding.DesignToken,
+    ]
+    ApplicableToType -> HolonSpace.HolonType
+    HasSlot -> [ConnectionsFirstInspector.PropertyMapSlot, ConnectionsFirstInspector.ActionsSlot, ConnectionsFirstInspector.CollectionsSlot, ConnectionsFirstInspector.SingleValueSlot]
+    ImplementedBy -> ConnectionsFirstInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance ConnectionsFirstInspector.PropertyMapSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Show the details recorded for this item."
+  relationships {
+    AcceptsVisualizerType -> PropertyMapVisualizer.HolonType
+  }
+}
+
+instance ConnectionsFirstInspector.ActionsSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Show the actions available for this item and provide access to them."
+  relationships {
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+  }
+}
+
+instance ConnectionsFirstInspector.CollectionsSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Present a group of related items so you can examine its members and open an item."
+  relationships {
+    AcceptsVisualizerType -> CollectionVisualizer.HolonType
+  }
+}
+
+instance ConnectionsFirstInspector.SingleValueSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Inspect the item reached through a connection that has a single destination."
+  relationships {
+    AcceptsVisualizerType -> NodeVisualizer.HolonType
+  }
+}
+
 instance HolonInspector.PropertyMapSlot {
   type VisualizerSlot.HolonType
   VisualizerSlotDescription "Show the details recorded for this item."
@@ -284,7 +354,16 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:aadd179605d03c2a3c76af7fa0a13e7107ba1fbb73b17a685c02928fcc240307"
+  VisualizerArtifactDigest "sha256:ffbdaa107698143325a0ea9c48ba072e2ca467cba7b4f03c2b3241e97838091a"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance ConnectionsFirstInspectorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.connections-first-inspector"
+  VisualizerArtifactDigest "sha256:860f4bc40b55e020d161b412a633859aa6cb8b35e3c8e9e6fd73b8de1084b51f"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -364,7 +443,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:804edf401d594a7632d807428984fddf19c61227dd6b142fd3bdd4b3ce609eee"
+  VisualizerArtifactDigest "sha256:5925afe38b1f9afd1195666cf0df18b583472355ff5dd7b0dee4efcb6f628004"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1142,7 +1221,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:f2c53581f3ba247009c5146468dd6e4eca6703751192c41447d4c7357f38e7d1"
+  VisualizerArtifactDigest "sha256:4130b0052bac015c8023c0320456b785b47f09a74f555e0753da4683c8ea950a"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

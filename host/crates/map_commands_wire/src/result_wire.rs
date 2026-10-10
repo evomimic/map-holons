@@ -122,6 +122,7 @@ impl From<MapResult> for MapResultWire {
                 Self::VisualizerUsageSelection(VisualizerUsageSelectionWire {
                     usage: selection.usage.into(),
                     initialized: selection.initialized,
+                    report_session: selection.report_session,
                 })
             }
             MapResult::VisualizerSelection(selection) => {
@@ -265,4 +266,5 @@ pub struct VisualizerDiscoveryWire {
 pub struct VisualizerUsageSelectionWire {
     pub usage: HolonReferenceWire,
     pub initialized: bool,
+    pub report_session: String,
 }
