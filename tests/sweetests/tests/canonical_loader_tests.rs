@@ -2,7 +2,7 @@
 use core_types::{ContentSet, FileData};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceInvocation;
-use holons_core::{HolonReference, ReadableHolon, WritableHolon};
+use holons_core::{HolonCollectionApi, HolonReference, ReadableHolon, WritableHolon};
 use holons_test::harness::helpers::init_probe_test_runtime;
 use holons_test::DancesTestCase;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
