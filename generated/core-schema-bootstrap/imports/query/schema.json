@@ -3299,6 +3299,43 @@
       ]
     },
     {
+      "key": "Distinct.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Distinct",
+        "TypeNamePlural": "DistinctExpressions",
+        "DisplayName": "Distinct",
+        "DisplayNamePlural": "Distinct Expressions",
+        "Description": "Collection transformation that retains the first occurrence of each holon reference identity and preserves the relative order of retained occurrences. Identity is reference equality, never property values."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "PropertyName.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {

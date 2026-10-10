@@ -107,7 +107,7 @@
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "ea3ac652bf308d307511b1229a6bc3285934648ee34b46499e1a7c44f44addcb"
+      "sha256": "c24419caeb3c85fdce012d64fae69b89fa422cbe94b5b7445db00f9eff0e8862"
     },
     {
       "path": "imports/query-dance/schema.json",
@@ -1990,6 +1990,10 @@
     {
       "key": "DisplayNamePlural.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Distinct.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "Duration.DesignTokenType",
