@@ -139,7 +139,7 @@ it('expands child information inline while preserving parent context and other o
   const disclosure = element.querySelector('[data-visualizer-presentation-structure]') as HTMLDetailsElement;
   expect(disclosure.open).toBe(false);
   expect(disclosure.textContent).toContain('Properties · Property Map');
-  expect(disclosure.textContent).toContain('Presented by the containing Visualizer');
+  expect(disclosure.textContent).toContain('Vertical Rail · Bundled Component');
   expect(element.querySelector('[data-visualizer-technical-details]').contains(disclosure)).toBe(false);
   const panels = [...disclosure.querySelectorAll<HTMLDetailsElement>('[data-visualizer-child-information]')];
   expect(mount).not.toHaveBeenCalled();
@@ -153,14 +153,54 @@ it('expands child information inline while preserving parent context and other o
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(mount).toHaveBeenCalledTimes(1);
   panels[1].open = true;
-  await vi.waitFor(() => expect(panels[1].textContent).toContain('Details for rail'));
+  await vi.waitFor(() => expect(panels[1].textContent).toContain('Included in Holon Inspector.'));
+  expect(panels[1].textContent).toContain('This component has no independent VisualizerSlot and cannot be selected separately.');
+  expect(panels[1].textContent).not.toContain('Details for rail');
+  expect(panels[1].querySelector('h2')).toBeNull();
+  expect(mount).toHaveBeenCalledTimes(1);
   expect(inspect).not.toHaveBeenCalled();
   entries = entries.slice(1); child.remove();
   await vi.waitFor(() => expect(disclosure.querySelectorAll('[data-visualizer-child-information]')).toHaveLength(1));
   expect(panels[1].isConnected).toBe(true);
   expect(panels[1].open).toBe(true);
-  expect(panels[1].textContent).toContain('Details for rail');
+  expect(panels[1].textContent).toContain('Included in Holon Inspector.');
   element.remove(); source.append(document.createElement('span'));
   await Promise.resolve();
   expect(disclosure.querySelectorAll('[data-visualizer-child-information]')).toHaveLength(1);
+});
+
+it('keeps selected children inside bundled components inspectable and removes retired children', async () => {
+  const element = document.createElement('test-semantic-visualizer-inspector') as any;
+  const source = document.createElement('div'), rail = document.createElement('aside'), child = document.createElement('div');
+  rail.append(child); source.append(rail); document.body.append(source, element);
+  const selected = { occurrenceId: 'connection', isLive: () => child.isConnected };
+  const owned = { occurrenceId: 'rail', element: rail, isLive: () => rail.isConnected,
+    composition: () => child.isConnected ? [{ label: 'Connection', ownership: 'selected', displayName: 'Book Inspector', inspect: () => selected }] : [],
+  };
+  const mount = vi.fn(async (target, host) => { host.textContent = `Details for ${target.occurrenceId}`; });
+  element.setContext({ holon: {
+    key: async () => 'Node', propertyValue: async (name: string) => ({ StringValue: name === 'DisplayName' ? 'Holon Inspector' : 'Inspect an item.' }),
+    availableProperties: async () => [], availableRelationships: async () => [],
+  }, mountVisualizerInformation: mount, visualizerInspection: {
+    occurrenceId: 'parent', element: source, isLive: () => source.isConnected,
+    slot: { propertyValue: async () => ({ StringValue: 'Node' }), relatedHolons: async () => [] }, subject: { key: async () => 'Item' },
+    composition: () => rail.isConnected ? [{ label: 'Vertical Rail', ownership: 'implementation', inspect: () => owned }] : [],
+  } });
+  await element.ready;
+  const bundled = element.querySelector('[data-visualizer-child-information]') as HTMLDetailsElement;
+  bundled.open = true;
+  await vi.waitFor(() => expect(bundled.textContent).toContain('Connection · Book Inspector'));
+  expect(mount).not.toHaveBeenCalled();
+  expect(bundled.querySelector('[data-visualizer-slot-purpose]')).toBeNull();
+  expect(bundled.querySelector('[data-visualizer-description]')).toBeNull();
+  const nested = bundled.querySelector('[data-visualizer-child-information]') as HTMLDetailsElement;
+  nested.open = true;
+  await vi.waitFor(() => expect(nested.textContent).toContain('Details for connection'));
+  expect(mount).toHaveBeenCalledExactlyOnceWith(selected, expect.any(HTMLElement));
+  child.remove();
+  await vi.waitFor(() => expect(bundled.querySelector('[data-visualizer-child-information]')).toBeNull());
+  expect(bundled.isConnected).toBe(true);
+  expect(bundled.open).toBe(true);
+  rail.remove();
+  await vi.waitFor(() => expect(element.querySelector('[data-visualizer-child-information]')).toBeNull());
 });

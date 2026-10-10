@@ -188,6 +188,94 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             panic!("explicit choice")
         };
         assert_eq!(explicit.selected, selection.selected);
+
+        // Usage initialization owns its commit, even when this caller has pending edits.
+        let usage_context = new_context(&runtime).await;
+        let edit =
+            usage_context.mutation().new_holon(Some("pending-usage-caller-edit".into())).unwrap();
+        usage_context.mutation().stage_new_holon(edit).unwrap();
+        let MapResult::VisualizerUsageSelection(usage) = command(
+            &runtime,
+            &usage_context,
+            TransactionAction::SelectVisualizerUsage {
+                request: selection_request(),
+                selected: selection.selected.clone(),
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("usage selection")
+        };
+        assert!(usage.initialized);
+        assert!(matches!(usage.usage, HolonReference::Smart(_)));
+        assert!(usage_context.is_open());
+        assert_eq!(usage_context.lookup().staged_count().unwrap(), 1);
+        for name in [
+            "PropertySalienceOverrides",
+            "RelationshipSalienceOverrides",
+            "ActionSalienceOverrides",
+            "ActionGroupOverrides",
+            "SelectedForSlot",
+        ] {
+            assert!(usage
+                .usage
+                .related_holons_with_hint(name, holons_core::RelationshipReadHint::RequireFresh)
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .is_empty());
+        }
+        command(
+            &runtime,
+            &usage_context,
+            TransactionAction::RecordVisualizerUse {
+                request: selection_request(),
+                selected: selection.selected.clone(),
+                usage: usage.usage.clone(),
+                origin: map_commands_contract::VisualizerChoiceOrigin::Explicit,
+            },
+        )
+        .await
+        .unwrap();
+        let slot = saved(slot);
+        let selected_usages = slot
+            .related_holons_with_hint(
+                "HasSelectedUsage",
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        assert!(selected_usages.read().unwrap().get_members().contains(&usage.usage));
+        let preferences = slot
+            .related_holons_with_hint(
+                "HasVisualizerPreference",
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        let preferences = preferences.read().unwrap().get_members().clone();
+        assert!(preferences.iter().any(|preference| preference
+            .related_holons("PreferredUsage")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&usage.usage)));
+        let MapResult::VisualizerUsageSelection(reused) = command(
+            &runtime,
+            &usage_context,
+            TransactionAction::SelectVisualizerUsage {
+                request: selection_request(),
+                selected: selection.selected.clone(),
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("usage reuse")
+        };
+        assert!(!reused.initialized);
+        assert_eq!(reused.usage, usage.usage);
+        assert_eq!(usage_context.lookup().staged_count().unwrap(), 1);
+        command(&runtime, &usage_context, TransactionAction::Dispose).await.unwrap();
     }
     // Assert the authored forward edge and its committed inverse at the consuming seam.
     let load_visualizer = saved("LoadHolons.ActionVisualizer");

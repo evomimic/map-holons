@@ -70,6 +70,15 @@ pub enum TransactionAction {
     },
     /// Revalidates one explicit choice against the current request context.
     ChooseVisualizer { request: VisualizerSelectionRequest, candidate: HolonReference },
+    /// Prepare persisted usage in an independent transaction; leave this transaction untouched.
+    SelectVisualizerUsage { request: VisualizerSelectionRequest, selected: HolonReference },
+    /// Report successful presentation; failed/cancelled mounts must not invoke this action.
+    RecordVisualizerUse {
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+        usage: HolonReference,
+        origin: super::VisualizerChoiceOrigin,
+    },
     /// Select for a described plural subject and a specific parent slot.
     SelectCollectionVisualizer {
         collection: super::DescribedHolonCollection,
@@ -190,6 +199,11 @@ impl TransactionAction {
             | TransactionAction::ChooseVisualizer { .. } => {
                 CommandLifecyclePolicy::holon_read_only()
             }
+            // Writes are confined to an independent usage transaction, never this caller's nursery.
+            TransactionAction::SelectVisualizerUsage { .. }
+            | TransactionAction::RecordVisualizerUse { .. } => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
             TransactionAction::SelectCollectionVisualizer { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
@@ -237,6 +251,8 @@ impl TransactionAction {
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::DiscoverVisualizers { .. } => "discover_visualizers",
             TransactionAction::ChooseVisualizer { .. } => "choose_visualizer",
+            TransactionAction::SelectVisualizerUsage { .. } => "select_visualizer_usage",
+            TransactionAction::RecordVisualizerUse { .. } => "record_visualizer_use",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",
             TransactionAction::GetSavedHolonByBaseKey { .. } => "get_saved_holon_by_base_key",

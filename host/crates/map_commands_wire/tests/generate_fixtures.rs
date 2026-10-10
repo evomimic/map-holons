@@ -43,6 +43,22 @@ fn generate_fixtures() {
     };
     for (name, action) in [
         (
+            "request-select-visualizer-usage.json",
+            TransactionActionWire::SelectVisualizerUsage {
+                request: selection_request.clone(),
+                selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
+            },
+        ),
+        (
+            "request-record-visualizer-use.json",
+            TransactionActionWire::RecordVisualizerUse {
+                request: selection_request.clone(),
+                selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
+                usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
+                origin: map_commands_wire::VisualizerChoiceOriginWire::Explicit,
+            },
+        ),
+        (
             "request-select-visualizer.json",
             TransactionActionWire::SelectVisualizer(selection_request.clone()),
         ),
@@ -56,7 +72,7 @@ fn generate_fixtures() {
         (
             "request-choose-visualizer.json",
             TransactionActionWire::ChooseVisualizer {
-                request: selection_request,
+                request: selection_request.clone(),
                 candidate: staged_reference(41, uuid_b()),
             },
         ),
@@ -139,6 +155,19 @@ fn generate_fixtures() {
                 descriptor_identity: None,
                 message: "Invalid property".into(),
             }])),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-visualizer-usage.json",
+        &response(
+            155,
+            Ok(MapResultWire::VisualizerUsageSelection(
+                map_commands_wire::VisualizerUsageSelectionWire {
+                    usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
+                    initialized: true,
+                },
+            )),
         ),
     );
     let described = map_commands_wire::DescribedHolonCollectionWire {

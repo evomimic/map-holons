@@ -1650,7 +1650,7 @@
         "TypeNamePlural": "VisualizerSlots",
         "DisplayName": "Visualizer Slot",
         "DisplayNamePlural": "Visualizer Slots",
-        "Description": "Semantic role within a Visualizer's composition that declares one or more accepted Visualizer Holon Type roles. It does not encode runtime occupancy or spatial geometry; selection and occupancy are recorded through VisualizerUsage."
+        "Description": "Semantic role within a Visualizer's composition that declares one or more accepted Visualizer Holon Type roles. It does not encode runtime occupancy or spatial geometry. Retained usage associations record successful presentations; descriptor-specific preference records identify remembered choices."
       },
       "relationships": [
         {
@@ -1695,7 +1695,7 @@
         "TypeNamePlural": "VisualizerUsages",
         "DisplayName": "Visualizer Usage",
         "DisplayNamePlural": "Visualizer Usages",
-        "Description": "A context-owned use of a selected Visualizer to fulfill a VisualizerSlot. It separates shared Visualizer capability from future circumstance, configuration, and selection-history state without defining those extensions yet."
+        "Description": "The local space agent's use and personalized configuration of a selected Visualizer for one subject descriptor. Preparation alone does not record successful use. Empty override relationships preserve neutral default presentation."
       },
       "relationships": [
         {
@@ -1721,7 +1721,22 @@
               "$ref": "(VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType)"
             },
             {
-              "$ref": "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)"
+              "$ref": "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[ForSubjectType]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[RelationshipSalienceOverrides]->(RelationshipSalienceOverride.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[ActionSalienceOverrides]->(ActionSalienceOverride.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[ActionGroupOverrides]->(ActionGroupOverride.HolonType)"
             }
           ]
         }
@@ -2085,7 +2100,7 @@
         "TypeNamePlural": "AcceptsVisualizerTypeRelationships",
         "DisplayName": "AcceptsVisualizerType Relationship",
         "DisplayNamePlural": "AcceptsVisualizerType Relationships",
-        "Description": "Declares one or more Visualizer Holon Type roles accepted by a semantic Slot. Its cardinality applies to accepted role declarations, not runtime occupancy; the selected Visualizer is bound through a VisualizerUsage.",
+        "Description": "Declares one or more Visualizer Holon Type roles accepted by a semantic Slot. Its cardinality applies to accepted role declarations, not runtime occupancy; contract fulfillment belongs to the selected Visualizer; usage anchors configuration and successful-choice associations.",
         "IsDefinitional": true,
         "DeletionSemantic": "Allow"
       },
@@ -2311,14 +2326,14 @@
       ]
     },
     {
-      "key": "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)",
+      "key": "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "FillsVisualizerSlot",
-        "TypeNamePlural": "FillsVisualizerSlotRelationships",
-        "DisplayName": "Fills Visualizer Slot Relationship",
-        "DisplayNamePlural": "Fills Visualizer Slot Relationships",
-        "Description": "Binds a context-owned VisualizerUsage to the VisualizerSlot it fulfills without making the Slot select a concrete Visualizer directly.",
+        "TypeName": "SelectedForSlot",
+        "TypeNamePlural": "SelectedForSlotRelationships",
+        "DisplayName": "Selected For Slot Relationship",
+        "DisplayNamePlural": "Selected For Slot Relationships",
+        "Description": "Records successful presentation of this usage at a slot; the selected Visualizer, not usage, fulfills the slot contract.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -2358,7 +2373,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType)"
+              "$ref": "(VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType)"
             }
           ]
         },
@@ -2366,21 +2381,21 @@
           "name": "Constraints",
           "target": [
             {
-              "$ref": "ExactlyOne.CardinalityConstraint"
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }
       ]
     },
     {
-      "key": "(VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "key": "(VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "FulfilledByVisualizerUsage",
-        "TypeNamePlural": "FulfilledByVisualizerUsageRelationships",
-        "DisplayName": "Fulfilled By Visualizer Usage Relationship",
-        "DisplayNamePlural": "Fulfilled By Visualizer Usage Relationships",
-        "Description": "Inverse of FillsVisualizerSlot, exposing the context-owned usages through which a Slot is fulfilled.",
+        "TypeName": "HasSelectedUsage",
+        "TypeNamePlural": "HasSelectedUsageRelationships",
+        "DisplayName": "Has Selected Usage Relationship",
+        "DisplayNamePlural": "Has Selected Usage Relationships",
+        "Description": "Inverse of SelectedForSlot, exposing retained successful usages selected at this slot.",
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -3233,6 +3248,1097 @@
           "target": [
             {
               "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerSlotPreference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerSlotPreference",
+        "TypeNamePlural": "VisualizerSlotPreferences",
+        "DisplayName": "Visualizer Slot Preference",
+        "DisplayNamePlural": "Visualizer Slot Preferences",
+        "Description": "Remembered explicit choice after successful presentation, scoped to one slot and subject descriptor. Separate from retained usages and exploratory choices."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(VisualizerSlotPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerSlotPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(VisualizerSlotPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ForSubjectType",
+        "TypeNamePlural": "ForSubjectTypeRelationships",
+        "DisplayName": "ForSubjectType",
+        "DisplayNamePlural": "ForSubjectType Relationships",
+        "Description": "ForSubjectType association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[HasVisualizerUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[HasVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasVisualizerUsage",
+        "TypeNamePlural": "HasVisualizerUsageRelationships",
+        "DisplayName": "HasVisualizerUsage",
+        "DisplayNamePlural": "HasVisualizerUsage Relationships",
+        "Description": "Inverse of ForSubjectType.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertySalienceOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PropertySalienceOverride",
+        "TypeNamePlural": "PropertySalienceOverrides",
+        "DisplayName": "PropertySalience Override",
+        "DisplayNamePlural": "PropertySalience Overrides",
+        "Description": "Extension point for explicit personalized PropertySalience overrides. No instances or editing/score model are required for neutral initialization.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PropertySalienceOverrides",
+        "TypeNamePlural": "PropertySalienceOverridesRelationships",
+        "DisplayName": "PropertySalienceOverrides",
+        "DisplayNamePlural": "PropertySalienceOverrides Relationships",
+        "Description": "PropertySalienceOverrides association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "PropertySalienceOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(PropertySalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(PropertySalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OverrideOfUsage",
+        "TypeNamePlural": "OverrideOfUsageRelationships",
+        "DisplayName": "OverrideOfUsage",
+        "DisplayNamePlural": "OverrideOfUsage Relationships",
+        "Description": "Inverse of PropertySalienceOverrides.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "PropertySalienceOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipSalienceOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "RelationshipSalienceOverride",
+        "TypeNamePlural": "RelationshipSalienceOverrides",
+        "DisplayName": "RelationshipSalience Override",
+        "DisplayNamePlural": "RelationshipSalience Overrides",
+        "Description": "Extension point for explicit personalized RelationshipSalience overrides. No instances or editing/score model are required for neutral initialization.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[RelationshipSalienceOverrides]->(RelationshipSalienceOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RelationshipSalienceOverrides",
+        "TypeNamePlural": "RelationshipSalienceOverridesRelationships",
+        "DisplayName": "RelationshipSalienceOverrides",
+        "DisplayNamePlural": "RelationshipSalienceOverrides Relationships",
+        "Description": "RelationshipSalienceOverrides association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "RelationshipSalienceOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(RelationshipSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(RelationshipSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OverrideOfUsage",
+        "TypeNamePlural": "OverrideOfUsageRelationships",
+        "DisplayName": "OverrideOfUsage",
+        "DisplayNamePlural": "OverrideOfUsage Relationships",
+        "Description": "Inverse of RelationshipSalienceOverrides.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "RelationshipSalienceOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionSalienceOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ActionSalienceOverride",
+        "TypeNamePlural": "ActionSalienceOverrides",
+        "DisplayName": "ActionSalience Override",
+        "DisplayNamePlural": "ActionSalience Overrides",
+        "Description": "Extension point for explicit personalized ActionSalience overrides. No instances or editing/score model are required for neutral initialization.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ActionSalienceOverrides]->(ActionSalienceOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ActionSalienceOverrides",
+        "TypeNamePlural": "ActionSalienceOverridesRelationships",
+        "DisplayName": "ActionSalienceOverrides",
+        "DisplayNamePlural": "ActionSalienceOverrides Relationships",
+        "Description": "ActionSalienceOverrides association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ActionSalienceOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ActionSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ActionSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OverrideOfUsage",
+        "TypeNamePlural": "OverrideOfUsageRelationships",
+        "DisplayName": "OverrideOfUsage",
+        "DisplayNamePlural": "OverrideOfUsage Relationships",
+        "Description": "Inverse of ActionSalienceOverrides.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ActionSalienceOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionGroupOverride.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ActionGroupOverride",
+        "TypeNamePlural": "ActionGroupOverrides",
+        "DisplayName": "ActionGroup Override",
+        "DisplayNamePlural": "ActionGroup Overrides",
+        "Description": "Extension point for explicit personalized ActionGroup overrides. No instances or editing/score model are required for neutral initialization.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ActionGroupOverrides]->(ActionGroupOverride.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ActionGroupOverrides",
+        "TypeNamePlural": "ActionGroupOverridesRelationships",
+        "DisplayName": "ActionGroupOverrides",
+        "DisplayNamePlural": "ActionGroupOverrides Relationships",
+        "Description": "ActionGroupOverrides association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ActionGroupOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ActionGroupOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ActionGroupOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OverrideOfUsage",
+        "TypeNamePlural": "OverrideOfUsageRelationships",
+        "DisplayName": "OverrideOfUsage",
+        "DisplayNamePlural": "OverrideOfUsage Relationships",
+        "Description": "Inverse of ActionGroupOverrides.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ActionGroupOverride.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlotPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferenceForSlot",
+        "TypeNamePlural": "PreferenceForSlotRelationships",
+        "DisplayName": "PreferenceForSlot",
+        "DisplayNamePlural": "PreferenceForSlot Relationships",
+        "Description": "PreferenceForSlot association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[HasVisualizerPreference]->(VisualizerSlotPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[HasVisualizerPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasVisualizerPreference",
+        "TypeNamePlural": "HasVisualizerPreferenceRelationships",
+        "DisplayName": "HasVisualizerPreference",
+        "DisplayNamePlural": "HasVisualizerPreference Relationships",
+        "Description": "Inverse of PreferenceForSlot.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlotPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferenceForSubjectType",
+        "TypeNamePlural": "PreferenceForSubjectTypeRelationships",
+        "DisplayName": "PreferenceForSubjectType",
+        "DisplayNamePlural": "PreferenceForSubjectType Relationships",
+        "Description": "PreferenceForSubjectType association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[HasSlotPreference]->(VisualizerSlotPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[HasSlotPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasSlotPreference",
+        "TypeNamePlural": "HasSlotPreferenceRelationships",
+        "DisplayName": "HasSlotPreference",
+        "DisplayNamePlural": "HasSlotPreference Relationships",
+        "Description": "Inverse of PreferenceForSubjectType.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlotPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferredUsage",
+        "TypeNamePlural": "PreferredUsageRelationships",
+        "DisplayName": "PreferredUsage",
+        "DisplayNamePlural": "PreferredUsage Relationships",
+        "Description": "PreferredUsage association for agent-relative Visualizer usage and preference.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[PreferredBySlot]->(VisualizerSlotPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[PreferredBySlot]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferredBySlot",
+        "TypeNamePlural": "PreferredBySlotRelationships",
+        "DisplayName": "PreferredBySlot",
+        "DisplayNamePlural": "PreferredBySlot Relationships",
+        "Description": "Inverse of PreferredUsage.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

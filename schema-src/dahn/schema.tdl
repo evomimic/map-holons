@@ -679,7 +679,7 @@ holon VisualizerSlot.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "Semantic role within a Visualizer's composition that declares one or more accepted Visualizer Holon Type roles. It does not encode runtime occupancy or spatial geometry; selection and occupancy are recorded through VisualizerUsage."
+    description: "Semantic role within a Visualizer's composition that declares one or more accepted Visualizer Holon Type roles. It does not encode runtime occupancy or spatial geometry. Retained usage associations record successful presentations; descriptor-specific preference records identify remembered choices."
     display_name: "Visualizer Slot"
     display_plural: "Visualizer Slots"
     plural: "VisualizerSlots"
@@ -694,7 +694,7 @@ holon VisualizerUsage.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "A context-owned use of a selected Visualizer to fulfill a VisualizerSlot. It separates shared Visualizer capability from future circumstance, configuration, and selection-history state without defining those extensions yet."
+    description: "The local space agent's use and personalized configuration of a selected Visualizer for one subject descriptor. Preparation alone does not record successful use. Empty override relationships preserve neutral default presentation."
     display_name: "Visualizer Usage"
     display_plural: "Visualizer Usages"
     plural: "VisualizerUsages"
@@ -702,7 +702,12 @@ holon VisualizerUsage.HolonType {
   relationships {
     InstanceRelationships -> [
       (VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType),
-      (VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)
+      (VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType),
+      (VisualizerUsage.HolonType)-[ForSubjectType]->(TypeDescriptor),
+      (VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType),
+      (VisualizerUsage.HolonType)-[RelationshipSalienceOverrides]->(RelationshipSalienceOverride.HolonType),
+      (VisualizerUsage.HolonType)-[ActionSalienceOverrides]->(ActionSalienceOverride.HolonType),
+      (VisualizerUsage.HolonType)-[ActionGroupOverrides]->(ActionGroupOverride.HolonType)
     ]
   }
 }
@@ -824,7 +829,7 @@ def relationship (VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisual
   target MetaVisualizerType.MetaHolonType
   deletion_semantic Allow
   header {
-    description: "Declares one or more Visualizer Holon Type roles accepted by a semantic Slot. Its cardinality applies to accepted role declarations, not runtime occupancy; the selected Visualizer is bound through a VisualizerUsage."
+    description: "Declares one or more Visualizer Holon Type roles accepted by a semantic Slot. Its cardinality applies to accepted role declarations, not runtime occupancy; contract fulfillment belongs to the selected Visualizer; usage anchors configuration and successful-choice associations."
     display_name: "AcceptsVisualizerType Relationship"
     display_plural: "AcceptsVisualizerType Relationships"
     plural: "AcceptsVisualizerTypeRelationships"
@@ -883,25 +888,25 @@ inverse relationship (Visualizer.HolonType)-[UsedByVisualizerUsage]->(Visualizer
   }
 }
 
-relationship (VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType) {
+relationship (VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    Constraints -> ExactlyOne.CardinalityConstraint
-    HasInverse -> FulfilledByVisualizerUsage
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> HasSelectedUsage
   }
   extends DeclaredRelationshipType.RelationshipType
   source VisualizerUsage.HolonType
   target VisualizerSlot.HolonType
   deletion_semantic Allow
   header {
-    description: "Binds a context-owned VisualizerUsage to the VisualizerSlot it fulfills without making the Slot select a concrete Visualizer directly."
-    display_name: "Fills Visualizer Slot Relationship"
-    display_plural: "Fills Visualizer Slot Relationships"
-    plural: "FillsVisualizerSlotRelationships"
+    description: "Records successful presentation of this usage at a slot; the selected Visualizer, not usage, fulfills the slot contract."
+    display_name: "Selected For Slot Relationship"
+    display_plural: "Selected For Slot Relationships"
+    plural: "SelectedForSlotRelationships"
   }
 }
 
-inverse relationship (VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType) {
+inverse relationship (VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source VisualizerSlot.HolonType
@@ -911,10 +916,10 @@ inverse relationship (VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(V
   }
   deletion_semantic Block
   header {
-    description: "Inverse of FillsVisualizerSlot, exposing the context-owned usages through which a Slot is fulfilled."
-    display_name: "Fulfilled By Visualizer Usage Relationship"
-    display_plural: "Fulfilled By Visualizer Usage Relationships"
-    plural: "FulfilledByVisualizerUsageRelationships"
+    description: "Inverse of SelectedForSlot, exposing retained successful usages selected at this slot."
+    display_name: "Has Selected Usage Relationship"
+    display_plural: "Has Selected Usage Relationships"
+    plural: "HasSelectedUsageRelationships"
   }
 }
 
@@ -1187,5 +1192,347 @@ property VisualizerSlotDescription.PropertyType {
     display_name: "Slot description"
     display_plural: "Slot descriptions"
     plural: "VisualizerSlotDescriptions"
+  }
+}
+
+holon VisualizerSlotPreference.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Remembered explicit choice after successful presentation, scoped to one slot and subject descriptor. Separate from retained usages and exploratory choices."
+    display_name: "Visualizer Slot Preference"
+    display_plural: "Visualizer Slot Preferences"
+    plural: "VisualizerSlotPreferences"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (VisualizerSlotPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType),
+      (VisualizerSlotPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor),
+      (VisualizerSlotPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)
+    ]
+  }
+}
+
+relationship (VisualizerUsage.HolonType)-[ForSubjectType]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasVisualizerUsage
+  }
+  header {
+    description: "ForSubjectType association for agent-relative Visualizer usage and preference."
+    display_name: "ForSubjectType"
+    display_plural: "ForSubjectType Relationships"
+    plural: "ForSubjectTypeRelationships"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[HasVisualizerUsage]->(VisualizerUsage.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerUsage.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of ForSubjectType."
+    display_name: "HasVisualizerUsage"
+    display_plural: "HasVisualizerUsage Relationships"
+    plural: "HasVisualizerUsageRelationships"
+  }
+}
+
+abstract holon PropertySalienceOverride.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Extension point for explicit personalized PropertySalience overrides. No instances or editing/score model are required for neutral initialization."
+    display_name: "PropertySalience Override"
+    display_plural: "PropertySalience Overrides"
+    plural: "PropertySalienceOverrides"
+  }
+}
+
+relationship (VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target PropertySalienceOverride.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OverrideOfUsage
+  }
+  header {
+    description: "PropertySalienceOverrides association for agent-relative Visualizer usage and preference."
+    display_name: "PropertySalienceOverrides"
+    display_plural: "PropertySalienceOverrides Relationships"
+    plural: "PropertySalienceOverridesRelationships"
+  }
+}
+
+inverse relationship (PropertySalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source PropertySalienceOverride.HolonType
+  target VisualizerUsage.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of PropertySalienceOverrides."
+    display_name: "OverrideOfUsage"
+    display_plural: "OverrideOfUsage Relationships"
+    plural: "OverrideOfUsageRelationships"
+  }
+}
+
+abstract holon RelationshipSalienceOverride.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Extension point for explicit personalized RelationshipSalience overrides. No instances or editing/score model are required for neutral initialization."
+    display_name: "RelationshipSalience Override"
+    display_plural: "RelationshipSalience Overrides"
+    plural: "RelationshipSalienceOverrides"
+  }
+}
+
+relationship (VisualizerUsage.HolonType)-[RelationshipSalienceOverrides]->(RelationshipSalienceOverride.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target RelationshipSalienceOverride.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OverrideOfUsage
+  }
+  header {
+    description: "RelationshipSalienceOverrides association for agent-relative Visualizer usage and preference."
+    display_name: "RelationshipSalienceOverrides"
+    display_plural: "RelationshipSalienceOverrides Relationships"
+    plural: "RelationshipSalienceOverridesRelationships"
+  }
+}
+
+inverse relationship (RelationshipSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source RelationshipSalienceOverride.HolonType
+  target VisualizerUsage.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of RelationshipSalienceOverrides."
+    display_name: "OverrideOfUsage"
+    display_plural: "OverrideOfUsage Relationships"
+    plural: "OverrideOfUsageRelationships"
+  }
+}
+
+abstract holon ActionSalienceOverride.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Extension point for explicit personalized ActionSalience overrides. No instances or editing/score model are required for neutral initialization."
+    display_name: "ActionSalience Override"
+    display_plural: "ActionSalience Overrides"
+    plural: "ActionSalienceOverrides"
+  }
+}
+
+relationship (VisualizerUsage.HolonType)-[ActionSalienceOverrides]->(ActionSalienceOverride.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target ActionSalienceOverride.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OverrideOfUsage
+  }
+  header {
+    description: "ActionSalienceOverrides association for agent-relative Visualizer usage and preference."
+    display_name: "ActionSalienceOverrides"
+    display_plural: "ActionSalienceOverrides Relationships"
+    plural: "ActionSalienceOverridesRelationships"
+  }
+}
+
+inverse relationship (ActionSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source ActionSalienceOverride.HolonType
+  target VisualizerUsage.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of ActionSalienceOverrides."
+    display_name: "OverrideOfUsage"
+    display_plural: "OverrideOfUsage Relationships"
+    plural: "OverrideOfUsageRelationships"
+  }
+}
+
+abstract holon ActionGroupOverride.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Extension point for explicit personalized ActionGroup overrides. No instances or editing/score model are required for neutral initialization."
+    display_name: "ActionGroup Override"
+    display_plural: "ActionGroup Overrides"
+    plural: "ActionGroupOverrides"
+  }
+}
+
+relationship (VisualizerUsage.HolonType)-[ActionGroupOverrides]->(ActionGroupOverride.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target ActionGroupOverride.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OverrideOfUsage
+  }
+  header {
+    description: "ActionGroupOverrides association for agent-relative Visualizer usage and preference."
+    display_name: "ActionGroupOverrides"
+    display_plural: "ActionGroupOverrides Relationships"
+    plural: "ActionGroupOverridesRelationships"
+  }
+}
+
+inverse relationship (ActionGroupOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source ActionGroupOverride.HolonType
+  target VisualizerUsage.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of ActionGroupOverrides."
+    display_name: "OverrideOfUsage"
+    display_plural: "OverrideOfUsage Relationships"
+    plural: "OverrideOfUsageRelationships"
+  }
+}
+
+relationship (VisualizerSlotPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlotPreference.HolonType
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasVisualizerPreference
+  }
+  header {
+    description: "PreferenceForSlot association for agent-relative Visualizer usage and preference."
+    display_name: "PreferenceForSlot"
+    display_plural: "PreferenceForSlot Relationships"
+    plural: "PreferenceForSlotRelationships"
+  }
+}
+
+inverse relationship (VisualizerSlot.HolonType)-[HasVisualizerPreference]->(VisualizerSlotPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target VisualizerSlotPreference.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of PreferenceForSlot."
+    display_name: "HasVisualizerPreference"
+    display_plural: "HasVisualizerPreference Relationships"
+    plural: "HasVisualizerPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerSlotPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlotPreference.HolonType
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasSlotPreference
+  }
+  header {
+    description: "PreferenceForSubjectType association for agent-relative Visualizer usage and preference."
+    display_name: "PreferenceForSubjectType"
+    display_plural: "PreferenceForSubjectType Relationships"
+    plural: "PreferenceForSubjectTypeRelationships"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[HasSlotPreference]->(VisualizerSlotPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerSlotPreference.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of PreferenceForSubjectType."
+    display_name: "HasSlotPreference"
+    display_plural: "HasSlotPreference Relationships"
+    plural: "HasSlotPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerSlotPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlotPreference.HolonType
+  target VisualizerUsage.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> PreferredBySlot
+  }
+  header {
+    description: "PreferredUsage association for agent-relative Visualizer usage and preference."
+    display_name: "PreferredUsage"
+    display_plural: "PreferredUsage Relationships"
+    plural: "PreferredUsageRelationships"
+  }
+}
+
+inverse relationship (VisualizerUsage.HolonType)-[PreferredBySlot]->(VisualizerSlotPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target VisualizerSlotPreference.HolonType
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of PreferredUsage."
+    display_name: "PreferredBySlot"
+    display_plural: "PreferredBySlot Relationships"
+    plural: "PreferredBySlotRelationships"
   }
 }

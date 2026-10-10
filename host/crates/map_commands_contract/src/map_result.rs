@@ -62,6 +62,7 @@ pub enum MapResult {
     /// executable artifacts are deliberately absent from this result.
     VisualizerSelection(VisualizerSelection),
     VisualizerDiscovery(super::VisualizerDiscovery),
+    VisualizerUsageSelection(super::VisualizerUsageSelection),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///

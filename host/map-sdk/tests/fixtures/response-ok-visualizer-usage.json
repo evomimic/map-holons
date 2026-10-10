@@ -1,0 +1,20 @@
+{
+  "request_id": 155,
+  "result": {
+    "Ok": {
+      "VisualizerUsageSelection": {
+        "usage": {
+          "Smart": {
+            "holon_id": {
+              "Local": [
+                99
+              ]
+            },
+            "smart_property_values": null
+          }
+        },
+        "initialized": true
+      }
+    }
+  }
+}

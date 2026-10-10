@@ -3,7 +3,7 @@ import { buildRequest } from '../request-context';
 import {
   expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
   expectRedoToMarkerComplete, expectReference, expectReferences, expectUndoComplete,
-  expectUndoToMarkerComplete, expectValue, expectVisualizerSelection, expectVisualizerDiscovery,
+  expectUndoToMarkerComplete, expectValue, expectVisualizerSelection, expectVisualizerDiscovery, expectVisualizerUsageSelection,
 } from '../result-decoders';
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
@@ -478,4 +478,13 @@ export function discoverVisualizers(txId: TxId, request: VisualizerSelectionRequ
 }
 export function chooseVisualizer(txId: TxId, request: VisualizerSelectionRequestWire, candidate: HolonReferenceWire): Promise<VisualizerSelectionWire> {
   return runTransactionCommand(txId, { ChooseVisualizer: { request, candidate } }, expectVisualizerSelection);
+}
+
+/** Prepare persisted usage without committing the interaction transaction. */
+export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire) {
+  return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected } }, expectVisualizerUsageSelection);
+}
+/** Caller reports a successfully admitted presentation; failed mounts must not report. */
+export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory'): Promise<void> {
+  return runTransactionCommand(txId, { RecordVisualizerUse: { request, selected, usage, origin } }, expectNone);
 }
