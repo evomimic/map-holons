@@ -91,8 +91,9 @@ export class DiscoveryExplorerOwner {
       if (this.disposed) return;
       this.subject = await this.discovery.evidence.project(transaction);
       this.evidence = await readDiscoveryPresentation(this.subject);
-      const cache = new MaterializedVisualizerCache(new SdkVisualizerMaterializer(transaction));
-      this.slot = await this.binding.materialized.slot(transaction.bindSavedReference(this.inspector), 'discovery', cache);
+      // The parent Inspector is already materialized in the experience cache.
+      // Its composition declaration requires no second artifact or private pool.
+      this.slot = await this.binding.materialized.slot(transaction.bindSavedReference(this.inspector), 'discovery');
       this.selected = (await transaction.selectVisualizer(this.request())).selected;
       this.usage = await transaction.selectVisualizerUsage(this.request(), this.selected);
     })());

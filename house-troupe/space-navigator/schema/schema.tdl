@@ -193,7 +193,7 @@ instance DiscoveryTreeTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.discovery-tree"
-  VisualizerArtifactDigest "sha256:5e5dfdf6a32290fe0ee90381fbd29e7af58a979cf970f67314a5fe43f3743b4a"
+  VisualizerArtifactDigest "sha256:c56a741b44a3dd5b1047f188ac858a720d4d75e2b24f8539281272b826b7efc5"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -211,7 +211,7 @@ instance DiscoveryLevelsTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.discovery-levels"
-  VisualizerArtifactDigest "sha256:f104857ec8ef68561a8c854ebc375b23c0aec1a43e1ecef25664cd26b0db2b9c"
+  VisualizerArtifactDigest "sha256:b60b699806992b1746ff0c236782e32ef86250543247b233111344a82404c5a5"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

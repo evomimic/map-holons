@@ -165,6 +165,19 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         explorer.selected.holon_id().unwrap(),
         saved("DiscoveryTree.StructureVisualizer").holon_id().unwrap()
     );
+    let MapResult::VisualizerUsageSelection(usage) = command(
+        &runtime,
+        &destination,
+        TransactionAction::SelectVisualizerUsage {
+            request: explorer_request(),
+            selected: explorer.selected.clone(),
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("explorer usage")
+    };
+    assert!(usage.initialized);
     let MapResult::VisualizerDiscovery(alternatives) = command(
         &runtime,
         &destination,

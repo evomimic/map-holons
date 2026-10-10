@@ -322,6 +322,43 @@ fn request(
 }
 
 #[test]
+fn discovery_projection_resolves_each_record_type_once() -> Result<(), HolonError> {
+    use crate::discovery_evidence::DiscoveryEvidence;
+    use map_commands_contract::{
+        DiscoveryStopReason, VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery,
+    };
+    let (store, space, source) = setup();
+    let evidence = DiscoveryEvidence::default();
+    let captured = VisualizerDiscovery {
+        candidates: (20..40)
+            .map(|n| VisualizerCandidate {
+                visualizer: reference(&source, n),
+                declared_on: vec![reference(&source, 1)],
+                assessment: VisualizerAssessment::Viable,
+            })
+            .collect(),
+        current_selection: None,
+        ancestry: (1..5).map(|n| reference(&source, n)).collect(),
+        stop_reason: DiscoveryStopReason::LineageExhausted,
+        snapshot: None,
+    };
+    let key = evidence.retain(source.tx_id(), request(&source, 2, 30), &captured)?;
+    let destination = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    store.anchor_reads.lock().unwrap().clear();
+    let projection = evidence.project(&destination, &key)?;
+    assert_eq!(
+        projection.related_holons("DiscoveryCandidates")?.read().unwrap().get_count(),
+        MapInteger(20)
+    );
+    assert_eq!(
+        store.anchor_reads.lock().unwrap().len(),
+        3,
+        "Projection descriptor lookups must not grow with the number of captured records"
+    );
+    Ok(())
+}
+
+#[test]
 fn discovery_projection_consumes_captured_facts_without_rediscovery() -> Result<(), HolonError> {
     use crate::discovery_evidence::DiscoveryEvidence;
     use map_commands_contract::{

@@ -29,8 +29,13 @@ it.each(constructors)('%s renders supplied declaration evidence and separates in
   expect(element.textContent).toContain('HolonType boundary: General type');
   expect(element.textContent).toContain('Selection rationale is unavailable');
   const unavailable = [...element.querySelectorAll('[data-discovery-candidate]')].find((row: any) => row.textContent.includes('Unavailable view')) as HTMLElement;
-  expect([...unavailable.querySelectorAll('button')].find(button => button.textContent === 'Choose')!.disabled).toBe(true);
+  const unavailableChoice = [...unavailable.querySelectorAll('button')].find(button => button.textContent === 'Choose')!;
+  expect(unavailableChoice.disabled).toBe(true);
+  expect(getComputedStyle(unavailableChoice).opacity).toBe('0.5');
   const row = [...element.querySelectorAll('[data-discovery-candidate]')].find((row: any) => row.textContent.includes('General view')) as HTMLElement;
+  const controls = row.querySelector('[data-discovery-actions]')!;
+  expect(controls).not.toBeNull();
+  expect(getComputedStyle(controls).gap).toBe('8px');
   [...row.querySelectorAll('button')].find(button => button.textContent === 'Inspect')!.click();
   expect(inspect).toHaveBeenCalledWith(alternative, expect.any(HTMLElement));
   expect(choose).not.toHaveBeenCalled(); expect(state.preview).toBe(alternative);

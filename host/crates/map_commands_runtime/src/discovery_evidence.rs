@@ -98,7 +98,11 @@ impl DiscoveryEvidence {
                     "Discovery snapshot is released or already projected".into(),
                 )
             })?;
-        let mut subject = described(context, "VisualizerDiscovery.Projection", key.clone())?;
+        // All records share three schema types. Resolve each saved anchor once
+        // within this projection instead of crossing the guest boundary per record.
+        let mut descriptors = HashMap::new();
+        let mut subject =
+            described(context, &mut descriptors, "VisualizerDiscovery.Projection", key.clone())?;
         let reason = match snapshot.discovery.stop_reason {
             DiscoveryStopReason::HolonTypeBoundary => "holon_type_boundary",
             DiscoveryStopReason::LineageExhausted => "lineage_exhausted",
@@ -141,6 +145,7 @@ impl DiscoveryEvidence {
         for (index, descriptor) in snapshot.discovery.ancestry.iter().enumerate() {
             let mut level = described(
                 context,
+                &mut descriptors,
                 "VisualizerDiscoveryLevel.Projection",
                 MapString(format!("{}:level:{index}", key)),
             )?;
@@ -162,6 +167,7 @@ impl DiscoveryEvidence {
         for (index, candidate) in candidates.into_iter().enumerate() {
             let mut record = described(
                 context,
+                &mut descriptors,
                 "VisualizerDiscoveryCandidate.Projection",
                 MapString(format!("{}:candidate:{index}", key)),
             )?;
@@ -195,12 +201,21 @@ impl DiscoveryEvidence {
 
 fn described(
     context: &Arc<TransactionContext>,
+    descriptors: &mut HashMap<String, HolonReference>,
     key: &str,
     instance_key: MapString,
 ) -> Result<HolonReference, HolonError> {
-    let descriptor = context.lookup().get_saved_holon_by_key(&MapString::from(key))?;
+    let descriptor = match descriptors.get(key) {
+        Some(descriptor) => descriptor.clone(),
+        None => {
+            let descriptor: HolonReference =
+                context.lookup().get_saved_holon_by_key(&MapString::from(key))?.into();
+            descriptors.insert(key.to_owned(), descriptor.clone());
+            descriptor
+        }
+    };
     let mut reference: HolonReference = context.mutation().new_holon(Some(instance_key))?.into();
-    reference.with_descriptor(descriptor.into())?;
+    reference.with_descriptor(descriptor)?;
     Ok(reference)
 }
 

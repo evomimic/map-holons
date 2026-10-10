@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { DiscoveryExplorerOwner, readDiscoveryPresentation } from './discovery-explorer';
 import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
+import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
 import type { MapClient } from '../deps';
 import type { SpaceNavigatorBinding } from './space-navigator-experience';
 import type { VisualizerInspectionTarget } from '../contracts/visualizers';
@@ -50,11 +51,25 @@ function fixture() {
   const target = { occurrenceId: 'Original', isLive: () => true } as VisualizerInspectionTarget;
   const binding = { materialized: new MaterializedVisualizerRuntime(null as never), theme: { reference: reference('Theme') }, canvas: {} } as SpaceNavigatorBinding;
   const inspect = vi.fn();
-  const owner = new DiscoveryExplorerOwner(binding, target, reference('Inspector'), discovery, inspect, client as unknown as MapClient);
+  const inspector = reference('Inspector', {}, { HasSlot: [reference('Explorer slot')] });
+  const owner = new DiscoveryExplorerOwner(binding, target, inspector, discovery, inspect, client as unknown as MapClient);
   const host = document.createElement('section'); document.body.append(host);
-  return { owner, host, discovery, client, evidenceTx, presentations, selected, alternative, descriptor, subject, inspect };
+  return { owner, host, discovery, client, evidenceTx, presentations, selected, alternative, descriptor, subject, inspect, binding, inspector };
 }
 afterEach(() => { rejectAllocation = false; document.body.replaceChildren(); });
+
+it('resolves the child slot from the already materialized parent without issuing another parent artifact', async () => {
+  const f = fixture();
+  const { MaterializedVisualizerRuntime: Runtime } = await vi.importActual<typeof import('./materialized-visualizer-runtime')>('./materialized-visualizer-runtime');
+  const materialize = vi.fn(async () => ({ source: 'verified inspector', format: 'ESModule' as const, entrypoint: 'default' }));
+  class Inspector { static compositionSlots = { discovery: 'Explorer slot' }; }
+  f.binding.materialized = new Runtime(new MaterializedVisualizerCache({ materialize }), async () => ({ default: Inspector }));
+  await f.binding.materialized.realize(f.inspector);
+  f.evidenceTx.selectVisualizer.mockRejectedValueOnce(new Error('selection checkpoint'));
+  await expect(f.owner.mount(f.host, {})).rejects.toThrow('selection checkpoint');
+  expect(materialize).toHaveBeenCalledOnce();
+  f.owner.dispose();
+});
 
 it('reads captured indices/provenance without performing discovery or inheritance reads', async () => {
   const f = fixture();

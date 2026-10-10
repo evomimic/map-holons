@@ -70,6 +70,7 @@ function explorerClass(tree) {
         row.style.cssText = "padding:8px;border-bottom:1px solid var(--dahn-slot-border-color);";
         const label = document.createElement("button");
         label.type = "button";
+        label.style.cssText = "font:inherit;text-align:left;padding:4px 0;border:0;background:transparent;color:var(--dahn-canvas-text-color);cursor:pointer;";
         label.textContent = `${candidate.label}${candidate.current ? " \xB7 Current" : ""}`;
         const selected = state.selected?.equals(candidate.visualizer) ?? false;
         label.setAttribute("aria-pressed", String(selected));
@@ -91,6 +92,17 @@ function explorerClass(tree) {
         choose.type = "button";
         choose.textContent = "Choose";
         choose.disabled = candidate.current || candidate.assessment !== "viable" || !context.chooseVisualizerCandidate;
+        const actions = document.createElement("div");
+        actions.dataset.discoveryActions = "true";
+        actions.setAttribute("role", "group");
+        actions.setAttribute("aria-label", `Actions for ${candidate.label}`);
+        actions.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;";
+        for (const button of [inspect, choose]) button.style.cssText = "font:inherit;min-height:40px;padding:8px 12px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;";
+        const showAvailability = () => {
+          choose.style.opacity = choose.disabled ? "0.5" : "1";
+          choose.style.cursor = choose.disabled ? "default" : "pointer";
+        };
+        showAvailability();
         choose.addEventListener("click", async () => {
           if (!current() || this.pending) return;
           const controller = this.controller = new AbortController();
@@ -104,6 +116,7 @@ function explorerClass(tree) {
           status.textContent = "Changing Visualizer\u2026";
           row.append(status, cancel);
           choose.disabled = true;
+          showAvailability();
           try {
             await context.chooseVisualizerCandidate(candidate.visualizer, controller.signal);
           } catch (error) {
@@ -112,10 +125,14 @@ function explorerClass(tree) {
             this.pending = false;
             this.controller = void 0;
             cancel.remove();
-            if (current()) choose.disabled = false;
+            if (current()) {
+              choose.disabled = false;
+              showAvailability();
+            }
           }
         });
-        row.append(label, explanation, inspect, choose);
+        actions.append(inspect, choose);
+        row.append(label, explanation, actions);
         container.append(row);
         if (selected && tree) container.open = true;
       };

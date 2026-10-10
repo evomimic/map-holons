@@ -151,6 +151,11 @@ fn at_level(
             continue;
         }
         let assessment = assess(context, facts, &visualizer)?;
+        // Applicability declarations can offer several presentation kinds.
+        // Only types accepted by this actual slot enter its choice population.
+        if assessment == VisualizerAssessment::IncompatibleSlot {
+            continue;
+        }
         candidates.push(VisualizerCandidate {
             visualizer,
             declared_on: vec![descriptor.clone()],

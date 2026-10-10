@@ -44,6 +44,7 @@ export function explorerClass(tree) {
         const row = document.createElement('div'); row.dataset.discoveryCandidate = 'true';
         row.style.cssText = 'padding:8px;border-bottom:1px solid var(--dahn-slot-border-color);';
         const label = document.createElement('button'); label.type = 'button';
+        label.style.cssText = 'font:inherit;text-align:left;padding:4px 0;border:0;background:transparent;color:var(--dahn-canvas-text-color);cursor:pointer;';
         label.textContent = `${candidate.label}${candidate.current ? ' · Current' : ''}`;
         const selected = state.selected?.equals(candidate.visualizer) ?? false;
         label.setAttribute('aria-pressed', String(selected));
@@ -60,17 +61,23 @@ export function explorerClass(tree) {
         inspect.addEventListener('click', () => { if (current()) void showPreview(candidate); });
         const choose = document.createElement('button'); choose.type = 'button'; choose.textContent = 'Choose';
         choose.disabled = candidate.current || candidate.assessment !== 'viable' || !context.chooseVisualizerCandidate;
+        const actions = document.createElement('div'); actions.dataset.discoveryActions = 'true';
+        actions.setAttribute('role', 'group'); actions.setAttribute('aria-label', `Actions for ${candidate.label}`);
+        actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;';
+        for (const button of [inspect, choose]) button.style.cssText = 'font:inherit;min-height:40px;padding:8px 12px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;';
+        const showAvailability = () => { choose.style.opacity = choose.disabled ? '0.5' : '1'; choose.style.cursor = choose.disabled ? 'default' : 'pointer'; };
+        showAvailability();
         choose.addEventListener('click', async () => {
           if (!current() || this.pending) return;
           const controller = this.controller = new AbortController(); this.pending = true;
           const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel choice'; cancel.addEventListener('click', () => controller.abort());
           const status = document.createElement('p'); status.setAttribute('role', 'status'); status.textContent = 'Changing Visualizer…';
-          row.append(status, cancel); choose.disabled = true;
+          row.append(status, cancel); choose.disabled = true; showAvailability();
           try { await context.chooseVisualizerCandidate(candidate.visualizer, controller.signal); }
           catch (error) { if (current()) status.textContent = controller.signal.aborted ? 'Choice cancelled.' : `Unable to change Visualizer: ${error.message ?? error}`; }
-          finally { this.pending = false; this.controller = undefined; cancel.remove(); if (current()) choose.disabled = false; }
+          finally { this.pending = false; this.controller = undefined; cancel.remove(); if (current()) { choose.disabled = false; showAvailability(); } }
         });
-        row.append(label, explanation, inspect, choose); container.append(row);
+        actions.append(inspect, choose); row.append(label, explanation, actions); container.append(row);
         if (selected && tree) container.open = true;
       };
       for (const level of evidence.levels) {
