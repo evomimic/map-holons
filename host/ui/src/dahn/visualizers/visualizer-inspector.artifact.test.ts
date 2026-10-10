@@ -311,6 +311,7 @@ it('reports choice failure and restores the button for retry', async () => {
   await vi.waitFor(() => expect(element.querySelector('[data-visualizer-choice-progress]').textContent).toContain('Usage unavailable'));
   const status = element.querySelector('[data-visualizer-choice-progress]');
   expect(status.getAttribute('role')).toBe('alert');
+  expect(button.closest('li').contains(status)).toBe(true);
   expect(status.querySelector('progress')).toBeNull();
   expect(button.disabled).toBe(false); expect(button.textContent).toBe('Choose');
   button.click();

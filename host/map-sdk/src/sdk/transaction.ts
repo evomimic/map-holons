@@ -77,7 +77,13 @@ export interface VisualizerDiscovery {
   ancestry: readonly HolonReference[];
   stopReason: 'holon_type_boundary' | 'lineage_exhausted';
   /** Single-use projection of the authoritative result; release when unused. */
-  evidence?: { project(destination: MapTransaction): Promise<HolonReference>; dispose(): Promise<void> };
+  evidence?: {
+    /** Required projection context when captured references are transaction-local.
+     * Borrowed from the source owner; consumers must not dispose this transaction. */
+    readonly projectionTransaction?: MapTransaction;
+    project(destination: MapTransaction): Promise<HolonReference>;
+    dispose(): Promise<void>;
+  };
 
 }
 
@@ -521,9 +527,17 @@ export class MapTransaction {
     });
     const snapshot = result.snapshot;
     let released = false;
+    const capturedReferences = [request.subject, request.slot, request.theme,
+      'visualizer' in request.owner ? request.owner.visualizer : request.owner.dancer,
+      ...result.ancestry.map(reference => createHolonReference(txId, reference)),
+      ...(result.current_selection ? [result.current_selection.visualizer, ...result.current_selection.declared_on].map(reference => createHolonReference(txId, reference)) : []),
+      ...result.candidates.flatMap(candidate => [candidate.visualizer, ...candidate.declared_on]).map(reference => createHolonReference(txId, reference))];
+    const projectionTransaction = capturedReferences.some(reference => !('Smart' in unwrapHolonReference(reference))) ? this : undefined;
     const evidence = snapshot === null ? undefined : {
+      projectionTransaction,
       project: async (destination: MapTransaction) => {
         if (released) throw new Error('Discovery evidence has already been released or projected.');
+        if (projectionTransaction && txIdFor(destination) !== txId) throw new Error('Transaction-local discovery evidence must be projected in its source transaction.');
         released = true;
         try {
           const destinationId = txIdFor(destination);

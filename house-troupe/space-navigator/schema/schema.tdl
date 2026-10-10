@@ -167,21 +167,34 @@ instance VisualizerInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.visualizer-inspector"
-  VisualizerArtifactDigest "sha256:bc9471e3caedd33998b985ec1d922d0ecf8e014cd4dc945cbdd73e59b76102d9"
+  VisualizerArtifactDigest "sha256:89e373b26677dc286bdd66ae71d22f2b6bbc1f8082d4af186a506f5dad70ee21"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
+}
+
+// This owner's contract requires captured evidence, separate Inspect/Choose,
+// bounded allocation, initialization, dismissal, and a nested information action.
+holon DiscoveryExplorerVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends StructureVisualizer.HolonType
+  header {
+    description: "Structure Visualizer fulfilling the discovery explanation explorer participation contract."
+    display_name: "Discovery Explorer Visualizer"
+    display_plural: "Discovery Explorer Visualizers"
+    plural: "DiscoveryExplorerVisualizers"
+  }
 }
 
 instance VisualizerInspector.DiscoveryExplorerSlot {
   type VisualizerSlot.HolonType
   VisualizerSlotDescription "Explain the authoritative chain that identified the current Visualizer and its alternatives."
   relationships {
-    AcceptsVisualizerType -> StructureVisualizer.HolonType
+    AcceptsVisualizerType -> DiscoveryExplorerVisualizer.HolonType
   }
 }
 
 instance DiscoveryTree.StructureVisualizer {
-  type StructureVisualizer.HolonType
+  type DiscoveryExplorerVisualizer.HolonType
   DisplayName "Discovery Tree"
   VisualizerDescription "Groups candidate declarations by the descriptor levels Rust visited."
   relationships {
@@ -199,7 +212,7 @@ instance DiscoveryTreeTypeScript.VisualizerImplementation {
 }
 
 instance DiscoveryLevels.StructureVisualizer {
-  type StructureVisualizer.HolonType
+  type DiscoveryExplorerVisualizer.HolonType
   DisplayName "Discovery Level List"
   VisualizerDescription "Lists descriptor levels and candidate declarations in traversal order."
   relationships {

@@ -158,3 +158,17 @@ it('refreshes only explicitly, preserves surviving selection and invalidates an 
   expect(f.evidenceTx.selectVisualizerUsage).not.toHaveBeenCalled();
   expect(f.discovery.evidence.dispose).toHaveBeenCalledOnce(); f.owner.dispose();
 });
+
+it('projects nested evidence in its borrowed source transaction and leaves its lifecycle to the parent', async () => {
+  const f = fixture();
+  Object.assign(f.discovery.evidence, { projectionTransaction: f.evidenceTx });
+  f.client.beginTransaction.mockImplementation(async () => {
+    const tx = { dispose: vi.fn(async () => {}), bindSavedReference: (ref: any) => ref };
+    f.presentations.push(tx); return tx as any;
+  });
+  await f.owner.mount(f.host, {});
+  expect(f.discovery.evidence.project).toHaveBeenCalledWith(f.evidenceTx);
+  f.owner.dispose();
+  await vi.waitFor(() => expect(f.presentations[0].dispose).toHaveBeenCalledOnce());
+  expect(f.evidenceTx.dispose).not.toHaveBeenCalled();
+});

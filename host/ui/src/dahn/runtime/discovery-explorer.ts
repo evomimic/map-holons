@@ -55,6 +55,7 @@ export class DiscoveryExplorerOwner {
   readonly state: DiscoveryExplorerState = {};
   private disposed = false;
   private evidenceTransaction?: MapTransaction;
+  private ownsEvidenceTransaction = false;
   private subject?: HolonReference;
   private slot?: HolonReference;
   private selected?: HolonReference;
@@ -87,7 +88,8 @@ export class DiscoveryExplorerOwner {
   private initialize(): Promise<void> {
     return this.initialization ??= this.track((async () => {
       if (!this.discovery.evidence) throw new Error('This discovery result has no retained authoritative evidence. Refresh its alternatives.');
-      const transaction = this.evidenceTransaction = await this.client.beginTransaction();
+      this.ownsEvidenceTransaction = !this.discovery.evidence.projectionTransaction;
+      const transaction = this.evidenceTransaction = this.discovery.evidence.projectionTransaction ?? await this.client.beginTransaction();
       if (this.disposed) return;
       this.subject = await this.discovery.evidence.project(transaction);
       this.evidence = await readDiscoveryPresentation(this.subject);
@@ -205,7 +207,7 @@ export class DiscoveryExplorerOwner {
     this.suspend();
     await Promise.allSettled([...this.pending]);
     const previous = this.selected;
-    await Promise.allSettled([this.discovery.evidence?.dispose(), this.evidenceTransaction?.dispose()]);
+    await Promise.allSettled([this.discovery.evidence?.dispose(), this.ownsEvidenceTransaction ? this.evidenceTransaction?.dispose() : undefined]);
     this.discovery = discovery;
     this.initialization = undefined; this.evidenceTransaction = undefined;
     if (this.disposed) return;
@@ -234,7 +236,7 @@ export class DiscoveryExplorerOwner {
     this.disposed = true; ++this.generation; this.callbacks = undefined;
     void (async () => {
       await Promise.allSettled([...this.pending]);
-      await Promise.allSettled([this.releaseMounted(), this.discovery.evidence?.dispose(), this.evidenceTransaction?.dispose()]);
+      await Promise.allSettled([this.releaseMounted(), this.discovery.evidence?.dispose(), this.ownsEvidenceTransaction ? this.evidenceTransaction?.dispose() : undefined]);
       this.evidence = undefined; this.subject = undefined;
     })().catch(error => console.warn('[DAHN] Inspector resource release failed', error));
   }

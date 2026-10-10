@@ -220,6 +220,7 @@ export default class VisualizerInspector extends HTMLElement {
             indicator.style.cssText = 'width:100%;height:6px;accent-color:var(--dahn-action-text-color);';
             const message = document.createElement('span'); message.textContent = `Changing to ${name}…`;
             status.dataset.visualizerChoiceProgress = 'true'; status.setAttribute('role', 'status');
+            row.append(status);
             status.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
             status.replaceChildren(message, indicator, cancel);
             try {

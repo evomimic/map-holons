@@ -123,8 +123,9 @@ it('binds independently committed usage and reports explicit versus exploratory 
 it('projects retained evidence into its destination once without repeating discovery and releases unused snapshots', async () => {
   release.mockResolvedValue(undefined);
   const tx = createMapTransaction(41), destination = createMapTransaction(42);
-  const request = { subject: createHolonReference(41, subject), requestedKind: 'structure' as const,
-    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  const saved: HolonReferenceWire = { Smart: { holon_id: { Local: [8] }, smart_property_values: null } };
+  const request = { subject: createHolonReference(41, saved), requestedKind: 'structure' as const,
+    owner: { visualizer: createHolonReference(41, saved) }, slot: createHolonReference(41, saved), theme: createHolonReference(41, saved) };
   discover.mockResolvedValue({ candidates: [], current_selection: null, ancestry: [], stop_reason: 'lineage_exhausted', snapshot: 'captured' });
   const evidence = (await tx.discoverVisualizers(request, undefined, true)).evidence!;
   project.mockResolvedValue({ Transient: { tx_id: 42, id: '00000000-0000-0000-0000-000000000001' } });
@@ -154,4 +155,17 @@ it('finds existing usage without initializing it and binds its saved reference',
   expect(unwrapHolonReference(result!.usage)).toEqual(selected);
   expect(result!.initialized).toBe(false);
   expect(result!.reportSession).toBe('session');
+});
+
+it('keeps transaction-local discovery projection in its live source context', async () => {
+  const tx = createMapTransaction(41), other = createMapTransaction(42);
+  const request = { subject: createHolonReference(41, subject), requestedKind: 'structure' as const,
+    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  discover.mockResolvedValue({ candidates: [], current_selection: null, ancestry: [], stop_reason: 'lineage_exhausted', snapshot: 'nested' });
+  const evidence = (await tx.discoverVisualizers(request, undefined, true)).evidence!;
+  expect(evidence.projectionTransaction).toBe(tx);
+  await expect(evidence.project(other)).rejects.toThrow('source transaction');
+  project.mockResolvedValue(subject);
+  expect(tx.owns(await evidence.project(tx))).toBe(true);
+  expect(project).toHaveBeenLastCalledWith(41, 'nested');
 });

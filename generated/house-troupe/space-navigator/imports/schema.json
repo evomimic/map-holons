@@ -429,11 +429,40 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:bc9471e3caedd33998b985ec1d922d0ecf8e014cd4dc945cbdd73e59b76102d9",
+        "VisualizerArtifactDigest": "sha256:89e373b26677dc286bdd66ae71d22f2b6bbc1f8082d4af186a506f5dad70ee21",
         "VisualizerImplementationKey": "dahn.visualizer-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
+    },
+    {
+      "key": "DiscoveryExplorerVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "DiscoveryExplorerVisualizer",
+        "TypeNamePlural": "DiscoveryExplorerVisualizers",
+        "DisplayName": "Discovery Explorer Visualizer",
+        "DisplayNamePlural": "Discovery Explorer Visualizers",
+        "Description": "Structure Visualizer fulfilling the discovery explanation explorer participation contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "StructureVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Space Navigator Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
     },
     {
       "key": "VisualizerInspector.DiscoveryExplorerSlot",
@@ -446,7 +475,7 @@
           "name": "AcceptsVisualizerType",
           "target": [
             {
-              "$ref": "StructureVisualizer.HolonType"
+              "$ref": "DiscoveryExplorerVisualizer.HolonType"
             }
           ]
         }
@@ -454,7 +483,7 @@
     },
     {
       "key": "DiscoveryTree.StructureVisualizer",
-      "type": "StructureVisualizer.HolonType",
+      "type": "DiscoveryExplorerVisualizer.HolonType",
       "properties": {
         "DisplayName": "Discovery Tree",
         "VisualizerDescription": "Groups candidate declarations by the descriptor levels Rust visited."
@@ -491,7 +520,7 @@
     },
     {
       "key": "DiscoveryLevels.StructureVisualizer",
-      "type": "StructureVisualizer.HolonType",
+      "type": "DiscoveryExplorerVisualizer.HolonType",
       "properties": {
         "DisplayName": "Discovery Level List",
         "VisualizerDescription": "Lists descriptor levels and candidate declarations in traversal order."

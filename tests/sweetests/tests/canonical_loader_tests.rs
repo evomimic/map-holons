@@ -948,6 +948,49 @@ async fn discovery_explanation_reads_existing_usage_without_committing() {
             "Opening the explanation must not initialize a saved usage"
         );
     }
+    // The discovery subject is transient: its recursive explanation must stay
+    // in the owning semantic context rather than cross a transaction boundary.
+    let MapResult::VisualizerDiscovery(nested) = command(
+        &runtime,
+        &destination,
+        TransactionAction::DiscoverVisualizers {
+            request: request.clone(),
+            current_selection: Some(selected.selected.clone()),
+            retain_evidence: true,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("nested discovery")
+    };
+    assert_eq!(nested.candidates.len(), 2, "Only discovery explorer participants are eligible");
+    assert!(nested.candidates.iter().all(
+        |candidate| candidate.assessment == map_commands_contract::VisualizerAssessment::Viable
+    ));
+    assert!(
+        command(
+            &runtime,
+            &destination,
+            TransactionAction::ChooseVisualizer {
+                request: request.clone(),
+                candidate: saved("PathInspector.RootedNavigationVisualizer"),
+            }
+        )
+        .await
+        .is_err(),
+        "Rooted navigation cannot fulfill the discovery explorer contract"
+    );
+    let MapResult::Reference(nested_subject) = command(
+        &runtime,
+        &destination,
+        TransactionAction::ProjectVisualizerDiscovery { snapshot: nested.snapshot.unwrap() },
+    )
+    .await
+    .unwrap() else {
+        panic!("nested projection")
+    };
+    let subjects = nested_subject.related_holons("DiscoverySubject").unwrap();
+    assert_eq!(subjects.read().unwrap().get_by_index(0).unwrap(), request.subject);
     command(&runtime, &destination, TransactionAction::Dispose).await.unwrap();
     command(&runtime, &context, TransactionAction::Dispose).await.unwrap();
 }
