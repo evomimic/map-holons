@@ -147,6 +147,7 @@ export class Theme {
     }
 
     return Object.freeze({
+      reference: this.holon,
       themeKey,
       themeVersionedKey,
       metaDesignSystemKey,

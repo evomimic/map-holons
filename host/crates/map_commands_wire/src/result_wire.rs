@@ -39,6 +39,7 @@ pub enum MapResultWire {
     Reference(HolonReferenceWire),
 
     VisualizerSelection(VisualizerSelectionWire),
+    VisualizerDiscovery(VisualizerDiscoveryWire),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
@@ -123,6 +124,19 @@ impl From<MapResult> for MapResultWire {
                     alternatives_available: selection.alternatives_available,
                 })
             }
+            MapResult::VisualizerDiscovery(discovery) => {
+                MapResultWire::VisualizerDiscovery(VisualizerDiscoveryWire {
+                    candidates: discovery
+                        .candidates
+                        .into_iter()
+                        .map(VisualizerCandidateWire::from)
+                        .collect(),
+                    current_selection: discovery
+                        .current_selection
+                        .map(VisualizerCandidateWire::from),
+                    ancestry: discovery.ancestry.iter().map(HolonReferenceWire::from).collect(),
+                })
+            }
             MapResult::References(refs) => {
                 MapResultWire::References(refs.iter().map(HolonReferenceWire::from).collect())
             }
@@ -198,4 +212,43 @@ mod tests {
 pub struct DescribedHolonCollectionWire {
     pub members: HolonCollectionWire,
     pub element_type: HolonReferenceWire,
+}
+
+/// Wire projection; these types never enter selector execution.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerCandidateWire {
+    pub visualizer: HolonReferenceWire,
+    pub declared_on: Vec<HolonReferenceWire>,
+    pub assessment: VisualizerAssessmentWire,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VisualizerAssessmentWire {
+    Viable,
+    IncompatibleSlot,
+    IncompatibleTheme,
+    ImplementationUnavailable,
+    NoLongerApplicable,
+}
+impl From<map_commands_contract::VisualizerCandidate> for VisualizerCandidateWire {
+    fn from(candidate: map_commands_contract::VisualizerCandidate) -> Self {
+        use map_commands_contract::VisualizerAssessment as A;
+        Self {
+            visualizer: HolonReferenceWire::from(&candidate.visualizer),
+            declared_on: candidate.declared_on.iter().map(HolonReferenceWire::from).collect(),
+            assessment: match candidate.assessment {
+                A::Viable => VisualizerAssessmentWire::Viable,
+                A::IncompatibleSlot => VisualizerAssessmentWire::IncompatibleSlot,
+                A::IncompatibleTheme => VisualizerAssessmentWire::IncompatibleTheme,
+                A::ImplementationUnavailable => VisualizerAssessmentWire::ImplementationUnavailable,
+                A::NoLongerApplicable => VisualizerAssessmentWire::NoLongerApplicable,
+            },
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerDiscoveryWire {
+    pub candidates: Vec<VisualizerCandidateWire>,
+    pub current_selection: Option<VisualizerCandidateWire>,
+    pub ancestry: Vec<HolonReferenceWire>,
 }

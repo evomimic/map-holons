@@ -36,6 +36,29 @@ impl DahnMaterializer {
         Self { artifact_root, issued_artifacts: Arc::new(Mutex::new(HashMap::new())) }
     }
 
+    /// Checks the existing local catalog and artifact presence without reading code or issuing a handle.
+    pub fn is_available(&self, visualizer: &HolonReference) -> Result<bool, HolonError> {
+        let key = visualizer
+            .key()?
+            .ok_or_else(|| HolonError::InvalidParameter("Visualizer has no stable key".into()))?;
+        self.artifact_available(&key)
+    }
+
+    fn artifact_available(&self, key: &MapString) -> Result<bool, HolonError> {
+        let path = match self.artifact_for(key) {
+            Ok(path) => path,
+            Err(HolonError::NotImplemented(_)) => return Ok(false),
+            Err(error) => return Err(error),
+        };
+        match fs::metadata(path) {
+            Ok(metadata) => Ok(metadata.is_file()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(error) => {
+                Err(HolonError::Misc(format!("Visualizer availability lookup failed: {error}")))
+            }
+        }
+    }
+
     pub fn development_default() -> Self {
         Self::new(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -248,6 +271,25 @@ mod tests {
     use super::{consume_issued_artifact, DahnMaterializer, IssuedArtifact};
     use base_types::{MapBytes, MapString};
     use std::collections::HashMap;
+
+    #[test]
+    fn availability_checks_catalog_and_regular_file_without_verifying_or_issuing() {
+        let root = std::env::temp_dir().join(format!("dahn-availability-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let materializer = DahnMaterializer::new(root.clone());
+        let key = MapString::from("HolonInspector.NodeVisualizer");
+        assert!(!materializer.artifact_available(&key).unwrap());
+        let artifact = root.join("holon-inspector.js");
+        std::fs::create_dir(&artifact).unwrap();
+        assert!(!materializer.artifact_available(&key).unwrap());
+        std::fs::remove_dir(&artifact).unwrap();
+        // Deliberately invalid code: presence is not execution or digest verification.
+        std::fs::write(&artifact, b"not executable JavaScript").unwrap();
+        assert!(materializer.artifact_available(&key).unwrap());
+        assert!(!materializer.artifact_available(&MapString::from("Unknown.Visualizer")).unwrap());
+        assert!(materializer.issued_artifacts.lock().unwrap().is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn resolves_local_artifacts_from_visualizer_semantic_keys() {

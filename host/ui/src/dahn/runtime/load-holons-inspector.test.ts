@@ -25,7 +25,7 @@ it('integrates occurrence controls in one header and retains the rail during ver
   expect(extents.horizontal['full-width']).toBe(800);
   expect(extents.vertical['full-height']).toBeGreaterThanOrEqual(64 + 360 + 12 + node.collectionHeight);
   expect(extents.horizontal['partial-width']).toBe(240);
-  expect(extents.horizontal['minimal-width']).toBe(64);
+  expect(extents.horizontal['minimal-width']).toBe(96);
   node.setNodeInspectorAllocation({ horizontal: 'full-width', vertical: 'partial-height', width: 900, height: 350 });
   expect(node.body.hidden).toBe(false); expect(node.properties.hidden).toBe(true); expect(node.collections.hidden).toBe(false);
   expect(node.rail.closest('[hidden]')).toBeNull();

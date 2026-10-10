@@ -1,0 +1,46 @@
+{
+  "request_id": 150,
+  "result": {
+    "Ok": {
+      "VisualizerDiscovery": {
+        "candidates": [
+          {
+            "visualizer": {
+              "Staged": {
+                "tx_id": 41,
+                "id": "22222222-2222-2222-2222-222222222222"
+              }
+            },
+            "declared_on": [
+              {
+                "Staged": {
+                  "tx_id": 41,
+                  "id": "11111111-1111-1111-1111-111111111111"
+                }
+              }
+            ],
+            "assessment": "viable"
+          }
+        ],
+        "current_selection": {
+          "visualizer": {
+            "Staged": {
+              "tx_id": 41,
+              "id": "11111111-1111-1111-1111-111111111111"
+            }
+          },
+          "declared_on": [],
+          "assessment": "no_longer_applicable"
+        },
+        "ancestry": [
+          {
+            "Staged": {
+              "tx_id": 41,
+              "id": "11111111-1111-1111-1111-111111111111"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

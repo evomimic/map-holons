@@ -1187,7 +1187,26 @@ async fn verify_book_value_presentation(
                         request: VisualizerSelectionRequest {
                             subject,
                             requested_kind: kind,
-                            parent_visualizer: parent,
+                            owner: map_commands_contract::VisualizerOwner::Visualizer(
+                                parent.unwrap_or_else(|| {
+                                    HolonReference::Smart(
+                                        context
+                                            .lookup()
+                                            .get_saved_holon_by_key(&MapString::from(
+                                                "PathInspector.RootedNavigationVisualizer",
+                                            ))
+                                            .expect("navigation owner"),
+                                    )
+                                }),
+                            ),
+                            theme: HolonReference::Smart(
+                                context
+                                    .lookup()
+                                    .get_saved_holon_by_key(&MapString::from(
+                                        "Demo1.DeepOceanTheme",
+                                    ))
+                                    .expect("active Theme"),
+                            ),
                             slot,
                         },
                     },

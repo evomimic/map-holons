@@ -34,6 +34,67 @@ use uuid::Uuid;
 fn generate_fixtures() {
     let fixtures_dir = fixtures_dir();
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
+    let selection_request = map_commands_wire::VisualizerSelectionRequestWire {
+        subject: staged_reference(41, uuid_a()),
+        requested_kind: map_commands_wire::VisualizerKindWire::Node,
+        owner: map_commands_wire::VisualizerOwnerWire::Dancer(staged_reference(41, uuid_b())),
+        slot: staged_reference(41, uuid_b()),
+        theme: staged_reference(41, uuid_a()),
+    };
+    for (name, action) in [
+        (
+            "request-select-visualizer.json",
+            TransactionActionWire::SelectVisualizer(selection_request.clone()),
+        ),
+        (
+            "request-discover-visualizers.json",
+            TransactionActionWire::DiscoverVisualizers {
+                request: selection_request.clone(),
+                current_selection: None,
+            },
+        ),
+        (
+            "request-choose-visualizer.json",
+            TransactionActionWire::ChooseVisualizer {
+                request: selection_request,
+                candidate: staged_reference(41, uuid_b()),
+            },
+        ),
+    ] {
+        write_fixture(
+            &fixtures_dir,
+            name,
+            &request(
+                150,
+                MapCommandWire::Transaction(TransactionCommandWire {
+                    tx_id: TxId::from_str("41").unwrap(),
+                    action,
+                }),
+                default_options(),
+            ),
+        );
+    }
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-visualizer-discovery.json",
+        &response(
+            150,
+            Ok(MapResultWire::VisualizerDiscovery(map_commands_wire::VisualizerDiscoveryWire {
+                candidates: vec![map_commands_wire::VisualizerCandidateWire {
+                    visualizer: staged_reference(41, uuid_b()),
+                    declared_on: vec![staged_reference(41, uuid_a())],
+                    assessment: map_commands_wire::VisualizerAssessmentWire::Viable,
+                }],
+                current_selection: Some(map_commands_wire::VisualizerCandidateWire {
+                    visualizer: staged_reference(41, uuid_a()),
+                    declared_on: vec![],
+                    assessment: map_commands_wire::VisualizerAssessmentWire::NoLongerApplicable,
+                }),
+                ancestry: vec![staged_reference(41, uuid_a())],
+            })),
+        ),
+    );
+
     write_fixture(
         &fixtures_dir,
         "request-committed-holons.json",

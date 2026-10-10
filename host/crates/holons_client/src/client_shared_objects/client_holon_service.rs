@@ -470,6 +470,14 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
+    fn visualizer_artifact_available_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+    ) -> Result<bool, HolonError> {
+        self.dahn_materializer.is_available(visualizer)
+    }
+
     fn materialize_visualizer_internal(
         &self,
         context: &Arc<TransactionContext>,

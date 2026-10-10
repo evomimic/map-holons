@@ -137,23 +137,57 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             "UnsupportedAction.ActionVisualizer",
         ),
     ] {
+        let selection_request = || map_commands_contract::VisualizerSelectionRequest {
+            subject: subject.clone(),
+            requested_kind: kind,
+            owner: map_commands_contract::VisualizerOwner::Visualizer(saved(parent)),
+            theme: saved("Demo1.DeepOceanTheme"),
+            slot: saved(slot),
+        };
         let MapResult::VisualizerSelection(selection) = command(
             &runtime,
             &context,
-            TransactionAction::SelectVisualizer {
-                request: map_commands_contract::VisualizerSelectionRequest {
-                    subject,
-                    requested_kind: kind,
-                    parent_visualizer: Some(saved(parent)),
-                    slot: saved(slot),
-                },
-            },
+            TransactionAction::SelectVisualizer { request: selection_request() },
         )
         .await
         .unwrap() else {
             panic!("selection")
         };
         assert_eq!(selection.selected.holon_id().unwrap(), saved(expected).holon_id().unwrap());
+        let MapResult::VisualizerDiscovery(discovery) = command(
+            &runtime,
+            &context,
+            TransactionAction::DiscoverVisualizers {
+                request: selection_request(),
+                current_selection: Some(selection.selected.clone()),
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("discovery")
+        };
+        assert_eq!(
+            discovery.current_selection.unwrap().assessment,
+            map_commands_contract::VisualizerAssessment::Viable
+        );
+        assert!(discovery
+            .candidates
+            .iter()
+            .any(|candidate| candidate.visualizer == selection.selected
+                && !candidate.declared_on.is_empty()));
+        let MapResult::VisualizerSelection(explicit) = command(
+            &runtime,
+            &context,
+            TransactionAction::ChooseVisualizer {
+                request: selection_request(),
+                candidate: selection.selected.clone(),
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("explicit choice")
+        };
+        assert_eq!(explicit.selected, selection.selected);
     }
     // Assert the authored forward edge and its committed inverse at the consuming seam.
     let load_visualizer = saved("LoadHolons.ActionVisualizer");

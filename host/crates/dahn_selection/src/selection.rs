@@ -1,10 +1,10 @@
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::descriptors::{equals_or_extends, walk_extends_chain, PropertyDescriptor};
+use holons_core::descriptors::{equals_or_extends, walk_extends_chain};
 use holons_core::reference_layer::{HolonReference, ReadableHolon};
 use holons_core::Descriptor;
-use map_commands_contract::{VisualizerKind, VisualizerSelection, VisualizerSelectionRequest};
+use map_commands_contract::{VisualizerKind, VisualizerSelection};
 use std::sync::Arc;
 use type_names::{DahnRelationshipTypeName, DancerRelationshipTypeName};
 
@@ -192,54 +192,6 @@ fn select_canvas_visualizer(
     let visualizer = context.lookup().get_saved_holon_by_key(&MapString::from(visualizer_key))?;
 
     Ok(RuntimeCanvasVisualizer { canvas, visualizer: HolonReference::Smart(visualizer) })
-}
-
-/// Resolves a visualization request through the DAHN Selector Function.
-///
-/// The current implementation is a deterministic bootstrap policy for the
-/// request kinds supported by the initial DAHN slice. It must not be read as a permanent
-/// one-Visualizer-per-kind registry: future policy will choose among multiple
-/// candidates using richer subjects, Slot context, and runtime information.
-///
-/// The subject is intentionally read at this boundary even though the current
-/// policy does not score its descriptor. This reserves semantic selection for
-/// Rust; TypeScript only instantiates the Visualizer Rust selected.
-pub fn select_visualizer(
-    _context: &Arc<TransactionContext>,
-    request: VisualizerSelectionRequest,
-) -> Result<VisualizerSelection, HolonError> {
-    let VisualizerSelectionRequest { subject, requested_kind, parent_visualizer, slot } = request;
-    if let Some(parent) = parent_visualizer {
-        let slots = parent.related_holons(DahnRelationshipTypeName::HasSlot)?;
-        if !slots
-            .read()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-            .get_members()
-            .iter()
-            .any(|owned| owned.reference_id_string() == slot.reference_id_string())
-        {
-            return Err(HolonError::InvalidParameter(
-                "Requested slot does not belong to parent Visualizer".into(),
-            ));
-        }
-    }
-    let descriptor = match requested_kind {
-        VisualizerKind::Property | VisualizerKind::Action => subject,
-        VisualizerKind::Value => {
-            PropertyDescriptor::from_holon(subject).value_type()?.holon().clone()
-        }
-        VisualizerKind::Node
-        | VisualizerKind::PropertyMap
-        | VisualizerKind::ActionBar
-        | VisualizerKind::RootedNavigation => subject.holon_descriptor()?.holon().clone(),
-        _ => {
-            return Err(HolonError::InvalidParameter(
-                "Use the dedicated Canvas or Collection selection contract".into(),
-            ))
-        }
-    };
-    let selected = select_for_slot(descriptor, &slot)?;
-    Ok(VisualizerSelection { selected, requested_kind, alternatives_available: false })
 }
 
 /// Select at the nearest compatible level, including a generic HolonType default.

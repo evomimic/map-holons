@@ -15,7 +15,7 @@ export function configureColumnValueVisualizers(
   element: CollectionInteractionElement, transaction: MapTransaction,
   subject: HolonReference | DescribedHolonCollection,
   selectedTable: HolonReference, materialized: MaterializedVisualizerRuntime,
-  current: () => boolean, context?: Pick<VisualizerContext, 'theme' | 'canvas'>,
+  current: () => boolean, context?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
 ): void {
   let slot: Promise<HolonReference> | undefined;
   const requireCurrent = () => { if (!current()) throw new Error('Column presentation was superseded.'); };
@@ -23,7 +23,8 @@ export function configureColumnValueVisualizers(
     const propertyName = await property.propertyName();
     const valueSlot = await (slot ??= materialized.slot(selectedTable, 'value'));
     requireCurrent();
-    const selection = await transaction.selectValueVisualizer(property, selectedTable, valueSlot);
+    if (!context?.theme) throw new Error('Column selection requires the active semantic Theme.');
+    const selection = await transaction.selectValueVisualizer(property, selectedTable, valueSlot, context.theme.reference);
     requireCurrent();
     const implementation = await materialized.realize(selection.selected);
     requireCurrent();

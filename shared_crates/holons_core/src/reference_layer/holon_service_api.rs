@@ -102,6 +102,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError>;
 
+    /// Read-only local artifact availability. Does not verify or issue executable capabilities.
+    fn visualizer_artifact_available_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _visualizer: &HolonReference,
+    ) -> Result<bool, HolonError> {
+        Ok(false)
+    }
+
     /// Materializes the executable artifact for a selected Visualizer.
     ///
     /// A Host-Authoritative service may satisfy this locally; a service whose

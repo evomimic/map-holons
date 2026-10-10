@@ -10,7 +10,8 @@ use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use serde::{Deserialize, Serialize};
 
 use map_commands_contract::{
-    TransactionAction, TransactionCommand, VisualizerKind, VisualizerSelectionRequest,
+    TransactionAction, TransactionCommand, VisualizerKind, VisualizerOwner,
+    VisualizerSelectionRequest,
 };
 
 /// Transaction-scoped wire command.
@@ -77,6 +78,14 @@ pub enum TransactionActionWire {
     },
 
     SelectVisualizer(VisualizerSelectionRequestWire),
+    DiscoverVisualizers {
+        request: VisualizerSelectionRequestWire,
+        current_selection: Option<HolonReferenceWire>,
+    },
+    ChooseVisualizer {
+        request: VisualizerSelectionRequestWire,
+        candidate: HolonReferenceWire,
+    },
     SelectCollectionVisualizer {
         collection: crate::DescribedHolonCollectionWire,
         parent_visualizer: HolonReferenceWire,
@@ -192,9 +201,35 @@ pub enum VisualizerKindWire {
 pub struct VisualizerSelectionRequestWire {
     pub subject: HolonReferenceWire,
     pub requested_kind: VisualizerKindWire,
-    #[serde(default)]
-    pub parent_visualizer: Option<HolonReferenceWire>,
+    pub owner: VisualizerOwnerWire,
     pub slot: HolonReferenceWire,
+    pub theme: HolonReferenceWire,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum VisualizerOwnerWire {
+    Visualizer(HolonReferenceWire),
+    Dancer(HolonReferenceWire),
+}
+
+impl VisualizerSelectionRequestWire {
+    pub fn bind(
+        self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<VisualizerSelectionRequest, HolonError> {
+        Ok(VisualizerSelectionRequest {
+            subject: self.subject.bind(context)?,
+            requested_kind: self.requested_kind.into(),
+            owner: match self.owner {
+                VisualizerOwnerWire::Visualizer(owner) => {
+                    VisualizerOwner::Visualizer(owner.bind(context)?)
+                }
+                VisualizerOwnerWire::Dancer(owner) => VisualizerOwner::Dancer(owner.bind(context)?),
+            },
+            slot: self.slot.bind(context)?,
+            theme: self.theme.bind(context)?,
+        })
+    }
 }
 
 impl From<VisualizerKindWire> for VisualizerKind {
@@ -283,16 +318,20 @@ impl TransactionActionWire {
                 slot: slot.bind(context)?,
             }),
             TransactionActionWire::SelectVisualizer(request) => {
-                Ok(TransactionAction::SelectVisualizer {
-                    request: VisualizerSelectionRequest {
-                        subject: request.subject.bind(context)?,
-                        slot: request.slot.bind(context)?,
-                        requested_kind: request.requested_kind.into(),
-                        parent_visualizer: request
-                            .parent_visualizer
-                            .map(|parent| parent.bind(context))
-                            .transpose()?,
-                    },
+                Ok(TransactionAction::SelectVisualizer { request: request.bind(context)? })
+            }
+            TransactionActionWire::DiscoverVisualizers { request, current_selection } => {
+                Ok(TransactionAction::DiscoverVisualizers {
+                    request: request.bind(context)?,
+                    current_selection: current_selection
+                        .map(|value| value.bind(context))
+                        .transpose()?,
+                })
+            }
+            TransactionActionWire::ChooseVisualizer { request, candidate } => {
+                Ok(TransactionAction::ChooseVisualizer {
+                    request: request.bind(context)?,
+                    candidate: candidate.bind(context)?,
                 })
             }
             TransactionActionWire::FetchArtifact { handle } => {

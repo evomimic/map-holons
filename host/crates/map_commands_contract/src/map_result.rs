@@ -51,7 +51,9 @@ pub enum MapResult {
     RedoToMarkerComplete,
 
     /// Returns a new transaction id (from BeginTransaction).
-    TransactionCreated { tx_id: TxId },
+    TransactionCreated {
+        tx_id: TxId,
+    },
 
     /// Returns a holon reference.
     Reference(HolonReference),
@@ -59,6 +61,7 @@ pub enum MapResult {
     /// Semantic DAHN selection. The references identify Visualizer holons;
     /// executable artifacts are deliberately absent from this result.
     VisualizerSelection(VisualizerSelection),
+    VisualizerDiscovery(super::VisualizerDiscovery),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///

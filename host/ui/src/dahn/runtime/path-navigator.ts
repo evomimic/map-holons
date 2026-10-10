@@ -52,6 +52,7 @@ export class PathNavigator implements PathNavigation {
     subject: HolonReference,
     selectedVisualizer: HolonReference,
     private readonly nodeSlot: HolonReference,
+    private readonly selectionTheme: () => HolonReference,
     private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void) => Promise<RealizedNode>,
     private readonly openExploration?: (anchor: HolonReference) => void,
     private readonly contextFor: (subject: HolonReference) => MapTransaction = () => transaction,
@@ -438,7 +439,7 @@ export class PathNavigator implements PathNavigation {
         if (!current()) return;
         await work.realize(async () => {
           if (!current()) return;
-          const selection = await this.contextFor(intent.reference).selectVisualizer({ subject: intent.reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
+          const selection = await this.contextFor(intent.reference).selectVisualizer({ subject: intent.reference, requestedKind: 'node', slot: this.nodeSlot, owner: { visualizer: this.parentVisualizer }, theme: this.selectionTheme() });
           if (!current()) return;
           candidate = await this.realize(intent.reference, selection.selected);
           if (!current()) { candidate.collectionActivation.dispose(); return; }
@@ -552,7 +553,7 @@ export class PathNavigator implements PathNavigation {
         await work.realize(async () => {
           if (!current()) return;
           profile?.next('select node');
-          const selection = await this.contextFor(reference).selectVisualizer({ subject: reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
+          const selection = await this.contextFor(reference).selectVisualizer({ subject: reference, requestedKind: 'node', slot: this.nodeSlot, owner: { visualizer: this.parentVisualizer }, theme: this.selectionTheme() });
           if (!current()) return;
           candidate = await this.realize(reference, selection.selected, stage => profile?.next(stage));
           if (!current()) { candidate.collectionActivation.dispose(); return; }

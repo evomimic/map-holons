@@ -175,8 +175,8 @@ export default class HolonInspectorElement extends HTMLElement {
     const { title, gap, collection, body } = this.inspectorHeightParts();
     const partial = title + gap + collection;
     return {
-      vertical: { 'full-height': this.fullHeight = Math.max(this.fullHeight ?? partial + gap + body, partial), 'partial-height': partial, 'minimal-height': 48 },
-      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 64 },
+      vertical: { 'full-height': this.fullHeight = Math.max(this.fullHeight ?? partial + gap + body, partial), 'partial-height': partial, 'minimal-height': 64 },
+      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 96 },
     };
   }
   setNodeInspectorAllocation(allocation) {
@@ -260,12 +260,11 @@ export default class HolonInspectorElement extends HTMLElement {
     probe.remove();
     for (const control of controls) {
       control.style.fontSize = control === this.titleControl
-        && this.horizontalState === 'minimal-width' && this.verticalState === 'minimal-height'
+        && compressed
         ? 'var(--dahn-canvas-font-size)' : 'inherit';
       if (!compressed || !control.clientWidth || !control.clientHeight) continue;
       const normal = parseFloat(getComputedStyle(control).fontSize) || minimum;
-      const vertical = getComputedStyle(control).writingMode.startsWith('vertical');
-      const fits = () => vertical ? control.scrollHeight <= control.clientHeight : control.scrollWidth <= control.clientWidth;
+      const fits = () => control.scrollHeight <= control.clientHeight && control.scrollWidth <= control.clientWidth;
       let size = Math.max(minimum, normal);
       control.style.fontSize = `${size}px`;
       while (!fits() && size > minimum) {

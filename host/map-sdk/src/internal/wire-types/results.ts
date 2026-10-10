@@ -81,6 +81,7 @@ export type MapResultWire =
   | { TransactionCreated: { tx_id: number } }
   | { Reference: HolonReferenceWire }
   | { VisualizerSelection: VisualizerSelectionWire }
+  | { VisualizerDiscovery: VisualizerDiscoveryWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { DescribedCollection: DescribedHolonCollectionWire }
@@ -111,6 +112,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
         (Number.isSafeInteger(value.EffectiveCardinality['maximum']) && (value.EffectiveCardinality['maximum'] as number) >= (value.EffectiveCardinality['minimum'] as number)))) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
     (hasSingleKey(value, 'VisualizerSelection') && isVisualizerSelectionWire(value.VisualizerSelection)) ||
+    (hasSingleKey(value, 'VisualizerDiscovery') && isVisualizerDiscoveryWire(value.VisualizerDiscovery)) ||
     (hasSingleKey(value, 'References') &&
       Array.isArray(value.References) &&
       value.References.every(isHolonReferenceWire)) ||
@@ -126,4 +128,26 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
     (hasSingleKey(value, 'DanceResponse') &&
       isDanceResponseWire(value.DanceResponse))
   );
+}
+
+export type VisualizerAssessmentWire = 'viable' | 'incompatible_slot' | 'incompatible_theme' | 'implementation_unavailable' | 'no_longer_applicable';
+export interface VisualizerCandidateWire {
+  visualizer: HolonReferenceWire;
+  declared_on: HolonReferenceWire[];
+  assessment: VisualizerAssessmentWire;
+}
+export interface VisualizerDiscoveryWire {
+  candidates: VisualizerCandidateWire[];
+  current_selection: VisualizerCandidateWire | null;
+  ancestry: HolonReferenceWire[];
+}
+function isVisualizerCandidateWire(value: unknown): value is VisualizerCandidateWire {
+  return isRecord(value) && isHolonReferenceWire(value['visualizer']) && Array.isArray(value['declared_on']) &&
+    value['declared_on'].every(isHolonReferenceWire) &&
+    ['viable', 'incompatible_slot', 'incompatible_theme', 'implementation_unavailable', 'no_longer_applicable'].includes(value['assessment'] as string);
+}
+export function isVisualizerDiscoveryWire(value: unknown): value is VisualizerDiscoveryWire {
+  return isRecord(value) && Array.isArray(value['candidates']) && value['candidates'].every(isVisualizerCandidateWire) &&
+    (value['current_selection'] === null || isVisualizerCandidateWire(value['current_selection'])) &&
+    Array.isArray(value['ancestry']) && value['ancestry'].every(isHolonReferenceWire);
 }
