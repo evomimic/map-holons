@@ -137,6 +137,19 @@ var LoadHolonsInspector = class extends HTMLElement {
     });
   }
   static compositionSlots = { propertyMap: "LoadHolonsResult.PropertyMapSlot", action: "LoadHolonsResult.ActionsSlot" };
+  static usesOwnedResultSummary = true;
+  setNodeOwnedSummary(content) {
+    this.propertyVisualizer = content;
+    this.properties.replaceChildren(content);
+  }
+  setNodeOwnedCollection(content) {
+    this.collections.replaceChildren(this.collectionsExpand, this.discoveryStatus, content);
+    Object.assign(content.style, { flex: "1 1 0", minHeight: "0", height: "auto" });
+    this.hasCollections = true;
+    this.collectionsExpand.hidden = false;
+    this.collectionsExpand.style.display = "block";
+    if (this.allocation) this.setNodeInspectorAllocation(this.allocation);
+  }
   getNodeInspectorAllocation() {
     return this.allocation && { ...this.allocation };
   }

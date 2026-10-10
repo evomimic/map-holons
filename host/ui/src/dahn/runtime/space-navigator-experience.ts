@@ -93,35 +93,69 @@ export class SpaceNavigatorExperience {
         slot: transaction.bindSavedReference(slot), requestedKind: 'node',
       })).selected;
       const { theme, canvas } = this.binding;
-      let rootNode: RealizedNode;
-      if (!children) {
-        rootNode = await realizeNode(transaction, materialized, subject, review.bindSavedReference(selected), theme, canvas, undefined, undefined, review);
-      } else {
+      const realizeResult = async (member: HolonReference, visualizer: HolonReference, stage?: (stage: string) => void, usage?: HolonReference): Promise<RealizedNode> => {
+        if (!children || member !== subject) return realizeNode(contextFor(member), materialized, member, visualizer, theme, canvas, stage, undefined, review, usage);
         if (!collections) throw new Error('Custom result content requires its collection lifecycle');
-        const implementation = await materialized.realize(review.bindSavedReference(selected));
-        if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected result Node is not an HTMLElement constructor');
-        const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
-        if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
-        const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
-        const discovery = new NodeRelationshipDiscovery(transaction, subject, affordances.singularRelationships);
-        root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, childVisualizers: children,
-          nodeAffordances: affordances, relationshipDiscovery: discovery,
-          activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
-        });
-        discovery.startAfterDisplay(root);
-        rootNode = { element: root, collectionActivation: { ...collections, dispose: () => { discovery.dispose(); collections.dispose(); } }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships };
-      }
+        const implementation = await materialized.realize(review.bindSavedReference(visualizer));
+        let node: RealizedNode;
+        if ((implementation as { usesOwnedResultSummary?: boolean }).usesOwnedResultSummary) {
+          if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected result Node is not an HTMLElement constructor');
+          const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
+          if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
+          const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
+          const discovery = new NodeRelationshipDiscovery(transaction, subject, affordances.singularRelationships);
+          root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, visualizerUsage: usage,
+            childVisualizers: new Map([['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
+            nodeAffordances: affordances, relationshipDiscovery: discovery,
+            activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
+          });
+          node = { element: root, ready: root.ready, collectionActivation: { ...collections, dispose: () => discovery.dispose() },
+            dispose: () => discovery.dispose(), relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
+        } else {
+          node = await realizeNode(transaction, materialized, subject, review.bindSavedReference(visualizer), theme, canvas, stage, undefined, review, usage);
+          const activation = node.collectionActivation;
+          node.collectionActivation = { ...activation,
+            setBeforeChange: handler => { activation.setBeforeChange(handler); collections.setBeforeChange(handler); },
+            sourceAffordance: source => collections.sourceAffordance(source) ?? activation.sourceAffordance(source),
+            close: affordance => affordance.kind === 'result' ? collections.close(affordance) : activation.close(affordance),
+            captureViewState: activation.captureViewState?.bind(activation),
+            restoreViewState: activation.restoreViewState?.bind(activation),
+            captureCurrentViewState: activation.captureCurrentViewState?.bind(activation),
+            restoreCurrentViewState: activation.restoreCurrentViewState?.bind(activation),
+            settled: activation.settled?.bind(activation),
+          };
+        }
+        const owned = children.get('collections');
+        const control = node.element as VisualizerElement;
+        if (!owned || !control.setNodeOwnedCollection) { node.dispose?.(); throw new Error('Selected Node cannot present action-owned result collections.'); }
+        node.supportsReplacement = true;
+        node.ownedCollectionContext = collections;
+        node.adoptOwnedPresentation = () => {
+          const parent = owned.parentElement, next = owned.nextSibling;
+          const summary = control.setNodeOwnedSummary && children.get('properties');
+          const summaryParent = summary?.parentElement, summaryNext = summary?.nextSibling;
+          const restore = () => {
+            if (parent) parent.insertBefore(owned, next);
+            if (summary && summaryParent) summaryParent.insertBefore(summary, summaryNext ?? null);
+          };
+          try { control.setNodeOwnedCollection!(owned); if (summary) control.setNodeOwnedSummary!(summary); }
+          catch (error) { restore(); throw error; }
+          return restore;
+        };
+        return node;
+      };
+      const rootNode = await realizeResult(subject, review.bindSavedReference(selected));
+      rootNode.adoptOwnedPresentation?.();
       const root = rootNode.element;
       signal.throwIfAborted();
       // The response retains its loader binding. Descendants are saved references
       // owned by the review; neither context is serialized or rebound as transient data.
-      const reviewRuntime = materialized;
       const reviewParent = review.bindSavedReference(path);
       const reviewSlot = review.bindSavedReference(slot);
       const navigation = new PathNavigator(review, reviewParent,
         rootNode,
         subject, review.bindSavedReference(selected), reviewSlot, () => theme.reference,
-        (member, visualizer, stage, usage) => realizeNode(contextFor(member), reviewRuntime, member, visualizer, theme, canvas, stage, undefined, review, usage),
+        realizeResult,
         undefined, contextFor, target => this.information.inspect(target));
       try {
         const pathImplementation = await materialized.realize(parent);
@@ -141,8 +175,8 @@ export class SpaceNavigatorExperience {
         }
         signal.throwIfAborted();
         return { element, title: 'Load Holons', inspect: (intent: Parameters<PathNavigator['inspect']>[0]) => navigation.inspect(intent),
-          dispose: () => { navigation.dispose(); element.remove(); } };
-      } catch (error) { navigation.dispose(); throw error; }
+          dispose: () => { navigation.dispose(); collections?.dispose(); element.remove(); } };
+      } catch (error) { navigation.dispose(); collections?.dispose(); throw error; }
     });
   }
 

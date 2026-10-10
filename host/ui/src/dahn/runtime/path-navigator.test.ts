@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PathNavigator } from './path-navigator';
+import { semanticWork } from './semantic-work';
 import { realizeNode } from './realize-node';
 import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
@@ -70,8 +71,8 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
   const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   const theme = { reference: selected("Theme") };
-  const realize = vi.fn(async (ref: HolonReference, selected: HolonReference, _stage?: unknown, usage?: HolonReference) => {
-    const node = await realizeNode(transaction, runtime, ref, selected, theme as never, {} as never, undefined, undefined, transaction, usage);
+  const realize = vi.fn(async (ref: HolonReference, selected: HolonReference, stage?: (stage: string) => void, usage?: HolonReference) => {
+    const node = await realizeNode(transaction, runtime, ref, selected, theme as never, {} as never, stage, undefined, transaction, usage);
     // These topology fixtures start after discovery; deferred population is covered separately.
     for (const affordance of node.singularRelationships) node.relationshipDiscovery?.record(affordance, 1);
     const element = node.element as typeof node.element & { relationshipControls: Map<any, unknown> };
@@ -1360,6 +1361,65 @@ describe('explicit occurrence Visualizer choice', () => {
   const alternate = selected('connections-first-inspector');
   const targetOf = (f: Awaited<ReturnType<typeof fixture>>, index = 0) => selectedVisualizerInspection(f.path()[index].element)!;
 
+  it('blanks the chosen occurrence during preparation and restores its mounted state immediately on cancellation', async () => {
+    const f = await fixture(undefined, () => {});
+    const old = f.path()[0].element;
+    const priorInert = old.inert;
+    const input = document.createElement('input'); input.value = 'retained edit'; old.append(input);
+    const region = old.parentElement!;
+    const allocation = { width: region.style.width, height: region.style.height };
+    const gate = deferred<{ selected: HolonReference }>();
+    vi.mocked(f.transaction.chooseVisualizer).mockReturnValueOnce(gate.promise as never);
+    const pending = targetOf(f).choices!.choose(alternate, () => true);
+    const rejected = expect(pending).rejects.toThrow('cancelled');
+    expect(old.isConnected).toBe(true); expect(old.style.visibility).toBe('hidden'); expect(old.inert).toBe(true);
+    expect(region.querySelector('[data-preparing-visualizer]')?.textContent).toBe('Preparing visualizer…');
+    expect({ width: region.style.width, height: region.style.height }).toEqual(allocation);
+    region.querySelector<HTMLButtonElement>('[data-visualizer-replacement] button')!.click();
+    expect(old.style.visibility).toBe(''); expect(old.inert).toBe(priorInert);
+    expect(region.querySelector('[data-visualizer-replacement]')).toBeNull();
+    expect(input.value).toBe('retained edit'); expect(input.parentElement).toBe(old);
+    gate.resolve({ selected: alternate }); await rejected;
+    expect(f.path()[0].element).toBe(old); f.navigation.dispose();
+  });
+
+  it('profiles transaction queue wait separately from choice, usage and node realization', async () => {
+    const f = await fixture(undefined, () => {});
+    let now = 0;
+    let mark: { detail: string } | undefined;
+    vi.stubGlobal('performance', {
+      now: () => now,
+      mark: (_name: string, options: { detail: string }) => { mark = options; },
+      measure: vi.fn(), clearMeasures: vi.fn(), clearMarks: () => { mark = undefined; },
+      getEntriesByName: (name: string) => name === 'map.navigation.active' && mark ? [mark] : [],
+    });
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const table = vi.spyOn(console, 'table').mockImplementation(() => {});
+    localStorage.setItem('map.profileNavigation', '1');
+    const blocker = deferred<void>();
+    const read = semanticWork(f.transaction).run(() => blocker.promise);
+    vi.mocked(f.transaction.chooseVisualizer).mockImplementationOnce(async (_request, candidate) => { now += 20; return { selected: candidate } as never; });
+    const usage = await f.transaction.selectVisualizerUsage({} as never, alternate);
+    vi.mocked(f.transaction.selectVisualizerUsage).mockImplementationOnce(async () => { now += 40; return usage; });
+    try {
+      const choice = targetOf(f).choices!.choose(alternate, () => true);
+      expect(f.transaction.chooseVisualizer).not.toHaveBeenCalled();
+      now = 30; blocker.resolve(); await read; await choice;
+      const report = JSON.parse(localStorage.getItem('map.navigationProfiles')!).at(-1);
+      expect(report).toMatchObject({ outcome: 'visualizer replaced', totalMs: 90 });
+      expect(report.phases).toEqual(expect.arrayContaining([
+        { phase: 'queue wait', ms: 30 },
+        { phase: 'authorize visualizer choice', ms: 20 },
+        { phase: 'select visualizer usage', ms: 40 },
+        { phase: 'classify node affordances', ms: 0 },
+        { phase: 'publish replacement', ms: 0 },
+      ]));
+    } finally {
+      localStorage.removeItem('map.profileNavigation'); localStorage.removeItem('map.navigationProfiles');
+      info.mockRestore(); table.mockRestore(); f.navigation.dispose();
+    }
+  });
+
   it('replaces just the captured repeated subject and retains identity, topology, allocation, collection state and usage', async () => {
     const f = await fixture(undefined, () => {});
     await openCollection(f.root.element);
@@ -1409,6 +1469,9 @@ describe('explicit occurrence Visualizer choice', () => {
     }
     await expect(targetOf(f).choices!.choose(alternate, () => true)).rejects.toThrow(stage);
     expect(f.path()[0].element).toBe(old); expect(old.isConnected).toBe(true);
+    expect(f.element.querySelector('[data-visualizer-replacement]')).toBeNull();
+    expect(old.style.visibility).not.toBe('hidden');
+    expect(old.getAttribute('aria-hidden')).not.toBe('true');
     expect(f.transaction.recordVisualizerUse).not.toHaveBeenCalled(); f.navigation.dispose();
   });
 
@@ -1481,8 +1544,8 @@ it('materializes a real alternative with a different expanded layout and indepen
   const f = await fixture(undefined, () => {});
   const alternate = await f.realize(f.rootSubject as never, selected('connections-first-inspector'));
   (alternate.element as VisualizerElement).setNodeInspectorAllocation!({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' });
-  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('1');
-  expect((alternate.element as any).propertyViewer.style.gridRow).toBe('2');
+  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2');
+  expect((alternate.element as any).propertyViewer.style.gridRow).toBe('3');
   expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
   expect((await f.runtime.realize(selected('connections-first-inspector')) as any).compositionSlots.collection).toBe('ConnectionsFirstInspector.CollectionsSlot');
   alternate.dispose?.(); f.navigation.dispose();

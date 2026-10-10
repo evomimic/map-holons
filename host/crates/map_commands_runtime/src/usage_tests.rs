@@ -28,6 +28,8 @@ struct Store {
     nodes: Mutex<HashMap<u32, PropertyMap>>,
     edges: Mutex<HashMap<(u32, String), Vec<u32>>>,
     commits: Mutex<Vec<u64>>,
+    relationship_reads: Mutex<Vec<(u32, String)>>,
+    anchor_reads: Mutex<Vec<String>>,
     fail: AtomicBool,
     incomplete: AtomicBool,
 }
@@ -44,18 +46,22 @@ impl Store {
     fn edge(&self, n: u32, name: &str, targets: &[u32]) {
         let mut edges = self.edges.lock().unwrap();
         let old = edges.insert((n, name.into()), targets.to_vec()).unwrap_or_default();
-        // Model the committed DescribedBy inverse used for bounded instance lookup.
-        if name == "DescribedBy" {
-            for descriptor in old {
-                if let Some(instances) = edges.get_mut(&(descriptor, "Instances".into())) {
-                    instances.retain(|source| *source != n);
-                }
+        // Model committed inverse memberships used by descriptor and usage navigation.
+        let inverse = match name {
+            "DescribedBy" => "Instances",
+            "UsesVisualizer" => "UsedByVisualizerUsage",
+            "SourceType" => "SourceOf",
+            _ => return,
+        };
+        for target in old {
+            if let Some(members) = edges.get_mut(&(target, inverse.into())) {
+                members.retain(|source| *source != n);
             }
-            for descriptor in targets {
-                let instances = edges.entry((*descriptor, "Instances".into())).or_default();
-                if !instances.contains(&n) {
-                    instances.push(n);
-                }
+        }
+        for target in targets {
+            let members = edges.entry((*target, inverse.into())).or_default();
+            if !members.contains(&n) {
+                members.push(n);
             }
         }
     }
@@ -87,6 +93,7 @@ impl HolonServiceApi for Store {
         context: &Arc<TransactionContext>,
         key: &MapString,
     ) -> Result<holons_core::SmartReference, HolonError> {
+        self.anchor_reads.lock().unwrap().push(key.0.clone());
         let n = match key.0.as_str() {
             "VisualizerUsage.HolonType" => 100,
             "VisualizerSlotPreference.HolonType" => 101,
@@ -109,6 +116,7 @@ impl HolonServiceApi for Store {
         source: &HolonId,
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        self.relationship_reads.lock().unwrap().push((number(source), name.to_string()));
         let values = self
             .edges
             .lock()
@@ -250,6 +258,11 @@ fn setup() -> (Arc<Store>, Arc<HolonSpaceManager>, Arc<TransactionContext>) {
         "VisualizerImplementationRuntime",
         BaseValue::EnumValue(MapEnumValue("TypeScript".into())),
     );
+    store.property(111, "TypeName", BaseValue::StringValue("InverseRelationshipType".into()));
+    store.property(112, "TypeName", BaseValue::StringValue("UsedByVisualizerUsage".into()));
+    store.edge(112, "Extends", &[111]);
+    store.edge(112, "SourceType", &[10]);
+    store.edge(112, "TargetType", &[100]);
     // Saved cloning retains only relationships declared by the source descriptor.
     store.property(110, "TypeName", BaseValue::StringValue("DeclaredRelationshipType".into()));
     for (descriptor, names) in [
@@ -583,4 +596,65 @@ fn delayed_choice_from_another_occurrence_cannot_undo_newer_preference() -> Resu
         )
         .is_err());
     Ok(())
+}
+
+#[test]
+fn usage_lookup_reads_only_selected_visualizer_usages() -> Result<(), HolonError> {
+    let (store, _, context) = setup();
+    // A usage of another Visualizer deliberately lacks ForSubjectType.
+    // A global usage scan would inspect it and fail.
+    store.edge(200, "DescribedBy", &[100]);
+    store.edge(200, "UsesVisualizer", &[21]);
+    store.edge(201, "DescribedBy", &[100]);
+    store.edge(201, "UsesVisualizer", &[20]);
+    store.edge(201, "ForSubjectType", &[1]);
+    let found = dahn_selection::usage::find_usage(
+        &reference(&context, 20),
+        &reference(&context, 1),
+        &reference(&context, 30),
+    )?
+    .expect("matching usage");
+    assert_eq!(found.holon(), &reference(&context, 201));
+    assert_eq!(
+        *store.relationship_reads.lock().unwrap(),
+        vec![(20, "UsedByVisualizerUsage".into()), (201, "ForSubjectType".into()),]
+    );
+    assert!(store.anchor_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn usage_creation_uses_relationship_target_type_without_key_lookup() -> Result<(), HolonError> {
+    let (store, _, context) = setup();
+    // The selected Visualizer's type inherits its usage relationship.
+    store.edge(10, "Extends", &[9]);
+    store.edge(112, "SourceType", &[9]);
+    // A noncanonical descriptor identity proves creation follows TargetType.
+    store.property(200, "TypeName", BaseValue::StringValue("FixtureUsage".into()));
+    store.edge(112, "TargetType", &[200]);
+    let usage = dahn_selection::usage::initialize_usage(
+        &context,
+        reference(&context, 20),
+        reference(&context, 1),
+    )?;
+    let usage: HolonReference = usage.into();
+    assert_eq!(dahn_selection::usage::single(&usage, "DescribedBy")?, reference(&context, 200));
+    assert_eq!(dahn_selection::usage::single(&usage, "UsesVisualizer")?, reference(&context, 20));
+    assert_eq!(dahn_selection::usage::single(&usage, "ForSubjectType")?, reference(&context, 1));
+    assert!(store.anchor_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn usage_creation_rejects_missing_relationship_target_type() {
+    let (store, _, context) = setup();
+    store.edge(112, "TargetType", &[]);
+    assert!(dahn_selection::usage::initialize_usage(
+        &context,
+        reference(&context, 20),
+        reference(&context, 1),
+    )
+    .is_err());
+    assert!(store.commits.lock().unwrap().is_empty());
+    assert!(store.anchor_reads.lock().unwrap().is_empty());
 }

@@ -4,6 +4,7 @@ import { defineCustomElementOnce } from '../visualizers/define-custom-element-on
 import { DahnHolonView } from '../map-adapter/dahn-holon-view';
 import { semanticWork } from './semantic-work';
 import { withVisualizerComposition } from './visualizer-information-control';
+import { NavigationProfile } from './navigation-profile';
 
 /** Space Navigator owns allocation and dismissal; the selected inspector owns its content. */
 export class VisualizerInformationRegion {
@@ -148,7 +149,7 @@ export class VisualizerInformationRegion {
           composition: () => [], regionLabel: undefined };
         await semanticWork(transaction).realize(() => this.mountInspection(preview, previewHost, revision));
       } : undefined,
-      chooseVisualizerCandidate: target.choices ? async (candidate, signal) => {
+      chooseVisualizerCandidate: target.choices?.choose ? async (candidate, signal) => {
         if (!current() || !this.open || signal.aborted) throw new Error('This information session was closed.');
         this.choiceAbort?.abort();
         const cancellation = this.choiceAbort = new AbortController();
@@ -156,14 +157,22 @@ export class VisualizerInformationRegion {
         signal.addEventListener('abort', abort, { once: true });
         this.choosing = true;
         try {
-          const replacement = await target.choices!.choose(candidate, () => current() && this.open && !signal.aborted, cancellation.signal);
+          const replacement = await target.choices!.choose!(candidate, () => current() && this.open && !signal.aborted, cancellation.signal);
           if (revision !== this.revision || !this.open || !replacement.isLive()) return;
           this.markTarget(false);
           this.target = replacement;
           this.markTarget(true);
           // Refresh the selected identity without another invocation or stealing focus.
           const next = ++this.revision;
-          try { await semanticWork(transaction).realize(() => this.mountInspection(replacement, host, next)); }
+          const profile = NavigationProfile.start();
+          let outcome = 'visualizer information refresh failed';
+          try {
+            await semanticWork(transaction).realize(async () => {
+              profile?.begin('refresh visualizer information');
+              await this.mountInspection(replacement, host, next);
+            });
+            outcome = 'visualizer information refreshed';
+          }
           catch (error) {
             if (next !== this.revision || !replacement.isLive()) return;
             const status = document.createElement('p'); status.setAttribute('role', 'status');
@@ -171,6 +180,7 @@ export class VisualizerInformationRegion {
             const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry information';
             retry.addEventListener('click', () => this.inspect(replacement)); host.replaceChildren(status, retry);
           }
+          finally { profile?.finish(outcome); }
         } finally {
           signal.removeEventListener('abort', abort);
           if (this.choiceAbort === cancellation) { this.choiceAbort = undefined; this.choosing = false; }

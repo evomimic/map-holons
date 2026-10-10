@@ -19,6 +19,9 @@ export interface RealizedNode {
   element: HTMLElement;
   ready?: Promise<void>;
   supportsReplacement?: boolean;
+  /** Action-owned content survives replacing the enclosing Node. */
+  ownedCollectionContext?: object;
+  adoptOwnedPresentation?: () => () => void;
   dispose?: () => void;
   collectionActivation: Pick<NodeCollectionActivation, 'setBeforeChange' | 'sourceAffordance' | 'close' | 'dispose'> & Partial<Pick<NodeCollectionActivation, 'captureViewState' | 'restoreViewState' | 'settled' | 'captureCurrentViewState' | 'restoreCurrentViewState'>>;
   singularRelationships: readonly RelationshipAffordance[];

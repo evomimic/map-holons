@@ -723,7 +723,7 @@ var HolonInspectorElement = class extends HTMLElement {
     singleValueRail.style.flexDirection = "column";
     singleValueRail.style.gap = "var(--dahn-canvas-gap)";
     singleValueRail.setAttribute("aria-label", "Single-value relationships");
-    const railLayout = this.railLayout = verticalOverflow(singleValueRail, (context.nodeAffordances?.singularRelationships ?? []).map((item) => this.navigationControl(item)));
+    const railLayout = this.railLayout = this.createRelationshipLayout(singleValueRail, (context.nodeAffordances?.singularRelationships ?? []).map((item) => this.navigationControl(item)));
     const collectionTabBar = document.createElement("nav");
     collectionTabBar.dataset.holonInspectorCollectionTabBar = "true";
     collectionTabBar.style.gridColumn = "1 / -1";
@@ -797,6 +797,16 @@ var HolonInspectorElement = class extends HTMLElement {
     if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();
     this.ready = Promise.resolve();
+  }
+  createRelationshipLayout(host, controls) {
+    return verticalOverflow(host, controls);
+  }
+  setNodeOwnedCollection(content) {
+    this.activeCollectionVisualizer = content;
+    this.collectionViewer.replaceChildren(content);
+    this.collectionViewer.hidden = false;
+    Object.assign(this.collectionViewer.style, { display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: "0", overflow: "auto" });
+    this.adaptBudget();
   }
 };
 var nextOverflowId = 0;
@@ -1039,16 +1049,21 @@ var ConnectionsFirstInspector = class extends HolonInspectorElement {
     action: "ConnectionsFirstInspector.ActionsSlot",
     collection: "ConnectionsFirstInspector.CollectionsSlot"
   };
+  createRelationshipLayout(host, controls) {
+    return horizontalOverflow(host, controls, "More relationships");
+  }
+  getVisualizerComposition() {
+    return super.getVisualizerComposition().map((region) => region.element === this.singleValueRail ? { ...region, label: "Connections Bar" } : region);
+  }
   adaptBudget() {
     super.adaptBudget();
     if (!this.body || !this.singleValueRail) return;
-    if ((!this.verticalState || this.verticalState === "full-height") && (!this.horizontalState || this.horizontalState === "full-width")) {
+    if (!this.maximizedRegion && (!this.verticalState || this.verticalState === "full-height") && (!this.horizontalState || this.horizontalState === "full-width")) {
       this.body.style.gridTemplateColumns = "minmax(0, 1fr)";
-      this.body.style.gridTemplateRows = "max-content minmax(0, 1fr)";
+      this.body.style.gridTemplateRows = "max-content max-content minmax(0, 1fr)";
       this.singleValueRail.style.gridColumn = "1";
-      this.singleValueRail.style.gridRow = "1";
-      this.propertyViewer.style.gridRow = "2";
-      this.singleValueRail.style.maxHeight = "120px";
+      this.singleValueRail.style.gridRow = "2";
+      this.propertyViewer.style.gridRow = "3";
     }
   }
   setContext(context) {

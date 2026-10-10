@@ -183,6 +183,19 @@ it('keeps candidate inspection read-only and binds choice to the captured live s
   expect(discover).toHaveBeenCalledOnce(); f.region.dispose();
 });
 
+it('exposes discovery and preview without granting an unsupported replacement', async () => {
+  const f = fixture();
+  const discover = vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] }));
+  f.region.inspect({ ...f.target, choices: { discover, replacementUnavailableReason: 'Custom result owner' } });
+  await vi.waitFor(() => expect((f.region.element.querySelector('map-visualizer-inspector') as any)?.context.discoverVisualizerChoices).toBeTypeOf('function'));
+  const context = (f.region.element.querySelector('map-visualizer-inspector') as any).context;
+  await context.discoverVisualizerChoices();
+  expect(discover).toHaveBeenCalledOnce();
+  expect(context.inspectVisualizerCandidate).toBeTypeOf('function');
+  expect(context.chooseVisualizerCandidate).toBeUndefined();
+  f.region.dispose();
+});
+
 it('refreshes a published choice under its retained occurrence without dismissing the information session', async () => {
   const f = fixture(); const source = document.createElement('div'), invoker = document.createElement('button'); source.append(invoker);
   const replacement = { ...f.target, selectedVisualizer: ref('Alternative'), element: source, invoker,

@@ -99,10 +99,11 @@ export interface VisualizerInspectionTarget {
   readonly invoker: HTMLElement;
   readonly isLive: () => boolean;
   readonly displayName?: string;
-  /** Only the actual composition owner may offer occurrence replacement. */
+  /** Discovery is read-only; only the actual owner may offer replacement. */
   readonly choices?: {
     discover(): Promise<VisualizerDiscovery>;
-    choose(candidate: HolonReference, current: () => boolean, signal?: AbortSignal): Promise<VisualizerInspectionTarget>;
+    choose?(candidate: HolonReference, current: () => boolean, signal?: AbortSignal): Promise<VisualizerInspectionTarget>;
+    readonly replacementUnavailableReason?: string;
   };
   /** A region can be owned by this definition without occupying an independent slot. */
   readonly regionLabel?: string;
@@ -205,6 +206,9 @@ export interface VisualizerContext {
  * Common surface all DAHN visualizer elements must implement.
  */
 export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorParticipant> {
+  /** Accepts borrowed action-owned collection content at publication. */
+  setNodeOwnedCollection?(content: HTMLElement): void;
+  setNodeOwnedSummary?(content: HTMLElement): void;
   setContext(context: VisualizerContext): void;
   /** Explicit completion of initialization; replacement requires this readiness signal. */
   readonly ready?: Promise<void>;

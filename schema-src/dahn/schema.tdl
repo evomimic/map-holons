@@ -354,7 +354,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:ca850d4363f24f00e2a7c5033c417cdf0fc40d34f0f582108c95a91cce44d442"
+  VisualizerArtifactDigest "sha256:ffbdaa107698143325a0ea9c48ba072e2ca467cba7b4f03c2b3241e97838091a"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -363,7 +363,7 @@ instance ConnectionsFirstInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.connections-first-inspector"
-  VisualizerArtifactDigest "sha256:da18b585cc4c70c1f44c89816990bb4b650c946ff55f06e8ce4699d9f3954aea"
+  VisualizerArtifactDigest "sha256:860f4bc40b55e020d161b412a633859aa6cb8b35e3c8e9e6fd73b8de1084b51f"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -443,7 +443,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:a4c30de8251b44f7fd7c420c0326ff3691edff2ea9cb5968859983a28e99e15a"
+  VisualizerArtifactDigest "sha256:5925afe38b1f9afd1195666cf0df18b583472355ff5dd7b0dee4efcb6f628004"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1221,7 +1221,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:0b3ba1af98497685cad160e2b8fed2c74aa9f8e12d156a96745a2990f6c687fd"
+  VisualizerArtifactDigest "sha256:4130b0052bac015c8023c0320456b785b47f09a74f555e0753da4683c8ea950a"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

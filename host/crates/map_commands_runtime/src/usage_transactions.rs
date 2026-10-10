@@ -122,7 +122,7 @@ impl UsageTransactions {
         let visualizer = saved(&context, &selected)?;
         let descriptor = saved(&context, &subject_type)?;
         let slot = saved(&context, &slot)?;
-        if let Some(usage) = find_usage(&context, &visualizer, &descriptor, &slot)? {
+        if let Some(usage) = find_usage(&visualizer, &descriptor, &slot)? {
             return selection(caller, usage.holon().clone(), false, &self.report_session);
         }
         let staged = initialize_usage(&context, visualizer, descriptor)?;

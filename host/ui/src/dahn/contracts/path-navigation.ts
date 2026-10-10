@@ -50,6 +50,8 @@ export interface PathOccurrence {
   message?: string;
   retry?: () => void;
   pending: boolean;
+  /** Covers this occurrence's allocation while retaining its prior realization. */
+  visualizerReplacement?: { message: string; cancel: () => void };
   /** Axis of the current attempt, used to place traversal feedback. */
   requestAxis?: 'vertical' | 'horizontal';
 }

@@ -49,7 +49,7 @@ export default class VisualizerInspector extends HTMLElement {
         region.textContent = `${target.regionLabel} — presented by ${heading.textContent}.`;
         region.style.cssText = 'line-height:1.5;margin:16px 0;'; this.append(region);
       }
-      if (context.discoverVisualizerChoices && context.chooseVisualizerCandidate) void this.renderChoices(context);
+      if (context.discoverVisualizerChoices) void this.renderChoices(context);
       if (target?.composition && context.mountVisualizerInformation) this.renderComposition(context, target, this, name?.StringValue ?? key);
       const technical = document.createElement('details');
       technical.dataset.visualizerTechnicalDetails = 'true';
@@ -134,7 +134,7 @@ export default class VisualizerInspector extends HTMLElement {
   async renderChoices(context) {
     const section = document.createElement('section'); section.dataset.visualizerChoices = 'true';
     const heading = document.createElement('h3'); heading.textContent = 'Alternative Visualizers';
-    const status = document.createElement('p'); status.setAttribute('role', 'status'); status.textContent = 'Finding alternatives…';
+    const status = document.createElement('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-atomic', 'true'); status.textContent = 'Finding alternatives…';
     const list = document.createElement('ul'); list.style.cssText = 'list-style:none;padding:0;';
     section.append(heading, status, list); this.append(section);
     const current = () => this.context === context && this.isConnected && context.visualizerInspection.isLive();
@@ -143,17 +143,22 @@ export default class VisualizerInspector extends HTMLElement {
         const discovery = await context.discoverVisualizerChoices();
         if (!current()) return;
         list.replaceChildren();
-        const alternatives = discovery.candidates.filter(candidate => !candidate.visualizer.equals(context.visualizerInspection.selectedVisualizer));
-        status.textContent = alternatives.length ? 'Inspect a definition or choose it for this occurrence.' : 'No alternative Visualizers are available.';
+        const alternatives = discovery.candidates.filter(candidate => candidate.assessment === 'viable' && !candidate.visualizer.equals(context.visualizerInspection.selectedVisualizer));
+        status.textContent = alternatives.length
+          ? (context.chooseVisualizerCandidate ? 'Inspect a definition or choose it for this occurrence.' : context.visualizerInspection.choices?.replacementUnavailableReason ?? 'Inspect an alternative definition. Changing this occurrence is not supported.')
+          : 'No alternative Visualizers are available.';
         for (const candidate of alternatives) {
           const name = await displayName(candidate.visualizer);
           if (!current()) return;
           const row = document.createElement('li'), label = document.createElement('p'); label.textContent = name;
+          row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--dahn-slot-border-color);';
+          label.style.cssText = 'font-weight:600;margin:0 0 8px;';
           const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect';
           const choose = document.createElement('button'); choose.type = 'button'; choose.textContent = 'Choose';
-          choose.disabled = candidate.assessment !== 'viable';
+          for (const button of [inspect, choose]) button.style.cssText = 'font:inherit;padding:8px 12px;margin-right:8px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;';
+          choose.disabled = candidate.assessment !== 'viable' || !context.chooseVisualizerCandidate;
           choose.dataset.chooseVisualizer = 'true'; inspect.dataset.inspectVisualizerCandidate = 'true';
-          if (choose.disabled) { const assessment = document.createElement('p'); assessment.textContent = candidate.assessment.replaceAll('_', ' '); row.append(assessment); }
+          if (candidate.assessment !== 'viable') { const assessment = document.createElement('p'); assessment.textContent = candidate.assessment.replaceAll('_', ' '); row.append(assessment); }
           const preview = document.createElement('div'); preview.hidden = true;
           inspect.addEventListener('click', async () => {
             if (!current()) return;
@@ -167,14 +172,32 @@ export default class VisualizerInspector extends HTMLElement {
           choose.addEventListener('click', async () => {
             if (!current() || this.choicePending) return;
             const controller = new AbortController(); this.choiceController = controller; this.choicePending = true;
+            choose.textContent = 'Changing…'; choose.setAttribute('aria-busy', 'true'); choose.style.cursor = 'wait';
+            row.setAttribute('aria-busy', 'true');
             const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel choice';
+            cancel.style.cssText = inspect.style.cssText; cancel.style.marginRight = '0';
             cancel.addEventListener('click', () => controller.abort());
             section.querySelectorAll('[data-choose-visualizer]').forEach(button => button.disabled = true);
-            status.textContent = `Preparing ${name}…`; status.append(cancel);
-            try { await context.chooseVisualizerCandidate(candidate.visualizer, controller.signal); }
-            catch (error) { if (current()) status.textContent = controller.signal.aborted ? 'Choice cancelled.' : `Unable to change Visualizer: ${error.message ?? error}`; }
+            const indicator = document.createElement('progress'); indicator.setAttribute('aria-label', 'Changing Visualizer');
+            indicator.style.cssText = 'width:100%;height:6px;accent-color:var(--dahn-action-text-color);';
+            const message = document.createElement('span'); message.textContent = `Changing to ${name}…`;
+            status.dataset.visualizerChoiceProgress = 'true'; status.setAttribute('role', 'status');
+            status.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
+            status.replaceChildren(message, indicator, cancel);
+            try {
+              await context.chooseVisualizerCandidate(candidate.visualizer, controller.signal);
+              if (current()) status.textContent = controller.signal.aborted ? 'Choice cancelled.' : `Visualizer changed to ${name}.`;
+            }
+            catch (error) {
+              if (current()) {
+                status.setAttribute('role', controller.signal.aborted ? 'status' : 'alert');
+                status.textContent = controller.signal.aborted ? 'Choice cancelled.' : `Unable to change Visualizer: ${error.message ?? error}`;
+              }
+            }
             finally {
               this.choicePending = false; this.choiceController = undefined; cancel.remove();
+              choose.textContent = 'Choose'; choose.removeAttribute('aria-busy'); choose.style.cursor = 'pointer';
+              row.removeAttribute('aria-busy'); indicator.remove();
               if (current()) for (const [index, button] of [...section.querySelectorAll('[data-choose-visualizer]')].entries()) button.disabled = alternatives[index].assessment !== 'viable';
             }
           });

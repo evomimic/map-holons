@@ -723,7 +723,7 @@ var HolonInspectorElement = class extends HTMLElement {
     singleValueRail.style.flexDirection = "column";
     singleValueRail.style.gap = "var(--dahn-canvas-gap)";
     singleValueRail.setAttribute("aria-label", "Single-value relationships");
-    const railLayout = this.railLayout = verticalOverflow(singleValueRail, (context.nodeAffordances?.singularRelationships ?? []).map((item) => this.navigationControl(item)));
+    const railLayout = this.railLayout = this.createRelationshipLayout(singleValueRail, (context.nodeAffordances?.singularRelationships ?? []).map((item) => this.navigationControl(item)));
     const collectionTabBar = document.createElement("nav");
     collectionTabBar.dataset.holonInspectorCollectionTabBar = "true";
     collectionTabBar.style.gridColumn = "1 / -1";
@@ -797,6 +797,16 @@ var HolonInspectorElement = class extends HTMLElement {
     if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();
     this.ready = Promise.resolve();
+  }
+  createRelationshipLayout(host, controls) {
+    return verticalOverflow(host, controls);
+  }
+  setNodeOwnedCollection(content) {
+    this.activeCollectionVisualizer = content;
+    this.collectionViewer.replaceChildren(content);
+    this.collectionViewer.hidden = false;
+    Object.assign(this.collectionViewer.style, { display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: "0", overflow: "auto" });
+    this.adaptBudget();
   }
 };
 var nextOverflowId = 0;
@@ -1032,5 +1042,6 @@ function verticalOverflow(host, controls) {
   } };
 }
 export {
-  HolonInspectorElement as default
+  HolonInspectorElement as default,
+  horizontalOverflow
 };
