@@ -142,6 +142,8 @@ export interface VisualizerDiscoveryWire {
   candidates: VisualizerCandidateWire[];
   current_selection: VisualizerCandidateWire | null;
   ancestry: HolonReferenceWire[];
+  stop_reason: 'holon_type_boundary' | 'lineage_exhausted';
+  snapshot: string | null;
 }
 function isVisualizerCandidateWire(value: unknown): value is VisualizerCandidateWire {
   return isRecord(value) && isHolonReferenceWire(value['visualizer']) && Array.isArray(value['declared_on']) &&
@@ -151,7 +153,9 @@ function isVisualizerCandidateWire(value: unknown): value is VisualizerCandidate
 export function isVisualizerDiscoveryWire(value: unknown): value is VisualizerDiscoveryWire {
   return isRecord(value) && Array.isArray(value['candidates']) && value['candidates'].every(isVisualizerCandidateWire) &&
     (value['current_selection'] === null || isVisualizerCandidateWire(value['current_selection'])) &&
-    Array.isArray(value['ancestry']) && value['ancestry'].every(isHolonReferenceWire);
+    Array.isArray(value['ancestry']) && value['ancestry'].every(isHolonReferenceWire) &&
+    ['holon_type_boundary', 'lineage_exhausted'].includes(value['stop_reason'] as string) &&
+    (value['snapshot'] === null || typeof value['snapshot'] === 'string');
 }
 
 export interface VisualizerUsageSelectionWire {

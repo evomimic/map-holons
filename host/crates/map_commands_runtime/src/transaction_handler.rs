@@ -104,12 +104,21 @@ pub async fn handle_transaction(
                 slot,
             )?))
         }
-        TransactionAction::DiscoverVisualizers { request, current_selection } => {
-            Ok(MapResult::VisualizerDiscovery(dahn_selection::discover_visualizers(
-                context,
-                request,
-                current_selection,
-            )?))
+        TransactionAction::DiscoverVisualizers { request, current_selection, retain_evidence } => {
+            let mut discovery =
+                dahn_selection::discover_visualizers(context, request.clone(), current_selection)?;
+            if retain_evidence {
+                discovery.snapshot =
+                    Some(session.discoveries.retain(context.tx_id(), request, &discovery)?);
+            }
+            Ok(MapResult::VisualizerDiscovery(discovery))
+        }
+        TransactionAction::ProjectVisualizerDiscovery { snapshot } => {
+            Ok(MapResult::Reference(session.discoveries.project(context, &snapshot)?))
+        }
+        TransactionAction::ReleaseVisualizerDiscovery { snapshot } => {
+            session.discoveries.release(&context.tx_id(), &snapshot)?;
+            Ok(MapResult::None)
         }
         TransactionAction::ChooseVisualizer { request, candidate } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::choose_visualizer(

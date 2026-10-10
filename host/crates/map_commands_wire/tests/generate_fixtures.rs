@@ -72,7 +72,16 @@ fn generate_fixtures() {
             TransactionActionWire::DiscoverVisualizers {
                 request: selection_request.clone(),
                 current_selection: None,
+                retain_evidence: false,
             },
+        ),
+        (
+            "request-project-visualizer-discovery.json",
+            TransactionActionWire::ProjectVisualizerDiscovery { snapshot: "captured".into() },
+        ),
+        (
+            "request-release-visualizer-discovery.json",
+            TransactionActionWire::ReleaseVisualizerDiscovery { snapshot: "captured".into() },
         ),
         (
             "request-choose-visualizer.json",
@@ -112,6 +121,8 @@ fn generate_fixtures() {
                     assessment: map_commands_wire::VisualizerAssessmentWire::NoLongerApplicable,
                 }),
                 ancestry: vec![staged_reference(41, uuid_a())],
+                stop_reason: "lineage_exhausted".into(),
+                snapshot: None,
             })),
         ),
     );

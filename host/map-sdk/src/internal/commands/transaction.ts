@@ -473,8 +473,14 @@ export function getCommittedHolons(txId: TxId): Promise<HolonCollectionWire> {
   return runTransactionCommand(txId, 'GetCommittedHolons', expectCollection);
 }
 
-export function discoverVisualizers(txId: TxId, request: VisualizerSelectionRequestWire, current_selection: HolonReferenceWire | null): Promise<VisualizerDiscoveryWire> {
-  return runTransactionCommand(txId, { DiscoverVisualizers: { request, current_selection } }, expectVisualizerDiscovery);
+export function discoverVisualizers(txId: TxId, request: VisualizerSelectionRequestWire, current_selection: HolonReferenceWire | null, retain_evidence = false): Promise<VisualizerDiscoveryWire> {
+  return runTransactionCommand(txId, { DiscoverVisualizers: { request, current_selection, retain_evidence } }, expectVisualizerDiscovery);
+}
+export function projectVisualizerDiscovery(txId: TxId, snapshot: string): Promise<HolonReferenceWire> {
+  return runTransactionCommand(txId, { ProjectVisualizerDiscovery: { snapshot } }, expectReference);
+}
+export function releaseVisualizerDiscovery(txId: TxId, snapshot: string): Promise<void> {
+  return runTransactionCommand(txId, { ReleaseVisualizerDiscovery: { snapshot } }, expectNone);
 }
 export function chooseVisualizer(txId: TxId, request: VisualizerSelectionRequestWire, candidate: HolonReferenceWire): Promise<VisualizerSelectionWire> {
   return runTransactionCommand(txId, { ChooseVisualizer: { request, candidate } }, expectVisualizerSelection);

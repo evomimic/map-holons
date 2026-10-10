@@ -55,6 +55,7 @@ export interface ContentSet {
 export type VisualizerKindWire =
   | 'Canvas'
   | 'Node'
+  | 'Structure'
   | 'RootedNavigation'
   | 'Collection'
   | 'PropertyMap'
@@ -106,7 +107,9 @@ export type TransactionActionWire =
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
-  | { DiscoverVisualizers: { request: VisualizerSelectionRequestWire; current_selection: HolonReferenceWire | null } }
+  | { ProjectVisualizerDiscovery: { snapshot: string } }
+  | { ReleaseVisualizerDiscovery: { snapshot: string } }
+  | { DiscoverVisualizers: { request: VisualizerSelectionRequestWire; current_selection: HolonReferenceWire | null; retain_evidence?: boolean } }
   | { SelectVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire } }
   | { RecordVisualizerUse: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire; usage: HolonReferenceWire; origin: 'Automatic' | 'Explicit' | 'Exploratory'; report: { session: string; occurrence_id: string; sequence: number } } }
   | { ChooseVisualizer: { request: VisualizerSelectionRequestWire; candidate: HolonReferenceWire } }
@@ -329,6 +332,8 @@ export function isTransactionActionWire(
       isHolonReferenceWire(value.SelectCollectionVisualizer['parent_visualizer']) &&
       isHolonReferenceWire(value.SelectCollectionVisualizer['slot'])) ||
     (hasSingleKey(value, 'SelectVisualizer') && isVisualizerSelectionRequestWire(value.SelectVisualizer)) ||
+    (hasSingleKey(value, 'ProjectVisualizerDiscovery') && isRecord(value.ProjectVisualizerDiscovery) && isString(value.ProjectVisualizerDiscovery['snapshot'])) ||
+    (hasSingleKey(value, 'ReleaseVisualizerDiscovery') && isRecord(value.ReleaseVisualizerDiscovery) && isString(value.ReleaseVisualizerDiscovery['snapshot'])) ||
     (hasSingleKey(value, 'DiscoverVisualizers') && isRecord(value.DiscoverVisualizers) &&
       isVisualizerSelectionRequestWire(value.DiscoverVisualizers['request']) &&
       (value.DiscoverVisualizers['current_selection'] === null || isHolonReferenceWire(value.DiscoverVisualizers['current_selection']))) ||
@@ -408,5 +413,5 @@ export function isVisualizerSelectionRequestWire(value: unknown): value is Visua
   const owner = value['owner'];
   return isRecord(owner) && ((hasSingleKey(owner, 'Visualizer') && isHolonReferenceWire(owner.Visualizer)) ||
     (hasSingleKey(owner, 'Dancer') && isHolonReferenceWire(owner.Dancer))) &&
-    ['Canvas', 'Node', 'RootedNavigation', 'Collection', 'PropertyMap', 'Property', 'Value', 'ActionBar', 'Action'].includes(value['requested_kind'] as string);
+    ['Canvas', 'Node', 'Structure', 'RootedNavigation', 'Collection', 'PropertyMap', 'Property', 'Value', 'ActionBar', 'Action'].includes(value['requested_kind'] as string);
 }

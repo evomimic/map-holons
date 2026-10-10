@@ -78,9 +78,17 @@ pub enum TransactionActionWire {
     },
 
     SelectVisualizer(VisualizerSelectionRequestWire),
+    ProjectVisualizerDiscovery {
+        snapshot: MapString,
+    },
+    ReleaseVisualizerDiscovery {
+        snapshot: MapString,
+    },
     DiscoverVisualizers {
         request: VisualizerSelectionRequestWire,
         current_selection: Option<HolonReferenceWire>,
+        #[serde(default)]
+        retain_evidence: bool,
     },
     ChooseVisualizer {
         request: VisualizerSelectionRequestWire,
@@ -191,6 +199,7 @@ pub enum TransactionActionWire {
 pub enum VisualizerKindWire {
     Canvas,
     Node,
+    Structure,
     RootedNavigation,
     Collection,
     PropertyMap,
@@ -246,6 +255,7 @@ impl VisualizerSelectionRequestWire {
 impl From<VisualizerKindWire> for VisualizerKind {
     fn from(value: VisualizerKindWire) -> Self {
         match value {
+            VisualizerKindWire::Structure => Self::Structure,
             VisualizerKindWire::Canvas => Self::Canvas,
             VisualizerKindWire::Node => Self::Node,
             VisualizerKindWire::RootedNavigation => Self::RootedNavigation,
@@ -262,6 +272,7 @@ impl From<VisualizerKindWire> for VisualizerKind {
 impl From<VisualizerKind> for VisualizerKindWire {
     fn from(value: VisualizerKind) -> Self {
         match value {
+            VisualizerKind::Structure => Self::Structure,
             VisualizerKind::Canvas => Self::Canvas,
             VisualizerKind::Node => Self::Node,
             VisualizerKind::RootedNavigation => Self::RootedNavigation,
@@ -354,14 +365,23 @@ impl TransactionActionWire {
             TransactionActionWire::SelectVisualizer(request) => {
                 Ok(TransactionAction::SelectVisualizer { request: request.bind(context)? })
             }
-            TransactionActionWire::DiscoverVisualizers { request, current_selection } => {
-                Ok(TransactionAction::DiscoverVisualizers {
-                    request: request.bind(context)?,
-                    current_selection: current_selection
-                        .map(|value| value.bind(context))
-                        .transpose()?,
-                })
+            TransactionActionWire::ProjectVisualizerDiscovery { snapshot } => {
+                Ok(TransactionAction::ProjectVisualizerDiscovery { snapshot })
             }
+            TransactionActionWire::ReleaseVisualizerDiscovery { snapshot } => {
+                Ok(TransactionAction::ReleaseVisualizerDiscovery { snapshot })
+            }
+            TransactionActionWire::DiscoverVisualizers {
+                request,
+                current_selection,
+                retain_evidence,
+            } => Ok(TransactionAction::DiscoverVisualizers {
+                request: request.bind(context)?,
+                current_selection: current_selection
+                    .map(|value| value.bind(context))
+                    .transpose()?,
+                retain_evidence,
+            }),
             TransactionActionWire::ChooseVisualizer { request, candidate } => {
                 Ok(TransactionAction::ChooseVisualizer {
                     request: request.bind(context)?,

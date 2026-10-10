@@ -63,10 +63,15 @@ pub enum TransactionAction {
 
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
     SelectVisualizer { request: VisualizerSelectionRequest },
+    /// Project a retained authoritative result into this open presentation context.
+    ProjectVisualizerDiscovery { snapshot: MapString },
+    /// Release unprojected evidence when its information session closes.
+    ReleaseVisualizerDiscovery { snapshot: MapString },
     /// Enumerates applicability without selecting or materializing an implementation.
     DiscoverVisualizers {
         request: VisualizerSelectionRequest,
         current_selection: Option<HolonReference>,
+        retain_evidence: bool,
     },
     /// Revalidates one explicit choice against the current request context.
     ChooseVisualizer { request: VisualizerSelectionRequest, candidate: HolonReference },
@@ -153,8 +158,8 @@ pub enum TransactionAction {
 pub enum VisualizerKind {
     Canvas,
     Node,
-    /// The only Structure subkind supported by this slice. This deliberately
-    /// does not establish a general Structure taxonomy at the command seam.
+    /// Visualizes an organizing semantic topology.
+    Structure,
     RootedNavigation,
     Collection,
     PropertyMap,
@@ -195,6 +200,12 @@ impl TransactionAction {
             }
             // Selection only reads the retained subject and descriptor graph.
             // Materialization still creates invocation holons and requires an open context.
+            TransactionAction::ProjectVisualizerDiscovery { .. } => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
+            TransactionAction::ReleaseVisualizerDiscovery { .. } => {
+                CommandLifecyclePolicy::holon_read_only()
+            }
             TransactionAction::SelectVisualizer { .. }
             | TransactionAction::DiscoverVisualizers { .. }
             | TransactionAction::ChooseVisualizer { .. } => {
@@ -251,6 +262,8 @@ impl TransactionAction {
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
+            TransactionAction::ProjectVisualizerDiscovery { .. } => "project_visualizer_discovery",
+            TransactionAction::ReleaseVisualizerDiscovery { .. } => "release_visualizer_discovery",
             TransactionAction::DiscoverVisualizers { .. } => "discover_visualizers",
             TransactionAction::ChooseVisualizer { .. } => "choose_visualizer",
             TransactionAction::SelectVisualizerUsage { .. } => "select_visualizer_usage",

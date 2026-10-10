@@ -34,7 +34,8 @@
               }
             }
           },
-          "current_selection": null
+          "current_selection": null,
+          "retain_evidence": false
         }
       }
     }

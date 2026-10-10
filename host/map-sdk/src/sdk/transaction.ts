@@ -40,6 +40,7 @@ import {
 export type VisualizerKind =
   | 'canvas'
   | 'node'
+  | 'structure'
   | 'rootedNavigation'
   | 'collection'
   | 'propertyMap'
@@ -74,6 +75,10 @@ export interface VisualizerDiscovery {
   candidates: readonly VisualizerCandidate[];
   currentSelection: VisualizerCandidate | null;
   ancestry: readonly HolonReference[];
+  stopReason: 'holon_type_boundary' | 'lineage_exhausted';
+  /** Single-use projection of the authoritative result; release when unused. */
+  evidence?: { project(destination: MapTransaction): Promise<HolonReference>; dispose(): Promise<void> };
+
 }
 
 /** Rust-selected semantic Visualizer reference for a visualization request. */
@@ -506,15 +511,33 @@ export class MapTransaction {
   }
 
   /** Enumerates alternatives without changing the selection or claiming mounted state. */
-  async discoverVisualizers(request: VisualizerSelectionRequest, currentSelection?: HolonReference): Promise<VisualizerDiscovery> {
+  async discoverVisualizers(request: VisualizerSelectionRequest, currentSelection?: HolonReference, retainEvidence = false): Promise<VisualizerDiscovery> {
     const txId = txIdFor(this);
     const current = currentSelection === undefined ? null : unwrapHolonReference(this.owns(currentSelection) ? currentSelection : this.bindSavedReference(currentSelection));
-    const result = await internalTransaction.discoverVisualizers(txId, this.selectionRequestWire(request), current);
+    const result = await internalTransaction.discoverVisualizers(txId, this.selectionRequestWire(request), current, retainEvidence);
     const bind = (candidate: VisualizerCandidateWire): VisualizerCandidate => ({
       visualizer: createHolonReference(txId, candidate.visualizer),
       declaredOn: candidate.declared_on.map(reference => createHolonReference(txId, reference)), assessment: candidate.assessment,
     });
-    return { candidates: result.candidates.map(bind), currentSelection: result.current_selection === null ? null : bind(result.current_selection), ancestry: result.ancestry.map(reference => createHolonReference(txId, reference)) };
+    const snapshot = result.snapshot;
+    let released = false;
+    const evidence = snapshot === null ? undefined : {
+      project: async (destination: MapTransaction) => {
+        if (released) throw new Error('Discovery evidence has already been released or projected.');
+        released = true;
+        try {
+          const destinationId = txIdFor(destination);
+          return createHolonReference(destinationId, await internalTransaction.projectVisualizerDiscovery(destinationId, snapshot));
+        } catch (error) {
+          await internalTransaction.releaseVisualizerDiscovery(txId, snapshot).catch(() => {});
+          throw error;
+        }
+      },
+      dispose: async () => {
+        if (!released) { released = true; await internalTransaction.releaseVisualizerDiscovery(txId, snapshot); }
+      },
+    };
+    return { candidates: result.candidates.map(bind), currentSelection: result.current_selection === null ? null : bind(result.current_selection), ancestry: result.ancestry.map(reference => createHolonReference(txId, reference)), stopReason: result.stop_reason, evidence };
   }
 
   /** Authorizes a current explicit choice; does not persist preference or replace UI. */
@@ -607,6 +630,7 @@ function toSmartReferenceWire(currentVersion: SmartReference): SmartReferenceWir
 function toVisualizerKindWire(kind: VisualizerKind):
   | 'Canvas'
   | 'Node'
+  | 'Structure'
   | 'RootedNavigation'
   | 'Collection'
   | 'PropertyMap'
@@ -620,7 +644,8 @@ function toVisualizerKindWire(kind: VisualizerKind):
   return `${kind[0].toUpperCase()}${kind.slice(1)}` as
     | 'Canvas'
     | 'Node'
-    | 'RootedNavigation'
+    | 'Structure'
+  | 'RootedNavigation'
     | 'Collection'
     | 'PropertyMap'
     | 'Property'

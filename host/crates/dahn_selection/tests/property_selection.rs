@@ -533,6 +533,10 @@ fn discovery_retains_general_alternatives_and_all_declaration_provenance() {
     )
     .unwrap();
     assert_eq!(discovery.ancestry.len(), 3);
+    assert_eq!(
+        discovery.stop_reason,
+        map_commands_contract::DiscoveryStopReason::HolonTypeBoundary
+    );
     assert_eq!(discovery.candidates.len(), 2);
     assert_eq!(discovery.candidates[0].declared_on.len(), 2);
     assert_eq!(discovery.candidates[1].declared_on.len(), 2);
@@ -710,6 +714,10 @@ fn node_discovery_uses_the_subjects_described_type_and_allows_a_general_choice()
     };
     let discovery = dahn_selection::discover_visualizers(&context, request(), None).unwrap();
     assert_eq!(discovery.ancestry[0], Graph::reference(&context, 4));
+    assert_eq!(
+        discovery.stop_reason,
+        map_commands_contract::DiscoveryStopReason::HolonTypeBoundary
+    );
     assert_eq!(discovery.candidates.len(), 2);
     assert_eq!(discovery.candidates[1].declared_on.len(), 1);
     assert_eq!(
@@ -722,4 +730,18 @@ fn node_discovery_uses_the_subjects_described_type_and_allows_a_general_choice()
             .selected,
         Graph::reference(&context, 22)
     );
+}
+
+#[test]
+fn structure_discovery_reports_actual_lineage_exhaustion_without_node_requirements() {
+    let mut graph = slot_graph();
+    graph.holon_root = None;
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(3, "Extends", &[]);
+    let context = candidate_context(graph);
+    let mut request = candidate_request(&context);
+    request.requested_kind = VisualizerKind::Structure;
+    let discovery = dahn_selection::discover_visualizers(&context, request, None).unwrap();
+    assert_eq!(discovery.stop_reason, map_commands_contract::DiscoveryStopReason::LineageExhausted);
+    assert_eq!(discovery.ancestry[0], Graph::reference(&context, 2));
 }

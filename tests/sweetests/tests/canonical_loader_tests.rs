@@ -111,6 +111,88 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
     let space = context.get_space_holon().unwrap().unwrap();
+    let MapResult::VisualizerDiscovery(discovery) = command(
+        &runtime,
+        &context,
+        TransactionAction::DiscoverVisualizers {
+            request: map_commands_contract::VisualizerSelectionRequest {
+                subject: space.clone(),
+                requested_kind: map_commands_contract::VisualizerKind::Node,
+                owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+            },
+            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            retain_evidence: true,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("discovery evidence")
+    };
+    let destination = new_context(&runtime).await;
+    let MapResult::Reference(projection) = command(
+        &runtime,
+        &destination,
+        TransactionAction::ProjectVisualizerDiscovery { snapshot: discovery.snapshot.unwrap() },
+    )
+    .await
+    .unwrap() else {
+        panic!("discovery projection")
+    };
+    assert_eq!(string(&projection, "DiscoveryStopReason"), "holon_type_boundary");
+    let explorer_request = || map_commands_contract::VisualizerSelectionRequest {
+        subject: projection.clone(),
+        requested_kind: map_commands_contract::VisualizerKind::Structure,
+        owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
+            "VisualizerInspector.Visualizer",
+        )),
+        slot: saved("VisualizerInspector.DiscoveryExplorerSlot"),
+        theme: saved("Demo1.DeepOceanTheme"),
+    };
+    let MapResult::VisualizerSelection(explorer) = command(
+        &runtime,
+        &destination,
+        TransactionAction::SelectVisualizer { request: explorer_request() },
+    )
+    .await
+    .unwrap() else {
+        panic!("explorer selection")
+    };
+    assert_eq!(
+        explorer.selected.holon_id().unwrap(),
+        saved("DiscoveryTree.StructureVisualizer").holon_id().unwrap()
+    );
+    let MapResult::VisualizerDiscovery(alternatives) = command(
+        &runtime,
+        &destination,
+        TransactionAction::DiscoverVisualizers {
+            request: explorer_request(),
+            current_selection: Some(explorer.selected),
+            retain_evidence: false,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("explorer alternatives")
+    };
+    for key in ["DiscoveryTree.StructureVisualizer", "DiscoveryLevels.StructureVisualizer"] {
+        assert!(alternatives.candidates.iter().any(|candidate| candidate.visualizer == saved(key)
+            && candidate.assessment == map_commands_contract::VisualizerAssessment::Viable));
+        command(
+            &runtime,
+            &destination,
+            TransactionAction::ChooseVisualizer {
+                request: explorer_request(),
+                candidate: saved(key),
+            },
+        )
+        .await
+        .unwrap();
+    }
+    command(&runtime, &destination, TransactionAction::Dispose).await.unwrap();
     command(&runtime, &context, TransactionAction::CheckLoadTarget { space: space.clone() })
         .await
         .unwrap();
@@ -167,6 +249,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             TransactionAction::DiscoverVisualizers {
                 request: selection_request(),
                 current_selection: Some(selection.selected.clone()),
+                retain_evidence: false,
             },
         )
         .await

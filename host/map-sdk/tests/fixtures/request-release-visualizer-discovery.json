@@ -1,0 +1,19 @@
+{
+  "request_id": 150,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "ReleaseVisualizerDiscovery": {
+          "snapshot": "captured"
+        }
+      }
+    }
+  },
+  "options": {
+    "marker_id": null,
+    "marker_label": null,
+    "snapshot_after": false,
+    "disable_undo": false
+  }
+}

@@ -1,5 +1,6 @@
 /** A semantic Visualizer definition view, separate from usage configuration and history. */
 export default class VisualizerInspector extends HTMLElement {
+  static compositionSlots = { discovery: 'VisualizerInspector.DiscoveryExplorerSlot' };
   setContext(context) {
     for (const observer of this.compositionObservers ?? []) observer.disconnect();
     this.compositionObservers = new Set();
@@ -57,6 +58,7 @@ export default class VisualizerInspector extends HTMLElement {
       const technicalSummary = document.createElement('summary'); technicalSummary.textContent = 'Technical details';
       technicalSummary.style.cssText = 'cursor:pointer;color:var(--dahn-muted-text-color);font-size:.9rem;';
       technical.append(technicalSummary); this.append(technical);
+      if (context.mountDiscoveryExplorer) this.renderDiscovery(context, technical);
       const definition = document.createElement('p'); definition.textContent = `Shared Visualizer definition · ${key}`;
       definition.style.cssText = 'margin:8px 0;color:var(--dahn-muted-text-color);font-size:.85rem;';
       technical.append(definition);
@@ -130,6 +132,42 @@ export default class VisualizerInspector extends HTMLElement {
       status.setAttribute('role', 'alert'); status.textContent = `Unable to load information: ${error instanceof Error ? error.message : String(error)}`;
       const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry'; retry.addEventListener('click', () => this.setContext(context)); this.append(retry);
     }
+  }
+  renderDiscovery(context, technical) {
+    const host = document.createElement('section'); host.dataset.discoveryExplorerHost = 'true';
+    let loaded = false, loading = false, refreshing = false;
+    const load = async (refresh = false) => {
+      context.onTechnicalDetailsChanged?.(technical.open);
+      if (!technical.open || (loaded && !refresh) || loading || this.context !== context) return;
+      loading = true; host.textContent = 'Opening discovery explanation…';
+      try {
+        if (refresh) await context.refreshDiscoveryExplorer?.();
+        if (this.context !== context || !host.isConnected) return;
+        await context.mountDiscoveryExplorer(host); loaded = true;
+        if (refresh && context.discoverVisualizerChoices) {
+          this.querySelector('[data-visualizer-choices]')?.remove();
+          await this.renderChoices(context);
+        }
+      }
+      catch (error) {
+        loaded = false;
+        if (this.context !== context || !host.isConnected) return;
+        host.textContent = `Unable to explain discovery: ${error.message ?? error}`;
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry explanation'; retry.addEventListener('click', () => void load()); host.append(retry);
+      } finally { loading = false; }
+    };
+    if (context.refreshDiscoveryExplorer) {
+      const refresh = document.createElement('button'); refresh.type = 'button'; refresh.textContent = 'Refresh discovery';
+      refresh.addEventListener('click', async () => {
+        if (refreshing || loading) return;
+        refreshing = true; refresh.disabled = true;
+        try { await load(true); } finally { refreshing = false; refresh.disabled = false; }
+      });
+      technical.append(refresh);
+    }
+    technical.append(host); technical.addEventListener('toggle', () => void load());
+    technical.open = context.technicalDetailsOpen ?? false;
+    if (technical.open) void load();
   }
   async renderChoices(context) {
     const section = document.createElement('section'); section.dataset.visualizerChoices = 'true';
@@ -289,7 +327,8 @@ export default class VisualizerInspector extends HTMLElement {
       for (const row of rows.values()) row.dispose?.();
     };
   }
-  disconnectedCallback() { this.choiceController?.abort(); this.context = undefined; for (const observer of this.compositionObservers ?? []) observer.disconnect(); }
+  dispose() { this.choiceController?.abort(); this.choiceController = undefined; this.choicePending = false; this.context = undefined; for (const observer of this.compositionObservers ?? []) observer.disconnect(); this.compositionObservers?.clear(); }
+  disconnectedCallback() { this.dispose(); }
 }
 function present(value) {
   if (value === null) return 'Not provided';
