@@ -83,6 +83,13 @@ export interface VisualizerSelection {
   alternativesAvailable: boolean;
 }
 
+/** Persisted configuration, prepared independently; not proof of successful use. */
+export interface VisualizerUsageSelection {
+  usage: HolonReference;
+  initialized: boolean;
+}
+export type VisualizerChoiceOrigin = 'automatic' | 'explicit' | 'exploratory';
+
 /** Typed metadata returned by the MaterializeVisualizer Dance. */
 export interface MaterializedVisualizer {
   artifactHandle: string;
@@ -512,6 +519,21 @@ export class MapTransaction {
     const txId = txIdFor(this);
     const result = await internalTransaction.chooseVisualizer(txId, this.selectionRequestWire(request), unwrapHolonReference(this.owns(candidate) ? candidate : this.bindSavedReference(candidate)));
     return { selected: createHolonReference(txId, result.selected), requestedKind: fromVisualizerKindWire(result.requested_kind), alternativesAvailable: result.alternatives_available };
+  }
+
+  /** Select/initialize persisted usage without committing this transaction's edits. */
+  async selectVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection> {
+    const txId = txIdFor(this);
+    const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
+    const result = await internalTransaction.selectVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected));
+    return { usage: createHolonReference(txId, result.usage), initialized: result.initialized };
+  }
+
+  /** Report successful presentation only. Exploration never establishes remembered preference. */
+  async recordVisualizerUse(request: VisualizerSelectionRequest, selected: HolonReference, usage: HolonReference, origin: VisualizerChoiceOrigin): Promise<void> {
+    const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
+    const origins = { automatic: 'Automatic', explicit: 'Explicit', exploratory: 'Exploratory' } as const;
+    await internalTransaction.recordVisualizerUse(txIdFor(this), this.selectionRequestWire(request), bind(selected), bind(usage), origins[origin]);
   }
 
   /**

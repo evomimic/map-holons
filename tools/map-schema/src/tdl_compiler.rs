@@ -2497,13 +2497,65 @@ holon Example.HolonType {
                                     == "(VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType)"
                             }) && targets.iter().any(|target| {
                                 target["$ref"]
-                                    == "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)"
+                                    == "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)"
                             })
                         })
                 })
             })
             .context("VisualizerUsage instance contract")?;
         assert!(!usage_contract["target"].as_array().unwrap().is_empty());
+        for (name, target, cardinality) in [
+            ("ForSubjectType", "TypeDescriptor", "ExactlyOne.CardinalityConstraint"),
+            ("SelectedForSlot", "VisualizerSlot.HolonType", "ZeroOrMore.CardinalityConstraint"),
+            (
+                "PropertySalienceOverrides",
+                "PropertySalienceOverride.HolonType",
+                "ZeroOrMore.CardinalityConstraint",
+            ),
+            (
+                "RelationshipSalienceOverrides",
+                "RelationshipSalienceOverride.HolonType",
+                "ZeroOrMore.CardinalityConstraint",
+            ),
+            (
+                "ActionSalienceOverrides",
+                "ActionSalienceOverride.HolonType",
+                "ZeroOrMore.CardinalityConstraint",
+            ),
+            (
+                "ActionGroupOverrides",
+                "ActionGroupOverride.HolonType",
+                "ZeroOrMore.CardinalityConstraint",
+            ),
+        ] {
+            let key = format!("(VisualizerUsage.HolonType)-[{name}]->({target})");
+            assert!(usage_contract["target"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|target| target["$ref"] == key));
+            let relationship =
+                holons.iter().find(|holon| holon["key"] == key).context("usage relationship")?;
+            let constraint = relationship["relationships"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|relationship| relationship["name"] == "Constraints")
+                .context("usage cardinality")?;
+            assert_eq!(constraint["target"][0]["$ref"], cardinality);
+        }
+        for key in [
+            "PropertySalienceOverride.HolonType",
+            "RelationshipSalienceOverride.HolonType",
+            "ActionSalienceOverride.HolonType",
+            "ActionGroupOverride.HolonType",
+        ] {
+            let descriptor = holons
+                .iter()
+                .find(|holon| holon["key"] == key)
+                .context("override extension point")?;
+            assert_eq!(descriptor["properties"]["IsAbstractType"], true);
+        }
 
         for (key, expected_inverse) in [
             (
@@ -2515,8 +2567,8 @@ holon Example.HolonType {
                 "(Visualizer.HolonType)-[UsedByVisualizerUsage]->(VisualizerUsage.HolonType)",
             ),
             (
-                "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)",
-                "(VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType)",
+                "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)",
+                "(VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType)",
             ),
         ] {
             let relationship = holons
@@ -2526,9 +2578,9 @@ holon Example.HolonType {
             let has_inverse = relationship["relationships"]
                 .as_array()
                 .and_then(|relationships| {
-                    relationships.iter().find(|relationship| {
-                        relationship["name"].as_str() == Some("HasInverse")
-                    })
+                    relationships
+                        .iter()
+                        .find(|relationship| relationship["name"].as_str() == Some("HasInverse"))
                 })
                 .with_context(|| format!("{key} HasInverse relationship"))?;
             assert_eq!(has_inverse["target"][0]["$ref"], expected_inverse);

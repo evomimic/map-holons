@@ -10,6 +10,7 @@ import type {
   QualifiedRelationshipWire,
   VisualizerSelectionWire,
   VisualizerDiscoveryWire,
+  VisualizerUsageSelectionWire,
   TxId,
 } from './wire-types';
 
@@ -250,4 +251,9 @@ export function expectValidationFindings(result: MapResultWire): CommitValidatio
 export function expectVisualizerDiscovery(result: MapResultWire): VisualizerDiscoveryWire {
   if (typeof result === 'object' && result !== null && 'VisualizerDiscovery' in result) return result.VisualizerDiscovery;
   throw unexpectedResultVariant('VisualizerDiscovery', result);
+}
+
+export function expectVisualizerUsageSelection(result: MapResultWire): VisualizerUsageSelectionWire {
+  if (typeof result === 'object' && result !== null && 'VisualizerUsageSelection' in result) return result.VisualizerUsageSelection;
+  throw unexpectedResultVariant('VisualizerUsageSelection', result);
 }

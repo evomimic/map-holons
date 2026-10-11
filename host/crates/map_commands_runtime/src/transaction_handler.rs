@@ -116,6 +116,25 @@ pub async fn handle_transaction(
                 context, request, candidate,
             )?))
         }
+        TransactionAction::SelectVisualizerUsage { request, selected } => {
+            Ok(MapResult::VisualizerUsageSelection(session.usage_transactions.select(
+                session.space_manager(),
+                context,
+                request,
+                selected,
+            )?))
+        }
+        TransactionAction::RecordVisualizerUse { request, selected, usage, origin } => {
+            session.usage_transactions.record(
+                session.space_manager(),
+                context,
+                request,
+                selected,
+                usage,
+                origin,
+            )?;
+            Ok(MapResult::None)
+        }
         TransactionAction::SelectVisualizer { request } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::select_visualizer(context, request)?))
         }

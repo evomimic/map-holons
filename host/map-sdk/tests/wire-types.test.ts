@@ -22,7 +22,7 @@ const fixtureFiles = readdirSync(fixturesDir).sort();
 
 describe('wire type fixtures', () => {
   it('discovers the generated fixture set', () => {
-    expect(fixtureFiles.length).toBe(53);
+    expect(fixtureFiles.length).toBe(56);
   });
 
   for (const fixtureFile of fixtureFiles) {

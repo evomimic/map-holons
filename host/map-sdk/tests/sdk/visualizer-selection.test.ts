@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-const { select, selectCollection, discover, choose } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn(), discover: vi.fn(), choose: vi.fn() }));
-vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection, discoverVisualizers: discover, chooseVisualizer: choose }));
+const { select, selectCollection, discover, choose, selectUsage, recordUse } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn(), discover: vi.fn(), choose: vi.fn(), selectUsage: vi.fn(), recordUse: vi.fn() }));
+vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection, discoverVisualizers: discover, chooseVisualizer: choose, selectVisualizerUsage: selectUsage, recordVisualizerUse: recordUse }));
 import { createMapTransaction } from '../../src/sdk/transaction';
 import { createHolonReference, unwrapHolonReference } from '../../src/sdk/references';
 import { createPropertyDescriptorHandle, createHolonDescriptorHandle } from '../../src/sdk/descriptors';
@@ -93,4 +93,27 @@ it('binds discovery provenance and keeps a stale current choice separate', async
   expect(unwrapHolonReference(chosen.selected)).toEqual(selected);
   choose.mockRejectedValue(new Error('Explicit Visualizer choice is not viable'));
   await expect(tx.chooseVisualizer(request, chosen.selected)).rejects.toThrow('not viable');
+});
+
+it('binds independently committed usage and reports explicit versus exploratory successful use', async () => {
+  const usage: HolonReferenceWire = { Smart: { holon_id: { Local: [99] }, smart_property_values: null } };
+  const tx = createMapTransaction(41);
+  const request = { subject: createHolonReference(41, subject), requestedKind: 'node' as const,
+    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  const visualizer = createHolonReference(41, selected);
+  selectUsage.mockResolvedValue({ usage, initialized: true });
+  const commit = vi.spyOn(tx, 'commit');
+  const prepared = await tx.selectVisualizerUsage(request, visualizer);
+  expect(unwrapHolonReference(prepared.usage)).toEqual(usage);
+  expect(prepared.initialized).toBe(true);
+  expect(selectUsage).toHaveBeenCalledWith(41, expect.objectContaining({ slot, owner: { Visualizer: parent } }), selected);
+  expect(commit).not.toHaveBeenCalled();
+  expect(recordUse).not.toHaveBeenCalled();
+  recordUse.mockResolvedValue(undefined);
+  await tx.recordVisualizerUse(request, visualizer, prepared.usage, 'explicit');
+  expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Explicit');
+  await tx.recordVisualizerUse(request, visualizer, prepared.usage, 'exploratory');
+  expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Exploratory');
+  selectUsage.mockRejectedValue(new Error('Usage commit incomplete'));
+  await expect(tx.selectVisualizerUsage(request, visualizer)).rejects.toThrow('Usage commit incomplete');
 });

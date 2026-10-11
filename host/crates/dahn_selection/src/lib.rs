@@ -6,10 +6,14 @@
 
 mod candidates;
 mod selection;
-pub use candidates::{choose_visualizer, discover_visualizers, select_visualizer};
+pub use candidates::{
+    choose_visualizer, discover_visualizers, select_visualizer, usage_subject_type,
+};
 
 pub use selection::{
     select_bootstrap_canvas, select_collection_visualizer, select_home_dancer,
     BootstrapCanvasSelection, HomeDancerRuntime, HomeDancerSelection, HomeDancerSelectionContext,
     RuntimeCanvasVisualizer,
 };
+
+pub mod usage;

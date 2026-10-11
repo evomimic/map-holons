@@ -107,6 +107,8 @@ export type TransactionActionWire =
   | { DanceV2: { invocation: DanceV2InvocationWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
   | { DiscoverVisualizers: { request: VisualizerSelectionRequestWire; current_selection: HolonReferenceWire | null } }
+  | { SelectVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire } }
+  | { RecordVisualizerUse: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire; usage: HolonReferenceWire; origin: 'Automatic' | 'Explicit' | 'Exploratory' } }
   | { ChooseVisualizer: { request: VisualizerSelectionRequestWire; candidate: HolonReferenceWire } }
   | { SelectCollectionVisualizer: { collection: DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire } }
   | { FetchArtifact: { handle: string } }
@@ -330,6 +332,11 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'DiscoverVisualizers') && isRecord(value.DiscoverVisualizers) &&
       isVisualizerSelectionRequestWire(value.DiscoverVisualizers['request']) &&
       (value.DiscoverVisualizers['current_selection'] === null || isHolonReferenceWire(value.DiscoverVisualizers['current_selection']))) ||
+    (hasSingleKey(value, 'SelectVisualizerUsage') && isRecord(value.SelectVisualizerUsage) &&
+      isVisualizerSelectionRequestWire(value.SelectVisualizerUsage['request']) && isHolonReferenceWire(value.SelectVisualizerUsage['selected'])) ||
+    (hasSingleKey(value, 'RecordVisualizerUse') && isRecord(value.RecordVisualizerUse) &&
+      isVisualizerSelectionRequestWire(value.RecordVisualizerUse['request']) && isHolonReferenceWire(value.RecordVisualizerUse['selected']) &&
+      isHolonReferenceWire(value.RecordVisualizerUse['usage']) && isString(value.RecordVisualizerUse['origin']) && ['Automatic', 'Explicit', 'Exploratory'].includes(value.RecordVisualizerUse['origin'])) ||
     (hasSingleKey(value, 'ChooseVisualizer') && isRecord(value.ChooseVisualizer) &&
       isVisualizerSelectionRequestWire(value.ChooseVisualizer['request']) && isHolonReferenceWire(value.ChooseVisualizer['candidate'])) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
