@@ -2047,6 +2047,10 @@ mod tests {
     struct SortWorld {
         fixture: Fixture,
         spec_type: TransientReference,
+        /// The spec's `PropertyName` and `NullPlacement` declarations, kept so a
+        /// test can declare a spec type that omits `SortDirection`.
+        property_name: TransientReference,
+        null_placement: TransientReference,
         string_type: TransientReference,
         other_string_type: TransientReference,
         integer_type: TransientReference,
@@ -2145,11 +2149,24 @@ mod tests {
             spec_type
                 .add_related_holons(
                     CoreRelationshipTypeName::InstanceProperties,
-                    vec![property_name.into(), sort_direction.into(), null_placement.into()],
+                    vec![
+                        property_name.clone().into(),
+                        sort_direction.into(),
+                        null_placement.clone().into(),
+                    ],
                 )
                 .unwrap();
 
-            Self { fixture, spec_type, string_type, other_string_type, integer_type, boolean_type }
+            Self {
+                fixture,
+                spec_type,
+                property_name,
+                null_placement,
+                string_type,
+                other_string_type,
+                integer_type,
+                boolean_type,
+            }
         }
 
         /// A member holon type declaring `(property name, required, value type)`
@@ -2594,21 +2611,43 @@ mod tests {
     #[test]
     fn a_missing_spec_declaration_propagates_the_descriptor_error() {
         let world = SortWorld::new();
-        // A spec described by a type that declares no SortDirection.
-        let bare_spec_type =
-            new_holon_type_descriptor(&world.fixture.context, "Bare.HolonType", "OrderBySpec")
-                .unwrap();
-        let mut spec = new_test_holon(&world.fixture.context, "bare-spec").unwrap();
-        spec.with_descriptor(bare_spec_type.into()).unwrap();
+        // A spec type declaring a valid PropertyName and NullPlacement but no
+        // SortDirection, so resolution passes PropertyName and fails on the
+        // undeclared SortDirection rather than defaulting to Ascending.
+        let mut spec_type = new_holon_type_descriptor(
+            &world.fixture.context,
+            "UndirectedSpec.HolonType",
+            "OrderBySpec",
+        )
+        .unwrap();
+        spec_type
+            .add_related_holons(
+                CoreRelationshipTypeName::InstanceProperties,
+                vec![world.property_name.clone().into(), world.null_placement.clone().into()],
+            )
+            .unwrap();
+        let mut spec = new_test_holon(&world.fixture.context, "undirected-spec").unwrap();
+        spec.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![spec_type.into()])
+            .unwrap();
         spec.with_property_value(QueryPropertyTypeName::PropertyName, MapString("Title".into()))
             .unwrap();
         let root = world.order_by(vec![spec.into()]);
 
-        let (instance, sorted) = world.run(&root, &[]);
+        // Sortable members, so only the missing declaration can fail the run.
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let members = [
+            world.member("b", &book, &[("Title", text("B"))]),
+            world.member("a", &book, &[("Title", text("A"))]),
+        ];
+        let (instance, sorted) = world.run(&root, &members);
         let error = sorted.unwrap_err();
         assert!(
-            matches!(error, HolonError::DescriptorDeclarationNotFound { .. }),
-            "unexpected error: {error:?}"
+            matches!(
+                &error,
+                HolonError::DescriptorDeclarationNotFound { kind, name, .. }
+                    if kind == "property" && name == "SortDirection"
+            ),
+            "expected the undeclared SortDirection, got {error:?}"
         );
         assert_failed_without_result(&instance);
     }
