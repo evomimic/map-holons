@@ -10,6 +10,8 @@ const implementations = [
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
   ['ConnectionsFirstInspectorTypeScript.VisualizerImplementation', 'connections-first-inspector.js'],
   ['VisualizerInspectorTypeScript.VisualizerImplementation', 'visualizer-inspector.js'],
+  ['DiscoveryTreeTypeScript.VisualizerImplementation', 'discovery-tree.js'],
+  ['DiscoveryLevelsTypeScript.VisualizerImplementation', 'discovery-levels.js'],
   ['TableCollectionTypeScript.VisualizerImplementation', 'table-collection.js'],
   ['GenericActionsTypeScript.VisualizerImplementation', 'actions.js'],
   ['LoadHolonsActionTypeScript.VisualizerImplementation', 'load-holons-action.js'],
@@ -23,7 +25,7 @@ describe('registered navigation artifact integrity', () => {
   it.each(implementations)('%s matches the executable bytes in source and packaged resources', async (key, filename) => {
     const artifact = await readFile(resolve(repository, 'host/conductora/resources/dahn-visualizers', filename));
     const digest = `sha256:${createHash('sha256').update(artifact).digest('hex')}`;
-    const houseTroupe = ['table-collection.js', 'visualizer-inspector.js'].includes(filename);
+    const houseTroupe = ['table-collection.js', 'visualizer-inspector.js', 'discovery-tree.js', 'discovery-levels.js'].includes(filename);
     const source = await readFile(resolve(repository, houseTroupe ? 'house-troupe/space-navigator/schema/schema.tdl' : 'schema-src/dahn/schema.tdl'), 'utf8');
     const declaration = source.split(`instance ${key} {`)[1]?.split('\n}')[0];
     expect(declaration).toContain(`VisualizerArtifactDigest "${digest}"`);

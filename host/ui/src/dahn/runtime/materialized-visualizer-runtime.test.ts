@@ -6,6 +6,18 @@ import {
 import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
 describe('MaterializedVisualizerRuntime', () => {
+  it('shares constructor identity while materialization belongs to separate disposable presentation contexts', async () => {
+    const artifact = { source: 'verified explorer', format: 'ESModule' as const, entrypoint: 'default' };
+    const base = vi.fn().mockResolvedValue(artifact), first = vi.fn().mockResolvedValue(artifact), second = vi.fn().mockResolvedValue(artifact);
+    const implementation = class Explorer {};
+    const importer = vi.fn().mockResolvedValue({ default: implementation });
+    const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize: base }), importer);
+    const selected = { key: async () => 'explorer' };
+    await expect(runtime.realize(selected as never, new MaterializedVisualizerCache({ materialize: first }))).resolves.toBe(implementation);
+    await expect(runtime.realize(selected as never, new MaterializedVisualizerCache({ materialize: second }))).resolves.toBe(implementation);
+    expect(first).toHaveBeenCalledOnce(); expect(second).toHaveBeenCalledOnce();
+    expect(base).not.toHaveBeenCalled(); expect(importer).toHaveBeenCalledOnce();
+  });
   it('realizes the entrypoint from the selected Visualizer materialization', async () => {
     const materialize = vi
       .fn<VisualizerMaterializer['materialize']>()

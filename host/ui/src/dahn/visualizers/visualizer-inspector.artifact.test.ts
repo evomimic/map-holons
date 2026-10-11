@@ -6,6 +6,24 @@ const Inspector = (await import(`data:text/javascript;base64,${Buffer.from(sourc
 customElements.define('test-semantic-visualizer-inspector', Inspector);
 afterEach(() => document.body.replaceChildren());
 
+it('realizes the technical explorer only when Technical Details is opened', async () => {
+  const element = document.createElement('test-semantic-visualizer-inspector') as any; document.body.append(element);
+  const mount = vi.fn(async (host: HTMLElement) => { host.textContent = 'Authoritative discovery explanation'; });
+  const changed = vi.fn();
+  element.setContext({ holon: { propertyValue: async () => ({ StringValue: 'Inspector' }), key: async () => 'Inspector',
+    availableProperties: async () => [], availableRelationships: async () => [] },
+    mountDiscoveryExplorer: mount, onTechnicalDetailsChanged: changed });
+  await element.ready;
+  const technical = element.querySelector('[data-visualizer-technical-details]') as HTMLDetailsElement;
+  expect(technical.open).toBe(false); expect(mount).not.toHaveBeenCalled();
+  technical.open = true; technical.dispatchEvent(new Event('toggle'));
+  await vi.waitFor(() => expect(mount).toHaveBeenCalledOnce());
+  expect(technical.textContent).toContain('Authoritative discovery explanation');
+  technical.open = false; technical.dispatchEvent(new Event('toggle'));
+  technical.open = true; technical.dispatchEvent(new Event('toggle'));
+  expect(mount).toHaveBeenCalledOnce(); expect(changed).toHaveBeenLastCalledWith(true);
+});
+
 it('shows only consumed tokens with their exact-version assignments from the current Theme', async () => {
   const element = document.createElement('test-semantic-visualizer-inspector') as any;
   document.body.append(element);
@@ -293,6 +311,7 @@ it('reports choice failure and restores the button for retry', async () => {
   await vi.waitFor(() => expect(element.querySelector('[data-visualizer-choice-progress]').textContent).toContain('Usage unavailable'));
   const status = element.querySelector('[data-visualizer-choice-progress]');
   expect(status.getAttribute('role')).toBe('alert');
+  expect(button.closest('li').contains(status)).toBe(true);
   expect(status.querySelector('progress')).toBeNull();
   expect(button.disabled).toBe(false); expect(button.textContent).toBe('Choose');
   button.click();

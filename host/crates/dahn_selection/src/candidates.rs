@@ -83,7 +83,8 @@ fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, Ho
         VisualizerKind::Node
         | VisualizerKind::PropertyMap
         | VisualizerKind::ActionBar
-        | VisualizerKind::RootedNavigation => request.subject.holon_descriptor()?.holon().clone(),
+        | VisualizerKind::RootedNavigation
+        | VisualizerKind::Structure => request.subject.holon_descriptor()?.holon().clone(),
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Use the dedicated Canvas or Collection selection contract".into(),
@@ -150,6 +151,11 @@ fn at_level(
             continue;
         }
         let assessment = assess(context, facts, &visualizer)?;
+        // Applicability declarations can offer several presentation kinds.
+        // Only types accepted by this actual slot enter its choice population.
+        if assessment == VisualizerAssessment::IncompatibleSlot {
+            continue;
+        }
         candidates.push(VisualizerCandidate {
             visualizer,
             declared_on: vec![descriptor.clone()],
@@ -215,6 +221,7 @@ pub fn discover_visualizers(
     let facts = resolve(&request)?;
     let mut candidates: Vec<VisualizerCandidate> = Vec::new();
     let mut ancestry = Vec::new();
+    let mut stop_reason = map_commands_contract::DiscoveryStopReason::LineageExhausted;
     for descriptor in walk_extends_chain(&facts.start) {
         let descriptor = descriptor?;
         for candidate in at_level(context, &facts, &descriptor)? {
@@ -229,6 +236,7 @@ pub fn discover_visualizers(
         let stop = boundary(&descriptor)?;
         ancestry.push(descriptor);
         if stop {
+            stop_reason = map_commands_contract::DiscoveryStopReason::HolonTypeBoundary;
             break;
         }
     }
@@ -247,7 +255,7 @@ pub fn discover_visualizers(
             }
         }
     });
-    Ok(VisualizerDiscovery { candidates, current_selection, ancestry })
+    Ok(VisualizerDiscovery { candidates, current_selection, ancestry, stop_reason, snapshot: None })
 }
 
 /// Explicit choice may bypass specificity/ambiguity, never current viability requirements.

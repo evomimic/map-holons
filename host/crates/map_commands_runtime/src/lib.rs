@@ -1,3 +1,4 @@
+mod discovery_evidence;
 mod holon_handler;
 mod load_request_completion;
 mod prepared_load_description;

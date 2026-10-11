@@ -18,3 +18,5 @@ export type {
   RelationshipName,
 } from './map-sdk';
 export type { MapTransaction } from './map-sdk';
+
+export { MapClient } from './map-sdk';

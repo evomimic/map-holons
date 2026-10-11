@@ -15,7 +15,7 @@ import {
   isNumber,
   isRecord,
 } from './references';
-import type { VisualizerKindWire } from './commands';
+import { type VisualizerKindWire, isVisualizerKindWire } from './commands';
 
 export interface DescribedHolonCollectionWire {
   members: HolonCollectionWire;
@@ -40,14 +40,7 @@ export interface VisualizerSelectionWire {
 
 function isVisualizerSelectionWire(value: unknown): value is VisualizerSelectionWire {
   return isRecord(value) && isHolonReferenceWire(value['selected']) &&
-    (value['requested_kind'] === 'Canvas' ||
-      value['requested_kind'] === 'Node' ||
-      value['requested_kind'] === 'RootedNavigation' ||
-      value['requested_kind'] === 'Collection' ||
-      value['requested_kind'] === 'PropertyMap' ||
-      value['requested_kind'] === 'Property' ||
-      value['requested_kind'] === 'Value' ||
-      value['requested_kind'] === 'ActionBar' || value['requested_kind'] === 'Action') &&
+    isVisualizerKindWire(value['requested_kind']) &&
     typeof value['alternatives_available'] === 'boolean';
 }
 
@@ -142,6 +135,8 @@ export interface VisualizerDiscoveryWire {
   candidates: VisualizerCandidateWire[];
   current_selection: VisualizerCandidateWire | null;
   ancestry: HolonReferenceWire[];
+  stop_reason: 'holon_type_boundary' | 'lineage_exhausted';
+  snapshot: string | null;
 }
 function isVisualizerCandidateWire(value: unknown): value is VisualizerCandidateWire {
   return isRecord(value) && isHolonReferenceWire(value['visualizer']) && Array.isArray(value['declared_on']) &&
@@ -151,7 +146,9 @@ function isVisualizerCandidateWire(value: unknown): value is VisualizerCandidate
 export function isVisualizerDiscoveryWire(value: unknown): value is VisualizerDiscoveryWire {
   return isRecord(value) && Array.isArray(value['candidates']) && value['candidates'].every(isVisualizerCandidateWire) &&
     (value['current_selection'] === null || isVisualizerCandidateWire(value['current_selection'])) &&
-    Array.isArray(value['ancestry']) && value['ancestry'].every(isHolonReferenceWire);
+    Array.isArray(value['ancestry']) && value['ancestry'].every(isHolonReferenceWire) &&
+    ['holon_type_boundary', 'lineage_exhausted'].includes(value['stop_reason'] as string) &&
+    (value['snapshot'] === null || typeof value['snapshot'] === 'string');
 }
 
 export interface VisualizerUsageSelectionWire {

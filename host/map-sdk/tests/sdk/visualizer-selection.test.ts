@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-const { select, selectCollection, discover, choose, selectUsage, recordUse } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn(), discover: vi.fn(), choose: vi.fn(), selectUsage: vi.fn(), recordUse: vi.fn() }));
-vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection, discoverVisualizers: discover, chooseVisualizer: choose, selectVisualizerUsage: selectUsage, recordVisualizerUse: recordUse }));
+const { select, selectCollection, discover, choose, selectUsage, findUsage, recordUse, project, release } = vi.hoisted(() => ({ select: vi.fn(), selectCollection: vi.fn(), discover: vi.fn(), choose: vi.fn(), selectUsage: vi.fn(), findUsage: vi.fn(), recordUse: vi.fn(), project: vi.fn(), release: vi.fn() }));
+vi.mock('../../src/internal/commands/transaction', () => ({ selectVisualizer: select, selectCollectionVisualizer: selectCollection, discoverVisualizers: discover, chooseVisualizer: choose, selectVisualizerUsage: selectUsage, findVisualizerUsage: findUsage, recordVisualizerUse: recordUse, projectVisualizerDiscovery: project, releaseVisualizerDiscovery: release }));
 import { createMapTransaction } from '../../src/sdk/transaction';
 import { createHolonReference, unwrapHolonReference } from '../../src/sdk/references';
 import { createPropertyDescriptorHandle, createHolonDescriptorHandle } from '../../src/sdk/descriptors';
@@ -81,9 +81,9 @@ it('binds discovery provenance and keeps a stale current choice separate', async
   const request = { subject: createHolonReference(41, subject), requestedKind: 'node' as const,
     owner: { dancer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
   discover.mockResolvedValue({ candidates: [{ visualizer: selected, declared_on: [subject, parent], assessment: 'viable' }],
-    current_selection: { visualizer: parent, declared_on: [], assessment: 'no_longer_applicable' }, ancestry: [subject, parent] });
+    current_selection: { visualizer: parent, declared_on: [], assessment: 'no_longer_applicable' }, ancestry: [subject, parent], stop_reason: 'lineage_exhausted', snapshot: null });
   const result = await tx.discoverVisualizers(request, request.owner.dancer);
-  expect(discover).toHaveBeenCalledWith(41, { subject, requested_kind: 'Node', owner: { Dancer: parent }, slot, theme: subject }, parent);
+  expect(discover).toHaveBeenCalledWith(41, { subject, requested_kind: 'Node', owner: { Dancer: parent }, slot, theme: subject }, parent, false);
   expect(result.candidates[0].declaredOn.map(unwrapHolonReference)).toEqual([subject, parent]);
   expect(result.currentSelection?.assessment).toBe('no_longer_applicable');
   expect(result.ancestry.map(unwrapHolonReference)).toEqual([subject, parent]);
@@ -118,4 +118,54 @@ it('binds independently committed usage and reports explicit versus exploratory 
   expect(recordUse).toHaveBeenLastCalledWith(41, expect.objectContaining({ slot }), selected, usage, 'Exploratory', wireReport);
   selectUsage.mockRejectedValue(new Error('Usage commit incomplete'));
   await expect(tx.selectVisualizerUsage(request, visualizer)).rejects.toThrow('Usage commit incomplete');
+});
+
+it('projects retained evidence into its destination once without repeating discovery and releases unused snapshots', async () => {
+  release.mockResolvedValue(undefined);
+  const tx = createMapTransaction(41), destination = createMapTransaction(42);
+  const saved: HolonReferenceWire = { Smart: { holon_id: { Local: [8] }, smart_property_values: null } };
+  const request = { subject: createHolonReference(41, saved), requestedKind: 'structure' as const,
+    owner: { visualizer: createHolonReference(41, saved) }, slot: createHolonReference(41, saved), theme: createHolonReference(41, saved) };
+  discover.mockResolvedValue({ candidates: [], current_selection: null, ancestry: [], stop_reason: 'lineage_exhausted', snapshot: 'captured' });
+  const evidence = (await tx.discoverVisualizers(request, undefined, true)).evidence!;
+  project.mockResolvedValue({ Transient: { tx_id: 42, id: '00000000-0000-0000-0000-000000000001' } });
+  const reference = await evidence.project(destination);
+  expect(destination.owns(reference)).toBe(true);
+  expect(project).toHaveBeenLastCalledWith(42, 'captured');
+  await expect(evidence.project(destination)).rejects.toThrow('released or projected');
+  await evidence.dispose(); expect(release).not.toHaveBeenCalled();
+  const unused = (await tx.discoverVisualizers(request, undefined, true)).evidence!;
+  await unused.dispose(); await unused.dispose(); expect(release).toHaveBeenCalledTimes(1);
+  expect(release).toHaveBeenLastCalledWith(41, 'captured');
+  expect(discover).toHaveBeenLastCalledWith(41, expect.objectContaining({ requested_kind: 'Structure' }), null, true);
+  const failed = (await tx.discoverVisualizers(request, undefined, true)).evidence!;
+  project.mockRejectedValueOnce(new Error('destination closed'));
+  await expect(failed.project(destination)).rejects.toThrow('destination closed');
+  expect(release).toHaveBeenCalledTimes(2);
+});
+
+it('finds existing usage without initializing it and binds its saved reference', async () => {
+  const tx = createMapTransaction(41);
+  const request = { subject: createHolonReference(41, subject), requestedKind: 'node' as const,
+    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  findUsage.mockResolvedValueOnce(null);
+  expect(await tx.findVisualizerUsage(request, createHolonReference(41, selected))).toBeNull();
+  findUsage.mockResolvedValueOnce({ usage: selected, initialized: false, report_session: 'session' });
+  const result = await tx.findVisualizerUsage(request, createHolonReference(41, selected));
+  expect(unwrapHolonReference(result!.usage)).toEqual(selected);
+  expect(result!.initialized).toBe(false);
+  expect(result!.reportSession).toBe('session');
+});
+
+it('keeps transaction-local discovery projection in its live source context', async () => {
+  const tx = createMapTransaction(41), other = createMapTransaction(42);
+  const request = { subject: createHolonReference(41, subject), requestedKind: 'structure' as const,
+    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  discover.mockResolvedValue({ candidates: [], current_selection: null, ancestry: [], stop_reason: 'lineage_exhausted', snapshot: 'nested' });
+  const evidence = (await tx.discoverVisualizers(request, undefined, true)).evidence!;
+  expect(evidence.projectionTransaction).toBe(tx);
+  await expect(evidence.project(other)).rejects.toThrow('source transaction');
+  project.mockResolvedValue(subject);
+  expect(tx.owns(await evidence.project(tx))).toBe(true);
+  expect(project).toHaveBeenLastCalledWith(41, 'nested');
 });

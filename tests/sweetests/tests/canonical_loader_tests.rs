@@ -2,7 +2,7 @@
 use core_types::{ContentSet, FileData};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceInvocation;
-use holons_core::{HolonReference, ReadableHolon, WritableHolon};
+use holons_core::{HolonCollectionApi, HolonReference, ReadableHolon, WritableHolon};
 use holons_test::harness::helpers::init_probe_test_runtime;
 use holons_test::DancesTestCase;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
@@ -75,18 +75,11 @@ async fn new_context(runtime: &Runtime) -> Arc<TransactionContext> {
     runtime.session().get_transaction(&tx_id).unwrap()
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
-    let (runtime, initial_tx, control) =
-        init_probe_test_runtime(&mut DancesTestCase::default()).await;
-    let unrelated = runtime.session().get_transaction(&initial_tx).unwrap();
-    let source = unrelated.mutation().new_holon(Some("unrelated-edit".into())).unwrap();
-    let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
-
+async fn load_navigator_package(runtime: &Runtime) -> Arc<TransactionContext> {
     // Collection implementations are supplied by the Space Navigator package, not Core Schema.
-    let package_context = new_context(&runtime).await;
+    let package_context = new_context(runtime).await;
     let MapResult::Reference(package_response) = command(
-        &runtime,
+        runtime,
         &package_context,
         TransactionAction::LoadHolons {
             content_set: ContentSet {
@@ -105,12 +98,116 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         panic!("package response")
     };
     assert_eq!(string(&package_response, "LoadCommitStatus"), "Complete");
-    command(&runtime, &package_context, TransactionAction::Dispose).await.unwrap();
-    let context = new_context(&runtime).await;
+    command(runtime, &package_context, TransactionAction::Dispose).await.unwrap();
+    new_context(runtime).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
+    let (runtime, initial_tx, control) =
+        init_probe_test_runtime(&mut DancesTestCase::default()).await;
+    let unrelated = runtime.session().get_transaction(&initial_tx).unwrap();
+    let source = unrelated.mutation().new_holon(Some("unrelated-edit".into())).unwrap();
+    let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
+
+    let context = load_navigator_package(&runtime).await;
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
     let space = context.get_space_holon().unwrap().unwrap();
+    let MapResult::VisualizerDiscovery(discovery) = command(
+        &runtime,
+        &context,
+        TransactionAction::DiscoverVisualizers {
+            request: map_commands_contract::VisualizerSelectionRequest {
+                subject: space.clone(),
+                requested_kind: map_commands_contract::VisualizerKind::Node,
+                owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+            },
+            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            retain_evidence: true,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("discovery evidence")
+    };
+    let destination = new_context(&runtime).await;
+    let MapResult::Reference(projection) = command(
+        &runtime,
+        &destination,
+        TransactionAction::ProjectVisualizerDiscovery { snapshot: discovery.snapshot.unwrap() },
+    )
+    .await
+    .unwrap() else {
+        panic!("discovery projection")
+    };
+    assert_eq!(string(&projection, "DiscoveryStopReason"), "holon_type_boundary");
+    let explorer_request = || map_commands_contract::VisualizerSelectionRequest {
+        subject: projection.clone(),
+        requested_kind: map_commands_contract::VisualizerKind::Structure,
+        owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
+            "VisualizerInspector.Visualizer",
+        )),
+        slot: saved("VisualizerInspector.DiscoveryExplorerSlot"),
+        theme: saved("Demo1.DeepOceanTheme"),
+    };
+    let MapResult::VisualizerSelection(explorer) = command(
+        &runtime,
+        &destination,
+        TransactionAction::SelectVisualizer { request: explorer_request() },
+    )
+    .await
+    .unwrap() else {
+        panic!("explorer selection")
+    };
+    assert_eq!(
+        explorer.selected.holon_id().unwrap(),
+        saved("DiscoveryTree.StructureVisualizer").holon_id().unwrap()
+    );
+    let usage = command(
+        &runtime,
+        &destination,
+        TransactionAction::FindVisualizerUsage {
+            request: explorer_request(),
+            selected: explorer.selected.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(matches!(usage, MapResult::None));
+    let MapResult::VisualizerDiscovery(alternatives) = command(
+        &runtime,
+        &destination,
+        TransactionAction::DiscoverVisualizers {
+            request: explorer_request(),
+            current_selection: Some(explorer.selected),
+            retain_evidence: false,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("explorer alternatives")
+    };
+    for key in ["DiscoveryTree.StructureVisualizer", "DiscoveryLevels.StructureVisualizer"] {
+        assert!(alternatives.candidates.iter().any(|candidate| candidate.visualizer == saved(key)
+            && candidate.assessment == map_commands_contract::VisualizerAssessment::Viable));
+        command(
+            &runtime,
+            &destination,
+            TransactionAction::ChooseVisualizer {
+                request: explorer_request(),
+                candidate: saved(key),
+            },
+        )
+        .await
+        .unwrap();
+    }
+    command(&runtime, &destination, TransactionAction::Dispose).await.unwrap();
     command(&runtime, &context, TransactionAction::CheckLoadTarget { space: space.clone() })
         .await
         .unwrap();
@@ -167,6 +264,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             TransactionAction::DiscoverVisualizers {
                 request: selection_request(),
                 current_selection: Some(selection.selected.clone()),
+                retain_evidence: false,
             },
         )
         .await
@@ -772,4 +870,127 @@ async fn assert_committed_review(runtime: &Runtime, loader: &Arc<TransactionCont
     command(runtime, &review, TransactionAction::Dispose).await.unwrap();
     assert!(runtime.session().get_transaction(&review.tx_id()).is_err());
     count
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn discovery_explanation_reads_existing_usage_without_committing() {
+    let (runtime, _, _control) = init_probe_test_runtime(&mut DancesTestCase::default()).await;
+    let context = load_navigator_package(&runtime).await;
+    let saved = |key: &str| -> HolonReference {
+        context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
+    };
+    let space = context.get_space_holon().unwrap().unwrap();
+    let MapResult::VisualizerDiscovery(discovery) = command(
+        &runtime,
+        &context,
+        TransactionAction::DiscoverVisualizers {
+            request: map_commands_contract::VisualizerSelectionRequest {
+                subject: space,
+                requested_kind: map_commands_contract::VisualizerKind::Node,
+                owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+            },
+            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            retain_evidence: true,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("discovery")
+    };
+    assert_eq!(discovery.candidates.len(), 2, "Other slot kinds must not enter Node discovery");
+    let destination = new_context(&runtime).await;
+    let MapResult::Reference(subject) = command(
+        &runtime,
+        &destination,
+        TransactionAction::ProjectVisualizerDiscovery { snapshot: discovery.snapshot.unwrap() },
+    )
+    .await
+    .unwrap() else {
+        panic!("projection")
+    };
+    let request = map_commands_contract::VisualizerSelectionRequest {
+        subject,
+        requested_kind: map_commands_contract::VisualizerKind::Structure,
+        owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
+            "VisualizerInspector.Visualizer",
+        )),
+        slot: saved("VisualizerInspector.DiscoveryExplorerSlot"),
+        theme: saved("Demo1.DeepOceanTheme"),
+    };
+    let MapResult::VisualizerSelection(selected) = command(
+        &runtime,
+        &destination,
+        TransactionAction::SelectVisualizer { request: request.clone() },
+    )
+    .await
+    .unwrap() else {
+        panic!("Structure selection")
+    };
+    for _ in 0..2 {
+        let started = std::time::Instant::now();
+        let usage = command(
+            &runtime,
+            &destination,
+            TransactionAction::FindVisualizerUsage {
+                request: request.clone(),
+                selected: selected.selected.clone(),
+            },
+        )
+        .await
+        .unwrap();
+        eprintln!("Read-only explorer usage lookup: {:?}", started.elapsed());
+        assert!(
+            matches!(usage, MapResult::None),
+            "Opening the explanation must not initialize a saved usage"
+        );
+    }
+    // The discovery subject is transient: its recursive explanation must stay
+    // in the owning semantic context rather than cross a transaction boundary.
+    let MapResult::VisualizerDiscovery(nested) = command(
+        &runtime,
+        &destination,
+        TransactionAction::DiscoverVisualizers {
+            request: request.clone(),
+            current_selection: Some(selected.selected.clone()),
+            retain_evidence: true,
+        },
+    )
+    .await
+    .unwrap() else {
+        panic!("nested discovery")
+    };
+    assert_eq!(nested.candidates.len(), 2, "Only discovery explorer participants are eligible");
+    assert!(nested.candidates.iter().all(
+        |candidate| candidate.assessment == map_commands_contract::VisualizerAssessment::Viable
+    ));
+    assert!(
+        command(
+            &runtime,
+            &destination,
+            TransactionAction::ChooseVisualizer {
+                request: request.clone(),
+                candidate: saved("PathInspector.RootedNavigationVisualizer"),
+            }
+        )
+        .await
+        .is_err(),
+        "Rooted navigation cannot fulfill the discovery explorer contract"
+    );
+    let MapResult::Reference(nested_subject) = command(
+        &runtime,
+        &destination,
+        TransactionAction::ProjectVisualizerDiscovery { snapshot: nested.snapshot.unwrap() },
+    )
+    .await
+    .unwrap() else {
+        panic!("nested projection")
+    };
+    let subjects = nested_subject.related_holons("DiscoverySubject").unwrap();
+    assert_eq!(subjects.read().unwrap().get_by_index(0).unwrap(), request.subject);
+    command(&runtime, &destination, TransactionAction::Dispose).await.unwrap();
+    command(&runtime, &context, TransactionAction::Dispose).await.unwrap();
 }

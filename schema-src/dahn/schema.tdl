@@ -1615,3 +1615,508 @@ inverse relationship (VisualizerUsage.HolonType)-[PreferredBySlot]->(VisualizerS
     plural: "PreferredBySlotRelationships"
   }
 }
+
+// Rust-authored transient evidence; discovery and presentation lifecycles are distinct.
+holon VisualizerDiscovery.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Captured authoritative Visualizer discovery evidence, never a second discovery path."
+    display_name: "VisualizerDiscovery"
+    display_plural: "VisualizerDiscovery Records"
+    plural: "VisualizerDiscoveryRecords"
+  }
+  relationships {
+    InstanceProperties -> [DiscoveryStopReason.PropertyType, DiscoveryRequestedKind.PropertyType, SelectionRationale.PropertyType]
+    InstanceRelationships -> [
+      (VisualizerDiscovery.Projection)-[DiscoverySubject]->(HolonType.TypeDescriptor),
+      (VisualizerDiscovery.Projection)-[DiscoverySlot]->(VisualizerSlot.HolonType),
+      (VisualizerDiscovery.Projection)-[DiscoveryOwner]->(HolonType.TypeDescriptor),
+      (VisualizerDiscovery.Projection)-[DiscoveryTheme]->(HolonType.TypeDescriptor),
+      (VisualizerDiscovery.Projection)-[DiscoveryCurrentVisualizer]->(Visualizer.HolonType),
+      (VisualizerDiscovery.Projection)-[DiscoveryEndpoint]->(TypeDescriptor),
+      (VisualizerDiscovery.Projection)-[DiscoveryLevels]->(VisualizerDiscoveryLevel.Projection),
+      (VisualizerDiscovery.Projection)-[DiscoveryCandidates]->(VisualizerDiscoveryCandidate.Projection)
+    ]
+  }
+}
+
+holon VisualizerDiscoveryLevel.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Captured authoritative Visualizer discovery evidence, never a second discovery path."
+    display_name: "VisualizerDiscoveryLevel"
+    display_plural: "VisualizerDiscoveryLevel Records"
+    plural: "VisualizerDiscoveryLevelRecords"
+  }
+  relationships {
+    InstanceProperties -> [DiscoveryLevelIndex.PropertyType]
+    InstanceRelationships -> [
+      (VisualizerDiscoveryLevel.Projection)-[DiscoveryDescriptor]->(TypeDescriptor)
+    ]
+  }
+}
+
+holon VisualizerDiscoveryCandidate.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Captured authoritative Visualizer discovery evidence, never a second discovery path."
+    display_name: "VisualizerDiscoveryCandidate"
+    display_plural: "VisualizerDiscoveryCandidate Records"
+    plural: "VisualizerDiscoveryCandidateRecords"
+  }
+  relationships {
+    InstanceProperties -> [DiscoveryAssessment.PropertyType]
+    InstanceRelationships -> [
+      (VisualizerDiscoveryCandidate.Projection)-[DiscoveryVisualizer]->(Visualizer.HolonType),
+      (VisualizerDiscoveryCandidate.Projection)-[DiscoveryDeclarations]->(TypeDescriptor)
+    ]
+  }
+}
+
+property DiscoveryRequestedKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Visualizer kind captured by the original Rust discovery request."
+    display_name: "Requested Kind"
+    display_plural: "Requested Kinds"
+    plural: "DiscoveryRequestedKinds"
+  }
+}
+
+property DiscoveryStopReason.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Rust-supplied discovery evidence, read without recomputing eligibility."
+    display_name: "DiscoveryStopReason"
+    display_plural: "DiscoveryStopReason Records"
+    plural: "DiscoveryStopReasonRecords"
+  }
+}
+
+property SelectionRationale.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Rust-supplied discovery evidence, read without recomputing eligibility."
+    display_name: "SelectionRationale"
+    display_plural: "SelectionRationale Records"
+    plural: "SelectionRationaleRecords"
+  }
+}
+
+property DiscoveryAssessment.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Rust-supplied discovery evidence, read without recomputing eligibility."
+    display_name: "DiscoveryAssessment"
+    display_plural: "DiscoveryAssessment Records"
+    plural: "DiscoveryAssessmentRecords"
+  }
+}
+
+property DiscoveryLevelIndex.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  header {
+    description: "Rust-supplied discovery evidence, read without recomputing eligibility."
+    display_name: "DiscoveryLevelIndex"
+    display_plural: "DiscoveryLevelIndex Records"
+    plural: "DiscoveryLevelIndexRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoverySubject]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoverySubject
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoverySubject"
+    display_plural: "DiscoverySubject Records"
+    plural: "DiscoverySubjectRecords"
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[EvidenceForDiscoverySubject]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoverySubject"
+    display_plural: "EvidenceForDiscoverySubject Records"
+    plural: "EvidenceForDiscoverySubjectRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoverySlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoverySlot
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoverySlot"
+    display_plural: "DiscoverySlot Records"
+    plural: "DiscoverySlotRecords"
+  }
+}
+
+inverse relationship (VisualizerSlot.HolonType)-[EvidenceForDiscoverySlot]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoverySlot"
+    display_plural: "EvidenceForDiscoverySlot Records"
+    plural: "EvidenceForDiscoverySlotRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoveryOwner]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryOwner
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryOwner"
+    display_plural: "DiscoveryOwner Records"
+    plural: "DiscoveryOwnerRecords"
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[EvidenceForDiscoveryOwner]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryOwner"
+    display_plural: "EvidenceForDiscoveryOwner Records"
+    plural: "EvidenceForDiscoveryOwnerRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoveryTheme]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryTheme
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryTheme"
+    display_plural: "DiscoveryTheme Records"
+    plural: "DiscoveryThemeRecords"
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[EvidenceForDiscoveryTheme]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryTheme"
+    display_plural: "EvidenceForDiscoveryTheme Records"
+    plural: "EvidenceForDiscoveryThemeRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoveryCurrentVisualizer]->(Visualizer.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target Visualizer.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryCurrentVisualizer
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryCurrentVisualizer"
+    display_plural: "DiscoveryCurrentVisualizer Records"
+    plural: "DiscoveryCurrentVisualizerRecords"
+  }
+}
+
+inverse relationship (Visualizer.HolonType)-[EvidenceForDiscoveryCurrentVisualizer]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryCurrentVisualizer"
+    display_plural: "EvidenceForDiscoveryCurrentVisualizer Records"
+    plural: "EvidenceForDiscoveryCurrentVisualizerRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoveryEndpoint]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryEndpoint
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryEndpoint"
+    display_plural: "DiscoveryEndpoint Records"
+    plural: "DiscoveryEndpointRecords"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[EvidenceForDiscoveryEndpoint]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryEndpoint"
+    display_plural: "EvidenceForDiscoveryEndpoint Records"
+    plural: "EvidenceForDiscoveryEndpointRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoveryLevels]->(VisualizerDiscoveryLevel.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target VisualizerDiscoveryLevel.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryLevels
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryLevels"
+    display_plural: "DiscoveryLevels Records"
+    plural: "DiscoveryLevelsRecords"
+  }
+}
+
+inverse relationship (VisualizerDiscoveryLevel.Projection)-[EvidenceForDiscoveryLevels]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerDiscoveryLevel.Projection
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryLevels"
+    display_plural: "EvidenceForDiscoveryLevels Records"
+    plural: "EvidenceForDiscoveryLevelsRecords"
+  }
+}
+
+relationship (VisualizerDiscovery.Projection)-[DiscoveryCandidates]->(VisualizerDiscoveryCandidate.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscovery.Projection
+  target VisualizerDiscoveryCandidate.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryCandidates
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryCandidates"
+    display_plural: "DiscoveryCandidates Records"
+    plural: "DiscoveryCandidatesRecords"
+  }
+}
+
+inverse relationship (VisualizerDiscoveryCandidate.Projection)-[EvidenceForDiscoveryCandidates]->(VisualizerDiscovery.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerDiscoveryCandidate.Projection
+  target VisualizerDiscovery.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryCandidates"
+    display_plural: "EvidenceForDiscoveryCandidates Records"
+    plural: "EvidenceForDiscoveryCandidatesRecords"
+  }
+}
+
+relationship (VisualizerDiscoveryLevel.Projection)-[DiscoveryDescriptor]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscoveryLevel.Projection
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryDescriptor
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryDescriptor"
+    display_plural: "DiscoveryDescriptor Records"
+    plural: "DiscoveryDescriptorRecords"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[EvidenceForDiscoveryDescriptor]->(VisualizerDiscoveryLevel.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerDiscoveryLevel.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryDescriptor"
+    display_plural: "EvidenceForDiscoveryDescriptor Records"
+    plural: "EvidenceForDiscoveryDescriptorRecords"
+  }
+}
+
+relationship (VisualizerDiscoveryCandidate.Projection)-[DiscoveryVisualizer]->(Visualizer.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscoveryCandidate.Projection
+  target Visualizer.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryVisualizer
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryVisualizer"
+    display_plural: "DiscoveryVisualizer Records"
+    plural: "DiscoveryVisualizerRecords"
+  }
+}
+
+inverse relationship (Visualizer.HolonType)-[EvidenceForDiscoveryVisualizer]->(VisualizerDiscoveryCandidate.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target VisualizerDiscoveryCandidate.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryVisualizer"
+    display_plural: "EvidenceForDiscoveryVisualizer Records"
+    plural: "EvidenceForDiscoveryVisualizerRecords"
+  }
+}
+
+relationship (VisualizerDiscoveryCandidate.Projection)-[DiscoveryDeclarations]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerDiscoveryCandidate.Projection
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> EvidenceForDiscoveryDeclarations
+  }
+  header {
+    description: "Captured discovery reference; transient projection does not mutate the referenced subject."
+    display_name: "DiscoveryDeclarations"
+    display_plural: "DiscoveryDeclarations Records"
+    plural: "DiscoveryDeclarationsRecords"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[EvidenceForDiscoveryDeclarations]->(VisualizerDiscoveryCandidate.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerDiscoveryCandidate.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery evidence reference."
+    display_name: "EvidenceForDiscoveryDeclarations"
+    display_plural: "EvidenceForDiscoveryDeclarations Records"
+    plural: "EvidenceForDiscoveryDeclarationsRecords"
+  }
+}

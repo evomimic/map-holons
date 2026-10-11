@@ -129,6 +129,26 @@ export interface VisualizerInspectionEntry {
   readonly inspect: () => VisualizerInspectionTarget | undefined;
 }
 
+/** Renderable facts read from a Rust-authored holonic discovery projection. */
+export interface DiscoveryPresentation {
+  readonly levels: readonly { descriptor: HolonReference; label: string }[];
+  readonly candidates: readonly {
+    visualizer: HolonReference; label: string; declarations: readonly HolonReference[];
+    assessment: string; current: boolean;
+  }[];
+  readonly endpoint: string;
+  readonly stopReason: string;
+  readonly rationale: string;
+  readonly requestContext?: string;
+}
+
+/** Semantic interaction state owned outside either explorer implementation. */
+export interface DiscoveryExplorerState {
+  selected?: HolonReference;
+  preview?: HolonReference;
+  notice?: string;
+}
+
 /**
  * Common context passed into Web Component visualizers.
  */
@@ -159,6 +179,13 @@ export interface VisualizerContext {
   discoverVisualizerChoices?: () => Promise<VisualizerDiscovery>;
   inspectVisualizerCandidate?: (candidate: HolonReference, host: HTMLElement) => Promise<void>;
   chooseVisualizerCandidate?: (candidate: HolonReference, signal: AbortSignal) => Promise<void>;
+  /** Lazy child of this selected Inspector's own Structure slot. */
+  mountDiscoveryExplorer?: (host: HTMLElement) => Promise<void>;
+  refreshDiscoveryExplorer?: () => Promise<void>;
+  /** Retained disclosure state when a nested information session returns. */
+  technicalDetailsOpen?: boolean;
+  onTechnicalDetailsChanged?: (open: boolean) => void;
+  discoveryExplorer?: { readonly evidence: DiscoveryPresentation; readonly state: DiscoveryExplorerState };
   /** Configuration anchor retained by this realization's occurrence owner. */
   visualizerUsage?: HolonReference;
   /** A retained realization is disposed by its owner after publication, not DOM movement. */
@@ -206,6 +233,8 @@ export interface VisualizerContext {
  * Common surface all DAHN visualizer elements must implement.
  */
 export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorParticipant> {
+  /** Idempotent release of implementation-owned presentation resources. */
+  dispose?(): void;
   /** Accepts borrowed action-owned collection content at publication. */
   setNodeOwnedCollection?(content: HTMLElement): void;
   setNodeOwnedSummary?(content: HTMLElement): void;

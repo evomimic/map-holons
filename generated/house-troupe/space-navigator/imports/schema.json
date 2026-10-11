@@ -407,6 +407,14 @@
           ]
         },
         {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "VisualizerInspector.DiscoveryExplorerSlot"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -421,8 +429,128 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:ccbebea7314389e124987f379f0e19c0bf84b35fdaac93eebd5f975709e83d22",
+        "VisualizerArtifactDigest": "sha256:89e373b26677dc286bdd66ae71d22f2b6bbc1f8082d4af186a506f5dad70ee21",
         "VisualizerImplementationKey": "dahn.visualizer-inspector",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
+      "key": "DiscoveryExplorerVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "DiscoveryExplorerVisualizer",
+        "TypeNamePlural": "DiscoveryExplorerVisualizers",
+        "DisplayName": "Discovery Explorer Visualizer",
+        "DisplayNamePlural": "Discovery Explorer Visualizers",
+        "Description": "Structure Visualizer fulfilling the discovery explanation explorer participation contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "StructureVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Space Navigator Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerInspector.DiscoveryExplorerSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Explain the authoritative chain that identified the current Visualizer and its alternatives."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "DiscoveryExplorerVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiscoveryTree.StructureVisualizer",
+      "type": "DiscoveryExplorerVisualizer.HolonType",
+      "properties": {
+        "DisplayName": "Discovery Tree",
+        "VisualizerDescription": "Groups candidate declarations by the descriptor levels Rust visited."
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "VisualizerDiscovery.Projection"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "DiscoveryTreeTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiscoveryTreeTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:c56a741b44a3dd5b1047f188ac858a720d4d75e2b24f8539281272b826b7efc5",
+        "VisualizerImplementationKey": "dahn.discovery-tree",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
+      "key": "DiscoveryLevels.StructureVisualizer",
+      "type": "DiscoveryExplorerVisualizer.HolonType",
+      "properties": {
+        "DisplayName": "Discovery Level List",
+        "VisualizerDescription": "Lists descriptor levels and candidate declarations in traversal order."
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "DiscoveryLevelsTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiscoveryLevelsTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:b60b699806992b1746ff0c236782e32ef86250543247b233111344a82404c5a5",
+        "VisualizerImplementationKey": "dahn.discovery-levels",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }

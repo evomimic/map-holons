@@ -533,6 +533,10 @@ fn discovery_retains_general_alternatives_and_all_declaration_provenance() {
     )
     .unwrap();
     assert_eq!(discovery.ancestry.len(), 3);
+    assert_eq!(
+        discovery.stop_reason,
+        map_commands_contract::DiscoveryStopReason::HolonTypeBoundary
+    );
     assert_eq!(discovery.candidates.len(), 2);
     assert_eq!(discovery.candidates[0].declared_on.len(), 2);
     assert_eq!(discovery.candidates[1].declared_on.len(), 2);
@@ -640,6 +644,35 @@ fn dancer_owner_uses_experience_slots_and_theme_tokens_are_exact_identities() {
 }
 
 #[test]
+fn discovery_excludes_other_slot_kinds_but_retains_unavailable_matching_candidates() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20, 21, 22]);
+    graph.edge(21, "DescribedBy", &[99]);
+    graph.unavailable.push(22);
+    let context = candidate_context(graph);
+    let discovery =
+        dahn_selection::discover_visualizers(&context, candidate_request(&context), None).unwrap();
+    assert_eq!(
+        discovery
+            .candidates
+            .iter()
+            .map(|candidate| candidate.visualizer.holon_id().unwrap().local_id().0[0])
+            .collect::<Vec<_>>(),
+        vec![20, 22]
+    );
+    assert_eq!(
+        discovery.candidates[1].assessment,
+        map_commands_contract::VisualizerAssessment::ImplementationUnavailable
+    );
+    assert!(dahn_selection::choose_visualizer(
+        &context,
+        candidate_request(&context),
+        Graph::reference(&context, 21)
+    )
+    .is_err());
+}
+
+#[test]
 fn unavailable_local_artifacts_are_visible_but_cannot_be_chosen() {
     let mut graph = slot_graph();
     graph.edge(1, "HasApplicableVisualizer", &[20]);
@@ -710,6 +743,10 @@ fn node_discovery_uses_the_subjects_described_type_and_allows_a_general_choice()
     };
     let discovery = dahn_selection::discover_visualizers(&context, request(), None).unwrap();
     assert_eq!(discovery.ancestry[0], Graph::reference(&context, 4));
+    assert_eq!(
+        discovery.stop_reason,
+        map_commands_contract::DiscoveryStopReason::HolonTypeBoundary
+    );
     assert_eq!(discovery.candidates.len(), 2);
     assert_eq!(discovery.candidates[1].declared_on.len(), 1);
     assert_eq!(
@@ -722,4 +759,18 @@ fn node_discovery_uses_the_subjects_described_type_and_allows_a_general_choice()
             .selected,
         Graph::reference(&context, 22)
     );
+}
+
+#[test]
+fn structure_discovery_reports_actual_lineage_exhaustion_without_node_requirements() {
+    let mut graph = slot_graph();
+    graph.holon_root = None;
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(3, "Extends", &[]);
+    let context = candidate_context(graph);
+    let mut request = candidate_request(&context);
+    request.requested_kind = VisualizerKind::Structure;
+    let discovery = dahn_selection::discover_visualizers(&context, request, None).unwrap();
+    assert_eq!(discovery.stop_reason, map_commands_contract::DiscoveryStopReason::LineageExhausted);
+    assert_eq!(discovery.ancestry[0], Graph::reference(&context, 2));
 }
