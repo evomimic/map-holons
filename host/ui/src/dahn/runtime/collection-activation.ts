@@ -9,6 +9,15 @@ import type { HolonReference, MapTransaction } from '../deps';
 import { realizeCollection, type CollectionElement } from './realize-collection';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
+export interface NodeCollectionViewState {
+  active?: string;
+  views: readonly { key: string; state: unknown }[];
+}
+async function affordanceKey(affordance: CollectionAffordance): Promise<string> {
+  if (affordance.kind !== 'relationship') throw new Error('Only relationship collection state can be transferred.');
+  return `${affordance.relationship.direction}:${await affordance.relationship.descriptor.relationshipName()}`;
+}
+
 export type CollectionState = 'unresolved' | 'checking' | 'empty' | 'loading' | 'loaded-empty' | 'loaded' | 'error';
 export interface CollectionUpdate {
   state: CollectionState;
@@ -26,6 +35,8 @@ export interface CollectionActivation {
 /** Owns one Node occurrence's lazy collection lifecycle, never its layout. */
 export class NodeCollectionActivation implements CollectionActivation {
   private content?: CollectionElement;
+  private preparation: Promise<void> = Promise.resolve();
+  private preparationError?: unknown;
   private readonly viewStates = new Map<CollectionAffordance, unknown>();
   private generation = 0;
   // An unverified intent must not invalidate the destination already opening.
@@ -57,6 +68,7 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly discovery?: NodeRelationshipDiscovery,
     private readonly presentation: MapTransaction = transaction,
     private readonly valueContext?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
+    private readonly collections: readonly CollectionAffordance[] = [],
   ) {
     this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
       const selected = this.selected; const slot = this.selectedSlot; const publish = this.presentationUpdate;
@@ -76,6 +88,38 @@ export class NodeCollectionActivation implements CollectionActivation {
       }
     });
   }
+
+  /** Snapshot opaque collection state by its semantic relationship, not DOM/control identity. */
+  async captureViewState(): Promise<NodeCollectionViewState> {
+    if (this.selected && this.content?.getCollectionViewState) this.viewStates.set(this.selected, this.content.getCollectionViewState());
+    return { active: this.selected ? await affordanceKey(this.selected) : undefined,
+      views: await Promise.all([...this.viewStates].map(async ([item, state]) => ({ key: await affordanceKey(item), state }))) };
+  }
+
+  /** Restore only shared navigation state; this activation remains bound to the new owner. */
+  async restoreViewState(snapshot: NodeCollectionViewState): Promise<CollectionAffordance | undefined> {
+    const affordances = this.collections.filter(item => item.kind === 'relationship');
+    let active: CollectionAffordance | undefined;
+    for (const item of affordances) {
+      const collection = item;
+      const key = await affordanceKey(collection);
+      const view = snapshot.views.find(view => view.key === key);
+      if (view) this.viewStates.set(collection, view.state);
+      if (key === snapshot.active) active = collection;
+    }
+    if (snapshot.active && !active) throw new Error('Selected Node cannot preserve the active collection.');
+    return active;
+  }
+
+  captureCurrentViewState(): unknown { return this.content?.getCollectionViewState?.(); }
+  restoreCurrentViewState(state: unknown): void {
+    if (state === undefined) return;
+    if (!this.content?.restoreCollectionViewState) throw new Error('Selected Collection cannot restore its view state.');
+    this.content.restoreCollectionViewState(state);
+    if (this.selected) this.viewStates.set(this.selected, state);
+  }
+
+  async settled(): Promise<void> { await this.preparation; if (this.preparationError) throw this.preparationError; }
 
   activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean {
     if (this.disposed || semanticWork(this.transaction).paused || affordance.kind !== 'relationship') return false;
@@ -120,7 +164,8 @@ export class NodeCollectionActivation implements CollectionActivation {
     if (population?.state === 'populated' && !allocate()) return;
     const painted = allocated ? destinationPaint() : undefined;
     if (!allocated) publish({ state: 'checking', placement: 'source', message: `Checking ${affordance.label}…` });
-    void (async () => {
+    this.preparationError = undefined;
+    this.preparation = (async () => {
       let stage = 'Membership retrieval';
       try {
         if (!allocated) {
@@ -203,6 +248,7 @@ export class NodeCollectionActivation implements CollectionActivation {
         });
       } catch (error) {
         if (!current()) return;
+        this.preparationError = error;
         if (allocated) this.pendingUpdate = undefined;
         publish({
           state: 'error', placement: allocated ? 'destination' : 'source',

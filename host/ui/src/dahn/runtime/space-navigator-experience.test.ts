@@ -27,6 +27,7 @@ let experience: SpaceNavigatorExperience;
 let roots: Array<{ element: HTMLElement; collectionActivation: { dispose: ReturnType<typeof vi.fn> }; singularRelationships: [] }>;
 beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   roots = [];
   mocks.realizeNode.mockReset().mockImplementation(async () => {
     const root = { element: document.createElement('div'), collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn() }, singularRelationships: [] as [] };
@@ -187,7 +188,9 @@ it('selects the response Node in its loader context and expands saved members wi
     mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
     const present = openLoadHolons.mock.calls[0][0].presentResult;
     const response = reference('Response'), member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
-    const loader = { owns: (ref: unknown) => ref === response, committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })) };
+    const loader = { owns: (ref: unknown) => ref === response, committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })),
+      chooseVisualizer: vi.fn(async (_request, candidate) => ({ selected: candidate })),
+      selectVisualizerUsage: vi.fn(async () => ({ usage: reference('Usage'), reportSession: 'result-session' })), recordVisualizerUse: vi.fn(async () => {}) };
     const review = { bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
     const collection = document.createElement('section'), properties = document.createElement('section');
     const affordance = { kind: 'result', label: 'Committed holons', role: 'committed' };
@@ -209,6 +212,36 @@ it('selects the response Node in its loader context and expands saved members wi
     expect(path.element.occurrences[1].provenance.kind).toBe('collection-member');
     expect(review.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ subject: member, requestedKind: 'node' }));
     expect(loaderMaterializations).toEqual([]);
+    const { selectedVisualizerInspection } = await import('./visualizer-information-control');
+    const occurrence = path.element.occurrences[0], original = occurrence.element as any;
+    original.setNodeInspectorAllocation({ width: 1000, height: 680, vertical: 'full-height', horizontal: 'full-width' });
+    const before = selectedVisualizerInspection(original)!;
+    expect(before.choices?.choose).toBeTypeOf('function');
+    const generic = reference('Holon Inspector');
+    mocks.realizeNode.mockRejectedValueOnce(new Error('prepare failed'));
+    await expect(before.choices!.choose!(generic as never, () => true)).rejects.toThrow('prepare failed');
+    expect(original.contains(collection)).toBe(true);
+    const genericSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/holon-inspector.js'), 'utf8');
+    const GenericNode = (await import(`data:text/javascript;base64,${Buffer.from(genericSource).toString('base64')}`)).default;
+    customElements.define('test-result-generic-node', class extends GenericNode {});
+    const genericElement = document.createElement('test-result-generic-node') as any;
+    genericElement.setContext({ title: 'Generic result', childVisualizers: new Map([['properties', document.createElement('section')]]), nodeAffordances: { singularRelationships: [], collections: [] } });
+    const genericDispose = vi.fn();
+    mocks.realizeNode.mockResolvedValueOnce({ element: genericElement, ready: genericElement.ready, dispose: genericDispose,
+      collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn(), sourceAffordance: () => undefined, close: vi.fn() }, singularRelationships: [] });
+    collection.dataset['sort'] = 'key descending';
+    const switched = await before.choices!.choose!(generic as never, () => true);
+    expect(path.element.occurrences[0].id).toBe(occurrence.id);
+    expect(path.element.occurrences).toHaveLength(2);
+    expect(genericElement.contains(collection)).toBe(true);
+    expect(collection.dataset['sort']).toBe('key descending');
+    expect(lifecycle.dispose).not.toHaveBeenCalled();
+    const restored = await switched.choices!.choose!(resultNode, () => true);
+    expect(restored.element.contains(collection)).toBe(true);
+    expect(restored.element.contains(properties)).toBe(true);
+    expect(collection.dataset['sort']).toBe('key descending');
+    expect(genericDispose).toHaveBeenCalledOnce();
+    expect(loader.recordVisualizerUse).toHaveBeenCalledTimes(2);
     path.dispose(); expect(lifecycle.dispose).toHaveBeenCalledOnce();
   } finally { realize.mockRestore(); slots.mockRestore(); }
 });
@@ -269,7 +302,7 @@ it('realizes a retained request root through the standard selected Node composit
     const presentation = { bindSavedReference: (ref: unknown) => ref };
     const path = await present({ transaction: loader, review: presentation, subject: request, signal: new AbortController().signal });
     expect(loader.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ subject: request, requestedKind: 'node', slot }));
-    expect(mocks.realizeNode).toHaveBeenLastCalledWith(loader, expect.any(MaterializedVisualizerRuntime), request, selected, binding.theme, binding.canvas, undefined, undefined, presentation);
+    expect(mocks.realizeNode).toHaveBeenLastCalledWith(loader, expect.any(MaterializedVisualizerRuntime), request, selected, binding.theme, binding.canvas, undefined, undefined, presentation, undefined);
     expect(path.element.occurrences[0].element).toBe(roots[1].element);
     expect(path.element.occurrences[0].subject).toBe(request);
     path.dispose();

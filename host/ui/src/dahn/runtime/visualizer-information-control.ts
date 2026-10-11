@@ -28,7 +28,7 @@ export function visualizerInspectionEntries(target: VisualizerInspectionTarget, 
         if (selected) return selected.isLive() ? withVisualizerComposition(selected) : undefined;
         const owned: VisualizerInspectionTarget = {
           ...target, occurrenceId: `${target.occurrenceId}/region-${regionIdentities.get(region.element)}`, element: region.element,
-          regionLabel: region.label,
+          regionLabel: region.label, choices: undefined,
           isLive: () => target.isLive() && region.element.isConnected && target.element.contains(region.element),
           composition: () => visualizerInspectionEntries(owned, region.children
             ?? (region.element as VisualizerElement).getVisualizerComposition?.() ?? []),

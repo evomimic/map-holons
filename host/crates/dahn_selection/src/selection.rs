@@ -282,6 +282,7 @@ fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonE
         VisualizerKind::Canvas => Ok("MAP.BootstrapCanvasVisualizer"),
         VisualizerKind::Collection => Ok("TableCollectionVisualizer.CollectionVisualizer"),
         VisualizerKind::Node
+        | VisualizerKind::Structure
         | VisualizerKind::RootedNavigation
         | VisualizerKind::PropertyMap
         | VisualizerKind::Property

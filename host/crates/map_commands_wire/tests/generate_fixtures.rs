@@ -41,7 +41,26 @@ fn generate_fixtures() {
         slot: staged_reference(41, uuid_b()),
         theme: staged_reference(41, uuid_a()),
     };
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-structure-selection.json",
+        &response(
+            151,
+            Ok(MapResultWire::VisualizerSelection(map_commands_wire::VisualizerSelectionWire {
+                selected: staged_reference(41, uuid_b()),
+                requested_kind: map_commands_wire::VisualizerKindWire::Structure,
+                alternatives_available: true,
+            })),
+        ),
+    );
     for (name, action) in [
+        (
+            "request-find-visualizer-usage.json",
+            TransactionActionWire::FindVisualizerUsage {
+                request: selection_request.clone(),
+                selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
+            },
+        ),
         (
             "request-select-visualizer-usage.json",
             TransactionActionWire::SelectVisualizerUsage {
@@ -56,6 +75,11 @@ fn generate_fixtures() {
                 selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
                 usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
                 origin: map_commands_wire::VisualizerChoiceOriginWire::Explicit,
+                report: map_commands_wire::VisualizerUseReportWire {
+                    session: "presentation-session".into(),
+                    occurrence_id: "node-1".into(),
+                    sequence: 1,
+                },
             },
         ),
         (
@@ -67,7 +91,16 @@ fn generate_fixtures() {
             TransactionActionWire::DiscoverVisualizers {
                 request: selection_request.clone(),
                 current_selection: None,
+                retain_evidence: false,
             },
+        ),
+        (
+            "request-project-visualizer-discovery.json",
+            TransactionActionWire::ProjectVisualizerDiscovery { snapshot: "captured".into() },
+        ),
+        (
+            "request-release-visualizer-discovery.json",
+            TransactionActionWire::ReleaseVisualizerDiscovery { snapshot: "captured".into() },
         ),
         (
             "request-choose-visualizer.json",
@@ -107,6 +140,8 @@ fn generate_fixtures() {
                     assessment: map_commands_wire::VisualizerAssessmentWire::NoLongerApplicable,
                 }),
                 ancestry: vec![staged_reference(41, uuid_a())],
+                stop_reason: "lineage_exhausted".into(),
+                snapshot: None,
             })),
         ),
     );
@@ -166,6 +201,7 @@ fn generate_fixtures() {
                 map_commands_wire::VisualizerUsageSelectionWire {
                     usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
                     initialized: true,
+                    report_session: "presentation-session".into(),
                 },
             )),
         ),

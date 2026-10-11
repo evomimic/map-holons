@@ -13,9 +13,9 @@ export class NavigationProfile {
   }
 
   /** Begin command capture only after this operation owns the transaction queue. */
-  begin(): void {
+  begin(initialPhase = 'relationship name'): void {
     performance.mark('map.navigation.active', { detail: this.run });
-    this.next('relationship name');
+    this.next(initialPhase);
   }
 
   next(phase: string): void {

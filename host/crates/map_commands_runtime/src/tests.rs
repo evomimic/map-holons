@@ -226,6 +226,58 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
 // ── Handler tests ───────────────────────────────────────────────────
 
 #[tokio::test]
+async fn usage_commands_validate_retained_subject_after_commit() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let (context, subject) = minimally_described_transient(&runtime, &tx_id);
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("commit with retained response evidence");
+    let request = || VisualizerSelectionRequest {
+        subject: subject.clone(),
+        requested_kind: VisualizerKind::Node,
+        owner: map_commands_contract::VisualizerOwner::Visualizer(subject.clone()),
+        theme: subject.clone(),
+        slot: subject.clone(),
+    };
+    // This fixture deliberately lacks a valid composition contract. Admission must reach
+    // semantic validation instead of rejecting the archived caller's lifecycle.
+    let expected = dahn_selection::usage_subject_type(&request())
+        .expect_err("incomplete composition contract");
+    for action in [
+        TransactionAction::SelectVisualizerUsage { request: request(), selected: subject.clone() },
+        TransactionAction::RecordVisualizerUse {
+            request: request(),
+            selected: subject.clone(),
+            usage: subject.clone(),
+            origin: map_commands_contract::VisualizerChoiceOrigin::Explicit,
+            report: map_commands_contract::VisualizerUseReport {
+                session: "test".into(),
+                occurrence_id: "result".into(),
+                sequence: 1,
+            },
+        },
+    ] {
+        let actual = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action,
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect_err("semantic validation rejects the incomplete fixture");
+        assert_eq!(actual.to_string(), expected.to_string());
+        assert!(!context.is_open());
+    }
+}
+
+#[tokio::test]
 async fn begin_transaction_returns_valid_tx_id() {
     let runtime = build_test_runtime();
 
@@ -1598,4 +1650,84 @@ async fn retained_load_request_completion_preserves_submission_guard() -> Result
         assert!(admission.enter(false).is_ok());
     }
     Ok(())
+}
+
+fn usage_test_reference(context: &Arc<TransactionContext>, key: &str) -> HolonReference {
+    context.mutation().new_holon(Some(MapString::from(key))).unwrap().into()
+}
+
+fn usage_test_candidate(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    subject_type: &HolonReference,
+    slot: Option<&HolonReference>,
+) -> HolonReference {
+    let mut usage = usage_test_reference(context, key);
+    usage.add_related_holons("ForSubjectType", vec![subject_type.clone()]).unwrap();
+    if let Some(slot) = slot {
+        usage.add_related_holons("SelectedForSlot", vec![slot.clone()]).unwrap();
+    }
+    usage
+}
+
+#[test]
+fn usage_lookup_follows_selected_visualizer_without_schema_key_lookup() {
+    let space = build_test_space_manager();
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    let mut visualizer = usage_test_reference(&context, "selected-visualizer");
+    let subject_type = usage_test_reference(&context, "subject-type");
+    let other_type = usage_test_reference(&context, "other-subject-type");
+    let slot = usage_test_reference(&context, "slot");
+    let unrelated = usage_test_candidate(&context, "other-usage", &other_type, None);
+    let matching = usage_test_candidate(&context, "matching-usage", &subject_type, None);
+    visualizer
+        .add_related_holons("UsedByVisualizerUsage", vec![unrelated, matching.clone()])
+        .unwrap();
+    let found =
+        dahn_selection::usage::find_usage(&visualizer, &subject_type, &slot).unwrap().unwrap();
+    assert_eq!(found.holon(), &matching);
+}
+
+#[test]
+fn usage_lookup_preserves_slot_association_and_ambiguity_rules() {
+    let space = build_test_space_manager();
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    let mut visualizer = usage_test_reference(&context, "selected-visualizer");
+    let subject_type = usage_test_reference(&context, "subject-type");
+    let slot = usage_test_reference(&context, "slot");
+    assert!(dahn_selection::usage::find_usage(&visualizer, &subject_type, &slot)
+        .unwrap()
+        .is_none());
+    let first = usage_test_candidate(&context, "first-usage", &subject_type, None);
+    let second = usage_test_candidate(&context, "second-usage", &subject_type, None);
+    visualizer.add_related_holons("UsedByVisualizerUsage", vec![first, second.clone()]).unwrap();
+    assert!(matches!(
+        dahn_selection::usage::find_usage(&visualizer, &subject_type, &slot),
+        Err(HolonError::InvalidState(_))
+    ));
+    let mut associated = second.clone();
+    associated.add_related_holons("SelectedForSlot", vec![slot.clone()]).unwrap();
+    assert_eq!(
+        dahn_selection::usage::find_usage(&visualizer, &subject_type, &slot)
+            .unwrap()
+            .unwrap()
+            .holon(),
+        &second
+    );
+}
+
+#[test]
+fn malformed_usage_is_an_error_not_an_absent_match() {
+    let space = build_test_space_manager();
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    let mut visualizer = usage_test_reference(&context, "selected-visualizer");
+    let subject_type = usage_test_reference(&context, "subject-type");
+    let slot = usage_test_reference(&context, "slot");
+    visualizer
+        .add_related_holons(
+            "UsedByVisualizerUsage",
+            vec![usage_test_reference(&context, "malformed-usage")],
+        )
+        .unwrap();
+    assert!(dahn_selection::usage::find_usage(&visualizer, &subject_type, &slot).is_err());
 }

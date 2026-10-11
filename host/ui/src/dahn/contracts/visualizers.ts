@@ -1,3 +1,4 @@
+import type { VisualizerDiscovery } from '../deps';
 import type { NodeInspectorParticipant } from './node-inspector-slot';
 import type { InspectorRegion, MaximizeOperation, OccurrenceAttentionRequest, PresentationRequestResult } from './presentation';
 import type { RelationshipDiscovery } from './relationship-discovery';
@@ -98,6 +99,12 @@ export interface VisualizerInspectionTarget {
   readonly invoker: HTMLElement;
   readonly isLive: () => boolean;
   readonly displayName?: string;
+  /** Discovery is read-only; only the actual owner may offer replacement. */
+  readonly choices?: {
+    discover(): Promise<VisualizerDiscovery>;
+    choose?(candidate: HolonReference, current: () => boolean, signal?: AbortSignal): Promise<VisualizerInspectionTarget>;
+    readonly replacementUnavailableReason?: string;
+  };
   /** A region can be owned by this definition without occupying an independent slot. */
   readonly regionLabel?: string;
   readonly composition?: () => readonly VisualizerInspectionEntry[];
@@ -120,6 +127,26 @@ export interface VisualizerInspectionEntry {
   readonly ownership: 'selected' | 'implementation';
   readonly displayName?: string;
   readonly inspect: () => VisualizerInspectionTarget | undefined;
+}
+
+/** Renderable facts read from a Rust-authored holonic discovery projection. */
+export interface DiscoveryPresentation {
+  readonly levels: readonly { descriptor: HolonReference; label: string }[];
+  readonly candidates: readonly {
+    visualizer: HolonReference; label: string; declarations: readonly HolonReference[];
+    assessment: string; current: boolean;
+  }[];
+  readonly endpoint: string;
+  readonly stopReason: string;
+  readonly rationale: string;
+  readonly requestContext?: string;
+}
+
+/** Semantic interaction state owned outside either explorer implementation. */
+export interface DiscoveryExplorerState {
+  selected?: HolonReference;
+  preview?: HolonReference;
+  notice?: string;
 }
 
 /**
@@ -148,6 +175,21 @@ export interface VisualizerContext {
   mountVisualizerInformation?: (target: VisualizerInspectionTarget, host: HTMLElement) => Promise<void>;
   /** Explore the inspected definition through the experience's ordinary tab lifecycle. */
   onExploreVisualizer?: () => void;
+  /** Candidate inspection is read-only and remains in this captured information session. */
+  discoverVisualizerChoices?: () => Promise<VisualizerDiscovery>;
+  inspectVisualizerCandidate?: (candidate: HolonReference, host: HTMLElement) => Promise<void>;
+  chooseVisualizerCandidate?: (candidate: HolonReference, signal: AbortSignal) => Promise<void>;
+  /** Lazy child of this selected Inspector's own Structure slot. */
+  mountDiscoveryExplorer?: (host: HTMLElement) => Promise<void>;
+  refreshDiscoveryExplorer?: () => Promise<void>;
+  /** Retained disclosure state when a nested information session returns. */
+  technicalDetailsOpen?: boolean;
+  onTechnicalDetailsChanged?: (open: boolean) => void;
+  discoveryExplorer?: { readonly evidence: DiscoveryPresentation; readonly state: DiscoveryExplorerState };
+  /** Configuration anchor retained by this realization's occurrence owner. */
+  visualizerUsage?: HolonReference;
+  /** A retained realization is disposed by its owner after publication, not DOM movement. */
+  retainRealizationOnDisconnect?: boolean;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
@@ -191,7 +233,16 @@ export interface VisualizerContext {
  * Common surface all DAHN visualizer elements must implement.
  */
 export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorParticipant> {
+  /** Idempotent release of implementation-owned presentation resources. */
+  dispose?(): void;
+  /** Accepts borrowed action-owned collection content at publication. */
+  setNodeOwnedCollection?(content: HTMLElement): void;
+  setNodeOwnedSummary?(content: HTMLElement): void;
   setContext(context: VisualizerContext): void;
+  /** Explicit completion of initialization; replacement requires this readiness signal. */
+  readonly ready?: Promise<void>;
+  /** Contracted selection only; private presentation state need not transfer. */
+  restoreNodeCollectionSelection?(affordance: CollectionAffordance): void;
   /** The implementation describes its actual regions, including implementation-owned ones. */
   getVisualizerComposition?(): readonly VisualizerPresentationRegion[];
   /** Owner-supplied action; controls never reconstruct selection or occurrence identity. */

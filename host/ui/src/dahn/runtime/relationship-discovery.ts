@@ -11,6 +11,7 @@ export class NodeRelationshipDiscovery implements RelationshipDiscovery {
   private readonly work: SemanticWork;
   private readonly unsubscribe: () => void;
   private started = false;
+  private watching = false;
   private disposed = false;
   private frame?: number;
 
@@ -31,6 +32,8 @@ export class NodeRelationshipDiscovery implements RelationshipDiscovery {
 
   /** Start after the mounted Node has had an opportunity to paint its initial content. */
   startAfterDisplay(element: HTMLElement): void {
+    if (this.watching || this.disposed) return;
+    this.watching = true;
     const mounted = () => {
       if (this.disposed) return;
       this.frame = requestAnimationFrame(() => {

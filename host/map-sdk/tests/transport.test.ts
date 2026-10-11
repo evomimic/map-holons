@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import { DomainError, MalformedResponseError, TransportError } from '../src/internal/errors';
 import { invokeMapCommand, unwrapMapResponse } from '../src/internal/transport';
 import type { MapIpcRequest, MapIpcResponse, MapResultWire } from '../src/internal/wire-types';
+import { selectVisualizer } from '../src/internal/commands/transaction';
 
 const { invokeMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
@@ -107,6 +109,28 @@ describe('invokeMapCommand', () => {
 });
 
 describe('unwrapMapResponse', () => {
+  it.each(['Node', 'Structure'] as const)('accepts a %s selection through the transaction IPC boundary', async (kind) => {
+    const reference = { Transient: { tx_id: 41, id: '11111111-1111-1111-1111-111111111111' } } as const;
+    const selection = { selected: reference, requested_kind: kind, alternatives_available: true } as const;
+    invokeMock.mockImplementation(async (_command, { request: incoming }: { request: MapIpcRequest }) => ({
+      request_id: incoming.request_id,
+      result: { Ok: { VisualizerSelection: selection } },
+    }));
+
+    await expect(selectVisualizer(41, {
+      subject: reference,
+      slot: reference,
+      owner: { Visualizer: reference },
+      theme: reference,
+      requested_kind: kind,
+    })).resolves.toEqual(selection);
+  });
+
+  it('unwraps a Rust-generated Structure selection response', () => {
+    const response = JSON.parse(readFileSync(new URL('./fixtures/response-ok-structure-selection.json', import.meta.url), 'utf8')) as MapIpcResponse;
+    expect(unwrapMapResponse(response)).toMatchObject({ VisualizerSelection: { requested_kind: 'Structure' } });
+  });
+
   it('returns the Ok result payload', () => {
     expect(unwrapMapResponse(okResponse)).toEqual(okResult);
   });

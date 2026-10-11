@@ -122,6 +122,7 @@ impl From<MapResult> for MapResultWire {
                 Self::VisualizerUsageSelection(VisualizerUsageSelectionWire {
                     usage: selection.usage.into(),
                     initialized: selection.initialized,
+                    report_session: selection.report_session,
                 })
             }
             MapResult::VisualizerSelection(selection) => {
@@ -142,6 +143,16 @@ impl From<MapResult> for MapResultWire {
                         .current_selection
                         .map(VisualizerCandidateWire::from),
                     ancestry: discovery.ancestry.iter().map(HolonReferenceWire::from).collect(),
+                    stop_reason: match discovery.stop_reason {
+                        map_commands_contract::DiscoveryStopReason::HolonTypeBoundary => {
+                            "holon_type_boundary"
+                        }
+                        map_commands_contract::DiscoveryStopReason::LineageExhausted => {
+                            "lineage_exhausted"
+                        }
+                    }
+                    .into(),
+                    snapshot: discovery.snapshot,
                 })
             }
             MapResult::References(refs) => {
@@ -258,6 +269,8 @@ pub struct VisualizerDiscoveryWire {
     pub candidates: Vec<VisualizerCandidateWire>,
     pub current_selection: Option<VisualizerCandidateWire>,
     pub ancestry: Vec<HolonReferenceWire>,
+    pub stop_reason: String,
+    pub snapshot: Option<base_types::MapString>,
 }
 
 /// Committed usage projected at the transport boundary, not a private-transaction handle.
@@ -265,4 +278,5 @@ pub struct VisualizerDiscoveryWire {
 pub struct VisualizerUsageSelectionWire {
     pub usage: HolonReferenceWire,
     pub initialized: bool,
+    pub report_session: String,
 }

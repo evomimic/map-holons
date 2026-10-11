@@ -5,6 +5,9 @@
  * never on MAP SDK internal modules or transport-layer types.
  */
 export type {
+  VisualizerDiscovery,
+  VisualizerSelectionRequest,
+  VisualizerUsageSelection,
   ParserDiagnostic,
   CommittedHolonEntry,
   ValidationFinding,

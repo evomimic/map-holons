@@ -25,6 +25,7 @@ export type {
   VisualizerSelectionRequest,
   VisualizerUsageSelection,
   VisualizerChoiceOrigin,
+  VisualizerUseReport,
   VisualizerOwner, VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery,
 } from './transaction';
 export {

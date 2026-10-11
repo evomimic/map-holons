@@ -1,0 +1,17 @@
+{
+  "request_id": 151,
+  "result": {
+    "Ok": {
+      "VisualizerSelection": {
+        "selected": {
+          "Staged": {
+            "tx_id": 41,
+            "id": "22222222-2222-2222-2222-222222222222"
+          }
+        },
+        "requested_kind": "Structure",
+        "alternatives_available": true
+      }
+    }
+  }
+}
