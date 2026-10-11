@@ -1,3 +1,4 @@
+mod distinct;
 mod order_by;
 mod pagination;
 pub mod query;

@@ -895,6 +895,17 @@ holon Limit.HolonType {
   }
 }
 
+holon Distinct.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Collection transformation that retains the first occurrence of each holon reference identity and preserves the relative order of retained occurrences. Identity is reference equality, never property values."
+    display_name: "Distinct"
+    display_plural: "Distinct Expressions"
+    plural: "DistinctExpressions"
+  }
+}
+
 property PropertyName.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor

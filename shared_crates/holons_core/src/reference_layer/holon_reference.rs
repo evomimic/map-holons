@@ -17,6 +17,7 @@ use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::sync::{Arc, RwLock};
 use type_names::CorePropertyTypeName;
 
@@ -580,3 +581,149 @@ impl PartialEq for HolonReference {
 }
 
 impl Eq for HolonReference {}
+
+// Consistent with `PartialEq`: the phase discriminant separates variants that
+// never compare equal, and each variant hashes exactly the identity its
+// equality compares. It does not redefine identity.
+impl Hash for HolonReference {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.hash(state),
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.tx_id().hash(state);
+                staged_reference.temporary_id().hash(state);
+            }
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.tx_id().hash(state);
+                transient_reference.temporary_id().hash(state);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::hash_map::DefaultHasher;
+
+    use super::*;
+    use crate::core_shared_objects::transactions::TransactionContextHandle;
+    use crate::descriptors::test_support::{build_context, new_test_holon};
+    use core_types::{LocalId, OutboundProxyId};
+
+    fn hash_of(reference: &HolonReference) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        reference.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    /// Equal, and therefore hashed alike.
+    fn assert_same_identity(a: &HolonReference, b: &HolonReference) {
+        assert_eq!(a, b);
+        assert_eq!(hash_of(a), hash_of(b), "equal references must hash alike");
+    }
+
+    fn local(value: u8) -> HolonId {
+        HolonId::Local(LocalId(vec![value; 39]))
+    }
+
+    fn external(proxy: u8, value: u8) -> HolonId {
+        HolonId::from((OutboundProxyId(LocalId(vec![proxy; 39])), LocalId(vec![value; 39])))
+    }
+
+    #[test]
+    fn transaction_local_references_share_identity_by_transaction_and_temporary_id() {
+        let context = build_context();
+        let transient = new_test_holon(&context, "transient").unwrap();
+        let rebound = TransientReference::from_temporary_id(
+            TransactionContextHandle::new(Arc::clone(&context)),
+            &transient.temporary_id(),
+        );
+        assert_same_identity(&transient.clone().into(), &rebound.into());
+
+        let staged = context.mutation().stage_new_holon(transient).unwrap();
+        let staged_rebound = StagedReference::from_temporary_id(
+            TransactionContextHandle::new(Arc::clone(&context)),
+            &staged.temporary_id(),
+        );
+        assert_same_identity(&staged.into(), &staged_rebound.into());
+    }
+
+    #[test]
+    fn references_in_different_phases_are_never_equal() {
+        let context = build_context();
+        let transient = new_test_holon(&context, "lineage").unwrap();
+        let staged = context.mutation().stage_new_holon(transient.clone()).unwrap();
+        let transient: HolonReference = transient.into();
+        let staged: HolonReference = staged.into();
+        let saved = HolonReference::smart_from_id(context.space_read_handle(), local(1));
+
+        assert_ne!(transient, staged);
+        assert_ne!(transient, saved);
+        assert_ne!(staged, saved);
+    }
+
+    #[test]
+    fn the_same_temporary_id_in_another_transaction_is_another_identity() {
+        let context = build_context();
+        let other = context.open_isolated_transaction().unwrap();
+        let transient = new_test_holon(&context, "scoped").unwrap();
+        let elsewhere = TransientReference::from_temporary_id(
+            TransactionContextHandle::new(Arc::clone(&other)),
+            &transient.temporary_id(),
+        );
+        assert_ne!(HolonReference::from(transient), HolonReference::from(elsewhere));
+
+        let staged = context
+            .mutation()
+            .stage_new_holon(new_test_holon(&context, "staged-scoped").unwrap())
+            .unwrap();
+        let staged_elsewhere = StagedReference::from_temporary_id(
+            TransactionContextHandle::new(other),
+            &staged.temporary_id(),
+        );
+        assert_ne!(HolonReference::from(staged), HolonReference::from(staged_elsewhere));
+    }
+
+    #[test]
+    fn saved_references_share_identity_by_holon_id_and_owning_space() {
+        let context = build_context();
+        let space = context.space_read_handle();
+        let saved = |id| HolonReference::smart_from_id(space.clone(), id);
+
+        assert_same_identity(&saved(local(1)), &saved(local(1)));
+        assert_ne!(saved(local(1)), saved(local(2)));
+
+        // Cached property hints are not identity.
+        let hinted = HolonReference::Smart(SmartReference::new_with_properties(
+            space.clone(),
+            local(1),
+            PropertyMap::from([(
+                PropertyName(MapString("Title".to_string())),
+                BaseValue::StringValue(MapString("hint".to_string())),
+            )]),
+        ));
+        assert_same_identity(&saved(local(1)), &hinted);
+
+        // Same Space Manager across transactions: still the same saved holon.
+        let other = context.open_isolated_transaction().unwrap();
+        assert_same_identity(
+            &saved(local(1)),
+            &HolonReference::smart_from_id(other.space_read_handle(), local(1)),
+        );
+
+        // A different Space Manager instance is a different owning space for
+        // local ids; external ids carry their own scope.
+        let foreign = build_context().space_read_handle();
+        assert_ne!(saved(local(1)), HolonReference::smart_from_id(foreign.clone(), local(1)));
+        assert_same_identity(
+            &saved(external(9, 1)),
+            &HolonReference::smart_from_id(foreign, external(9, 1)),
+        );
+        assert_ne!(saved(external(9, 1)), saved(external(9, 2)));
+        assert_ne!(saved(external(9, 1)), saved(external(8, 1)));
+
+        // Local and external HolonId variants are never equal.
+        assert_ne!(saved(local(1)), saved(external(1, 1)));
+    }
+}

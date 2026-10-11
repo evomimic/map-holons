@@ -13,6 +13,7 @@ const QUERY_DESCRIPTOR_KEY: &str = "Query.HolonType";
 const EXPAND_DESCRIPTOR_KEY: &str = "Expand.HolonType";
 const SKIP_DESCRIPTOR_KEY: &str = "Skip.HolonType";
 const LIMIT_DESCRIPTOR_KEY: &str = "Limit.HolonType";
+const DISTINCT_DESCRIPTOR_KEY: &str = "Distinct.HolonType";
 /// OrderBy schema descriptors. Their runtime lands separately; this slice
 /// proves the bootstrap bundle loads them.
 const ORDER_BY_SCHEMA_KEYS: [&str; 6] = [
@@ -92,6 +93,16 @@ const PERSON_3_KEY: &str = "Qry4a.Person.3";
 ///    across distinct same-named `PropertyType`s is covered by the QueryCore
 ///    unit tests, which build such types directly.
 ///
+///    and the identity-based `Distinct` cases (QRY4b), which keep the first
+///    occurrence of each reference in input order:
+///    - `Expand -> Distinct` over [A, B, D] ([P1, P2, P1, P2, P1]): [P1, P2];
+///    - `Expand -> Skip(1) -> Distinct`: [P2, P1], while
+///      `Expand -> Distinct -> Limit(1)`: [P1] — position decides survivors;
+///    - a root `Distinct` over [A, B, A, C, B]: [A, B, C];
+///    - a root `Distinct` over sort books sharing titles: every book is kept,
+///      because equal values on different holons are different identities;
+///    - empty input: empty; no input: `MissingRequiredRelationship`.
+///
 /// The OrderBy schema descriptors (`OrderBy`, `OrderBySpec`, `PropertyName`,
 /// `SortDirection`, `NullPlacement`, `OneToFive`) are resolved by key to prove
 /// the bootstrap bundle loads them.
@@ -99,7 +110,8 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "query_qry4a_order_paginate",
         "QRY4a: transient Query graphs order with OrderBy and page with Skip and Limit \
-         through the direct and QueryDance routes; invocation bindings are refused",
+         through the direct and QueryDance routes; invocation bindings are refused; \
+         QRY4b: Distinct keeps the first occurrence of each reference identity",
     );
 
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
@@ -245,6 +257,7 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         limit_type: lookup(&mut test_case, &mut fixture_holons, LIMIT_DESCRIPTOR_KEY)?,
         order_by_type: lookup(&mut test_case, &mut fixture_holons, ORDER_BY_DESCRIPTOR_KEY)?,
         spec_type: lookup(&mut test_case, &mut fixture_holons, ORDER_BY_SPEC_DESCRIPTOR_KEY)?,
+        distinct_type: lookup(&mut test_case, &mut fixture_holons, DISTINCT_DESCRIPTOR_KEY)?,
         test_case: &mut test_case,
         fixture_context: &fixture_context,
         fixture_holons: &mut fixture_holons,
@@ -403,6 +416,30 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     let late_expand = authoring.next(late_expand, late_order)?;
     let late_failure = authoring.query("Query.Qry4aLateName", late_expand)?;
 
+    // --- Distinct (QRY4b) ---
+    let expand_distinct = authoring.distinct("Distinct.Qry4bAfterExpand")?;
+    let distinct_expand = authoring.expand("Expand.Qry4bDistinct", BOOK_TO_PERSON_RELATIONSHIP)?;
+    let distinct_expand = authoring.next(distinct_expand, expand_distinct)?;
+    let expand_then_distinct = authoring.query("Query.Qry4bExpandDistinct", distinct_expand)?;
+
+    let skipped_distinct = authoring.distinct("Distinct.Qry4bAfterSkip")?;
+    let distinct_skip = authoring.skip("Skip.Qry4bBeforeDistinct", Some(1))?;
+    let distinct_skip = authoring.next(distinct_skip, skipped_distinct)?;
+    let skip_expand = authoring.expand("Expand.Qry4bSkipDistinct", BOOK_TO_PERSON_RELATIONSHIP)?;
+    let skip_expand = authoring.next(skip_expand, distinct_skip)?;
+    let skip_then_distinct = authoring.query("Query.Qry4bSkipDistinct", skip_expand)?;
+
+    let distinct_limit = authoring.limit("Limit.Qry4bAfterDistinct", Some(1))?;
+    let limited_distinct = authoring.distinct("Distinct.Qry4bBeforeLimit")?;
+    let limited_distinct = authoring.next(limited_distinct, distinct_limit)?;
+    let limit_expand =
+        authoring.expand("Expand.Qry4bDistinctLimit", BOOK_TO_PERSON_RELATIONSHIP)?;
+    let limit_expand = authoring.next(limit_expand, limited_distinct)?;
+    let distinct_then_limit = authoring.query("Query.Qry4bDistinctLimit", limit_expand)?;
+
+    let root_distinct = authoring.distinct("Distinct.Qry4bRoot")?;
+    let root_distinct = authoring.query("Query.Qry4bRootDistinct", root_distinct)?;
+
     for route in [QueryRoute::Direct, QueryRoute::QueryDance] {
         test_case.add_execute_query_step(
             page_query.clone(),
@@ -559,6 +596,67 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
             QueryExpectation::Error(HolonErrorKind::DescriptorDeclarationNotFound),
             Some(format!("A failing OrderBy after a completed Expand via {route:?}")),
         )?;
+
+        // --- Distinct ---
+        let expanded =
+            || QueryInputSpec::Collection(vec![book_a.clone(), book_b.clone(), book_d.clone()]);
+        test_case.add_execute_query_step(
+            expand_then_distinct.clone(),
+            expanded(),
+            route,
+            QueryExpectation::Members(vec![person_1.clone(), person_2.clone()]),
+            Some(format!("Expand -> Distinct via {route:?} keeps first occurrences")),
+        )?;
+        test_case.add_execute_query_step(
+            skip_then_distinct.clone(),
+            expanded(),
+            route,
+            QueryExpectation::Members(vec![person_2.clone(), person_1.clone()]),
+            Some(format!("Expand -> Skip(1) -> Distinct via {route:?}")),
+        )?;
+        test_case.add_execute_query_step(
+            distinct_then_limit.clone(),
+            expanded(),
+            route,
+            QueryExpectation::Members(vec![person_1.clone()]),
+            Some(format!("Expand -> Distinct -> Limit(1) via {route:?}")),
+        )?;
+        test_case.add_execute_query_step(
+            root_distinct.clone(),
+            QueryInputSpec::Collection(vec![
+                book_a.clone(),
+                book_b.clone(),
+                book_a.clone(),
+                book_c.clone(),
+                book_b.clone(),
+            ]),
+            route,
+            QueryExpectation::Members(vec![book_a.clone(), book_b.clone(), book_c.clone()]),
+            Some(format!("Root Distinct over [A, B, A, C, B] via {route:?}")),
+        )?;
+        test_case.add_execute_query_step(
+            root_distinct.clone(),
+            QueryInputSpec::Collection(books(&[4, 6, 3, 5, 4])),
+            route,
+            QueryExpectation::Members(books(&[4, 6, 3, 5])),
+            Some(format!(
+                "Distinct keeps equal-titled books with distinct identities via {route:?}"
+            )),
+        )?;
+        test_case.add_execute_query_step(
+            root_distinct.clone(),
+            QueryInputSpec::Collection(vec![]),
+            route,
+            QueryExpectation::Members(vec![]),
+            Some(format!("Distinct over empty input via {route:?} is empty")),
+        )?;
+        test_case.add_execute_query_step(
+            root_distinct.clone(),
+            QueryInputSpec::None,
+            route,
+            QueryExpectation::Error(HolonErrorKind::MissingRequiredRelationship),
+            Some(format!("A root Distinct via {route:?} requires an input collection")),
+        )?;
     }
 
     test_case.finalize(&fixture_context, &fixture_holons)?;
@@ -578,6 +676,7 @@ struct TransientAuthoring<'a> {
     limit_type: TestReference,
     order_by_type: TestReference,
     spec_type: TestReference,
+    distinct_type: TestReference,
 }
 
 impl TransientAuthoring<'_> {
@@ -687,6 +786,11 @@ impl TransientAuthoring<'_> {
     ) -> Result<TestReference, HolonError> {
         let order_by = self.described(key, PropertyMap::new(), self.order_by_type.clone())?;
         self.relate_all(order_by, "OrderBySpecs", specs, format!("{key} --OrderBySpecs--> specs"))
+    }
+
+    /// A parameter-free `Distinct`.
+    fn distinct(&mut self, key: &str) -> Result<TestReference, HolonError> {
+        self.described(key, PropertyMap::new(), self.distinct_type.clone())
     }
 
     fn next(

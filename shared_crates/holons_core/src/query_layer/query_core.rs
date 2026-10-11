@@ -1,5 +1,5 @@
 //! QueryCore — descriptor-backed Query runtime (QRY1 scaffold, QRY2 navigation,
-//! QRY4a ordering and pagination).
+//! QRY4a ordering and pagination, QRY4b identity-based Distinct).
 //!
 //! This module is the internal direct-execution seam for a reusable `Query`
 //! definition. It owns the definition/runtime boundary:
@@ -12,7 +12,7 @@
 //!   caller-supplied input;
 //! - `Pending -> Running -> Complete | Failed` status progression;
 //! - execution of the root expression and each `Next` successor in turn —
-//!   `SeedHolons` (root only), `Expand`, `OrderBy`, `Skip`, and `Limit` — with
+//!   `SeedHolons` (root only), `Expand`, `OrderBy`, `Distinct`, `Skip`, and `Limit` — with
 //!   `HolonError::NotImplemented` for every other concrete kind.
 //!
 //! Focal space is invocation context, not definition state: it is recorded only
@@ -29,7 +29,7 @@
 //! source or a transform. The runtime enforces the operator-specific rule in
 //! [`QueryReference::begin_execution`]: a root `SeedHolons` accepts no input (a
 //! supplied collection is a contract error, not an ignored operand); a root
-//! transform (`Expand`, `OrderBy`, `Skip`, `Limit`) requires exactly one
+//! transform (`Expand`, `OrderBy`, `Distinct`, `Skip`, `Limit`) requires exactly one
 //! `HolonCollectionReference`. When present, the
 //! caller's collection holon is linked as `Input` by identity; it is never copied.
 //!
@@ -56,7 +56,7 @@ use type_names::{
     CoreRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName, ToRelationshipName,
 };
 
-use super::{order_by, pagination};
+use super::{distinct, order_by, pagination};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::descriptors::resolve_core_descriptor;
 use crate::reference_layer::{HolonReference, ReadableHolon, TransientReference, WritableHolon};
@@ -68,6 +68,7 @@ const HOLON_SPACE_TYPE_NAME: &str = "HolonSpace";
 const SEED_HOLONS_TYPE_NAME: &str = "SeedHolons";
 const EXPAND_TYPE_NAME: &str = "Expand";
 const ORDER_BY_TYPE_NAME: &str = "OrderBy";
+const DISTINCT_TYPE_NAME: &str = "Distinct";
 const SKIP_TYPE_NAME: &str = "Skip";
 const LIMIT_TYPE_NAME: &str = "Limit";
 const EXECUTION_INSTANCE_DESCRIPTOR_KEY: &str = "ExecutionInstance.HolonType";
@@ -336,6 +337,8 @@ impl QueryExecution {
                 }
                 // The count is read before the input, so an invalid count fails
                 // even for an empty collection.
+                // Parameter-free: no argument to validate before reading input.
+                ExpressionKind::Distinct => distinct::distinct(&self.step_input(step)?.members()?),
                 ExpressionKind::Skip => {
                     let count =
                         pagination::read_count(&expression, QueryPropertyTypeName::SkipCount)?;
@@ -417,6 +420,7 @@ enum ExpressionKind {
     SeedHolons,
     Expand,
     OrderBy,
+    Distinct,
     Skip,
     Limit,
     Unsupported(String),
@@ -429,6 +433,7 @@ impl ExpressionKind {
             SEED_HOLONS_TYPE_NAME => Self::SeedHolons,
             EXPAND_TYPE_NAME => Self::Expand,
             ORDER_BY_TYPE_NAME => Self::OrderBy,
+            DISTINCT_TYPE_NAME => Self::Distinct,
             SKIP_TYPE_NAME => Self::Skip,
             LIMIT_TYPE_NAME => Self::Limit,
             _ => Self::Unsupported(type_name),
@@ -447,7 +452,7 @@ impl ExpressionKind {
             (Self::SeedHolons, Some(_)) => Err(HolonError::InvalidParameter(
                 "SeedHolons is a source expression and accepts no input collection".to_string(),
             )),
-            (Self::Expand | Self::OrderBy | Self::Skip | Self::Limit, None) => {
+            (Self::Expand | Self::OrderBy | Self::Distinct | Self::Skip | Self::Limit, None) => {
                 Err(HolonError::MissingRequiredRelationship {
                     relationship: QueryRelationshipTypeName::Input
                         .to_relationship_name()
@@ -2668,5 +2673,208 @@ mod tests {
             .unwrap_err();
         assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
         assert_no_runtime_records(&fixture);
+    }
+
+    // ---- QRY4b identity-based Distinct ---------------------------------------
+
+    fn step_records(instance: &HolonReference) -> Vec<HolonReference> {
+        related_members(instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap()
+    }
+
+    fn status_value(status: ExecutionStatus) -> Option<BaseValue> {
+        Some(BaseValue::EnumValue(status.as_enum_value()))
+    }
+
+    fn assert_step(record: &HolonReference, status: ExecutionStatus, has_result: bool) {
+        assert_eq!(
+            record.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            status_value(status)
+        );
+        let results = related_members(record, QueryRelationshipTypeName::Result).unwrap();
+        assert_eq!(results.len(), usize::from(has_result));
+    }
+
+    #[test]
+    fn distinct_root_requires_input() {
+        let fixture = build_fixture();
+        let root = fixture.described("distinct", DISTINCT_TYPE_NAME);
+        let query = fixture.query_with_root(&root);
+        let error = query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::MissingRequiredRelationship { relationship, .. }
+                if relationship == "Input"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn distinct_keeps_the_first_occurrence_of_each_saved_identity() {
+        let fixture = build_fixture();
+        let root = fixture.described("distinct", DISTINCT_TYPE_NAME);
+        let before = root.into_model().unwrap();
+
+        let (instance, members) = run_over(&fixture, &root, &[10, 11, 10, 12, 11]);
+        let members = members.unwrap();
+        assert_eq!(ids_of(&members), vec![id(10), id(11), id(12)]);
+        assert_eq!(members, vec![fixture.saved(10), fixture.saved(11), fixture.saved(12)]);
+        assert_step(&step_records(&instance)[0], ExecutionStatus::Complete, true);
+        assert_eq!(root.into_model().unwrap(), before, "the definition is unchanged");
+    }
+
+    #[test]
+    fn distinct_always_publishes_a_new_result_collection() {
+        for sources in [&[][..], &[10, 11, 12][..]] {
+            let fixture = build_fixture();
+            let root = fixture.described("distinct", DISTINCT_TYPE_NAME);
+            let query = fixture.query_with_root(&root);
+            let input = fixture.collection_of("distinct-input", sources);
+            let input_holon = input.as_holon_reference().clone();
+            let execution = query
+                .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+                .unwrap();
+            let result = execution.run().unwrap();
+
+            assert_ne!(result.as_holon_reference(), &input_holon, "{sources:?}: never the input");
+            let members = result.members().unwrap();
+            assert_eq!(
+                ids_of(&members),
+                sources.iter().map(|value| id(*value)).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn distinct_keeps_different_identities_with_equal_values() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let first = world.member("first", &book, &[("Title", text("Same"))]);
+        let second = world.member("second", &book, &[("Title", text("Same"))]);
+        let root = world.fixture.described("distinct", DISTINCT_TYPE_NAME);
+
+        let (_, members) =
+            world.run(&root, &[first.clone(), second.clone(), first.clone(), second.clone()]);
+        assert_eq!(members.unwrap(), vec![first, second]);
+    }
+
+    #[test]
+    fn distinct_treats_each_reference_phase_as_its_own_identity() {
+        let world = SortWorld::new();
+        let context = &world.fixture.context;
+        let transient = new_test_holon(context, "lineage").unwrap();
+        let staged: HolonReference =
+            context.mutation().stage_new_holon(transient.clone()).unwrap().into();
+        let transient: HolonReference = transient.into();
+        let root = world.fixture.described("distinct", DISTINCT_TYPE_NAME);
+
+        let (_, members) = world
+            .run(&root, &[transient.clone(), staged.clone(), transient.clone(), staged.clone()]);
+        assert_eq!(members.unwrap(), vec![transient, staged]);
+    }
+
+    #[test]
+    fn distinct_position_in_the_chain_decides_the_survivors() {
+        // Expand(AuthoredBy) over [20, 30] is [24, 29, 24, 29, 24].
+        let cases: [(&[(&str, Option<i64>)], Vec<u8>); 5] = [
+            (&[(DISTINCT_TYPE_NAME, None)], vec![24, 29]),
+            (&[(SKIP_TYPE_NAME, Some(1)), (DISTINCT_TYPE_NAME, None)], vec![29, 24]),
+            (&[(DISTINCT_TYPE_NAME, None), (SKIP_TYPE_NAME, Some(1))], vec![29]),
+            (&[(LIMIT_TYPE_NAME, Some(1)), (DISTINCT_TYPE_NAME, None)], vec![24]),
+            (&[(DISTINCT_TYPE_NAME, None), (LIMIT_TYPE_NAME, Some(1))], vec![24]),
+        ];
+        for (steps, expected) in cases {
+            let fixture = build_fixture();
+            let mut expand = fixture.expand("expand", "AuthoredBy");
+            let mut tail: Vec<TransientReference> = steps
+                .iter()
+                .enumerate()
+                .map(|(index, (type_name, count))| {
+                    let key = format!("step-{index}");
+                    match *type_name {
+                        DISTINCT_TYPE_NAME => fixture.described(&key, DISTINCT_TYPE_NAME),
+                        _ => fixture.paginate(&key, type_name, *count),
+                    }
+                })
+                .collect();
+            for index in (1..tail.len()).rev() {
+                let next = tail[index].clone();
+                chain(&mut tail[index - 1], &next);
+            }
+            chain(&mut expand, &tail[0]);
+
+            let (_, members) = run_over(&fixture, &expand, &[20, 30]);
+            assert_eq!(
+                ids_of(&members.unwrap()),
+                expected.iter().map(|value| id(*value)).collect::<Vec<_>>(),
+                "Expand -> {steps:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn distinct_after_order_by_keeps_the_sorted_order_and_never_sorts_itself() {
+        let world = SortWorld::new();
+        let book = world.member_type("Book", &[("Title", true, &world.string_type)]);
+        let [a, b, c] = ["A", "B", "C"]
+            .map(|title| world.member(&format!("book-{title}"), &book, &[("Title", text(title))]));
+        let input = [c.clone(), a.clone(), c.clone(), b.clone(), a.clone()];
+
+        let mut order_by = world.order_by(vec![world.spec(
+            "title",
+            Some(text("Title")),
+            Some("Descending"),
+            None,
+        )]);
+        let distinct = world.fixture.described("distinct", DISTINCT_TYPE_NAME);
+        chain(&mut order_by, &distinct);
+        let (_, sorted) = world.run(&order_by, &input);
+        assert_eq!(sorted.unwrap(), vec![c.clone(), b.clone(), a.clone()]);
+
+        let unsorted = world.fixture.described("unsorted", DISTINCT_TYPE_NAME);
+        let (_, members) = world.run(&unsorted, &input);
+        assert_eq!(members.unwrap(), vec![c, a, b], "input order, not sort order");
+    }
+
+    #[test]
+    fn a_predicate_attached_to_distinct_fails_that_step() {
+        let fixture = build_fixture();
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        let mut distinct = fixture.described("distinct", DISTINCT_TYPE_NAME);
+        let predicate = fixture.described("predicate", "QueryPredicate");
+        distinct
+            .add_related_holons(QueryRelationshipTypeName::SeedPredicate, vec![predicate.into()])
+            .unwrap();
+        chain(&mut expand, &distinct);
+
+        let (instance, members) = run_over(&fixture, &expand, &[20]);
+        let error = members.unwrap_err();
+        assert!(
+            matches!(&error, HolonError::NotImplemented(detail) if detail.contains("SeedPredicate")),
+            "unexpected error: {error:?}"
+        );
+        let records = step_records(&instance);
+        assert_eq!(records.len(), 2);
+        assert_step(&records[0], ExecutionStatus::Complete, true);
+        assert_step(&records[1], ExecutionStatus::Failed, false);
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn a_failing_successor_leaves_distinct_complete() {
+        let fixture = build_fixture();
+        let mut distinct = fixture.described("distinct", DISTINCT_TYPE_NAME);
+        let skip = fixture.paginate("skip", SKIP_TYPE_NAME, None);
+        chain(&mut distinct, &skip);
+
+        let (instance, members) = run_over(&fixture, &distinct, &[10, 10]);
+        assert!(
+            matches!(members.unwrap_err(), HolonError::EmptyField(name) if name == "SkipCount")
+        );
+        let records = step_records(&instance);
+        assert_step(&records[0], ExecutionStatus::Complete, true);
+        assert_step(&records[1], ExecutionStatus::Failed, false);
     }
 }
