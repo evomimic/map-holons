@@ -32,6 +32,7 @@ mod structural_diagnosis;
 pub(crate) mod test_support;
 pub mod transaction_descriptor;
 pub mod type_header;
+pub mod type_membership;
 mod universal_descriptor_contract;
 pub mod value_descriptor;
 pub mod value_descriptor_subtypes;
@@ -77,6 +78,7 @@ pub use structural_diagnosis::{
 };
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
+pub use type_membership::{classify_holon_type, has_type, require_holon_type};
 pub use universal_descriptor_contract::UniversalDescriptorContract;
 pub use value_descriptor::{ValueDescriptor, ValueDescriptorKind};
 pub use value_descriptor_subtypes::{

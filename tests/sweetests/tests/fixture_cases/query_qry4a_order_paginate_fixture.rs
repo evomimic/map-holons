@@ -443,7 +443,10 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
     for route in [QueryRoute::Direct, QueryRoute::QueryDance] {
         test_case.add_execute_query_step(
             page_query.clone(),
-            QueryInputSpec::Collection(vec![book_a.clone(), book_b.clone(), book_d.clone()]),
+            QueryInputSpec::collection(
+                "Book",
+                vec![book_a.clone(), book_b.clone(), book_d.clone()],
+            ),
             route,
             QueryExpectation::Members(vec![person_2.clone(), person_1.clone(), person_2.clone()]),
             Some(format!("Transient Expand -> Skip(1) -> Limit(3) via {route:?}")),
@@ -452,14 +455,14 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         let repeated = vec![book_a.clone(), book_b.clone(), book_c.clone(), book_a.clone()];
         test_case.add_execute_query_step(
             limit_then_skip.clone(),
-            QueryInputSpec::Collection(repeated.clone()),
+            QueryInputSpec::collection("Book", repeated.clone()),
             route,
             QueryExpectation::Members(vec![book_b.clone()]),
             Some(format!("Limit(2) -> Skip(1) via {route:?}")),
         )?;
         test_case.add_execute_query_step(
             skip_then_limit.clone(),
-            QueryInputSpec::Collection(repeated),
+            QueryInputSpec::collection("Book", repeated),
             route,
             QueryExpectation::Members(vec![book_b.clone(), book_c.clone()]),
             Some(format!("Skip(1) -> Limit(2) via {route:?}")),
@@ -467,14 +470,14 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
 
         test_case.add_execute_query_step(
             oversized_skip.clone(),
-            QueryInputSpec::Collection(vec![book_a.clone(), book_b.clone()]),
+            QueryInputSpec::collection("Book", vec![book_a.clone(), book_b.clone()]),
             route,
             QueryExpectation::Members(vec![]),
             Some(format!("Skip past the end via {route:?} is empty")),
         )?;
         test_case.add_execute_query_step(
             zero_limit.clone(),
-            QueryInputSpec::Collection(vec![book_a.clone(), book_b.clone()]),
+            QueryInputSpec::collection("Book", vec![book_a.clone(), book_b.clone()]),
             route,
             QueryExpectation::Members(vec![]),
             Some(format!("Limit(0) via {route:?} is empty")),
@@ -482,14 +485,14 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
 
         test_case.add_execute_query_step(
             countless.clone(),
-            QueryInputSpec::Collection(vec![book_a.clone()]),
+            QueryInputSpec::collection("Book", vec![book_a.clone()]),
             route,
             QueryExpectation::Error(HolonErrorKind::EmptyField),
             Some(format!("Expand -> Skip without SkipCount via {route:?} fails the Skip")),
         )?;
         test_case.add_execute_query_step(
             negative_limit.clone(),
-            QueryInputSpec::Collection(vec![]),
+            QueryInputSpec::collection("Book", vec![]),
             route,
             QueryExpectation::Error(HolonErrorKind::InvalidParameter),
             Some(format!("A negative LimitCount via {route:?} fails even on empty input")),
@@ -504,7 +507,7 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
 
         test_case.add_execute_query_with_bindings_step(
             page_query.clone(),
-            QueryInputSpec::Collection(vec![book_a.clone()]),
+            QueryInputSpec::collection("Book", vec![book_a.clone()]),
             route,
             vec![binding.clone()],
             QueryExpectation::Error(HolonErrorKind::NotImplemented),
@@ -512,11 +515,11 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         )?;
 
         // --- OrderBy ---
-        let input = || QueryInputSpec::Collection(books(&[1, 2, 3, 4, 5, 6, 2]));
+        let input = || QueryInputSpec::collection("Book", books(&[1, 2, 3, 4, 5, 6, 2]));
         let ordered = |numbers: &[usize]| QueryExpectation::Members(books(numbers));
         test_case.add_execute_query_step(
             proof_query.clone(),
-            QueryInputSpec::Collection(vec![person_3.clone()]),
+            QueryInputSpec::collection("Person", vec![person_3.clone()]),
             route,
             ordered(&[5, 4, 2]),
             Some(format!("Delivery proof Expand -> OrderBy -> Skip -> Limit via {route:?}")),
@@ -551,14 +554,14 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         )?;
         test_case.add_execute_query_step(
             by_title.clone(),
-            QueryInputSpec::Collection(vec![]),
+            QueryInputSpec::collection("Book", vec![]),
             route,
             ordered(&[]),
             Some(format!("OrderBy over empty input via {route:?}")),
         )?;
         test_case.add_execute_query_step(
             by_title.clone(),
-            QueryInputSpec::Collection(books(&[3])),
+            QueryInputSpec::collection("Book", books(&[3])),
             route,
             ordered(&[3]),
             Some(format!("OrderBy over a singleton via {route:?}")),
@@ -566,7 +569,7 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
 
         test_case.add_execute_query_step(
             no_specs.clone(),
-            QueryInputSpec::Collection(vec![]),
+            QueryInputSpec::collection("Book", vec![]),
             route,
             QueryExpectation::Error(HolonErrorKind::InvalidParameter),
             Some(format!("OrderBy without specs via {route:?} fails even on empty input")),
@@ -574,7 +577,7 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         for (label, query, kind) in &failing_on_empty {
             test_case.add_execute_query_step(
                 query.clone(),
-                QueryInputSpec::Collection(vec![]),
+                QueryInputSpec::collection("Book", vec![]),
                 route,
                 QueryExpectation::Error(*kind),
                 Some(format!("OrderBy {label} via {route:?} fails even on empty input")),
@@ -583,7 +586,7 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         for (label, query, kind) in &failing {
             test_case.add_execute_query_step(
                 query.clone(),
-                QueryInputSpec::Collection(books(&[1, 2])),
+                QueryInputSpec::collection("Book", books(&[1, 2])),
                 route,
                 QueryExpectation::Error(*kind),
                 Some(format!("OrderBy {label} via {route:?} fails with {kind:?}")),
@@ -591,15 +594,16 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         }
         test_case.add_execute_query_step(
             late_failure.clone(),
-            QueryInputSpec::Collection(vec![person_3.clone()]),
+            QueryInputSpec::collection("Person", vec![person_3.clone()]),
             route,
             QueryExpectation::Error(HolonErrorKind::DescriptorDeclarationNotFound),
             Some(format!("A failing OrderBy after a completed Expand via {route:?}")),
         )?;
 
         // --- Distinct ---
-        let expanded =
-            || QueryInputSpec::Collection(vec![book_a.clone(), book_b.clone(), book_d.clone()]);
+        let expanded = || {
+            QueryInputSpec::collection("Book", vec![book_a.clone(), book_b.clone(), book_d.clone()])
+        };
         test_case.add_execute_query_step(
             expand_then_distinct.clone(),
             expanded(),
@@ -623,20 +627,23 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         )?;
         test_case.add_execute_query_step(
             root_distinct.clone(),
-            QueryInputSpec::Collection(vec![
-                book_a.clone(),
-                book_b.clone(),
-                book_a.clone(),
-                book_c.clone(),
-                book_b.clone(),
-            ]),
+            QueryInputSpec::collection(
+                "Book",
+                vec![
+                    book_a.clone(),
+                    book_b.clone(),
+                    book_a.clone(),
+                    book_c.clone(),
+                    book_b.clone(),
+                ],
+            ),
             route,
             QueryExpectation::Members(vec![book_a.clone(), book_b.clone(), book_c.clone()]),
             Some(format!("Root Distinct over [A, B, A, C, B] via {route:?}")),
         )?;
         test_case.add_execute_query_step(
             root_distinct.clone(),
-            QueryInputSpec::Collection(books(&[4, 6, 3, 5, 4])),
+            QueryInputSpec::collection("Book", books(&[4, 6, 3, 5, 4])),
             route,
             QueryExpectation::Members(books(&[4, 6, 3, 5])),
             Some(format!(
@@ -645,7 +652,7 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         )?;
         test_case.add_execute_query_step(
             root_distinct.clone(),
-            QueryInputSpec::Collection(vec![]),
+            QueryInputSpec::collection("Book", vec![]),
             route,
             QueryExpectation::Members(vec![]),
             Some(format!("Distinct over empty input via {route:?} is empty")),

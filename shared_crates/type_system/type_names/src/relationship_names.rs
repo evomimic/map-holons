@@ -135,6 +135,7 @@ pub enum CoreRelationshipTypeName {
     DependsOn,
     DescribedBy,
     Diagnostics,
+    ElementType,
     ElementValueType,
     ElementValueTypeFor,
     Extends,

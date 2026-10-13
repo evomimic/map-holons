@@ -14,9 +14,11 @@
 //! invocation's `AffordingHolon` (the adapter maps it to the same reference).
 //!
 //! Input: when the step supplies a collection, the harness creates one holon
-//! described by `HolonCollection.HolonType` whose `CollectionMembers` are the
-//! resolved references (`build_input_collection`) — the caller-side boundary
-//! from #655 — and the runtime links `Input` to that same holon by identity.
+//! described by `HolonCollection.HolonType` that declares the step's
+//! `ElementType` and whose `CollectionMembers` are the resolved references
+//! (`build_input_collection`) — the caller-side boundary from #655 — and the
+//! runtime links `Input` to that same holon by identity. Every result collection
+//! must in turn declare exactly one `ElementType`.
 //!
 //! Bindings: invocation-level parameter bindings go to `begin_execution` on the
 //! direct route and to `QueryDanceRequest.RequestParameters` on the Dance
@@ -37,13 +39,11 @@ use holons_test::{
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::info;
 use type_names::{
-    QueryDanceRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName,
+    holon_type_descriptor_key, CoreHolonTypeName, QueryDanceRelationshipTypeName,
+    QueryDanceTypeName, QueryPropertyTypeName, QueryRelationshipTypeName,
 };
 
-const HOLON_COLLECTION_DESCRIPTOR_KEY: &str = "HolonCollection.HolonType";
-const DANCE_INVOCATION_DESCRIPTOR_KEY: &str = "DanceInvocation.HolonType";
 const QUERY_DANCE_REQUEST_DESCRIPTOR_KEY: &str = "QueryDanceRequest.HolonType";
-const QUERY_DANCE_NAME: &str = "QueryDance";
 const DANCE_RESPONSE_KEY: &str = "dance-response";
 
 pub async fn execute_query(
@@ -66,9 +66,12 @@ pub async fn execute_query(
         state.resolve_execution_references(&context, ResolveBy::Expected, &bindings).unwrap();
     let resolved_input = match &input {
         QueryInputSpec::None => ResolvedInput::None,
-        QueryInputSpec::Collection(members) => ResolvedInput::Collection(
-            state.resolve_execution_references(&context, ResolveBy::Expected, members).unwrap(),
-        ),
+        QueryInputSpec::Collection { element_type, members } => ResolvedInput::Collection {
+            element_type: holon_type_descriptor(&context, &MapString(element_type.clone())),
+            members: state
+                .resolve_execution_references(&context, ResolveBy::Expected, members)
+                .unwrap(),
+        },
         QueryInputSpec::SingleHolon(member) => ResolvedInput::SingleHolon(
             state.resolve_execution_reference(&context, ResolveBy::Expected, member).unwrap(),
         ),
@@ -85,23 +88,18 @@ pub async fn execute_query(
             execute_direct(&context, query_reference.clone(), resolved_input, bindings, expected)
         }
         QueryRoute::QueryDance => {
-            let members = match resolved_input {
+            let input = match resolved_input {
                 ResolvedInput::None => None,
-                ResolvedInput::Collection(members) => Some(members),
+                ResolvedInput::Collection { element_type, members } => {
+                    Some((element_type, members))
+                }
                 ResolvedInput::SingleHolon(_) => panic!(
                     "the single-holon convenience is direct-only; the Dance contract is \
                      collection-shaped"
                 ),
             };
-            execute_query_dance(
-                state,
-                &context,
-                query_reference.clone(),
-                members,
-                bindings,
-                expected,
-            )
-            .await
+            execute_query_dance(state, &context, query_reference.clone(), input, bindings, expected)
+                .await
         }
     }
 
@@ -155,7 +153,7 @@ fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
 /// The step's collection operand with fixture tokens resolved to references.
 enum ResolvedInput {
     None,
-    Collection(Vec<HolonReference>),
+    Collection { element_type: HolonReference, members: Vec<HolonReference> },
     SingleHolon(HolonReference),
 }
 
@@ -224,9 +222,10 @@ fn execute_direct(
     let expects_absent_input = matches!(input, ResolvedInput::None);
     let input_collection: Option<HolonReference> = match input {
         ResolvedInput::None | ResolvedInput::SingleHolon(_) => None,
-        ResolvedInput::Collection(members) => {
+        ResolvedInput::Collection { element_type, members } => {
             let count = members.len();
-            let collection: HolonReference = build_input_collection(context, members).into();
+            let collection: HolonReference =
+                build_input_collection(context, element_type, members).into();
             assert_related_count(&collection, CoreRelationshipTypeName::CollectionMembers, count);
             Some(collection)
         }
@@ -366,6 +365,11 @@ fn assert_singleton_input(execution: &QueryExecution, source: &HolonReference) {
     );
     let members = related_members(&input, CoreRelationshipTypeName::CollectionMembers);
     assert_eq!(ids_of(&members), ids_of(&[source.clone()]), "singleton member is the source");
+    assert_same_holon(
+        &single_related(&input, CoreRelationshipTypeName::ElementType),
+        &source.holon_descriptor().unwrap().holon().clone(),
+        "the singleton declares its source's own type",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -376,7 +380,7 @@ async fn execute_query_dance(
     state: &mut TestExecutionState,
     context: &Arc<TransactionContext>,
     query_reference: HolonReference,
-    input_members: Option<Vec<HolonReference>>,
+    input: Option<(HolonReference, Vec<HolonReference>)>,
     bindings: Vec<HolonReference>,
     expected: ResolvedExpectation,
 ) {
@@ -392,8 +396,8 @@ async fn execute_query_dance(
     request
         .add_related_holons(QueryDanceRelationshipTypeName::RequestedQuery, vec![query_reference])
         .unwrap();
-    if let Some(members) = input_members {
-        let collection = build_input_collection(context, members);
+    if let Some((element_type, members)) = input {
+        let collection = build_input_collection(context, element_type, members);
         request
             .add_related_holons(
                 QueryDanceRelationshipTypeName::InitialInput,
@@ -414,12 +418,15 @@ async fn execute_query_dance(
         .new_holon(Some(MapString("query-dance-invocation".to_string())))
         .unwrap();
     invocation
-        .with_descriptor(resolve_core_descriptor(context, DANCE_INVOCATION_DESCRIPTOR_KEY).unwrap())
+        .with_descriptor(holon_type_descriptor(
+            context,
+            &CoreHolonTypeName::DanceInvocation.as_holon_name(),
+        ))
         .unwrap();
     invocation
         .with_property_value(
             CorePropertyTypeName::DanceName,
-            MapString(QUERY_DANCE_NAME.to_string()),
+            QueryDanceTypeName::QueryDance.as_dance_name().0,
         )
         .unwrap()
         .add_related_holons(CoreRelationshipTypeName::Request, vec![request.into()])
@@ -451,6 +458,7 @@ async fn execute_query_dance(
                 "DanceV2 should return the dance-response holon"
             );
             let body = single_related(&response, CoreRelationshipTypeName::ResponseBody);
+            assert_declares_one_element_type(&body);
             assert_result_members(context, &body, expected);
             info!("Success! QueryDance returned the result collection as the response body");
         }
@@ -487,6 +495,7 @@ fn assert_success(
     assert!(!steps.is_empty(), "a successful execution records at least one step");
     for step in &steps {
         assert_status(step.clone(), "Complete");
+        assert_declares_one_element_type(&single_related(step, QueryRelationshipTypeName::Result));
     }
 
     // Each non-root step consumes its predecessor's Result holon by identity.
@@ -567,9 +576,11 @@ fn assert_failure(
 }
 
 /// Creates the caller-side explicit input: a transient holon described by
-/// `HolonCollection.HolonType` whose `CollectionMembers` are `members`.
+/// `HolonCollection.HolonType` that declares `element_type` and whose
+/// `CollectionMembers` are `members`.
 fn build_input_collection(
     context: &Arc<TransactionContext>,
+    element_type: HolonReference,
     members: Vec<HolonReference>,
 ) -> TransientReference {
     let mut collection = context
@@ -577,7 +588,13 @@ fn build_input_collection(
         .new_holon(Some(MapString("harness-input-collection".to_string())))
         .unwrap();
     collection
-        .with_descriptor(resolve_core_descriptor(context, HOLON_COLLECTION_DESCRIPTOR_KEY).unwrap())
+        .with_descriptor(holon_type_descriptor(
+            context,
+            &CoreHolonTypeName::HolonCollection.as_holon_name(),
+        ))
+        .unwrap();
+    collection
+        .add_related_holons(CoreRelationshipTypeName::ElementType, vec![element_type])
         .unwrap();
     if !members.is_empty() {
         collection
@@ -585,6 +602,20 @@ fn build_input_collection(
             .unwrap();
     }
     collection
+}
+
+/// The loaded descriptor of the canonical holon type `type_name`.
+fn holon_type_descriptor(
+    context: &Arc<TransactionContext>,
+    type_name: &MapString,
+) -> HolonReference {
+    resolve_core_descriptor(context, &holon_type_descriptor_key(type_name).0)
+        .unwrap_or_else(|error| panic!("{type_name} descriptor should be loaded: {error:?}"))
+}
+
+/// Every collection the runtime produces declares exactly one `ElementType`.
+fn assert_declares_one_element_type(collection: &HolonReference) {
+    assert_related_count(collection, CoreRelationshipTypeName::ElementType, 1);
 }
 
 /// The holon affording `QueryDance` (`DanceAffordedBy -> HolonSpace.HolonType`)

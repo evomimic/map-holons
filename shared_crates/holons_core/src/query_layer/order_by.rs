@@ -13,19 +13,18 @@
 //! resolved descriptor is written to the spec, so neither a successful nor a
 //! failed evaluation changes the caller's definitions.
 //!
-//! Validation precedes any output:
-//! - the spec shape (count, kind, a string `PropertyName`, enum values), even for
-//!   empty input;
+//! Validation precedes any output, and everything but the members' values is
+//! validated even for empty input:
+//! - the spec shape (count, kind, a string `PropertyName`, enum values);
+//! - each `PropertyName` resolves through the input collection's declared
+//!   `ElementType` surface, including inherited declarations, with the shared
+//!   descriptor lookup. That one declaration fixes the key's value type,
+//!   comparison domain, and requiredness for every occurrence; a member
+//!   subtype's own declarations neither add selectable names nor rebind them;
 //! - for every input occurrence, including a singleton and keys that do not
-//!   decide the final order: `PropertyName` resolves through the member's own
-//!   effective property surface (the shared descriptor lookup), requiredness
-//!   comes from that member's resolved declaration, and every member of a key
-//!   must resolve to the same effective value-type descriptor identity — also
-//!   when its value is absent. Distinct `PropertyType`s sharing the name are
-//!   accepted on those terms; matching primitive representations alone are not.
-//!
-//! Empty input has no members to resolve against, so property applicability and
-//! comparison domains are only checked once members exist.
+//!   decide the final order, the value must be present when required and have
+//!   the domain's runtime representation. Member conformance to the declared
+//!   type is trusted, not re-checked.
 //!
 //! Supported domains are descriptor-backed integer and string values whose
 //! descriptor affords `EqualsOperator` and `LessThanOperator`; comparisons go
@@ -41,43 +40,39 @@
 //! values, per key, so descending keys keep stability.
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 
 use base_types::{BaseValue, BaseValueKind, MapEnumValue};
 use core_types::{HolonError, PropertyName};
-use type_names::{CoreOperatorTypeName, QueryPropertyTypeName, QueryRelationshipTypeName};
+use type_names::{
+    CoreOperatorTypeName, QueryHolonTypeName, QueryPropertyTypeName, QueryRelationshipTypeName,
+};
 
-use super::query_core::{related_members, require_described_as};
+use crate::descriptors::accessor_helpers::related_members;
 use crate::descriptors::{
-    same_definition, Descriptor, EffectiveValue, EnumValueDescriptor, HolonDescriptor,
+    require_holon_type, Descriptor, EffectiveValue, EnumValueDescriptor, HolonDescriptor,
     IntegerValueDescriptor, OperatorDescriptor, StringValueDescriptor, ValueDescriptor,
     ValueDescriptorKind,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
-const ORDER_BY_SPEC_TYPE_NAME: &str = "OrderBySpec";
 const MIN_SPECS: usize = 1;
 const MAX_SPECS: usize = 5;
 
-/// Sorts `members` by the `OrderBy` definition `expression`. Returns the same
-/// occurrences, reordered.
+/// Sorts `members`, a collection declared as `element_type`, by the `OrderBy`
+/// definition `expression`. Returns the same occurrences, reordered.
 pub(crate) fn order_by(
     expression: &HolonReference,
+    element_type: &HolonDescriptor,
     members: &[HolonReference],
 ) -> Result<Vec<HolonReference>, HolonError> {
-    let specs = read_sort_specs(expression)?;
-    if members.is_empty() {
-        return Ok(Vec::new());
-    }
+    let keys = read_sort_specs(expression)?
+        .into_iter()
+        .map(|spec| ResolvedKey::resolve(spec, element_type))
+        .collect::<Result<Vec<_>, _>>()?;
 
-    let mut keys: Vec<ResolvedKey> = specs.into_iter().map(ResolvedKey::new).collect();
-    let mut declarations = MemberDeclarations::default();
     let mut rows = Vec::with_capacity(members.len());
     for (index, member) in members.iter().enumerate() {
-        let values = keys
-            .iter_mut()
-            .map(|key| key.value_of(member, &mut declarations))
-            .collect::<Result<Vec<_>, _>>()?;
+        let values = keys.iter().map(|key| key.value_of(member)).collect::<Result<Vec<_>, _>>()?;
         rows.push((index, values));
     }
 
@@ -149,7 +144,7 @@ fn read_sort_specs(expression: &HolonReference) -> Result<Vec<SortSpec>, HolonEr
 }
 
 fn read_sort_spec(spec: &HolonReference) -> Result<SortSpec, HolonError> {
-    require_described_as(spec, ORDER_BY_SPEC_TYPE_NAME)?;
+    require_holon_type(spec, &QueryHolonTypeName::OrderBySpec.as_holon_name())?;
     let spec_descriptor = spec.holon_descriptor()?;
 
     let property_name = read_property_name(spec, &spec_descriptor)?;
@@ -285,114 +280,45 @@ impl KeyDomain {
     }
 }
 
-/// A member type's resolved declaration of one selected property name.
-#[derive(Clone)]
-struct MemberDeclaration {
-    required: bool,
-    value_type: HolonReference,
-}
-
-/// Caches each member type's resolution of each selected property name, so a
-/// collection of one type resolves every name once.
-#[derive(Default)]
-struct MemberDeclarations {
-    by_type_and_name: HashMap<(String, String), MemberDeclaration>,
-}
-
-impl MemberDeclarations {
-    /// Resolves `property_name` through `member`'s effective property surface
-    /// with the shared descriptor lookup, whose undeclared-name and
-    /// duplicate-declaration errors propagate unchanged.
-    fn resolve(
-        &mut self,
-        member: &HolonReference,
-        property_name: &PropertyName,
-    ) -> Result<MemberDeclaration, HolonError> {
-        let descriptor = member.holon_descriptor()?;
-        let cache_key = (descriptor.holon().reference_id_string(), property_name.to_string());
-        if let Some(declaration) = self.by_type_and_name.get(&cache_key) {
-            return Ok(declaration.clone());
-        }
-        let property = descriptor.get_property_by_name(property_name.clone())?;
-        let declaration = MemberDeclaration {
-            required: property.is_required()?,
-            value_type: property.value_type()?.holon().clone(),
-        };
-        self.by_type_and_name.insert(cache_key, declaration.clone());
-        Ok(declaration)
-    }
-}
-
-/// One sort key while its members are resolved. The first member fixes the
-/// key's value type and comparison domain; every later member must resolve to
-/// that same value-type identity.
+/// One sort key resolved against the collection's declared element type.
 struct ResolvedKey {
     spec: SortSpec,
-    binding: Option<(HolonReference, KeyDomain)>,
+    required: bool,
+    domain: KeyDomain,
 }
 
 impl ResolvedKey {
-    fn new(spec: SortSpec) -> Self {
-        Self { spec, binding: None }
+    /// Resolves `spec`'s property through `element_type`'s effective property
+    /// surface with the shared descriptor lookup, whose undeclared-name and
+    /// duplicate-declaration errors propagate unchanged. Needs no members, so
+    /// an undeclared name or unsupported domain fails for empty input too.
+    fn resolve(spec: SortSpec, element_type: &HolonDescriptor) -> Result<Self, HolonError> {
+        let property = element_type.get_property_by_name(spec.property_name.clone())?;
+        Ok(Self {
+            required: property.is_required()?,
+            domain: KeyDomain::resolve(&property.value_type()?)?,
+            spec,
+        })
     }
 
-    /// This key's value on `member`: `Some` when present and valid, `None`
-    /// when the member's own declaration makes the property optional.
-    fn value_of(
-        &mut self,
-        member: &HolonReference,
-        declarations: &mut MemberDeclarations,
-    ) -> Result<Option<BaseValue>, HolonError> {
-        let declaration = declarations.resolve(member, &self.spec.property_name)?;
-        self.bind(&declaration.value_type, member)?;
+    /// This key's value on `member`: `Some` when present with the domain's
+    /// representation, `None` when absent and the declaration is optional.
+    fn value_of(&self, member: &HolonReference) -> Result<Option<BaseValue>, HolonError> {
         match member.property_value(&self.spec.property_name)? {
             Some(value) => {
-                self.domain().validate(&value)?;
+                self.domain.validate(&value)?;
                 Ok(Some(value))
             }
-            None if declaration.required => {
+            None if self.required => {
                 Err(HolonError::EmptyField(self.spec.property_name.to_string()))
             }
             None => Ok(None),
         }
     }
 
-    /// Fixes the key's value type on first use and checks identity afterwards,
-    /// whether or not the member has a value.
-    fn bind(
-        &mut self,
-        value_type: &HolonReference,
-        member: &HolonReference,
-    ) -> Result<(), HolonError> {
-        match &self.binding {
-            Some((bound, _)) if same_definition(bound, value_type) => Ok(()),
-            Some((bound, _)) => Err(HolonError::InvalidParameter(format!(
-                "OrderBy key {} resolves to value type {} on {}, but to {} on an earlier \
-                 member; every member of a key must share one value type",
-                self.spec.property_name,
-                ValueDescriptor::from_holon(value_type.clone()).header().type_name()?,
-                member.summarize()?,
-                ValueDescriptor::from_holon(bound.clone()).header().type_name()?,
-            ))),
-            None => {
-                let domain = KeyDomain::resolve(&ValueDescriptor::from_holon(value_type.clone()))?;
-                self.binding = Some((value_type.clone(), domain));
-                Ok(())
-            }
-        }
-    }
-
-    /// The key's comparison domain. Only used once a member has bound the key.
-    fn domain(&self) -> &KeyDomain {
-        match &self.binding {
-            Some((_, domain)) => domain,
-            None => unreachable!("a key is bound by its first member"),
-        }
-    }
-
     /// Orders two present values of this key.
     fn compare(&self, lhs: &BaseValue, rhs: &BaseValue) -> Result<Ordering, HolonError> {
-        self.domain().compare(lhs, rhs)
+        self.domain.compare(lhs, rhs)
     }
 }
 

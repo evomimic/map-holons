@@ -20,22 +20,25 @@
 use std::sync::Arc;
 
 use core_types::HolonError;
-use type_names::{CoreRelationshipTypeName, QueryDanceRelationshipTypeName, ToRelationshipName};
+use type_names::{
+    CoreRelationshipTypeName, QueryDanceRelationshipTypeName, QueryDanceTypeName,
+    ToRelationshipName,
+};
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::BoundDanceInvocation;
+use crate::descriptors::accessor_helpers::{
+    optional_single_related, related_members, require_single_related,
+};
 use crate::descriptors::DanceDescriptor;
 use crate::query_layer::query_core::{
-    exactly_one, related_members, zero_or_one, FocalSpaceReference, HolonCollectionReference,
-    QueryReference,
+    FocalSpaceReference, HolonCollectionReference, QueryReference,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
-const QUERY_DANCE_TYPE_NAME: &str = "QueryDance";
-
 /// True when the bound invocation resolved to the `QueryDance` descriptor.
 pub(crate) fn is_query_dance(dance_descriptor: &DanceDescriptor) -> Result<bool, HolonError> {
-    Ok(dance_descriptor.header().type_name()?.0 == QUERY_DANCE_TYPE_NAME)
+    Ok(dance_descriptor.header().type_name()? == QueryDanceTypeName::QueryDance.as_dance_name().0)
 }
 
 /// Routes a validated `QueryDance` invocation onto the direct Query seam and
@@ -65,9 +68,11 @@ pub(crate) fn invoke(
     };
 
     let focal_space = FocalSpaceReference::new(affording_holon.clone())?;
-    let query =
-        QueryReference::new(exactly_one(request, QueryDanceRelationshipTypeName::RequestedQuery)?)?;
-    let input = zero_or_one(request, QueryDanceRelationshipTypeName::InitialInput)?
+    let query = QueryReference::new(require_single_related(
+        request,
+        QueryDanceRelationshipTypeName::RequestedQuery,
+    )?)?;
+    let input = optional_single_related(request, QueryDanceRelationshipTypeName::InitialInput)?
         .map(HolonCollectionReference::new)
         .transpose()?;
     let bindings = related_members(request, QueryDanceRelationshipTypeName::RequestParameters)?;
