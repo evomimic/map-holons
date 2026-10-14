@@ -25,3 +25,6 @@ path = "../../../../shared_crates/type_system/core_types"
 
 [dependencies.pvl_validation]
 path = "../../../../shared_crates/pvl_validation"
+
+[dev-dependencies]
+base_types = { path = "../../../../shared_crates/type_system/base_types" }

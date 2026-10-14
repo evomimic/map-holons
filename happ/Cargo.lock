@@ -805,6 +805,7 @@ dependencies = [
 name = "holons_test_probes"
 version = "0.0.1"
 dependencies = [
+ "base_types",
  "core_types",
  "hdk",
  "holons_guest_integrity",
