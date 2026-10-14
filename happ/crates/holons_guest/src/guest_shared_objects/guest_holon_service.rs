@@ -172,6 +172,8 @@ impl GuestHolonService {
         context: &Arc<TransactionContext>,
         smartlink: &SmartLink,
     ) -> Result<(Option<MapString>, HolonReference), HolonError> {
+        let _read_cost =
+            crate::read_cost::Scope::enter(crate::read_cost::Component::ReferenceBinding);
         let (key, smart_property_values) = smartlink_reference_properties(smartlink);
 
         let reference =
@@ -501,6 +503,8 @@ impl HolonServiceApi for GuestHolonService {
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        let _read_cost =
+            crate::read_cost::Scope::enter(crate::read_cost::Component::MembershipService);
         let local_id = Self::ensure_id_is_local(source_id)?;
 
         let mut collection = HolonCollection::new_existing();
@@ -523,6 +527,8 @@ impl HolonServiceApi for GuestHolonService {
         source: &HolonId,
         names: &[RelationshipName],
     ) -> Result<Vec<(RelationshipName, HolonCollection)>, HolonError> {
+        let _read_cost =
+            crate::read_cost::Scope::enter(crate::read_cost::Component::MembershipService);
         let local = Self::ensure_id_is_local(source)?;
         let buckets = crate::persistence_layer::smartlink::expand_relationship_set(&local, names)?;
         names

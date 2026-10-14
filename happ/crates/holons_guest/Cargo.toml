@@ -8,6 +8,7 @@ crate-type = ["rlib"]
 name = "holons_guest"
 
 [features]
+commit-performance-profiling = []
 guest = []  # This crate supports the `guest` feature
 
 [dependencies]

@@ -210,23 +210,61 @@ pub fn expand_relationship_set(
     source_id: &LocalId,
     names: &[RelationshipName],
 ) -> Result<Vec<Vec<SmartLink>>, HolonError> {
+    expand_relationship_set_with_strategy(source_id, names, RelationshipRetrievalStrategy::Adaptive)
+}
+
+/// Storage retrieval choices shared with the isolated performance probe.
+#[allow(dead_code)]
+#[derive(Clone, Copy)]
+pub(crate) enum RelationshipRetrievalStrategy {
+    Adaptive,
+    BatchedPrefixes,
+    Consolidated,
+    SeparatePrefixes,
+}
+
+pub(crate) fn expand_relationship_set_with_strategy(
+    source_id: &LocalId,
+    names: &[RelationshipName],
+    strategy: RelationshipRetrievalStrategy,
+) -> Result<Vec<Vec<SmartLink>>, HolonError> {
     if names.is_empty() {
         return Ok(Vec::new());
+    }
+    if matches!(strategy, RelationshipRetrievalStrategy::SeparatePrefixes) {
+        return names.iter().map(|name| expand_from_source(source_id, name)).collect();
     }
     let base = try_action_hash_from_local_id(source_id)?;
     let prefixes = names
         .iter()
         .map(|name| smartlink_relationship_prefix(name).map_err(tag_error))
         .collect::<Result<Vec<_>, _>>()?;
-    if names.len() >= 4 {
+    if matches!(strategy, RelationshipRetrievalStrategy::Consolidated) {
+        let query = LinkQuery::try_new(base.clone(), LinkTypes::SmartLink)
+            .map_err(holon_error_from_wasm_error)?;
+        let links = {
+            let _cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkSingleScan);
+            get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?
+        };
+        record_reads(1, links.len());
+        return partition_requested_links(source_id, &prefixes, links);
+    }
+    if matches!(strategy, RelationshipRetrievalStrategy::Adaptive) && names.len() >= 4 {
         let query = LinkQuery::try_new(base.clone(), LinkTypes::SmartLink)
             .map_err(holon_error_from_wasm_error)?;
         record_reads(1, 0);
         // A failed optional probe falls back to the requested narrow reads, so unrelated
         // source state cannot introduce a new failure into the caller's requested set.
-        if use_consolidated_read(names.len(), count_links(query.clone()).ok()) {
-            let links =
-                get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+        let source_count = {
+            let _cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkCountProbe);
+            count_links(query.clone()).ok()
+        };
+        if use_consolidated_read(names.len(), source_count) {
+            let links = {
+                let _cost =
+                    crate::read_cost::Scope::enter(crate::read_cost::Component::LinkSingleScan);
+                get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?
+            };
             record_reads(1, links.len());
             return partition_requested_links(source_id, &prefixes, links);
         }
@@ -241,13 +279,15 @@ pub fn expand_relationship_set(
             Ok(GetLinksInput::from_query(query, GetStrategy::default()))
         })
         .collect::<Result<Vec<_>, HolonError>>()?;
-    let results = hdk::hdk::HDK
-        .with(|h| h.borrow().get_links(inputs))
-        .map_err(holon_error_from_wasm_error)?;
+    let results = {
+        let _cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkBatchedPrefix);
+        hdk::hdk::HDK.with(|h| h.borrow().get_links(inputs)).map_err(holon_error_from_wasm_error)?
+    };
     record_reads(names.len(), results.iter().map(Vec::len).sum());
     if results.len() != names.len() {
         return Err(HolonError::InvalidState("Incomplete batched SmartLink response".into()));
     }
+    let _decode_cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkDecode);
     results
         .into_iter()
         .map(|links| {
@@ -268,6 +308,7 @@ fn partition_requested_links(
     prefixes: &[Vec<u8>],
     links: Vec<Link>,
 ) -> Result<Vec<Vec<SmartLink>>, HolonError> {
+    let _decode_cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkDecode);
     let mut buckets = vec![Vec::new(); prefixes.len()];
     for link in links {
         let matching: Vec<_> = prefixes
@@ -459,7 +500,10 @@ pub fn delete_smartlink(smartlink_id: &SmartLinkId) -> Result<DeleteSmartLinkOut
     // A link is live iff it still appears in its base's live links.
     let query = LinkQuery::try_new(base_address, LinkTypes::SmartLink)
         .map_err(holon_error_from_wasm_error)?;
-    let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+    let links = {
+        let _cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkPrefix);
+        get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?
+    };
     record_reads(1, links.len());
     let live = links.iter().any(|link| link.create_link_hash == create_hash);
     if !live {
@@ -507,8 +551,12 @@ fn create_prepared_smartlink(
 
 /// Runs a prepared `LinkQuery` and decodes every live match into a `SmartLink`.
 fn decode_query(source_id: &LocalId, query: LinkQuery) -> Result<Vec<SmartLink>, HolonError> {
-    let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+    let links = {
+        let _cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkPrefix);
+        get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?
+    };
     record_reads(1, links.len());
+    let _decode_cost = crate::read_cost::Scope::enter(crate::read_cost::Component::LinkDecode);
     let mut out = Vec::with_capacity(links.len());
     for link in links {
         out.push(decode_link_to_smartlink(source_id, link)?);

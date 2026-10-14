@@ -277,6 +277,7 @@ fn cached_membership_bypasses_classification() -> Result<(), HolonError> {
             let manager = HolonCacheManager::new(service.clone());
             let id = HolonId::Local(LocalId(vec![1]));
             let name = "Frozen".to_relationship_name();
+            let probe = crate::core_shared_objects::read_observations::CacheReadProbe::start(true);
             let first = manager.get_related_holons(&context, &id, &name)?;
             let before = service.calls.read().unwrap().clone();
             let again = manager.get_related_holons(&context, &id, &name)?;
@@ -287,6 +288,20 @@ fn cached_membership_bypasses_classification() -> Result<(), HolonError> {
             })?;
             assert!(Arc::ptr_eq(&first, &hit));
             assert_eq!(*service.calls.read().unwrap(), before);
+            let observations = probe.finish();
+            let requests = |outcome| {
+                observations
+                    .iter()
+                    .filter(|read| {
+                        read.source == id
+                            && read.relationship.as_ref() == Some(&name)
+                            && read.outcome == outcome
+                    })
+                    .map(|read| read.requests)
+                    .sum::<usize>()
+            };
+            assert_eq!(requests("missing"), 1);
+            assert_eq!(requests("hit"), 2, "known-empty sets also produce cache hits");
             let moving =
                 manager.get_related_holons(&context, &id, &"Moving".to_relationship_name())?;
             let again =

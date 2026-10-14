@@ -1,0 +1,144 @@
+"""Verify measurement grouping and reject captures that would misstate a baseline."""
+
+import importlib.util
+from pathlib import Path
+import tempfile
+import unittest
+
+spec = importlib.util.spec_from_file_location("measure", Path(__file__).with_name("measure-commit-performance.py"))
+measure = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(measure)
+
+
+def complete_run():
+    lines = []
+    for sample in range(6):
+        condition = "first" if sample == 0 else "repeated"
+        lines.extend([
+            f"[commit-baseline] sample_start={sample} condition={condition}",
+            "[commit-assessment] phase=PackageDiscovery elapsed_us=100 backend_calls=9",
+            "[commit-assessment] phase=PreparedProducts elapsed_us=20 backend_calls=0",
+            "[commit-adapter] total_us=200",
+            "[commit-transport] conductor_call_us=220 success=true",
+            "[commit-construction] elapsed_us=150",
+            "[commit-preparation] distinct_content=10 contract_consumers=1",
+            "[commit-preparation-type] type=MetaPropertyType.MetaTypeDescriptor distinct_content=3 identity_role_visits=4 backend_calls=2 exact_node_reads=1",
+            "[commit-preparation-operation] operation=MembershipPrefetch role=Commitment elapsed_us=80",
+            "[commit-preparation-operation] operation=EffectiveContract role=PreparedDefinition elapsed_us=15",
+            "[commit-preparation-operation] operation=ContentRetention role=SavedContent exact_node_reads=3",
+            "[PERF-688] guest_commit: validation_ms=1",
+            f"[commit-baseline] sample_end={sample} condition={condition} command_us={250 + sample}",
+        ])
+    return "\n".join(lines)
+
+
+class CaptureTests(unittest.TestCase):
+    def summarize(self, contents):
+        with tempfile.TemporaryDirectory() as directory:
+            logs = []
+            for index, content in enumerate(contents):
+                log = Path(directory) / f"run-{index}.log"
+                log.write_text(content)
+                logs.append(log)
+            return measure.summarize(logs)
+
+    def test_conditions_phases_and_operations_remain_distinct(self):
+        result = self.summarize([complete_run(), complete_run()])
+        self.assertEqual(result["summary"]["first"]["commit-baseline.command_us"]["n"], 2)
+        self.assertEqual(result["summary"]["repeated"]["commit-baseline.command_us"]["n"], 10)
+        metrics = result["samples"][0]["metrics"]
+        self.assertEqual(metrics["commit-assessment.PackageDiscovery.elapsed_us"], 100)
+        self.assertEqual(metrics["commit-assessment.PreparedProducts.elapsed_us"], 20)
+        self.assertEqual(metrics["commit-preparation-operation.MembershipPrefetch.Commitment.elapsed_us"], 80)
+        self.assertEqual(metrics["commit-preparation-type.MetaPropertyType.MetaTypeDescriptor.distinct_content"], 3)
+        self.assertEqual(metrics["commit-preparation-type.MetaPropertyType.MetaTypeDescriptor.exact_node_reads"], 1)
+
+    def test_exclusive_components_remain_distinct_and_reconcile(self):
+        costs = ("[commit-read-cost] phase=Construction component=LinkPrefix elapsed_us=90\n"
+                 "[commit-read-cost] phase=Construction component=OtherConstruction elapsed_us=59\n"
+                 "[commit-cost-accounting] construction_us=150 accounted_us=149 timer_gap_us=1\n")
+        contents = complete_run().replace("[PERF-688]", costs + "[PERF-688]")
+        result = self.summarize([contents])
+        self.assertEqual(result["samples"][0]["metrics"]["commit-read-cost.Construction.LinkPrefix.elapsed_us"], 90)
+        with self.assertRaisesRegex(ValueError, "Inconsistent exclusive"):
+            self.summarize([contents.replace("component=LinkPrefix elapsed_us=90", "component=LinkPrefix elapsed_us=190")])
+
+    def test_missing_operation_measurement_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Missing measurements"):
+            self.summarize([complete_run().replace("[commit-preparation-operation] operation=MembershipPrefetch role=Commitment elapsed_us=80", "")])
+
+    def test_assessment_label_matches_guest_path(self):
+        marker = "[commit-preparation-operation] operation=RelationshipDerivedInputs role=InstanceExperiment elapsed_us=25\n"
+        content = complete_run().replace("[PERF-688]", marker + "[PERF-688]")
+        with self.assertRaisesRegex(ValueError, "Guest assessment path"):
+            self.summarize([content])
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(content)
+            result = measure.summarize([log], assessment="instance-experiment")
+            self.assertEqual(result["assessment"], "instance-experiment")
+            log.write_text(complete_run())
+            with self.assertRaisesRegex(ValueError, "Guest assessment path"):
+                measure.summarize([log], assessment="instance-experiment")
+
+    def test_validator_package_labels_require_the_matching_guest_builder(self):
+        package = "[commit-preparation-operation] operation=ValidatorPackageConstruction role=ValidatorPackage elapsed_us=50\n"
+        instance = "[commit-preparation-operation] operation=RelationshipDerivedInputs role=InstanceExperiment elapsed_us=25\n"
+        content = complete_run().replace("role=Commitment", "role=ValidatorRoot").replace("[PERF-688]", package + "[PERF-688]")
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(content)
+            self.assertEqual(measure.summarize([log], assessment="validator-package")["assessment"], "validator-package")
+            log.write_text(content.replace("[PERF-688]", instance + "[PERF-688]"))
+            self.assertEqual(measure.summarize([log], assessment="combined")["assessment"], "combined")
+            log.write_text(content.replace("role=ValidatorRoot", "role=Commitment"))
+            with self.assertRaisesRegex(ValueError, "Missing measurements"):
+                measure.summarize([log], assessment="validator-package")
+
+    def test_warm_probe_requires_three_measured_passes(self):
+        markers = ("[commit-preparation-operation] operation=RelationshipDerivedInputs role=InstanceExperiment elapsed_us=25\n"
+                   "[commit-preparation-operation] operation=WarmValidatorAssessment role=SameTransactionProbe invocations=3 elapsed_us=12 backend_calls=0 link_queries=0 exact_node_reads=0\n")
+        content = complete_run().replace("role=Commitment", "role=ValidatorRoot").replace("[PERF-688]", markers + "[PERF-688]")
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(content)
+            result = measure.summarize([log], assessment="warm-probe")
+            self.assertEqual(result["assessment"], "warm-probe")
+            with self.assertRaisesRegex(ValueError, "Guest warm probe"):
+                measure.summarize([log], assessment="combined")
+            log.write_text(content.replace("invocations=3", "invocations=2"))
+            with self.assertRaisesRegex(ValueError, "Expected three warm"):
+                measure.summarize([log], assessment="warm-probe")
+
+    def test_partial_capture_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unfinished sample"):
+            self.summarize([complete_run().rsplit("\n", 1)[0]])
+
+    def test_missing_whole_sample_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Expected 6 complete samples"):
+            self.summarize([complete_run().split("[commit-baseline] sample_start=5")[0]])
+
+    def test_empty_capture_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "No captured run logs"):
+            measure.summarize([])
+
+    def test_on_demand_variant_accepts_absent_prefetch_probe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(complete_run().replace(
+                "[commit-preparation-operation] operation=MembershipPrefetch role=Commitment elapsed_us=80", ""
+            ))
+            result = measure.summarize([log], variant="on-demand")
+            self.assertEqual(len(result["samples"]), 6)
+            self.assertEqual(result["variant"], "on-demand")
+
+    def test_on_demand_label_rejects_prefetch_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(complete_run())
+            with self.assertRaisesRegex(ValueError, "unexpectedly contains eager prefetch"):
+                measure.summarize([log], variant="on-demand")
+
+
+if __name__ == "__main__":
+    unittest.main()

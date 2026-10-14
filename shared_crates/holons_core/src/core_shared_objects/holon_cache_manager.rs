@@ -74,10 +74,12 @@ impl HolonCacheAccess for HolonCacheManager {
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Attempt to retrieve the holon from the cache
         if let Some(cached) = self.cache.get(holon_id) {
+            super::read_observations::record(holon_id, None, "hit");
             info!("[PERF-674] holon cache hit");
             debug!("Holon {:?} retrieved from cache.", holon_id);
             return Ok(cached.clone());
         }
+        super::read_observations::record(holon_id, None, "missing");
         // If not found, resolve it from the HolonService
         info!("[PERF-674] holon cache miss");
         debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);

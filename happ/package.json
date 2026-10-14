@@ -14,7 +14,8 @@
     "clean:rust:deep": "npx rimraf target && cargo clean",
 
     "test:unit:no-run": "cargo test --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown --no-run",
-    "test:unit": "cargo test --manifest-path Cargo.toml --workspace"
+    "test:unit": "cargo test --manifest-path Cargo.toml --workspace",
+    "build:commit-perf": "CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown --features holons/commit-performance-profiling && hc app pack workdir --recursive"
   },
   "devDependencies": {
     "rimraf": "^6.0.1"
