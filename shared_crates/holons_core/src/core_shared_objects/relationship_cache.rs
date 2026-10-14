@@ -172,6 +172,7 @@ impl RelationshipCache {
             .get(source_holon_id)
             .and_then(|relationships| relationships.get(relationship_name))
             .cloned();
+        let mut miss_reason = "missing";
         if let Some(cached) = cached {
             if hint == RelationshipReadHint::SchemaDefault {
                 let unexpired = match cached.expires_at_millis {
@@ -181,6 +182,11 @@ impl RelationshipCache {
                         .is_some_and(|now| now < deadline),
                 };
                 if unexpired {
+                    super::read_observations::record(
+                        source_holon_id,
+                        Some(relationship_name),
+                        "hit",
+                    );
                     #[cfg(not(target_arch = "wasm32"))]
                     tracing::debug!(target: "map_profile", cache = "hit");
                     debug!(
@@ -189,8 +195,12 @@ impl RelationshipCache {
                     );
                     return Ok(cached.collection);
                 }
+                miss_reason = "expired";
+            } else {
+                miss_reason = "fresh";
             }
         }
+        super::read_observations::record(source_holon_id, Some(relationship_name), miss_reason);
 
         #[cfg(not(target_arch = "wasm32"))]
         tracing::debug!(target: "map_profile", cache = "miss");

@@ -98,7 +98,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let response_session = restore_session_state_from_context(&context);
     let session_export_micros = elapsed_micros(session_export_started_at);
 
-    if is_load_holons {
+    if is_load_holons || dance_name.0 == "commit" {
         info!(
             "[PERF-688] guest_dance_adapter: validation_ms={} hydration_ms={} request_binding_ms={} dispatch_ms={} response_projection_ms={} session_export_ms={} total_ms={}",
             validation_micros / 1_000,
@@ -109,6 +109,12 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
             session_export_micros / 1_000,
             elapsed_micros(total_started_at) / 1_000,
         );
+    }
+
+    if dance_name.0 == "commit" {
+        info!("[commit-adapter] hydration_us={} request_binding_us={} dispatch_us={} response_projection_us={} session_export_us={} total_us={}",
+            hydration_micros, request_binding_micros, dispatch_micros, response_projection_micros,
+            session_export_micros, elapsed_micros(total_started_at));
     }
 
     info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);

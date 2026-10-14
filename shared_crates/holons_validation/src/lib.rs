@@ -8,7 +8,7 @@
 
 mod assessment_phase;
 mod assessment_support;
-pub use assessment_phase::AssessmentPhase;
+pub use assessment_phase::{AssessmentEvent, AssessmentPhase, PreparationMetrics};
 mod collector;
 mod commit_assessment;
 mod commitments;
@@ -30,6 +30,7 @@ mod subjects;
 pub use collector::{ValidationCollector, ValidationObservations};
 pub use commit_assessment::{
     assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_observer,
+    validate_commit_candidates_with_profile,
 };
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
 pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};

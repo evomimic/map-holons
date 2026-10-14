@@ -342,3 +342,17 @@ symbol = "__heap_base"
 exposure_kind = "global"
 classification = "abi"
 rationale = "Linker-generated global marking the start of allocatable probe guest memory."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "smartlink_measure_retrieval_for_test"
+exposure_kind = "zome_call"
+classification = "test_only"
+rationale = "Forces storage retrieval strategies only in isolated performance benchmarks; excluded from production artifacts."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "smartlink_seed_retrieval_for_test"
+exposure_kind = "zome_call"
+classification = "test_only"
+rationale = "Authors bounded valid SmartLink workloads only for isolated retrieval benchmarks."

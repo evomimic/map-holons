@@ -19,3 +19,12 @@ path = "../../integrity/holons_integrity"
 
 [dependencies.integrity_core_types]
 path = "../../../../shared_crates/type_system/integrity_core_types"
+
+[dependencies.core_types]
+path = "../../../../shared_crates/type_system/core_types"
+
+[dependencies.pvl_validation]
+path = "../../../../shared_crates/pvl_validation"
+
+[dev-dependencies]
+base_types = { path = "../../../../shared_crates/type_system/base_types" }
