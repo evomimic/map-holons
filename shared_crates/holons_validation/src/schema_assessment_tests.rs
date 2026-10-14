@@ -1043,6 +1043,113 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
 }
 
 #[test]
+fn profiling_observes_preparation_without_changing_the_validation_report() -> Result<(), HolonError>
+{
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let mut subject = fixture.staged_subject("profiled-instance")?;
+    subject.with_property_value("Title", "ready")?;
+    let candidates = vec![subject];
+    let expected = assess_commit_candidates(&fixture.context, &candidates)?.report;
+    let mut events = Vec::new();
+    let actual =
+        crate::validate_commit_candidates_with_profile(&fixture.context, &candidates, |event| {
+            events.push(event)
+        })?;
+    assert_eq!(actual, expected);
+    assert!(actual.is_accepted());
+    let phases: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            crate::AssessmentEvent::Phase(phase) => Some(*phase),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        phases,
+        vec![
+            crate::AssessmentPhase::Construction,
+            crate::AssessmentPhase::ReadinessResolution,
+            crate::AssessmentPhase::SubjectPreparation,
+            crate::AssessmentPhase::SchemaWorksetPreparation,
+            crate::AssessmentPhase::PackageDiscovery,
+            crate::AssessmentPhase::PreparedProducts,
+            crate::AssessmentPhase::SchemaOwnershipPreparation,
+            crate::AssessmentPhase::PackageValidation,
+            crate::AssessmentPhase::InstanceValidation,
+        ]
+    );
+    let metrics: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            crate::AssessmentEvent::Preparation(metrics) => Some(metrics),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(metrics.len(), 1);
+    let metrics = metrics[0];
+    assert_eq!(metrics.package_roots, 1);
+    assert_eq!(metrics.subjects, 1);
+    assert_eq!(metrics.affected_schemas, 0);
+    assert!(metrics.distinct_content > 1);
+    assert!(metrics.identity_role_visits >= metrics.distinct_content);
+    assert_eq!(metrics.contract_consumers, 1);
+    assert!(metrics.binding_consumers > 0);
+    assert!(metrics.binding_consumers <= metrics.distinct_content);
+    let described_by_requests: usize = events
+        .iter()
+        .filter_map(|event| match event {
+            crate::AssessmentEvent::PreparationEdge { edge, requests, .. }
+                if edge == "DescribedBy" =>
+            {
+                Some(*requests)
+            }
+            _ => None,
+        })
+        .sum();
+    assert_eq!(described_by_requests, metrics.identity_role_visits);
+    let typed_visits: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            crate::AssessmentEvent::PreparationVisitFinished { type_name, distinct_content } => {
+                Some((type_name, *distinct_content))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(typed_visits.len(), metrics.identity_role_visits);
+    assert_eq!(
+        typed_visits.iter().filter(|(_, distinct)| *distinct).count(),
+        metrics.distinct_content
+    );
+    assert!(typed_visits.iter().all(|(name, _)| !name.is_empty()));
+    let mut active = None;
+    let mut contracts = 0;
+    let mut prefetches = 0;
+    for event in &events {
+        if let crate::AssessmentEvent::PreparationOperation { operation, role, starting } = event {
+            if *starting {
+                assert!(
+                    active.replace((*operation, *role)).is_none(),
+                    "operation spans must not overlap"
+                );
+            } else {
+                assert_eq!(active.take(), Some((*operation, *role)));
+                if *operation == "EffectiveContract" {
+                    contracts += 1;
+                }
+                if *operation == "MembershipPrefetch" {
+                    prefetches += 1;
+                }
+            }
+        }
+    }
+    assert!(active.is_none());
+    assert_eq!(contracts, metrics.distinct_content);
+    assert!(prefetches > 0, "saved definitions must expose eager prefetch cost");
+    Ok(())
+}
+
+#[test]
 fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
 ) -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;

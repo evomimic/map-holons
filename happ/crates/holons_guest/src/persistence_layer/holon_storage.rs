@@ -31,6 +31,15 @@ use pvl_validation::{validate_holon_node_decoded, validate_holon_node_size};
 // Read: exact-version retrieval
 // ---------------------------------------------------------------------------
 
+thread_local! {
+    static EXACT_READ_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Request-local exact node retrieval attempts, independent of relationship backend metrics.
+pub(crate) fn exact_node_read_count() -> u64 {
+    EXACT_READ_COUNT.with(std::cell::Cell::get)
+}
+
 /// Returns the exact persisted version named by `local_id`, including one subsequently targeted
 /// by a visible native Holochain Delete action.
 ///
@@ -38,9 +47,11 @@ use pvl_validation::{validate_holon_node_decoded, validate_holon_node_size};
 /// by lineage-head selection, so it must not be conflated with Holochain's retraction facts.
 pub fn get_holon(local_id: &LocalId) -> Result<Option<StoredHolonNode>, HolonError> {
     let action_hash = try_action_hash_from_local_id(local_id)?;
-    let Some(details) =
+    EXACT_READ_COUNT.with(|count| count.set(count.get() + 1));
+    let Some(details) = ({
+        let _cost = crate::read_cost::Scope::enter(crate::read_cost::Component::NodeBackend);
         get_details(action_hash, GetOptions::default()).map_err(holon_error_from_wasm_error)?
-    else {
+    }) else {
         return Ok(None);
     };
     let Details::Record(details) = details else {
@@ -50,6 +61,7 @@ pub fn get_holon(local_id: &LocalId) -> Result<Option<StoredHolonNode>, HolonErr
         });
     };
     let record = details.record;
+    let _decode_cost = crate::read_cost::Scope::enter(crate::read_cost::Component::NodeDecode);
     Ok(Some(decode_stored_holon_node(&record)?))
 }
 

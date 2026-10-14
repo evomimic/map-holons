@@ -49,7 +49,8 @@ impl DanceEnvelopeTransport for MockConductorConfig {
         &self,
         envelope: DanceRequestEnvelope,
     ) -> Result<DanceResponseEnvelope, HolonError> {
-        let is_load_holons = envelope.request.transport_label() == "load_holons";
+        let dance = envelope.request.transport_label().to_owned();
+        let is_load_holons = dance == "load_holons";
         let started = Instant::now();
         let result = self
             .conductor
@@ -64,6 +65,14 @@ impl DanceEnvelopeTransport for MockConductorConfig {
             info!(
                 "[PERF-688] sweettest_transport: conductor_call_ms={}",
                 started.elapsed().as_millis(),
+            );
+        }
+
+        if dance == "commit" {
+            info!(
+                "[commit-transport] conductor_call_us={} success={}",
+                started.elapsed().as_micros(),
+                result.is_ok()
             );
         }
 

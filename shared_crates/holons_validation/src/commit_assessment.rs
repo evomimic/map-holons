@@ -106,7 +106,20 @@ pub fn validate_commit_candidates(
 pub fn validate_commit_candidates_with_observer(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
-    observer: impl FnMut(crate::AssessmentPhase),
+    mut observer: impl FnMut(crate::AssessmentPhase),
+) -> Result<CommitValidationReport, HolonError> {
+    validate_commit_candidates_with_profile(context, candidates, |event| {
+        if let crate::AssessmentEvent::Phase(phase) = event {
+            observer(phase);
+        }
+    })
+}
+
+/// Reports detailed phases and aggregate preparation/consumption counts without a host clock.
+pub fn validate_commit_candidates_with_profile(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+    observer: impl FnMut(crate::AssessmentEvent),
 ) -> Result<CommitValidationReport, HolonError> {
     let (assessment, _) = assess_commit_candidates_with_observer(context, candidates, observer)?;
     assessment.install_outcomes()
@@ -126,9 +139,9 @@ pub fn assess_commit_candidates(
 fn assess_commit_candidates_with_observer<'a>(
     context: &Arc<TransactionContext>,
     candidates: &'a [StagedReference],
-    mut observer: impl FnMut(crate::AssessmentPhase),
+    mut observer: impl FnMut(crate::AssessmentEvent),
 ) -> Result<(PreparedAssessment<'a>, ValidationObservations), HolonError> {
-    observer(crate::AssessmentPhase::Construction);
+    observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::Construction));
     if candidates.is_empty() {
         return Ok((PreparedAssessment::default(), ValidationObservations::default()));
     }
@@ -137,6 +150,13 @@ fn assess_commit_candidates_with_observer<'a>(
     let mut collector = ValidationCollector::default();
     for finding in crate::competing_replacement_findings(&reader) {
         collector.record(finding);
+    }
+    observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::ReadinessResolution));
+    #[cfg(feature = "instance-assessment-experiment")]
+    if let Some(result) =
+        crate::instance_assessment_experiment::assess(context, candidates, &reader, &mut observer)?
+    {
+        return Ok(result);
     }
     let Some(roots) =
         recover_transaction(ReadinessContext::resolve(context, &reader), &mut collector)?
@@ -150,7 +170,15 @@ fn assess_commit_candidates_with_observer<'a>(
         }
         return finish_assessment(candidates, collector);
     };
-    construct_assessment(context, candidates, &reader, &roots, collector)?.assess(&mut observer)
+    construct_assessment_with_observer(
+        context,
+        candidates,
+        &reader,
+        &roots,
+        collector,
+        &mut observer,
+    )?
+    .assess(&mut observer)
 }
 
 /// Preserve Commit's carrier grouping and finding order without installing outcomes.
@@ -178,13 +206,26 @@ pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     collector: ValidationCollector,
 }
 
+#[cfg(test)]
 pub(crate) fn construct_assessment<'a, 'candidates>(
     context: &'a Arc<TransactionContext>,
     candidates: &'candidates [StagedReference],
     reader: &'a ProspectiveDescriptorReader,
     roots: &'a ReadinessContext,
-    mut collector: ValidationCollector,
+    collector: ValidationCollector,
 ) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
+    construct_assessment_with_observer(context, candidates, reader, roots, collector, &mut |_| {})
+}
+
+fn construct_assessment_with_observer<'a, 'candidates>(
+    context: &'a Arc<TransactionContext>,
+    candidates: &'candidates [StagedReference],
+    reader: &'a ProspectiveDescriptorReader,
+    roots: &'a ReadinessContext,
+    mut collector: ValidationCollector,
+    observer: &mut impl FnMut(crate::AssessmentEvent),
+) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
+    observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SubjectPreparation));
     let kinds = roots.kinds.clone().with_reader(reader);
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
@@ -303,6 +344,7 @@ pub(crate) fn construct_assessment<'a, 'candidates>(
             is_schema,
         });
     }
+    observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SchemaWorksetPreparation));
     let workset =
         SchemaWorkset::prepare(context, reader, &roots.schema, &schemas, &owned, &mut collector)?;
     let package_roots: Vec<_> = prepared
@@ -313,12 +355,13 @@ pub(crate) fn construct_assessment<'a, 'candidates>(
         })
         .collect();
     let package_subjects: Vec<_> = prepared.iter().map(|subject| subject.subject.clone()).collect();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
+    let packages = crate::descriptor_package::DescriptorPackages::construct_with_observer(
         context,
         reader,
         &package_roots,
         &package_subjects,
         &workset,
+        observer,
     )?;
     Ok(ConstructedAssessment {
         context,
@@ -333,12 +376,21 @@ pub(crate) fn construct_assessment<'a, 'candidates>(
 }
 
 impl<'candidates> ConstructedAssessment<'_, 'candidates> {
+    #[cfg(all(test, feature = "validator-package-experiment"))]
+    pub(crate) fn with_test_packages(
+        mut self,
+        packages: crate::descriptor_package::DescriptorPackages,
+    ) -> Self {
+        self.packages = packages;
+        self
+    }
+
     /// Consumes prepared packages and records findings without installing outcomes.
     pub(crate) fn assess(
         self,
-        mut observer: impl FnMut(crate::AssessmentPhase),
+        mut observer: impl FnMut(crate::AssessmentEvent),
     ) -> Result<(PreparedAssessment<'candidates>, ValidationObservations), HolonError> {
-        observer(crate::AssessmentPhase::PackageValidation);
+        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation));
         let Self {
             context,
             candidates,
@@ -583,7 +635,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         // Preparation is complete before any subject consumes commitments. Readiness
         // propagation indexes references once and consumes only newly added findings.
         let (order, mut readiness) =
-            commitment_order(context, reader, &prepared, &workset, &mut collector)?;
+            commitment_order(context, reader, &prepared, &workset, &packages, &mut collector)?;
         for identity in invalid {
             readiness.invalidate(identity);
         }
@@ -610,7 +662,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
         }
         packages.finish(&readiness.invalid);
-        observer(crate::AssessmentPhase::InstanceValidation);
+        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::InstanceValidation));
         for group in &order {
             for &index in group {
                 let subject = &prepared[index];
@@ -640,6 +692,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 );
             }
         }
+        observer(crate::AssessmentEvent::Preparation(packages.preparation_metrics()));
         finish_assessment(candidates, collector)
     }
 }
@@ -765,8 +818,10 @@ fn commitment_order(
     reader: &ProspectiveDescriptorReader,
     subjects: &[SubjectPreparation],
     workset: &SchemaWorkset,
+    packages: &crate::descriptor_package::DescriptorPackages,
     collector: &mut ValidationCollector,
 ) -> Result<(Vec<Vec<usize>>, ReadinessPropagation), HolonError> {
+    let _ = packages;
     let mut dependencies = HashMap::new();
     let mut indices = HashMap::new();
     let mut names = HashMap::new();
@@ -789,26 +844,39 @@ fn commitment_order(
         let mut edges = Vec::new();
         if let Some(selected) = recover(reader.select(&subject), &subject, collector)? {
             names.insert(selected.reference_id_string(), id.clone());
-            // These are commitment dependencies. Arbitrary instance relationship
-            // endpoints are not readiness dependencies; their policies belong to C4.
-            for edge in [
-                CoreRelationshipTypeName::DescribedBy,
-                CoreRelationshipTypeName::Extends,
-                CoreRelationshipTypeName::InstanceProperties,
-                CoreRelationshipTypeName::InstanceRelationships,
-                CoreRelationshipTypeName::ValueType,
-                CoreRelationshipTypeName::Constraints,
-                CoreRelationshipTypeName::ValidationBindings,
-            ] {
-                for target in targets(&selected, edge)? {
-                    edges.push(ProspectiveIdentity::for_reference(&target, context)?);
-                    pending.push_back(target);
+            #[cfg(feature = "validator-package-experiment")]
+            let planned = packages.planned_dependencies.as_ref();
+            #[cfg(not(feature = "validator-package-experiment"))]
+            let planned: Option<&HashMap<ProspectiveIdentity, Vec<HolonReference>>> = None;
+            if let Some(planned) = planned {
+                for target in planned.get(&id).into_iter().flatten() {
+                    edges.push(ProspectiveIdentity::for_reference(target, context)?);
+                    pending.push_back(target.clone());
                 }
-            }
-            for edge in [CoreRelationshipTypeName::ComponentOf, CoreRelationshipTypeName::RuleOf] {
-                for owner in targets(&selected, edge)? {
-                    edges.push(ProspectiveIdentity::for_reference(&owner, context)?);
-                    pending.push_back(owner);
+            } else {
+                // These are commitment dependencies. Arbitrary instance relationship
+                // endpoints are not readiness dependencies; their policies belong to C4.
+                for edge in [
+                    CoreRelationshipTypeName::DescribedBy,
+                    CoreRelationshipTypeName::Extends,
+                    CoreRelationshipTypeName::InstanceProperties,
+                    CoreRelationshipTypeName::InstanceRelationships,
+                    CoreRelationshipTypeName::ValueType,
+                    CoreRelationshipTypeName::Constraints,
+                    CoreRelationshipTypeName::ValidationBindings,
+                ] {
+                    for target in targets(&selected, edge)? {
+                        edges.push(ProspectiveIdentity::for_reference(&target, context)?);
+                        pending.push_back(target);
+                    }
+                }
+                for edge in
+                    [CoreRelationshipTypeName::ComponentOf, CoreRelationshipTypeName::RuleOf]
+                {
+                    for owner in targets(&selected, edge)? {
+                        edges.push(ProspectiveIdentity::for_reference(&owner, context)?);
+                        pending.push_back(owner);
+                    }
                 }
             }
         }

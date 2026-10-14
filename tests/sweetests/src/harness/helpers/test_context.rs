@@ -73,6 +73,18 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     init_runtime_with_initiator(test_case, initiator).await
 }
 
+/// Retains the disposable conductor only for explicit database-index performance experiments.
+/// Bootstrap and ordinary Commit execution use the same runtime initialization as other tests.
+pub async fn init_commit_performance_runtime(
+    test_case: &mut DancesTestCase,
+) -> (Runtime, TxId, Arc<super::MockConductorConfig>) {
+    init_tracing();
+    let backend = super::setup_test_conductor().await;
+    let initiator = Arc::new(TrustChannel::new(backend.clone()));
+    let (runtime, tx_id) = init_runtime_with_initiator(test_case, initiator).await;
+    (runtime, tx_id, backend)
+}
+
 /// Boots an isolated probe-enabled runtime; its backend must never join an ordinary suite.
 pub async fn init_probe_test_runtime(
     test_case: &mut DancesTestCase,

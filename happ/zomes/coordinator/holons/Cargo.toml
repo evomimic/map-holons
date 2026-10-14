@@ -39,3 +39,8 @@ path = "../../../../shared_crates/type_system/integrity_core_types"
 
 [dependencies.holons_guest]
 path = "../../../crates/holons_guest"
+
+[features]
+warm-validator-probe = ["holons_guest/warm-validator-probe"]
+validator-package-experiment = ["holons_guest/validator-package-experiment"]
+instance-assessment-experiment = ["holons_guest/instance-assessment-experiment"]

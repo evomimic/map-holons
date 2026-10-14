@@ -1,10 +1,10 @@
-//! Deliberately unsupported authoring seams for live Integrity tests.
+//! Isolated authoring seams for live Integrity tests and controlled storage benchmarks.
 //!
 //! # This is not part of the storage API
 //!
 //! These probes bypass canonical persistence behavior to author only the operations that typed
 //! production APIs deliberately cannot construct. Nothing in production may call them, and every
-//! probe must remain narrowly fixed to the Integrity rule its sweettest needs to reach. This zome
+//! authoring probe must remain narrowly fixed to its isolated test workload. This zome
 //! is the complete, grep-able inventory of unsupported ingress and is built as a loose test
 //! artifact; production DNA and hApp manifests do not package it.
 //!
@@ -13,7 +13,8 @@
 //! Some Integrity rules reject operations that canonical coordinator APIs make unreachable. A
 //! focused raw-authoring seam is therefore required to prove through a real conductor that those
 //! rules are wired into peer validation. The rejection is the assertion; a negative-purpose probe
-//! whose call succeeds has failed its purpose.
+//! whose call succeeds has failed its purpose. Performance probes instead compare equivalent
+//! decoded results while measuring forced retrieval strategies on bounded valid workloads.
 //!
 //! # Artifact exclusion and isolated augmentation
 //!
@@ -25,7 +26,8 @@
 //!
 //! Keeping this crate independent of `holons_guest` is essential: HDK extern symbols from an rlib
 //! dependency survive WASM linking and would otherwise reproduce the entire production coordinator
-//! surface in this test artifact.
+//! surface in this test artifact. Retrieval benchmarks compile the storage source module directly
+//! to share its implementation without importing production externs.
 
 use hdk::prelude::*;
 use holons_guest_integrity::{
@@ -210,3 +212,77 @@ pub fn infrastructure_author_update_target_for_test(
         &input.target_id,
     )
 }
+
+// Compile the storage implementation directly, without linking holons_guest's externs.
+// The benchmark therefore exercises the same retrieval and decoding as production.
+#[allow(dead_code)]
+#[path = "../../../../crates/holons_guest/src/persistence_layer/smartlink.rs"]
+mod benchmark_smartlink;
+
+/// Measures one forced retrieval, excluding transport and result serialization.
+/// Returns elapsed microseconds, backend calls, queries, returned links, and exact buckets.
+#[hdk_extern]
+pub fn smartlink_measure_retrieval_for_test(
+    input: (LocalId, Vec<integrity_core_types::RelationshipName>, String),
+) -> ExternResult<(u64, u64, u64, u64, Vec<Vec<core_types::SmartLink>>)> {
+    use benchmark_smartlink::RelationshipRetrievalStrategy as Strategy;
+    let (source, names, strategy) = input;
+    let strategy = match strategy.as_str() {
+        "batched_prefixes" => Strategy::BatchedPrefixes,
+        "consolidated" => Strategy::Consolidated,
+        "separate_prefixes" => Strategy::SeparatePrefixes,
+        _ => return Err(wasm_error!(WasmErrorInner::Guest("Unknown retrieval strategy".into()))),
+    };
+    let before = benchmark_smartlink::relationship_read_metrics();
+    let started = sys_time()?;
+    let buckets =
+        benchmark_smartlink::expand_relationship_set_with_strategy(&source, &names, strategy)
+            .map_err(to_wasm)?;
+    let elapsed = sys_time()?.as_micros().saturating_sub(started.as_micros()) as u64;
+    let after = benchmark_smartlink::relationship_read_metrics();
+    Ok((elapsed, after.0 - before.0, after.1 - before.1, after.2 - before.2, buckets))
+}
+
+/// Seeds bounded, valid storage rows outside every timed retrieval.
+#[hdk_extern]
+pub fn smartlink_seed_retrieval_for_test(
+    input: (LocalId, LocalId, Vec<(integrity_core_types::RelationshipName, u32)>),
+) -> ExternResult<u32> {
+    use core_types::{
+        encode_smartlink_tag, CanonicalKey, HolonId, OccurrenceId, SmartLinkTagInput,
+    };
+    let (source, target, distribution) = input;
+    let total: u64 = distribution.iter().map(|(_, count)| u64::from(*count)).sum();
+    if total > 2048 || distribution.len() > 32 {
+        return Err(wasm_error!(WasmErrorInner::Guest("Benchmark workload exceeds limit".into())));
+    }
+    let source_hash = try_action_hash_from_local_id(&source).map_err(to_wasm)?;
+    let target_hash = try_action_hash_from_local_id(&target).map_err(to_wasm)?;
+    let mut sequence = 0u128;
+    for (relationship_name, count) in distribution {
+        for _ in 0..count {
+            sequence += 1;
+            let tag = encode_smartlink_tag(&SmartLinkTagInput {
+                target_id: HolonId::Local(target.clone()),
+                relationship_name: relationship_name.clone(),
+                canonical_key: CanonicalKey::new("benchmark-target").map_err(to_wasm)?,
+                occurrence_id: Some(OccurrenceId(sequence.to_le_bytes())),
+                relationship_property_values: Default::default(),
+                target_property_cache_candidates: Vec::new(),
+            })
+            .map_err(|error| wasm_error!(WasmErrorInner::Guest(error.to_string())))?;
+            create_link(
+                source_hash.clone(),
+                target_hash.clone(),
+                LinkTypes::SmartLink,
+                LinkTag(tag),
+            )?;
+        }
+    }
+    Ok(total as u32)
+}
+
+// The shared storage source's Commit read timers stay inactive in storage-only probes.
+#[allow(dead_code)]
+#[path = "../../../../crates/holons_guest/src/read_cost.rs"]
+mod read_cost;

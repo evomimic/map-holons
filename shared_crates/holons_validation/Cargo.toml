@@ -9,3 +9,8 @@ core_types = { path = "../type_system/core_types" }
 type_names = { path = "../type_system/type_names" }
 # MAP string/newtype construction at lookup and fixture boundaries.
 base_types = { path = "../type_system/base_types" }
+
+[features]
+warm-validator-probe = ["validator-package-experiment", "instance-assessment-experiment"]
+validator-package-experiment = []
+instance-assessment-experiment = []

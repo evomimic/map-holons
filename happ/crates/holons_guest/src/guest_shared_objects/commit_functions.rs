@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     sync::{Arc, RwLock},
 };
 
@@ -62,6 +62,10 @@ struct CommitPerformanceMetrics {
     commit_pass_2_micros: i64,
     holon_persist_count: usize,
     holon_persist_micros: i64,
+    relationship_descriptor_resolution_count: usize,
+    relationship_descriptor_resolution_micros: i64,
+    endpoint_resolution_count: usize,
+    endpoint_resolution_micros: i64,
     inverse_resolution_count: usize,
     inverse_resolution_micros: i64,
     smartlink_persist_count: usize,
@@ -88,6 +92,18 @@ struct CommitPerformanceMetrics {
     inverse_dedup_candidate_count: usize,
     inverse_dedup_membership_check_count: usize,
     inverse_dedup_skip_count: usize,
+}
+
+/// Discovery-only attribution to the visited holon's direct describing type.
+#[derive(Default)]
+struct PreparationTypeMetrics {
+    distinct_content: usize,
+    visits: usize,
+    micros: i64,
+    backend_calls: u64,
+    link_queries: u64,
+    returned_links: u64,
+    node_reads: u64,
 }
 
 #[derive(Clone, Copy)]
@@ -308,27 +324,162 @@ pub fn commit(
     // Assessment must finish before any node, SmartLink, or ownership-index write.
     let validation_started_at = performance_timestamp_micros();
     let profile = tracing::enabled!(tracing::Level::INFO);
-    let mut phase = holons_validation::AssessmentPhase::Construction;
+    let read_cost_scope = crate::read_cost::Scope::assessment(profile);
+    let mut construction_costs = None;
+    let mut phase = None;
     let mut phase_start = performance_timestamp_micros();
     let mut reads = crate::persistence_layer::smartlink::relationship_read_metrics();
-    let mut observe = |next| {
-        if profile {
-            let current = crate::persistence_layer::smartlink::relationship_read_metrics();
-            let mut micros = 0;
-            record_elapsed_micros(phase_start, &mut micros);
-            info!("[commit-assessment] phase={:?} elapsed_ms={} backend_calls={} link_queries={} returned_links={}",
-                phase, micros / 1000, current.0 - reads.0, current.1 - reads.1, current.2 - reads.2);
-            reads = current;
-            phase_start = performance_timestamp_micros();
-            phase = next;
+    let construction_reads = reads;
+    let mut node_reads = crate::persistence_layer::holon_storage::exact_node_read_count();
+    let construction_node_reads = node_reads;
+    let mut preparation_operations: BTreeMap<(&str, &str), (i64, usize, u64, u64, u64, u64)> =
+        BTreeMap::new();
+    let mut preparation_operation_start = None;
+    let mut preparation_visit_start = None;
+    let mut preparation_types: BTreeMap<String, PreparationTypeMetrics> = BTreeMap::new();
+    let mut observe = |event| {
+        if !profile {
+            return;
+        }
+        match event {
+            holons_validation::AssessmentEvent::Phase(next) => {
+                let current = crate::persistence_layer::smartlink::relationship_read_metrics();
+                let current_nodes =
+                    crate::persistence_layer::holon_storage::exact_node_read_count();
+                let mut micros = 0;
+                record_elapsed_micros(phase_start, &mut micros);
+                if let Some(previous) = phase {
+                    info!("[commit-assessment] phase={:?} elapsed_us={} elapsed_ms={} backend_calls={} link_queries={} returned_links={} exact_node_reads={}",
+                        previous, micros, micros / 1000, current.0 - reads.0, current.1 - reads.1, current.2 - reads.2, current_nodes - node_reads);
+                }
+                if next == holons_validation::AssessmentPhase::PackageValidation {
+                    let mut construction_micros = 0;
+                    record_elapsed_micros(validation_started_at, &mut construction_micros);
+                    construction_costs = Some((construction_micros, crate::read_cost::snapshot()));
+                    info!("[commit-construction] elapsed_us={} backend_calls={} link_queries={} returned_links={} exact_node_reads={}",
+                        construction_micros, current.0 - construction_reads.0, current.1 - construction_reads.1, current.2 - construction_reads.2, current_nodes - construction_node_reads);
+                }
+                reads = current;
+                node_reads = current_nodes;
+                phase_start = performance_timestamp_micros();
+                phase = Some(next);
+            }
+            holons_validation::AssessmentEvent::PreparationOperation {
+                operation,
+                role,
+                starting,
+            } => {
+                let current = crate::persistence_layer::smartlink::relationship_read_metrics();
+                if starting {
+                    preparation_operation_start = Some((
+                        performance_timestamp_micros(),
+                        current,
+                        crate::persistence_layer::holon_storage::exact_node_read_count(),
+                    ));
+                } else if let Some((started, before, before_nodes)) =
+                    preparation_operation_start.take()
+                {
+                    let entry = preparation_operations.entry((operation, role)).or_default();
+                    record_elapsed_micros(started, &mut entry.0);
+                    entry.1 += 1;
+                    entry.2 += current.0 - before.0;
+                    entry.3 += current.1 - before.1;
+                    entry.4 += current.2 - before.2;
+                    entry.5 += crate::persistence_layer::holon_storage::exact_node_read_count()
+                        - before_nodes;
+                }
+            }
+            holons_validation::AssessmentEvent::PreparationVisitStarted => {
+                preparation_visit_start = Some((
+                    performance_timestamp_micros(),
+                    crate::persistence_layer::smartlink::relationship_read_metrics(),
+                    crate::persistence_layer::holon_storage::exact_node_read_count(),
+                ));
+            }
+            holons_validation::AssessmentEvent::PreparationVisitFinished {
+                type_name,
+                distinct_content,
+            } => {
+                if let Some((started, before, before_nodes)) = preparation_visit_start.take() {
+                    let current = crate::persistence_layer::smartlink::relationship_read_metrics();
+                    let entry = preparation_types.entry(type_name).or_default();
+                    entry.distinct_content += usize::from(distinct_content);
+                    entry.visits += 1;
+                    record_elapsed_micros(started, &mut entry.micros);
+                    entry.backend_calls += current.0 - before.0;
+                    entry.link_queries += current.1 - before.1;
+                    entry.returned_links += current.2 - before.2;
+                    entry.node_reads +=
+                        crate::persistence_layer::holon_storage::exact_node_read_count()
+                            - before_nodes;
+                }
+            }
+            holons_validation::AssessmentEvent::Preparation(metrics) => {
+                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={} authored_surface_consumers={}",
+                    metrics.package_roots, metrics.subjects, metrics.affected_schemas,
+                    metrics.distinct_content, metrics.identity_role_visits, metrics.contract_consumers,
+                    metrics.constraint_consumers, metrics.binding_consumers, metrics.authored_surface_consumers);
+            }
+            holons_validation::AssessmentEvent::PreparationEdge {
+                role,
+                edge,
+                requests,
+                members,
+            } => {
+                info!(
+                    "[commit-preparation-edge] role={} edge={} requests={} members={}",
+                    role, edge, requests, members
+                );
+            }
         }
     };
-    let report = holons_validation::validate_commit_candidates_with_observer(
+    let report = holons_validation::validate_commit_candidates_with_profile(
         context,
         &candidates,
         &mut observe,
-    )?;
-    observe(holons_validation::AssessmentPhase::Construction);
+    );
+    // Close the active phase on success, rejection, and operational assessment failure.
+    drop(observe);
+    drop(read_cost_scope);
+    if let Some((wall_us, costs)) = construction_costs {
+        for (component, micros) in crate::read_cost::Component::ALL.into_iter().zip(costs) {
+            info!(
+                "[commit-read-cost] phase=Construction component={} elapsed_us={}",
+                component.name(),
+                micros
+            );
+        }
+        let accounted: i64 = costs.iter().sum();
+        info!(
+            "[commit-cost-accounting] construction_us={} accounted_us={} timer_gap_us={}",
+            wall_us,
+            accounted,
+            wall_us - accounted
+        );
+    }
+    if profile {
+        if let Some(phase) = phase {
+            let current = crate::persistence_layer::smartlink::relationship_read_metrics();
+            let mut micros = 0;
+            record_elapsed_micros(phase_start, &mut micros);
+            info!("[commit-assessment] phase={:?} elapsed_us={} elapsed_ms={} backend_calls={} link_queries={} returned_links={} exact_node_reads={} assessment_completed={}",
+                phase, micros, micros / 1000, current.0 - reads.0, current.1 - reads.1, current.2 - reads.2, crate::persistence_layer::holon_storage::exact_node_read_count() - node_reads, report.is_ok());
+        }
+    }
+    for (
+        (operation, role),
+        (micros, invocations, backend_calls, link_queries, returned_links, exact_node_reads),
+    ) in preparation_operations
+    {
+        info!("[commit-preparation-operation] operation={} role={} elapsed_us={} invocations={} backend_calls={} link_queries={} returned_links={} exact_node_reads={}",
+            operation, role, micros, invocations, backend_calls, link_queries, returned_links, exact_node_reads);
+    }
+    for (type_name, metrics) in preparation_types {
+        info!("[commit-preparation-type] type={} distinct_content={} identity_role_visits={} backend_calls={} link_queries={} returned_links={} exact_node_reads={} elapsed_us={}",
+            type_name, metrics.distinct_content, metrics.visits, metrics.backend_calls,
+            metrics.link_queries, metrics.returned_links, metrics.node_reads, metrics.micros);
+    }
+    let report = report?;
     record_elapsed_micros(validation_started_at, &mut performance_metrics.validation_micros);
     response_reference
         .with_property_value(ValidationViolationCount, report.violation_count() as i64)?;
@@ -507,9 +658,11 @@ pub fn commit(
             // `holon_descriptor()` reads `DescribedBy`, which may be the same
             // collection currently being committed.
             let inverse_resolution_started_at = performance_timestamp_micros();
-            let inverse_name = match resolve_inverse_relationship_name(
+            let inverse_name = match profile_descriptor_resolution(
+                "InverseName",
                 &relationship_source.source_reference,
                 &name,
+                || resolve_inverse_relationship_name(&relationship_source.source_reference, &name),
             ) {
                 Ok(inverse_name) => inverse_name,
                 Err(error) => {
@@ -572,6 +725,12 @@ pub fn commit(
             );
         }
     }
+
+    info!("[commit-relationship-preparation] descriptor_resolutions={} descriptor_resolution_us={} endpoint_resolutions={} endpoint_resolution_us={}",
+        performance_metrics.relationship_descriptor_resolution_count,
+        performance_metrics.relationship_descriptor_resolution_micros,
+        performance_metrics.endpoint_resolution_count,
+        performance_metrics.endpoint_resolution_micros);
 
     // Pass 2 can downgrade the status, so read it back rather than assuming "Complete".
     record_elapsed_micros(pass_started_at, &mut performance_metrics.commit_pass_2_micros);
@@ -1010,6 +1169,45 @@ fn materialize_target_binding(
     }
 }
 
+/// Observes descriptor traversal without retaining inputs or changing lookup policy.
+fn profile_descriptor_resolution<T>(
+    stage: &str,
+    source: &HolonReference,
+    relationship: &RelationshipName,
+    resolve: impl FnOnce() -> Result<T, HolonError>,
+) -> Result<T, HolonError> {
+    let enabled = tracing::enabled!(tracing::Level::INFO);
+    let probe = holons_core::core_shared_objects::read_observations::CacheReadProbe::start(enabled);
+    let started = performance_timestamp_micros();
+    let before = crate::persistence_layer::smartlink::relationship_read_metrics();
+    let before_nodes = crate::persistence_layer::holon_storage::exact_node_read_count();
+    let result = resolve();
+    let mut micros = 0;
+    record_elapsed_micros(started, &mut micros);
+    let observations = probe.finish();
+    if enabled {
+        let after = crate::persistence_layer::smartlink::relationship_read_metrics();
+        info!("[commit-descriptor-resolution] stage={} subject={} relationship={} elapsed_us={} backend_calls={} link_queries={} exact_node_reads={} completed={}",
+            stage, source.reference_id_string(), relationship, micros,
+            after.0 - before.0, after.1 - before.1,
+            crate::persistence_layer::holon_storage::exact_node_read_count() - before_nodes,
+            result.is_ok());
+        for read in observations {
+            let source_identity = read
+                .source
+                .to_canonical_bytes()
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>();
+            info!("[commit-descriptor-cache] stage={} subject={} relationship={} source={} member={} outcome={} requests={}",
+                stage, source.reference_id_string(), relationship, source_identity,
+                read.relationship.map(|name| name.to_string()).unwrap_or_else(|| "Node".into()),
+                read.outcome, read.requests);
+        }
+    }
+    result
+}
+
 /// Creates local forward and inverse SmartLinks for each member in `collection`.
 ///
 /// Current behavior is fail-fast at the collection level: if any member cannot
@@ -1033,13 +1231,24 @@ fn save_smartlinks_for_collection(
     inverse_dedup_context: &mut InverseDedupContext,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
-    let relationship_descriptor = source
-        .source_reference
-        .holon_descriptor()?
-        .get_relationship_by_name(name.clone())?
-        .try_into_declared_relationship_descriptor()?;
-    let forward_binding = relationship_descriptor.target_binding()?;
-    let inverse_binding = relationship_descriptor.required_inverse()?.target_binding()?;
+    let descriptor_started_at = performance_timestamp_micros();
+    let (forward_binding, inverse_binding) =
+        profile_descriptor_resolution("TargetBindings", &source.source_reference, &name, || {
+            let relationship_descriptor = source
+                .source_reference
+                .holon_descriptor()?
+                .get_relationship_by_name(name.clone())?
+                .try_into_declared_relationship_descriptor()?;
+            Ok((
+                relationship_descriptor.target_binding()?,
+                relationship_descriptor.required_inverse()?.target_binding()?,
+            ))
+        })?;
+    performance_metrics.relationship_descriptor_resolution_count += 1;
+    record_elapsed_micros(
+        descriptor_started_at,
+        &mut performance_metrics.relationship_descriptor_resolution_micros,
+    );
     let source_id = source.source_local_id();
     debug!(
         "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
@@ -1058,6 +1267,7 @@ fn save_smartlinks_for_collection(
 
     // Resolve targets first so schema and endpoint errors are reported before
     // any SmartLink write for this relationship collection.
+    let endpoints_started_at = performance_timestamp_micros();
     let mut resolved_targets = Vec::with_capacity(members.len());
     for (target_index, holon_reference) in members.iter().enumerate() {
         // Avoid deep Debug formatting here because runtime-bound references can recurse heavily in wasm.
@@ -1101,6 +1311,11 @@ fn save_smartlinks_for_collection(
             .push(ResolvedRelationshipTarget { target_local_id, target_key: key_option });
     }
 
+    performance_metrics.endpoint_resolution_count += resolved_targets.len();
+    record_elapsed_micros(
+        endpoints_started_at,
+        &mut performance_metrics.endpoint_resolution_micros,
+    );
     let inverse_canonical_key = canonical_key_from_optional_key(source.source_key.clone())?;
 
     for (target_index, resolved_target) in resolved_targets.iter().enumerate() {

@@ -63,13 +63,8 @@ pub(crate) fn prepare_bindings(
             continue;
         }
         if let Some(handler) = StaticRuleRegistry::lookup(&key) {
-            let route = context
-                .bindings
-                .entries
-                .iter()
-                .find(|entry| entry.name.as_str() == key.0)
-                .map(|entry| entry.route)
-                .unwrap_or(BindingDispatchRoute::Subject);
+            let route = binding_route(context, &key);
+
             result.push(PreparedBinding { binding, handler, route });
         } else {
             finding(
@@ -96,6 +91,12 @@ pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
     reader: &R,
 ) -> Result<bool, R::Error> {
     use holons_core::descriptors::equals_or_extends_with_reader;
+    #[cfg(feature = "instance-assessment-experiment")]
+    if context.policy_only {
+        return crate::instance_assessment_experiment::compatible_binding(
+            binding, family, key, governing, level, reader,
+        );
+    }
     let roots = &context.bindings;
     if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
         // A familiar key on another reference cannot impersonate a canonical rule.
@@ -273,6 +274,32 @@ pub(crate) fn assess_holon(
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), AssessmentReadError> {
+    assess_holon_with_minimum_policy(
+        subject,
+        descriptor,
+        contributions,
+        bindings,
+        values,
+        Some(universal),
+        reader,
+        collector,
+        packages,
+    )
+}
+
+/// A missing universal contract means the caller has established a concrete ordinary subject;
+/// all required members are enforced. Descriptor subjects use the universal contract.
+pub(crate) fn assess_holon_with_minimum_policy(
+    subject: &HolonReference,
+    descriptor: &HolonReference,
+    contributions: &ContractContributions,
+    bindings: &[PreparedBinding],
+    values: &ValueValidationContext,
+    universal: Option<&UniversalDescriptorContract>,
+    reader: &ProspectiveDescriptorReader,
+    collector: &mut ValidationCollector,
+    packages: &crate::descriptor_package::DescriptorPackages,
+) -> Result<(), AssessmentReadError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();
     for member in &contributions.properties {
@@ -319,7 +346,7 @@ fn assess_property(
     name: &PropertyName,
     property: &PropertyDescriptor,
     values: &ValueValidationContext,
-    universal: &UniversalDescriptorContract,
+    universal: Option<&UniversalDescriptorContract>,
     reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
@@ -339,7 +366,12 @@ fn assess_property(
         packages,
     )?;
     let missing_required = value.is_none()
-        && universal.enforce_minimum_with_reader(subject, property.holon(), reader)?
+        && match universal {
+            Some(universal) => {
+                universal.enforce_minimum_with_reader(subject, property.holon(), reader)?
+            }
+            None => true,
+        }
         && property.is_required_with_reader(reader)?;
     let facts = PreparedRuleSubject::Property {
         missing_required,
@@ -405,4 +437,25 @@ fn assess_value(
     };
     dispatch_subject(&bindings, &facts, path, collector)?;
     Ok(())
+}
+
+fn binding_route(
+    context: &ValueValidationContext,
+    key: &ValidationRuleKey,
+) -> BindingDispatchRoute {
+    #[cfg(feature = "instance-assessment-experiment")]
+    if context.policy_only {
+        return crate::contexts::binding_policies()
+            .into_iter()
+            .find(|entry| entry.0.as_str() == key.0)
+            .map(|entry| entry.4)
+            .unwrap_or(BindingDispatchRoute::Subject);
+    }
+    context
+        .bindings
+        .entries
+        .iter()
+        .find(|entry| entry.name.as_str() == key.0)
+        .map(|entry| entry.route)
+        .unwrap_or(BindingDispatchRoute::Subject)
 }

@@ -12,9 +12,20 @@ use type_names::CoreValidationRuleName;
 pub struct ValueValidationContext {
     pub(crate) context: Arc<TransactionContext>,
     pub(crate) bindings: BindingRoots,
+    #[cfg(feature = "instance-assessment-experiment")]
+    pub(crate) policy_only: bool,
 }
 
 impl ValueValidationContext {
+    #[cfg(feature = "instance-assessment-experiment")]
+    pub(crate) fn from_dispatch_policy(context: &Arc<TransactionContext>) -> Self {
+        Self {
+            context: context.clone(),
+            bindings: BindingRoots { entries: Vec::new() },
+            policy_only: true,
+        }
+    }
+
     /// Resolves the complete binding inventory with prospective reference selection.
     pub fn resolve_in_view(
         context: &Arc<TransactionContext>,
@@ -23,6 +34,8 @@ impl ValueValidationContext {
         Ok(Self {
             context: Arc::clone(context),
             bindings: BindingRoots::resolve_in_view(context, reader)?,
+            #[cfg(feature = "instance-assessment-experiment")]
+            policy_only: false,
         })
     }
 }
@@ -69,174 +82,7 @@ impl BindingRoots {
     fn resolve_using<E>(
         mut resolve: impl FnMut(&str) -> Result<HolonReference, E>,
     ) -> Result<Self, E> {
-        use BindingDispatchRoute::*;
-        use CoreValidationRuleName::*;
-        use SubjectLevel::*;
-        // The complete table is required for placement compatibility even when a
-        // particular assessment pass dispatches only one route.
-        let definitions = [
-            (
-                RequiredPropertyPresence,
-                "PropertyValidationRule.HolonType",
-                "PropertyType.TypeDescriptor",
-                Property,
-                Subject,
-            ),
-            (
-                NoUndescribedProperties,
-                "HolonValidationRule.HolonType",
-                "HolonType.TypeDescriptor",
-                Holon,
-                Subject,
-            ),
-            (
-                BaseValueKindMatchesString,
-                "StringValidationRule.HolonType",
-                "StringValueType.ValueType",
-                Value,
-                Subject,
-            ),
-            (
-                BaseValueKindMatchesInteger,
-                "IntegerValidationRule.HolonType",
-                "IntegerValueType.ValueType",
-                Value,
-                Subject,
-            ),
-            (
-                BaseValueKindMatchesBoolean,
-                "BooleanValidationRule.HolonType",
-                "BooleanValueType.ValueType",
-                Value,
-                Subject,
-            ),
-            (
-                BaseValueKindMatchesBytes,
-                "BytesValidationRule.HolonType",
-                "BytesValueType.ValueType",
-                Value,
-                Subject,
-            ),
-            (
-                BaseValueKindMatchesEnum,
-                "EnumValueValidationRule.HolonType",
-                "EnumValueType.ValueType",
-                Value,
-                Subject,
-            ),
-            (
-                AtMostOneDirectParent,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                AcyclicExtendsLineage,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                ExtendsLineageTerminatesAtTypeDescriptor,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                UniqueTypeDescriptorRoot,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                LocalInstanceKindAnchorDesignation,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                InstanceKindAnchorsAreAbstract,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                TypeDescriptorRootKindException,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                DescribingCategoryCompatibility,
-                "HolonValidationRule.HolonType",
-                "HolonType.TypeDescriptor",
-                Holon,
-                Descriptor,
-            ),
-            (
-                DescriptorMetaTypeCorrespondence,
-                "HolonValidationRule.HolonType",
-                "HolonType.TypeDescriptor",
-                Holon,
-                Descriptor,
-            ),
-            (
-                NoInheritedMemberRedeclaration,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                UniqueSemanticMemberNames,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                WellFormedEffectiveMemberDefinitions,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                ContractMemberKindCompatibility,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                InheritedValueConstraintNonRelaxation,
-                "HolonValidationRule.HolonType",
-                "MetaTypeDescriptor.HolonType",
-                Holon,
-                Descriptor,
-            ),
-            (
-                SchemaDependenciesAcyclic,
-                "HolonValidationRule.HolonType",
-                "Schema.HolonType",
-                Holon,
-                SchemaAggregate,
-            ),
-            (
-                CrossSchemaDependenciesDeclared,
-                "HolonValidationRule.HolonType",
-                "Schema.HolonType",
-                Holon,
-                SchemaAggregate,
-            ),
-        ];
+        let definitions = binding_policies();
         let mut resolved = HashMap::<&str, HolonReference>::new();
         let mut get = |key: &'static str| -> Result<HolonReference, E> {
             if let Some(reference) = resolved.get(key) {
@@ -261,4 +107,177 @@ impl BindingRoots {
             .collect::<Result<_, E>>()?;
         Ok(Self { entries })
     }
+}
+
+/// Static placement and routing metadata; resolving schema identities is separate.
+pub(crate) fn binding_policies(
+) -> Vec<(CoreValidationRuleName, &'static str, &'static str, SubjectLevel, BindingDispatchRoute)> {
+    use BindingDispatchRoute::*;
+    use CoreValidationRuleName::*;
+    use SubjectLevel::*;
+    // The complete table is required for placement compatibility even when a
+    // particular assessment pass dispatches only one route.
+    vec![
+        (
+            RequiredPropertyPresence,
+            "PropertyValidationRule.HolonType",
+            "PropertyType.TypeDescriptor",
+            Property,
+            Subject,
+        ),
+        (
+            NoUndescribedProperties,
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+            Holon,
+            Subject,
+        ),
+        (
+            BaseValueKindMatchesString,
+            "StringValidationRule.HolonType",
+            "StringValueType.ValueType",
+            Value,
+            Subject,
+        ),
+        (
+            BaseValueKindMatchesInteger,
+            "IntegerValidationRule.HolonType",
+            "IntegerValueType.ValueType",
+            Value,
+            Subject,
+        ),
+        (
+            BaseValueKindMatchesBoolean,
+            "BooleanValidationRule.HolonType",
+            "BooleanValueType.ValueType",
+            Value,
+            Subject,
+        ),
+        (
+            BaseValueKindMatchesBytes,
+            "BytesValidationRule.HolonType",
+            "BytesValueType.ValueType",
+            Value,
+            Subject,
+        ),
+        (
+            BaseValueKindMatchesEnum,
+            "EnumValueValidationRule.HolonType",
+            "EnumValueType.ValueType",
+            Value,
+            Subject,
+        ),
+        (
+            AtMostOneDirectParent,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            AcyclicExtendsLineage,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            ExtendsLineageTerminatesAtTypeDescriptor,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            UniqueTypeDescriptorRoot,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            LocalInstanceKindAnchorDesignation,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            InstanceKindAnchorsAreAbstract,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            TypeDescriptorRootKindException,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            DescribingCategoryCompatibility,
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+            Holon,
+            Descriptor,
+        ),
+        (
+            DescriptorMetaTypeCorrespondence,
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+            Holon,
+            Descriptor,
+        ),
+        (
+            NoInheritedMemberRedeclaration,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            UniqueSemanticMemberNames,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            WellFormedEffectiveMemberDefinitions,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            ContractMemberKindCompatibility,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            InheritedValueConstraintNonRelaxation,
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+            Holon,
+            Descriptor,
+        ),
+        (
+            SchemaDependenciesAcyclic,
+            "HolonValidationRule.HolonType",
+            "Schema.HolonType",
+            Holon,
+            SchemaAggregate,
+        ),
+        (
+            CrossSchemaDependenciesDeclared,
+            "HolonValidationRule.HolonType",
+            "Schema.HolonType",
+            Holon,
+            SchemaAggregate,
+        ),
+    ]
 }

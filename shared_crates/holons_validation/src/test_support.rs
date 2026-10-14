@@ -22,6 +22,8 @@ struct FixtureStorage {
     holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
+    key_reads: std::sync::atomic::AtomicUsize,
+    reads_by_source: std::sync::Mutex<HashMap<HolonId, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
     fn relationship_cache_policy(
@@ -78,6 +80,7 @@ impl HolonServiceApi for FixtureStorage {
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
         self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        *self.reads_by_source.lock().unwrap().entry(source.clone()).or_default() += 1;
         assert!(self.holons.contains_key(source), "unexpected storage relationship read");
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
@@ -110,6 +113,7 @@ impl HolonServiceApi for FixtureStorage {
         context: &Arc<TransactionContext>,
         key: &MapString,
     ) -> Result<holons_core::SmartReference, HolonError> {
+        self.key_reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         use type_names::ToPropertyName;
         for (id, holon) in &self.holons {
             if holon.property_map().get(&"Key".to_property_name())
@@ -299,6 +303,22 @@ impl Fixture {
 }
 
 impl Fixture {
+    #[allow(dead_code)]
+    pub fn backend_key_reads(&self) -> usize {
+        self.saved_storage
+            .as_ref()
+            .map_or(0, |storage| storage.key_reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    #[allow(dead_code)]
+    pub fn backend_relationship_reads_for(&self, key: &str) -> Result<usize, HolonError> {
+        let id = self.nodes[key].holon_id()?;
+        Ok(self
+            .saved_storage
+            .as_ref()
+            .map_or(0, |storage| *storage.reads_by_source.lock().unwrap().get(&id).unwrap_or(&0)))
+    }
+
     pub fn backend_relationship_reads(&self) -> usize {
         self.saved_storage
             .as_ref()

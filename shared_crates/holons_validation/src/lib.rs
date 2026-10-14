@@ -8,7 +8,7 @@
 
 mod assessment_phase;
 mod assessment_support;
-pub use assessment_phase::AssessmentPhase;
+pub use assessment_phase::{AssessmentEvent, AssessmentPhase, PreparationMetrics};
 mod collector;
 mod commit_assessment;
 mod commitments;
@@ -18,6 +18,8 @@ mod dependency_groups;
 mod descriptor_package;
 mod descriptor_rules;
 mod handlers;
+#[cfg(feature = "instance-assessment-experiment")]
+mod instance_assessment_experiment;
 mod outcomes;
 mod prospective;
 mod registries;
@@ -26,10 +28,13 @@ mod schema_rules;
 mod schema_view;
 mod subject_assessment;
 mod subjects;
+#[cfg(feature = "validator-package-experiment")]
+mod validator_package;
 
 pub use collector::{ValidationCollector, ValidationObservations};
 pub use commit_assessment::{
     assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_observer,
+    validate_commit_candidates_with_profile,
 };
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
 pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};

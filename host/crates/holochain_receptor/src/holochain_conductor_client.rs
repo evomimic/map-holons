@@ -140,7 +140,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
             );
         }
 
-        if let Some(dance) = dance_name {
+        if let Some(dance) = dance_name.as_deref() {
             tracing::debug!(
                 target: "map_profile",
                 guest_dance = %dance,
@@ -152,7 +152,16 @@ impl ConductorDanceCaller for HolochainConductorClient {
         let extern_io = result
             .map_err(|error| HolonError::ConductorError(format!("Zome call failed: {error:?}")))?;
 
-        match ExternIO::decode::<DanceResponseEnvelope>(&extern_io) {
+        let decode_started = Instant::now();
+        let decoded = ExternIO::decode::<DanceResponseEnvelope>(&extern_io);
+        if dance_name.as_deref() == Some("commit") {
+            tracing::info!(target: "map_profile",
+                "[commit-client-transport] encode_ms={} call_ms={} decode_ms={} total_ms={} success={}",
+                encode_ms, decode_started.duration_since(zome_call_started_at).as_secs_f64() * 1000.0,
+                decode_started.elapsed().as_secs_f64() * 1000.0,
+                round_trip_started.elapsed().as_secs_f64() * 1000.0, decoded.is_ok());
+        }
+        match decoded {
             Ok(decoded) => Ok(decoded),
             Err(e) => Err(HolonError::ConductorError(format!(
                 "Failed to decode dance envelope response: {:?}",

@@ -8,6 +8,9 @@ crate-type = ["rlib"]
 name = "holons_guest"
 
 [features]
+warm-validator-probe = ["holons_validation/warm-validator-probe"]
+validator-package-experiment = ["holons_validation/validator-package-experiment"]
+instance-assessment-experiment = ["holons_validation/instance-assessment-experiment"]
 guest = []  # This crate supports the `guest` feature
 
 [dependencies]
