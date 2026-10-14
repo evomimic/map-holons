@@ -668,12 +668,14 @@ mod tests {
 
     use base_types::{BaseValue, MapBoolean, MapInteger};
     use core_types::{HolonId, LocalId, PropertyMap};
-    use type_names::{CorePropertyTypeName, QueryHolonTypeName as Q, ToPropertyName};
+    use type_names::{
+        CoreOperatorTypeName, CorePropertyTypeName, QueryHolonTypeName as Q, ToPropertyName,
+    };
 
     use super::*;
     use crate::core_shared_objects::holon::SavedHolon;
     use crate::descriptors::test_support::{
-        build_context, build_context_with_saved_holons, new_descriptor_holon,
+        build_context, build_context_with_saved_holons, core_operator, new_descriptor_holon,
         new_holon_type_descriptor, new_property_descriptor_holon, new_test_holon,
     };
 
@@ -2215,11 +2217,10 @@ mod tests {
         ) -> Self {
             let fixture = build_fixture();
             let context = fixture.context.clone();
-            let operator = |key: &str, name: &str| -> HolonReference {
-                new_descriptor_holon(&context, key, name, "Operator").unwrap().into()
-            };
-            let equals = operator("op-equals", "EqualsOperator");
-            let less_than = operator("op-less-than", "LessThanOperator");
+            let equals =
+                core_operator(&context, CoreOperatorTypeName::EqualsOperator, None).unwrap();
+            let less_than =
+                core_operator(&context, CoreOperatorTypeName::LessThanOperator, None).unwrap();
             let value_type = |key: &str, kind: &str, operators: &[&HolonReference]| {
                 let mut holon = new_descriptor_holon(&context, key, kind, "Value").unwrap();
                 holon

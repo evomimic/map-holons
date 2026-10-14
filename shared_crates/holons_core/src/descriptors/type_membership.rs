@@ -11,7 +11,9 @@ use type_names::holon_type_descriptor_key;
 
 use super::{equals_or_extends, resolve_core_descriptor, same_definition, walk_extends_chain};
 use super::{Descriptor, TypeHeader};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::{HolonReference, ReadableHolon};
+use std::sync::Arc;
 
 /// Returns true when `holon` is described by `expected` or by a descriptor
 /// that extends it.
@@ -45,13 +47,41 @@ pub fn classify_holon_type<T: Clone>(
     candidates: &[(MapString, T)],
 ) -> Result<Option<T>, HolonError> {
     let descriptor = holon.holon_descriptor()?;
-    for ancestor in walk_extends_chain(descriptor.holon()) {
+    classify_lineage(
+        descriptor.holon(),
+        &holon.resolution_context()?,
+        candidates,
+        holon_type_descriptor_key,
+    )
+}
+
+/// Classifies a descriptor by the nearest supported type in its own lineage.
+///
+/// Unlike [`classify_holon_type`], this walks `descriptor`'s own `Extends`
+/// chain, for descriptors that are themselves the classified types (such as
+/// operator descriptors). `canonical_key` forms each candidate's canonical
+/// descriptor key; a name match counts only for that exact descriptor.
+pub fn classify_descriptor_lineage<T: Clone>(
+    descriptor: &HolonReference,
+    candidates: &[(MapString, T)],
+    canonical_key: fn(&MapString) -> MapString,
+) -> Result<Option<T>, HolonError> {
+    classify_lineage(descriptor, &descriptor.resolution_context()?, candidates, canonical_key)
+}
+
+fn classify_lineage<T: Clone>(
+    start: &HolonReference,
+    context: &Arc<TransactionContext>,
+    candidates: &[(MapString, T)],
+    canonical_key: fn(&MapString) -> MapString,
+) -> Result<Option<T>, HolonError> {
+    for ancestor in walk_extends_chain(start) {
         let ancestor = ancestor?;
         let type_name = TypeHeader::new(&ancestor).type_name()?;
         let Some((name, candidate)) = candidates.iter().find(|(name, _)| *name == type_name) else {
             continue;
         };
-        if same_definition(&ancestor, &canonical_holon_type(holon, name)?) {
+        if same_definition(&ancestor, &resolve_core_descriptor(context, &canonical_key(name).0)?) {
             return Ok(Some(candidate.clone()));
         }
     }

@@ -78,6 +78,7 @@ pub enum CoreHolonTypeName {
     HolonSpace,
     HolonType,
     InverseRelationshipType,
+    OperandSpecification,
     Projection,
     Schema,
     Transaction,

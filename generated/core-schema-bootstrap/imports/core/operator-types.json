@@ -49,6 +49,17 @@
             },
             {
               "$ref": "OperatorCategory.PropertyType"
+            },
+            {
+              "$ref": "CaseMatching.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(OperatorType.HolonType)-[OperandSpecifications]->(OperandSpecification.HolonType)"
             }
           ]
         },
@@ -269,6 +280,9 @@
             },
             {
               "$ref": "OperatorCategory.MapEnumValueType.Ordering"
+            },
+            {
+              "$ref": "OperatorCategory.MapEnumValueType.Matching"
             }
           ]
         },
@@ -339,6 +353,811 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.MapEnumValueType.Matching",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Matching",
+        "DisplayName": "Matching",
+        "Description": "Operators that test whether a subject value matches authored literal content, such as substring containment, under the operator's declared matching policy."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CaseMatching.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "CaseMatching",
+        "TypeNamePlural": "CaseMatchingModes",
+        "DisplayName": "Case Matching",
+        "DisplayNamePlural": "Case Matching Modes",
+        "Description": "Enum value type selecting how a string matching operator compares letter case."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "CaseMatching.MapEnumValueType.CaseSensitive"
+            },
+            {
+              "$ref": "CaseMatching.MapEnumValueType.UnicodeDefaultCaseFold"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CaseMatching.MapEnumValueType.CaseSensitive",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "CaseSensitive",
+        "DisplayName": "Case Sensitive",
+        "Description": "Matches the original scalar sequences without case folding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CaseMatching.MapEnumValueType.UnicodeDefaultCaseFold",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "UnicodeDefaultCaseFold",
+        "DisplayName": "Unicode Default Case Fold",
+        "Description": "Applies Unicode 17.0.0 full default case folding (CaseFolding.txt C and F mappings) to both strings before literal matching. No normalization or locale tailoring is applied."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandValueTypeRule.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "OperandValueTypeRule",
+        "TypeNamePlural": "OperandValueTypeRules",
+        "DisplayName": "Operand Value Type Rule",
+        "DisplayNamePlural": "Operand Value Type Rules",
+        "Description": "Enum value type selecting how an operand specification resolves its required operand ValueType."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "OperandValueTypeRule.MapEnumValueType.SameAsSubject"
+            },
+            {
+              "$ref": "OperandValueTypeRule.MapEnumValueType.FixedValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandValueTypeRule.MapEnumValueType.SameAsSubject",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "SameAsSubject",
+        "DisplayName": "Same As Subject",
+        "Description": "The operand requires the exact resolved subject ValueType, retaining its effective constraints. OperandValueType must be absent."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandValueTypeRule.MapEnumValueType.FixedValueType",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "FixedValueType",
+        "DisplayName": "Fixed Value Type",
+        "Description": "The operand requires the ValueType referenced by exactly one OperandValueType relationship."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CaseMatching.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CaseMatching",
+        "TypeNamePlural": "CaseMatchingModes",
+        "DisplayName": "case_matching",
+        "DisplayNamePlural": "case_matching_modes",
+        "Description": "Case-matching policy of a string matching operator. Declared by matching operators only; equality and ordering operators do not declare it."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "CaseMatching.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandRole.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "OperandRole",
+        "TypeNamePlural": "OperandRoles",
+        "DisplayName": "operand_role",
+        "DisplayNamePlural": "operand_roles",
+        "Description": "Durable role name of an authored operand position, such as ComparisonValue or Substring.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandValueTypeRule.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "OperandValueTypeRule",
+        "TypeNamePlural": "OperandValueTypeRules",
+        "DisplayName": "operand_value_type_rule",
+        "DisplayNamePlural": "operand_value_type_rules",
+        "Description": "How an operand specification resolves its required operand ValueType.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "OperandValueTypeRule.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandSpecification.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "OperandSpecification",
+        "TypeNamePlural": "OperandSpecifications",
+        "DisplayName": "Operand Specification",
+        "DisplayNamePlural": "Operand Specifications",
+        "Description": "Operator metadata describing one authored operand position: its durable role, human-facing label, and the rule resolving its required ValueType. An operator's ordered specifications cover every execution operand after the subject."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "OperandRole.PropertyType"
+            },
+            {
+              "$ref": "DisplayName.PropertyType"
+            },
+            {
+              "$ref": "Description.PropertyType"
+            },
+            {
+              "$ref": "OperandValueTypeRule.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(OperandSpecification.HolonType)-[OperandValueType]->(ValueType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OperatorType.HolonType)-[OperandSpecifications]->(OperandSpecification.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperandSpecifications",
+        "TypeNamePlural": "OperandSpecificationsRelationships",
+        "DisplayName": "OperandSpecifications Relationship",
+        "DisplayNamePlural": "OperandSpecifications Relationships",
+        "Description": "Ordered specifications of an operator's authored operands; relationship position defines each operand's position after the subject. The count must equal Arity minus one.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OperandSpecification.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(OperandSpecification.HolonType)-[OperandSpecificationsForOperators]->(OperatorType.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OperandSpecification.HolonType)-[OperandSpecificationsForOperators]->(OperatorType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperandSpecificationsForOperators",
+        "TypeNamePlural": "OperandSpecificationsForOperatorsRelationships",
+        "DisplayName": "OperandSpecificationsForOperators Relationship",
+        "DisplayNamePlural": "OperandSpecificationsForOperators Relationships",
+        "Description": "Inverse of OperandSpecifications, from an operand specification to the operators that declare it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OperandSpecification.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OperandSpecification.HolonType)-[OperandValueType]->(ValueType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperandValueType",
+        "TypeNamePlural": "OperandValueTypeRelationships",
+        "DisplayName": "OperandValueType Relationship",
+        "DisplayNamePlural": "OperandValueType Relationships",
+        "Description": "Required operand ValueType of a FixedValueType operand specification. Exactly one is required for FixedValueType and none is permitted for SameAsSubject.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OperandSpecification.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ValueType.TypeDescriptor)-[OperandValueTypeForSpecifications]->(OperandSpecification.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[OperandValueTypeForSpecifications]->(OperandSpecification.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperandValueTypeForSpecifications",
+        "TypeNamePlural": "OperandValueTypeForSpecificationsRelationships",
+        "DisplayName": "OperandValueTypeForSpecifications Relationship",
+        "DisplayNamePlural": "OperandValueTypeForSpecifications Relationships",
+        "Description": "Inverse of OperandValueType, from a ValueType to the operand specifications that require it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OperandSpecification.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EqualsComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Comparison Value",
+        "Description": "Value compared with the subject for equality.",
+        "OperandRole": "ComparisonValue",
+        "OperandValueTypeRule": "SameAsSubject"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LessThanComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Comparison Value",
+        "Description": "Value the subject must be ordered before.",
+        "OperandRole": "ComparisonValue",
+        "OperandValueTypeRule": "SameAsSubject"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ContainsSubstring.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Substring",
+        "Description": "Literal text the subject must contain. It need not satisfy the subject's specialized constraints.",
+        "OperandRole": "Substring",
+        "OperandValueTypeRule": "FixedValueType"
+      },
+      "relationships": [
+        {
+          "name": "OperandValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         },
@@ -474,6 +1293,14 @@
           ]
         },
         {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "EqualsComparisonValue.OperandSpecification"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {
@@ -509,6 +1336,62 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "LessThanComparisonValue.OperandSpecification"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ContainsOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "ContainsOperator",
+        "TypeNamePlural": "ContainsOperators",
+        "DisplayName": "Contains",
+        "DisplayNamePlural": "Contains Operators",
+        "Description": "Returns true iff the subject string contains the authored substring under the operator's case-matching policy. The substring is literal text, never a pattern; an empty substring matches every present string.",
+        "Arity": 2,
+        "CaseMatching": "UnicodeDefaultCaseFold",
+        "OperatorCategory": "Matching"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "ContainsSubstring.OperandSpecification"
             }
           ]
         },

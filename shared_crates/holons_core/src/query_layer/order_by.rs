@@ -50,8 +50,7 @@ use type_names::{
 use crate::descriptors::accessor_helpers::related_members;
 use crate::descriptors::{
     require_holon_type, Descriptor, EffectiveValue, EnumValueDescriptor, HolonDescriptor,
-    IntegerValueDescriptor, OperatorDescriptor, StringValueDescriptor, ValueDescriptor,
-    ValueDescriptorKind,
+    ResolvedOperator, ValueDescriptor, ValueDescriptorKind,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -212,37 +211,28 @@ fn unrecognized_variant(name: QueryPropertyTypeName, variant: &str) -> HolonErro
     ))
 }
 
-/// The value domain of one key: its value descriptor and afforded operators.
-enum KeyDomain {
-    Integer {
-        descriptor: IntegerValueDescriptor,
-        equals: OperatorDescriptor,
-        less_than: OperatorDescriptor,
-    },
-    String {
-        descriptor: StringValueDescriptor,
-        equals: OperatorDescriptor,
-        less_than: OperatorDescriptor,
-    },
+/// The value domain of one key: its value descriptor and afforded operators,
+/// resolved once so that comparisons read no descriptors.
+struct KeyDomain {
+    value_type: ValueDescriptor,
+    equals: ResolvedOperator,
+    less_than: ResolvedOperator,
 }
 
 impl KeyDomain {
     fn resolve(value_type: &ValueDescriptor) -> Result<Self, HolonError> {
-        let kind = value_type.value_kind()?;
-        let holon = value_type.holon().clone();
-        match kind {
-            ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => Ok(Self::Integer {
-                descriptor: IntegerValueDescriptor::from_holon(holon),
-                equals: value_type.get_operator_by_name(CoreOperatorTypeName::EqualsOperator)?,
-                less_than: value_type
-                    .get_operator_by_name(CoreOperatorTypeName::LessThanOperator)?,
-            }),
-            ValueDescriptorKind::BaseValue(BaseValueKind::String) => Ok(Self::String {
-                descriptor: StringValueDescriptor::from_holon(holon),
-                equals: value_type.get_operator_by_name(CoreOperatorTypeName::EqualsOperator)?,
-                less_than: value_type
-                    .get_operator_by_name(CoreOperatorTypeName::LessThanOperator)?,
-            }),
+        match value_type.value_kind()? {
+            ValueDescriptorKind::BaseValue(BaseValueKind::Integer | BaseValueKind::String) => {
+                Ok(Self {
+                    value_type: value_type.clone(),
+                    equals: value_type
+                        .get_operator_by_name(CoreOperatorTypeName::EqualsOperator)?
+                        .resolve_for_subject(value_type)?,
+                    less_than: value_type
+                        .get_operator_by_name(CoreOperatorTypeName::LessThanOperator)?
+                        .resolve_for_subject(value_type)?,
+                })
+            }
             _ => Err(HolonError::UnsupportedOperator {
                 operator: CoreOperatorTypeName::LessThanOperator.as_operator_name().to_string(),
                 value_type: value_type.header().type_name()?.to_string(),
@@ -252,27 +242,15 @@ impl KeyDomain {
     }
 
     fn validate(&self, value: &BaseValue) -> Result<(), HolonError> {
-        match self {
-            Self::Integer { descriptor, .. } => descriptor.is_valid(value),
-            Self::String { descriptor, .. } => descriptor.is_valid(value),
-        }
+        self.value_type.is_valid(value)
     }
 
     /// Orders two present values through the descriptor's afforded operators.
     fn compare(&self, lhs: &BaseValue, rhs: &BaseValue) -> Result<Ordering, HolonError> {
-        let (equal, less) = match self {
-            Self::Integer { descriptor, equals, less_than } => (
-                descriptor.apply_operator(equals, lhs, rhs)?,
-                descriptor.apply_operator(less_than, lhs, rhs)?,
-            ),
-            Self::String { descriptor, equals, less_than } => (
-                descriptor.apply_operator(equals, lhs, rhs)?,
-                descriptor.apply_operator(less_than, lhs, rhs)?,
-            ),
-        };
-        Ok(if equal {
+        let rhs = std::slice::from_ref(rhs);
+        Ok(if self.equals.invoke(lhs, rhs)? {
             Ordering::Equal
-        } else if less {
+        } else if self.less_than.invoke(lhs, rhs)? {
             Ordering::Less
         } else {
             Ordering::Greater

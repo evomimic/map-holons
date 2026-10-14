@@ -51,7 +51,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "9b2c5da91bdf7037f5edb8b76bbbc07a00811a149d7e1327a9b65891ee814229"
+      "sha256": "b7e2852c46f2ed2b1b2447c16e9ee4ab2325cccab23e5c36e44c214a51621577"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -67,7 +67,7 @@
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "e6f2fc866aad00aec5985dcd93f0b9e01cbcebbbc5e6f507ea82ab1af8f59c6a"
+      "sha256": "9f22aabf0572b10c494afb91e8af98aecbea3ed11124dd28e1bb86ce41a4f290"
     },
     {
       "path": "imports/core/property-types.json",
@@ -652,6 +652,18 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(OperandSpecification.HolonType)-[OperandSpecificationsForOperators]->(OperatorType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(OperandSpecification.HolonType)-[OperandValueType]->(ValueType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(OperatorType.HolonType)-[OperandSpecifications]->(OperandSpecification.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -925,6 +937,10 @@
     },
     {
       "key": "(ValueType.TypeDescriptor)-[ElementValueTypeFor]->(ValueArrayValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[OperandValueTypeForSpecifications]->(OperandSpecification.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1284,6 +1300,22 @@
       "type": "MetaConstraintType.MetaHolonType"
     },
     {
+      "key": "CaseMatching.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "CaseMatching.MapEnumValueType.CaseSensitive",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CaseMatching.MapEnumValueType.UnicodeDefaultCaseFold",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CaseMatching.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "CloneHolon.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
@@ -1434,6 +1466,14 @@
     {
       "key": "ConstraintTypeIdentity.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ContainsOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "ContainsSubstring.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
     },
     {
       "key": "ContractMemberKindCompatibility.ValidationRule",
@@ -2244,6 +2284,10 @@
       "type": "MetaValueType.MetaTypeDescriptor"
     },
     {
+      "key": "EqualsComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
+    },
+    {
       "key": "EqualsOperator.OperatorType",
       "type": "MetaOperatorType.MetaHolonType"
     },
@@ -2654,6 +2698,10 @@
     {
       "key": "Length16k.StringLengthConstraint",
       "type": "StringLengthConstraint.ConstraintType"
+    },
+    {
+      "key": "LessThanComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
     },
     {
       "key": "LessThanOperator.OperatorType",
@@ -3084,11 +3132,39 @@
       "type": "CardinalityConstraint.ConstraintType"
     },
     {
+      "key": "OperandRole.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "OperandSpecification.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "OperandValueTypeRule.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "OperandValueTypeRule.MapEnumValueType.FixedValueType",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "OperandValueTypeRule.MapEnumValueType.SameAsSubject",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "OperandValueTypeRule.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "OperatorCategory.MapEnumValueType",
       "type": "MetaEnumValueType.MetaValueType"
     },
     {
       "key": "OperatorCategory.MapEnumValueType.Equality",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "OperatorCategory.MapEnumValueType.Matching",
       "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
