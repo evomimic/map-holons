@@ -1,7 +1,7 @@
 meta {
   export_mode: "design-seed"
   source_files: ["docs/core/map-queries/command-dance-query-schema-tdl.md","docs/core/map-queries/query-engine-design-spec.md","docs/core/map-queries/queries-impl-plan.md"]
-  load_with: ["../core/root.json","../core/concrete-value-types.json","../core/abstract-value-types.json","../core/property-types.json","../core/relationship-types.json"]
+  load_with: ["../core/root.json","../core/concrete-value-types.json","../core/abstract-value-types.json","../core/property-types.json","../core/relationship-types.json","../core/operator-types.json"]
 }
 
 schema "MAP Query Schema-v0.0.2" {
@@ -61,7 +61,7 @@ holon SeedHolons.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends QueryExpression.HolonType
   header {
-    description: "Root-only source expression. Expands the invocation's focal HolonSpace over its Owns relationship; accepts no input collection. SeedPredicate is an optional payload with no QRY2 evaluation."
+    description: "Root-only source expression. Expands the invocation's focal HolonSpace over its Owns relationship; accepts no input collection. An optional SeedPredicate filters the owned holons, validated against the Owns target type."
     display_name: "Seed Holons"
     display_plural: "Seed Holons Expressions"
     plural: "SeedHolonsExpressions"
@@ -75,7 +75,7 @@ holon Expand.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends QueryExpression.HolonType
   header {
-    description: "Navigation expression. Expands each input member over the named outbound relationship resolved through the member's HolonDescriptor. ExpansionPredicate is an optional payload with no QRY2 evaluation."
+    description: "Navigation expression. Expands each input member over the named outbound relationship resolved against the input collection's declared ElementType. An optional ExpansionPredicate filters the navigated targets, validated against the relationship's target type."
     display_name: "Expand"
     display_plural: "Expand Expressions"
     plural: "ExpandExpressions"
@@ -90,10 +90,71 @@ abstract holon QueryPredicate.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "Abstract predicate attached to a query expression. Concrete predicate forms, operators, and evaluation are defined by later slices."
+    description: "Abstract anchor of the shared Predicate model. A predicate is definition state that evaluates against one candidate to a Boolean; it is neither a collection operand nor a Next continuation."
     display_name: "Query Predicate"
     display_plural: "Query Predicates"
     plural: "QueryPredicates"
+  }
+}
+
+holon ComparisonPredicate.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryPredicate.HolonType
+  header {
+    description: "Applies one operator to the value of one named property. PropertyName supplies the subject; the ordered Operands supply exactly Arity minus one authored literals, each typed by the operator's operand specification at its position."
+    display_name: "Comparison Predicate"
+    display_plural: "Comparison Predicates"
+    plural: "ComparisonPredicates"
+  }
+  relationships {
+    InstanceProperties -> PropertyName.PropertyType
+    InstanceRelationships -> [
+      (ComparisonPredicate.HolonType)-[Operator]->(OperatorType.HolonType),
+      (ComparisonPredicate.HolonType)-[Operands]->(LiteralOperand.HolonType)
+    ]
+  }
+}
+
+holon AnyOf.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryPredicate.HolonType
+  header {
+    description: "Disjunction of one or more ordered child predicates. True exactly when at least one child is true; every child is validated and evaluated, so a true branch never hides another branch's error. An empty group is invalid."
+    display_name: "Any Of"
+    display_plural: "Any Of Predicates"
+    plural: "AnyOfPredicates"
+  }
+  relationships {
+    InstanceRelationships -> (AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)
+  }
+}
+
+holon LiteralOperand.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Definition-state literal envelope: one scalar OperandValue and the ValueType it is declared as. The declared type must equal or extend the type the operator requires at the operand's position."
+    display_name: "Literal Operand"
+    display_plural: "Literal Operands"
+    plural: "LiteralOperands"
+  }
+  relationships {
+    InstanceProperties -> OperandValue.PropertyType
+    InstanceRelationships -> (LiteralOperand.HolonType)-[ValueType]->(ValueType.TypeDescriptor)
+  }
+}
+
+holon Filter.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Collection transformation that retains exactly the input occurrences for which its Predicate is true, preserving their order, duplicate occurrences, and declared ElementType."
+    display_name: "Filter"
+    display_plural: "Filter Expressions"
+    plural: "FilterExpressions"
+  }
+  relationships {
+    InstanceRelationships -> (Filter.HolonType)-[Predicate]->(QueryPredicate.HolonType)
   }
 }
 
@@ -745,7 +806,7 @@ def relationship (SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonTy
   target QueryPredicate.HolonType
   deletion_semantic Block
   header {
-    description: "Optional predicate payload attached to a SeedHolons expression. Definition state only; QRY2 neither evaluates nor pushes it down."
+    description: "Optional predicate attached to a SeedHolons expression. The owned holons are filtered by it with the same evaluator as Filter."
     display_name: "Seed Predicate"
     display_plural: "Seed Predicates"
     plural: "SeedPredicates"
@@ -780,7 +841,7 @@ def relationship (Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonT
   target QueryPredicate.HolonType
   deletion_semantic Block
   header {
-    description: "Optional predicate payload attached to an Expand expression. Definition state only; QRY2 neither evaluates nor pushes it down."
+    description: "Optional predicate attached to an Expand expression. The navigated targets are filtered by it with the same evaluator as Filter."
     display_name: "Expansion Predicate"
     display_plural: "Expansion Predicates"
     plural: "ExpansionPredicates"
@@ -801,6 +862,183 @@ inverse relationship (QueryPredicate.HolonType)-[ExpansionPredicateFor]->(Expand
     display_name: "Expansion Predicate For"
     display_plural: "Expansion Predicate Fors"
     plural: "ExpansionPredicateFors"
+  }
+}
+
+def relationship (Filter.HolonType)-[Predicate]->(QueryPredicate.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> PredicateForFilters
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Filter.HolonType
+  target QueryPredicate.HolonType
+  deletion_semantic Block
+  header {
+    description: "The predicate a Filter applies to each input occurrence."
+    display_name: "Predicate"
+    display_plural: "Predicates"
+    plural: "Predicates"
+  }
+}
+
+inverse relationship (QueryPredicate.HolonType)-[PredicateForFilters]->(Filter.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryPredicate.HolonType
+  target Filter.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Predicate, from a predicate to the Filters that apply it."
+    display_name: "Predicate For Filters"
+    display_plural: "Predicate For Filters"
+    plural: "PredicateForFilters"
+  }
+}
+
+def relationship (AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+    HasInverse -> PredicatesForAnyOf
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source AnyOf.HolonType
+  target QueryPredicate.HolonType
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Ordered child predicates of an AnyOf."
+    display_name: "Predicates"
+    display_plural: "Predicates"
+    plural: "Predicates"
+  }
+}
+
+inverse relationship (QueryPredicate.HolonType)-[PredicatesForAnyOf]->(AnyOf.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryPredicate.HolonType
+  target AnyOf.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Predicates, from a predicate to the AnyOf groups containing it."
+    display_name: "Predicates For Any Of"
+    display_plural: "Predicates For Any Of"
+    plural: "PredicatesForAnyOf"
+  }
+}
+
+def relationship (ComparisonPredicate.HolonType)-[Operator]->(OperatorType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> OperatorForPredicates
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ComparisonPredicate.HolonType
+  target OperatorType.HolonType
+  deletion_semantic Block
+  header {
+    description: "The operator a ComparisonPredicate applies. It must be effectively afforded by the selected property's ValueType."
+    display_name: "Operator"
+    display_plural: "Operators"
+    plural: "Operators"
+  }
+}
+
+inverse relationship (OperatorType.HolonType)-[OperatorForPredicates]->(ComparisonPredicate.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source OperatorType.HolonType
+  target ComparisonPredicate.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Operator, from an operator to the comparison predicates that apply it."
+    display_name: "Operator For Predicates"
+    display_plural: "Operator For Predicates"
+    plural: "OperatorForPredicates"
+  }
+}
+
+def relationship (ComparisonPredicate.HolonType)-[Operands]->(LiteralOperand.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OperandsForPredicates
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ComparisonPredicate.HolonType
+  target LiteralOperand.HolonType
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Ordered authored operands of a ComparisonPredicate; relationship position is operand position after the subject. The operator's specifications fix the valid count."
+    display_name: "Operands"
+    display_plural: "Operands"
+    plural: "Operands"
+  }
+}
+
+inverse relationship (LiteralOperand.HolonType)-[OperandsForPredicates]->(ComparisonPredicate.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source LiteralOperand.HolonType
+  target ComparisonPredicate.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Operands, from a literal operand to the comparison predicates using it."
+    display_name: "Operands For Predicates"
+    display_plural: "Operands For Predicates"
+    plural: "OperandsForPredicates"
+  }
+}
+
+def relationship (LiteralOperand.HolonType)-[ValueType]->(ValueType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> ValueTypeForLiteralOperands
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source LiteralOperand.HolonType
+  target ValueType.TypeDescriptor
+  deletion_semantic Block
+  header {
+    description: "Declared ValueType of a LiteralOperand's value."
+    display_name: "Value Type"
+    display_plural: "Value Types"
+    plural: "ValueTypes"
+  }
+}
+
+inverse relationship (ValueType.TypeDescriptor)-[ValueTypeForLiteralOperands]->(LiteralOperand.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source ValueType.TypeDescriptor
+  target LiteralOperand.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of a LiteralOperand's ValueType, from a ValueType to the literal operands declared as it."
+    display_name: "Value Type For Literal Operands"
+    display_plural: "Value Type For Literal Operands"
+    plural: "ValueTypeForLiteralOperands"
   }
 }
 
@@ -912,10 +1150,23 @@ property PropertyName.PropertyType {
   value MapStringValueType.StringValueType
   IsValueRequired true
   header {
-    description: "Name of the property an OrderBySpec sorts by, resolved at execution time against each input member's effective property surface. No default."
+    description: "Name of the property an OrderBySpec sorts by or a ComparisonPredicate selects as its subject, resolved at execution time against the input collection's declared ElementType, inherited declarations included. No default."
     display_name: "Property Name"
     display_plural: "Property Names"
     plural: "PropertyNames"
+  }
+}
+
+property OperandValue.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value BaseValueValueType.ValueType
+  IsValueRequired true
+  header {
+    description: "Scalar value of a LiteralOperand. Arrays and structured values are outside this envelope. No default."
+    display_name: "Operand Value"
+    display_plural: "Operand Values"
+    plural: "OperandValues"
   }
 }
 

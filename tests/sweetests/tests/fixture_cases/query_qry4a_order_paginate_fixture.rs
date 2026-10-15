@@ -673,21 +673,21 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
 
 /// Authors transient Query definitions: every holon is minted by a `NewHolon`
 /// step and related in place — never staged or committed.
-struct TransientAuthoring<'a> {
-    test_case: &'a mut DancesTestCase,
-    fixture_context: &'a std::sync::Arc<TransactionContext>,
-    fixture_holons: &'a mut FixtureHolons,
-    query_type: TestReference,
-    expand_type: TestReference,
-    skip_type: TestReference,
-    limit_type: TestReference,
-    order_by_type: TestReference,
-    spec_type: TestReference,
-    distinct_type: TestReference,
+pub(super) struct TransientAuthoring<'a> {
+    pub(super) test_case: &'a mut DancesTestCase,
+    pub(super) fixture_context: &'a std::sync::Arc<TransactionContext>,
+    pub(super) fixture_holons: &'a mut FixtureHolons,
+    pub(super) query_type: TestReference,
+    pub(super) expand_type: TestReference,
+    pub(super) skip_type: TestReference,
+    pub(super) limit_type: TestReference,
+    pub(super) order_by_type: TestReference,
+    pub(super) spec_type: TestReference,
+    pub(super) distinct_type: TestReference,
 }
 
 impl TransientAuthoring<'_> {
-    fn new_holon(
+    pub(super) fn new_holon(
         &mut self,
         key: &str,
         properties: PropertyMap,
@@ -703,7 +703,7 @@ impl TransientAuthoring<'_> {
         )
     }
 
-    fn relate(
+    pub(super) fn relate(
         &mut self,
         source: TestReference,
         relationship: &str,
@@ -714,7 +714,7 @@ impl TransientAuthoring<'_> {
     }
 
     /// Relates `targets` in order; an empty list leaves `source` unchanged.
-    fn relate_all(
+    pub(super) fn relate_all(
         &mut self,
         source: TestReference,
         relationship: &str,
@@ -734,7 +734,7 @@ impl TransientAuthoring<'_> {
         )
     }
 
-    fn described(
+    pub(super) fn described(
         &mut self,
         key: &str,
         properties: PropertyMap,
@@ -744,28 +744,44 @@ impl TransientAuthoring<'_> {
         self.relate(token, "DescribedBy", descriptor, format!("Describe transient {key}"))
     }
 
-    fn query(&mut self, key: &str, root: TestReference) -> Result<TestReference, HolonError> {
+    pub(super) fn query(
+        &mut self,
+        key: &str,
+        root: TestReference,
+    ) -> Result<TestReference, HolonError> {
         let properties = instance_properties("QueryName", key);
         let query = self.described(key, properties, self.query_type.clone())?;
         self.relate(query, "RootExpression", root, format!("{key} --RootExpression--> root"))
     }
 
-    fn expand(&mut self, key: &str, relationship: &str) -> Result<TestReference, HolonError> {
+    pub(super) fn expand(
+        &mut self,
+        key: &str,
+        relationship: &str,
+    ) -> Result<TestReference, HolonError> {
         let properties = instance_properties("ExpansionRelationshipName", relationship);
         self.described(key, properties, self.expand_type.clone())
     }
 
-    fn skip(&mut self, key: &str, count: Option<i64>) -> Result<TestReference, HolonError> {
+    pub(super) fn skip(
+        &mut self,
+        key: &str,
+        count: Option<i64>,
+    ) -> Result<TestReference, HolonError> {
         self.described(key, count_properties("SkipCount", count), self.skip_type.clone())
     }
 
-    fn limit(&mut self, key: &str, count: Option<i64>) -> Result<TestReference, HolonError> {
+    pub(super) fn limit(
+        &mut self,
+        key: &str,
+        count: Option<i64>,
+    ) -> Result<TestReference, HolonError> {
         self.described(key, count_properties("LimitCount", count), self.limit_type.clone())
     }
 
     /// An `OrderBySpec` selecting `property_name` (normally a string); `None`
     /// leaves that argument, SortDirection or NullPlacement unset.
-    fn spec(
+    pub(super) fn spec(
         &mut self,
         key: &str,
         property_name: Option<BaseValue>,
@@ -786,7 +802,7 @@ impl TransientAuthoring<'_> {
     }
 
     /// An `OrderBy` relating `specs` in precedence order.
-    fn order_by(
+    pub(super) fn order_by(
         &mut self,
         key: &str,
         specs: Vec<TestReference>,
@@ -796,11 +812,11 @@ impl TransientAuthoring<'_> {
     }
 
     /// A parameter-free `Distinct`.
-    fn distinct(&mut self, key: &str) -> Result<TestReference, HolonError> {
+    pub(super) fn distinct(&mut self, key: &str) -> Result<TestReference, HolonError> {
         self.described(key, PropertyMap::new(), self.distinct_type.clone())
     }
 
-    fn next(
+    pub(super) fn next(
         &mut self,
         expression: TestReference,
         successor: TestReference,
@@ -810,7 +826,7 @@ impl TransientAuthoring<'_> {
 }
 
 /// A `PropertyName` argument selecting `name`.
-fn selector(name: &str) -> Option<BaseValue> {
+pub(super) fn selector(name: &str) -> Option<BaseValue> {
     Some(MapString(name.to_string()).to_base_value())
 }
 

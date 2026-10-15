@@ -111,14 +111,32 @@ pub async fn execute_query(
 }
 
 /// Definition relationships a query evaluation reads and must never change.
-const DEFINITION_RELATIONSHIPS: [&str; 3] = ["RootExpression", "Next", "OrderBySpecs"];
+const DEFINITION_RELATIONSHIPS: [&str; 10] = [
+    "RootExpression",
+    "Next",
+    "OrderBySpecs",
+    "SeedPredicate",
+    "ExpansionPredicate",
+    "Predicate",
+    "Predicates",
+    "Operator",
+    "Operands",
+    "ValueType",
+];
+
+/// Relationships from an expression or predicate to the definition holons it
+/// carries: sort specs, attached or applied predicates, group children, and
+/// literal operands.
+const CARRIED_DEFINITIONS: [&str; 6] =
+    ["OrderBySpecs", "SeedPredicate", "ExpansionPredicate", "Predicate", "Predicates", "Operands"];
 
 /// One definition holon's identity, content, and definition-relationship members.
 type DefinitionSnapshot = (String, HolonNodeModel, Vec<Vec<String>>);
 
 /// Content of every definition holon reachable from `query`: the query, each
-/// expression along `RootExpression`/`Next`, and each attached `OrderBySpec`
-/// — its properties plus its definition relationships' members, in order.
+/// expression along `RootExpression`/`Next`, and every holon those expressions
+/// carry (OrderBySpecs, predicates and their children, literal operands) —
+/// its properties plus its definition relationships' members, in order.
 fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
     let snapshot_of = |holon: &HolonReference| {
         let relationships = DEFINITION_RELATIONSHIPS
@@ -142,12 +160,22 @@ fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
             break; // a cyclic chain is the runtime's error to report, not ours
         }
         snapshot.push(snapshot_of(&expression));
-        for spec in related_members(&expression, "OrderBySpecs") {
-            snapshot.push(snapshot_of(&spec));
+        // Carried holons may be shared between expressions or nest; each is
+        // recorded once, and nesting is the runtime's to reject, not ours.
+        let mut carried: Vec<HolonReference> = carried_definitions(&expression);
+        while let Some(holon) = carried.pop() {
+            if seen.insert(holon.reference_id_string()) {
+                snapshot.push(snapshot_of(&holon));
+                carried.extend(carried_definitions(&holon));
+            }
         }
         next = related_members(&expression, "Next").into_iter().next();
     }
     snapshot
+}
+
+fn carried_definitions(holon: &HolonReference) -> Vec<HolonReference> {
+    CARRIED_DEFINITIONS.iter().flat_map(|name| related_members(holon, *name)).collect()
 }
 
 /// The step's collection operand with fixture tokens resolved to references.

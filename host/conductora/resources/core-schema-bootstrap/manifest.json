@@ -107,7 +107,7 @@
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "c24419caeb3c85fdce012d64fae69b89fa422cbe94b5b7445db00f9eff0e8862"
+      "sha256": "9704c09e39ce40bd3fa98dbc47b431ac1fb172691fac339fc1612b9021c660d5"
     },
     {
       "path": "imports/query-dance/schema.json",
@@ -144,6 +144,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Canvas.HolonType)-[ContainsVisualizer]->(Visualizer.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -178,6 +182,14 @@
     {
       "key": "(CommitValidationFinding.Projection)-[ValidationFindingOf]->(CommitResponse.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ComparisonPredicate.HolonType)-[Operands]->(LiteralOperand.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ComparisonPredicate.HolonType)-[Operator]->(OperatorType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Constraint.HolonType)-[Constrains]->(TypeDescriptor)",
@@ -317,6 +329,10 @@
     },
     {
       "key": "(Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Filter.HolonType)-[Predicate]->(QueryPredicate.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -536,6 +552,14 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(LiteralOperand.HolonType)-[OperandsForPredicates]->(ComparisonPredicate.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LiteralOperand.HolonType)-[ValueType]->(ValueType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(LoadDiagnostic.Projection)-[DiagnosticEvidence]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -664,6 +688,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(OperatorType.HolonType)-[OperatorForPredicates]->(ComparisonPredicate.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -789,6 +817,14 @@
     },
     {
       "key": "(QueryPredicate.HolonType)-[ExpansionPredicateFor]->(Expand.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicateForFilters]->(Filter.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicatesForAnyOf]->(AnyOf.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -941,6 +977,10 @@
     },
     {
       "key": "(ValueType.TypeDescriptor)-[OperandValueTypeForSpecifications]->(OperandSpecification.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[ValueTypeForLiteralOperands]->(LiteralOperand.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1184,6 +1224,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "AnyOf.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "Arity.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -1410,6 +1454,10 @@
     {
       "key": "CommitsAttempted.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ComparisonPredicate.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "Compat.PropertyType",
@@ -2352,6 +2400,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "Filter.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "FocusRingColor.DesignToken",
       "type": "DesignToken.HolonType"
     },
@@ -2718,6 +2770,10 @@
     {
       "key": "LinksCreated.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LiteralOperand.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "LoadCommitStatus.MapEnumValueType",
@@ -3138,6 +3194,10 @@
     {
       "key": "OperandSpecification.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "OperandValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "OperandValueTypeRule.MapEnumValueType",

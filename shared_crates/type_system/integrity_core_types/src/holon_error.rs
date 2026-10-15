@@ -169,6 +169,14 @@ pub enum HolonError {
     #[error("Operator {operator} expects {expected} authored operand(s), found {found}")]
     OperandCountMismatch { operator: String, expected: usize, found: usize },
     #[error(
+        "Literal declared as {declared} is incompatible with operator {operator}, which requires {required}"
+    )]
+    IncompatibleLiteralType { declared: String, required: String, operator: String },
+    #[error(
+        "Value type {value_type} carries a {constraint_type} constraint (declared on {descriptor}) that has no available evaluator"
+    )]
+    UnsupportedValueConstraint { constraint_type: String, value_type: String, descriptor: String },
+    #[error(
         "Operator {operator} is not supported for value type {value_type} on descriptor {descriptor}"
     )]
     UnsupportedOperator { operator: String, value_type: String, descriptor: String },
@@ -267,6 +275,8 @@ pub enum HolonErrorKind {
     UnknownOperandValueTypeRule,
     InvalidOperatorMetadata,
     OperandCountMismatch,
+    IncompatibleLiteralType,
+    UnsupportedValueConstraint,
     UnsupportedOperator,
     UnsupportedStagedTraversal,
     Utf8Conversion,
@@ -339,6 +349,8 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::UnknownOperandValueTypeRule { .. } => Self::UnknownOperandValueTypeRule,
             HolonError::InvalidOperatorMetadata { .. } => Self::InvalidOperatorMetadata,
             HolonError::OperandCountMismatch { .. } => Self::OperandCountMismatch,
+            HolonError::IncompatibleLiteralType { .. } => Self::IncompatibleLiteralType,
+            HolonError::UnsupportedValueConstraint { .. } => Self::UnsupportedValueConstraint,
             HolonError::UnsupportedOperator { .. } => Self::UnsupportedOperator,
             HolonError::UnsupportedStagedTraversal { .. } => Self::UnsupportedStagedTraversal,
             HolonError::Utf8Conversion(_, _) => Self::Utf8Conversion,

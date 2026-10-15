@@ -13,7 +13,7 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
-use type_names::ToOperatorName;
+use type_names::{CoreRelationshipTypeName, ToOperatorName};
 
 /// Runtime wrapper for value-type descriptors.
 ///
@@ -57,6 +57,16 @@ impl ValueDescriptor {
             }
             ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
         }
+    }
+
+    /// Returns inherited constraint occurrences with their declaring descriptors.
+    /// Ancestor contributions precede local contributions; duplicates remain visible.
+    ///
+    /// This only reads the attached constraints; it evaluates none of them.
+    pub fn effective_constraints(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        super::effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Constraints)
     }
 
     /// Returns operators afforded by this descriptor across its inheritance chain.
@@ -349,7 +359,7 @@ mod tests {
     use base_types::{MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
     use core_types::HolonError;
     use std::sync::Arc;
-    use type_names::{CoreOperatorTypeName, CoreRelationshipTypeName};
+    use type_names::CoreOperatorTypeName;
 
     #[test]
     fn layout_classification_uses_nearest_local_anchor_without_root_lookups(

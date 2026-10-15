@@ -243,6 +243,10 @@ impl From<HolonError> for ResponseStatusCode {
             }
             HolonError::InvalidOperatorMetadata { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::OperandCountMismatch { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::IncompatibleLiteralType { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnsupportedValueConstraint { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
             HolonError::UnsupportedOperator { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnsupportedStagedTraversal { .. } => {
                 ResponseStatusCode::UnprocessableEntity
