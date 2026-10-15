@@ -13,7 +13,7 @@ it('preserves bound singular navigation through partial context without consulti
   const activate = vi.fn(), restore = vi.fn();
   node.setContext(selectedTitleContext({ title: 'Load Holons', nodeAffordances: { singularRelationships: [descriptor, owner] }, activateRelationship: activate, childVisualizers: new Map([['properties', properties]]) }));
   document.body.append(node); node.setOccurrenceRestorationHandler(restore);
-  applyNodePresentation(node, { width: 180, height: 320, requiredCapabilities: ['navigate-singular'] });
+  applyNodePresentation(node, { width: 180, height: 480, requiredCapabilities: ['navigate-singular'] });
   const button = node.rail.querySelector('button'); button.click(); expect(activate).toHaveBeenCalledWith(descriptor);
   expect(node.rail.inert).toBe(false); expect(node.properties.inert).toBe(true); expect(node.properties.contains(properties)).toBe(true);
   expect(restore).not.toHaveBeenCalled(); node.remove();

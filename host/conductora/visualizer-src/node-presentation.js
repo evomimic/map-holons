@@ -11,7 +11,7 @@ export function nodeCapabilities(horizontal, vertical) {
 export function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map(n => n * scale), preferred: preferred.map(n => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 320], [64, 300, 640], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 480], [64, 300, 720], [24, 64]) };
 }
 export function resolveAxis(profile, budget, frame = 0) {
   const { minimum, preferred, channel } = profile;

@@ -22,6 +22,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.collections.replaceChildren(this.collectionsExpand, this.discoveryStatus, content);
     Object.assign(content.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
     this.hasCollections = true;
+    this.ownedCollectionOpen = true;
     this.collectionsExpand.hidden = false;
     this.collectionsExpand.style.display = 'block';
     if (this.allocation) this.setNodeInspectorAllocation(this.allocation);
@@ -98,6 +99,7 @@ export default class LoadHolonsInspector extends HTMLElement {
             viewer.textContent = update.message || (update.state === 'unresolved' ? '' : 'No targets.');
             if (update.retry) viewer.append(control('Retry collection', 'Retry', update.retry));
           }
+          if (this.allocation) this.applyNodePresentation(this.allocation);
         }));
         this.collectionControls.set(affordance, tab); tabs.append(tab);
       }
@@ -109,6 +111,7 @@ export default class LoadHolonsInspector extends HTMLElement {
       this.collections.append(collections);
     }
     this.hasCollections = !!collections;
+    this.ownedCollectionOpen = !!context.childVisualizers?.get('collections');
     this.collectionsExpand.hidden = !this.hasCollections;
     this.collectionsExpand.style.display = this.hasCollections ? 'block' : 'none';
     this.content = document.createElement('section');
@@ -184,7 +187,7 @@ export default class LoadHolonsInspector extends HTMLElement {
   setOccurrenceRestorationHandler(handler) { this.restore = handler; }
   get visualizerOperations() { return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: input => this.applyNodePresentation(input) }; }
   applyNodePresentation(input) {
-    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16));
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), !!(this.activeCollection || this.ownedCollectionOpen));
     this.allocation = { width: input.width, height: input.height, requiredCapabilities: [...input.requiredCapabilities] };
     Object.assign(this.style, { width: `${layout.width}px`, height: `${layout.height}px` });
     this.heading.style.height = `${layout.title}px`; this.heading.style.flex = `0 0 ${layout.title}px`;

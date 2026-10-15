@@ -54,7 +54,8 @@ try {
       if (!hittable) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: Collection navigation is clipped or obscured`);
     }
     if (result.capabilities.includes('navigate-singular') || result.capabilities.includes('inspect')) {
-      const singular = page.getByRole('button', { name: 'Navigate singular relationship', exact: true });
+      const singular = page.getByRole('button', { name: /^Navigate singular relationship/ });
+      if (result.capabilities.includes('inspect') && !await singular.isVisible()) throw new Error(`${kind} @${scale}: Full inspection hides the entire singular rail behind disclosure`);
       if (!await singular.isVisible()) await page.getByRole('button', { name: 'More relationships', exact: true }).click();
       await singular.focus();
       await singular.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
@@ -69,10 +70,22 @@ try {
     await page.evaluate(scale => window.allocationFixture.reassign('compact', 'compact', scale), scale);
     await page.evaluate(scale => window.allocationFixture.reassign('expanded', 'expanded', scale), scale);
     const restored = await page.evaluate(() => window.allocationFixture.measure());
-    if (restored.edit !== result.edit || restored.failures.length) throw new Error('Resize lost content or containment');
+    if (restored.edit !== result.edit || restored.failures.length) throw new Error(`Resize lost content or containment: ${restored.failures.join('; ')}`);
     for (let step = 0; step < 12; step++) await page.keyboard.press('Tab');
     if (!result.edit.startsWith('retained-')) throw new Error('Retained edit state was lost');
     cases++;
+  }
+  for (const kind of ['generic', 'loader']) for (const scale of [1, 1.25, 2]) {
+    await page.evaluate(args => window.allocationFixture.mount(...args), [kind, 'expanded', 'expanded', scale, false]);
+    const result = await page.evaluate(() => window.allocationFixture.measure());
+    if (result.failures.length) throw new Error(`Unopened Collection: ${result.failures.join('; ')}`);
+    const height = await page.locator('[data-dahn-properties-list]').evaluate(element => element.getBoundingClientRect().height);
+    if (height < 250 * scale) throw new Error(`Unopened viewer still consumes Properties space: ${kind} @${scale}: ${height}`);
+    cases++;
+  }
+  if (process.env.MAP_ALLOCATION_SCREENSHOT) {
+    await page.evaluate(() => window.allocationFixture.mount('generic', 'expanded', 'expanded', 1, false));
+    await page.screenshot({ path: process.env.MAP_ALLOCATION_SCREENSHOT });
   }
   if (errors.length) throw new Error(errors.join('\n'));
   console.log(`${cases} browser allocation/containment/keyboard cases passed`);

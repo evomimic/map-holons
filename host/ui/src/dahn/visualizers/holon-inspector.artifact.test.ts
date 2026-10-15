@@ -40,7 +40,7 @@ it('validates the complete assignment before mutation and distinguishes invalid 
   const { node } = await fixture();
   const valid = { width: 800, height: 640, requiredCapabilities: ['inspect'] };
   applyNodePresentation(node, valid);
-  for (const invalid of [{ ...valid, width: 1 }, { ...valid, requiredCapabilities: ['unknown'] }, { ...valid, requiredCapabilities: ['inspect', 'navigate-singular'] }, { ...valid, height: NaN }, { width: 180, height: 200, requiredCapabilities: ['navigate-singular'] }]) {
+  for (const invalid of [{ ...valid, width: 1 }, { ...valid, height: 320 }, { ...valid, requiredCapabilities: ['unknown'] }, { ...valid, requiredCapabilities: ['inspect', 'navigate-singular'] }, { ...valid, height: NaN }, { width: 180, height: 200, requiredCapabilities: ['navigate-singular'] }]) {
     expect(() => applyNodePresentation(node, invalid)).toThrow(); expect(node.getNodeInspectorAllocation()).toEqual(valid);
   }
   const returned = node.getNodeInspectorAllocation(); returned.requiredCapabilities.push('unknown');
@@ -59,9 +59,9 @@ it('clears incompatible local expansion once, preserving content and restoring w
   applyNodePresentation(node, { width: 360, height: 200, requiredCapabilities: ['navigate-plural', 'present-active-collection'] });
   expect(node.maximizedRegion).toBeUndefined();
   expect(node.requestRegion('restore').status).toBe('already-satisfied');
-  applyNodePresentation(node, { width: 500, height: 360, requiredCapabilities: ['inspect'] });
+  applyNodePresentation(node, { width: 500, height: 480, requiredCapabilities: ['inspect'] });
   expect(node.contains(properties)).toBe(true); expect(node.contains(collection)).toBe(true);
-  expect(node.getNodeInspectorAllocation()).toMatchObject({ width: 500, height: 360 });
+  expect(node.getNodeInspectorAllocation()).toMatchObject({ width: 500, height: 480 });
 });
 it('late Collection content updates consume the existing grant without upward extent reports', async () => {
   const { node, collection } = await fixture();

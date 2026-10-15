@@ -1,3 +1,4 @@
+import { bindVisualizerInformationControl } from '../src/dahn/runtime/visualizer-information-control';
 import { composeNodeTitle } from '../src/dahn/runtime/title-composition';
 import { MaterializedVisualizerRuntime } from '../src/dahn/runtime/materialized-visualizer-runtime';
 import { MaterializedVisualizerCache } from '../src/dahn/runtime/materialized-visualizer-cache';
@@ -34,14 +35,25 @@ const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCach
   return { source: await (await fetch(`/resources/${filename}.js`)).text(), format: 'ESModule', entrypoint: 'default' };
 } }));
 let serial = 0;
-export async function mount(kind: string, horizontal: string, vertical: string, textScale = 1) {
+export async function mount(kind: string, horizontal: string, vertical: string, textScale = 1, activeCollection = true) {
   document.body.replaceChildren();
   titleChoice = kind === 'loader' ? 'CompactTitleBar.TitleBarVisualizer' : 'NodeTitleBar.TitleBarVisualizer';
   const owner = ref(kind === 'generic' ? 'HolonInspector.NodeVisualizer' : 'LoadHolons.NodeVisualizer');
   const Constructor = await runtime.realize(owner) as CustomElementConstructor;
   const node: any = document.createElement(defineCustomElementOnce(`fixture-${kind}`, Constructor));
-  const property = document.createElement('section');
-  property.innerHTML = `<label>Retained edit <input value="retained-${++serial}"></label><p>${'Wrapping property text '.repeat(100)}</p>`;
+  const PropertyMap = await runtime.realize(ref('DefaultPropertyMapVisualizer.PropertyMapVisualizer')) as CustomElementConstructor;
+  const property: any = document.createElement(defineCustomElementOnce('fixture-properties', PropertyMap));
+  const propertyChildren = new Map();
+  for (const label of ['Key', 'Description', 'Type', 'Version', 'Status', 'Owner']) {
+    const child = document.createElement('label');
+    child.style.cssText = 'display:flex;flex-direction:column;font:inherit;';
+    child.textContent = label;
+    const input = document.createElement('input'); input.value = `retained-${++serial}`; input.style.font = 'inherit';
+    child.append(input); propertyChildren.set(label, child);
+  }
+  property.setContext({ title: 'Properties', childVisualizers: propertyChildren });
+  await bindVisualizerInformationControl(property, transaction, subject, ref('HolonInspector.NodeVisualizer'), ref('HolonInspector.PropertyMapSlot'), ref('DefaultPropertyMapVisualizer.PropertyMapVisualizer'));
+  const actions = document.createElement('section'); actions.textContent = 'Node actions — unavailable';
   const collection = document.createElement('nav'); collection.setAttribute('aria-label', 'Non-table Collection');
   collection.style.cssText = 'display:flex;flex-direction:column;min-height:0;min-width:0;overflow:auto;flex:1;';
   for (let index = 0; index < 30; index++) {
@@ -49,8 +61,8 @@ export async function mount(kind: string, horizontal: string, vertical: string, 
     button.style.cssText = 'flex:0 0 auto;font:inherit;'; collection.append(button);
   }
   const context: any = { title: 'Holon: A long readable subject identity', holonKey: 'Fixture.Subject', target: { reference: subject }, actions: [],
-    theme: { reference: ref('fixture-theme') }, canvas: {}, nodeAffordances: { singularRelationships: [{ label: 'Navigate singular relationship', relationship: {} }], collections: [] }, activateRelationship: () => {},
-    childVisualizers: new Map([['properties', property], ['collections', collection]]) };
+    theme: { reference: ref('fixture-theme') }, canvas: {}, nodeAffordances: { singularRelationships: ['Navigate singular relationship', 'Owned by', 'Described by', 'Version of', 'Source', 'Parent'].map(label => ({ label, relationship: {} })), collections: [] }, relationshipDiscovery: { population: () => ({ state: 'populated', count: 1 }), subscribe: (listener: () => void) => { listener(); return () => {}; } }, activateRelationship: () => {},
+    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions]]) };
   const title = await composeNodeTitle(transaction, runtime, owner, context);
   context.childVisualizers.set('titleBar', title);
   node.setContext(context);
@@ -85,7 +97,9 @@ export function measure() {
     const a = first.getBoundingClientRect(), b = second.getBoundingClientRect();
     if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) failures.push(`Sibling overlap: ${first.tagName}/${second.tagName}`);
   }
-  return { failures, edit: node.querySelector('input')?.value, restored: node.dataset.restored, capabilities: node.getNodeInspectorAllocation().requiredCapabilities };
+  const propertyList = node.querySelector('[data-dahn-properties-list]');
+  if (node.getNodeInspectorAllocation().requiredCapabilities.includes('inspect') && propertyList?.getBoundingClientRect().height < 100 * (parseFloat(node.style.fontSize) / 16)) failures.push(`Properties viewport too short: ${propertyList.getBoundingClientRect().height}px`);
+  return { failures, edit: node.querySelector('[data-dahn-properties] input')?.value, restored: node.dataset.restored, capabilities: node.getNodeInspectorAllocation().requiredCapabilities };
 }
 export function reassign(horizontal: string, vertical: string, textScale: number) {
   const node: any = document.body.firstElementChild;

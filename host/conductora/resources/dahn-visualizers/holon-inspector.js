@@ -6,7 +6,7 @@ var canonical = [[], ["inspect"], ["navigate-singular"], ["navigate-plural", "pr
 function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map((n) => n * scale), preferred: preferred.map((n) => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 320], [64, 300, 640], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 480], [64, 300, 720], [24, 64]) };
 }
 function validateNodePresentation(input) {
   const caps = input?.requiredCapabilities;
@@ -19,7 +19,7 @@ function validateNodePresentation(input) {
 }
 
 // host/conductora/visualizer-src/inspector-layout.js
-function inspectorLayout(input, titleHeight = 48) {
+function inspectorLayout(input, titleHeight = 48, activeCollection = true) {
   const grant = validateNodePresentation(input);
   const has = (capability) => grant.requiredCapabilities.includes(capability);
   const inspect = has("inspect");
@@ -27,13 +27,18 @@ function inspectorLayout(input, titleHeight = 48) {
   const plural = inspect || has("navigate-plural");
   const title = Math.min(grant.height, titleHeight);
   const remaining = grant.height - title;
-  const body = singular ? plural ? Math.floor(remaining * 0.4) : remaining : 0;
+  const scale = titleHeight / 48;
+  const actions = inspect ? 48 * scale : 0;
+  const detail = 176 * scale;
+  const tabs = 56 * scale;
+  const body = singular ? plural ? inspect ? activeCollection ? Math.min(remaining - 160 * scale, actions + detail) : remaining - tabs : Math.floor(remaining * 0.4) : remaining : 0;
   return {
     ...grant,
     inspect,
     singular,
     plural,
     title,
+    actions,
     body,
     collection: plural ? remaining - body : 0,
     vertical: inspect || singular && !plural ? "full-height" : plural ? "partial-height" : "minimal-height",
@@ -207,7 +212,7 @@ var HolonInspectorElement = class extends HTMLElement {
     };
     this.titleBar.update({
       width: this.allocatedWidth,
-      height: this.allocation ? inspectorLayout(this.allocation).title : 48,
+      height: this.titleHeight ?? 48,
       vertical: this.verticalState,
       horizontal: this.horizontalState,
       canExplore: !!this.exploreOccurrence,
@@ -268,7 +273,7 @@ var HolonInspectorElement = class extends HTMLElement {
     this.collectionRegion.style.display = collections ? "flex" : "none";
     this.collectionRegion.style.gridRow = collections ? "2" : "3";
     this.collectionRegion.inert = !collections;
-    this.style.gridTemplateRows = `${inspectorLayout(this.allocation).title}px minmax(0, 1fr)`;
+    this.style.gridTemplateRows = `${this.titleHeight}px minmax(0, 1fr)`;
     const active = document.activeElement;
     if (this.actionBar.contains(active) || this.singleValueRail.contains(active) || !properties && this.body.contains(active) || !collections && this.collectionRegion.contains(active)) this.titleControl.focus();
   }
@@ -301,7 +306,8 @@ var HolonInspectorElement = class extends HTMLElement {
   }
   adaptBudget() {
     if (!this.body || !this.singleValueRail || !this.allocation) return;
-    const layout = inspectorLayout(this.allocation, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16));
+    const layout = inspectorLayout(this.allocation, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), !!this.collectionViewer && !this.collectionViewer.hidden);
+    this.titleHeight = layout.title;
     const active = document.activeElement;
     if (!layout.inspect) this.maximizedRegion = void 0;
     Object.assign(this.style, {
@@ -320,11 +326,12 @@ var HolonInspectorElement = class extends HTMLElement {
     this.body.style.display = layout.singular ? "grid" : "none";
     this.propertyViewer.style.display = layout.inspect ? "flex" : "none";
     this.propertyViewer.style.gridRow = "2";
+    if (this.propertiesVisualizer) Object.assign(this.propertiesVisualizer.style, { flex: "1 1 0", minHeight: "0", height: "auto" });
     this.actionBar.style.display = layout.inspect ? "flex" : "none";
     this.collectionRegion.style.display = layout.plural ? "flex" : "none";
     this.collectionRegion.style.gridRow = "3";
     this.body.style.gridTemplateColumns = layout.inspect ? "minmax(0, 1fr) minmax(0, min(40%, 14rem))" : "minmax(0, 1fr)";
-    this.body.style.gridTemplateRows = layout.inspect ? "minmax(0, 40%) minmax(0, 1fr)" : "minmax(0, 1fr)";
+    this.body.style.gridTemplateRows = layout.inspect ? `${layout.actions}px minmax(0, 1fr)` : "minmax(0, 1fr)";
     this.singleValueRail.style.gridColumn = layout.inspect ? "2" : "1";
     this.singleValueRail.style.gridRow = layout.inspect ? "2" : "1";
     this.singleValueRail.style.justifySelf = "end";
@@ -539,7 +546,6 @@ var HolonInspectorElement = class extends HTMLElement {
         control.tabIndex = index ? -1 : 0;
       });
       this.adaptBudget();
-      if (wasOpen) this.dispatchEvent(new CustomEvent("dahn-spatial-extents-changed", { bubbles: true }));
       if (recoverFocus) this.titleControl.focus();
       return;
     }
@@ -559,7 +565,6 @@ var HolonInspectorElement = class extends HTMLElement {
         viewer.append(retry);
       }
     }
-    if (!wasOpen) this.dispatchEvent(new CustomEvent("dahn-spatial-extents-changed", { bubbles: true }));
     viewer.scrollTop = 0;
     viewer.scrollLeft = 0;
     this.scheduleLayout();

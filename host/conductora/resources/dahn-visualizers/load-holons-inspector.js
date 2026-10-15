@@ -6,7 +6,7 @@ var canonical = [[], ["inspect"], ["navigate-singular"], ["navigate-plural", "pr
 function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map((n) => n * scale), preferred: preferred.map((n) => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 320], [64, 300, 640], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 480], [64, 300, 720], [24, 64]) };
 }
 function validateNodePresentation(input) {
   const caps = input?.requiredCapabilities;
@@ -19,7 +19,7 @@ function validateNodePresentation(input) {
 }
 
 // host/conductora/visualizer-src/inspector-layout.js
-function inspectorLayout(input, titleHeight = 48) {
+function inspectorLayout(input, titleHeight = 48, activeCollection = true) {
   const grant = validateNodePresentation(input);
   const has = (capability) => grant.requiredCapabilities.includes(capability);
   const inspect = has("inspect");
@@ -27,13 +27,18 @@ function inspectorLayout(input, titleHeight = 48) {
   const plural = inspect || has("navigate-plural");
   const title = Math.min(grant.height, titleHeight);
   const remaining = grant.height - title;
-  const body = singular ? plural ? Math.floor(remaining * 0.4) : remaining : 0;
+  const scale = titleHeight / 48;
+  const actions = inspect ? 48 * scale : 0;
+  const detail = 176 * scale;
+  const tabs = 56 * scale;
+  const body = singular ? plural ? inspect ? activeCollection ? Math.min(remaining - 160 * scale, actions + detail) : remaining - tabs : Math.floor(remaining * 0.4) : remaining : 0;
   return {
     ...grant,
     inspect,
     singular,
     plural,
     title,
+    actions,
     body,
     collection: plural ? remaining - body : 0,
     vertical: inspect || singular && !plural ? "full-height" : plural ? "partial-height" : "minimal-height",
@@ -136,6 +141,7 @@ var LoadHolonsInspector = class extends HTMLElement {
     this.collections.replaceChildren(this.collectionsExpand, this.discoveryStatus, content);
     Object.assign(content.style, { flex: "1 1 0", minHeight: "0", height: "auto" });
     this.hasCollections = true;
+    this.ownedCollectionOpen = true;
     this.collectionsExpand.hidden = false;
     this.collectionsExpand.style.display = "block";
     if (this.allocation) this.setNodeInspectorAllocation(this.allocation);
@@ -243,6 +249,7 @@ var LoadHolonsInspector = class extends HTMLElement {
             viewer.textContent = update.message || (update.state === "unresolved" ? "" : "No targets.");
             if (update.retry) viewer.append(control("Retry collection", "Retry", update.retry));
           }
+          if (this.allocation) this.applyNodePresentation(this.allocation);
         }));
         this.collectionControls.set(affordance, tab);
         tabs.append(tab);
@@ -257,6 +264,7 @@ var LoadHolonsInspector = class extends HTMLElement {
       this.collections.append(collections);
     }
     this.hasCollections = !!collections;
+    this.ownedCollectionOpen = !!context.childVisualizers?.get("collections");
     this.collectionsExpand.hidden = !this.hasCollections;
     this.collectionsExpand.style.display = this.hasCollections ? "block" : "none";
     this.content = document.createElement("section");
@@ -346,7 +354,7 @@ var LoadHolonsInspector = class extends HTMLElement {
     return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: (input) => this.applyNodePresentation(input) };
   }
   applyNodePresentation(input) {
-    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16));
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), !!(this.activeCollection || this.ownedCollectionOpen));
     this.allocation = { width: input.width, height: input.height, requiredCapabilities: [...input.requiredCapabilities] };
     Object.assign(this.style, { width: `${layout.width}px`, height: `${layout.height}px` });
     this.heading.style.height = `${layout.title}px`;

@@ -75,7 +75,7 @@ export default class HolonInspectorElement extends HTMLElement {
         ? 'M19 5l-6 6m0-5v5h5 M5 19l6-6m-5 0h5v5'
         : 'M14 5h5v5 M19 5l-6 6 M10 19H5v-5 M5 19l6-6');
     };
-    this.titleBar.update({ width: this.allocatedWidth, height: this.allocation ? inspectorLayout(this.allocation).title : 48,
+    this.titleBar.update({ width: this.allocatedWidth, height: this.titleHeight ?? 48,
       vertical: this.verticalState, horizontal: this.horizontalState,
       canExplore: !!this.exploreOccurrence, canClose: !!this.closeOccurrence,
       localExpanded: !!this.maximizedRegion, canMaximize: !!this.occurrenceAttention, maximized: this.occurrenceMaximized });
@@ -127,7 +127,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.collectionRegion.style.display = collections ? 'flex' : 'none';
     this.collectionRegion.style.gridRow = collections ? '2' : '3';
     this.collectionRegion.inert = !collections;
-    this.style.gridTemplateRows = `${inspectorLayout(this.allocation).title}px minmax(0, 1fr)`;
+    this.style.gridTemplateRows = `${this.titleHeight}px minmax(0, 1fr)`;
     const active = document.activeElement;
     if (this.actionBar.contains(active) || this.singleValueRail.contains(active)
       || (!properties && this.body.contains(active)) || (!collections && this.collectionRegion.contains(active))) this.titleControl.focus();
@@ -153,7 +153,8 @@ export default class HolonInspectorElement extends HTMLElement {
   }
   adaptBudget() {
     if (!this.body || !this.singleValueRail || !this.allocation) return;
-    const layout = inspectorLayout(this.allocation, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16));
+    const layout = inspectorLayout(this.allocation, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), !!this.collectionViewer && !this.collectionViewer.hidden);
+    this.titleHeight = layout.title;
     const active = document.activeElement;
     if (!layout.inspect) this.maximizedRegion = undefined;
     Object.assign(this.style, { width: `${layout.width}px`, height: `${layout.height}px`, boxSizing: 'border-box', gap: '0',
@@ -166,11 +167,12 @@ export default class HolonInspectorElement extends HTMLElement {
     this.body.style.display = layout.singular ? 'grid' : 'none';
     this.propertyViewer.style.display = layout.inspect ? 'flex' : 'none';
     this.propertyViewer.style.gridRow = '2';
+    if (this.propertiesVisualizer) Object.assign(this.propertiesVisualizer.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
     this.actionBar.style.display = layout.inspect ? 'flex' : 'none';
     this.collectionRegion.style.display = layout.plural ? 'flex' : 'none';
     this.collectionRegion.style.gridRow = '3';
     this.body.style.gridTemplateColumns = layout.inspect ? 'minmax(0, 1fr) minmax(0, min(40%, 14rem))' : 'minmax(0, 1fr)';
-    this.body.style.gridTemplateRows = layout.inspect ? 'minmax(0, 40%) minmax(0, 1fr)' : 'minmax(0, 1fr)';
+    this.body.style.gridTemplateRows = layout.inspect ? `${layout.actions}px minmax(0, 1fr)` : 'minmax(0, 1fr)';
     this.singleValueRail.style.gridColumn = layout.inspect ? '2' : '1';
     this.singleValueRail.style.gridRow = layout.inspect ? '2' : '1';
     this.singleValueRail.style.justifySelf = 'end'; this.singleValueRail.style.width = '100%';
@@ -360,7 +362,6 @@ export default class HolonInspectorElement extends HTMLElement {
       viewer.style.display = 'none';
       this.collectionControls.forEach((control, index) => { control.setAttribute('aria-selected', 'false'); control.tabIndex = index ? -1 : 0; });
       this.adaptBudget();
-      if (wasOpen) this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
       if (recoverFocus) this.titleControl.focus();
       return;
     }
@@ -377,7 +378,6 @@ export default class HolonInspectorElement extends HTMLElement {
         retry.addEventListener('click', update.retry); viewer.append(retry);
       }
     }
-    if (!wasOpen) this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
     viewer.scrollTop = 0;
     viewer.scrollLeft = 0;
     this.scheduleLayout();
