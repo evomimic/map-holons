@@ -1,0 +1,23 @@
+/** The schema supplies membership; this selected bar owns only responsive arrangement. */
+export default class TitleActions extends HTMLElement {
+  static compositionSlots = { 'ExploreOccurrence.VisualizerOperator': 'NodeTitleActions.ExploreSlot', 'CloseOccurrence.VisualizerOperator': 'NodeTitleActions.CloseSlot', 'ExpandRestoreOccurrence.VisualizerOperator': 'NodeTitleActions.ExpandRestoreSlot', 'InspectOccurrence.VisualizerOperator': 'NodeTitleActions.InspectSlot' };
+  get visualizerOperations() { return { 'ApplyTitleActions.VisualizerOperator': input => {
+    if (!(input.width >= 80 && input.height >= 32)) throw new Error('Invalid title action grant');
+    for (const key of this.childrenByOperator.keys()) if (!input.actions[key]) throw new Error(`Missing required action state: ${key}`);
+    for (const [key, child] of this.childrenByOperator) {
+      const state = input.actions[key];
+      if (!state) throw new Error(`Missing required action state: ${key}`);
+      child.visualizerOperations['ApplyPresentationAction.VisualizerOperator'](state);
+    }
+    this.style.maxWidth = `${Math.max(32, input.width * .55)}px`; this.style.maxHeight = `${input.height}px`;
+    return { status: 'applied' };
+  } }; }
+  setContext(context) {
+    this.childrenByOperator = context.presentationActionChildren;
+    this.setAttribute('aria-label', 'Title actions — scroll for more');
+    this.style.cssText = 'display:flex;flex:0 1 auto;min-width:0;min-height:0;overflow:auto;align-items:center;box-sizing:border-box;';
+    this.replaceChildren(...this.childrenByOperator.values());
+    this.ready = Promise.resolve();
+  }
+  getVisualizerComposition() { return [...this.childrenByOperator].map(([key, element]) => ({ label: key, element })); }
+}

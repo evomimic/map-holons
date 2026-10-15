@@ -220,7 +220,9 @@ fn select_for_slot(
         for candidate in members {
             let candidate_type = candidate.holon_descriptor()?.holon().clone();
             for accepted_type in &accepted {
-                if equals_or_extends(&candidate_type, accepted_type)? {
+                if equals_or_extends(&candidate_type, accepted_type)?
+                    && crate::operators::fulfills_operators(slot, &candidate)?
+                {
                     if !candidates.iter().any(|c: &HolonReference| {
                         c.reference_id_string() == candidate.reference_id_string()
                     }) {
@@ -281,7 +283,8 @@ fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonE
         // not owned by, or named after, the Space Navigator Dancer.
         VisualizerKind::Canvas => Ok("MAP.BootstrapCanvasVisualizer"),
         VisualizerKind::Collection => Ok("TableCollectionVisualizer.CollectionVisualizer"),
-        VisualizerKind::Node
+        VisualizerKind::TitleBar
+        | VisualizerKind::Node
         | VisualizerKind::Structure
         | VisualizerKind::RootedNavigation
         | VisualizerKind::PropertyMap

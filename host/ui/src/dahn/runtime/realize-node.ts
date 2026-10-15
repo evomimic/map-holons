@@ -1,3 +1,4 @@
+import { composeNodeTitle } from './title-composition';
 import { bindVisualizerInformationControl } from './visualizer-information-control';
 import { ActionActivation, type ActionInteractions } from './action-activation';
 import type { ActionNode } from '../contracts/actions';
@@ -52,11 +53,6 @@ export async function realizeNode(
     !(nodeImplementation.prototype instanceof HTMLElement)
   ) {
     throw new Error('Selected Node implementation does not export an HTMLElement constructor.');
-  }
-  const nodePrototype = nodeImplementation.prototype as VisualizerElement;
-  if (typeof nodePrototype.getNodeInspectorExtents !== 'function'
-    || typeof nodePrototype.setNodeInspectorAllocation !== 'function') {
-    throw new Error('Selected Node does not fulfill the Node Inspector slot compression contract.');
   }
   const nodeTag = defineCustomElementOnce(
     'map-selected-node-visualizer',
@@ -233,6 +229,9 @@ export async function realizeNode(
     ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
   ]);
   collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction, { theme, canvas }, affordances.collections);
+  const titleElement = await composeNodeTitle(transaction, materialized, selectedVisualizer, {
+    title: `${typeDisplayName}: ${holonKey}`, holonKey, target: { reference: subject }, holon: view, actions: [], theme, canvas,
+  });
   element.setContext({
       collectionActivation,
       visualizerUsage,
@@ -251,12 +250,14 @@ export async function realizeNode(
       theme,
       canvas,
       nodeAffordances: affordances,
-      childVisualizers: new Map([['properties', propertiesElement], ['actions', actionsElement]]),
+      childVisualizers: new Map([['titleBar', titleElement], ['properties', propertiesElement], ['actions', actionsElement]]),
     });
+    await materialized.admitOffered(element, selectedVisualizer);
     const initialized = (element as VisualizerElement).ready;
     const children = [propertiesElement, actionsElement, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*')];
     const ready = initialized && Promise.all([initialized, ...children.map(child => (child as VisualizerElement).ready)]).then(() => {});
     const dispose = () => {
+      (titleElement as VisualizerElement).dispose?.();
       collectionActivation?.dispose();
       for (const action of actionActivations) void action.dispose().catch(console.error);
     };

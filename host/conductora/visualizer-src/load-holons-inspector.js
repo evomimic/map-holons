@@ -1,3 +1,5 @@
+import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
+import { inspectorLayout, boundedRegion } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 /** Specialized properties and result collections within ordinary Node allocation. */
@@ -8,10 +10,9 @@ export default class LoadHolonsInspector extends HTMLElement {
       if (event.target !== this.propertyVisualizer) return;
       event.stopPropagation();
       this.setNodeInspectorAllocation(this.allocation);
-      this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
     });
   }
-  static compositionSlots = { propertyMap: 'LoadHolonsResult.PropertyMapSlot', action: 'LoadHolonsResult.ActionsSlot' };
+  static compositionSlots = { titleBar: 'LoadHolonsResult.TitleBarSlot', propertyMap: 'LoadHolonsResult.PropertyMapSlot', action: 'LoadHolonsResult.ActionsSlot' };
   static usesOwnedResultSummary = true;
   setNodeOwnedSummary(content) {
     this.propertyVisualizer = content;
@@ -25,7 +26,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.collectionsExpand.style.display = 'block';
     if (this.allocation) this.setNodeInspectorAllocation(this.allocation);
   }
-  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation }; }
+  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation, requiredCapabilities: [...this.allocation.requiredCapabilities] }; }
   restoreNodeCollectionSelection(affordance) {
     const tab = this.collectionControls.get(affordance);
     if (!tab) throw new Error('Selected collection is unavailable.');
@@ -34,7 +35,7 @@ export default class LoadHolonsInspector extends HTMLElement {
   setContext(context) {
     this.unsubscribe?.();
     this.style.cssText = 'display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-panel-corner-radius);background:var(--dahn-canvas-surface-background);color:var(--dahn-canvas-text-color);';
-    this.titleBar = createNodeTitleBar({
+    this.titleBar = createNodeTitleBar(context, {
       title: context.title ?? 'Load Holons', holonKey: context.holonKey ?? context.title,
       restoreLocal: () => { if (this.collectionsMaximized) { this.collectionsMaximized = false; this.setNodeInspectorAllocation(this.allocation); } },
       restore: () => this.restore?.(), explore: () => this.explore?.(), close: () => this.close?.(),
@@ -181,60 +182,35 @@ export default class LoadHolonsInspector extends HTMLElement {
   setOccurrenceClosureHandler(handler) { this.close = handler; this.titleBar?.update({ canClose: !!handler }); }
   setOccurrenceExplorationHandler(handler) { this.explore = handler; this.titleBar?.update({ canExplore: !!handler }); }
   setOccurrenceRestorationHandler(handler) { this.restore = handler; }
-  getNodeInspectorExtents() {
-    const collection = [...(this.collections?.querySelectorAll('*') ?? [])].find(element => typeof element.getCollectionViewportHeight === 'function' && !element.closest('[hidden]'));
-    const lineHeight = parseFloat(getComputedStyle(this).lineHeight) || 20;
-    const rows = collection?.getCollectionViewportHeight(5) || 8 * (lineHeight + 8);
-    this.collectionHeight = rows + 48;
-    // A compressed vertical title reports its strip length, not header height.
-    // Preserve the normal measurement so it cannot inflate the shared Path row.
-    if (this.allocation?.horizontal !== 'minimal-width' && this.allocation?.vertical !== 'minimal-height') {
-      this.normalTitleHeight = this.heading?.getBoundingClientRect().height || this.normalTitleHeight;
-    }
-    const title = this.normalTitleHeight || 64;
-    const properties = Math.max(280, this.propertyContentHeight());
-    return {
-      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 96 },
-      vertical: { 'full-height': title + properties + 12 + this.collectionHeight, 'partial-height': title + this.collectionHeight, 'minimal-height': 64 },
-    };
-  }
-  // The PropertyMap fills its granted region; intrinsic reports size that region.
-  propertyContentHeight() {
-    return this.propertyVisualizer?.getPreferredContentHeight?.() ?? (this.propertyVisualizer?.scrollHeight || 280);
-  }
-  setNodeInspectorAllocation(allocation) {
-    if (!allocation) return;
-    this.allocation = allocation;
-    this.titleBar?.update({ width: allocation.width, height: allocation.height,
-      vertical: allocation.vertical, horizontal: allocation.horizontal });
-    this.style.width = allocation.width + 'px'; this.style.height = allocation.height + 'px';
-    const minimal = allocation.vertical === 'minimal-height';
-    const narrow = allocation.horizontal !== 'full-width';
-    const compactWidth = allocation.horizontal === 'minimal-width';
-    const partial = allocation.vertical !== 'full-height';
+  get visualizerOperations() { return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: input => this.applyNodePresentation(input) }; }
+  applyNodePresentation(input) {
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16));
+    this.allocation = { width: input.width, height: input.height, requiredCapabilities: [...input.requiredCapabilities] };
+    Object.assign(this.style, { width: `${layout.width}px`, height: `${layout.height}px` });
+    this.heading.style.height = `${layout.title}px`; this.heading.style.flex = `0 0 ${layout.title}px`;
+    if (!layout.inspect) this.collectionsMaximized = false;
+    this.titleBar.update({ width: layout.width, height: layout.title, vertical: layout.vertical, horizontal: layout.horizontal, localExpanded: !!this.collectionsMaximized });
     if (this.body) {
-      this.body.hidden = minimal || compactWidth;
-      this.body.style.display = this.body.hidden ? 'none' : 'flex';
-      if (narrow || minimal) this.collectionsMaximized = false;
-      this.properties.hidden = narrow || partial || this.collectionsMaximized;
+      boundedRegion(this.body, layout.singular || layout.plural, 'Load result navigation');
+      boundedRegion(this.properties, layout.inspect && !this.collectionsMaximized, 'Load summary — scroll for more');
+      boundedRegion(this.rail, layout.singular, 'Single-valued relationships — scroll for more');
+      boundedRegion(this.collections, layout.plural, 'Result collections — scroll for more');
+      this.body.style.display = layout.singular || layout.plural ? 'flex' : 'none';
+      this.body.style.overflow = 'hidden'; this.body.style.position = 'relative';
+      this.content.hidden = false; this.content.style.display = 'flex'; this.content.style.gap = '0';
       this.properties.style.display = this.properties.hidden ? 'none' : 'block';
-      const bodyHeight = Math.max(0, allocation.height - (this.heading?.getBoundingClientRect().height || 64));
-      const propertyBudget = Math.max(0, bodyHeight - (this.hasCollections ? 60 : 0));
-      this.properties.style.height = Math.min(this.propertyContentHeight(), propertyBudget) + 'px';
-      this.properties.style.flex = '0 0 auto';
-      this.collections.hidden = minimal || narrow;
-      this.collections.style.display = this.collections.hidden ? 'none' : 'flex';
-      this.content.hidden = narrow; this.content.style.display = narrow ? 'none' : 'flex';
-      this.rail.hidden = !!this.collectionsMaximized && !narrow && !minimal;
-      this.rail.style.display = this.rail.hidden ? 'none' : 'flex';
+      this.properties.style.height = `${layout.body}px`; this.properties.style.flex = `0 0 ${layout.body}px`;
+      this.collections.style.display = layout.plural ? 'flex' : 'none';
+      this.collections.style.flex = '1 1 0'; this.collections.style.flexDirection = 'column';
+      this.rail.style.display = layout.singular ? 'flex' : 'none';
+      this.rail.style.maxWidth = layout.inspect ? 'min(40%, 14rem)' : layout.plural ? '40%' : '100%';
+      this.rail.style.flex = layout.inspect || layout.plural ? '0 1 14rem' : '1 1 0';
+      // Both-context keeps the rail and the active Collection independently usable.
+      if (!layout.inspect && !layout.plural) { this.content.hidden = true; this.content.style.display = 'none'; }
       this.collectionsExpand.setAttribute('aria-label', this.collectionsMaximized ? 'Restore Collections' : 'Maximize Collections');
-      this.collectionsExpand.title = this.collectionsMaximized ? 'Restore Collections' : 'Maximize Collections';
-      this.rail.style.maxWidth = narrow ? '100%' : '14rem';
-      this.rail.style.flex = narrow ? '1 1 0' : '0 0 auto';
-      this.collections.style.flex = '1 1 0';
-      this.collections.style.flexDirection = 'column';
-      this.collections.inert = this.collections.hidden; this.body.inert = this.body.hidden;
-      if ((this.properties.hidden && this.properties.contains(document.activeElement)) || (this.collections.hidden && this.collections.contains(document.activeElement))) this.titleControl.focus();
+      if ([this.properties, this.collections, this.body].some(region => region.inert && region.contains(document.activeElement))) this.titleControl.focus();
     }
+    return { status: 'applied' };
   }
+  setNodeInspectorAllocation(input) { if (input) return this.applyNodePresentation(input); }
 }

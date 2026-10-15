@@ -1,3 +1,4 @@
+import { withSelectedTitle } from '../../../test-fixtures/selected-title';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
@@ -20,7 +21,7 @@ const measure = (element: Element, width: number, height = 30) => {
 async function artifact(name: string) {
   const source = await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8');
   const module = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
-  return document.createElement(defineCustomElementOnce(`test-overflow-${name}`, module.default)) as HTMLElement & { setContext(context: unknown): void };
+  return document.createElement(defineCustomElementOnce(`test-overflow-${name}`, withSelectedTitle(module.default))) as HTMLElement & { setContext(context: unknown): void };
 }
 it('reports ActionGroup ownership and its actual selected Action children through overflow movement', async () => {
   const element = await artifact('actions') as any;

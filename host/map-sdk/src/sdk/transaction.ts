@@ -38,6 +38,7 @@ import {
 
 /** DAHN-wide classification of a required Visualizer. */
 export type VisualizerKind =
+  | 'titleBar'
   | 'canvas'
   | 'node'
   | 'structure'
@@ -627,6 +628,7 @@ export class MapTransaction {
 }
 
 function fromVisualizerKindWire(kind: ReturnType<typeof toVisualizerKindWire>): VisualizerKind {
+  if (kind === 'TitleBar') return 'titleBar';
   if (kind === 'ActionBar') return 'actionBar';
   if (kind === 'PropertyMap') return 'propertyMap';
   return kind === 'RootedNavigation'
@@ -650,6 +652,7 @@ function toSmartReferenceWire(currentVersion: SmartReference): SmartReferenceWir
 }
 
 function toVisualizerKindWire(kind: VisualizerKind):
+  | 'TitleBar'
   | 'Canvas'
   | 'Node'
   | 'Structure'
@@ -660,10 +663,12 @@ function toVisualizerKindWire(kind: VisualizerKind):
   | 'Value'
   | 'ActionBar'
   | 'Action' {
+  if (kind === 'titleBar') return 'TitleBar';
   if (kind === 'rootedNavigation') {
     return 'RootedNavigation';
   }
   return `${kind[0].toUpperCase()}${kind.slice(1)}` as
+    | 'TitleBar'
     | 'Canvas'
     | 'Node'
     | 'Structure'

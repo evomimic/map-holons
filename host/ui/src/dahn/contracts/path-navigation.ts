@@ -32,6 +32,7 @@ export type TraversalProvenance = VerticalProvenance | SingularProvenance;
 
 /** A Path Inspector projection item; semantic handles remain bound SDK handles. */
 export interface PathOccurrence {
+  inspectVisualizer?: (invoker: HTMLElement) => void;
   id: string;
   row?: number;
   /** Kept mounted for cancellation while a replacement is pending. */

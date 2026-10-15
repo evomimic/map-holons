@@ -158,6 +158,7 @@ pub enum TransactionAction {
 /// kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VisualizerKind {
+    TitleBar,
     Canvas,
     Node,
     /// Visualizes an organizing semantic topology.

@@ -53,6 +53,7 @@ export interface ContentSet {
 
 /** DAHN-wide classification requested from the Rust Selector Function. */
 export type VisualizerKindWire =
+  | 'TitleBar'
   | 'Canvas'
   | 'Node'
   | 'Structure'
@@ -67,7 +68,7 @@ export type VisualizerKindWire =
 /** Shared classification guard for both command requests and selection responses. */
 export function isVisualizerKindWire(value: unknown): value is VisualizerKindWire {
   return typeof value === 'string' &&
-    ['Canvas', 'Node', 'Structure', 'RootedNavigation', 'Collection', 'PropertyMap', 'Property', 'Value', 'ActionBar', 'Action'].includes(value);
+    ['TitleBar', 'Canvas', 'Node', 'Structure', 'RootedNavigation', 'Collection', 'PropertyMap', 'Property', 'Value', 'ActionBar', 'Action'].includes(value);
 }
 
 /**

@@ -153,6 +153,11 @@ export interface DiscoveryExplorerState {
  * Common context passed into Web Component visualizers.
  */
 export interface VisualizerContext {
+  presentationActionStates?: Record<string, { available: boolean; reason: string; label?: string }>;
+  presentationOperators?: Record<string, (invoker: HTMLElement) => unknown>;
+  presentationOperator?: string;
+  presentationActivation?: (invoker: HTMLElement) => unknown;
+  presentationActionChildren?: ReadonlyMap<string, HTMLElement>;
   /** Inherited experience identity, independent of the navigation anchor/target. */
   experience?: { readonly dancer: HolonReference; readonly holonSpace: HolonReference };
   /** Human-readable occurrence identity supplied by the parent composition. */

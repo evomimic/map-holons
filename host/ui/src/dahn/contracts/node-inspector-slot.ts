@@ -1,24 +1,7 @@
-/** Participation contract of the Node Inspector slot, independent of child sub-slots. */
-export type NodeInspectorHeight = 'full-height' | 'partial-height' | 'minimal-height';
-export type NodeInspectorWidth = 'full-width' | 'partial-width' | 'minimal-width';
-
-export interface NodeInspectorExtents {
-  vertical: Record<NodeInspectorHeight, number>;
-  horizontal: Record<NodeInspectorWidth, number>;
-}
-
-export interface NodeInspectorAllocation {
-  width: number;
-  height: number;
-  vertical: NodeInspectorHeight;
-  horizontal: NodeInspectorWidth;
-}
-
-/** The parent allocates bands; implementations exclusively allocate their sub-slots. */
+import type { NodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
+export type NodeInspectorAllocation = NodePresentation;
+/** Operator identity is resolved from the selected slot's required contract. */
 export interface NodeInspectorParticipant {
-  /** Initial source-plus-target height, excluding the connecting channel and parent framing. */
-  setInitialCompositionHeight?(height: number): void;
-  getNodeInspectorExtents(): NodeInspectorExtents;
+  readonly visualizerOperations: Record<string, (input: NodePresentation) => unknown>;
   getNodeInspectorAllocation?(): NodeInspectorAllocation | undefined;
-  setNodeInspectorAllocation(allocation: NodeInspectorAllocation): void;
 }
