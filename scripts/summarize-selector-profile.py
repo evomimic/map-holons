@@ -17,24 +17,29 @@ FETCHES = {"storage.fetch_holon", "fetch_relationship", "storage.lookup_key"}
 def summarize(text, request_ids=None):
     text = re.sub(r"\x1b\[[0-9;]*m", "", text)
     requests = {}
+    ipc = {}
     for block in re.split(r"(?=^[ \t]*\d{4}-\d\d-\d\dT)", text, flags=re.M):
         if "map_profile: close," not in block:
             continue
         spans = re.findall(r"^\s*in map_profile::([\w.]+)(?: with ([^\n]*))?", block, re.M)
         roots = [(name, fields) for name, fields in spans if name in ROOTS]
         request = re.search(r"in map_profile::ipc.dispatch with request_id: (\d+)", block)
-        if not spans or not roots or not request:
+        if not spans or not request:
             continue
         request_id = int(request[1])
         if request_ids and request_id not in request_ids:
+            continue
+        duration = sum(float(value) * UNITS[unit] for value, unit in re.findall(
+            r"time\.(?:busy|idle): ([\d.]+)(ns|µs|us|ms|s)", block.splitlines()[0]))
+        if spans[0][0].startswith("ipc."):
+            ipc.setdefault(request_id, {})[spans[0][0]] = duration
+        if not roots:
             continue
         root, root_fields = roots[-1]
         kind = re.search(r"kind: (\w+)", root_fields)
         row = requests.setdefault(request_id, {"requestId": request_id, "operation": root,
             "kind": kind[1] if kind else None, "totalMs": None, "phases": {},
             "metadataFetches": 0, "conductorCalls": 0, "fetchesByPhaseAndIdentity": {}})
-        duration = sum(float(value) * UNITS[unit] for value, unit in re.findall(
-            r"time\.(?:busy|idle): ([\d.]+)(ns|µs|us|ms|s)", block.splitlines()[0]))
         name, fields = spans[0]
         if name == root:
             row["totalMs"] = duration
@@ -49,6 +54,8 @@ def summarize(text, request_ids=None):
             row["fetchesByPhaseAndIdentity"][identity] = row["fetchesByPhaseAndIdentity"].get(identity, 0) + 1
         if name == "conductor.zome_call":
             row["conductorCalls"] += 1
+    for request_id, row in requests.items():
+        row["ipcPhasesMs"] = ipc.get(request_id, {})
     return {"timingNote": "Phase timings include nested spans; do not sum them. totalMs comes only from the root span. Fetch counts are host-service calls, not SQL queries.",
         "requests": sorted(requests.values(), key=lambda row: row["requestId"])}
 

@@ -40,6 +40,13 @@ class SelectorSummaryTests(unittest.TestCase):
         self.assertEqual(rows[0]["requestId"], 2)
         self.assertAlmostEqual(rows[0]["totalMs"], 2.002)
 
+    def test_preserves_binding_and_dispatch_time_outside_selector_spans(self):
+        outside = block("ipc.bind", "3ms").replace("    in map_profile::visualizer.select with kind: Property, subject: local-1, slot: local-2\n", "")
+        text = outside + block("visualizer.select", "2ms")
+        row = profile.summarize(text)["requests"][0]
+        self.assertAlmostEqual(row["ipcPhasesMs"]["ipc.bind"], 3.002)
+        self.assertAlmostEqual(row["totalMs"], 2.002)
+
     def test_groups_repeated_fetches_by_source_relationship_and_phase(self):
         event = block("fetch_relationship", "1ms", "source: local-3, relationship: OffersOperator")
         event = event.replace("    in map_profile::visualizer.select", "    in map_profile::visualizer.operator_compatibility\n    in map_profile::visualizer.select")
