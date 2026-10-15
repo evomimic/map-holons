@@ -60,6 +60,12 @@ struct AssessmentContext {
     start: HolonReference,
 }
 
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "visualizer.context",
+    skip_all
+)]
 fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, HolonError> {
     let (owner, relation) = match &request.owner {
         VisualizerOwner::Visualizer(owner) => (owner, "HasSlot"),
@@ -96,26 +102,44 @@ fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, Ho
     Ok(AssessmentContext { accepted, tokens, start, slot: request.slot.clone() })
 }
 
+#[tracing::instrument(target = "map_profile", level = "debug", name = "visualizer.candidate", skip_all, fields(candidate = %candidate.reference_id_string()))]
 fn assess(
     context: &Arc<TransactionContext>,
     facts: &AssessmentContext,
     candidate: &HolonReference,
 ) -> Result<VisualizerAssessment, HolonError> {
-    let candidate_type = candidate.holon_descriptor()?.holon().clone();
-    let mut compatible = false;
-    for accepted in &facts.accepted {
-        if equals_or_extends(&candidate_type, accepted)? {
-            compatible = true;
-            break;
+    let compatible = tracing::debug_span!(target: "map_profile", "visualizer.slot_compatibility")
+        .in_scope(|| -> Result<bool, HolonError> {
+        let candidate_type = candidate.holon_descriptor()?.holon().clone();
+        let mut compatible = false;
+        for accepted in &facts.accepted {
+            if equals_or_extends(&candidate_type, accepted)? {
+                compatible = true;
+                break;
+            }
         }
-    }
-    if !compatible || !crate::operators::fulfills_operators(&facts.slot, candidate)? {
+        Ok(compatible)
+    })?;
+    if !compatible {
         return Ok(VisualizerAssessment::IncompatibleSlot);
     }
-    if members(candidate, "ConsumesDesignToken")?.iter().any(|token| !facts.tokens.contains(token))
-    {
+    let operators =
+        tracing::debug_span!(target: "map_profile", "visualizer.operator_compatibility")
+            .in_scope(|| crate::operators::fulfills_operators(&facts.slot, candidate))?;
+    if !operators {
+        return Ok(VisualizerAssessment::IncompatibleSlot);
+    }
+    let compatible_theme =
+        tracing::debug_span!(target: "map_profile", "visualizer.theme_compatibility")
+            .in_scope(|| members(candidate, "ConsumesDesignToken"))?
+            .iter()
+            .all(|token| facts.tokens.contains(token));
+    if !compatible_theme {
         return Ok(VisualizerAssessment::IncompatibleTheme);
     }
+    let metadata =
+        tracing::debug_span!(target: "map_profile", "visualizer.implementation_metadata");
+    let metadata_guard = metadata.enter();
     let implementations = members(candidate, "ImplementedBy")?;
     let implementation = match implementations.as_slice() {
         [] => return Ok(VisualizerAssessment::ImplementationUnavailable),
@@ -133,25 +157,32 @@ fn assess(
     let _implementation_key = required_text(implementation, "VisualizerImplementationKey")?;
     let _entrypoint = required_text(implementation, "Entrypoint")?;
     let _digest = required_text(implementation, "VisualizerArtifactDigest")?;
-    if runtime != "TypeScript"
-        || format != "ESModule"
-        || !context.visualizer_artifact_available(candidate)?
-    {
+    drop(metadata_guard);
+    drop(metadata);
+    if runtime != "TypeScript" || format != "ESModule" {
+        return Ok(VisualizerAssessment::ImplementationUnavailable);
+    }
+    let available = tracing::debug_span!(target: "map_profile", "visualizer.artifact_availability")
+        .in_scope(|| context.visualizer_artifact_available(candidate))?;
+    if !available {
         return Ok(VisualizerAssessment::ImplementationUnavailable);
     }
     Ok(VisualizerAssessment::Viable)
 }
 
+#[tracing::instrument(target = "map_profile", level = "debug", name = "visualizer.applicability", skip_all, fields(descriptor = %descriptor.reference_id_string(), eligible_count = tracing::field::Empty, assessed_count = tracing::field::Empty))]
 fn at_level(
     context: &Arc<TransactionContext>,
     facts: &AssessmentContext,
     descriptor: &HolonReference,
 ) -> Result<Vec<VisualizerCandidate>, HolonError> {
     let mut candidates: Vec<VisualizerCandidate> = Vec::new();
+    let mut assessed = 0;
     for visualizer in members(descriptor, "HasApplicableVisualizer")? {
         if candidates.iter().any(|c| c.visualizer == visualizer) {
             continue;
         }
+        assessed += 1;
         let assessment = assess(context, facts, &visualizer)?;
         // Applicability declarations can offer several presentation kinds.
         // Only types accepted by this actual slot enter its choice population.
@@ -164,7 +195,21 @@ fn at_level(
             assessment,
         });
     }
+    tracing::Span::current().record("eligible_count", candidates.len());
+    tracing::Span::current().record("assessed_count", assessed);
     Ok(candidates)
+}
+
+/// Preserve the lazy traversal boundary while measuring only ancestry steps,
+/// independently of candidate assessment at each level.
+fn profiled_ancestry(
+    start: &HolonReference,
+) -> impl Iterator<Item = Result<HolonReference, HolonError>> {
+    let mut chain = walk_extends_chain(start);
+    std::iter::from_fn(move || {
+        tracing::debug_span!(target: "map_profile", "visualizer.ancestry_step")
+            .in_scope(|| chain.next())
+    })
 }
 
 fn boundary(descriptor: &HolonReference) -> Result<bool, HolonError> {
@@ -190,12 +235,13 @@ fn sole_viable(
 }
 
 /// Automatic selection reads no ancestor after nearest-level success or ambiguity.
+#[tracing::instrument(target = "map_profile", level = "debug", name = "visualizer.select", skip_all, fields(kind = ?request.requested_kind, subject = %request.subject.reference_id_string(), slot = %request.slot.reference_id_string()))]
 pub fn select_visualizer(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
 ) -> Result<VisualizerSelection, HolonError> {
     let facts = resolve(&request)?;
-    for descriptor in walk_extends_chain(&facts.start) {
+    for descriptor in profiled_ancestry(&facts.start) {
         let descriptor = descriptor?;
         if let Some(selected) = sole_viable(&at_level(context, &facts, &descriptor)?, &descriptor)?
         {
@@ -215,6 +261,7 @@ pub fn select_visualizer(
 }
 
 /// Interactive discovery includes permitted ancestor alternatives without running winner policy.
+#[tracing::instrument(target = "map_profile", level = "debug", name = "visualizer.discover", skip_all, fields(kind = ?request.requested_kind, subject = %request.subject.reference_id_string(), slot = %request.slot.reference_id_string()))]
 pub fn discover_visualizers(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
@@ -224,7 +271,7 @@ pub fn discover_visualizers(
     let mut candidates: Vec<VisualizerCandidate> = Vec::new();
     let mut ancestry = Vec::new();
     let mut stop_reason = map_commands_contract::DiscoveryStopReason::LineageExhausted;
-    for descriptor in walk_extends_chain(&facts.start) {
+    for descriptor in profiled_ancestry(&facts.start) {
         let descriptor = descriptor?;
         for candidate in at_level(context, &facts, &descriptor)? {
             if let Some(previous) =
@@ -261,13 +308,14 @@ pub fn discover_visualizers(
 }
 
 /// Explicit choice may bypass specificity/ambiguity, never current viability requirements.
+#[tracing::instrument(target = "map_profile", level = "debug", name = "visualizer.choose", skip_all, fields(kind = ?request.requested_kind, subject = %request.subject.reference_id_string(), slot = %request.slot.reference_id_string()))]
 pub fn choose_visualizer(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
     candidate: HolonReference,
 ) -> Result<VisualizerSelection, HolonError> {
     let facts = resolve(&request)?;
-    for descriptor in walk_extends_chain(&facts.start) {
+    for descriptor in profiled_ancestry(&facts.start) {
         let descriptor = descriptor?;
         if members(&descriptor, "HasApplicableVisualizer")?.contains(&candidate) {
             let outcome = assess(context, &facts, &candidate)?;

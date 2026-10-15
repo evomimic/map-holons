@@ -2,6 +2,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Instant,
 };
+use tracing::Instrument;
 
 use holochain_types::prelude::{FunctionName, ZomeName};
 use serde_bytes::ByteBuf;
@@ -87,6 +88,7 @@ impl DanceEnvelopeTransport for HolochainConductorClient {
 /// Round-trip the zome call
 #[async_trait]
 impl ConductorDanceCaller for HolochainConductorClient {
+    #[tracing::instrument(target = "map_profile", level = "debug", name = "conductor.dance_call", skip_all, fields(dance = %request.request.transport_label()))]
     async fn conductor_dance_call(
         &self,
         request: DanceRequestEnvelope,
@@ -108,6 +110,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         let encode_ms = round_trip_started.elapsed().as_secs_f64() * 1000.0;
+        let request_bytes = payload.0.len();
 
         // --- Clone websocket (POC safe) ---
         let ws = {
@@ -131,6 +134,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
                 FunctionName::from(self.zomefunction.clone()),
                 payload,
             )
+            .instrument(tracing::debug_span!(target: "map_profile", "conductor.zome_call"))
             .await;
         if is_load_holons {
             tracing::info!(
@@ -144,6 +148,8 @@ impl ConductorDanceCaller for HolochainConductorClient {
             tracing::debug!(
                 target: "map_profile",
                 guest_dance = %dance,
+                request_bytes,
+                response_bytes = result.as_ref().map(|io| io.0.len()).unwrap_or(0),
                 encode_ms,
                 call_ms = zome_call_started_at.elapsed().as_secs_f64() * 1000.0,
                 succeeded = result.is_ok()

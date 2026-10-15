@@ -366,6 +366,7 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
+    #[tracing::instrument(target = "map_profile", level = "debug", name = "storage.fetch_holon", skip_all, fields(source = %id))]
     fn fetch_holon_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -399,7 +400,7 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<HolonCollection, HolonError> {
         let _profile = tracing::debug_span!(
             target: "map_profile", "fetch_relationship",
-            relationship = %relationship_name
+            source = %source_id, relationship = %relationship_name
         )
         .entered();
         let source_reference = HolonReference::Smart(SmartReference::new_from_id(
@@ -502,6 +503,7 @@ impl HolonServiceApi for ClientHolonService {
         self.dancer_package_catalog.activate(context, package_identity)
     }
 
+    #[tracing::instrument(target = "map_profile", level = "debug", name = "storage.lookup_key", skip_all, fields(key = %key))]
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,
