@@ -1357,6 +1357,8 @@ dependencies = [
  "core_types",
  "holons_core",
  "map_commands_contract",
+ "tracing",
+ "tracing-subscriber",
  "type_names",
 ]
 

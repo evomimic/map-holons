@@ -229,9 +229,11 @@ export async function realizeNode(
     ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
   ]);
   collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction, { theme, canvas }, affordances.collections);
+  onStage?.('select and compose Title Bar');
   const titleElement = await composeNodeTitle(transaction, materialized, selectedVisualizer, {
     title: `${typeDisplayName}: ${holonKey}`, holonKey, target: { reference: subject }, holon: view, actions: [], theme, canvas,
   });
+  onStage?.('bind Node presentation');
   element.setContext({
       collectionActivation,
       visualizerUsage,

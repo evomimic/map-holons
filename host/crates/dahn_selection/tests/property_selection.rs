@@ -11,7 +11,11 @@ use holons_core::{
     StagedReference, TransientReference,
 };
 use map_commands_contract::{VisualizerKind, VisualizerOwner, VisualizerSelectionRequest};
-use std::{any::Any, collections::HashMap, sync::Arc};
+use std::{
+    any::Any,
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 /// A persisted graph fixture accessed through the real bound reference layer.
 #[derive(Debug, Default)]
@@ -20,6 +24,7 @@ struct Graph {
     anchors: Vec<u8>,
     holon_root: Option<u8>,
     unavailable: Vec<u8>,
+    relationship_reads: Arc<Mutex<HashMap<(u8, String), usize>>>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
@@ -110,6 +115,12 @@ impl HolonServiceApi for Graph {
         id: &HolonId,
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        *self
+            .relationship_reads
+            .lock()
+            .unwrap()
+            .entry((id.local_id().0[0], name.to_string()))
+            .or_default() += 1;
         let mut result = HolonCollection::new_transient();
         result.add_references(
             self.edges
@@ -839,4 +850,71 @@ fn title_selection_preserves_subject_owner_theme_and_discovers_ancestor_alternat
             .selected,
         Graph::reference(&context, 22)
     );
+}
+
+#[derive(Clone)]
+struct TraceOutput(Arc<Mutex<Vec<u8>>>);
+impl std::io::Write for TraceOutput {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn profiling_preserves_selection_results_reads_and_lazy_boundaries() {
+    let make_context = || {
+        let mut graph = slot_graph();
+        graph.edge(1, "HasApplicableVisualizer", &[20]);
+        graph.edge(20, "OffersOperator", &[80]);
+        graph.edge(30, "RequiresOperator", &[80]);
+        graph.edge(80, "InputType", &[82]);
+        graph.edge(80, "ResultType", &[83]);
+        // Nearest-level success must not evaluate the malformed ancestor.
+        graph.edge(2, "Extends", &[4, 5]);
+        let counts = graph.relationship_reads.clone();
+        (candidate_context(graph), counts)
+    };
+    let (baseline, baseline_reads) = make_context();
+    let expected =
+        dahn_selection::select_visualizer(&baseline, candidate_request(&baseline)).unwrap();
+    let (profiled, profiled_reads) = make_context();
+    let output = TraceOutput(Arc::default());
+    let writer = output.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_ansi(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
+        .with_writer(move || writer.clone())
+        .pretty()
+        .finish();
+    // Match the application's global subscriber. Other selector tests may
+    // register the same callsites concurrently on worker threads.
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+    let actual = tracing::info_span!(target: "map_profile", "ipc.dispatch", request_id = 42)
+        .in_scope(|| dahn_selection::select_visualizer(&profiled, candidate_request(&profiled)))
+        .unwrap();
+    assert_eq!(actual.selected.holon_id().unwrap(), expected.selected.holon_id().unwrap());
+    assert_eq!(*profiled_reads.lock().unwrap(), *baseline_reads.lock().unwrap());
+    let trace = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
+    for phase in [
+        "visualizer.select",
+        "visualizer.context",
+        "visualizer.ancestry_step",
+        "visualizer.applicability",
+        "visualizer.candidate",
+        "visualizer.slot_compatibility",
+        "visualizer.operator_compatibility",
+        "visualizer.theme_compatibility",
+        "visualizer.implementation_metadata",
+        "visualizer.artifact_availability",
+    ] {
+        assert!(trace.contains(phase), "missing profile phase {phase}: {trace}");
+    }
+    assert!(trace.contains("request_id: 42"), "profile lost IPC correlation: {trace}");
+    assert!(trace.contains("time.busy"));
+    println!("{trace}");
 }

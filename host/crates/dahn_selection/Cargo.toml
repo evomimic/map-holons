@@ -9,3 +9,7 @@ core_types = { workspace = true }
 holons_core = { workspace = true }
 map_commands_contract = { workspace = true }
 type_names = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "registry", "ansi"] }
