@@ -1,16 +1,21 @@
 use crate::descriptors::inheritance::effective_relationship_targets;
 use crate::descriptors::{
-    accessor_helpers, Descriptor, OperatorCategory, TypeHeader, ValueDescriptor,
+    accessor_helpers, classify_descriptor_lineage, CaseMatching, Descriptor, OperandSpecification,
+    OperatorCategory, OperatorKind, ResolvedOperator, TypeHeader, ValueDescriptor,
 };
 use crate::reference_layer::HolonReference;
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::HolonError;
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, OperatorName};
+use type_names::{
+    operator_type_descriptor_key, CoreOperatorTypeName, CorePropertyTypeName,
+    CoreRelationshipTypeName, OperatorName,
+};
 
 /// Runtime wrapper for operator descriptors.
 ///
 /// Operators remain schema-declared holons. This wrapper exposes their
 /// descriptor-local metadata without introducing a global operator registry.
+#[derive(Debug, Clone)]
 pub struct OperatorDescriptor {
     holon: HolonReference,
 }
@@ -61,6 +66,75 @@ impl OperatorDescriptor {
             CorePropertyTypeName::OperatorCategory,
         )?;
         OperatorCategory::parse(&value)
+    }
+
+    /// Returns the effective case-matching policy, if this operator declares one.
+    ///
+    /// Resolved self-first through the `Extends` lineage, so an extension of a
+    /// matching operator inherits its ancestor's policy unless it declares its own.
+    pub fn case_matching(&self) -> Result<Option<CaseMatching>, HolonError> {
+        match accessor_helpers::effective_property_value(
+            &self.holon,
+            CorePropertyTypeName::CaseMatching,
+        )? {
+            None => Ok(None),
+            Some(BaseValue::StringValue(value)) => CaseMatching::parse(&value).map(Some),
+            Some(BaseValue::EnumValue(value)) => CaseMatching::parse(&value.0).map(Some),
+            Some(other) => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Enum".to_string()))
+            }
+        }
+    }
+
+    /// Returns this operator's authored operand specifications in position order.
+    pub fn operand_specifications(&self) -> Result<Vec<OperandSpecification>, HolonError> {
+        Ok(effective_relationship_targets(
+            &self.holon,
+            CoreRelationshipTypeName::OperandSpecifications,
+        )?
+        .into_iter()
+        .map(|member| OperandSpecification::from_holon(member.member))
+        .collect())
+    }
+
+    /// Classifies this operator by the nearest supported core operator in its lineage.
+    ///
+    /// Identity decides: an ancestor counts only when it is the canonical
+    /// `<Name>.OperatorType` descriptor, so an extension operator executes with
+    /// its supported ancestor's semantics and an unrelated same-named descriptor
+    /// is unsupported. Contains semantics require an effective case-matching policy.
+    pub fn kind(&self) -> Result<OperatorKind, HolonError> {
+        let candidates = [
+            CoreOperatorTypeName::EqualsOperator,
+            CoreOperatorTypeName::LessThanOperator,
+            CoreOperatorTypeName::ContainsOperator,
+        ]
+        .map(|name| (name.as_operator_name().0, name));
+        let classified =
+            classify_descriptor_lineage(&self.holon, &candidates, operator_type_descriptor_key)?;
+        match classified {
+            Some(CoreOperatorTypeName::EqualsOperator) => Ok(OperatorKind::Equals),
+            Some(CoreOperatorTypeName::LessThanOperator) => Ok(OperatorKind::LessThan),
+            Some(CoreOperatorTypeName::ContainsOperator) => match self.case_matching()? {
+                Some(case_matching) => Ok(OperatorKind::Contains(case_matching)),
+                None => Err(HolonError::InvalidOperatorMetadata {
+                    operator: self.operator_name()?.to_string(),
+                    reason: "a Contains operator requires an effective CaseMatching".to_string(),
+                }),
+            },
+            None => Err(HolonError::NotImplemented(format!(
+                "operator {} has no supported core operator in its lineage",
+                self.operator_name()?
+            ))),
+        }
+    }
+
+    /// Resolves this operator against a subject ValueType for repeated invocation.
+    pub fn resolve_for_subject(
+        &self,
+        subject_type: &ValueDescriptor,
+    ) -> Result<ResolvedOperator, HolonError> {
+        ResolvedOperator::resolve(subject_type, self)
     }
 
     /// Returns value descriptors that declare this operator as afforded.
@@ -281,14 +355,14 @@ mod tests {
         )?;
         holon.with_property_value(
             CorePropertyTypeName::OperatorCategory,
-            operator_category_value("Matching"),
+            operator_category_value("Containment"),
         )?;
         let descriptor = OperatorDescriptor::from_holon(holon.into());
 
         assert!(matches!(
             descriptor.operator_category(),
             Err(HolonError::UnknownOperatorCategory { value })
-                if value == "Matching"
+                if value == "Containment"
         ));
 
         Ok(())

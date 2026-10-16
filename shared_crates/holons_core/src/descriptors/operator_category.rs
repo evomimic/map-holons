@@ -6,6 +6,7 @@ use core_types::HolonError;
 pub enum OperatorCategory {
     Equality,
     Ordering,
+    Matching,
 }
 
 impl OperatorCategory {
@@ -14,6 +15,7 @@ impl OperatorCategory {
         match value.0.as_str() {
             "Equality" => Ok(Self::Equality),
             "Ordering" => Ok(Self::Ordering),
+            "Matching" => Ok(Self::Matching),
             _ => Err(HolonError::UnknownOperatorCategory { value: value.to_string() }),
         }
     }

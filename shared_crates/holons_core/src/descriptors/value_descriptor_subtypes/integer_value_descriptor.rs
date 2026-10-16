@@ -1,8 +1,10 @@
 use crate::descriptors::value_descriptor_subtypes::helpers::{
-    require_supported_operator, supported_operators, supports_operator, type_name_is,
-    unsupported_operator, value_kind_mismatch,
+    single_operand, supported_operators, supports_operator, unsupported_operator,
+    value_kind_mismatch,
 };
-use crate::descriptors::{Descriptor, OperatorDescriptor, TypeHeader};
+use crate::descriptors::{
+    Descriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, TypeHeader, ValueDescriptor,
+};
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
@@ -54,8 +56,17 @@ impl IntegerValueDescriptor {
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
-        require_supported_operator(&self.holon, op)?;
+        ValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
+    }
 
+    /// Executes a resolved integer operator.
+    pub(crate) fn evaluate(
+        &self,
+        op: &ResolvedOperator,
+        subject: &BaseValue,
+        operands: &[BaseValue],
+    ) -> Result<bool, HolonError> {
+        let (lhs, rhs) = (subject, single_operand(op, operands)?);
         let lhs = match lhs {
             BaseValue::IntegerValue(value) => value,
             other => return Err(value_kind_mismatch(&self.holon, "Integer", other)),
@@ -65,13 +76,11 @@ impl IntegerValueDescriptor {
             other => return Err(value_kind_mismatch(&self.holon, "Integer", other)),
         };
 
-        if type_name_is(op, "EqualsOperator")? {
-            return Ok(lhs == rhs);
+        match op.kind() {
+            OperatorKind::Equals => Ok(lhs == rhs),
+            OperatorKind::LessThan => Ok(lhs.0 < rhs.0),
+            OperatorKind::Contains(_) => unsupported_operator(&self.holon, op.operator()),
         }
-        if type_name_is(op, "LessThanOperator")? {
-            return Ok(lhs.0 < rhs.0);
-        }
-        unsupported_operator(&self.holon, op)
     }
 }
 
@@ -96,10 +105,12 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::descriptors::test_support::{
+        build_context, core_operator, new_descriptor_holon, new_kind_descriptor,
+    };
     use crate::reference_layer::WritableHolon;
     use base_types::{MapInteger, MapString};
-    use type_names::CoreRelationshipTypeName;
+    use type_names::{CoreOperatorTypeName, CoreRelationshipTypeName};
 
     fn integer_value(value: i64) -> BaseValue {
         BaseValue::IntegerValue(MapInteger(value))
@@ -168,10 +179,9 @@ mod tests {
     #[test]
     fn apply_operator_executes_integer_comparisons() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
-        let less_than = new_descriptor_holon(&context, "less-than", "LessThanOperator", "Holon")?;
-        let mut value =
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None)?;
+        let less_than = core_operator(&context, CoreOperatorTypeName::LessThanOperator, None)?;
+        let mut value = new_kind_descriptor(&context, "IntegerValueType", None, true)?;
         value.add_related_holons(
             CoreRelationshipTypeName::AffordsOperator,
             vec![equals.clone().into(), less_than.clone().into()],
@@ -193,9 +203,8 @@ mod tests {
         let contains = OperatorDescriptor::from_holon(
             new_descriptor_holon(&context, "contains", "ContainsOperator", "Holon")?.into(),
         );
-        let equals_holon = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
-        let mut value =
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        let equals_holon = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None)?;
+        let mut value = new_kind_descriptor(&context, "IntegerValueType", None, true)?;
         value.add_related_holons(
             CoreRelationshipTypeName::AffordsOperator,
             vec![equals_holon.clone().into()],
@@ -225,10 +234,10 @@ mod tests {
     fn apply_operator_rejects_known_operator_when_not_afforded() -> Result<(), HolonError> {
         let context = build_context();
         let less_than = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "less-than", "LessThanOperator", "Holon")?.into(),
+            core_operator(&context, CoreOperatorTypeName::LessThanOperator, None)?.into(),
         );
         let descriptor = IntegerValueDescriptor::from_holon(
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?.into(),
+            new_kind_descriptor(&context, "IntegerValueType", None, true)?.into(),
         );
 
         assert!(matches!(

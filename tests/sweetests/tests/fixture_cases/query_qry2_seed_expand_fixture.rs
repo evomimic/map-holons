@@ -317,7 +317,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         )?;
         test_case.add_execute_query_step(
             saved_seed_query.clone(),
-            QueryInputSpec::Collection(vec![saved_seed_expression.clone()]),
+            QueryInputSpec::collection("SeedHolons", vec![saved_seed_expression.clone()]),
             route,
             QueryExpectation::Error(HolonErrorKind::InvalidParameter),
             Some(format!("SeedHolons via {route:?} with a supplied input is a contract error")),
@@ -326,7 +326,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         // Person.1's books [A, B] then Person.2's [A].
         test_case.add_execute_query_step(
             saved_chain_query.clone(),
-            QueryInputSpec::Collection(vec![saved_book_a.clone()]),
+            QueryInputSpec::collection("Book", vec![saved_book_a.clone()]),
             route,
             QueryExpectation::Members(vec![
                 saved_book_a.clone(),
@@ -340,11 +340,10 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         // retained across sources, Book.C contributing nothing.
         test_case.add_execute_query_step(
             saved_authored_by_query.clone(),
-            QueryInputSpec::Collection(vec![
-                saved_book_a.clone(),
-                saved_book_b.clone(),
-                saved_book_c.clone(),
-            ]),
+            QueryInputSpec::collection(
+                "Book",
+                vec![saved_book_a.clone(), saved_book_b.clone(), saved_book_c.clone()],
+            ),
             route,
             QueryExpectation::Members(vec![
                 saved_person_1.clone(),
@@ -363,14 +362,14 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         // Inverse name: resolved through the same descriptor authority.
         test_case.add_execute_query_step(
             saved_author_of_query.clone(),
-            QueryInputSpec::Collection(vec![saved_person_1.clone()]),
+            QueryInputSpec::collection("Person", vec![saved_person_1.clone()]),
             route,
             QueryExpectation::Members(vec![saved_book_a.clone(), saved_book_b.clone()]),
             Some(format!("Expand(AuthorOf) via {route:?} navigates the inverse name")),
         )?;
         test_case.add_execute_query_step(
             saved_bogus_query.clone(),
-            QueryInputSpec::Collection(vec![saved_book_a.clone()]),
+            QueryInputSpec::collection("Book", vec![saved_book_a.clone()]),
             route,
             QueryExpectation::Error(HolonErrorKind::DescriptorDeclarationNotFound),
             Some(format!(

@@ -15,6 +15,7 @@ pub mod ergonomic_add_remove_related_holons_fixture;
 pub mod load_book_person_inverse_schema_fixture;
 pub mod load_holons_internal_fixture;
 pub mod load_inverse_oriented_book_person_instances_fixture;
+pub mod query_f1_filter_fixture;
 pub mod query_qry1_scaffold_fixture;
 pub mod query_qry2_seed_expand_fixture;
 pub mod query_qry4a_order_paginate_fixture;
