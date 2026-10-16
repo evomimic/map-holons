@@ -21,19 +21,19 @@ it.each(['holon-inspector', 'load-holons-inspector'])('%s retains the shared act
   const attention = vi.fn(operation => { node.setOccurrenceAttentionState(operation === 'maximize'); return { status: 'applied' }; }); node.setOccurrenceAttentionHandler(attention);
   applyNodePresentation(node, { width: 800, height: 640, requiredCapabilities: ['inspect'] });
   const title = node.querySelector('[data-node-title-bar]');
-  expect(title.querySelectorAll('[data-presentation-operator]')).toHaveLength(4);
+  expect(node.querySelectorAll('[data-action-id]')).toHaveLength(4);
   expect(title.querySelector(':scope > button').textContent).toBe('Holon: Example');
-  title.querySelector('[data-close-occurrence]').click(); expect(close).toHaveBeenCalledOnce();
-  title.querySelector('[data-explore-from-here]').click(); expect(explore).toHaveBeenCalledOnce();
-  const information = title.querySelector('[data-visualizer-information]'); information.click(); expect(inspect).toHaveBeenCalledWith(information);
-  const expansion = title.querySelector('[data-maximize-inspector]'); expansion.click(); expect(attention).toHaveBeenLastCalledWith('maximize');
+  node.querySelector('[data-action-id="CloseOccurrence.VisualizerOperator"]').click(); expect(close).toHaveBeenCalledOnce();
+  node.querySelector('[data-action-id="ExploreOccurrence.VisualizerOperator"]').click(); expect(explore).toHaveBeenCalledOnce();
+  const information = node.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]'); information.click(); expect(inspect).toHaveBeenCalledWith(information);
+  const expansion = node.querySelector('[data-action-id="ExpandRestoreOccurrence.VisualizerOperator"]'); expansion.click(); expect(attention).toHaveBeenLastCalledWith('maximize');
   expansion.click(); expect(attention).toHaveBeenLastCalledWith('restore');
   applyNodePresentation(node, { width: 80, height: 64, requiredCapabilities: [] });
   const identity = title.querySelector(':scope > button'); expect(identity.textContent).toBe('Example'); expect(identity.title).toBe('Holon: Example');
   identity.click(); expect(restore).toHaveBeenCalledOnce();
   node.setVisualizerInformationHandler(undefined, 'Node selection');
   expect(information.disabled).toBe(true); expect(information.title).toContain('unavailable');
-  expect(title.querySelectorAll('[data-presentation-operator]')).toHaveLength(4);
+  expect(node.querySelectorAll('[data-action-id]')).toHaveLength(4);
   node.remove(); information.click(); expect(inspect).toHaveBeenCalledOnce();
 });
 it('refuses a Node composition without a real selected Title Bar', async () => {

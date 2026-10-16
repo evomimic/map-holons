@@ -175,7 +175,6 @@ impl DahnMaterializer {
                 "Connections First has been retired. Update the DAHN schema and explicitly choose a compatible Node Visualizer; existing holons and usage records are retained.".into())),
             "NodeTitleBar.TitleBarVisualizer" => "node-title-bar.js",
             "CompactTitleBar.TitleBarVisualizer" => "compact-title-bar.js",
-            "NodeTitleActions.ActionBarVisualizer" => "title-actions.js",
             "ExplorePresentation.ActionVisualizer" | "ClosePresentation.ActionVisualizer"
             | "ExpandRestorePresentation.ActionVisualizer" | "InspectPresentation.ActionVisualizer" => "presentation-action.js",
             "VisualizerInspector.Visualizer" => "visualizer-inspector.js",

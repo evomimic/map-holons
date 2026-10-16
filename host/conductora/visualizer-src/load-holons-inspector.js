@@ -42,6 +42,7 @@ export default class LoadHolonsInspector extends HTMLElement {
       restore: () => this.restore?.(), explore: () => this.explore?.(), close: () => this.close?.(),
       maximize: operation => this.attention?.(operation),
     });
+    this.actionsVisualizer = context.childVisualizers?.get('actions');
     const heading = this.heading = this.titleBar.element;
     heading.style.flex = '0 0 auto';
     Object.assign(this, { titleControl: this.titleBar.titleControl, exploreButton: this.titleBar.exploreButton,
@@ -163,7 +164,8 @@ export default class LoadHolonsInspector extends HTMLElement {
   }
   getVisualizerComposition() {
     return [
-      { label: 'Title Bar', element: this.titleBar?.element },
+      { label: 'Title Bar', element: this.titleBar?.titleControl },
+      { label: 'Actions', element: this.actionsVisualizer },
       { label: 'Load summary', element: this.propertyVisualizer },
       { label: 'Result collections', element: this.collections },
       { label: 'Collection Tabs', element: this.collectionTabBar },

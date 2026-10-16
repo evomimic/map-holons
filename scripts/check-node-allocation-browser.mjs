@@ -36,6 +36,20 @@ try {
     await page.evaluate(args => window.allocationFixture.mount(...args), [kind, horizontal, vertical, scale]);
     const result = await page.evaluate(() => window.allocationFixture.measure());
     if (result.failures.length) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: ${result.failures.join('; ')}`);
+    // Action controls are components of the single Node-owned bar and fit its grant.
+    const actionBounds = await page.evaluate(() => {
+      const bars = [...document.querySelectorAll('[data-dahn-node-actions]')];
+      if (bars.length !== 1) return 'Expected exactly one Node ActionBar';
+      const bar = bars[0], owner = bar.getBoundingClientRect();
+      for (const control of bar.querySelectorAll('[data-overflow-row] > button')) {
+        if (getComputedStyle(control).visibility === 'hidden') continue;
+        const rect = control.getBoundingClientRect();
+        if (rect.bottom > owner.bottom + 1 || rect.top < owner.top - 1) return 'Action control exceeds bar allocation';
+      }
+      if (bar.querySelectorAll('[data-action-id]').length !== 4) return 'Missing standard Action components';
+      return '';
+    });
+    if (actionBounds) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: ${actionBounds}`);
     // The identity Restore remains reachable at every non-inspect assignment.
     if (!result.capabilities.includes('inspect')) {
       const identity = page.locator('[data-node-title-bar] > button'); await identity.focus(); await page.keyboard.press('Enter');

@@ -12,6 +12,7 @@ import { resolve } from 'node:path';
 const mocks = vi.hoisted(() => ({ realizeNode: vi.fn() }));
 vi.mock('./realize-node', () => ({ realizeNode: mocks.realizeNode }));
 vi.mock('./title-composition', () => ({ composeNodeTitle: vi.fn(async () => selectedTitleContext().childVisualizers.get('titleBar')) }));
+vi.mock('./node-actions', () => ({ composeNodeActions: vi.fn(async () => Object.assign(selectedTitleContext().childVisualizers.get('actions'), { dispose: vi.fn() })) }));
 
 class NavigationElement extends HTMLElement {
   context!: VisualizerContext;
@@ -202,7 +203,7 @@ it('selects the response Node in its loader context and expands saved members wi
     document.body.append(path.element);
     expect(path.element.querySelector('[data-visualizer-information-control]')).not.toBeNull();
     const inspect = vi.spyOn((experience as any).information, 'inspect').mockImplementation(() => {});
-    const nodeControl = path.element.querySelector('[data-visualizer-information]') as HTMLButtonElement;
+    const nodeControl = path.element.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLButtonElement;
     expect(nodeControl.hidden).toBe(false); nodeControl.click();
     expect(inspect).toHaveBeenCalledWith(expect.objectContaining({ subject: response, selectedVisualizer: resultNode, slot }));
     inspect.mockRestore();

@@ -7,12 +7,14 @@ export function inspectorLayout(input, titleHeight = 48, activeCollection = true
   const inspect = has('inspect');
   const singular = inspect || has('navigate-singular');
   const plural = inspect || has('navigate-plural');
-  const title = Math.min(grant.height, titleHeight);
+  const title = Math.min(grant.height, titleHeight * 2);
   const remaining = grant.height - title;
   const scale = titleHeight / 48;
   // The owner reserves usable detail/navigation before assigning surplus to the
   // active viewer. An unopened viewer needs only its collection-tab band.
-  const actions = inspect ? 48 * scale : 0;
+  // Only discovery/filter controls remain in the body; executable actions live
+  // in the Node-owned header bar.
+  const actions = inspect ? 32 * scale : 0;
   const detail = 176 * scale;
   const tabs = 56 * scale;
   const body = singular ? (plural

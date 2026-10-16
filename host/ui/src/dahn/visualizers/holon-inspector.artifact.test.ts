@@ -77,6 +77,6 @@ it('exposes mounted properties, navigation and selected children for inspection 
   const regions = node.getVisualizerComposition();
   expect(regions.find((item: any) => item.label === 'Properties').element).toBe(properties);
   expect(regions.find((item: any) => item.label === 'Active Collection View').element).toBe(collection);
-  expect(regions.find((item: any) => item.label === 'Title Bar').element).toBe(node.titleBar.element);
+  expect(regions.find((item: any) => item.label === 'Title Bar').element).toBe(node.titleBar.titleControl);
   expect(node.singleValueRail.querySelector('button').title).toBe('Relationship description');
 });

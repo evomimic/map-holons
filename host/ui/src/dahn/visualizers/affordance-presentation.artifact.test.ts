@@ -13,7 +13,7 @@ async function artifact(name: string) {
 it('populates rail, collection slot and selected actions while keeping every control inactive', async () => {
   const actions = await artifact('actions');
   const child = document.createElement('button'); child.disabled = true; child.textContent = 'Do something';
-  actions.setContext({ actions: [{ id: 'dance', label: 'Do something' }], childVisualizers: new Map([['dance', child]]) });
+  (actions as any).visualizerOperations['PresentActions.VisualizerOperator']({ actions: [{ id: 'dance', kind: 'action', label: 'Do something', available: false, reason: 'Unavailable', activate: vi.fn() }] });
   const node = await artifact('holon-inspector');
   const properties = document.createElement('section');
   node.setContext({
@@ -25,7 +25,7 @@ it('populates rail, collection slot and selected actions while keeping every con
   });
   expect(node.querySelector('[data-holon-inspector-single-value-rail]')?.textContent).toContain('Parent');
   expect(node.querySelector('[data-holon-inspector-collections-slot]')?.textContent).toContain('TagsChildren');
-  expect(node.querySelector('[data-holon-inspector-action-bar]')?.contains(actions)).toBe(true);
+  expect(node.querySelector('header')?.contains(actions)).toBe(true);
   expect(node.querySelector('[data-holon-inspector-property-viewer]')?.contains(properties)).toBe(true);
   const clicks = vi.fn();
   node.addEventListener('click', clicks);

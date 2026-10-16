@@ -1,15 +1,12 @@
 export default class ActionsElement extends HTMLElement {
   get visualizerOperations() {
-    return { 'ApplySubjectActions.VisualizerOperator': context => {
-      if (!Array.isArray(context?.actions) || typeof context.childVisualizers?.get !== 'function') {
-        throw new Error('Subject actions require an action tree and selected child bindings');
-      }
-      this.setContext(context);
+    return { 'PresentActions.VisualizerOperator': input => {
+      if (!Array.isArray(input?.actions)) throw new Error('PresentActions requires supplied actions');
+      this.setActions(input.actions);
       return { status: 'applied' };
     } };
   }
-  getVisualizerComposition() { return this.composition ?? []; }
-  static compositionSlots = { action: "GenericActions.ActionSlot" };
+  getVisualizerComposition() { return []; }
   connectedCallback() {
     if (!this.layout) return;
     this.observer?.disconnect();
@@ -28,48 +25,87 @@ export default class ActionsElement extends HTMLElement {
     if (this.frame != null) return;
     this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) this.layout.fit(); });
   }
-  setContext(context) {
-    this.dataset.dahnNodeActions = 'true';
-    this.disconnectedCallback();
-    this.composition = [];
-    const compose = (actions, regions) => actions.map(action => {
-      if (action.kind !== 'group') {
-        const child = context.childVisualizers?.get(action.id);
-        if (!child) throw new Error(`Missing selected Action Visualizer: ${action.id}`);
-        child.dataset.actionId = action.id;
-        regions.push({ label: action.label, element: child });
-        return child;
+  setActions(actions) {
+    const validate = (items, seen = new Set()) => {
+      for (const action of items) {
+        if (!action.id || !action.label || seen.has(action.id)) throw new Error('Invalid or duplicate Action identity');
+        seen.add(action.id);
+        if (action.kind === 'group') validate(action.children ?? [], seen);
+        else if (action.kind !== 'action' || typeof action.activate !== 'function' || typeof action.available !== 'boolean'
+          || !action.available && !action.reason) throw new Error(`Invalid bound Action: ${action.id}`);
       }
-      const group = document.createElement('div');
-      group.setAttribute('role', 'group');
-      group.setAttribute('aria-label', action.label);
-      Object.assign(group.style, { display: 'flex', alignItems: 'stretch', gap: 'var(--dahn-control-gap)', borderInlineStart: '1px solid var(--dahn-slot-border-color)', paddingInlineStart: 'var(--dahn-control-gap)' });
-      const children = [];
-      regions.push({ label: action.label, element: group, children });
-      group.append(...compose(action.children ?? [], children));
-      return group;
+    };
+    validate(actions);
+    this.dataset.dahnNodeActions = 'true';
+    const previous = this.controls ?? new Map();
+    const controls = new Map();
+    const compose = items => items.map(action => {
+      if (action.kind === 'group') {
+        const group = previous.get(action.id) ?? document.createElement('div');
+        group.setAttribute('role', 'group'); group.setAttribute('aria-label', action.label);
+        group.style.cssText = 'display:flex;align-items:center;gap:var(--dahn-control-gap);';
+        controls.set(action.id, group);
+        const children = compose(action.children ?? []);
+        if (children.length !== group.children.length || children.some((child, index) => group.children[index] !== child)) group.replaceChildren(...children);
+        return group;
+      }
+      const button = previous.get(action.id) ?? document.createElement('button');
+      button.type = 'button'; button.dataset.actionId = action.id;
+      button.textContent = action.icon || action.label;
+      button.disabled = !action.available;
+      button.title = action.available ? action.label : `${action.label}: ${action.reason}`;
+      button.setAttribute('aria-label', button.title);
+      button.style.cssText = 'box-sizing:border-box;max-height:100%;font:inherit;min-width:28px;min-height:28px;max-width:100%;color:var(--dahn-action-text-color);background:var(--dahn-action-surface-background);padding:var(--dahn-action-padding-block) var(--dahn-action-padding-inline);border:0;border-radius:var(--dahn-action-corner-radius);cursor:pointer;';
+      button.onclick = () => {
+        if (!button.isConnected || button.disabled) return;
+        const report = result => {
+          this.status.textContent = result?.reason || ''; this.notice.hidden = !this.status.textContent;
+          if (!this.notice.hidden) { this.lastInvoker = button; this.dismiss.focus(); }
+        };
+        try { const result = action.activate(button);
+          if (result?.then) result.then(report, error => report({ reason: error.message })); else report(result); }
+        catch (error) { report({ reason: error.message }); }
+      };
+      controls.set(action.id, button); return button;
     });
-    const controls = compose(context.actions, this.composition);
-    this.layout = horizontalOverflow(this, controls, 'More actions', [...(context.childVisualizers?.values() ?? [])]);
-    if (this.isConnected) this.connectedCallback();
-    if (controls.length === 0) this.textContent = 'No actions';
+    const sameShape = JSON.stringify(actions.map(shape)) === this.shape;
+    function shape(action) { return [action.id, action.kind, action.children?.map(shape)]; }
+    const components = compose(actions);
+    this.controls = controls;
+    if (!sameShape) {
+      this.disconnectedCallback();
+      if (!this.surface) {
+        this.style.cssText = 'display:block;position:relative;height:100%;min-height:0;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;';
+        this.surface = document.createElement('div'); this.append(this.surface);
+        this.notice = document.createElement('div'); this.notice.hidden = true;
+        this.notice.style.cssText = 'position:absolute;inset:0;z-index:3;overflow:auto;background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
+        this.status = document.createElement('span'); this.status.setAttribute('role', 'status');
+        this.dismiss = document.createElement('button'); this.dismiss.type = 'button'; this.dismiss.textContent = 'Dismiss';
+        this.dismiss.addEventListener('click', () => { this.notice.hidden = true; this.lastInvoker?.focus(); });
+        this.notice.append(this.status, this.dismiss); this.append(this.notice);
+      }
+      this.layout = horizontalOverflow(this.surface, components, 'More actions');
+      this.shape = JSON.stringify(actions.map(shape));
+      if (this.isConnected) this.connectedCallback();
+    }
+    this.scheduleLayout();
   }
 }
 
 let nextOverflowId = 0;
 
-// Overflow moves the live selected controls, preserving their interaction bindings.
-function horizontalOverflow(host, controls, label, slots) {
-  Object.assign(host.style, { display: 'block', minWidth: '0', maxWidth: '100%', position: 'relative' });
+// Overflow moves live Action components, preserving their interaction bindings.
+function horizontalOverflow(host, controls, label) {
+  Object.assign(host.style, { display: 'block', minWidth: '0', maxWidth: '100%', height: '100%', maxHeight: '100%', boxSizing: 'border-box', overflow: 'hidden', position: 'relative' });
   const row = document.createElement('div');
   row.dataset.overflowRow = 'true';
-  Object.assign(row.style, { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 'var(--dahn-control-gap)', minWidth: '0', overflow: 'hidden' });
+  Object.assign(row.style, { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 'var(--dahn-control-gap)', minWidth: '0', height: '100%', overflow: 'hidden' });
   const more = document.createElement('button');
   more.type = 'button';
   more.dataset.overflowMore = 'true';
   more.textContent = label;
   more.setAttribute('aria-expanded', 'false');
-  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
+  Object.assign(more.style, { boxSizing: 'border-box', maxHeight: '100%', font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
   Object.assign(more.style, { flex: '0 0 auto', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
   const popup = document.createElement('div');
   popup.dataset.overflowPopup = 'true';
@@ -126,10 +162,6 @@ function horizontalOverflow(host, controls, label, slots) {
   const fit = () => {
     if (opened) { place(); return; }
     close();
-    slots.forEach(slot => { slot.style.width = 'max-content'; slot.style.minHeight = ''; });
-    const slotWidth = Math.max(0, ...slots.map(slot => slot.offsetWidth));
-    const slotHeight = Math.max(0, ...slots.map(slot => slot.offsetHeight));
-    slots.forEach(slot => { slot.style.width = `${slotWidth}px`; slot.style.minHeight = `${slotHeight}px`; });
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
     const widths = controls.map(control => control.offsetWidth);

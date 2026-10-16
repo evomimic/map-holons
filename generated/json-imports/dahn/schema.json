@@ -259,7 +259,7 @@
               "$ref": "(Visualizer.HolonType)-[OffersOperator]->(VisualizerOperator.HolonType)"
             },
             {
-              "$ref": "(Visualizer.HolonType)-[AdditionalTitleActions]->(MetaPresentationAction.MetaHolonType)"
+              "$ref": "(Visualizer.HolonType)-[AdditionalNodeActions]->(MetaPresentationAction.MetaHolonType)"
             }
           ]
         }
@@ -557,6 +557,12 @@
             },
             {
               "$ref": "HolonInspector.SingleValueSlot"
+            },
+            {
+              "$ref": "LoadHolons.DiagnosticsSlot"
+            },
+            {
+              "$ref": "LoadHolons.CommittedHolonsSlot"
             }
           ]
         },
@@ -629,7 +635,15 @@
           "name": "RequiresOperator",
           "target": [
             {
-              "$ref": "ApplySubjectActions.VisualizerOperator"
+              "$ref": "PresentActions.VisualizerOperator"
+            }
+          ]
+        },
+        {
+          "name": "UsesNodeActionsContract",
+          "target": [
+            {
+              "$ref": "NodeActions.Contract"
             }
           ]
         }
@@ -735,14 +749,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "GenericActions.ActionSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -754,7 +760,7 @@
           "name": "OffersOperator",
           "target": [
             {
-              "$ref": "ApplySubjectActions.VisualizerOperator"
+              "$ref": "PresentActions.VisualizerOperator"
             }
           ]
         }
@@ -765,7 +771,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:c37ecc043d39670f6dce1ee938e57f889474b34895209af6d95129334a62c391",
+        "VisualizerArtifactDigest": "sha256:4b0c20b961c02528189eef7e84d7a25e808688b5848c262dcebf13f280297df2",
         "VisualizerImplementationKey": "dahn.actions",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -776,7 +782,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:95c4674f86a680b5ae218737b95484d69bdc48120bc270b2508979ee875b0190",
+        "VisualizerArtifactDigest": "sha256:097c7e193076a93ceb7ec27b34a29292c8ea08b68e362fbfadffb720894f20bb",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1464,23 +1470,6 @@
       ]
     },
     {
-      "key": "GenericActions.ActionSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Identify an available action and provide a way to invoke it when supported."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionVisualizer.HolonType"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "UnsupportedAction.ActionVisualizer",
       "type": "ActionVisualizer.HolonType",
       "properties": {
@@ -1751,7 +1740,7 @@
               "$ref": "(VisualizerSlot.HolonType)-[RequiresOperator]->(VisualizerOperator.HolonType)"
             },
             {
-              "$ref": "(VisualizerSlot.HolonType)-[UsesTitleBarContract]->(TitleBarContract.HolonType)"
+              "$ref": "(VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType)"
             }
           ]
         }
@@ -3218,7 +3207,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:d02b3354cf3ecdc0ffdbdd776e8319bb1e5dd9ca4dbc5a6f2fa6af67e8366e87",
+        "VisualizerArtifactDigest": "sha256:7bad2bdc25cf46c5482deef059bb1d80eee291736b2f055cc388d90543881512",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3260,7 +3249,15 @@
           "name": "RequiresOperator",
           "target": [
             {
-              "$ref": "ApplySubjectActions.VisualizerOperator"
+              "$ref": "PresentActions.VisualizerOperator"
+            }
+          ]
+        },
+        {
+          "name": "UsesNodeActionsContract",
+          "target": [
+            {
+              "$ref": "NodeActions.Contract"
             }
           ]
         }
@@ -6539,14 +6536,14 @@
       ]
     },
     {
-      "key": "(TitleBarContract.HolonType)-[StandardTitleActions]->(MetaHolonType.MetaTypeDescriptor)",
+      "key": "(NodeActionsContract.HolonType)-[StandardNodeActions]->(MetaHolonType.MetaTypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "StandardTitleActions",
-        "TypeNamePlural": "StandardTitleActionsRecords",
-        "DisplayName": "StandardTitleActions",
-        "DisplayNamePlural": "StandardTitleActions records",
-        "Description": "StandardTitleActions semantic declaration.",
+        "TypeName": "StandardNodeActions",
+        "TypeNamePlural": "StandardNodeActionsRecords",
+        "DisplayName": "StandardNodeActions",
+        "DisplayNamePlural": "StandardNodeActions records",
+        "Description": "StandardNodeActions semantic declaration.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -6570,7 +6567,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "TitleBarContract.HolonType"
+              "$ref": "NodeActionsContract.HolonType"
             }
           ]
         },
@@ -6586,7 +6583,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(MetaHolonType.MetaTypeDescriptor)-[StandardActionOfTitleContract]->(TitleBarContract.HolonType)"
+              "$ref": "(MetaHolonType.MetaTypeDescriptor)-[StandardActionOfNodeContract]->(NodeActionsContract.HolonType)"
             }
           ]
         },
@@ -6601,14 +6598,14 @@
       ]
     },
     {
-      "key": "(MetaHolonType.MetaTypeDescriptor)-[StandardActionOfTitleContract]->(TitleBarContract.HolonType)",
+      "key": "(MetaHolonType.MetaTypeDescriptor)-[StandardActionOfNodeContract]->(NodeActionsContract.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "StandardActionOfTitleContract",
-        "TypeNamePlural": "StandardActionOfTitleContractRecords",
-        "DisplayName": "StandardActionOfTitleContract",
-        "DisplayNamePlural": "StandardActionOfTitleContract records",
-        "Description": "Inverse of StandardTitleActions.",
+        "TypeName": "StandardActionOfNodeContract",
+        "TypeNamePlural": "StandardActionOfNodeContractRecords",
+        "DisplayName": "StandardActionOfNodeContract",
+        "DisplayNamePlural": "StandardActionOfNodeContract records",
+        "Description": "Inverse of StandardNodeActions.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -6640,7 +6637,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "TitleBarContract.HolonType"
+              "$ref": "NodeActionsContract.HolonType"
             }
           ]
         },
@@ -6655,14 +6652,14 @@
       ]
     },
     {
-      "key": "(VisualizerSlot.HolonType)-[UsesTitleBarContract]->(TitleBarContract.HolonType)",
+      "key": "(VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "UsesTitleBarContract",
-        "TypeNamePlural": "UsesTitleBarContractRecords",
-        "DisplayName": "UsesTitleBarContract",
-        "DisplayNamePlural": "UsesTitleBarContract records",
-        "Description": "UsesTitleBarContract semantic declaration.",
+        "TypeName": "UsesNodeActionsContract",
+        "TypeNamePlural": "UsesNodeActionsContractRecords",
+        "DisplayName": "UsesNodeActionsContract",
+        "DisplayNamePlural": "UsesNodeActionsContract records",
+        "Description": "UsesNodeActionsContract semantic declaration.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -6694,7 +6691,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "TitleBarContract.HolonType"
+              "$ref": "NodeActionsContract.HolonType"
             }
           ]
         },
@@ -6702,7 +6699,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(TitleBarContract.HolonType)-[ContractForTitleSlot]->(VisualizerSlot.HolonType)"
+              "$ref": "(NodeActionsContract.HolonType)-[ContractForNodeActionsSlot]->(VisualizerSlot.HolonType)"
             }
           ]
         },
@@ -6717,14 +6714,14 @@
       ]
     },
     {
-      "key": "(TitleBarContract.HolonType)-[ContractForTitleSlot]->(VisualizerSlot.HolonType)",
+      "key": "(NodeActionsContract.HolonType)-[ContractForNodeActionsSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "ContractForTitleSlot",
-        "TypeNamePlural": "ContractForTitleSlotRecords",
-        "DisplayName": "ContractForTitleSlot",
-        "DisplayNamePlural": "ContractForTitleSlot records",
-        "Description": "Inverse of UsesTitleBarContract.",
+        "TypeName": "ContractForNodeActionsSlot",
+        "TypeNamePlural": "ContractForNodeActionsSlotRecords",
+        "DisplayName": "ContractForNodeActionsSlot",
+        "DisplayNamePlural": "ContractForNodeActionsSlot records",
+        "Description": "Inverse of UsesNodeActionsContract.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -6748,7 +6745,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "TitleBarContract.HolonType"
+              "$ref": "NodeActionsContract.HolonType"
             }
           ]
         },
@@ -6771,14 +6768,14 @@
       ]
     },
     {
-      "key": "(Visualizer.HolonType)-[AdditionalTitleActions]->(MetaPresentationAction.MetaHolonType)",
+      "key": "(Visualizer.HolonType)-[AdditionalNodeActions]->(MetaPresentationAction.MetaHolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "AdditionalTitleActions",
-        "TypeNamePlural": "AdditionalTitleActionsRecords",
-        "DisplayName": "AdditionalTitleActions",
-        "DisplayNamePlural": "AdditionalTitleActions records",
-        "Description": "AdditionalTitleActions semantic declaration.",
+        "TypeName": "AdditionalNodeActions",
+        "TypeNamePlural": "AdditionalNodeActionsRecords",
+        "DisplayName": "AdditionalNodeActions",
+        "DisplayNamePlural": "AdditionalNodeActions records",
+        "Description": "AdditionalNodeActions semantic declaration.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -6840,7 +6837,7 @@
         "TypeNamePlural": "AdditionalActionOfVisualizerRecords",
         "DisplayName": "AdditionalActionOfVisualizer",
         "DisplayNamePlural": "AdditionalActionOfVisualizer records",
-        "Description": "Inverse of AdditionalTitleActions.",
+        "Description": "Inverse of AdditionalNodeActions.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -7196,14 +7193,14 @@
       ]
     },
     {
-      "key": "TitleBarContract.HolonType",
+      "key": "NodeActionsContract.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "TitleBarContract",
-        "TypeNamePlural": "TitleBarContractRecords",
-        "DisplayName": "TitleBarContract",
-        "DisplayNamePlural": "TitleBarContract records",
-        "Description": "TitleBarContract.HolonType"
+        "TypeName": "NodeActionsContract",
+        "TypeNamePlural": "NodeActionsContractRecords",
+        "DisplayName": "NodeActionsContract",
+        "DisplayNamePlural": "NodeActionsContract records",
+        "Description": "NodeActionsContract.HolonType"
       },
       "relationships": [
         {
@@ -7226,7 +7223,7 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(TitleBarContract.HolonType)-[StandardTitleActions]->(MetaHolonType.MetaTypeDescriptor)"
+              "$ref": "(NodeActionsContract.HolonType)-[StandardNodeActions]->(MetaHolonType.MetaTypeDescriptor)"
             }
           ]
         }
@@ -7301,6 +7298,14 @@
           "target": [
             {
               "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ActionIcon.PropertyType"
             }
           ]
         },
@@ -7549,7 +7554,7 @@
         "TypeNamePlural": "TitlePresentationInputRecords",
         "DisplayName": "TitlePresentationInput",
         "DisplayNamePlural": "TitlePresentationInput records",
-        "Description": "Bounded title grant with unchanged subject identity and occurrence-bound action availability. The local adapter supplies identifying text and authorized state without persisting resize invocations."
+        "Description": "Bounded title grant with unchanged subject identity and Restore access. The local adapter supplies identifying text and authorized state without persisting resize invocations."
       },
       "relationships": [
         {
@@ -7585,14 +7590,6 @@
             },
             {
               "$ref": "PresentationSubjectKey.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "(TitlePresentationInput.HolonType)-[TitleActionStates]->(PresentationActionState.HolonType)"
             }
           ]
         }
@@ -7707,14 +7704,14 @@
       ]
     },
     {
-      "key": "SubjectActionsInput.HolonType",
+      "key": "ActionsPresentationInput.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "SubjectActionsInput",
-        "TypeNamePlural": "SubjectActionsInputs",
-        "DisplayName": "Subject Actions Input",
-        "DisplayNamePlural": "Subject Actions Inputs",
-        "Description": "Local subject-action presentation input: the unchanged bound Holon/context, its supplied action tree and selected child Action bindings. Apply composes those live controls within the owner allocation without discovering or invoking Dances. Runtime references and executable bindings remain local; no invocation holon is persisted."
+        "TypeName": "ActionsPresentationInput",
+        "TypeNamePlural": "ActionsPresentationInputs",
+        "DisplayName": "Actions Presentation Input",
+        "DisplayNamePlural": "Actions Presentation Inputs",
+        "Description": "Source-independent supplied Action tree: identities, labels, optional icons, availability/reasons and authorized activation bindings. Actions are components of the ActionBar; no per-Action Visualizer selection is required. Bindings remain local and presentation does not execute actions."
       },
       "relationships": [
         {
@@ -7736,42 +7733,17 @@
       ]
     },
     {
-      "key": "ApplySubjectActions.VisualizerOperator",
+      "key": "PresentActions.VisualizerOperator",
       "type": "VisualizerOperator.HolonType",
       "properties": {
-        "VisualizerDescription": "Compose supplied subject-afforded actions and their selected live controls, preserving invocation authority and accessible overflow within the owner grant. This does not supply or invoke title occurrence actions."
+        "VisualizerDescription": "Present the parent-supplied Action set within its allocation, preserving activation bindings and accessible overflow regardless of action source. Presentation does not execute actions."
       },
       "relationships": [
         {
           "name": "InputType",
           "target": [
             {
-              "$ref": "SubjectActionsInput.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "ResultType",
-          "target": [
-            {
-              "$ref": "PresentationResult.HolonType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "ApplyTitleActions.VisualizerOperator",
-      "type": "VisualizerOperator.HolonType",
-      "properties": {
-        "VisualizerDescription": "ApplyTitleActions: identity-bound local presentation contract; complete compliance is promised before selection."
-      },
-      "relationships": [
-        {
-          "name": "InputType",
-          "target": [
-            {
-              "$ref": "TitlePresentationInput.HolonType"
+              "$ref": "ActionsPresentationInput.HolonType"
             }
           ]
         },
@@ -7918,7 +7890,8 @@
         "TypeNamePlural": "ExplorePresentationActionRecords",
         "DisplayName": "Explore from here",
         "DisplayNamePlural": "ExplorePresentationAction records",
-        "Description": "Explore from here presentation affordance; the semantic subject remains the containing Node Holon."
+        "Description": "Explore from here presentation affordance; the semantic subject remains the containing Node Holon.",
+        "ActionIcon": "↗"
       },
       "relationships": [
         {
@@ -7955,7 +7928,8 @@
         "TypeNamePlural": "ClosePresentationActionRecords",
         "DisplayName": "Close",
         "DisplayNamePlural": "ClosePresentationAction records",
-        "Description": "Close presentation affordance; the semantic subject remains the containing Node Holon."
+        "Description": "Close presentation affordance; the semantic subject remains the containing Node Holon.",
+        "ActionIcon": "×"
       },
       "relationships": [
         {
@@ -7992,7 +7966,8 @@
         "TypeNamePlural": "ExpandRestorePresentationActionRecords",
         "DisplayName": "Expand / Restore",
         "DisplayNamePlural": "ExpandRestorePresentationAction records",
-        "Description": "Expand / Restore presentation affordance; the semantic subject remains the containing Node Holon."
+        "Description": "Expand / Restore presentation affordance; the semantic subject remains the containing Node Holon.",
+        "ActionIcon": "⤢"
       },
       "relationships": [
         {
@@ -8029,7 +8004,8 @@
         "TypeNamePlural": "InspectPresentationActionRecords",
         "DisplayName": "Show Visualizer",
         "DisplayNamePlural": "InspectPresentationAction records",
-        "Description": "Show Visualizer presentation affordance; the semantic subject remains the containing Node Holon."
+        "Description": "Show Visualizer presentation affordance; the semantic subject remains the containing Node Holon.",
+        "ActionIcon": "v"
       },
       "relationships": [
         {
@@ -8059,12 +8035,12 @@
       ]
     },
     {
-      "key": "NodeTitleBar.Contract",
-      "type": "TitleBarContract.HolonType",
+      "key": "NodeActions.Contract",
+      "type": "NodeActionsContract.HolonType",
       "properties": {},
       "relationships": [
         {
-          "name": "StandardTitleActions",
+          "name": "StandardNodeActions",
           "target": [
             {
               "$ref": "ExplorePresentationAction.HolonType"
@@ -8104,14 +8080,6 @@
               "$ref": "ApplyTitlePresentation.VisualizerOperator"
             }
           ]
-        },
-        {
-          "name": "UsesTitleBarContract",
-          "target": [
-            {
-              "$ref": "NodeTitleBar.Contract"
-            }
-          ]
         }
       ]
     },
@@ -8137,139 +8105,6 @@
               "$ref": "ApplyTitlePresentation.VisualizerOperator"
             }
           ]
-        },
-        {
-          "name": "UsesTitleBarContract",
-          "target": [
-            {
-              "$ref": "NodeTitleBar.Contract"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "NodeTitleBar.ActionsSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Selected ActionsSlot with independent inspection and bounded presentation."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionBarVisualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "RequiresOperator",
-          "target": [
-            {
-              "$ref": "ApplyTitleActions.VisualizerOperator"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "NodeTitleActions.ExploreSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Selected ExploreSlot with independent inspection and bounded presentation."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionVisualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "RequiresOperator",
-          "target": [
-            {
-              "$ref": "ApplyPresentationAction.VisualizerOperator"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "NodeTitleActions.CloseSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Selected CloseSlot with independent inspection and bounded presentation."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionVisualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "RequiresOperator",
-          "target": [
-            {
-              "$ref": "ApplyPresentationAction.VisualizerOperator"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "NodeTitleActions.ExpandRestoreSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Selected ExpandRestoreSlot with independent inspection and bounded presentation."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionVisualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "RequiresOperator",
-          "target": [
-            {
-              "$ref": "ApplyPresentationAction.VisualizerOperator"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "NodeTitleActions.InspectSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Selected InspectSlot with independent inspection and bounded presentation."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionVisualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "RequiresOperator",
-          "target": [
-            {
-              "$ref": "ApplyPresentationAction.VisualizerOperator"
-            }
-          ]
         }
       ]
     },
@@ -8290,14 +8125,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "NodeTitleBar.ActionsSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -8310,57 +8137,6 @@
           "target": [
             {
               "$ref": "ApplyTitlePresentation.VisualizerOperator"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "NodeTitleActions.ActionBarVisualizer",
-      "type": "ActionBarVisualizer.HolonType",
-      "properties": {
-        "DisplayName": "NodeTitleActions",
-        "VisualizerDescription": "Selected, bounded NodeTitleActions presentation with explicit local Operator bindings."
-      },
-      "relationships": [
-        {
-          "name": "ApplicableToType",
-          "target": [
-            {
-              "$ref": "HolonType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "NodeTitleActions.ExploreSlot"
-            },
-            {
-              "$ref": "NodeTitleActions.CloseSlot"
-            },
-            {
-              "$ref": "NodeTitleActions.ExpandRestoreSlot"
-            },
-            {
-              "$ref": "NodeTitleActions.InspectSlot"
-            }
-          ]
-        },
-        {
-          "name": "ImplementedBy",
-          "target": [
-            {
-              "$ref": "NodeTitleActionsTypeScript.VisualizerImplementation"
-            }
-          ]
-        },
-        {
-          "name": "OffersOperator",
-          "target": [
-            {
-              "$ref": "ApplyTitleActions.VisualizerOperator"
             }
           ]
         }
@@ -8507,19 +8283,8 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:462db9906dd0f2e3bfb1008fb470e4d062311cc2c8f994dd9e6dcade39e20301",
+        "VisualizerArtifactDigest": "sha256:a164b4f70b312d69ffc61d8a762102138c8eab1f2dd1c8a5011ac356fd78f3d1",
         "VisualizerImplementationKey": "dahn.node-title-bar",
-        "VisualizerImplementationRuntime": "TypeScript",
-        "VisualizerModuleFormat": "ESModule"
-      }
-    },
-    {
-      "key": "NodeTitleActionsTypeScript.VisualizerImplementation",
-      "type": "VisualizerImplementation.HolonType",
-      "properties": {
-        "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:2ee3accdff027b1c96b1ad5e13dc5fde58360d154a31674154381236b061ce30",
-        "VisualizerImplementationKey": "dahn.title-actions",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
@@ -8848,122 +8613,6 @@
       ]
     },
     {
-      "key": "(TitlePresentationInput.HolonType)-[TitleActionStates]->(PresentationActionState.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "TitleActionStates",
-        "TypeNamePlural": "TitleActionStatesRelationships",
-        "DisplayName": "TitleActionStates",
-        "DisplayNamePlural": "TitleActionStates relationships",
-        "Description": "TitleActionStates local contract membership.",
-        "DeletionSemantic": "Allow"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "DeclaredRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP DAHN Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "TitlePresentationInput.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "PresentationActionState.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "HasInverse",
-          "target": [
-            {
-              "$ref": "(PresentationActionState.HolonType)-[StateForTitleInput]->(TitlePresentationInput.HolonType)"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ZeroOrMore.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(PresentationActionState.HolonType)-[StateForTitleInput]->(TitlePresentationInput.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "StateForTitleInput",
-        "TypeNamePlural": "StateForTitleInputRelationships",
-        "DisplayName": "StateForTitleInput",
-        "DisplayNamePlural": "StateForTitleInput relationships",
-        "Description": "Inverse of TitleActionStates.",
-        "DeletionSemantic": "Allow"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "InverseRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP DAHN Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "PresentationActionState.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "TitlePresentationInput.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ZeroOrMore.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "(PresentationActionState.HolonType)-[ActionStateForOperator]->(VisualizerOperator.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
@@ -9109,7 +8758,7 @@
       "type": "TitleBarVisualizer.HolonType",
       "properties": {
         "DisplayName": "Compact Node Title",
-        "VisualizerDescription": "Subject identity with an accessible selected-action menu."
+        "VisualizerDescription": "Compact subject identity and bound Restore access; the containing Node owns the sibling ActionBar."
       },
       "relationships": [
         {
@@ -9117,14 +8766,6 @@
           "target": [
             {
               "$ref": "HolonLoadResponse.DanceResponseType"
-            }
-          ]
-        },
-        {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "CompactTitleBar.ActionsSlot"
             }
           ]
         },
@@ -9147,40 +8788,52 @@
       ]
     },
     {
-      "key": "CompactTitleBar.ActionsSlot",
-      "type": "VisualizerSlot.HolonType",
-      "properties": {
-        "VisualizerSlotDescription": "Compact title's independently selected actions."
-      },
-      "relationships": [
-        {
-          "name": "AcceptsVisualizerType",
-          "target": [
-            {
-              "$ref": "ActionBarVisualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "RequiresOperator",
-          "target": [
-            {
-              "$ref": "ApplyTitleActions.VisualizerOperator"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "CompactTitleBarTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:8283bf3efc247e615601ef68c0d44e3b5a7e46adf3f0f094dc4753ad90a118a7",
+        "VisualizerArtifactDigest": "sha256:f0cb5706a8dbbbcf4b14d3631d83c3b89185d9b95717c20259341fd5394cd346",
         "VisualizerImplementationKey": "dahn.compact-title-bar",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
+    },
+    {
+      "key": "ActionIcon.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ActionIcon",
+        "TypeNamePlural": "ActionIcons",
+        "DisplayName": "Action Icon",
+        "DisplayNamePlural": "Action Icons",
+        "Description": "Optional independently defined icon text for an Action component."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

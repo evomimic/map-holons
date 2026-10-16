@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { selectedTitleContext } from '../../../test-fixtures/selected-title';
 import { defineCustomElementOnce } from './define-custom-element-once';
 import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
@@ -33,3 +33,6 @@ it('clears incompatible Collection emphasis and retains both-context navigation'
   expect(node.collectionsMaximized).toBe(false); expect(node.collections.inert).toBe(false); expect(node.rail.inert).toBe(false);
   applyNodePresentation(node, { width: 800, height: 640, requiredCapabilities: ['inspect'] }); expect(node.collectionsMaximized).toBe(false);
 });
+
+beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()); });
+afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });

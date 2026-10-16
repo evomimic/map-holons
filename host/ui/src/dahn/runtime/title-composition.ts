@@ -17,11 +17,6 @@ export async function composeNodeTitle(
   const subject = context.target.reference;
   const theme = context.theme!;
   const slot = await runtime.slot(owner, 'titleBar');
-  const contracts = [...await slot.relatedHolons('UsesTitleBarContract')];
-  if (contracts.length !== 1) throw new Error('Node Title Bar requires one shared role contract');
-  const standards = await contracts[0].relatedHolons('StandardTitleActions');
-  const additions = await owner.relatedHolons('AdditionalTitleActions');
-  if (standards.length === 0) throw new Error('Title Bar contract has no standard actions');
   const request = { subject, owner: { visualizer: owner }, slot, theme: theme.reference, requestedKind: 'titleBar' as const };
   const host = document.createElement('div') as unknown as HTMLElement & {
     visualizerOperations: Record<string, (input: unknown) => unknown>;
@@ -33,43 +28,18 @@ export async function composeNodeTitle(
   let invoke: (key: string, invoker: HTMLElement) => unknown = () => { throw new Error('Title occurrence authority is not bound'); };
   let lastInput: unknown;
   const ready = async (visualizer: HolonReference, usage?: HolonReference) => {
-    let retired = false;
     const implementation = await runtime.realize(visualizer) as CustomElementConstructor;
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Title Bar is not an HTMLElement constructor');
     const title = document.createElement(defineCustomElementOnce('map-selected-title', implementation)) as TitleElement;
-    const actionsSlot = await runtime.slot(visualizer, 'actions');
-    const barSelection = await transaction.selectVisualizer({ subject, owner: { visualizer }, slot: actionsSlot, theme: theme.reference, requestedKind: 'actionBar' });
-    const Bar = await runtime.realize(barSelection.selected) as CustomElementConstructor;
-    const bar = document.createElement(defineCustomElementOnce('map-title-actions', Bar)) as VisualizerElement;
-    const children = new Map<string, HTMLElement>();
-    for (const descriptor of [...standards, ...additions]) {
-      const operators = [...await descriptor.relatedHolons('PresentationOperator')];
-      if (operators.length !== 1) throw new Error('Presentation Action must bind exactly one Operator');
-      const key = await operators[0].key();
-      if (!key || children.has(key)) throw new Error('Additional action duplicates or redefines a standard Operator');
-      const childSlot = await runtime.slot(barSelection.selected, key);
-      const actionSelection = await transaction.selectVisualizer({ subject: descriptor, owner: { visualizer: barSelection.selected }, slot: childSlot, theme: theme.reference, requestedKind: 'action' });
-      const Action = await runtime.realize(actionSelection.selected) as CustomElementConstructor;
-      const child = document.createElement(defineCustomElementOnce('map-title-action', Action)) as VisualizerElement;
-      const display = await descriptor.propertyValue('DisplayName');
-      child.setContext({ ...context, presentationOperator: key, title: display && 'StringValue' in display ? display.StringValue : key,
-        presentationActivation: invoker => { if (retired || !current?.contains(invoker)) throw new Error('Retired presentation action'); return invoke(key, invoker); } });
-      await runtime.admit(child, childSlot);
-      await bindVisualizerInformationControl(child, transaction, descriptor, barSelection.selected, childSlot, actionSelection.selected);
-      // These controls are available recursively; extra direct v controls are optional.
-      child.querySelector<HTMLElement>('[data-visualizer-information-control]')!.style.display = 'none';
-      children.set(key, child);
-    }
-    bar.setContext({ ...context, presentationActionChildren: children });
-    await runtime.admit(bar, actionsSlot);
-    await bindVisualizerInformationControl(bar, transaction, subject, visualizer, actionsSlot, barSelection.selected);
-    bar.querySelector<HTMLElement>('[data-visualizer-information-control]')!.style.display = 'none';
-    title.setContext({ ...context, visualizerUsage: usage, childVisualizers: new Map([['actions', bar]]) });
-    title.setOwnerInvocation((key, invoker) => invoke(key, invoker));
+    title.setContext({ ...context, visualizerUsage: usage, childVisualizers: new Map() });
+    title.setOwnerInvocation((key, invoker) => {
+      if (current !== title || !host.contains(invoker) || !host.isConnected) throw new Error('Retired title invocation');
+      return invoke(key, invoker);
+    });
     await runtime.admit(title, slot);
     if (lastInput) title.visualizerOperations!['ApplyTitlePresentation.VisualizerOperator'](lastInput as never);
     await title.ready;
-    title.dispose = () => { retired = true; revokeVisualizerInformationControls(title); };
+    title.dispose = () => { revokeVisualizerInformationControls(title); };
     return title;
   };
   let generation = 0;

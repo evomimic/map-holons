@@ -330,7 +330,7 @@ export class LoadHolonsDialog implements ActionInteraction {
       this.response = undefined; this.target = undefined; this.transaction = undefined;
       clearInterval(this.elapsed); this.mountedReview?.dispose(); this.mountedReview = undefined;
       if (this.dialog instanceof HTMLDialogElement) this.dialog.close();
-      this.presentation?.remove(); this.dialog.remove(); this.binding.occurrence.querySelector<HTMLElement>('button')?.focus(); this.finish();
+      this.presentation?.remove(); this.dialog.remove(); (this.binding.invoker ?? this.binding.occurrence.querySelector<HTMLElement>('button'))?.focus(); this.finish();
     } catch (error) { this.status.textContent = `Unable to release load state: ${loaderFailureDetail(error)}`; }
     finally { this.disposing = false; }
   }

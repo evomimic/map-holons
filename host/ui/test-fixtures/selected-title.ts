@@ -1,7 +1,6 @@
 // Explicit selected children for artifact-level Node fixtures; production uses Rust selection.
 import Title from '../../conductora/visualizer-src/node-title-bar.js';
-import Actions from '../../conductora/visualizer-src/title-actions.js';
-import Action from '../../conductora/visualizer-src/presentation-action.js';
+import Actions from '../../conductora/resources/dahn-visualizers/actions.js';
 import { defineCustomElementOnce } from '../src/dahn/visualizers/define-custom-element-once';
 const standard = new Map([
   ['ExploreOccurrence.VisualizerOperator', 'Explore from here'],
@@ -11,16 +10,14 @@ const standard = new Map([
 ]);
 export function selectedTitleContext(context: any = {}, TitleConstructor = Title) {
   const title: any = document.createElement(defineCustomElementOnce('fixture-selected-title', TitleConstructor));
-  const bar: any = document.createElement(defineCustomElementOnce('fixture-selected-title-actions', Actions));
-  const children = new Map<string, HTMLElement>();
-  for (const [key, label] of standard) {
-    const child: any = document.createElement(defineCustomElementOnce('fixture-selected-presentation-action', Action));
-    child.setContext({ title: label, presentationOperator: key, presentationActivation: (invoker: HTMLElement) => title.invoke(key, invoker) });
-    children.set(key, child);
-  }
-  bar.setContext({ presentationActionChildren: children });
-  title.setContext({ childVisualizers: new Map([['actions', bar]]) });
-  return { ...context, childVisualizers: new Map([...(context.childVisualizers ?? []), ['titleBar', title]]) };
+  const bar: any = document.createElement(defineCustomElementOnce('fixture-selected-node-actions', Actions));
+  let actions = [...standard].map(([id, label]) => ({ id, label, kind: 'action', available: false, reason: 'Not bound', activate: () => {} }));
+  bar.setOccurrenceActions = (states: any, invoke: any) => {
+    actions = actions.map(action => ({ ...action, ...states[action.id], activate: (invoker: HTMLElement) => invoke(action.id, invoker) }));
+    bar.visualizerOperations['PresentActions.VisualizerOperator']({ actions });
+  };
+  title.setContext({ childVisualizers: new Map() });
+  return { ...context, childVisualizers: new Map([...(context.childVisualizers ?? []), ['titleBar', title], ['actions', context.childVisualizers?.get('actions') ?? bar]]) };
 }
 /** Tests unrelated to selection still supply actual selected Title Bar children. */
 export function withSelectedTitle(Implementation: any) {

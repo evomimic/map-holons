@@ -25,10 +25,10 @@ function inspectorLayout(input, titleHeight = 48, activeCollection = true) {
   const inspect = has("inspect");
   const singular = inspect || has("navigate-singular");
   const plural = inspect || has("navigate-plural");
-  const title = Math.min(grant.height, titleHeight);
+  const title = Math.min(grant.height, titleHeight * 2);
   const remaining = grant.height - title;
   const scale = titleHeight / 48;
-  const actions = inspect ? 48 * scale : 0;
+  const actions = inspect ? 32 * scale : 0;
   const detail = 176 * scale;
   const tabs = 56 * scale;
   const body = singular ? plural ? inspect ? activeCollection ? Math.min(remaining - 160 * scale, actions + detail) : remaining - tabs : Math.floor(remaining * 0.4) : remaining : 0;
@@ -58,8 +58,13 @@ function boundedRegion(element, visible, label) {
 
 // host/conductora/visualizer-src/node-title-bar.js
 function createNodeTitleBar(context, options) {
-  const element = context.childVisualizers?.get("titleBar");
-  if (!element?.visualizerOperations?.["ApplyTitlePresentation.VisualizerOperator"]) throw new Error("Node requires an admitted selected Title Bar");
+  const title = context.childVisualizers?.get("titleBar");
+  const actions = context.childVisualizers?.get("actions");
+  const element = document.createElement("header");
+  element.style.cssText = "display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-width:0;min-height:0;overflow:hidden;";
+  element.append(title);
+  if (actions) element.append(actions);
+  if (!title?.visualizerOperations?.["ApplyTitlePresentation.VisualizerOperator"]) throw new Error("Node requires an admitted selected Title Bar");
   let state = {}, information;
   const operations = {
     ...context.presentationOperators,
@@ -74,21 +79,21 @@ function createNodeTitleBar(context, options) {
     "InspectOccurrence.VisualizerOperator": (invoker) => information?.(invoker)
   };
   const publish = () => {
-    const binding = element.visualizerOperations["ApplyTitlePresentation.VisualizerOperator"];
-    const actions = {
+    const binding = title.visualizerOperations["ApplyTitlePresentation.VisualizerOperator"];
+    const actionsState = {
       ...context.presentationActionStates,
       "ExploreOccurrence.VisualizerOperator": { available: !!state.canExplore, reason: "Explore is unavailable in this context." },
       "CloseOccurrence.VisualizerOperator": { available: !!state.canClose, reason: "Close is unavailable in this context." },
       "ExpandRestoreOccurrence.VisualizerOperator": { available: state.collapsed || !!state.canMaximize, reason: "Expansion is unavailable in this context.", label: state.collapsed || state.maximized ? "Restore" : "Expand" },
       "InspectOccurrence.VisualizerOperator": { available: !!information, reason: "Occurrence inspection is unavailable." }
     };
+    actions?.setOccurrenceActions?.(actionsState, invoke);
     return binding({
       width: state.width ?? 800,
-      height: state.height ?? 48,
+      height: Math.max(32, (state.height ?? 96) / 2),
       title: options.title,
       holonKey: options.holonKey,
-      requiresRestore: !!state.requiresRestore,
-      actions
+      requiresRestore: !!state.requiresRestore
     });
   };
   const update = (patch) => {
@@ -103,14 +108,14 @@ function createNodeTitleBar(context, options) {
     if (typeof operation !== "function") throw new Error(`Missing occurrence operation: ${key}`);
     return operation(invoker);
   };
-  element.setOwnerInvocation(invoke);
+  title.setOwnerInvocation(invoke);
   const status = document.createElement("span");
   status.setAttribute("role", "status");
   status.hidden = true;
   element.append(status);
   return {
     element,
-    titleControl: element,
+    titleControl: title,
     presentationStatus: status,
     operations,
     update,
@@ -125,7 +130,7 @@ function createNodeTitleBar(context, options) {
 var HolonInspectorElement = class extends HTMLElement {
   getVisualizerComposition() {
     return [
-      { label: "Title Bar", element: this.titleBar?.element },
+      { label: "Title Bar", element: this.titleBar?.titleControl },
       { label: "Actions", element: this.actionsVisualizer },
       { label: "Properties", element: this.propertiesVisualizer },
       { label: "Collection Tabs", element: this.collectionTabBar },
@@ -146,7 +151,7 @@ var HolonInspectorElement = class extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { titleBar: "HolonInspector.TitleBarSlot", propertyMap: "HolonInspector.PropertyMapSlot", action: "HolonInspector.ActionsSlot", collection: "HolonInspector.CollectionsSlot" };
+  static compositionSlots = { titleBar: "HolonInspector.TitleBarSlot", propertyMap: "HolonInspector.PropertyMapSlot", action: "HolonInspector.ActionsSlot", diagnostics: "LoadHolons.DiagnosticsSlot", committed: "LoadHolons.CommittedHolonsSlot", collection: "HolonInspector.CollectionsSlot" };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute("aria-pressed", String(state.active === affordance));
@@ -631,8 +636,6 @@ var HolonInspectorElement = class extends HTMLElement {
     actionBar.style.overflow = "hidden";
     const actions = context.childVisualizers?.get("actions");
     this.actionsVisualizer = actions;
-    if (actions) actionBar.append(actions);
-    else actionBar.textContent = "No actions";
     if (this.discovery) {
       const label = document.createElement("label");
       Object.assign(label.style, { marginLeft: "auto", whiteSpace: "nowrap" });

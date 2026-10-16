@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { selectedTitleContext } from '../../../test-fixtures/selected-title';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
@@ -18,3 +18,6 @@ it('preserves bound singular navigation through partial context without consulti
   expect(node.rail.inert).toBe(false); expect(node.properties.inert).toBe(true); expect(node.properties.contains(properties)).toBe(true);
   expect(restore).not.toHaveBeenCalled(); node.remove();
 });
+
+beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()); });
+afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });

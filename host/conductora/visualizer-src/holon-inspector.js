@@ -5,7 +5,7 @@ import { createNodeTitleBar } from './node-title-bar.js';
 export default class HolonInspectorElement extends HTMLElement {
   getVisualizerComposition() {
     return [
-      { label: 'Title Bar', element: this.titleBar?.element },
+      { label: 'Title Bar', element: this.titleBar?.titleControl },
       { label: 'Actions', element: this.actionsVisualizer },
       { label: 'Properties', element: this.propertiesVisualizer },
       { label: 'Collection Tabs', element: this.collectionTabBar },
@@ -26,7 +26,7 @@ export default class HolonInspectorElement extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { titleBar: 'HolonInspector.TitleBarSlot', propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', collection: 'HolonInspector.CollectionsSlot' };
+  static compositionSlots = { titleBar: 'HolonInspector.TitleBarSlot', propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', diagnostics: 'LoadHolons.DiagnosticsSlot', committed: 'LoadHolons.CommittedHolonsSlot', collection: 'HolonInspector.CollectionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute('aria-pressed', String(state.active === affordance));
@@ -437,8 +437,7 @@ export default class HolonInspectorElement extends HTMLElement {
     actionBar.style.overflow = 'hidden';
     const actions = context.childVisualizers?.get('actions');
     this.actionsVisualizer = actions;
-    if (actions) actionBar.append(actions);
-    else actionBar.textContent = 'No actions';
+
     if (this.discovery) {
       const label = document.createElement('label');
       Object.assign(label.style, { marginLeft: 'auto', whiteSpace: 'nowrap' });

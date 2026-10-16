@@ -1,3 +1,4 @@
+import { composeNodeActions } from '../src/dahn/runtime/node-actions';
 import { bindVisualizerInformationControl } from '../src/dahn/runtime/visualizer-information-control';
 import { composeNodeTitle } from '../src/dahn/runtime/title-composition';
 import { MaterializedVisualizerRuntime } from '../src/dahn/runtime/materialized-visualizer-runtime';
@@ -23,7 +24,7 @@ let titleChoice = 'NodeTitleBar.TitleBarVisualizer';
 const transaction: any = {
   selectVisualizer: async (request: any) => {
     const kind = request.requestedKind;
-    const key = kind === 'titleBar' ? titleChoice : kind === 'actionBar' ? 'NodeTitleActions.ActionBarVisualizer' : `${(await request.subject.key()).split('PresentationAction')[0]}Presentation.ActionVisualizer`;
+    const key = kind === 'titleBar' ? titleChoice : kind === 'actionBar' ? 'GenericActions.ActionBarVisualizer' : `${(await request.subject.key()).split('PresentationAction')[0]}Presentation.ActionVisualizer`;
     return { selected: ref(key) };
   },
   selectVisualizerUsage: async () => ({ usage: ref('fixture-usage'), reportSession: 'browser-fixture' }),
@@ -53,7 +54,7 @@ export async function mount(kind: string, horizontal: string, vertical: string, 
   }
   property.setContext({ title: 'Properties', childVisualizers: propertyChildren });
   await bindVisualizerInformationControl(property, transaction, subject, ref('HolonInspector.NodeVisualizer'), ref('HolonInspector.PropertyMapSlot'), ref('DefaultPropertyMapVisualizer.PropertyMapVisualizer'));
-  const actions = document.createElement('section'); actions.textContent = 'Node actions — unavailable';
+  const actions = await composeNodeActions(transaction, runtime, owner, { target: { reference: subject }, actions: [], theme: { reference: ref('fixture-theme') } } as any);
   const collection = document.createElement('nav'); collection.setAttribute('aria-label', 'Non-table Collection');
   collection.style.cssText = 'display:flex;flex-direction:column;min-height:0;min-width:0;overflow:auto;flex:1;';
   for (let index = 0; index < 30; index++) {

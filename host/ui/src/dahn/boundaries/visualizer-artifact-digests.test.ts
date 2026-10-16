@@ -10,7 +10,6 @@ const implementations = [
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
   ['NodeTitleBarTypeScript.VisualizerImplementation', 'node-title-bar.js'],
   ['CompactTitleBarTypeScript.VisualizerImplementation', 'compact-title-bar.js'],
-  ['NodeTitleActionsTypeScript.VisualizerImplementation', 'title-actions.js'],
   ['ExplorePresentationTypeScript.VisualizerImplementation', 'presentation-action.js'],
   ['VisualizerInspectorTypeScript.VisualizerImplementation', 'visualizer-inspector.js'],
   ['DiscoveryTreeTypeScript.VisualizerImplementation', 'discovery-tree.js'],
@@ -61,7 +60,7 @@ it('withdraws Connections First and gives generic and loader Nodes independent T
   expect(schema.holons.some((record: any) => record.key.startsWith('ConnectionsFirstInspector'))).toBe(false);
   expect(targets('HolonInspector.NodeVisualizer', 'HasSlot')).toContain('HolonInspector.TitleBarSlot');
   expect(targets('LoadHolons.NodeVisualizer', 'HasSlot')).toContain('LoadHolonsResult.TitleBarSlot');
-  expect(targets('HolonInspector.TitleBarSlot', 'UsesTitleBarContract')).toEqual(['NodeTitleBar.Contract']);
-  expect(targets('LoadHolonsResult.TitleBarSlot', 'UsesTitleBarContract')).toEqual(['NodeTitleBar.Contract']);
-  expect(targets('NodeTitleBar.Contract', 'StandardTitleActions')).toHaveLength(4);
+  expect(targets('HolonInspector.ActionsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
+  expect(targets('LoadHolonsResult.ActionsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
+  expect(targets('NodeActions.Contract', 'StandardNodeActions')).toHaveLength(4);
 });

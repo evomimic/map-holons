@@ -1,7 +1,7 @@
 import { composeNodeTitle } from './title-composition';
 import { bindVisualizerInformationControl } from './visualizer-information-control';
 import { ActionActivation, type ActionInteractions } from './action-activation';
-import type { ActionNode } from '../contracts/actions';
+import { composeNodeActions } from './node-actions';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
 import type { RelationshipAffordance } from '../contracts/affordances';
 import { NodeCollectionActivation } from './collection-activation';
@@ -181,46 +181,9 @@ export async function realizeNode(
       return propertiesElement;
     });
     onStage?.('select and materialize Actions');
-    const actionsElement = await renderVisualizerRegion('Node actions', async () => {
-      const actionSlot = await materialized.slot(selectedVisualizer, 'action');
-      const selection = await transaction.selectVisualizer({
-        subject, requestedKind: 'actionBar', owner: { visualizer: selectedVisualizer }, theme: theme.reference,
-        slot: actionSlot,
-      });
-      const implementation = await materialized.realize(selection.selected);
-      if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
-        throw new Error('Selected Action implementation does not export an HTMLElement constructor.');
-      }
-      const tag = defineCustomElementOnce('map-node-actions', implementation as CustomElementConstructor);
-      const element = document.createElement(tag) as VisualizerElement;
-      await materialized.admit(element, actionSlot);
-      const applyActions = element.visualizerOperations?.['ApplySubjectActions.VisualizerOperator'];
-      if (!applyActions) throw new Error('Selected ActionBar does not fulfill subject-action presentation');
-      const children = new Map<string, HTMLElement>();
-      const compose = async (actions: ActionNode[]): Promise<void> => {
-        for (const action of actions) {
-          if (action.kind === 'group') { await compose(action.children ?? []); continue; }
-          children.set(action.id, await renderVisualizerRegion(action.label, async () => {
-            if (!action.dance) throw new Error('Action has no bound Dance descriptor');
-            const childSlot = await materialized.slot(selection.selected, 'action');
-            const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', owner: { visualizer: selection.selected }, theme: theme.reference, slot: childSlot });
-            const implementation = await materialized.realize(selected.selected);
-            if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Action is not an HTMLElement constructor');
-            const tag = defineCustomElementOnce('map-selected-action', implementation as CustomElementConstructor);
-            const child = document.createElement(tag) as VisualizerElement;
-            const activation = new ActionActivation({ subject, dance: action.dance, visualizer: selected.selected, occurrence: child, label: action.label });
-            actionActivations.push(activation);
-            child.setContext({ target: { reference: subject }, holon: view, actions: [], theme, canvas, actionActivation: activation, actionInteractions });
-            await bindVisualizerInformationControl(child, transaction, action.dance, selection.selected, childSlot, selected.selected);
-            return child;
-          }));
-        }
-      };
-      await compose(affordances.actions);
-      applyActions({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas, childVisualizers: children } as never);
-    await bindVisualizerInformationControl(element, transaction, subject, selectedVisualizer, actionSlot, selection.selected);
-    return element;
-  });
+    const actionsElement = await composeNodeActions(transaction, materialized, selectedVisualizer, {
+      target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas,
+    }, actionActivations, actionInteractions);
   onStage?.('compose node');
   const element = document.createElement(nodeTag) as HTMLElement & {
     setContext(context: VisualizerContext): void;
@@ -261,6 +224,7 @@ export async function realizeNode(
     const ready = initialized && Promise.all([initialized, ...children.map(child => (child as VisualizerElement).ready)]).then(() => {});
     const dispose = () => {
       (titleElement as VisualizerElement).dispose?.();
+      actionsElement.dispose();
       collectionActivation?.dispose();
       for (const action of actionActivations) void action.dispose().catch(console.error);
     };

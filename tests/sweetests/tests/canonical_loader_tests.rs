@@ -114,6 +114,35 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
+    let contract = saved("NodeActions.Contract");
+    for key in ["HolonInspector.ActionsSlot", "LoadHolonsResult.ActionsSlot"] {
+        let slot = saved(key);
+        assert!(slot
+            .related_holons("UsesNodeActionsContract")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&contract));
+        assert!(contract
+            .related_holons("ContractForNodeActionsSlot")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&slot));
+    }
+    let standards = contract.related_holons("StandardNodeActions").unwrap();
+    assert_eq!(standards.read().unwrap().get_members().len(), 4);
+    for action in standards.read().unwrap().get_members() {
+        assert!(action
+            .related_holons("StandardActionOfNodeContract")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&contract));
+    }
     let space = context.get_space_holon().unwrap().unwrap();
     let MapResult::VisualizerDiscovery(discovery) = command(
         &runtime,
@@ -226,27 +255,6 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             "HolonInspector.ActionsSlot",
             "GenericActions.ActionBarVisualizer",
         ),
-        (
-            map_commands_contract::VisualizerKind::ActionBar,
-            space,
-            "NodeTitleBar.TitleBarVisualizer",
-            "NodeTitleBar.ActionsSlot",
-            "NodeTitleActions.ActionBarVisualizer",
-        ),
-        (
-            map_commands_contract::VisualizerKind::Action,
-            saved("LoadHolons.DanceType"),
-            "GenericActions.ActionBarVisualizer",
-            "GenericActions.ActionSlot",
-            "LoadHolons.ActionVisualizer",
-        ),
-        (
-            map_commands_contract::VisualizerKind::Action,
-            saved("MaterializeVisualizer.DanceType"),
-            "GenericActions.ActionBarVisualizer",
-            "GenericActions.ActionSlot",
-            "UnsupportedAction.ActionVisualizer",
-        ),
     ] {
         let selection_request = || map_commands_contract::VisualizerSelectionRequest {
             subject: subject.clone(),
@@ -288,11 +296,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .any(|candidate| candidate.visualizer == selection.selected
                 && !candidate.declared_on.is_empty()));
         if kind == map_commands_contract::VisualizerKind::ActionBar {
-            let wrong_role = if slot == "NodeTitleBar.ActionsSlot" {
-                "GenericActions.ActionBarVisualizer"
-            } else {
-                "NodeTitleActions.ActionBarVisualizer"
-            };
+            let wrong_role = "NodeTitleBar.TitleBarVisualizer";
             assert!(
                 command(
                     &runtime,
@@ -304,7 +308,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                 )
                 .await
                 .is_err(),
-                "An ActionBar for the other role must not fulfill this slot"
+                "A TitleBar without PresentActions must not fulfill an ActionBar slot"
             );
         }
         if kind == map_commands_contract::VisualizerKind::Node {

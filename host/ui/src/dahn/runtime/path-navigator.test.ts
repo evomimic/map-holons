@@ -18,19 +18,19 @@ vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) 
 
 const importer = (source: string) => import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const artifacts = Object.fromEntries(await Promise.all(
-  ['node-title-bar', 'title-actions', 'presentation-action', 'holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
+  ['node-title-bar', 'presentation-action', 'holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
 const titleActions = new Map([['Explore', 'ExploreOccurrence'], ['Close', 'CloseOccurrence'], ['ExpandRestore', 'ExpandRestoreOccurrence'], ['Inspect', 'InspectOccurrence']]);
 const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async (relation: string) => {
-  if (relation === 'HasSlot') return ['HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot', 'NodeTitleBar.ActionsSlot', ...[...titleActions.keys()].map(key => `NodeTitleActions.${key}Slot`)].map(selected);
-  if (relation === 'UsesTitleBarContract') return [selected('NodeTitleBar.Contract')];
-  if (relation === 'StandardTitleActions') return [...titleActions.keys()].map(key => selected(`${key}PresentationAction.HolonType`));
+  if (relation === 'HasSlot') return ['HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(selected);
+  if (relation === 'UsesNodeActionsContract') return [selected('NodeActions.Contract')];
+  if (relation === 'StandardNodeActions') return [...titleActions.keys()].map(key => selected(`${key}PresentationAction.HolonType`));
   if (relation === 'PresentationOperator') return [selected(`${titleActions.get(key.split('Presentation')[0])}.VisualizerOperator`)];
   return [];
 } }) as unknown as HolonReference;
-const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), titleBar: selected('node-title-bar'), titleActions: selected('title-actions'), presentationAction: selected('presentation-action'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
-const selectFixture = async (request: any) => ({ selected: request.requestedKind === 'actionBar' && await request.slot.key() === 'NodeTitleBar.ActionsSlot' ? visualizers.titleActions : request.requestedKind === 'action' ? visualizers.presentationAction : visualizers[request.requestedKind as keyof typeof visualizers] });
+const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), titleBar: selected('node-title-bar'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
+const selectFixture = async (request: any) => ({ selected: visualizers[request.requestedKind as keyof typeof visualizers] });
 artifacts['alternative-node'] = artifacts['holon-inspector'].replace('this.dataset.visualizerId = "holon-inspector";', 'this.dataset.visualizerId = "alternative-node"; this.dataset.alternateNode = "true";');
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
 const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
@@ -991,7 +991,7 @@ describe('occurrence branch closure', () => {
     const path = f.element as any;
     path.viewportWidth = 600; path.viewportHeight = 500; path.allocateRows(); path.view.zoom(0.5);
     const width = path.view.width;
-    const close = b.element.querySelector<HTMLButtonElement>('[data-close-occurrence]')!;
+    const close = b.element.querySelector<HTMLButtonElement>('[data-action-id="CloseOccurrence.VisualizerOperator"]')!;
     close.focus(); close.click();
     expect(f.path()).toEqual([a]);
     expect(path.focus.occurrenceId).toBe(a.id);
@@ -1011,7 +1011,7 @@ describe('occurrence branch closure', () => {
     const revision = semanticWork(f.transaction).revision;
     let last: unknown;
     const unsubscribe = f.navigation.subscribe((path, focus) => { last = { path, focus }; });
-    const close = f.root.element.querySelector<HTMLButtonElement>('[data-close-occurrence]')!;
+    const close = f.root.element.querySelector<HTMLButtonElement>('[data-action-id="CloseOccurrence.VisualizerOperator"]')!;
     close.focus(); close.click();
     expect(last).toEqual({ path: [], focus: undefined });
     expect(f.element.isConnected).toBe(true);
@@ -1197,7 +1197,7 @@ it('routes Explore from here through a live occurrence without changing the sour
   const open = vi.fn();
   const f = await fixture(open);
   const before = f.path().map(item => ({ id: item.id, subject: item.subject, element: item.element }));
-  f.element.querySelector<HTMLButtonElement>('[data-explore-from-here]')!.click();
+  f.element.querySelector<HTMLButtonElement>('[data-action-id="ExploreOccurrence.VisualizerOperator"]')!.click();
   expect(open).toHaveBeenCalledExactlyOnceWith(f.rootSubject);
   expect(f.path().map(item => ({ id: item.id, subject: item.subject, element: item.element }))).toEqual(before);
   f.navigation.reRoot('foreign-or-stale');
@@ -1222,7 +1222,7 @@ it('re-rooting a middle occurrence preserves its entire source chain and descend
   const c = await right(f, b);
   const d = await right(f, c);
   const before = f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }));
-  f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${c.id}"] [data-explore-from-here]`)!.click();
+  f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${c.id}"] [data-action-id="ExploreOccurrence.VisualizerOperator"]`)!.click();
   expect(open).toHaveBeenCalledExactlyOnceWith(c.subject);
   expect(f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }))).toEqual(before);
   expect([a, b, c, d].every(item => item.element.isConnected)).toBe(true);
@@ -1234,7 +1234,7 @@ it('keeps minimal identity Restore operable while preserving standard action mem
   const a = await right(f, root); await right(f, a);
   const identity = root.element.querySelector<HTMLButtonElement>('[data-node-title-bar] > button')!;
   expect(identity.getAttribute('aria-expanded')).toBe('false');
-  expect(root.element.querySelectorAll('[data-presentation-operator]')).toHaveLength(4);
+  expect(root.element.querySelectorAll('[data-action-id]')).toHaveLength(4);
   identity.click(); expect(f.element.querySelector(`[data-path-occurrence="${root.id}"]`)?.getAttribute('data-row-allocation')).toBe('expanded');
 });
 
@@ -1286,7 +1286,7 @@ it('compacts vertical traversal groups without discarding surviving descendant g
 it('binds information to distinct occurrences of the same subject and their selected definitions', async () => {
   const inspect = vi.fn();
   const f = await fixture(undefined, inspect);
-  (f.root.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
+  (f.root.element.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLButtonElement).click();
   const first = inspect.mock.calls[0][0];
   expect(first.selectedVisualizer).toBe(visualizers.node);
   const pathRegions = f.element.getVisualizerComposition!();
@@ -1303,7 +1303,7 @@ it('binds information to distinct occurrences of the same subject and their sele
   activate(rows[2]);
   await vi.waitFor(() => expect(f.path()).toHaveLength(2));
   const child = f.path()[1];
-  (child.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
+  (child.element.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLButtonElement).click();
   const second = inspect.mock.calls[1][0];
   expect(second.subject).toBe(first.subject);
   expect(second.occurrenceId).not.toBe(first.occurrenceId);
@@ -1322,7 +1322,7 @@ it('provides independently bound information controls for composed Properties, P
   const f = await fixture();
   const targets: VisualizerInspectionTarget[] = [];
   f.element.addEventListener('dahn-visualizer-information', event => targets.push((event as CustomEvent).detail));
-  const controls = [...f.root.element.querySelector('[data-holon-inspector-body]')!.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')].filter(button => button.parentElement!.style.display !== 'none');
+  const controls = [...f.root.element.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')].filter(button => button.parentElement!.style.display !== 'none');
   expect(controls).toHaveLength(4);
   for (const button of controls) button.click();
   expect(new Set(targets.map(target => target.selectedVisualizer))).toEqual(new Set([visualizers.propertyMap, visualizers.property, visualizers.value, visualizers.actionBar]));

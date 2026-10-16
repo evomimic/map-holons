@@ -10,3 +10,13 @@ export interface ActionNode {
   dance?: HolonReference;
   children?: ActionNode[];
 }
+
+/** Source-independent input to PresentActions. Authority is captured by the owner. */
+export type PresentedAction = { id: string; label: string } & (
+  { kind: 'group'; children: PresentedAction[] } |
+  { kind: 'action'; icon?: string; available: boolean; reason?: string; activate(invoker: HTMLElement): unknown }
+);
+
+export interface ActionsPresentation {
+  readonly actions: readonly PresentedAction[];
+}

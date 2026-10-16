@@ -1,3 +1,4 @@
+import { composeNodeActions } from './node-actions';
 import { composeNodeTitle } from './title-composition';
 import { VISUALIZER_INFORMATION_EVENT, bindVisualizerInformationControl } from './visualizer-information-control';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
@@ -108,14 +109,17 @@ export class SpaceNavigatorExperience {
           const titleElement = await composeNodeTitle(transaction, materialized, transaction.bindSavedReference(visualizer), {
             title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
           });
+          const actionsElement = await composeNodeActions(transaction, materialized, transaction.bindSavedReference(visualizer), {
+            target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
+          });
           root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, visualizerUsage: usage,
-            childVisualizers: new Map([['titleBar', titleElement], ['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
+            childVisualizers: new Map([['titleBar', titleElement], ['actions', actionsElement], ['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
             nodeAffordances: affordances, relationshipDiscovery: discovery,
             activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
           });
           await materialized.admitOffered(root, visualizer);
           node = { element: root, ready: root.ready, collectionActivation: { ...collections, dispose: () => discovery.dispose() },
-            dispose: () => { (titleElement as VisualizerElement).dispose?.(); discovery.dispose(); }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
+            dispose: () => { (titleElement as VisualizerElement).dispose?.(); actionsElement.dispose(); discovery.dispose(); }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
         } else {
           node = await realizeNode(transaction, materialized, subject, review.bindSavedReference(visualizer), theme, canvas, stage, undefined, review, usage);
           const activation = node.collectionActivation;
