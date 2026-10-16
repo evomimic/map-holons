@@ -1,3 +1,4 @@
+import { withSelectedTitle } from '../../../test-fixtures/selected-title';
 import { semanticWork } from './semantic-work';
 import { destinationPaint } from './destination-paint';
 import { readFile } from 'node:fs/promises';
@@ -108,7 +109,7 @@ describe('selected collection activation', () => {
 
   it('mounts beneath the original Node without replacing Properties and keeps arrays disabled', async () => {
     const f = fixture(); const module = await importer(nodeSource);
-    const node = document.createElement(defineCustomElementOnce('test-collection-node', module.default)) as HTMLElement & { setContext(context: unknown): void };
+    const node = document.createElement(defineCustomElementOnce('test-collection-node', withSelectedTitle(module.default))) as HTMLElement & { setContext(context: unknown): void };
     const properties = document.createElement('input'); properties.value = 'retained';
     node.setContext({ collectionActivation: f.activation, childVisualizers: new Map([['properties', properties]]), nodeAffordances: { collections: [tab('A'), tab('B'), { kind: 'property', label: 'Array' }] } });
     document.body.append(node);
@@ -133,7 +134,7 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
   f.owner.describedRelatedHolons.mockResolvedValue(data);
   const nodeModule = await importer(nodeSource);
   const pathModule = await importer(await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/path-inspector.js'), 'utf8'));
-  const node = document.createElement(defineCustomElementOnce('test-interactive-node', nodeModule.default)) as HTMLElement & { setContext(context: unknown): void };
+  const node = document.createElement(defineCustomElementOnce('test-interactive-node', withSelectedTitle(nodeModule.default))) as HTMLElement & { setContext(context: unknown): void };
   const path = document.createElement(defineCustomElementOnce('test-interactive-path', pathModule.default)) as HTMLElement & { setContext(context: unknown): void };
   const inspect = vi.fn();
   node.setContext({ collectionActivation: f.activation, childVisualizers: new Map([['properties', document.createElement('section')]]), nodeAffordances: { collections: [tab('A'), tab('B')] } });

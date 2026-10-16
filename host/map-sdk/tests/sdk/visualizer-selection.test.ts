@@ -169,3 +169,14 @@ it('keeps transaction-local discovery projection in its live source context', as
   expect(tx.owns(await evidence.project(tx))).toBe(true);
   expect(project).toHaveBeenLastCalledWith(41, 'nested');
 });
+
+it('projects and binds the Title Bar kind without changing its Holon subject or owner', async () => {
+  select.mockResolvedValue({ selected, requested_kind: 'TitleBar', alternatives_available: false });
+  const transaction = createMapTransaction(41);
+  const request = { subject: createHolonReference(41, subject), requestedKind: 'titleBar' as const,
+    owner: { visualizer: createHolonReference(41, parent) }, slot: createHolonReference(41, slot), theme: createHolonReference(41, subject) };
+  const result = await transaction.selectVisualizer(request);
+  expect(select).toHaveBeenLastCalledWith(41, { subject, requested_kind: 'TitleBar', owner: { Visualizer: parent }, slot, theme: subject });
+  expect(result.requestedKind).toBe('titleBar');
+  expect(unwrapHolonReference(result.selected)).toEqual(selected);
+});

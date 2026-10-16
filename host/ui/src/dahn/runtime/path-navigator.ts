@@ -1,5 +1,6 @@
+import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
 import { registerVisualizerInspection, revokeVisualizerInformationControls, selectedVisualizerInspection } from './visualizer-information-control';
-import { placeTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
+import { placeTraversal, promoteTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
 import { destinationPaint } from './destination-paint';
 import { NavigationProfile } from './navigation-profile';
 import type { InspectHolonIntent, TraverseRelationshipIntent, SingularNavigationState, VisualizerElement, VisualizerInspectionTarget } from '../contracts/visualizers';
@@ -295,6 +296,7 @@ export class PathNavigator implements PathNavigation {
         if (this.disposed || !this.path().includes(occurrence) || !node.element.isConnected) return;
         this.inspectVisualizer!(target(invoker));
       };
+      occurrence.inspectVisualizer = invoke;
       control.setVisualizerInformationHandler(invoke, 'Visualizer');
       registerVisualizerInspection(node.element, () => target(node.element.querySelector<HTMLElement>('[data-visualizer-information]') ?? node.element));
       void semanticWork(this.contextFor(subject)).run(async () => {
@@ -394,10 +396,8 @@ export class PathNavigator implements PathNavigation {
       if (!this.dismissible(occurrence)) throw new Error('Finish the active interaction before changing this Visualizer.');
       const oldControl = prior.element as VisualizerElement, newControl = prepared!.element as VisualizerElement;
       const allocation = oldControl.getNodeInspectorAllocation?.();
-      if (!allocation || !newControl.setNodeInspectorAllocation || !newControl.getNodeInspectorExtents || !newControl.setVisualizerInformationHandler) throw new Error('Node allocation participation is unavailable.');
-      const extents = newControl.getNodeInspectorExtents();
-      if (![...Object.values(extents.vertical), ...Object.values(extents.horizontal)].every(value => Number.isFinite(value) && value >= 0)) throw new Error('Selected Node supplied invalid extents.');
-      newControl.setNodeInspectorAllocation(allocation);
+      if (!allocation || !newControl.visualizerOperations || !newControl.setVisualizerInformationHandler) throw new Error('Node allocation participation is unavailable.');
+      applyNodePresentation(newControl, allocation);
       // Rebind descriptor-classified rail targets rather than carrying old affordance objects.
       const rebind = async (old: RelationshipAffordance | undefined) => {
         if (!old) return undefined;
@@ -430,7 +430,7 @@ export class PathNavigator implements PathNavigation {
       requireCurrent();
       if (!this.dismissible(occurrence)) throw new Error('Finish the active interaction before changing this Visualizer.');
       if (this.check?.owner === occurrence || this.attempt?.owner === occurrence) throw new Error('Finish navigation before changing this Visualizer.');
-      newControl.setNodeInspectorAllocation(oldControl.getNodeInspectorAllocation!()!);
+      applyNodePresentation(newControl, oldControl.getNodeInspectorAllocation!()!);
       // Edits to the live table during asynchronous preparation win over the earlier snapshot.
       prepared!.collectionActivation.restoreCurrentViewState?.(prior.collectionActivation.captureCurrentViewState?.());
       const previous = { node: prior, element: occurrence.element, selectedVisualizer: occurrence.selectedVisualizer,
@@ -510,16 +510,12 @@ export class PathNavigator implements PathNavigation {
     const target: TraversalCell = { id: identity(), parent: owner.id, axis, group: traversal.groupId,
       groupOrder: traversal.groupOrder, order: nextOccurrence, row: owner.row, column: owner.column };
     cells.push(target);
-    placeTraversal(cells, target);
+    placeTraversal(cells, target, !!previous);
     const destination: PathDestination = {
       id: target.id, row: target.row, rowId: identity(), column: target.column, columnId: identity(), parentOccurrenceId: owner.id, axis,
       element: document.createElement('div'), pending: true, message, traversal,
       cancel: () => { if (this.reservation?.destination === destination) { this.cancelCheck(); this.cancelAttempt(); } },
     };
-    // Reserve the slot's full extent before the selected destination is ready.
-    // The presentation owner may renegotiate after materialization.
-    const extents = (owner.element as VisualizerElement).getNodeInspectorExtents?.();
-    if (extents) Object.assign(destination.element, { getNodeInspectorExtents: () => extents });
     this.reservation = { destination, target, projections, previousFocus: this.focus };
     this.applyCells(cells, true);
     this.focus = { occurrenceId: destination.id, mode: 'traverse' };
@@ -586,7 +582,8 @@ export class PathNavigator implements PathNavigation {
       && item.provenance?.kind === 'collection-member' && item.provenance.collectionOccurrenceId === collectionOccurrenceId);
     if (known) {
       this.cancelAttempt(false);
-      this.focus = { occurrenceId: known.id, mode: 'restore' };
+      if (!this.promote(owner, known, 'vertical')) return;
+      this.focus = { occurrenceId: known.id, mode: 'traverse' };
       this.publish();
       return;
     }
@@ -621,6 +618,22 @@ export class PathNavigator implements PathNavigation {
         if (current()) { owner.pending = false; this.publish(); }
       }
     })();
+  }
+
+  /** Publish a retained continuation without reconstructing its bound state. */
+  private promote(owner: Occurrence, incoming: Occurrence, axis: 'horizontal' | 'vertical'): boolean {
+    const outgoing = axis === 'horizontal' ? owner.right : owner.child;
+    if (outgoing === incoming) return true;
+    if (outgoing && !outgoing.traversed && !this.subtree(outgoing).every(item => this.dismissible(item))) return false;
+    const cells = this.layoutCells().filter(cell => outgoing?.traversed || cell.id !== outgoing?.id);
+    promoteTraversal(cells, incoming.id, outgoing?.traversed ? outgoing.id : undefined);
+    const alternatives = (axis === 'horizontal' ? owner.horizontalAlternatives : owner.alternatives).filter(item => item !== incoming);
+    if (outgoing?.traversed) alternatives.push(outgoing);
+    else if (outgoing) this.release(outgoing);
+    if (axis === 'horizontal') { owner.right = incoming; owner.horizontalAlternatives = alternatives; }
+    else { owner.child = incoming; owner.alternatives = alternatives; }
+    this.applyCells(cells);
+    return true;
   }
 
   private singularState(owner: Occurrence, state: SingularNavigationState): void {
@@ -706,7 +719,8 @@ export class PathNavigator implements PathNavigation {
         this.singularState(owner, { ...owner.singular, state: 'loading', attempted: affordance });
         if (known) {
           this.cancelAttempt(false);
-          this.focus = { occurrenceId: known.id, mode: 'restore' };
+          if (!this.promote(owner, known, 'horizontal')) return;
+          this.focus = { occurrenceId: known.id, mode: 'traverse' };
           this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
           outcome = 'retained'; this.publish(); return;
         }

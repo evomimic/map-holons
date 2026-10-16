@@ -1,3 +1,5 @@
+import { selectedTitleContext } from '../../../test-fixtures/selected-title';
+import { presentationAssignment } from '../../../test-fixtures/node-presentation';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpaceNavigatorExperience, type SpaceNavigatorBinding } from './space-navigator-experience';
 import type { HolonReference } from '../deps';
@@ -9,6 +11,7 @@ import { resolve } from 'node:path';
 
 const mocks = vi.hoisted(() => ({ realizeNode: vi.fn() }));
 vi.mock('./realize-node', () => ({ realizeNode: mocks.realizeNode }));
+vi.mock('./title-composition', () => ({ composeNodeTitle: vi.fn(async () => selectedTitleContext().childVisualizers.get('titleBar')) }));
 
 class NavigationElement extends HTMLElement {
   context!: VisualizerContext;
@@ -21,7 +24,7 @@ class NavigationElement extends HTMLElement {
     });
   }
 }
-const reference = (name: string) => ({ propertyValue: async () => ({ StringValue: name }), key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
+const reference = (name: string) => ({ propertyValue: async () => ({ StringValue: name }), key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), relatedHolons: async () => [], testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
 let binding: SpaceNavigatorBinding;
 let experience: SpaceNavigatorExperience;
 let roots: Array<{ element: HTMLElement; collectionActivation: { dispose: ReturnType<typeof vi.fn> }; singularRelationships: [] }>;
@@ -214,7 +217,7 @@ it('selects the response Node in its loader context and expands saved members wi
     expect(loaderMaterializations).toEqual([]);
     const { selectedVisualizerInspection } = await import('./visualizer-information-control');
     const occurrence = path.element.occurrences[0], original = occurrence.element as any;
-    original.setNodeInspectorAllocation({ width: 1000, height: 680, vertical: 'full-height', horizontal: 'full-width' });
+    original.applyNodePresentation(presentationAssignment({ width: 1000, height: 680, vertical: 'full-height', horizontal: 'full-width' }));
     const before = selectedVisualizerInspection(original)!;
     expect(before.choices?.choose).toBeTypeOf('function');
     const generic = reference('Holon Inspector');
@@ -225,7 +228,7 @@ it('selects the response Node in its loader context and expands saved members wi
     const GenericNode = (await import(`data:text/javascript;base64,${Buffer.from(genericSource).toString('base64')}`)).default;
     customElements.define('test-result-generic-node', class extends GenericNode {});
     const genericElement = document.createElement('test-result-generic-node') as any;
-    genericElement.setContext({ title: 'Generic result', childVisualizers: new Map([['properties', document.createElement('section')]]), nodeAffordances: { singularRelationships: [], collections: [] } });
+    genericElement.setContext(selectedTitleContext({ title: 'Generic result', childVisualizers: new Map([['properties', document.createElement('section')]]), nodeAffordances: { singularRelationships: [], collections: [] } }));
     const genericDispose = vi.fn();
     mocks.realizeNode.mockResolvedValueOnce({ element: genericElement, ready: genericElement.ready, dispose: genericDispose,
       collectionActivation: { dispose: vi.fn(), setBeforeChange: vi.fn(), sourceAffordance: () => undefined, close: vi.fn() }, singularRelationships: [] });

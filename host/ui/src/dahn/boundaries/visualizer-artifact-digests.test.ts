@@ -8,7 +8,10 @@ const implementations = [
   ['LoadHolonsInspectorTypeScript.VisualizerImplementation', 'load-holons-inspector.js'],
   ['PathInspectorTypeScript.VisualizerImplementation', 'path-inspector.js'],
   ['HolonInspectorTypeScript.VisualizerImplementation', 'holon-inspector.js'],
-  ['ConnectionsFirstInspectorTypeScript.VisualizerImplementation', 'connections-first-inspector.js'],
+  ['NodeTitleBarTypeScript.VisualizerImplementation', 'node-title-bar.js'],
+  ['CompactTitleBarTypeScript.VisualizerImplementation', 'compact-title-bar.js'],
+  ['NodeTitleActionsTypeScript.VisualizerImplementation', 'title-actions.js'],
+  ['ExplorePresentationTypeScript.VisualizerImplementation', 'presentation-action.js'],
   ['VisualizerInspectorTypeScript.VisualizerImplementation', 'visualizer-inspector.js'],
   ['DiscoveryTreeTypeScript.VisualizerImplementation', 'discovery-tree.js'],
   ['DiscoveryLevelsTypeScript.VisualizerImplementation', 'discovery-levels.js'],
@@ -52,14 +55,13 @@ it('offers rooted navigation at every TypeKind boundary supported by the generic
   for (const type of applicability('HolonInspector.NodeVisualizer')) expect(roots).toContain(type);
 });
 
-it('gives each local Node alternative independent child slots with exactly one Visualizer owner', async () => {
-  const generated = JSON.parse(await readFile(resolve(repository, 'generated/json-imports/dahn/schema.json'), 'utf8'));
-  const targets = (holon: any, relation: string): string[] => holon.relationships?.find((item: any) => item.name === relation)?.target.map((item: any) => item.$ref) ?? [];
-  const original = targets(generated.holons.find((holon: any) => holon.key === 'HolonInspector.NodeVisualizer'), 'HasSlot');
-  const alternate = targets(generated.holons.find((holon: any) => holon.key === 'ConnectionsFirstInspector.NodeVisualizer'), 'HasSlot');
-  expect(alternate).toHaveLength(original.length);
-  for (const slot of [...original, ...alternate]) {
-    expect(generated.holons.filter((holon: any) => targets(holon, 'HasSlot').includes(slot))).toHaveLength(1);
-  }
-  expect(alternate.some(slot => original.includes(slot))).toBe(false);
+it('withdraws Connections First and gives generic and loader Nodes independent Title Bar slots sharing one contract', async () => {
+  const schema = JSON.parse(await readFile(resolve(repository, 'generated/json-imports/dahn/schema.json'), 'utf8'));
+  const targets = (key: string, name: string): string[] => schema.holons.find((record: any) => record.key === key)?.relationships?.find((edge: any) => edge.name === name)?.target.map((target: any) => target.$ref) ?? [];
+  expect(schema.holons.some((record: any) => record.key.startsWith('ConnectionsFirstInspector'))).toBe(false);
+  expect(targets('HolonInspector.NodeVisualizer', 'HasSlot')).toContain('HolonInspector.TitleBarSlot');
+  expect(targets('LoadHolons.NodeVisualizer', 'HasSlot')).toContain('LoadHolonsResult.TitleBarSlot');
+  expect(targets('HolonInspector.TitleBarSlot', 'UsesTitleBarContract')).toEqual(['NodeTitleBar.Contract']);
+  expect(targets('LoadHolonsResult.TitleBarSlot', 'UsesTitleBarContract')).toEqual(['NodeTitleBar.Contract']);
+  expect(targets('NodeTitleBar.Contract', 'StandardTitleActions')).toHaveLength(4);
 });

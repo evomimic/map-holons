@@ -128,7 +128,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                 slot: saved("PathInspector.RootNodeSlot"),
                 theme: saved("Demo1.DeepOceanTheme"),
             },
-            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            current_selection: Some(saved("HolonInspector.NodeVisualizer")),
             retain_evidence: true,
         },
     )
@@ -217,7 +217,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             space.clone(),
             "PathInspector.RootedNavigationVisualizer",
             "PathInspector.RootNodeSlot",
-            "ConnectionsFirstInspector.NodeVisualizer",
+            "HolonInspector.NodeVisualizer",
         ),
         (
             map_commands_contract::VisualizerKind::ActionBar,
@@ -281,8 +281,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .any(|candidate| candidate.visualizer == selection.selected
                 && !candidate.declared_on.is_empty()));
         if kind == map_commands_contract::VisualizerKind::Node {
-            for key in ["ConnectionsFirstInspector.NodeVisualizer", "HolonInspector.NodeVisualizer"]
-            {
+            for key in ["HolonInspector.NodeVisualizer"] {
                 assert!(discovery
                     .candidates
                     .iter()
@@ -893,7 +892,7 @@ async fn discovery_explanation_reads_existing_usage_without_committing() {
                 slot: saved("PathInspector.RootNodeSlot"),
                 theme: saved("Demo1.DeepOceanTheme"),
             },
-            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            current_selection: Some(saved("HolonInspector.NodeVisualizer")),
             retain_evidence: true,
         },
     )
@@ -901,7 +900,7 @@ async fn discovery_explanation_reads_existing_usage_without_committing() {
     .unwrap() else {
         panic!("discovery")
     };
-    assert_eq!(discovery.candidates.len(), 2, "Other slot kinds must not enter Node discovery");
+    assert_eq!(discovery.candidates.len(), 1, "Other slot kinds must not enter Node discovery");
     let destination = new_context(&runtime).await;
     let MapResult::Reference(subject) = command(
         &runtime,

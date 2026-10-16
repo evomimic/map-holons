@@ -1,0 +1,855 @@
+import { participationProfile, resolveAxis, nodeCapabilities, applyNodePresentation } from './node-presentation.js';
+
+export default class PathInspectorElement extends HTMLElement {
+  static compositionSlots = { node: 'PathInspector.RootNodeSlot' };
+  getVisualizerComposition() {
+    return [
+      ...(this.viewControls ? [{ label: 'View controls', element: this.viewControls,
+        children: this.viewButtons.map(element => ({ label: element.textContent, element })) }] : []),
+      ...(this.occurrences ?? []).map((item, index) => ({
+        label: !item.parentOccurrenceId && !item.provenance ? 'Root Node' : `Node ${index + 1}`, element: item.element,
+      })),
+    ];
+  }
+  constructor() {
+    super();
+    // The nearest Path Inspector owns interpretation for its composed slots.
+    this.addEventListener('dahn-traverse-relationship', event => {
+      event.stopPropagation();
+      if (this.isConnected && this.contains(event.detail.source)) this.onTraverseRelationship?.(event.detail);
+    });
+    this.addEventListener('dahn-inspect-holon', event => {
+      event.stopPropagation();
+      if (this.isConnected && this.contains(event.detail.source)) this.onInspectHolon?.(event.detail);
+    });
+  }
+  connectedCallback() {
+    if (!this.viewport || typeof ResizeObserver === 'undefined') return;
+    this.observer?.disconnect();
+    this.observer = new ResizeObserver(entries => {
+      const bounds = entries[0]?.contentRect;
+      if (bounds?.height > 0 && bounds.width > 0 && (bounds.height !== this.viewportHeight || bounds.width !== this.viewportWidth)) {
+        this.viewportHeight = bounds.height;
+        this.viewportWidth = bounds.width;
+        this.allocateRows();
+      }
+    });
+    this.observer.observe(this.viewport);
+  }
+  getSpatialExtents() {
+    const root = this.occurrences?.find(item => !item.parentOccurrenceId && !item.provenance);
+    if (!root) return undefined;
+    const profile = this.profile();
+    const minimum = { width: profile.horizontal.minimum[2], height: profile.vertical.minimum[2] };
+    // This owner accounts for its toolbar, border and stable scrollbar gutters.
+    minimum.width += Math.max(0, this.offsetWidth - this.viewport.clientWidth);
+    minimum.height += Math.max(0, this.offsetHeight - this.viewport.clientHeight);
+    return { minimum, preferred: { ...minimum } };
+  }
+  frontierPosition(targetId) {
+    const target = this.layoutBounds.get(targetId);
+    if (!target) return undefined;
+    const occurrence = this.occurrences.find(item => item.id === targetId);
+    const source = this.layoutBounds.get(occurrence?.provenance?.parentOccurrenceId ?? occurrence?.parentOccurrenceId);
+    const view = this.view;
+    const coordinate = (axis, dimension, viewport, scroll, surface) => {
+      // Keep the header reachable when the full inspector cannot fit vertically.
+      const extent = dimension === 'height' ? Math.min(target[dimension] * view.scale, viewport) : target[dimension] * view.scale;
+      let position = target[axis] * view.scale + extent / 2 - viewport / 2;
+      if (source) {
+        const start = Math.min(source[axis], target[axis]) * view.scale;
+        const end = Math.max(source[axis] + source[dimension], target[axis] + target[dimension]) * view.scale;
+        if (end - start <= viewport) position = Math.min(start, Math.max(end - viewport, scroll));
+      }
+      return Math.max(0, Math.min(position, Math.max(0, surface * view.scale - viewport)));
+    };
+    return { x: coordinate('x', 'width', view.viewportWidth, this.viewport.scrollLeft, view.width),
+      y: coordinate('y', 'height', view.viewportHeight, this.viewport.scrollTop, view.height) };
+  }
+  revealFrontier(frontier) {
+    const position = this.frontierPosition(frontier.id);
+    if (position) this.view.position(position.x, position.y);
+  }
+  disconnectedCallback() {
+    this.stopTraversalTransition();
+    this.observer?.disconnect();
+    this.unsubscribe?.();
+    this.navigation?.dispose();
+  }
+  setContext(context) {
+    this.disconnectedCallback();
+    this.attention = undefined;
+    this.canvas = context.canvas;
+    this.onInspectHolon = context.onInspectHolon;
+    this.onTraverseRelationship = context.onTraverseRelationship;
+    this.navigation = context.navigation;
+    this.dataset.visualizerId = 'path-inspector';
+    this.dataset.dahnPathInspector = 'true';
+    Object.assign(this.style, {
+      display: 'grid', flex: '1 1 auto', minHeight: '0', minWidth: '0', overflow: 'hidden',
+      gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'auto minmax(0, 1fr)', gap: '0',
+      boxSizing: 'border-box',
+      border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+      background: 'var(--dahn-panel-surface-background)',
+    });
+    const title = document.createElement('header');
+    this.setAttribute('aria-label', context.title ?? 'Path Inspector');
+    Object.assign(title.style, {
+      color: 'var(--dahn-muted-text-color)', padding: 'var(--dahn-control-gap) var(--dahn-slot-padding)',
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--dahn-control-gap)',
+      borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+    });
+
+    // Sparse bands preserve retained paths. Each Node continues to own its
+    // internal Properties and Collection composition.
+    const viewport = document.createElement('section');
+    this.viewport = viewport;
+    viewport.dataset.pathInspectorViewport = 'true';
+    viewport.setAttribute('aria-label', 'Navigation path');
+    viewport.tabIndex = 0;
+    Object.assign(viewport.style, {
+      position: 'relative', minHeight: '0', minWidth: '0', overflowY: 'scroll', overflowX: 'scroll',
+      overscrollBehavior: 'contain', overflowAnchor: 'none',
+      // Stable gutters prevent zoom-induced scrollbars from changing allocation.
+      scrollbarGutter: 'stable both-edges',
+    });
+    this.surface = document.createElement('div');
+    this.surface.dataset.pathInspectorSurface = 'true';
+    Object.assign(this.surface.style, {
+      position: 'absolute', display: 'grid', alignContent: 'start',
+      columnGap: 'var(--dahn-traversal-channel-width, 144px)', rowGap: 'var(--dahn-traversal-channel-height, 64px)',
+      transformOrigin: '0 0',
+    });
+    this.view = new SurfaceView(viewport, this.surface, () => this.updateVisibility());
+    for (const event of ['wheel', 'pointerdown', 'keydown']) {
+      viewport.addEventListener(event, () => this.stopTraversalTransition(), { capture: true });
+    }
+    title.append(this.createViewControls());
+    // The overlay shares the grid's scroll coordinates and never intercepts input.
+    this.lineage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.lineage.dataset.pathLineage = 'true';
+    this.lineage.setAttribute('aria-hidden', 'true');
+    Object.assign(this.lineage.style, { position: 'absolute', left: '0', top: '0', pointerEvents: 'none', overflow: 'hidden', color: 'var(--dahn-muted-text-color)' });
+    this.surface.append(this.lineage);
+    this.regions = new Map();
+    this.rowAllocations = new Map();
+    this.occurrences = [];
+    this.focus = undefined;
+    this.emptyState = document.createElement('p');
+    this.emptyState.textContent = 'No open navigation.';
+    this.emptyState.setAttribute('role', 'status');
+    this.emptyState.dataset.pathEmpty = 'true';
+    this.emptyState.hidden = true;
+    this.emptyState.style.position = 'absolute';
+    this.emptyState.style.inset = '16px';
+    viewport.append(this.emptyState);
+    this.replaceChildren(title, viewport);
+    if (context.navigation) {
+      this.unsubscribe = context.navigation.subscribe((occurrences, focus, destination) => this.renderPath(occurrences, focus, destination));
+    } else {
+      const rootNode = context.childVisualizers?.get('root-node');
+      if (rootNode === undefined) throw new Error('Path Inspector requires a selected root Node visualizer.');
+      this.renderPath([{ id: 'root', element: rootNode }]);
+    }
+    if (this.isConnected) this.connectedCallback();
+  }
+  // Allocation belongs to a grid band, even when several Nodes share that band.
+  rowId(occurrence) { return occurrence.rowId ?? occurrence.id; }
+  expandRow(rowId) {
+    for (const id of this.rowAllocations.keys()) this.rowAllocations.set(id, id === rowId ? 'expanded' : 'compact');
+    this.allocateRows();
+  }
+  restoreOccurrence(occurrence) {
+    if (this.navigation?.restore) this.navigation.restore(occurrence.id);
+    else {
+      this.focus = { occurrenceId: occurrence.id, mode: 'restore' };
+      this.expandRow(this.rowId(occurrence));
+    }
+  }
+  requestContext(operation) {
+    return this.canvas?.requestContext?.(operation) ?? { status: 'unsupported', reason: 'No parent context request path.' };
+  }
+  requestAttention(request) {
+    const occurrence = this.occurrences?.find(item => item.element === request.target);
+    if (!occurrence) {
+      const owner = this.occurrences?.find(item => item.element.contains(request.target));
+      return owner?.element.requestAttention?.(request) ?? { status: 'refused', reason: 'Occurrence is not owned by this composition surface.' };
+    }
+    if (request.operation === 'restore') {
+      if (!this.attention) return { status: 'already-satisfied' };
+      if (this.attention.id !== occurrence.id) return { status: 'refused', reason: 'Another occurrence owns attention.' };
+      const baseline = this.attention.view;
+      this.clearAttentionProjection();
+      this.attention = undefined;
+      this.allocateRows();
+      this.view.scale = baseline.scale;
+      this.view.render();
+      this.view.position(baseline.x, baseline.y);
+      return { status: 'applied', value: undefined };
+    }
+    if (request.operation !== 'maximize') return { status: 'unsupported', reason: 'Unknown attention operation.' };
+    if (this.attention?.id === occurrence.id) return { status: 'already-satisfied' };
+    if (this.attention) return { status: 'refused', reason: 'Restore the visible occurrence before maximizing a sibling.' };
+    if (!this.view?.ready || occurrence.pending || occurrence.visualizerReplacement || occurrence.cancel) return { status: 'refused', reason: 'Occurrence or viewport is not ready.' };
+    this.attention = { id: occurrence.id, view: { scale: this.view.scale, x: this.viewport.scrollLeft, y: this.viewport.scrollTop } };
+    this.applyAttentionProjection();
+    return { status: 'applied', value: undefined };
+  }
+  clearAttentionProjection() {
+    if (!this.attention) return;
+    const region = this.regions.get(this.attention.id);
+    if (region) Object.assign(region.style, { position: 'relative', left: '', top: '', width: '', height: '', gridArea: '', boxSizing: '' });
+    for (const [id, item] of this.regions) {
+      item.style.visibility = '';
+      item.inert = !this.occurrences.some(occurrence => occurrence.id === id);
+      item.nodeElement?.setOccurrenceAttentionState?.(false);
+    }
+    this.lineage.style.visibility = '';
+    delete this.dataset.attentionOccurrence;
+  }
+  applyAttentionProjection() {
+    if (!this.attention) return;
+    const occurrence = this.occurrences.find(item => item.id === this.attention.id);
+    if (!occurrence) { this.clearAttentionProjection(); this.attention = undefined; return; }
+    const insets = this.regionInsets(occurrence.id);
+    const width = Math.max(this.profile().horizontal.minimum[2] + insets.width, this.viewportWidth || this.viewport.clientWidth);
+    const height = Math.max(this.profile().vertical.minimum[2] + insets.height, this.viewportHeight || this.viewport.clientHeight);
+    if (!(width > 0 && height > 0)) return;
+    const region = this.regions.get(occurrence.id);
+    this.dataset.attentionOccurrence = occurrence.id;
+    occurrence.element.setOccurrenceAttentionState?.(true);
+    for (const [id, item] of this.regions) {
+      item.style.visibility = id === occurrence.id ? '' : 'hidden';
+      item.inert = id !== occurrence.id;
+      if (item.inert && item.contains(document.activeElement)) region.focus({ preventScroll: true });
+    }
+    this.lineage.style.visibility = 'hidden';
+    Object.assign(region.style, { position: 'absolute', gridArea: 'auto', left: '0', top: '0', width: `${width}px`, height: `${height}px`, boxSizing: 'border-box' });
+    this.assign(occurrence, { width: width - insets.width, height: height - insets.height, requiredCapabilities: ['inspect'] });
+    this.view.scale = 1;
+    this.view.setGeometry(width, height, width, height);
+    this.view.position(0, 0);
+  }
+  allocateRows() {
+    this.clearAttentionProjection();
+    if (!this.occurrences?.length) {
+      this.surface.replaceChildren(this.lineage);
+      this.lineage.replaceChildren();
+      this.surface.style.gridTemplateColumns = '';
+      this.surface.style.gridTemplateRows = '';
+      this.layoutBounds = new Map();
+      this.view.setGeometry(0, 0, this.viewportWidth || 0, this.viewportHeight || 0);
+      this.updateVisibility();
+      return;
+    }
+    const occupiedRows = new Map(this.occurrences.map((item, index) => [item.row ?? index, this.rowId(item)]));
+    const rows = this.occurrences.every(item => item.row !== undefined)
+      ? Array.from({ length: Math.max(...occupiedRows.keys()) + 1 }, (_, row) => occupiedRows.get(row) ?? `empty-row-${row}`)
+      : [...new Set(this.occurrences.map(item => this.rowId(item)))];
+    // Resolve policy once per viewport/Theme, never from mounted or pending children.
+    const profile = this.profile();
+    const frame = this.regionInsets(this.occurrences[0].id);
+    const horizontal = resolveAxis(profile.horizontal, this.viewportWidth || this.viewport.clientWidth || 1280, 3 * frame.width);
+    const vertical = resolveAxis(profile.vertical, this.viewportHeight || this.viewport.clientHeight || 900, 3 * frame.height);
+    const gap = vertical.channel, columnGap = horizontal.channel;
+    this.surface.style.rowGap = `${gap}px`; this.surface.style.columnGap = `${columnGap}px`;
+    const frontier = this.occurrences.find(item => item.id === this.focus?.occurrenceId) ?? this.occurrences.at(-1);
+    const columns = Math.max(...this.occurrences.map(item => item.column ?? 1));
+    const allocations = Array.from({ length: columns }, () => 'compact');
+    this.rowAllocations.clear();
+    for (const id of rows) this.rowAllocations.set(id, 'compact');
+    // Protect the latest source on each ancestry axis, at most two sources.
+    const protectedSources = new Map();
+    let child = frontier;
+    const seen = new Set();
+    while (child && !seen.has(child.id)) {
+      seen.add(child.id);
+      const parent = this.occurrences.find(item => item.id === (child.provenance?.parentOccurrenceId ?? child.parentOccurrenceId));
+      if (!parent) break;
+      const axis = child.axis ?? (child.provenance?.kind === 'singular-relationship' ? 'horizontal' : 'vertical');
+      if (!protectedSources.has(axis)) protectedSources.set(axis, parent);
+      child = parent;
+    }
+    for (const [axis, source] of protectedSources) {
+      allocations[(source.column ?? 1) - 1] = 'partial';
+      this.rowAllocations.set(this.rowId(source), 'partial');
+    }
+    allocations[(frontier.column ?? 1) - 1] = 'expanded';
+    this.rowAllocations.set(this.rowId(frontier), 'expanded');
+    const heights = rows.map(id => vertical[this.rowAllocations.get(id)] + frame.height);
+    const statusHeights = rows.map(() => 0);
+    this.columnWidths = allocations.map(state => horizontal[state] + frame.width);
+    this.columnOffsets = this.columnWidths.map((_, index) => this.columnWidths.slice(0, index).reduce((sum, width) => sum + width, 0) + index * columnGap);
+    this.columnGap = columnGap;
+    this.surface.style.gridTemplateColumns = this.columnWidths.map(width => `${width}px`).join(' ');
+    this.surface.style.gridTemplateRows = heights.map((height, index) => `${height + statusHeights[index]}px`).join(' ');
+    this.layoutBounds = new Map();
+    this.occurrences.forEach(occurrence => {
+      const row = rows.indexOf(this.rowId(occurrence));
+      const region = this.regions.get(occurrence.id);
+      region.style.gridRow = String(row + 1);
+      region.style.gridColumn = String(occurrence.column ?? 1);
+      region.dataset.rowAllocation = this.rowAllocations.get(this.rowId(occurrence));
+      // Deliver slot states and dimensions, never instructions about child sub-regions.
+      region.dataset.columnAllocation = allocations[(occurrence.column ?? 1) - 1];
+      const insets = this.regionInsets(occurrence.id);
+      const allocation = {
+        width: Math.max(0, this.columnWidths[(occurrence.column ?? 1) - 1] - insets.width),
+        height: Math.max(0, heights[row] - insets.height),
+        requiredCapabilities: nodeCapabilities(allocations[(occurrence.column ?? 1) - 1], this.rowAllocations.get(this.rowId(occurrence))),
+      };
+      if (this.attention?.id !== occurrence.id) this.assign(occurrence, allocation);
+      this.layoutBounds.set(occurrence.id, {
+        x: this.columnOffsets[(occurrence.column ?? 1) - 1],
+        y: heights.slice(0, row).reduce((sum, height, index) => sum + height + statusHeights[index] + gap, 0),
+        width: this.columnWidths[(occurrence.column ?? 1) - 1], height: heights[row] + statusHeights[row],
+      });
+    });
+    this.renderLineage(rows, heights.map((height, index) => height + statusHeights[index]), gap, columnGap);
+    const firstMeasuredLayout = !this.view.ready;
+    this.view.setGeometry(Number(this.lineage.getAttribute('width')), Number(this.lineage.getAttribute('height')), this.viewportWidth || this.viewport.clientWidth, this.viewportHeight || this.viewport.clientHeight);
+    if (firstMeasuredLayout && this.view.ready) this.view.position(0, 0);
+    this.applyAttentionProjection();
+    this.updateVisibility();
+    this.traversalTransition?.refresh();
+  }
+  renderLineage(rows, heights, rowGap, columnGap) {
+    const tops = heights.map((_, row) => heights.slice(0, row).reduce((sum, height) => sum + height, 0) + row * rowGap);
+    this.lineage.setAttribute('width', String(this.columnWidths.reduce((sum, width) => sum + width, 0) + (this.columnWidths.length - 1) * columnGap));
+    this.lineage.setAttribute('height', String(heights.reduce((sum, height) => sum + height, 0) + (rows.length - 1) * rowGap));
+    this.lineage.replaceChildren();
+    for (const child of this.occurrences) {
+      // Attachment comes from provenance, never neighboring cells or DOM order.
+      const parent = this.occurrences.find(item => item.id === (child.provenance?.parentOccurrenceId ?? child.parentOccurrenceId));
+      if (!parent) continue;
+      const parentRow = rows.indexOf(this.rowId(parent));
+      const childRow = rows.indexOf(this.rowId(child));
+      const sourceX = this.columnOffsets[(parent.column ?? 1) - 1] + this.columnWidths[(parent.column ?? 1) - 1] / 2;
+      const targetX = this.columnOffsets[(child.column ?? 1) - 1] + this.columnWidths[(child.column ?? 1) - 1] / 2;
+      const sourceY = tops[parentRow] + heights[parentRow];
+      const targetY = tops[childRow] - 4;
+      const elbowY = sourceY + rowGap / 2;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      line.dataset.traversalSource = parent.id;
+      line.dataset.traversalTarget = child.id;
+      if (child.provenance) {
+        line.dataset.lineageParent = parent.id;
+        line.dataset.lineageChild = child.id;
+      } else line.dataset.pendingTraversal = child.id;
+      line.setAttribute('d', `M ${sourceX} ${sourceY} V ${elbowY} H ${targetX} V ${targetY} L ${targetX - 7} ${targetY - 8} L ${targetX} ${targetY} L ${targetX + 7} ${targetY - 8}`);
+      if (child.provenance?.kind === 'singular-relationship' || child.axis === 'horizontal') {
+        const startX = this.columnOffsets[(parent.column ?? 1) - 1] + this.columnWidths[(parent.column ?? 1) - 1];
+        const endX = this.columnOffsets[(child.column ?? 1) - 1] - 4;
+        const startY = tops[parentRow] + heights[parentRow] / 2;
+        const endY = tops[childRow] + heights[childRow] / 2;
+        const elbowX = startX + columnGap / 2;
+        line.setAttribute('d', `M ${startX} ${startY} H ${elbowX} V ${endY} H ${endX} L ${endX - 8} ${endY - 7} L ${endX} ${endY} L ${endX - 8} ${endY + 7}`);
+      }
+      line.setAttribute('fill', 'none');
+      line.setAttribute('stroke', 'currentColor');
+      line.setAttribute('stroke-width', '5');
+      line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('stroke-linejoin', 'round');
+      this.lineage.append(line);
+      const traversal = child.provenance?.traversal ?? child.traversal;
+      const primaryLabel = traversal?.label ?? child.provenance?.affordance?.label;
+      if (primaryLabel) {
+        const horizontal = child.provenance?.kind === 'singular-relationship' || child.axis === 'horizontal';
+        const targetBounds = this.layoutBounds.get(child.id);
+        const width = horizontal ? columnGap - 20 : Math.max(48, targetBounds.width - 16);
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+        label.dataset.traversalLabel = child.id;
+        label.setAttribute('x', String(horizontal ? targetBounds.x - columnGap + 10 : targetBounds.x + 8));
+        label.setAttribute('y', String(horizontal ? targetBounds.y + targetBounds.height / 2 - 36 : targetBounds.y - rowGap + 8));
+        label.setAttribute('width', String(width));
+        label.setAttribute('height', '28');
+        const text = document.createElement('span');
+        text.textContent = traversal?.qualifier ? `${primaryLabel} · ${traversal.qualifier}` : primaryLabel;
+        text.title = text.textContent;
+        Object.assign(text.style, { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          font: 'var(--dahn-traversal-label-font, 12px/24px system-ui)', textAlign: 'center',
+          color: 'var(--dahn-muted-text-color)', background: 'var(--dahn-panel-surface-background)', borderRadius: '4px', padding: '0 3px' });
+        label.append(text);
+        this.lineage.append(label);
+        line.setAttribute('aria-label', text.textContent);
+      }
+    }
+  }
+  stopTraversalTransition() {
+    this.traversalTransition?.cancel();
+    this.traversalTransition = undefined;
+  }
+  beginTraversalTransition(frontier, previousBounds, viewportStart) {
+    const sourceId = frontier.provenance?.parentOccurrenceId ?? frontier.parentOccurrenceId;
+    const source = this.occurrences.find(item => item.id === sourceId);
+    const bounds = previousBounds?.get(sourceId);
+    if (!source || !bounds || !this.isConnected || !this.view.ready
+      || typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.revealFrontier(frontier);
+      return;
+    }
+    this.traversalTransition = new TraversalTransition(this, source, frontier, bounds, viewportStart);
+    this.traversalTransition.start();
+  }
+  clearVisualizerReplacement(region) {
+    const overlay = region.querySelector(':scope > [data-visualizer-replacement]');
+    const restoreFocus = overlay?.contains(document.activeElement);
+    for (const { element, visibility, priority, inert, ariaHidden } of region.replacementMask ?? []) {
+      if (visibility) element.style.setProperty('visibility', visibility, priority);
+      else element.style.removeProperty('visibility');
+      element.inert = inert;
+      if (ariaHidden === null) element.removeAttribute('aria-hidden');
+      else element.setAttribute('aria-hidden', ariaHidden);
+    }
+    delete region.replacementMask;
+    overlay?.remove();
+    if (restoreFocus && region.isConnected) region.focus({ preventScroll: true });
+  }
+
+  showVisualizerReplacement(region, replacement) {
+    if (!replacement) { this.clearVisualizerReplacement(region); return; }
+    let overlay = region.querySelector(':scope > [data-visualizer-replacement]');
+    if (!overlay) {
+      const moveFocus = region.contains(document.activeElement);
+      region.replacementMask = [...region.children].map(element => ({ element,
+        visibility: element.style.getPropertyValue('visibility'), priority: element.style.getPropertyPriority('visibility'),
+        inert: element.inert, ariaHidden: element.getAttribute('aria-hidden') }));
+      // Preserve the prior Node's dimensions and realization, while blanking its allocation.
+      for (const { element } of region.replacementMask) {
+        element.style.setProperty('visibility', 'hidden'); element.inert = true; element.setAttribute('aria-hidden', 'true');
+      }
+      overlay = document.createElement('div'); overlay.dataset.visualizerReplacement = 'true';
+      Object.assign(overlay.style, { position: 'absolute', inset: '0', zIndex: '3', display: 'flex',
+        flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px',
+        boxSizing: 'border-box', background: 'var(--dahn-panel-surface-background)', color: 'var(--dahn-action-text-color)' });
+      const message = document.createElement('div'); message.dataset.preparingVisualizer = 'true';
+      message.setAttribute('role', 'status'); message.setAttribute('aria-atomic', 'true');
+      Object.assign(message.style, { fontSize: '1.4rem', fontWeight: '600', textAlign: 'center' });
+      const progress = document.createElement('progress'); progress.setAttribute('aria-label', 'Preparing visualizer');
+      Object.assign(progress.style, { width: 'min(280px, 100%)', accentColor: 'var(--dahn-action-text-color)' });
+      const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel choice';
+      Object.assign(cancel.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)',
+        padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', borderRadius: 'var(--dahn-action-corner-radius)', cursor: 'pointer' });
+      cancel.addEventListener('click', () => overlay.cancelChoice?.());
+      overlay.append(message, progress, cancel); region.append(overlay);
+      if (moveFocus) cancel.focus({ preventScroll: true });
+    }
+    overlay.cancelChoice = replacement.cancel;
+    overlay.querySelector('[data-preparing-visualizer]').textContent = replacement.message;
+  }
+
+  renderPath(occurrences, focus, destination) {
+    const previousBounds = this.layoutBounds;
+    // Same-occurrence replacements retain their parent-owned band allocation basis.
+    const viewportStart = this.view && { x: this.viewport.scrollLeft - this.view.paddingX, y: this.viewport.scrollTop - this.view.paddingY };
+    if (this.traversalTransition && (focus?.occurrenceId !== this.traversalTransition.targetId || focus?.mode === 'restore')) this.stopTraversalTransition();
+    const recoverFocus = [...this.regions.values()].some(region => region.contains(document.activeElement));
+    const all = [...occurrences, ...(destination ? [destination] : [])].sort((a, b) => a.row === undefined || b.row === undefined ? 0 : a.row - b.row || (a.column ?? 1) - (b.column ?? 1));
+    occurrences = all.filter(item => !item.occluded);
+    const previousIds = new Set(this.occurrences.map(item => item.id));
+    const added = occurrences.filter(item => !previousIds.has(item.id));
+    const removed = [...previousIds].some(id => !occurrences.some(item => item.id === id));
+    // A new navigation intent or topology change ends temporary attention.
+    // Never restore a stale view over the navigation owner's new frontier.
+    if (this.attention && (added.length || removed || (focus && focus !== this.focus))) {
+      this.clearAttentionProjection();
+      this.attention = undefined;
+    }
+    this.occurrences = occurrences;
+    this.emptyState.hidden = occurrences.length > 0;
+    const focusChanged = focus ? focus !== this.focus : added.length > 0;
+    const frontier = focus ? occurrences.find(item => item.id === focus.occurrenceId) : added.at(-1);
+    this.focus = focus;
+    const live = new Set(all.map(occurrence => occurrence.id));
+    for (const [id, region] of this.regions) {
+      if (!live.has(id)) { this.clearVisualizerReplacement(region); region.remove(); this.regions.delete(id); }
+    }
+    all.forEach((occurrence, index) => {
+      let region = this.regions.get(occurrence.id);
+      if (!region) {
+        region = document.createElement('section');
+        region.dataset.pathOccurrence = occurrence.id;
+        if (index === 0) region.dataset.pathInspectorRootNode = 'true';
+        Object.assign(region.style, {
+          background: 'var(--dahn-panel-surface-background)', borderRadius: 'var(--dahn-panel-corner-radius)',
+          border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+          position: 'relative', padding: '0', display: 'flex', flexDirection: 'column', minHeight: '0', minWidth: '0', overflow: 'hidden',
+        });
+        const status = document.createElement('div');
+        status.dataset.pathOccurrenceStatus = 'true';
+        status.setAttribute('role', 'status');
+        Object.assign(status.style, { flex: '0 0 auto', alignItems: 'center', gap: 'var(--dahn-control-gap)', padding: 'var(--dahn-control-gap)', maxHeight: '64px', overflow: 'auto' });
+        region.append(status);
+        this.regions.set(occurrence.id, region);
+        this.surface.append(region);
+      }
+      region.style.display = occurrence.occluded ? 'none' : 'flex';
+      region.inert = !!occurrence.occluded;
+      if (region.nodeElement !== occurrence.element) {
+        this.clearVisualizerReplacement(region);
+        region.nodeElement?.remove();
+        region.querySelector('[data-close-branch]')?.remove();
+        region.querySelector('[data-explore-from-here]')?.remove();
+        region.querySelector('[data-restore-occurrence]')?.remove();
+        region.nodeElement = occurrence.element;
+        occurrence.element.setOccurrenceAttentionHandler?.(operation => this.requestAttention({ operation, target: occurrence.element }));
+        occurrence.element.setContextRequestHandler?.(operation => {
+          if (!this.occurrences.some(item => item.element === occurrence.element)) return { status: 'refused', reason: 'Occurrence is no longer retained.' };
+          return this.requestContext(operation);
+        });
+        region.prepend(occurrence.element);
+        if (this.navigation?.reRoot && !occurrence.cancel && occurrence.element.setOccurrenceExplorationHandler) {
+          occurrence.element.setOccurrenceExplorationHandler(() => this.navigation.reRoot(occurrence.id));
+        } else if (this.navigation?.reRoot && !occurrence.cancel) {
+          const explore = document.createElement('button');
+          explore.type = 'button'; explore.textContent = '↗';
+          explore.title = 'Explore from here';
+          explore.setAttribute('aria-label', 'Explore from here');
+          explore.dataset.exploreFromHere = 'true';
+          Object.assign(explore.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+          explore.addEventListener('click', () => this.navigation.reRoot(occurrence.id));
+          region.prepend(explore);
+        }
+        if (this.navigation?.close && !occurrence.cancel) {
+          if (occurrence.element.setOccurrenceClosureHandler) {
+            occurrence.element.setOccurrenceClosureHandler(() => this.navigation.close(occurrence.id));
+          } else {
+            const close = document.createElement('button');
+            close.type = 'button'; close.textContent = 'Close branch'; close.dataset.closeBranch = 'true';
+            close.addEventListener('click', () => this.navigation.close(occurrence.id));
+            region.prepend(close);
+          }
+        }
+        if (this.navigation?.closeCollection) {
+          occurrence.element.setCollectionClosureHandler?.(affordance => this.navigation.closeCollection(occurrence.id, affordance));
+        }
+        if (occurrence.element.setOccurrenceRestorationHandler) {
+          occurrence.element.setOccurrenceRestorationHandler(() => {
+            const current = this.occurrences.find(item => item.id === occurrence.id);
+            if (current) this.restoreOccurrence(current);
+          });
+        } else if (!occurrence.cancel) {
+          const expand = document.createElement('button');
+          expand.dataset.restoreOccurrence = 'true';
+          expand.type = 'button'; expand.textContent = 'Restore occurrence';
+          expand.addEventListener('click', () => {
+            const current = this.occurrences.find(item => item.id === occurrence.id);
+            if (current) this.restoreOccurrence(current);
+          });
+          region.prepend(expand);
+        }
+      }
+      if (occurrence.cancel) region.dataset.pathDestination = 'true';
+      else delete region.dataset.pathDestination;
+      region.tabIndex = -1;
+      region.dataset.focused = String(occurrence.id === focus?.occurrenceId);
+      const traversal = occurrence.provenance?.traversal ?? occurrence.traversal;
+      const traversalLabel = traversal?.label ?? occurrence.provenance?.affordance?.label;
+      if (traversalLabel) region.setAttribute('aria-description', `Reached through ${traversalLabel}${traversal?.qualifier ? ` (${traversal.qualifier})` : ''}`);
+      else region.removeAttribute('aria-description');
+      region.setAttribute('aria-busy', String(!!occurrence.pending || !!occurrence.visualizerReplacement));
+      const status = region.querySelector(':scope > [data-path-occurrence-status]');
+      status.hidden = !occurrence.message;
+      const floatingStatus = occurrence.requestAxis === 'horizontal' || occurrence.axis === 'horizontal';
+      Object.assign(status.style, { position: 'absolute',
+        left: '0', right: '0', top: occurrence.axis === 'horizontal' ? '0' : 'auto',
+        bottom: occurrence.axis === 'horizontal' ? 'auto' : '0', zIndex: '1',
+        background: 'var(--dahn-panel-surface-background)' });
+      status.style.display = status.hidden ? 'none' : 'flex';
+      status.textContent = occurrence.message ?? '';
+      if (occurrence.retry) {
+        const retry = document.createElement('button');
+        retry.type = 'button'; retry.textContent = 'Retry opening holon';
+        retry.addEventListener('click', occurrence.retry);
+        Object.assign(retry.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+        status.append(retry);
+      }
+      if (occurrence.cancel) {
+        const cancel = document.createElement('button');
+        cancel.type = 'button'; cancel.textContent = 'Cancel';
+        cancel.addEventListener('click', occurrence.cancel);
+        Object.assign(cancel.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+        status.append(cancel);
+      }
+      this.showVisualizerReplacement(region, occurrence.visualizerReplacement);
+    });
+    this.pendingFrontier = destination?.id ?? this.pendingFrontier;
+    this.allocateRows();
+    if (recoverFocus && !this.contains(document.activeElement)) (this.regions.get(focus?.occurrenceId) ?? this.viewport).focus({ preventScroll: true });
+    if ((focusChanged || removed || destination || this.pendingFrontier === frontier?.id) && frontier) {
+      if (focus?.mode === 'restore') this.view.reveal(this.layoutBounds.get(frontier.id));
+      else if (this.traversalTransition?.targetId === frontier.id) this.traversalTransition.refresh();
+      else if (focusChanged && added.some(item => item.id === frontier.id)) this.beginTraversalTransition(frontier, previousBounds, viewportStart);
+      else this.revealFrontier(frontier);
+    }
+    this.pendingFrontier = destination?.id;
+  }
+
+  profile() {
+    return participationProfile(parseFloat(getComputedStyle(this).fontSize) || 16);
+  }
+  assign(occurrence, allocation) {
+    // Pending/error placeholders have no selected receiver. Their rectangle is identical.
+    if (!occurrence.element.visualizerOperations && !occurrence.element.setContext) return;
+    try {
+      applyNodePresentation(occurrence.element, allocation);
+      delete this.regions.get(occurrence.id).dataset.contractViolation;
+    } catch (error) {
+      const region = this.regions.get(occurrence.id);
+      region.dataset.contractViolation = 'true';
+      const status = region.querySelector(':scope > [data-path-occurrence-status]');
+      status.hidden = false; status.style.display = 'flex';
+      status.textContent = `Presentation contract violation: ${error.message}. `;
+      const retry = document.createElement('button'); retry.textContent = 'Retry presentation'; retry.type = 'button';
+      retry.addEventListener('click', () => this.assign(occurrence, allocation)); status.append(retry);
+      if (occurrence.inspectVisualizer) {
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Choose Visualizer';
+        inspect.addEventListener('click', () => occurrence.inspectVisualizer(inspect)); status.append(inspect);
+      }
+    }
+  }
+
+  regionInsets(id) {
+    const style = getComputedStyle(this.regions.get(id));
+    const pixels = value => parseFloat(value) || 0;
+    return {
+      width: pixels(style.borderLeftWidth) + pixels(style.borderRightWidth),
+      height: pixels(style.borderTopWidth) + pixels(style.borderBottomWidth),
+    };
+  }
+  /** Hosts delegate intent to this surface owner, never its grid implementation. */
+  requestView(request) {
+    this.stopTraversalTransition();
+    if (request === 'zoom-to-fit') return this.view.fit();
+    if (request === 'actual-size') {
+      const occurrence = this.occurrences.find(item => item.id === this.focus?.occurrenceId) ?? this.occurrences.at(-1);
+      return this.view.actualSize(this.attention ? { x: 0, y: 0, width: this.view.width, height: this.view.height } : this.layoutBounds?.get(occurrence?.id));
+    }
+    return false;
+  }
+  createViewControls() {
+    const controls = document.createElement('div');
+    this.viewControls = controls;
+    controls.setAttribute('role', 'group');
+    controls.setAttribute('aria-label', 'Navigation view');
+    Object.assign(controls.style, { display: 'flex', width: '100%', minWidth: '0', overflowX: 'auto', alignItems: 'center', gap: 'var(--dahn-control-gap)' });
+    this.viewButtons = [];
+    for (const [label, action] of [
+      ['Zoom out', () => this.view.zoom(this.view.scale / 1.25)],
+      ['Zoom in', () => this.view.zoom(this.view.scale * 1.25)],
+      ['Zoom to Fit', () => this.requestView('zoom-to-fit')],
+      ['Actual Size', () => this.requestView('actual-size')],
+    ]) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = label;
+      button.addEventListener('click', () => { this.stopTraversalTransition(); action(); });
+      Object.assign(button.style, { flex: '0 0 auto', font: 'inherit', color: 'var(--dahn-view-control-text-color)', background: 'var(--dahn-view-control-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+      controls.append(button); this.viewButtons.push(button);
+    }
+    this.viewStatus = document.createElement('span');
+    this.viewStatus.dataset.navigationViewStatus = 'true';
+    // Status changes must not resize the viewport and feed zoom back into layout.
+    Object.assign(this.viewStatus.style, { flex: '1 1 0', minWidth: '5ch', fontVariantNumeric: 'tabular-nums', height: '1.5em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+    controls.append(this.viewStatus);
+    return controls;
+  }
+  updateVisibility() {
+    if (!this.viewStatus) return;
+    const directions = new Set();
+    for (const [id, bounds] of this.layoutBounds ?? []) {
+      const visibility = this.attention
+        ? id === this.attention.id ? this.view.visibility({ x: 0, y: 0, width: this.view.width, height: this.view.height }) : { state: 'outside', directions: [] }
+        : this.view.visibility(bounds);
+      const region = this.regions.get(id);
+      region.dataset.viewportVisibility = visibility.state;
+      visibility.directions.forEach(direction => directions.add(direction));
+    }
+    this.viewStatus.textContent = `${Math.round(this.view.scale * 100)}%${directions.size ? ` · More content ${[...directions].join(', ')}` : ''}`;
+    this.viewStatus.title = this.viewStatus.textContent;
+    this.viewButtons.forEach(button => { button.disabled = !this.view.ready; });
+  }
+}
+
+/** One interruptible presentation over final geometry, shared by both axes. */
+export class TraversalTransition {
+  constructor(owner, source, target, startBounds, viewportStart) {
+    this.owner = owner; this.source = source; this.targetId = target.id;
+    this.axis = target.axis ?? (target.provenance?.kind === 'singular-relationship' ? 'horizontal' : 'vertical');
+    this.startBounds = startBounds; this.viewportStart = viewportStart;
+    this.elapsed = 0; this.cancelled = false;
+  }
+  start() {
+    const view = this.owner.view;
+    view.render();
+    // Keep the starting camera position while final geometry is revealed.
+    this.startPosition = { x: this.viewportStart.x + view.paddingX, y: this.viewportStart.y + view.paddingY };
+    view.position(this.startPosition.x, this.startPosition.y);
+    this.finalPosition = this.owner.frontierPosition(this.targetId);
+    this.started = performance.now();
+    this.refresh();
+    const step = now => {
+      if (this.cancelled || this.owner.traversalTransition !== this) return;
+      this.elapsed = now - this.started;
+      this.refresh();
+      if (this.elapsed >= 420) {
+        this.cancel();
+        this.owner.traversalTransition = undefined;
+        this.owner.revealFrontier({ id: this.targetId });
+      } else this.frame = requestAnimationFrame(step);
+    };
+    this.frame = requestAnimationFrame(step);
+  }
+  refresh() {
+    if (this.cancelled || !this.startPosition) return;
+    const owner = this.owner, view = owner.view;
+    const sourceBounds = owner.layoutBounds.get(this.source.id), targetBounds = owner.layoutBounds.get(this.targetId);
+    if (!sourceBounds || !targetBounds) { owner.stopTraversalTransition(); return; }
+    const geometry = JSON.stringify([sourceBounds, targetBounds, view.viewportWidth, view.viewportHeight]);
+    if (geometry !== this.geometry) {
+      this.geometry = geometry;
+      this.finalPosition = owner.frontierPosition(this.targetId);
+    }
+    const clamp = value => Math.max(0, Math.min(1, value));
+    const compression = clamp(this.elapsed / 130);
+    const reveal = clamp((this.elapsed - 130) / 170);
+    const pan = clamp((this.elapsed - 130) / 290);
+    const eased = pan * pan * (3 - 2 * pan);
+    owner.dataset.traversalPhase = this.elapsed < 130 ? 'source-compressing'
+      : this.elapsed < 300 ? 'traversal-revealing' : 'target-arriving';
+    const region = owner.regions.get(this.source.id);
+    const dimension = this.axis === 'horizontal' ? 'width' : 'height';
+    const size = sourceBounds[dimension] + Math.max(0, this.startBounds[dimension] - sourceBounds[dimension]) * (1 - compression) ** 2;
+    region.style[dimension] = compression < 1 ? `${size}px` : '';
+    for (const line of owner.lineage.querySelectorAll('path')) {
+      const incident = line.dataset.traversalSource === this.source.id || line.dataset.traversalTarget === this.source.id;
+      line.style.visibility = compression < 1 && incident ? 'hidden' : '';
+      if (line.dataset.traversalTarget === this.targetId) {
+        line.setAttribute('pathLength', '1');
+        line.style.strokeDasharray = '1'; line.style.strokeDashoffset = String(1 - reveal);
+      }
+    }
+    for (const label of owner.lineage.querySelectorAll('[data-traversal-label]')) {
+      label.style.opacity = label.dataset.traversalLabel === this.targetId ? String(clamp((reveal - 0.25) / 0.5)) : '';
+    }
+    const targetRegion = owner.regions.get(this.targetId);
+    targetRegion.style.opacity = String(clamp((this.elapsed - 220) / 140));
+    targetRegion.inert = this.elapsed < 300;
+    targetRegion.style.pointerEvents = this.elapsed < 300 ? 'none' : '';
+    const final = this.finalPosition;
+    view.position(this.startPosition.x + (final.x - this.startPosition.x) * eased,
+      this.startPosition.y + (final.y - this.startPosition.y) * eased);
+  }
+  cancel() {
+    if (this.cancelled) return;
+    this.cancelled = true;
+    cancelAnimationFrame(this.frame);
+    const owner = this.owner;
+    delete owner.dataset.traversalPhase;
+    const region = owner.regions.get(this.source.id);
+    if (region) {
+      region.style.width = ''; region.style.height = '';
+
+    }
+    const target = owner.regions.get(this.targetId);
+    if (target) { target.style.opacity = ''; target.style.pointerEvents = ''; target.inert = false; }
+    for (const line of owner.lineage.querySelectorAll('path')) {
+      line.style.visibility = ''; line.style.strokeDasharray = ''; line.style.strokeDashoffset = '';
+      line.removeAttribute('pathLength');
+    }
+    for (const label of owner.lineage.querySelectorAll('[data-traversal-label]')) label.style.opacity = '';
+  }
+}
+
+/** Layout-agnostic view of an extent. The owner supplies geometry; view changes
+ * never request allocation or inspect children. The real surface bounds camera
+ * movement, keeping the origin anchored when there is no content before it. */
+export class SurfaceView {
+  constructor(viewport, surface, changed) {
+    this.viewport = viewport; this.surface = surface; this.changed = changed;
+    this.scale = 1; this.width = 0; this.height = 0;
+    this.viewportWidth = 0; this.viewportHeight = 0;
+    this.stage = document.createElement('div');
+    Object.assign(this.stage.style, { position: 'relative', overflow: 'hidden' });
+    this.stage.append(surface); viewport.append(this.stage);
+    viewport.addEventListener('scroll', () => changed());
+    viewport.addEventListener('wheel', event => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      this.zoom(this.scale * Math.exp(-event.deltaY * 0.01), event.clientX - rect.left, event.clientY - rect.top);
+    }, { passive: false });
+    viewport.addEventListener('keydown', event => {
+      if (event.target !== viewport) return;
+      const delta = { ArrowLeft: [-80, 0], ArrowRight: [80, 0], ArrowUp: [0, -80], ArrowDown: [0, 80] }[event.key];
+      if (delta) { event.preventDefault(); this.pan(...delta); }
+    });
+  }
+  get ready() { return this.width > 0 && this.height > 0 && this.viewportWidth > 0 && this.viewportHeight > 0; }
+  get paddingX() { return 0; }
+  get paddingY() { return 0; }
+  setGeometry(width, height, viewportWidth, viewportHeight) {
+    this.width = width; this.height = height;
+    this.viewportWidth = viewportWidth; this.viewportHeight = viewportHeight;
+    this.render();
+  }
+  render() {
+    Object.assign(this.surface.style, { width: `${this.width}px`, height: `${this.height}px`, left: `${this.paddingX}px`, top: `${this.paddingY}px`, transform: `scale(${this.scale})` });
+    Object.assign(this.stage.style, { width: `${Math.max(this.viewportWidth, this.width * this.scale + 2 * this.paddingX)}px`, height: `${Math.max(this.viewportHeight, this.height * this.scale + 2 * this.paddingY)}px` });
+    this.changed();
+  }
+  position(x, y) {
+    this.viewport.scrollLeft = Math.max(0, Math.min(x, Math.max(0, this.width * this.scale + 2 * this.paddingX - this.viewportWidth)));
+    this.viewport.scrollTop = Math.max(0, Math.min(y, Math.max(0, this.height * this.scale + 2 * this.paddingY - this.viewportHeight)));
+    this.changed();
+  }
+  pan(x, y) { this.position(this.viewport.scrollLeft + x, this.viewport.scrollTop + y); }
+  fitScale() { return Math.min(1, Math.max(1, this.viewportWidth - 32) / this.width, Math.max(1, this.viewportHeight - 32) / this.height); }
+  zoom(scale, anchorX = this.viewportWidth / 2, anchorY = this.viewportHeight / 2) {
+    if (!this.ready || !Number.isFinite(scale) || scale <= 0) return false;
+    const x = (this.viewport.scrollLeft + anchorX - this.paddingX) / this.scale;
+    const y = (this.viewport.scrollTop + anchorY - this.paddingY) / this.scale;
+    this.scale = Math.max(Math.min(0.1, this.fitScale()), Math.min(4, scale));
+    this.render();
+    this.position(x * this.scale + this.paddingX - anchorX, y * this.scale + this.paddingY - anchorY);
+    return true;
+  }
+  fit() {
+    if (!this.ready) return false;
+    this.scale = this.fitScale(); this.render();
+    this.position(0, 0);
+    return true;
+  }
+  center(bounds) {
+    if (!this.ready || !bounds) return false;
+    // Attention is bounded by the real surface; never manufacture origin margins.
+    this.render();
+    this.position(this.paddingX + (bounds.x + bounds.width / 2) * this.scale - this.viewportWidth / 2,
+      this.paddingY + bounds.y * this.scale + Math.min(bounds.height * this.scale, this.viewportHeight) / 2 - this.viewportHeight / 2);
+    return true;
+  }
+  actualSize(bounds) {
+    if (!this.ready || !bounds) return false;
+    this.scale = 1;
+    return this.center(bounds);
+  }
+  reveal(bounds, approach = 0) {
+    if (!this.ready) return;
+    const nearest = (start, extent, scroll, viewport) => start < scroll ? start : start + extent > scroll + viewport ? Math.max(start, start + extent - viewport) : scroll;
+    const x = this.paddingX + bounds.x * this.scale;
+    const y = this.paddingY + bounds.y * this.scale;
+    const left = nearest(x, bounds.width * this.scale, this.viewport.scrollLeft, this.viewportWidth);
+    this.position(approach ? Math.min(left, x - approach * this.scale) : left,
+      nearest(y, bounds.height * this.scale, this.viewport.scrollTop, this.viewportHeight));
+  }
+  visibility(bounds) {
+    const left = this.paddingX + bounds.x * this.scale - this.viewport.scrollLeft;
+    const top = this.paddingY + bounds.y * this.scale - this.viewport.scrollTop;
+    const right = left + bounds.width * this.scale, bottom = top + bounds.height * this.scale;
+    const directions = [];
+    if (left < -1) directions.push('left');
+    if (right > this.viewportWidth + 1) directions.push('right');
+    if (top < -1) directions.push('above');
+    if (bottom > this.viewportHeight + 1) directions.push('below');
+    return { directions, state: right <= 0 || bottom <= 0 || left >= this.viewportWidth || top >= this.viewportHeight ? 'outside' : directions.length ? 'partial' : 'visible' };
+  }
+}

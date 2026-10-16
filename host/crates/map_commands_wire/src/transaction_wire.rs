@@ -201,6 +201,7 @@ pub enum TransactionActionWire {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VisualizerKindWire {
+    TitleBar,
     Canvas,
     Node,
     Structure,
@@ -261,6 +262,7 @@ impl From<VisualizerKindWire> for VisualizerKind {
         match value {
             VisualizerKindWire::Structure => Self::Structure,
             VisualizerKindWire::Canvas => Self::Canvas,
+            VisualizerKindWire::TitleBar => Self::TitleBar,
             VisualizerKindWire::Node => Self::Node,
             VisualizerKindWire::RootedNavigation => Self::RootedNavigation,
             VisualizerKindWire::Collection => Self::Collection,
@@ -278,6 +280,7 @@ impl From<VisualizerKind> for VisualizerKindWire {
         match value {
             VisualizerKind::Structure => Self::Structure,
             VisualizerKind::Canvas => Self::Canvas,
+            VisualizerKind::TitleBar => Self::TitleBar,
             VisualizerKind::Node => Self::Node,
             VisualizerKind::RootedNavigation => Self::RootedNavigation,
             VisualizerKind::Collection => Self::Collection,
@@ -475,4 +478,16 @@ pub struct VisualizerUseReportWire {
     pub session: String,
     pub occurrence_id: String,
     pub sequence: u64,
+}
+
+#[cfg(test)]
+mod visualizer_kind_tests {
+    use super::{VisualizerKind, VisualizerKindWire};
+    #[test]
+    fn title_bar_kind_roundtrips_at_the_transport_boundary() {
+        let wire = VisualizerKindWire::from(VisualizerKind::TitleBar);
+        assert_eq!(wire, VisualizerKindWire::TitleBar);
+        assert_eq!(serde_json::to_string(&wire).unwrap(), "\"TitleBar\"");
+        assert!(matches!(VisualizerKind::from(wire), VisualizerKind::TitleBar));
+    }
 }

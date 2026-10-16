@@ -1,3 +1,4 @@
+import { withSelectedTitle } from '../../../test-fixtures/selected-title';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -25,7 +26,7 @@ it('reveals population in descriptor order, shows exact counts and preserves mou
     return { length: name === 'Friends' ? 0 : 8 };
   }) };
   const discovery = new NodeRelationshipDiscovery({} as never, owner as never, [parent, friends, orders]);
-  const node = document.createElement(defineCustomElementOnce('test-discovered-node', Node)) as any;
+  const node = document.createElement(defineCustomElementOnce('test-discovered-node', withSelectedTitle(Node))) as any;
   const properties = document.createElement('input'); properties.value = 'staged edit retained';
   const content = document.createElement('div'); content.textContent = 'existing collection';
   const activate = vi.fn((_item, _slot, publish) => publish({ state: 'loaded', content })), singular = vi.fn();
@@ -64,7 +65,7 @@ it('provides local failure retry without presenting it as empty, including with 
   const relationship = relation('Failed', true);
   const owner = { relatedHolons: vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ length: 0 }) };
   const discovery = new NodeRelationshipDiscovery({} as never, owner as never, [relationship]);
-  const node = document.createElement(defineCustomElementOnce('test-discovery-errors', Node)) as any;
+  const node = document.createElement(defineCustomElementOnce('test-discovery-errors', withSelectedTitle(Node))) as any;
   node.setContext({ relationshipDiscovery: discovery, collectionActivation: { activate: vi.fn(), dispose: () => discovery.dispose() },
     nodeAffordances: { collections: [relationship] } });
   document.body.append(node); discovery.start(); await flush();

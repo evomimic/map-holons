@@ -1,3 +1,5 @@
+import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
+import { inspectorLayout, boundedRegion } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 export default class HolonInspectorElement extends HTMLElement {
@@ -16,7 +18,6 @@ export default class HolonInspectorElement extends HTMLElement {
     this.addEventListener('dahn-content-extent-changed', event => {
       if (event.target === this.collectionViewer?.firstElementChild) {
         event.stopPropagation();
-        this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
         this.scheduleLayout();
         return;
       }
@@ -25,7 +26,7 @@ export default class HolonInspectorElement extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', collection: 'HolonInspector.CollectionsSlot' };
+  static compositionSlots = { titleBar: 'HolonInspector.TitleBarSlot', propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', collection: 'HolonInspector.CollectionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute('aria-pressed', String(state.active === affordance));
@@ -63,7 +64,7 @@ export default class HolonInspectorElement extends HTMLElement {
     return button;
   }
   updateMaximizeControls() {
-    if (!this.inspectorMaximizeButton) return;
+    if (!this.titleBar) return;
     const usable = Number.isFinite(this.allocatedWidth) && this.allocatedWidth > 0 && Number.isFinite(this.allocatedHeight) && this.allocatedHeight > 0;
     const update = (button, maximized, name) => {
       const label = `${maximized ? 'Restore' : 'Maximize'} ${name}`;
@@ -74,10 +75,10 @@ export default class HolonInspectorElement extends HTMLElement {
         ? 'M19 5l-6 6m0-5v5h5 M5 19l6-6m-5 0h5v5'
         : 'M14 5h5v5 M19 5l-6 6 M10 19H5v-5 M5 19l6-6');
     };
-    this.titleBar.update({ width: this.allocatedWidth, height: this.allocatedHeight,
+    this.titleBar.update({ width: this.allocatedWidth, height: this.titleHeight ?? 48,
       vertical: this.verticalState, horizontal: this.horizontalState,
       canExplore: !!this.exploreOccurrence, canClose: !!this.closeOccurrence,
-      canMaximize: !!this.occurrenceAttention, maximized: this.occurrenceMaximized });
+      localExpanded: !!this.maximizedRegion, canMaximize: !!this.occurrenceAttention, maximized: this.occurrenceMaximized });
     this.propertiesMaximizeButton.hidden = !this.propertiesVisualizer || this.maximizedRegion === 'collections';
     update(this.propertiesMaximizeButton, this.maximizedRegion === 'properties', 'Properties');
     this.collectionsMaximizeButton.hidden = !this.collectionViewer || this.collectionViewer.hidden || this.maximizedRegion === 'properties';
@@ -111,12 +112,11 @@ export default class HolonInspectorElement extends HTMLElement {
   applyRegionMaximize() {
     const properties = this.maximizedRegion === 'properties';
     const collections = this.maximizedRegion === 'collections';
-    // Keep children mounted: visibility and internal allocation are presentation.
-    this.singleValueRail.style.display = this.maximizedRegion ? 'none' : 'flex';
-    this.singleValueRail.inert = !!this.maximizedRegion;
-    this.propertyViewer.style.gridRow = properties ? '1 / -1' : '2';
-    this.body.style.gridTemplateRows = properties ? 'minmax(0, 1fr)' : 'auto minmax(0, 1fr)';
     if (!this.maximizedRegion) { delete this.dataset.maximizedRegion; return; }
+    // Keep children mounted inside the owner's current grant.
+    this.singleValueRail.style.display = 'none'; this.singleValueRail.inert = true;
+    this.propertyViewer.style.gridRow = properties ? '1 / -1' : '2';
+    this.body.style.gridTemplateRows = 'minmax(0, 1fr)';
     this.dataset.maximizedRegion = this.maximizedRegion;
     this.body.style.display = properties ? 'grid' : 'none';
     this.body.inert = !properties;
@@ -125,67 +125,24 @@ export default class HolonInspectorElement extends HTMLElement {
     this.propertyViewer.inert = !properties;
     this.actionBar.style.display = 'none'; this.actionBar.inert = true;
     this.collectionRegion.style.display = collections ? 'flex' : 'none';
+    this.collectionRegion.style.gridRow = collections ? '2' : '3';
     this.collectionRegion.inert = !collections;
-    this.style.gridTemplateRows = 'max-content minmax(0, 1fr)';
+    this.style.gridTemplateRows = `${this.titleHeight}px minmax(0, 1fr)`;
     const active = document.activeElement;
     if (this.actionBar.contains(active) || this.singleValueRail.contains(active)
       || (!properties && this.body.contains(active)) || (!collections && this.collectionRegion.contains(active))) this.titleControl.focus();
   }
-  collectionContentHeight() {
-    const collection = this.collectionViewer?.firstElementChild;
-    const reported = collection?.getCollectionViewportHeight?.(5);
-    if (Number.isFinite(reported) && reported > 0) return reported;
-    // Before a collection is opened, reserve five themed rows, a header and
-    // two control lines. The selected Collection replaces this estimate with
-    // its own measured participation report once mounted.
-    const probe = document.createElement('span');
-    Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', pointerEvents: 'none',
-      height: 'calc(1lh + var(--dahn-table-cell-padding, 12px) * 2 / 3 + var(--dahn-table-cell-border-width, 1px))' });
-    this.append(probe);
-    const row = probe.getBoundingClientRect().height || 33;
-    probe.remove();
-    return Math.ceil(8 * row);
+  get visualizerOperations() { return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: input => this.applyNodePresentation(input) }; }
+  applyNodePresentation(input) {
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16));
+    this.allocation = { width: input.width, height: input.height, requiredCapabilities: [...input.requiredCapabilities] };
+    this.verticalState = layout.vertical; this.horizontalState = layout.horizontal;
+    this.allocatedHeight = layout.height; this.allocatedWidth = layout.width;
+    this.adaptBudget();
+    return { status: 'applied' };
   }
-  inspectorHeightParts() {
-    const pixels = value => parseFloat(value) || 0;
-    const style = getComputedStyle(this);
-    const gap = pixels(style.rowGap);
-    if (this.horizontalState !== 'minimal-width' && this.verticalState !== 'minimal-height') {
-      this.titleHeight = this.titleControl?.parentElement.offsetHeight || this.titleHeight;
-    }
-    this.tabsHeight = this.collectionTabBar?.offsetHeight || this.tabsHeight;
-    const title = this.titleHeight || 40;
-    const tabs = this.tabsHeight || 48;
-    const viewer = getComputedStyle(this.collectionViewer);
-    const viewerChrome = pixels(viewer.paddingTop) + pixels(viewer.paddingBottom)
-      + pixels(viewer.borderTopWidth) + pixels(viewer.borderBottomWidth);
-    const collection = tabs + this.collectionContentHeight() + viewerChrome;
-    // The normal body grant is retained independently of the collection.
-    const body = this.initialBodyHeight ?? Math.max(0, 480 - title - 2 * gap - tabs);
-    return { title, gap, collection, body };
-  }
-  setInitialCompositionHeight(height) {
-    if (this.initialBodyHeight !== undefined || !Number.isFinite(height) || height <= 0) return;
-    const { title, gap, collection, body } = this.inspectorHeightParts();
-    // Reserve both collections and titles first; only the body uses the remainder.
-    this.fullHeight = undefined;
-    this.initialBodyHeight = Math.max(0, Math.min(body, height - 2 * (title + gap + collection) - gap));
-  }
-  getNodeInspectorExtents() {
-    const { title, gap, collection, body } = this.inspectorHeightParts();
-    const partial = title + gap + collection;
-    return {
-      vertical: { 'full-height': this.fullHeight = Math.max(this.fullHeight ?? partial + gap + body, partial), 'partial-height': partial, 'minimal-height': 64 },
-      horizontal: { 'full-width': 800, 'partial-width': 240, 'minimal-width': 96 },
-    };
-  }
-  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation }; }
-  setNodeInspectorAllocation(allocation) {
-    this.allocation = { ...allocation };
-    this.verticalState = allocation.vertical;
-    this.horizontalState = allocation.horizontal;
-    this.setSpatialBudget(allocation);
-  }
+  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation, requiredCapabilities: [...this.allocation.requiredCapabilities] }; }
+  setNodeInspectorAllocation(allocation) { return this.applyNodePresentation(allocation); }
   setOccurrenceExplorationHandler(handler) {
     this.exploreOccurrence = handler;
     this.adaptBudget();
@@ -194,39 +151,37 @@ export default class HolonInspectorElement extends HTMLElement {
     this.closeOccurrence = handler;
     this.titleBar?.update({ canClose: !!handler });
   }
-  setSpatialBudget(budget) {
-    this.allocatedHeight = budget.height;
-    this.allocatedWidth = budget.width;
-    this.adaptBudget();
-  }
   adaptBudget() {
-    if (!this.body || !this.singleValueRail) return;
-    const height = this.allocatedHeight ?? Infinity;
-    const compact = this.verticalState ? this.verticalState === 'minimal-height' : height < 80;
-    const partial = this.verticalState ? this.verticalState !== 'full-height' : height < 280;
-    const width = this.allocatedWidth ?? Infinity;
-    const narrow = this.horizontalState ? this.horizontalState !== 'full-width' : width < 300;
-    const compactWidth = this.horizontalState ? this.horizontalState === 'minimal-width' : width < 100;
-    const hideBody = partial || compactWidth;
-    const hideCollection = compact || narrow;
+    if (!this.body || !this.singleValueRail || !this.allocation) return;
+    const layout = inspectorLayout(this.allocation, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), !!this.collectionViewer && !this.collectionViewer.hidden);
+    this.titleHeight = layout.title;
     const active = document.activeElement;
-    if ((hideBody && this.body.contains(active)) || (hideCollection && this.collectionRegion.contains(active))
-      || (narrow && (this.propertyViewer.contains(active) || this.actionBar.contains(active)))) this.titleControl.focus();
-    this.body.style.display = hideBody ? 'none' : 'grid';
-    this.body.inert = hideBody;
-    this.propertyViewer.style.display = narrow ? 'none' : 'flex';
-    this.propertyViewer.inert = narrow;
-    this.actionBar.style.display = narrow ? 'none' : 'flex';
-    this.actionBar.inert = narrow;
-    this.body.style.gridTemplateColumns = narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
-    this.singleValueRail.style.gridColumn = narrow ? '1' : '2';
-    this.collectionRegion.style.display = hideCollection ? 'none' : 'flex';
-    this.collectionRegion.inert = hideCollection;
-    this.style.gridTemplateColumns = 'minmax(0, 1fr)';
-    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'max-content minmax(0, 1fr)' : narrow ? 'max-content minmax(0, 1fr)' : this.collectionViewer.hidden ? 'max-content minmax(0, 1fr) auto' : 'max-content minmax(0, 1fr) minmax(0, 1fr)';
-    this.applyRegionMaximize();
-    this.updateMaximizeControls();
-    this.allocateInternalHeight();
+    if (!layout.inspect) this.maximizedRegion = undefined;
+    Object.assign(this.style, { width: `${layout.width}px`, height: `${layout.height}px`, boxSizing: 'border-box', gap: '0',
+      gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: `${layout.title}px ${layout.body}px ${layout.collection}px` });
+    boundedRegion(this.body, layout.singular, 'Node navigation and details');
+    boundedRegion(this.propertyViewer, layout.inspect, 'Properties — scroll for more');
+    boundedRegion(this.actionBar, layout.inspect, 'Actions — scroll for more');
+    boundedRegion(this.singleValueRail, layout.singular, 'Single-valued relationships — scroll for more');
+    boundedRegion(this.collectionRegion, layout.plural, 'Collections — scroll for more');
+    this.body.style.display = layout.singular ? 'grid' : 'none';
+    this.propertyViewer.style.display = layout.inspect ? 'flex' : 'none';
+    this.propertyViewer.style.gridRow = '2';
+    if (this.propertiesVisualizer) Object.assign(this.propertiesVisualizer.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
+    this.actionBar.style.display = layout.inspect ? 'flex' : 'none';
+    this.collectionRegion.style.display = layout.plural ? 'flex' : 'none';
+    this.collectionRegion.style.gridRow = '3';
+    this.body.style.gridTemplateColumns = layout.inspect ? 'minmax(0, 1fr) minmax(0, min(40%, 14rem))' : 'minmax(0, 1fr)';
+    this.body.style.gridTemplateRows = layout.inspect ? `${layout.actions}px minmax(0, 1fr)` : 'minmax(0, 1fr)';
+    this.singleValueRail.style.gridColumn = layout.inspect ? '2' : '1';
+    this.singleValueRail.style.gridRow = layout.inspect ? '2' : '1';
+    this.singleValueRail.style.justifySelf = 'end'; this.singleValueRail.style.width = '100%';
+    this.singleValueRail.style.maxWidth = layout.inspect ? '14rem' : '100%';
+    this.collectionTabBar.style.flex = '0 1 auto'; this.collectionTabBar.style.overflow = 'auto';
+    this.collectionViewer.style.flex = '1 1 0'; this.collectionViewer.style.minHeight = '0'; this.collectionViewer.style.overflow = 'auto';
+    this.titleBar.update({ width: layout.width, height: layout.title, vertical: layout.vertical, horizontal: layout.horizontal });
+    this.applyRegionMaximize(); this.updateMaximizeControls();
+    if ([this.body, this.propertyViewer, this.actionBar, this.collectionRegion].some(region => region.inert && region.contains(active))) this.titleControl.focus();
     if (this.isConnected) this.scheduleLayout();
   }
   connectedCallback() {
@@ -253,7 +208,7 @@ export default class HolonInspectorElement extends HTMLElement {
   fitCompressedText() {
     const compressed = this.horizontalState && this.horizontalState !== 'full-width'
       || this.verticalState && this.verticalState !== 'full-height';
-    const controls = [this.titleControl, ...[...(this.singularControls?.values() ?? [])]];
+    const controls = [...(this.singularControls?.values() ?? [])];
     // Resolve the same theme font used by traversal labels, including rem/em sizes.
     const probe = document.createElement('span');
     probe.style.font = 'var(--dahn-traversal-label-font, 12px/24px system-ui)';
@@ -276,19 +231,7 @@ export default class HolonInspectorElement extends HTMLElement {
       }
     }
   }
-  allocateInternalHeight() {
-    if (this.maximizedRegion || !Number.isFinite(this.allocatedHeight)) return;
-    const { title, gap, collection } = this.inspectorHeightParts();
-    const visibleCollection = this.collectionViewer.hidden ? (this.tabsHeight || 48) : collection;
-    if (this.verticalState === 'minimal-height' || this.horizontalState === 'minimal-width') return;
-    if (this.horizontalState && this.horizontalState !== 'full-width') return;
-    if (this.verticalState === 'partial-height') {
-      this.style.gridTemplateRows = `max-content ${collection}px`;
-      return;
-    }
-    const body = Math.max(0, this.allocatedHeight - title - 2 * gap - visibleCollection);
-    this.style.gridTemplateRows = `max-content ${body}px ${visibleCollection}px`;
-  }
+  allocateInternalHeight() { /* Internal content never renegotiates the Path grant. */ }
   navigationControl(item, tab = false) {
     const button = document.createElement('button');
     if (item.relationship) this.relationshipControls.set(item, { button, tab });
@@ -419,7 +362,6 @@ export default class HolonInspectorElement extends HTMLElement {
       viewer.style.display = 'none';
       this.collectionControls.forEach((control, index) => { control.setAttribute('aria-selected', 'false'); control.tabIndex = index ? -1 : 0; });
       this.adaptBudget();
-      if (wasOpen) this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
       if (recoverFocus) this.titleControl.focus();
       return;
     }
@@ -436,7 +378,6 @@ export default class HolonInspectorElement extends HTMLElement {
         retry.addEventListener('click', update.retry); viewer.append(retry);
       }
     }
-    if (!wasOpen) this.dispatchEvent(new CustomEvent('dahn-spatial-extents-changed', { bubbles: true }));
     viewer.scrollTop = 0;
     viewer.scrollLeft = 0;
     this.scheduleLayout();
@@ -474,7 +415,7 @@ export default class HolonInspectorElement extends HTMLElement {
 
     this.titleText = context.title ?? 'Holon Inspector';
     this.holonKey = context.holonKey ?? this.titleText;
-    this.titleBar = createNodeTitleBar({
+    this.titleBar = createNodeTitleBar(context, {
       title: this.titleText, holonKey: this.holonKey,
       restoreLocal: () => { if (this.maximizedRegion) this.requestRegion('restore'); },
       restore: () => this.restoreOccurrence?.(), explore: () => this.exploreOccurrence?.(),
@@ -599,7 +540,7 @@ export default class HolonInspectorElement extends HTMLElement {
     body.style.gridColumn = '1 / -1';
     body.style.gridRow = '2';
     body.style.display = 'grid';
-    body.style.minHeight = '0';
+    body.style.minHeight = '0'; body.style.overflow = 'auto';
     body.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     body.style.gridTemplateRows = 'auto minmax(0, 1fr)';
     body.style.gap = 'var(--dahn-canvas-gap)';

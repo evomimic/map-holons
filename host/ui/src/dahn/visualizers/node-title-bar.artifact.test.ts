@@ -3,60 +3,42 @@ import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-
-beforeEach(() => {
-  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
-  vi.stubGlobal('requestAnimationFrame', () => 1);
-  vi.stubGlobal('cancelAnimationFrame', vi.fn());
-});
+import { selectedTitleContext } from '../../../test-fixtures/selected-title';
+import { defineCustomElementOnce } from './define-custom-element-once';
+import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
+beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()); });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
-
-it('packages both Node artifacts from the shared title-bar source without runtime imports', async () => {
-  const root = resolve(process.cwd(), '..');
-  await promisify(execFile)(process.execPath, [resolve(root, 'scripts/build-node-visualizers.mjs'), '--check'], { cwd: root });
+it('packages selected title/action artifacts without runtime-relative source imports', async () => {
+  await promisify(execFile)(process.execPath, [resolve(process.cwd(), '../scripts/build-node-visualizers.mjs'), '--check'], { cwd: resolve(process.cwd(), '..') });
 });
-
-it.each(['holon-inspector', 'load-holons-inspector'])('%s obeys the same title-bar interaction and compression contract', async name => {
+it.each(['holon-inspector', 'load-holons-inspector'])('%s retains the shared action membership and binds every invocation to its owner', async name => {
   const source = await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8');
   const Node = (await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)).default;
-  customElements.define(`test-shared-title-${name}`, class extends Node {});
-  const node = document.createElement(`test-shared-title-${name}`) as any;
-  node.setContext({ title: 'MAP Core Schema Space', holonKey: 'MAP.CoreSchemaSpace' }); document.body.append(node);
-  const bar = node.querySelector('[data-node-title-bar]') as HTMLElement;
-  const title = bar.querySelector('button') as HTMLButtonElement;
-  const explore = bar.querySelector('[data-explore-from-here]') as HTMLButtonElement;
-  const close = bar.querySelector('[data-close-occurrence]') as HTMLButtonElement;
-  const maximize = bar.querySelector('[data-maximize-inspector]') as HTMLButtonElement;
-  const information = bar.querySelector('[data-visualizer-information]') as HTMLButtonElement;
-  const restored = vi.fn(), explored = vi.fn(), closed = vi.fn(), inspected = vi.fn();
-  node.setOccurrenceRestorationHandler(restored); node.setOccurrenceExplorationHandler(explored); node.setOccurrenceClosureHandler(closed);
-  node.setOccurrenceAttentionHandler((operation: string) => { node.setOccurrenceAttentionState(operation === 'maximize'); return { status: 'applied' }; });
-  node.setVisualizerInformationHandler(inspected, 'Selected Node');
-  const allocation = (vertical: string, horizontal: string, width = 900, height = 760) => node.setNodeInspectorAllocation({ vertical, horizontal, width, height });
-  allocation('full-height', 'full-width');
-  expect(title.textContent).toBe('MAP Core Schema Space'); title.click(); expect(restored).not.toHaveBeenCalled();
-  expect(explore.hidden).toBe(false); expect(explore.querySelector('svg')).not.toBeNull(); explore.click(); expect(explored).toHaveBeenCalledOnce();
-  expect(close.getAttribute('aria-label')).toBe('Close branch: MAP Core Schema Space'); close.click(); expect(closed).toHaveBeenCalledOnce();
-  expect(maximize.disabled).toBe(false); maximize.click(); expect(maximize.getAttribute('aria-label')).toBe('Restore Inspector');
-  expect(maximize.getAttribute('aria-pressed')).toBe('true'); maximize.click(); expect(maximize.getAttribute('aria-label')).toBe('Maximize Inspector');
-  information.dispatchEvent(new MouseEvent('mouseenter')); expect(bar.querySelector('[role=tooltip]')?.textContent).toBe('Selected Node');
-  information.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); expect((bar.querySelector('[role=tooltip]') as HTMLElement).hidden).toBe(true);
-  information.click(); expect(inspected).toHaveBeenCalledWith(information);
-  information.dataset.visualizerInspected = 'true'; information.setAttribute('aria-pressed', 'true');
-  allocation('partial-height', 'full-width'); title.click(); expect(restored).toHaveBeenCalledOnce();
-  expect(title.getAttribute('aria-label')).toBe('Restore occurrence: MAP Core Schema Space');
-  expect(information.getAttribute('aria-pressed')).toBe('true');
-  allocation('full-height', 'minimal-width', 64); expect(title.style.writingMode).toBe('vertical-rl');
-  expect(explore.hidden).toBe(true); expect(maximize.hidden).toBe(true); expect(close.hidden).toBe(false);
-  expect(information.hidden).toBe(true); expect(bar.style.flexDirection).toBe('column');
-  allocation('minimal-height', 'full-width', 240, 64);
-  expect((title.firstElementChild as HTMLElement).style.webkitLineClamp).toBe('2'); expect(information.hidden).toBe(true);
-  allocation('minimal-height', 'minimal-width', 96, 64); expect(title.textContent).toBe('MAP.CoreSchemaSpace');
-  expect(node.getNodeInspectorExtents().vertical['minimal-height']).toBe(64);
-  expect(node.getNodeInspectorExtents().horizontal['minimal-width']).toBe(96);
-  expect(title.style.writingMode).toBe('horizontal-tb'); expect(information.hidden).toBe(true);
-  node.setVisualizerInformationHandler(inspected, 'Selected Node'); expect(information.hidden).toBe(true);
-  allocation('full-height', 'full-width'); expect(information.hidden).toBe(false); explore.focus(); node.setOccurrenceExplorationHandler(undefined);
-  expect(explore.hidden).toBe(true); expect(document.activeElement).toBe(title);
-  node.setVisualizerInformationHandler(undefined, 'Selected Node'); expect(information.hidden).toBe(true);
+  const node: any = document.createElement(defineCustomElementOnce('fixture-node-title-contract', Node));
+  node.setContext(selectedTitleContext({ title: 'Holon: Example', holonKey: 'Example' })); document.body.append(node);
+  const restore = vi.fn(), close = vi.fn(), explore = vi.fn(), inspect = vi.fn();
+  node.setOccurrenceRestorationHandler(restore); node.setOccurrenceClosureHandler(close); node.setOccurrenceExplorationHandler(explore); node.setVisualizerInformationHandler(inspect, 'Node selection');
+  const attention = vi.fn(operation => { node.setOccurrenceAttentionState(operation === 'maximize'); return { status: 'applied' }; }); node.setOccurrenceAttentionHandler(attention);
+  applyNodePresentation(node, { width: 800, height: 640, requiredCapabilities: ['inspect'] });
+  const title = node.querySelector('[data-node-title-bar]');
+  expect(title.querySelectorAll('[data-presentation-operator]')).toHaveLength(4);
+  expect(title.querySelector(':scope > button').textContent).toBe('Holon: Example');
+  title.querySelector('[data-close-occurrence]').click(); expect(close).toHaveBeenCalledOnce();
+  title.querySelector('[data-explore-from-here]').click(); expect(explore).toHaveBeenCalledOnce();
+  const information = title.querySelector('[data-visualizer-information]'); information.click(); expect(inspect).toHaveBeenCalledWith(information);
+  const expansion = title.querySelector('[data-maximize-inspector]'); expansion.click(); expect(attention).toHaveBeenLastCalledWith('maximize');
+  expansion.click(); expect(attention).toHaveBeenLastCalledWith('restore');
+  applyNodePresentation(node, { width: 80, height: 64, requiredCapabilities: [] });
+  const identity = title.querySelector(':scope > button'); expect(identity.textContent).toBe('Example'); expect(identity.title).toBe('Holon: Example');
+  identity.click(); expect(restore).toHaveBeenCalledOnce();
+  node.setVisualizerInformationHandler(undefined, 'Node selection');
+  expect(information.disabled).toBe(true); expect(information.title).toContain('unavailable');
+  expect(title.querySelectorAll('[data-presentation-operator]')).toHaveLength(4);
+  node.remove(); information.click(); expect(inspect).toHaveBeenCalledOnce();
+});
+it('refuses a Node composition without a real selected Title Bar', async () => {
+  const source = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/holon-inspector.js'), 'utf8');
+  const Node = (await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)).default;
+  const node: any = document.createElement(defineCustomElementOnce('fixture-missing-title', Node));
+  expect(() => node.setContext({ title: 'Subject' })).toThrow('selected Title Bar');
 });
