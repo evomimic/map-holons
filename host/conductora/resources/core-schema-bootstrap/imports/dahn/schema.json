@@ -740,6 +740,14 @@
           ]
         },
         {
+          "name": "RequiresOperator",
+          "target": [
+            {
+              "$ref": "ApplySubjectActions.VisualizerOperator"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {
@@ -881,6 +889,14 @@
           ]
         },
         {
+          "name": "OffersOperator",
+          "target": [
+            {
+              "$ref": "ApplySubjectActions.VisualizerOperator"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {
@@ -895,7 +911,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:6624e737368fc58f9f33a13168fc22f8bdb7ec557ec09b7146cf52c9891bca0f",
+        "VisualizerArtifactDigest": "sha256:c37ecc043d39670f6dce1ee938e57f889474b34895209af6d95129334a62c391",
         "VisualizerImplementationKey": "dahn.actions",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3929,6 +3945,14 @@
           "target": [
             {
               "$ref": "ActionBarVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequiresOperator",
+          "target": [
+            {
+              "$ref": "ApplySubjectActions.VisualizerOperator"
             }
           ]
         },
@@ -9097,6 +9121,76 @@
           "target": [
             {
               "$ref": "TitlePresentationInput.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ResultType",
+          "target": [
+            {
+              "$ref": "PresentationResult.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SubjectActionsInput.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SubjectActionsInput",
+        "TypeNamePlural": "SubjectActionsInputs",
+        "DisplayName": "Subject Actions Input",
+        "DisplayNamePlural": "Subject Actions Inputs",
+        "Description": "Local subject-action presentation input: the unchanged bound Holon/context, its supplied action tree and selected child Action bindings. Apply composes those live controls within the owner allocation without discovering or invoking Dances. Runtime references and executable bindings remain local; no invocation holon is persisted."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ApplySubjectActions.VisualizerOperator",
+      "type": "VisualizerOperator.HolonType",
+      "properties": {
+        "VisualizerDescription": "Compose supplied subject-afforded actions and their selected live controls, preserving invocation authority and accessible overflow within the owner grant. This does not supply or invoke title occurrence actions."
+      },
+      "relationships": [
+        {
+          "name": "InputType",
+          "target": [
+            {
+              "$ref": "SubjectActionsInput.HolonType"
             }
           ]
         },

@@ -192,7 +192,10 @@ export async function realizeNode(
         throw new Error('Selected Action implementation does not export an HTMLElement constructor.');
       }
       const tag = defineCustomElementOnce('map-node-actions', implementation as CustomElementConstructor);
-      const element = document.createElement(tag) as HTMLElement & { setContext(context: VisualizerContext): void };
+      const element = document.createElement(tag) as VisualizerElement;
+      await materialized.admit(element, actionSlot);
+      const applyActions = element.visualizerOperations?.['ApplySubjectActions.VisualizerOperator'];
+      if (!applyActions) throw new Error('Selected ActionBar does not fulfill subject-action presentation');
       const children = new Map<string, HTMLElement>();
       const compose = async (actions: ActionNode[]): Promise<void> => {
         for (const action of actions) {
@@ -214,7 +217,7 @@ export async function realizeNode(
         }
       };
       await compose(affordances.actions);
-      element.setContext({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas, childVisualizers: children });
+      applyActions({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas, childVisualizers: children } as never);
     await bindVisualizerInformationControl(element, transaction, subject, selectedVisualizer, actionSlot, selection.selected);
     return element;
   });

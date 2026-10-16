@@ -221,10 +221,17 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         ),
         (
             map_commands_contract::VisualizerKind::ActionBar,
-            space,
+            space.clone(),
             "HolonInspector.NodeVisualizer",
             "HolonInspector.ActionsSlot",
             "GenericActions.ActionBarVisualizer",
+        ),
+        (
+            map_commands_contract::VisualizerKind::ActionBar,
+            space,
+            "NodeTitleBar.TitleBarVisualizer",
+            "NodeTitleBar.ActionsSlot",
+            "NodeTitleActions.ActionBarVisualizer",
         ),
         (
             map_commands_contract::VisualizerKind::Action,
@@ -280,6 +287,26 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .iter()
             .any(|candidate| candidate.visualizer == selection.selected
                 && !candidate.declared_on.is_empty()));
+        if kind == map_commands_contract::VisualizerKind::ActionBar {
+            let wrong_role = if slot == "NodeTitleBar.ActionsSlot" {
+                "GenericActions.ActionBarVisualizer"
+            } else {
+                "NodeTitleActions.ActionBarVisualizer"
+            };
+            assert!(
+                command(
+                    &runtime,
+                    &context,
+                    TransactionAction::ChooseVisualizer {
+                        request: selection_request(),
+                        candidate: saved(wrong_role),
+                    },
+                )
+                .await
+                .is_err(),
+                "An ActionBar for the other role must not fulfill this slot"
+            );
+        }
         if kind == map_commands_contract::VisualizerKind::Node {
             for key in ["HolonInspector.NodeVisualizer"] {
                 assert!(discovery

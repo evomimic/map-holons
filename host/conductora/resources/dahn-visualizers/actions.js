@@ -1,4 +1,13 @@
 export default class ActionsElement extends HTMLElement {
+  get visualizerOperations() {
+    return { 'ApplySubjectActions.VisualizerOperator': context => {
+      if (!Array.isArray(context?.actions) || typeof context.childVisualizers?.get !== 'function') {
+        throw new Error('Subject actions require an action tree and selected child bindings');
+      }
+      this.setContext(context);
+      return { status: 'applied' };
+    } };
+  }
   getVisualizerComposition() { return this.composition ?? []; }
   static compositionSlots = { action: "GenericActions.ActionSlot" };
   connectedCallback() {
