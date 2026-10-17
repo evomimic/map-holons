@@ -114,6 +114,12 @@ function applyInspectorGeometry(parts, layout) {
   });
   Object.assign(collections.style, { gridRow: "3", gridColumn: "1", flexDirection: "column" });
 }
+function configurePropertiesReturn(button) {
+  button.textContent = "\u2039 Properties";
+  button.setAttribute("aria-label", "Properties");
+  button.title = "Show Properties";
+  button.style.cssText = "text-align:left;flex:1;min-width:0;height:100%;box-sizing:border-box;cursor:pointer;font:inherit;font-weight:600;padding:0 .75rem;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);";
+}
 
 // host/conductora/visualizer-src/node-title-bar.js
 function createNodeTitleBar(context, options) {
@@ -391,6 +397,10 @@ var HolonInspectorElement = class extends HTMLElement {
       button.setAttribute("aria-controls", this.collectionPanelId);
       const activate = () => {
         if (!this.canNavigateRelationship(item)) return;
+        if (this.activeCollection === item && this.collectionViewer.dataset.collectionState !== "unresolved") {
+          this.selectView("collection");
+          return;
+        }
         this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, (update) => {
           if (update.placement !== "source" && update.state !== "unresolved") {
             this.activeCollection = item;
@@ -714,7 +724,7 @@ var HolonInspectorElement = class extends HTMLElement {
     const toggle = this.propertiesToggle = document.createElement("button");
     toggle.type = "button";
     toggle.textContent = "Properties";
-    toggle.style.cssText = "text-align:left;flex:1;min-width:0;color:inherit;background:transparent;border:0;font:inherit;cursor:pointer;";
+    configurePropertiesReturn(toggle);
     toggle.addEventListener("click", () => this.selectView("properties"));
     propertiesHeading.append(toggle);
     body.append(propertiesHeading, actionBar, propertyViewer, singleValueRail);

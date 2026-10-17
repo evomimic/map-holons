@@ -1,6 +1,6 @@
 import { initialInspectorPresentation, inspectorPresentation, selectInspectorView } from './inspector-presentation.js';
 import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
-import { inspectorLayout, applyInspectorGeometry } from './inspector-layout.js';
+import { inspectorLayout, applyInspectorGeometry, configurePropertiesReturn } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 /** Specialized properties and result collections within ordinary Node allocation. */
@@ -96,18 +96,25 @@ export default class LoadHolonsInspector extends HTMLElement {
       for (const affordance of context.nodeAffordances.collections) {
         const tab = document.createElement('button'); tab.type = 'button'; tab.textContent = affordance.label;
         tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false');
-        tab.addEventListener('click', () => context.collectionActivation.activate(affordance, 'LoadHolonsResult.CollectionsSlot', update => {
-          if (update.placement === 'source') return;
-          this.activeCollection = update.state === 'unresolved' ? undefined : affordance;
-          this.presentationState = selectInspectorView(this.presentationState, update.state === 'unresolved' ? 'properties' : 'collection');
-          for (const button of tabs.children) button.setAttribute('aria-selected', String(button === tab));
-          if (update.content) viewer.replaceChildren(update.content);
-          else {
-            viewer.textContent = update.message || (update.state === 'unresolved' ? '' : 'No targets.');
-            if (update.retry) viewer.append(control('Retry collection', 'Retry', update.retry));
+        tab.addEventListener('click', () => {
+          if (this.activeCollection === affordance) {
+            this.presentationState = selectInspectorView(this.presentationState, 'collection');
+            if (this.allocation) this.applyNodePresentation(this.allocation);
+            return;
           }
-          if (this.allocation) this.applyNodePresentation(this.allocation);
-        }));
+          context.collectionActivation.activate(affordance, 'LoadHolonsResult.CollectionsSlot', update => {
+            if (update.placement === 'source') return;
+            this.activeCollection = update.state === 'unresolved' ? undefined : affordance;
+            this.presentationState = selectInspectorView(this.presentationState, update.state === 'unresolved' ? 'properties' : 'collection');
+            for (const button of tabs.children) button.setAttribute('aria-selected', String(button === tab));
+            if (update.content) viewer.replaceChildren(update.content);
+            else {
+              viewer.textContent = update.message || (update.state === 'unresolved' ? '' : 'No targets.');
+              if (update.retry) viewer.append(control('Retry collection', 'Retry', update.retry));
+            }
+            if (this.allocation) this.applyNodePresentation(this.allocation);
+          });
+        });
         this.collectionControls.set(affordance, tab); tabs.append(tab);
       }
       this.collectionViewer = viewer;
@@ -127,7 +134,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.propertiesHeading.style.cssText = 'min-width:0;min-height:0;align-items:center;';
     this.propertiesToggle = document.createElement('button');
     this.propertiesToggle.type = 'button'; this.propertiesToggle.textContent = 'Properties';
-    this.propertiesToggle.style.cssText = 'text-align:left;flex:1;min-width:0;color:inherit;background:transparent;border:0;font:inherit;';
+    configurePropertiesReturn(this.propertiesToggle);
     this.propertiesToggle.addEventListener('click', () => {
       this.presentationState = selectInspectorView(this.presentationState, 'properties');
       if (this.allocation) this.applyNodePresentation(this.allocation);

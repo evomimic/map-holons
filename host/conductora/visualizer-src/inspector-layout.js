@@ -50,3 +50,11 @@ export function applyInspectorGeometry(parts, layout) {
     justifySelf: 'end', width: '100%', maxWidth: layout.inspect ? '14rem' : '100%' });
   Object.assign(collections.style, { gridRow: '3', gridColumn: '1', flexDirection: 'column' });
 }
+
+/** A visible, keyboard-accessible return action, rather than passive heading text. */
+export function configurePropertiesReturn(button) {
+  button.textContent = '‹ Properties';
+  button.setAttribute('aria-label', 'Properties');
+  button.title = 'Show Properties';
+  button.style.cssText = 'text-align:left;flex:1;min-width:0;height:100%;box-sizing:border-box;cursor:pointer;font:inherit;font-weight:600;padding:0 .75rem;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);';
+}

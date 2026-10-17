@@ -71,7 +71,7 @@ try {
     cases++;
   }
   if (process.env.MAP_ALLOCATION_SCREENSHOT) {
-    await page.evaluate(() => window.allocationFixture.mount('generic', 'properties', 1, false, 'preferred'));
+    await page.evaluate(mode => window.allocationFixture.mount('generic', mode, 1, mode === 'collection', 'preferred'), process.env.MAP_ALLOCATION_SCREENSHOT_MODE || 'properties');
     await page.screenshot({ path: process.env.MAP_ALLOCATION_SCREENSHOT });
   }
   if (errors.length) throw new Error(errors.join('\n'));

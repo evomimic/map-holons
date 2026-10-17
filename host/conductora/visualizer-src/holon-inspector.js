@@ -1,6 +1,6 @@
 import { initialInspectorPresentation, inspectorPresentation, selectInspectorView } from './inspector-presentation.js';
 import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
-import { inspectorLayout, applyInspectorGeometry } from './inspector-layout.js';
+import { inspectorLayout, applyInspectorGeometry, configurePropertiesReturn } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 export default class HolonInspectorElement extends HTMLElement {
@@ -144,6 +144,10 @@ export default class HolonInspectorElement extends HTMLElement {
       button.setAttribute('aria-controls', this.collectionPanelId);
       const activate = () => {
         if (!this.canNavigateRelationship(item)) return;
+        if (this.activeCollection === item && this.collectionViewer.dataset.collectionState !== 'unresolved') {
+          this.selectView('collection');
+          return;
+        }
         this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, update => {
           if (update.placement !== 'source' && update.state !== 'unresolved') {
             this.activeCollection = item;
@@ -448,7 +452,7 @@ export default class HolonInspectorElement extends HTMLElement {
     propertiesHeading.style.cssText = 'grid-column:1 / -1;grid-row:1;display:flex;align-items:center;min-width:0;min-height:0;';
     const toggle = this.propertiesToggle = document.createElement('button');
     toggle.type = 'button'; toggle.textContent = 'Properties';
-    toggle.style.cssText = 'text-align:left;flex:1;min-width:0;color:inherit;background:transparent;border:0;font:inherit;cursor:pointer;';
+    configurePropertiesReturn(toggle);
     toggle.addEventListener('click', () => this.selectView('properties'));
     propertiesHeading.append(toggle);
     body.append(propertiesHeading, actionBar, propertyViewer, singleValueRail);
