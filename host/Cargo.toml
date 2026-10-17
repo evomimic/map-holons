@@ -29,7 +29,7 @@ holon_dance_builders = { path = "../shared_crates/holon_dance_builders" }
 pvl_validation = { path = "../shared_crates/pvl_validation" }
 json_schema_validation = { path = "../shared_crates/json_schema_validation" }
 
-holochain_client = "0.8"
+holochain_client = "0.9"
 tauri = { version = "2", features = ["macros"] }
 tauri-build = "2"
 tauri-plugin-fs = "2"

@@ -70,7 +70,7 @@ const WASM_TARGETS: &[&str] = &[
 /// Raise individual entries here if you need to debug the network/DHT layer.
 const HOLOCHAIN_NOISY_CRATES: &[(&str, &str)] = &[
     ("holochain", "warn"),         // Core conductor — very chatty at info/debug
-    ("holochain_sqlite", "error"), // DB layer — migration messages etc.
+    ("holochain_data", "error"), // DB layer — migration messages etc.
     ("holochain_types", "warn"),   // Type-system internals
     ("holochain_p2p", "warn"),     // P2P networking
     ("kitsune2_core", "error"),    // Kitsune2 DHT core

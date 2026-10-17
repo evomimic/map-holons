@@ -21,6 +21,7 @@ pub async fn install_app(
             source: AppBundleSource::Path(app_bundle_path),
             installed_app_id: Some(app_id.clone()),
             ignore_genesis_failure: false,
+            restore_from_dht: false,
         })
         .await
         .map_err(|err| crate::Error::ConductorApiError(err))?;

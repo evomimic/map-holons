@@ -3,8 +3,8 @@
 use holons_core::RelationshipReadHint;
 use holons_prelude::prelude::*;
 use holons_test::{init_commit_performance_runtime, init_test_runtime, DancesTestCase};
-#[path = "performance_support/link_index.rs"]
-mod link_index;
+#[path = "performance_support/link_queries.rs"]
+mod link_queries;
 #[path = "performance_support/readiness_cases.rs"]
 mod readiness_cases;
 use map_commands_contract::{
@@ -17,16 +17,18 @@ use tracing::info;
 #[tokio::test(flavor = "multi_thread")]
 async fn measures_first_and_repeated_visualizer_usage_commits() {
     let mut bootstrap = DancesTestCase::default();
-    let index_mode = std::env::var("MAP_COMMIT_PERF_INDEX_MODE").unwrap_or_else(|_| "none".into());
-    let (runtime, initial_tx_id) = if index_mode == "none" {
-        init_test_runtime(&mut bootstrap).await
+    assert!(
+        std::env::var_os("MAP_COMMIT_PERF_INDEX_MODE").is_none()
+            && std::env::var_os("MAP_COMMIT_PERF_INDEX_OUTPUT").is_none(),
+        "index experiments are retired; use MAP_COMMIT_PERF_LINK_OUTPUT for read-only link-query timings"
+    );
+    let link_output = std::env::var("MAP_COMMIT_PERF_LINK_OUTPUT").ok();
+    let (runtime, initial_tx_id, profiling_backend) = if link_output.is_none() {
+        let (runtime, tx_id) = init_test_runtime(&mut bootstrap).await;
+        (runtime, tx_id, None)
     } else {
-        assert!(index_mode == "control" || index_mode == "base-hash");
         let (runtime, tx_id, backend) = init_commit_performance_runtime(&mut bootstrap).await;
-        let path =
-            std::env::var("MAP_COMMIT_PERF_INDEX_OUTPUT").expect("index evidence output required");
-        link_index::profile(&backend, index_mode == "base-hash", &path).await;
-        (runtime, tx_id)
+        (runtime, tx_id, Some(backend))
     };
     runtime.session().archive_transaction(&initial_tx_id).unwrap();
 
@@ -155,6 +157,9 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
             }
         }
         runtime.session().archive_transaction(&tx_id).unwrap();
+    }
+    if let (Some(backend), Some(path)) = (profiling_backend, link_output) {
+        link_queries::profile(&backend, &path).await;
     }
     if let Ok(path) = std::env::var("MAP_COMMIT_READINESS_CASES_OUTPUT") {
         readiness_cases::run(&runtime, &path).await;

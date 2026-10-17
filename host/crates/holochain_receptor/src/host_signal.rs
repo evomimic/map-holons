@@ -10,6 +10,8 @@ pub enum HostSignal {
     Holons { cell_id: CellId, zome_name: ZomeName, signal: HolonsZomeSignal },
     /// App signal from any other zome — raw bytes preserved for callers.
     OtherApp { cell_id: CellId, zome_name: ZomeName, raw: Vec<u8> },
+    /// Direct app signal from another agent targeting the holons zome.
+    AppDirect { cell_id: CellId, from_agent: holochain_types::prelude::AgentPubKey, raw: Vec<u8> },
     /// Holochain system signal (e.g. countersigning outcomes).
     System(SystemSignal),
     /// App signal targeting the holons zome that failed msgpack decode.
@@ -86,6 +88,9 @@ pub fn decode_signal(signal: Signal, target_zome: &str) -> HostSignal {
             } else {
                 HostSignal::OtherApp { cell_id, zome_name, raw: bytes }
             }
+        }
+        Signal::AppDirect { cell_id, from_agent, signal } => {
+            HostSignal::AppDirect { cell_id, from_agent, raw: signal }
         }
         Signal::System(s) => HostSignal::System(s),
     }

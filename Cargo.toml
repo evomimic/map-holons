@@ -71,8 +71,8 @@ holons_loader = { path = "happ/crates/holons_loader" }
 holons_trust_channel = { path = "shared_crates/holons_trust_channel" }
 
 # Holochain
-hdi = "0.7"
-hdk = "0.6"
+hdi = "0.8"
+hdk = "0.7"
 holochain_serialized_bytes = "*"
 
 # External libs

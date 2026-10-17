@@ -68,7 +68,7 @@ pub fn validate_local_holon_space_create(
 
 /// Allows deletion because deleting the local-space holon removes this path link.
 pub fn validate_local_holon_space_delete(
-    _original_action: &CreateLink,
+    _original_action: &CreateLinkData,
 ) -> ExternResult<Result<(), InfrastructureLinkRejection>> {
     Ok(Ok(()))
 }
@@ -137,7 +137,7 @@ mod tests {
             fn must_get_agent_activity(
                 &self,
                 input: MustGetAgentActivityInput,
-            ) -> ExternResult<Vec<RegisterAgentActivity>>;
+            ) -> ExternResult<Vec<AgentActivity>>;
             fn dna_info(&self, input: ()) -> ExternResult<DnaInfo>;
             fn zome_info(&self, input: ()) -> ExternResult<ZomeInfo>;
             fn trace(&self, input: TraceMsg) -> ExternResult<()>;
@@ -169,37 +169,43 @@ mod tests {
     }
 
     fn create_action(entry_type: EntryType) -> Action {
-        Action::Create(Create {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: action_hash(1),
-            entry_type,
-            entry_hash: EntryHash::from_raw_36(vec![2; 36]),
-            weight: EntryRateWeight::default(),
-        })
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(action_hash(1)),
+            },
+            data: CreateData { entry_type, entry_hash: EntryHash::from_raw_36(vec![2; 36]) },
+        }
+        .into()
     }
 
     fn update_action(entry_type: EntryType) -> Action {
-        Action::Update(Update {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(2),
-            action_seq: 2,
-            prev_action: action_hash(3),
-            original_action_address: action_hash(4),
-            original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
-            entry_type,
-            entry_hash: EntryHash::from_raw_36(vec![6; 36]),
-            weight: EntryRateWeight::default(),
-        })
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(2),
+                action_seq: 2,
+                prev_action: Some(action_hash(3)),
+            },
+            data: UpdateData {
+                original_action_address: action_hash(4),
+                original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
+                entry_type,
+                entry_hash: EntryHash::from_raw_36(vec![6; 36]),
+            },
+        }
+        .into()
     }
 
     fn record(action: Action) -> Record {
+        let entry = RecordEntry::new(action.entry_type().map(EntryType::visibility), None);
         let signed = SignedHashed::with_presigned(
             HoloHashed::with_pre_hashed(action, action_hash(7)),
             Signature([0; SIGNATURE_BYTES]),
         );
-        Record::new(signed, None)
+        Record::new(signed, entry)
     }
 
     fn zome_info_value() -> ZomeInfo {
@@ -230,18 +236,21 @@ mod tests {
         set_hdi(mock);
     }
 
-    fn original_create_link() -> CreateLink {
-        CreateLink {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: action_hash(1),
-            base_address: canonical_base(LOCAL_HOLON_SPACE_PATH),
-            target_address: action_hash(2).into(),
-            zome_index: HOLON_ZOME_INDEX,
-            link_type: LinkType(0),
-            tag: LinkTag::new(Vec::new()),
-            weight: RateWeight::default(),
+    fn original_create_link() -> TypedAction<CreateLinkData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(action_hash(1)),
+            },
+            data: CreateLinkData {
+                base_address: canonical_base(LOCAL_HOLON_SPACE_PATH),
+                target_address: action_hash(2).into(),
+                zome_index: HOLON_ZOME_INDEX,
+                link_type: LinkType(0),
+                tag: LinkTag::new(Vec::new()),
+            },
         }
     }
 
@@ -310,11 +319,15 @@ mod tests {
 
     #[test]
     fn active_indexes_reject_actions_without_entries() {
-        let dna_action = Action::Dna(Dna {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(1),
-            hash: DnaHash::from_raw_36(vec![10; 36]),
-        });
+        let dna_action = Action {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 0,
+                prev_action: None,
+            },
+            data: ActionData::Dna(DnaData { dna_hash: DnaHash::from_raw_36(vec![10; 36]) }),
+        };
         for (link_name, path, validate) in active_indexes() {
             install_target(dna_action.clone());
             assert_eq!(

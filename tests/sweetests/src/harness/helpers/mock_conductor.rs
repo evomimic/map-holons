@@ -5,10 +5,11 @@ use holochain::conductor::CellError;
 use holochain::core::ribosome::error::RibosomeError;
 use holochain::prelude::AgentPubKey;
 use holochain::prelude::{
-    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, WasmHash, ZomeError, ZomeName,
+    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, DnaWasmHashed, WasmHash,
+    ZomeDef, ZomeError, ZomeName,
 };
 use holochain::sweettest::{
-    SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
+    DynSweetRendezvous, SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
 };
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::session_state::SessionStateWire;
@@ -90,15 +91,15 @@ impl DanceEnvelopeTransport for MockConductorConfig {
 /// unroutable local address.
 ///
 /// Sweettests run a single in-process conductor and never peer, so their network dependency is
-/// accidental rather than designed. `SweetConductorConfig::standard()` inherits
-/// `NetworkConfig::default()`, which hardcodes the public Holochain bootstrap/signal servers and
-/// the iroh canary relay — costing per-conductor `net_report` probe timeouts on startup and
-/// tripping local outbound firewalls. Pointing all three at `127.0.0.1:1` mirrors the host's
-/// dev-mode profile in `launch/config.rs` rather than inventing a second convention.
+/// accidental rather than designed. `SweetConductorConfig::standard()` supplies rendezvous
+/// placeholders for bootstrap and relay URLs. Replace both with `127.0.0.1:1` so these tests
+/// need neither a rendezvous server nor the public endpoints in `NetworkConfig::default()`.
+/// Public endpoints cause per-conductor `net_report` probe timeouts on startup and trip local
+/// outbound firewalls. The loopback addresses mirror the host's dev-mode profile in
+/// `launch/config.rs` rather than inventing a second convention.
 ///
-/// TLS schemes (`wss`/`https`) deliberately, not `ws`/`http`: nothing here sets
-/// `signalAllowPlainText` or `relayAllowPlainText`, and both transports reject a plaintext URL
-/// without the matching flag.
+/// The relay deliberately uses HTTPS: nothing here sets `relayAllowPlainText`, and the
+/// transport rejects a plaintext relay URL without that flag.
 ///
 /// Only the URLs are touched. `advanced` is left as `standard()` built it — unlike the host's dev
 /// mode, it is not cleared, because `standard()` stores its `k2Gossip` interval tuning there and
@@ -108,7 +109,6 @@ impl DanceEnvelopeTransport for MockConductorConfig {
 fn local_only_config() -> SweetConductorConfig {
     SweetConductorConfig::standard().tune_network_config(|network| {
         network.bootstrap_url = url2::url2!("http://127.0.0.1:1");
-        network.signal_url = url2::url2!("wss://127.0.0.1:1");
         network.relay_url = url2::url2!("https://127.0.0.1:1");
     })
 }
@@ -144,7 +144,9 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
 
-    let mut conductor = SweetConductor::from_config(local_only_config()).await;
+    let mut conductor =
+        SweetConductor::create_with_defaults(local_only_config(), None, None::<DynSweetRendezvous>)
+            .await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
     let app = conductor
         .setup_app_for_agent("app", holochain_agent.clone(), &[dna.clone()])
@@ -222,7 +224,9 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     info!("Current working directory: {:?}", std::env::current_dir().unwrap());
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
-    let mut conductor = SweetConductor::from_config(local_only_config()).await;
+    let mut conductor =
+        SweetConductor::create_with_defaults(local_only_config(), None, None::<DynSweetRendezvous>)
+            .await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
     let app = conductor
         .setup_app_for_agent("probe-enabled-app", holochain_agent.clone(), &[dna])
@@ -250,10 +254,10 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     let probe_wasm_bytes = std::fs::read(PROBE_WASM_FILEPATH).unwrap_or_else(|error| {
         panic!("failed to read loose probe WASM at {PROBE_WASM_FILEPATH}: {error}")
     });
-    let probe_wasm = DnaWasm::from(probe_wasm_bytes);
-    let probe_wasm_hash = WasmHash::with_data(&probe_wasm).await;
+    let probe_wasm = DnaWasmHashed::from_content(DnaWasm::from(probe_wasm_bytes)).await;
+    let probe_wasm_hash = probe_wasm.hash.clone();
     let mut probe_definition = CoordinatorZomeDef::from_hash(probe_wasm_hash.clone());
-    // This dependency is enforced by DnaFile::update_coordinators and keeps the probe bound to
+    // This dependency is enforced by DnaDef::replace_coordinators and keeps the probe bound to
     // the production Integrity zome it is intended to exercise.
     probe_definition.set_dependency(INTEGRITY_ZOME);
 
@@ -266,12 +270,10 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
         .await
         .expect("the isolated conductor must accept the probe-only coordinator update");
 
-    // Holochain 0.6.3 mutates the cached DnaFile during an update but does not rebuild the
-    // RealRibosome's derived zome-dependency index. Reloading through SweetConductor's updated DNA
-    // cache makes the appended zome's enforced integrity dependency available to HDK host calls.
-    // This is also the upstream coordinator-update test's persistence path.
+    // Reload the persisted DNA definition and WASM so the assertions also verify that the
+    // appended coordinator and its integrity dependency survive a conductor restart.
     conductor.shutdown().await;
-    conductor.startup(true).await;
+    conductor.startup().await;
 
     let after = conductor
         .get_dna_def(&cell_id)
@@ -299,7 +301,7 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
         "coordinator augmentation must not change Integrity definitions"
     );
     assert_eq!(
-        DnaHash::with_data_sync(&after),
+        DnaHash::with_data_sync(&after.content),
         installed_dna_hash,
         "rehashing the effective updated DNA definition must preserve production DNA identity"
     );
@@ -355,9 +357,10 @@ fn coordinator_wasm_hash(dna_def: &DnaDef, name: &str) -> WasmHash {
         .iter()
         .find_map(|(candidate, definition)| (candidate == &zome_name).then_some(definition))
         .unwrap_or_else(|| panic!("coordinator {name} is absent from the active DNA definition"));
-    definition
-        .wasm_hash(&zome_name)
-        .unwrap_or_else(|error| panic!("coordinator {name} is not backed by WASM: {error}"))
+    match definition.as_any_zome_def() {
+        ZomeDef::Wasm(wasm) => wasm.wasm_hash.clone(),
+        ZomeDef::Inline(_) => panic!("coordinator {name} is not backed by WASM"),
+    }
 }
 
 fn valid_probe_holon_node() -> HolonNodeModel {
@@ -412,28 +415,25 @@ mod tests {
     /// Pins the local-only intent at the config level, where it is deterministic. The suite-level
     /// evidence (no WAN dialing, no NAT-discovery socket churn) is observational and cannot be
     /// asserted from inside a test, so this guards the thing that produces it: an endpoint left
-    /// unassigned would silently inherit a public server from `NetworkConfig::default()`.
+    /// unassigned would leave a rendezvous placeholder instead of a local-only address.
     #[test]
     fn every_wan_endpoint_is_local_only() {
         let network = &local_only_config().network;
 
-        for (field, url) in [
-            ("bootstrap_url", &network.bootstrap_url),
-            ("signal_url", &network.signal_url),
-            ("relay_url", &network.relay_url),
-        ] {
+        for (field, url) in
+            [("bootstrap_url", &network.bootstrap_url), ("relay_url", &network.relay_url)]
+        {
             assert_eq!(url.host_str(), Some("127.0.0.1"), "{field} is not local-only: {url}");
         }
     }
 
-    /// A plaintext scheme would be rejected by the transports' `validate_config` unless the
-    /// matching `*AllowPlainText` flag were set, which `local_only_config()` deliberately does
+    /// A plaintext scheme would be rejected by the transport's `validate_config` unless the
+    /// `relayAllowPlainText` flag were set, which `local_only_config()` deliberately does
     /// not set. See the doc comment there.
     #[test]
-    fn signal_and_relay_use_tls_schemes() {
+    fn relay_uses_tls_scheme() {
         let network = &local_only_config().network;
 
-        assert_eq!(network.signal_url.scheme(), "wss");
         assert_eq!(network.relay_url.scheme(), "https");
     }
 

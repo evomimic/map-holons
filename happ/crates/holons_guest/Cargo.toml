@@ -20,8 +20,8 @@ sha2 = "0.10.8"
 tracing = "0.1"
 
 # Holochain Dependencies
-hdk = "0.6"
-hdi = "0.7"
+hdk = "0.7"
+hdi = "0.8"
 holochain_serialized_bytes = "*"
 
 # MAP Dependencies

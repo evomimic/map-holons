@@ -28,7 +28,7 @@ use crate::{filesystem::FileSystem, NetworkConfig};
 /// `FileSystem` and a keystore.
 fn apply_dev_mode_network_overrides(network_config: &mut NetworkConfig) {
     network_config.bootstrap_url = Url2::parse("http://127.0.0.1:1");
-    network_config.signal_url = Url2::parse("wss://127.0.0.1:1");
+    //network_config.signal_url = Url2::parse("wss://127.0.0.1:1");
     network_config.relay_url = Url2::parse("https://127.0.0.1:1");
     network_config.target_arc_factor = 0;
     network_config.advanced = None;
@@ -122,7 +122,7 @@ mod tests {
 
         for (field, url) in [
             ("bootstrap_url", &network_config.bootstrap_url),
-            ("signal_url", &network_config.signal_url),
+            //("signal_url", &network_config.signal_url),
             ("relay_url", &network_config.relay_url),
         ] {
             assert_eq!(url.host_str(), Some("127.0.0.1"), "{field} is not local-only: {url}");
@@ -137,7 +137,7 @@ mod tests {
 
         apply_dev_mode_network_overrides(&mut network_config);
 
-        assert_eq!(network_config.signal_url.scheme(), "wss");
+        //assert_eq!(network_config.signal_url.scheme(), "wss");
         assert_eq!(network_config.relay_url.scheme(), "https");
         assert!(network_config.advanced.is_none());
     }
@@ -146,14 +146,14 @@ mod tests {
     #[test]
     fn dev_mode_overrides_a_config_that_already_carries_public_endpoints() {
         let mut network_config = NetworkConfig::default();
-        network_config.signal_url = Url2::parse("wss://dev-test-bootstrap2.holochain.org");
+        //network_config.signal_url = Url2::parse("wss://dev-test-bootstrap2.holochain.org");
         network_config.relay_url = Url2::parse("https://use1-1.relay.n0.iroh-canary.iroh.link./");
 
         apply_dev_mode_network_overrides(&mut network_config);
 
         let rendered = format!(
-            "{} {} {}",
-            network_config.bootstrap_url, network_config.signal_url, network_config.relay_url
+            "{} {}",
+            network_config.bootstrap_url, /*network_config.signal_url,*/ network_config.relay_url
         );
         assert!(!rendered.contains("holochain.org"), "public endpoint survived: {rendered}");
         assert!(!rendered.contains("iroh.link"), "public endpoint survived: {rendered}");

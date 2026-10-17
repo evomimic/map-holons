@@ -11,9 +11,9 @@ pub(crate) fn classify_target(
     action: &Action,
     is_holon_node: impl FnOnce(&AppEntryDef) -> bool,
 ) -> LifecycleTarget {
-    let action_kind = match action {
-        Action::Create(_) => TargetActionKind::Create,
-        Action::Update(_) => TargetActionKind::Update,
+    let action_kind = match &action.data {
+        ActionData::Create(_) => TargetActionKind::Create,
+        ActionData::Update(_) => TargetActionKind::Update,
         _ => TargetActionKind::Other,
     };
     let entry_kind = match action.entry_type() {
