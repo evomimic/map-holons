@@ -553,6 +553,9 @@
               "$ref": "HolonInspector.ActionsSlot"
             },
             {
+              "$ref": "HolonInspector.VisualizerControlsSlot"
+            },
+            {
               "$ref": "HolonInspector.CollectionsSlot"
             },
             {
@@ -621,6 +624,31 @@
       "type": "VisualizerSlot.HolonType",
       "properties": {
         "VisualizerSlotDescription": "Show the actions available for this item and provide access to them."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionBarVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequiresOperator",
+          "target": [
+            {
+              "$ref": "PresentActions.VisualizerOperator"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspector.VisualizerControlsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Present the centrally declared Visualizer controls within the title band."
       },
       "relationships": [
         {
@@ -782,7 +810,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:47021de8582dbe34da8d0e6cdaccb31654c82b038ab7713123db972588db473f",
+        "VisualizerArtifactDigest": "sha256:1828672e07e7a3a0d3134447dddeb8a95b56a5b07bbb9f4fdc6c2d120338dc75",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -986,7 +1014,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:8e7c9ac96ddbbf727f1929e892785a494f3545e2d6ede65b24db8cee60135a6d",
+        "VisualizerArtifactDigest": "sha256:3cbb9079853c54e52913073603d13460e9a21799aed5ad9455baf9b420cc2c26",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3165,6 +3193,9 @@
               "$ref": "LoadHolonsResult.ActionsSlot"
             },
             {
+              "$ref": "LoadHolonsResult.VisualizerControlsSlot"
+            },
+            {
               "$ref": "LoadHolonsResult.CollectionsSlot"
             }
           ]
@@ -3207,7 +3238,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:f9038a170adc5708eb1979c7859c37217724f237506c72da266e04f0282ecc8a",
+        "VisualizerArtifactDigest": "sha256:392cdd097067ebd4dc8003205c44434535726a7eaf12c179cbac2275d97d36d1",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3235,6 +3266,31 @@
       "type": "VisualizerSlot.HolonType",
       "properties": {
         "VisualizerSlotDescription": "Provide access to the actions available for this load result."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionBarVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequiresOperator",
+          "target": [
+            {
+              "$ref": "PresentActions.VisualizerOperator"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolonsResult.VisualizerControlsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "VisualizerSlotDescription": "Present the centrally declared Visualizer controls within the title band."
       },
       "relationships": [
         {
@@ -8283,7 +8339,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:8e38f4c0660162a0dfc965be527aa484b8acbc707d5560641e21225af368e0c5",
+        "VisualizerArtifactDigest": "sha256:afb9e991d98c82fd6bd0637fd2b4df50f4ad9d81cda4a38ec5f8be9657353405",
         "VisualizerImplementationKey": "dahn.node-title-bar",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

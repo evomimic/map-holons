@@ -216,11 +216,11 @@ export async function realizeNode(
       theme,
       canvas,
       nodeAffordances: affordances,
-      childVisualizers: new Map([['titleBar', titleElement], ['properties', propertiesElement], ['actions', actionsElement]]),
+      childVisualizers: new Map([['titleBar', titleElement], ['properties', propertiesElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls]]),
     });
     await materialized.admitOffered(element, selectedVisualizer);
     const initialized = (element as VisualizerElement).ready;
-    const children = [propertiesElement, actionsElement, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*')];
+    const children = [titleElement, propertiesElement, actionsElement, actionsElement.controls, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*'), ...actionsElement.controls.querySelectorAll('*')];
     const ready = initialized && Promise.all([initialized, ...children.map(child => (child as VisualizerElement).ready)]).then(() => {});
     const dispose = () => {
       (titleElement as VisualizerElement).dispose?.();

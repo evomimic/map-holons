@@ -23,7 +23,7 @@ const artifacts = Object.fromEntries(await Promise.all(
 ));
 const titleActions = new Map([['Explore', 'ExploreOccurrence'], ['Close', 'CloseOccurrence'], ['ExpandRestore', 'ExpandRestoreOccurrence'], ['Inspect', 'InspectOccurrence']]);
 const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async (relation: string) => {
-  if (relation === 'HasSlot') return ['HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(selected);
+  if (relation === 'HasSlot') return ['HolonInspector.VisualizerControlsSlot', 'HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(selected);
   if (relation === 'UsesNodeActionsContract') return [selected('NodeActions.Contract')];
   if (relation === 'StandardNodeActions') return [...titleActions.keys()].map(key => selected(`${key}PresentationAction.HolonType`));
   if (relation === 'PresentationOperator') return [selected(`${titleActions.get(key.split('Presentation')[0])}.VisualizerOperator`)];
@@ -1323,7 +1323,7 @@ it('provides independently bound information controls for composed Properties, P
   const targets: VisualizerInspectionTarget[] = [];
   f.element.addEventListener('dahn-visualizer-information', event => targets.push((event as CustomEvent).detail));
   const controls = [...f.root.element.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')].filter(button => button.parentElement!.style.display !== 'none');
-  expect(controls).toHaveLength(4);
+  expect(controls).toHaveLength(5);
   for (const button of controls) button.click();
   expect(new Set(targets.map(target => target.selectedVisualizer))).toEqual(new Set([visualizers.propertyMap, visualizers.property, visualizers.value, visualizers.actionBar]));
   expect(targets.every(target => target.subject === f.rootSubject && target.isLive())).toBe(true);
@@ -1531,8 +1531,8 @@ it('materializes a real alternative with a different expanded layout and indepen
   const f = await fixture(undefined, () => {});
   const alternate = await f.realize(f.rootSubject as never, selected('alternative-node'));
   (alternate.element as VisualizerElement).applyNodePresentation(presentationAssignment({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' }));
-  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2');
-  expect((alternate.element as any).propertyViewer.style.gridRow).toBe('2');
+  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('3');
+  expect((alternate.element as any).propertyViewer.style.gridRow).toBe('3');
   expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
   expect((await f.runtime.realize(selected('alternative-node')) as any).compositionSlots.collection).toBe('HolonInspector.CollectionsSlot');
   alternate.dispose?.(); f.navigation.dispose();

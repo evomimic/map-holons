@@ -21,7 +21,7 @@ var PRESENTATION_REQUESTS = ["inspect", "collection-context", "relationship", "c
 function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map((n) => n * scale), preferred: preferred.map((n) => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 480], [64, 300, 720], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 320, 480], [64, 400, 720], [24, 64]) };
 }
 function validateNodePresentation(input, mode = "properties") {
   if (!input || "requiredCapabilities" in input || input.presentation !== void 0 && !PRESENTATION_REQUESTS.includes(input.presentation)) throw new Error("Invalid Node presentation assignment");
@@ -41,8 +41,9 @@ function inspectorLayout(input, titleHeight = 48, mode = "properties") {
   const inspect = mode === "properties", plural = mode === "collection", singular = inspect || mode === "relationship";
   const scale = titleHeight / 48;
   const title = Math.min(grant.height, titleHeight);
-  const remaining = grant.height - title;
-  const heading = plural ? Math.min(32 * scale, remaining) : 0;
+  const subjectActions = inspect ? 48 * scale : 0;
+  const remaining = grant.height - title - subjectActions;
+  const heading = inspect || plural ? Math.min(32 * scale, remaining) : 0;
   const tabs = inspect ? Math.min(56 * scale, remaining) : 0;
   const actions = inspect ? Math.min(32 * scale, remaining - tabs) : 0;
   const body = mode === "compact" ? 0 : plural ? heading : remaining - tabs;
@@ -55,6 +56,7 @@ function inspectorLayout(input, titleHeight = 48, mode = "properties") {
     details: inspect,
     heading,
     title,
+    subjectActions,
     actions,
     body,
     collection: mode === "compact" || mode === "relationship" ? 0 : plural ? remaining - heading : tabs,
@@ -72,7 +74,7 @@ function boundedRegion(element, visible, label) {
   }
 }
 function applyInspectorGeometry(parts, layout) {
-  const { root, title, body, heading, toggle, properties, filters, rail, collections } = parts;
+  const { root, title, body, heading, toggle, properties, filters, rail, collections, subjectActions } = parts;
   Object.assign(root.style, {
     display: "grid",
     width: `${layout.width}px`,
@@ -80,7 +82,7 @@ function applyInspectorGeometry(parts, layout) {
     boxSizing: "border-box",
     gap: "0",
     gridTemplateColumns: "minmax(0, 1fr)",
-    gridTemplateRows: `${layout.title}px ${layout.body}px ${layout.collection}px`
+    gridTemplateRows: `${layout.title}px ${layout.subjectActions}px ${layout.body}px ${layout.collection}px`
   });
   Object.assign(title.style, { gridRow: "1", height: `${layout.title}px`, minWidth: "0", minHeight: "0" });
   const show = (element, visible, display, label) => {
@@ -88,31 +90,39 @@ function applyInspectorGeometry(parts, layout) {
     if (element) element.style.display = visible ? display : "none";
   };
   show(body, layout.body > 0, "grid", "Node navigation and details");
-  show(heading, layout.mode === "collection", "flex", "Properties");
+  show(subjectActions, layout.inspect, "block", "Holon actions");
+  if (subjectActions) Object.assign(subjectActions.style, { gridRow: "2", height: `${layout.subjectActions}px`, overflow: "auto" });
+  show(heading, layout.inspect || layout.mode === "collection", "flex", "Properties");
   show(properties, layout.details, "flex", "Properties \u2014 scroll for more");
   show(filters, layout.details && layout.actions > 0, "flex", "Relationship discovery");
   show(rail, layout.showRail, "flex", "Single-valued relationships \u2014 scroll for more");
   show(collections, layout.collection > 0, "flex", "Collections \u2014 scroll for more");
   root.dataset.inspectorMode = layout.mode;
   root.dataset.propertiesExpanded = String(layout.details);
-  if (toggle) toggle.setAttribute("aria-expanded", String(layout.details));
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(layout.details));
+    toggle.disabled = layout.inspect;
+    toggle.textContent = layout.inspect ? "Properties" : "\u2039 Properties";
+    toggle.style.cursor = layout.inspect ? "default" : "pointer";
+    toggle.title = layout.inspect ? "Properties" : "Show Properties";
+  }
   Object.assign(body.style, {
-    gridRow: "2",
+    gridRow: "3",
     gridColumn: "1",
     gridTemplateColumns: layout.inspect && layout.showRail ? "minmax(0, 1fr) minmax(0, min(40%, 14rem))" : "minmax(0, 1fr)",
-    gridTemplateRows: layout.inspect ? `${layout.actions}px minmax(0, 1fr)` : "minmax(0, 1fr)"
+    gridTemplateRows: layout.inspect ? `${layout.heading}px ${layout.actions}px minmax(0, 1fr)` : "minmax(0, 1fr)"
   });
   if (heading) Object.assign(heading.style, { gridRow: "1", gridColumn: "1 / -1" });
-  if (filters) Object.assign(filters.style, { gridRow: "1", gridColumn: "1 / -1" });
-  Object.assign(properties.style, { gridRow: "2", gridColumn: "1", flexDirection: "column" });
+  if (filters) Object.assign(filters.style, { gridRow: "2", gridColumn: "1 / -1" });
+  Object.assign(properties.style, { gridRow: "3", gridColumn: "1", flexDirection: "column" });
   Object.assign(rail.style, {
-    gridRow: layout.inspect ? "2" : "1",
+    gridRow: layout.inspect ? "3" : "1",
     gridColumn: layout.inspect ? "2" : "1",
     justifySelf: "end",
     width: "100%",
     maxWidth: layout.inspect ? "14rem" : "100%"
   });
-  Object.assign(collections.style, { gridRow: "3", gridColumn: "1", flexDirection: "column" });
+  Object.assign(collections.style, { gridRow: "4", gridColumn: "1", flexDirection: "column" });
 }
 function configurePropertiesReturn(button) {
   button.textContent = "\u2039 Properties";
@@ -124,7 +134,7 @@ function configurePropertiesReturn(button) {
 // host/conductora/visualizer-src/node-title-bar.js
 function createNodeTitleBar(context, options) {
   const title = context.childVisualizers?.get("titleBar");
-  const actions = context.childVisualizers?.get("actions");
+  const actions = context.childVisualizers?.get("visualizerActions");
   if (!title?.visualizerOperations?.["ApplyTitlePresentation.VisualizerOperator"]) throw new Error("Node requires an admitted selected Title Bar");
   const element = document.createElement("header");
   element.dataset.nodeTitleHeader = "true";
@@ -162,7 +172,7 @@ function createNodeTitleBar(context, options) {
     };
     actions?.setOccurrenceActions?.(actionsState, invoke);
     const width = state.width ?? 800;
-    const actionWidth = actions ? Math.max(44, Math.min(width * 0.6, width - 80)) : 0;
+    const actionWidth = actions ? Math.max(44, Math.min(204, width - 80)) : 0;
     const titleWidth = Math.max(80, width - actionWidth);
     title.style.flex = `0 0 ${titleWidth}px`;
     if (actions) {
@@ -196,6 +206,7 @@ function createNodeTitleBar(context, options) {
   element.append(status);
   return {
     element,
+    actionsControl: actions,
     titleControl: title,
     presentationStatus: status,
     operations,
@@ -217,7 +228,7 @@ var LoadHolonsInspector = class extends HTMLElement {
       this.setNodeInspectorAllocation(this.allocation);
     });
   }
-  static compositionSlots = { titleBar: "LoadHolonsResult.TitleBarSlot", propertyMap: "LoadHolonsResult.PropertyMapSlot", action: "LoadHolonsResult.ActionsSlot" };
+  static compositionSlots = { visualizerActions: "LoadHolonsResult.VisualizerControlsSlot", titleBar: "LoadHolonsResult.TitleBarSlot", propertyMap: "LoadHolonsResult.PropertyMapSlot", action: "LoadHolonsResult.ActionsSlot" };
   static usesOwnedResultSummary = true;
   setNodeOwnedSummary(content) {
     this.propertyVisualizer = content;
@@ -377,7 +388,7 @@ var LoadHolonsInspector = class extends HTMLElement {
     this.propertiesHeading.append(this.propertiesToggle);
     this.content = this.body;
     this.body.replaceChildren(this.propertiesHeading, this.properties, this.rail);
-    this.replaceChildren(heading, this.body, this.collections);
+    this.replaceChildren(heading, this.actionsVisualizer, this.body, this.collections);
     this.unsubscribe = context.relationshipDiscovery?.subscribe(() => {
       this.discoveryStatus.replaceChildren();
       let pending = 0;
@@ -423,7 +434,8 @@ var LoadHolonsInspector = class extends HTMLElement {
   getVisualizerComposition() {
     return [
       { label: "Title Bar", element: this.titleBar?.titleControl },
-      { label: "Actions", element: this.actionsVisualizer },
+      { label: "Holon actions", element: this.actionsVisualizer },
+      { label: "Visualizer controls", element: this.titleBar?.actionsControl },
       { label: "Load summary", element: this.propertyVisualizer },
       { label: "Result collections", element: this.collections },
       { label: "Collection Tabs", element: this.collectionTabBar },
@@ -470,6 +482,7 @@ var LoadHolonsInspector = class extends HTMLElement {
       root: this,
       title: this.heading,
       body: this.body,
+      subjectActions: this.actionsVisualizer,
       heading: this.propertiesHeading,
       toggle: this.propertiesToggle,
       properties: this.properties,

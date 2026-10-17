@@ -113,7 +113,7 @@ export class SpaceNavigatorExperience {
             target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
           });
           root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, visualizerUsage: usage,
-            childVisualizers: new Map([['titleBar', titleElement], ['actions', actionsElement], ['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
+            childVisualizers: new Map([['titleBar', titleElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls], ['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
             nodeAffordances: affordances, relationshipDiscovery: discovery,
             activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
           });

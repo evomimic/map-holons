@@ -45,7 +45,12 @@ export default class PathInspectorElement extends HTMLElement {
     // This owner accounts for its toolbar, border and stable scrollbar gutters.
     minimum.width += Math.max(0, this.offsetWidth - this.viewport.clientWidth);
     minimum.height += Math.max(0, this.offsetHeight - this.viewport.clientHeight);
-    return { minimum, preferred: { ...minimum } };
+    const insets = this.regionInsets(root.id);
+    const preferred = {
+      width: profile.horizontal.preferred.reduce((sum, value) => sum + value, 0) + 2 * profile.horizontal.channel.preferred + 3 * insets.width + Math.max(0, this.offsetWidth - this.viewport.clientWidth),
+      height: profile.vertical.preferred.reduce((sum, value) => sum + value, 0) + 2 * profile.vertical.channel.preferred + 3 * insets.height + Math.max(0, this.offsetHeight - this.viewport.clientHeight),
+    };
+    return { minimum, preferred };
   }
   frontierPosition(targetId) {
     const target = this.layoutBounds.get(targetId);

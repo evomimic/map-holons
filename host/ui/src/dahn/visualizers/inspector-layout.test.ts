@@ -7,8 +7,8 @@ it('shares the main region exclusively between Properties and Collection', () =>
   expect(properties.details).toBe(true); expect(properties.showRail).toBe(true);
   expect(collection.details).toBe(false); expect(collection.showRail).toBe(false);
   expect(collection.body).toBe(collection.heading);
-  expect(collection.title + collection.body + collection.collection).toBe(grant.height);
-  expect(properties.title + properties.body + properties.collection).toBe(grant.height);
+  expect(collection.title + collection.subjectActions + collection.body + collection.collection).toBe(grant.height);
+  expect(properties.title + properties.subjectActions + properties.body + properties.collection).toBe(grant.height);
 });
 it('remembers Collection across compression and dimensions-only delivery, resuming it on Inspect', () => {
   let state = selectInspectorView(initialInspectorPresentation(), 'collection');

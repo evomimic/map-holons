@@ -16,8 +16,8 @@ const importArtifact = async (name: string) => {
 beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()); });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
 
-it('declares one source-independent Node action slot with no mandatory Action children', () => {
-  for (const slot of ['HolonInspector.ActionsSlot', 'LoadHolonsResult.ActionsSlot']) {
+it('declares source-independent Node action slots with no mandatory Action children', () => {
+  for (const slot of ['HolonInspector.VisualizerControlsSlot', 'LoadHolonsResult.VisualizerControlsSlot']) {
     expect(targets(slot, 'RequiresOperator')).toEqual([operator]);
     expect(targets(slot, 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
   }

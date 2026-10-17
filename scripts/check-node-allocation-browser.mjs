@@ -39,7 +39,7 @@ try {
     if (result.failures.length) throw new Error(`${context}: ${result.failures.join('; ')}`);
     if (result.mode !== mode) throw new Error(`${context}: wrong presentation ${result.mode}`);
     const bars = await page.locator('[data-dahn-node-actions]').count();
-    if (bars !== 1) throw new Error(`${context}: expected one selected ActionBar`);
+    if (bars !== 2) throw new Error(`${context}: expected independently selected subject and control ActionBars`);
     if (mode === 'relationship' || mode === 'compact') {
       const identity = page.locator('[data-node-title-bar] > button'); await identity.focus(); await page.keyboard.press('Enter');
       if (!(await page.evaluate(() => window.allocationFixture.measure())).restored) throw new Error(`${context}: keyboard Restore failed`);
@@ -70,12 +70,21 @@ try {
     if (remembered === 'collection' && restored.mode !== 'collection') throw new Error(`${context}: forgot Collection`);
     cases++;
   }
+  for (const height of [1000, 1450]) {
+    const result = await page.evaluate(height => window.allocationFixture.mountVerticalPath(height), height);
+    if (result.modes.join(',') !== 'compact,collection,properties') throw new Error(`Vertical path: wrong modes ${result.modes}`);
+    if (result.contextViewportHeight < 100) throw new Error(`Vertical path: Collection context squeezed to ${result.contextViewportHeight}px`);
+    if (result.bounds[2].height < 480 || result.bounds[1].height < 320) throw new Error('Vertical path shrank below useful minima');
+    if (result.connectors !== 2 || result.scale !== 1) throw new Error('Vertical path changed topology or auto-zoomed');
+    for (let index = 1; index < 3; index++) if (result.bounds[index].y <= result.bounds[index - 1].y + result.bounds[index - 1].height) throw new Error('Vertical path lost its connector channel');
+    if (height === 1450 && result.contentHeight > result.viewportHeight + 1) throw new Error('Preferred reference footprint does not fit its allocation');
+  }
   if (process.env.MAP_ALLOCATION_SCREENSHOT) {
     await page.evaluate(mode => window.allocationFixture.mount('generic', mode, 1, mode === 'collection', 'preferred'), process.env.MAP_ALLOCATION_SCREENSHOT_MODE || 'properties');
     await page.screenshot({ path: process.env.MAP_ALLOCATION_SCREENSHOT });
   }
   if (errors.length) throw new Error(errors.join('\n'));
-  console.log(`${cases} browser allocation/containment/keyboard cases passed`);
+  console.log(`${cases} browser allocation/containment/keyboard cases and 2 composed vertical-path cases passed`);
 } finally {
   await browser?.close(); await new Promise(resolve => server.close(resolve)); await rm(directory, { recursive: true, force: true });
 }

@@ -17,7 +17,9 @@ export function selectedTitleContext(context: any = {}, TitleConstructor = Title
     bar.visualizerOperations['PresentActions.VisualizerOperator']({ actions });
   };
   title.setContext({ childVisualizers: new Map() });
-  return { ...context, childVisualizers: new Map([...(context.childVisualizers ?? []), ['titleBar', title], ['actions', context.childVisualizers?.get('actions') ?? bar]]) };
+  const subject: any = document.createElement(defineCustomElementOnce('fixture-selected-holon-actions', Actions));
+  subject.visualizerOperations['PresentActions.VisualizerOperator']({ actions: [] });
+  return { ...context, childVisualizers: new Map([...(context.childVisualizers ?? []), ['titleBar', title], ['actions', context.childVisualizers?.get('actions') ?? subject], ['visualizerActions', context.childVisualizers?.get('visualizerActions') ?? bar]]) };
 }
 /** Tests unrelated to selection still supply actual selected Title Bar children. */
 export function withSelectedTitle(Implementation: any) {

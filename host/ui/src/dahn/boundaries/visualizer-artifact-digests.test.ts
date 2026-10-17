@@ -60,7 +60,7 @@ it('withdraws Connections First and gives generic and loader Nodes independent T
   expect(schema.holons.some((record: any) => record.key.startsWith('ConnectionsFirstInspector'))).toBe(false);
   expect(targets('HolonInspector.NodeVisualizer', 'HasSlot')).toContain('HolonInspector.TitleBarSlot');
   expect(targets('LoadHolons.NodeVisualizer', 'HasSlot')).toContain('LoadHolonsResult.TitleBarSlot');
-  expect(targets('HolonInspector.ActionsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
-  expect(targets('LoadHolonsResult.ActionsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
+  expect(targets('HolonInspector.VisualizerControlsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
+  expect(targets('LoadHolonsResult.VisualizerControlsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
   expect(targets('NodeActions.Contract', 'StandardNodeActions')).toHaveLength(4);
 });

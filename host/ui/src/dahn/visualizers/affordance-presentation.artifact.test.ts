@@ -25,7 +25,8 @@ it('populates rail, collection slot and selected actions while keeping every con
   });
   expect(node.querySelector('[data-holon-inspector-single-value-rail]')?.textContent).toContain('Parent');
   expect(node.querySelector('[data-holon-inspector-collections-slot]')?.textContent).toContain('TagsChildren');
-  expect(node.querySelector('header')?.contains(actions)).toBe(true);
+  expect(node.querySelector('header')?.contains(actions)).toBe(false);
+  expect(node.contains(actions)).toBe(true);
   expect(node.querySelector('[data-holon-inspector-property-viewer]')?.contains(properties)).toBe(true);
   const clicks = vi.fn();
   node.addEventListener('click', clicks);

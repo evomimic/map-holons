@@ -170,3 +170,16 @@ it.each(['horizontal', 'vertical'])('animates pending %s navigation over fixed p
     expect(path.traversalTransition).toBeUndefined(); expect(path.dataset.traversalPhase).toBeUndefined();
   } finally { time.mockRestore(); }
 });
+
+it('requests the fixed three-part preferred footprint without measuring descendants or growing with history', () => {
+  const items = [node('A', 0, 1)], { path, publish } = fixture(items);
+  const first = path.getSpatialExtents();
+  const profile = participationProfile();
+  expect(first.preferred.height).toBeGreaterThanOrEqual(profile.vertical.preferred.reduce((a, b) => a + b, 0) + 2 * profile.vertical.channel.preferred);
+  expect(first.preferred.height).toBeGreaterThan(first.minimum.height);
+  for (let row = 1; row < 8; row++) items.push(node(String(row), row, 1, row === 1 ? 'A' : String(row - 1), 'vertical'));
+  publish(items, { occurrenceId: '7', mode: 'traverse' });
+  expect(path.getSpatialExtents()).toEqual(first);
+  const context = items.at(-2).element.assignment;
+  expect(context.height).toBeGreaterThanOrEqual(profile.vertical.minimum[1]);
+});

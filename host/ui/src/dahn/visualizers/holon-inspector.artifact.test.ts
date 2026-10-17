@@ -36,7 +36,7 @@ it.each(['holon-inspector', 'load-holons-inspector'])('%s switches one content r
   expect(node.getNodeInspectorAllocation()).toEqual(before);
   expect(collection.scrollTop).toBe(43);
   node.setNodeOwnedCollection(collection);
-  applyNodePresentation(node, { width: 180, height: 200, presentation: 'relationship' });
+  applyNodePresentation(node, { width: 180, height: 320, presentation: 'relationship' });
   expect(node.dataset.inspectorMode).toBe('relationship');
   expect(node.presentationState.remembered).toBe('collection');
   node.querySelector('[data-node-title-bar] > button').click();
@@ -66,9 +66,9 @@ it('rejects incompatible/invalid assignments before mutation and requires the re
 });
 it('handles late collection realization within a compressed grant without silently restoring', async () => {
   const { node, collection } = await fixture();
-  applyNodePresentation(node, { width: 180, height: 200, presentation: 'relationship' });
+  applyNodePresentation(node, { width: 180, height: 320, presentation: 'relationship' });
   node.updateCollection({ state: 'loaded', content: collection });
   expect(node.dataset.inspectorMode).toBe('relationship');
   expect(node.presentationState.remembered).toBe('collection');
-  expect(node.getNodeInspectorAllocation()).toEqual({ width: 180, height: 200 });
+  expect(node.getNodeInspectorAllocation()).toEqual({ width: 180, height: 320 });
 });

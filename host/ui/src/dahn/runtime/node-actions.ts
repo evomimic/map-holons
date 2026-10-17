@@ -12,29 +12,38 @@ type ActionBarElement = HTMLElement & {
 };
 
 export interface NodeActionBar extends HTMLElement {
+  readonly controls: HTMLElement;
   setOccurrenceActions(states: Record<string, { available: boolean; reason: string; label?: string }>, invoke: (key: string, invoker: HTMLElement) => unknown): void;
   dispose(): void;
 }
 
 /** Shared Node composition adds the declared standards once; the selected bar
  * receives ordinary bound Action components, independent of their source.
+ * The owner routes subject actions and shared controls into distinct slots.
  */
 export async function composeNodeActions(transaction: MapTransaction, runtime: MaterializedVisualizerRuntime,
   owner: HolonReference, context: VisualizerContext, activations: ActionActivation[] = [], interactions?: ActionInteractions): Promise<NodeActionBar> {
   const slot = await runtime.slot(owner, 'action');
-  const contracts = [...await slot.relatedHolons('UsesNodeActionsContract')];
+  const controlsSlot = await runtime.slot(owner, 'visualizerActions');
+  const contracts = [...await controlsSlot.relatedHolons('UsesNodeActionsContract')];
   if (contracts.length !== 1) throw new Error('Node actions require one shared membership contract');
   const standards = [...await contracts[0].relatedHolons('StandardNodeActions')];
   if (!standards.length) throw new Error('Node actions contract has no standard actions');
   const descriptors = [...standards, ...await owner.relatedHolons('AdditionalNodeActions')];
-  const selection = await transaction.selectVisualizer({ subject: context.target.reference, owner: { visualizer: owner }, slot,
-    theme: context.theme!.reference, requestedKind: 'actionBar' });
-  const Bar = await runtime.realize(selection.selected) as CustomElementConstructor;
-  if (typeof Bar !== 'function' || !(Bar.prototype instanceof HTMLElement)) throw new Error('Selected ActionBar is not an HTMLElement constructor');
-  const bar = document.createElement(defineCustomElementOnce('map-node-actions', Bar)) as ActionBarElement;
-  await runtime.admit(bar, slot);
-  const present = bar.visualizerOperations?.['PresentActions.VisualizerOperator'];
-  if (!present) throw new Error('Selected ActionBar does not fulfill PresentActions');
+  const selectBar = async (slot: HolonReference) => {
+    const selection = await transaction.selectVisualizer({ subject: context.target.reference, owner: { visualizer: owner }, slot,
+      theme: context.theme!.reference, requestedKind: 'actionBar' });
+    const Bar = await runtime.realize(selection.selected) as CustomElementConstructor;
+    if (typeof Bar !== 'function' || !(Bar.prototype instanceof HTMLElement)) throw new Error('Selected ActionBar is not an HTMLElement constructor');
+    const element = document.createElement(defineCustomElementOnce('map-node-actions', Bar)) as ActionBarElement;
+    await runtime.admit(element, slot);
+    const present = element.visualizerOperations?.['PresentActions.VisualizerOperator'];
+    if (!present) throw new Error('Selected ActionBar does not fulfill PresentActions');
+    await bindVisualizerInformationControl(element, transaction, context.target.reference, owner, slot, selection.selected);
+    return { element, present };
+  };
+  const subjectBar = await selectBar(slot), controlsBar = await selectBar(controlsSlot);
+  const bar = subjectBar.element, controls = controlsBar.element;
   let live = true;
   let invoke: (key: string, invoker: HTMLElement) => unknown = () => { throw new Error('Occurrence authority is not bound'); };
   let occurrenceActions: Extract<PresentedAction, { kind: 'action' }>[] = [];
@@ -50,7 +59,7 @@ export async function composeNodeActions(transaction: MapTransaction, runtime: M
     occurrenceActions.push({ id: key, kind: 'action', label: display && 'StringValue' in display ? display.StringValue : key,
       icon: icon && 'StringValue' in icon ? icon.StringValue : undefined,
       available: false, reason: 'Occurrence authority is not bound',
-      activate: invoker => { if (!live || !bar.isConnected || !bar.contains(invoker)) throw new Error('Retired action binding'); return invoke(key, invoker); } });
+      activate: invoker => { if (!live || !controls.isConnected || !controls.contains(invoker)) throw new Error('Retired action binding'); return invoke(key, invoker); } });
   }
   const bind = async (actions: readonly ActionNode[]): Promise<PresentedAction[]> => Promise.all(actions.map(async action => {
     if (keys.has(action.id)) throw new Error(`Duplicate action identity: ${action.id}`);
@@ -67,11 +76,12 @@ export async function composeNodeActions(transaction: MapTransaction, runtime: M
         if (supported) activation.activate(binding => interactions!.openLoadHolons(binding), invoker); } };
   }));
   const subjectActions = await bind(context.actions);
-  const publish = () => present({ actions: [...occurrenceActions, ...subjectActions] });
+  const publish = () => controlsBar.present({ actions: occurrenceActions });
+  subjectBar.present({ actions: subjectActions });
   publish();
-  await bindVisualizerInformationControl(bar, transaction, context.target.reference, owner, slot, selection.selected);
   const dispose = bar.dispose?.bind(bar);
-  return Object.assign(bar, {
+  const composed = Object.assign(bar, {
+    controls,
     setOccurrenceActions(states: Record<string, { available: boolean; reason: string; label?: string }>, handler: typeof invoke) {
       if (typeof handler !== 'function') throw new Error('Occurrence activation authority is not bound');
       for (const action of occurrenceActions) {
@@ -82,6 +92,8 @@ export async function composeNodeActions(transaction: MapTransaction, runtime: M
       occurrenceActions = occurrenceActions.map(action => ({ ...action, ...states[action.id], label: states[action.id].label ?? action.label }));
       publish();
     },
-    dispose() { live = false; revokeVisualizerInformationControls(bar); dispose?.(); },
+    dispose() { live = false; revokeVisualizerInformationControls(bar); revokeVisualizerInformationControls(controls); dispose?.(); controls.dispose?.(); },
   }) as NodeActionBar;
+  Object.assign(controls, { setOccurrenceActions: composed.setOccurrenceActions });
+  return composed;
 }

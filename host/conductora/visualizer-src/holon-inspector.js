@@ -7,7 +7,8 @@ export default class HolonInspectorElement extends HTMLElement {
   getVisualizerComposition() {
     return [
       { label: 'Title Bar', element: this.titleBar?.titleControl },
-      { label: 'Actions', element: this.actionsVisualizer },
+      { label: 'Holon actions', element: this.actionsVisualizer },
+      { label: 'Visualizer controls', element: this.titleBar?.actionsControl },
       { label: 'Properties', element: this.propertiesVisualizer },
       { label: 'Collection Tabs', element: this.collectionTabBar },
       { label: 'Vertical Rail', element: this.singleValueRail },
@@ -27,7 +28,7 @@ export default class HolonInspectorElement extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { titleBar: 'HolonInspector.TitleBarSlot', propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', diagnostics: 'LoadHolons.DiagnosticsSlot', committed: 'LoadHolons.CommittedHolonsSlot', collection: 'HolonInspector.CollectionsSlot' };
+  static compositionSlots = { visualizerActions: 'HolonInspector.VisualizerControlsSlot', titleBar: 'HolonInspector.TitleBarSlot', propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', diagnostics: 'LoadHolons.DiagnosticsSlot', committed: 'LoadHolons.CommittedHolonsSlot', collection: 'HolonInspector.CollectionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute('aria-pressed', String(state.active === affordance));
@@ -84,7 +85,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.titleHeight = layout.title;
     const active = document.activeElement;
     applyInspectorGeometry({ root: this, title: this.titleBar.element, body: this.body,
-      heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.propertyViewer,
+      subjectActions: this.actionsVisualizer, heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.propertyViewer,
       filters: this.actionBar, rail: this.singleValueRail, collections: this.collectionRegion }, layout);
     this.collectionViewer.inert = layout.mode !== 'collection';
     this.collectionViewer.style.display = layout.mode === 'collection' ? 'flex' : 'none';
@@ -462,7 +463,7 @@ export default class HolonInspectorElement extends HTMLElement {
     style.textContent = `[data-dahn-holon-inspector] [data-singular-relationship][aria-pressed="true"], [data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
-    this.replaceChildren(style, title, body, collectionRegion);
+    this.replaceChildren(style, title, this.actionsVisualizer, body, collectionRegion);
     this.adaptBudget();
     if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();

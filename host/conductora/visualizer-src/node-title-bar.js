@@ -3,7 +3,7 @@
  */
 export function createNodeTitleBar(context, options) {
   const title = context.childVisualizers?.get('titleBar');
-  const actions = context.childVisualizers?.get('actions');
+  const actions = context.childVisualizers?.get('visualizerActions');
   if (!title?.visualizerOperations?.['ApplyTitlePresentation.VisualizerOperator']) throw new Error('Node requires an admitted selected Title Bar');
   const element = document.createElement('header');
   element.dataset.nodeTitleHeader = 'true';
@@ -38,7 +38,7 @@ export function createNodeTitleBar(context, options) {
     };
     actions?.setOccurrenceActions?.(actionsState, invoke);
     const width = state.width ?? 800;
-    const actionWidth = actions ? Math.max(44, Math.min(width * .6, width - 80)) : 0;
+    const actionWidth = actions ? Math.max(44, Math.min(204, width - 80)) : 0;
     const titleWidth = Math.max(80, width - actionWidth);
     title.style.flex = `0 0 ${titleWidth}px`;
     if (actions) {
@@ -63,7 +63,7 @@ export function createNodeTitleBar(context, options) {
   title.setOwnerInvocation(invoke);
   const status = document.createElement('span'); status.setAttribute('role', 'status'); status.hidden = true;
   element.append(status);
-  return { element, titleControl: title, presentationStatus: status, operations,
+  return { element, actionsControl: actions, titleControl: title, presentationStatus: status, operations,
     update, setInformation(handler) { information = handler; publish(); } };
 }
 

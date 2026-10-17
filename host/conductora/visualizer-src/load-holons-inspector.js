@@ -13,7 +13,7 @@ export default class LoadHolonsInspector extends HTMLElement {
       this.setNodeInspectorAllocation(this.allocation);
     });
   }
-  static compositionSlots = { titleBar: 'LoadHolonsResult.TitleBarSlot', propertyMap: 'LoadHolonsResult.PropertyMapSlot', action: 'LoadHolonsResult.ActionsSlot' };
+  static compositionSlots = { visualizerActions: 'LoadHolonsResult.VisualizerControlsSlot', titleBar: 'LoadHolonsResult.TitleBarSlot', propertyMap: 'LoadHolonsResult.PropertyMapSlot', action: 'LoadHolonsResult.ActionsSlot' };
   static usesOwnedResultSummary = true;
   setNodeOwnedSummary(content) {
     this.propertyVisualizer = content;
@@ -142,7 +142,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.propertiesHeading.append(this.propertiesToggle);
     this.content = this.body;
     this.body.replaceChildren(this.propertiesHeading, this.properties, this.rail);
-    this.replaceChildren(heading, this.body, this.collections);
+    this.replaceChildren(heading, this.actionsVisualizer, this.body, this.collections);
     this.unsubscribe = context.relationshipDiscovery?.subscribe(() => {
       this.discoveryStatus.replaceChildren();
       let pending = 0;
@@ -187,7 +187,8 @@ export default class LoadHolonsInspector extends HTMLElement {
   getVisualizerComposition() {
     return [
       { label: 'Title Bar', element: this.titleBar?.titleControl },
-      { label: 'Actions', element: this.actionsVisualizer },
+      { label: 'Holon actions', element: this.actionsVisualizer },
+      { label: 'Visualizer controls', element: this.titleBar?.actionsControl },
       { label: 'Load summary', element: this.propertyVisualizer },
       { label: 'Result collections', element: this.collections },
       { label: 'Collection Tabs', element: this.collectionTabBar },
@@ -218,7 +219,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.allocation = { width: input.width, height: input.height };
     const active = document.activeElement;
     applyInspectorGeometry({ root: this, title: this.heading, body: this.body,
-      heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.properties,
+      subjectActions: this.actionsVisualizer, heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.properties,
       rail: this.rail, collections: this.collections }, layout);
     if (this.propertyVisualizer) Object.assign(this.propertyVisualizer.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
     this.titleBar.update({ width: layout.width, height: layout.title, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });

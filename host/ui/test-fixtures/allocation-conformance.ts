@@ -36,8 +36,8 @@ const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCach
   return { source: await (await fetch(`/resources/${filename}.js`)).text(), format: 'ESModule', entrypoint: 'default' };
 } }));
 let serial = 0;
-export async function mount(kind: string, mode: string, textScale = 1, activeCollection = true, budget = 'minimum') {
-  document.body.replaceChildren();
+export async function mount(kind: string, mode: string, textScale = 1, activeCollection = true, budget = 'minimum', reset = true) {
+  if (reset) document.body.replaceChildren();
   titleChoice = kind === 'loader' ? 'CompactTitleBar.TitleBarVisualizer' : 'NodeTitleBar.TitleBarVisualizer';
   const owner = ref(kind === 'generic' ? 'HolonInspector.NodeVisualizer' : 'LoadHolons.NodeVisualizer');
   const Constructor = await runtime.realize(owner) as CustomElementConstructor;
@@ -54,7 +54,8 @@ export async function mount(kind: string, mode: string, textScale = 1, activeCol
   }
   property.setContext({ title: 'Properties', childVisualizers: propertyChildren });
   await bindVisualizerInformationControl(property, transaction, subject, ref('HolonInspector.NodeVisualizer'), ref('HolonInspector.PropertyMapSlot'), ref('DefaultPropertyMapVisualizer.PropertyMapVisualizer'));
-  const actions = await composeNodeActions(transaction, runtime, owner, { target: { reference: subject }, actions: [], theme: { reference: ref('fixture-theme') } } as any);
+  const subjectActions = [{ id: 'fixture-load', kind: 'action', label: 'Load Holons', dance: ref('LoadHolons.DanceType') }, { id: 'fixture-query', kind: 'action', label: 'Query Dance', dance: ref('Query.DanceType') }];
+  const actions = await composeNodeActions(transaction, runtime, owner, { target: { reference: subject }, actions: subjectActions, theme: { reference: ref('fixture-theme') } } as any);
   const collection = document.createElement('nav'); collection.setAttribute('aria-label', 'Non-table Collection');
   collection.style.cssText = 'display:flex;flex-direction:column;min-height:0;min-width:0;overflow:auto;flex:1;';
   for (let index = 0; index < 30; index++) {
@@ -63,7 +64,7 @@ export async function mount(kind: string, mode: string, textScale = 1, activeCol
   }
   const context: any = { title: 'Holon: A long readable subject identity', holonKey: 'Fixture.Subject', target: { reference: subject }, actions: [],
     theme: { reference: ref('fixture-theme') }, canvas: {}, nodeAffordances: { singularRelationships: ['Navigate singular relationship', 'Owned by', 'Described by', 'Version of', 'Source', 'Parent'].map(label => ({ label, relationship: {} })), collections: [] }, relationshipDiscovery: { population: () => ({ state: 'populated', count: 1 }), subscribe: (listener: () => void) => { listener(); return () => {}; } }, activateRelationship: () => {},
-    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions]]) };
+    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions], ['visualizerActions', actions.controls]]) };
   const title = await composeNodeTitle(transaction, runtime, owner, context);
   context.childVisualizers.set('titleBar', title);
   node.setContext(context);
@@ -88,8 +89,8 @@ export function measure() {
   const failures: string[] = [];
   // Each binding supplies its immediate owned regions; conformance does not use
   // private region names to establish Operator eligibility.
-  const regions: HTMLElement[] = node.dataset.dahnHolonInspector ? [node.titleBar.element, node.body, node.collectionRegion, node.propertyViewer, node.actionBar, node.singleValueRail, node.collectionViewer]
-    : [node.heading, node.body, node.content, node.properties, node.collections, node.rail];
+  const regions: HTMLElement[] = node.dataset.dahnHolonInspector ? [node.titleBar.element, node.actionsVisualizer, node.body, node.collectionRegion, node.propertyViewer, node.actionBar, node.singleValueRail, node.collectionViewer]
+    : [node.heading, node.actionsVisualizer, node.body, node.content, node.properties, node.collections, node.rail];
   for (const region of regions.filter(visible)) {
     const parent = region.parentElement!.getBoundingClientRect(), child = region.getBoundingClientRect();
     if (child.left < parent.left - 1 || child.top < parent.top - 1 || child.right > parent.right + 1 || child.bottom > parent.bottom + 1) failures.push(`${region.getAttribute('aria-label') || region.tagName} exceeds owner: ${JSON.stringify(child.toJSON())} / ${JSON.stringify(parent.toJSON())}`);
@@ -99,6 +100,11 @@ export function measure() {
     if (first === second || first.parentElement !== second.parentElement) continue;
     const a = first.getBoundingClientRect(), b = second.getBoundingClientRect();
     if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) failures.push(`Sibling overlap: ${first.tagName}/${second.tagName}`);
+  }
+  if (node.dataset.inspectorMode === 'properties') {
+    for (const button of node.actionsVisualizer.querySelectorAll('button[data-action-id]')) {
+      if (button.getClientRects().length && button.scrollHeight > button.clientHeight + 1) failures.push(`Clipped subject action: ${button.textContent}`);
+    }
   }
   const propertyList = node.querySelector('[data-dahn-properties-list]');
   if (node.dataset.inspectorMode === 'properties' && propertyList?.getBoundingClientRect().height < 100 * (parseFloat(node.style.fontSize) / 16)) failures.push(`Properties viewport too short: ${propertyList.getBoundingClientRect().height}px`);
@@ -120,4 +126,34 @@ export function historicalOverlapDetected() {
   const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
   owner.remove(); return overlap === 62;
 }
-(window as any).allocationFixture = { mount, measure, reassign, historicalOverlapDetected };
+export async function mountVerticalPath(height: number) {
+  document.body.replaceChildren();
+  const items: any[] = [];
+  for (let index = 0; index < 3; index++) {
+    await mount('generic', index < 2 ? 'collection' : 'properties', 1, true, 'preferred', false);
+    const element: any = document.body.lastElementChild;
+    items.push({ id: String(index), row: index, rowId: `row-${index}`, column: 1, element,
+      ...(index ? { provenance: { parentOccurrenceId: String(index - 1), kind: 'collection-member', traversal: { label: 'Available Schemas' } } } : {}) });
+  }
+  const Path = await runtime.realize(ref('PathInspector.RootedNavigationVisualizer')) as CustomElementConstructor;
+  const path: any = document.createElement(defineCustomElementOnce('fixture-composed-path', Path));
+  let publish: any;
+  path.setContext({ navigation: { subscribe(listener: any) { publish = listener; listener(items.slice(0, 1), { occurrenceId: '0', mode: 'traverse' }); return () => {}; }, dispose() {} } });
+  document.body.replaceChildren(path);
+  Object.assign(path.style, { width: '1400px', height: `${height}px` });
+  await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+  publish(items.slice(0, 2), { occurrenceId: '1', mode: 'traverse' });
+  publish(items, { occurrenceId: '2', mode: 'traverse' });
+  // Let the real viewport observer settle allocation; frontier animation never
+  // changes the owner-assigned rectangles.
+  await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+  const bounds = items.map(item => path.layoutBounds.get(item.id));
+  return { modes: items.map(item => item.element.dataset.inspectorMode), bounds,
+    contextViewportHeight: items[1].element.collectionViewer.getBoundingClientRect().height,
+    preferred: path.getSpatialExtents().preferred,
+    scale: path.view.scale,
+    connectors: path.lineage.querySelectorAll('path').length,
+    viewportHeight: path.viewport.clientHeight,
+    contentHeight: path.view.height };
+}
+(window as any).allocationFixture = { mount, measure, reassign, historicalOverlapDetected, mountVerticalPath };

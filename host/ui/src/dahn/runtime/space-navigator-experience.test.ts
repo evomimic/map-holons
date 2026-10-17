@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 const mocks = vi.hoisted(() => ({ realizeNode: vi.fn() }));
 vi.mock('./realize-node', () => ({ realizeNode: mocks.realizeNode }));
 vi.mock('./title-composition', () => ({ composeNodeTitle: vi.fn(async () => selectedTitleContext().childVisualizers.get('titleBar')) }));
-vi.mock('./node-actions', () => ({ composeNodeActions: vi.fn(async () => Object.assign(selectedTitleContext().childVisualizers.get('actions'), { dispose: vi.fn() })) }));
+vi.mock('./node-actions', () => ({ composeNodeActions: vi.fn(async () => Object.assign(selectedTitleContext().childVisualizers.get('actions'), { controls: selectedTitleContext().childVisualizers.get('visualizerActions'), dispose: vi.fn() })) }));
 
 class NavigationElement extends HTMLElement {
   context!: VisualizerContext;

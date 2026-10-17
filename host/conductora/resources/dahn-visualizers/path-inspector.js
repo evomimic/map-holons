@@ -27,7 +27,7 @@ var PRESENTATION_REQUESTS = ["inspect", "collection-context", "relationship", "c
 function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map((n) => n * scale), preferred: preferred.map((n) => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 200, 480], [64, 300, 720], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 320, 480], [64, 400, 720], [24, 64]) };
 }
 function resolveAxis(profile, budget, frame = 0) {
   const { minimum, preferred, channel } = profile;
@@ -117,7 +117,12 @@ var PathInspectorElement = class extends HTMLElement {
     const minimum = { width: profile.horizontal.minimum[2], height: profile.vertical.minimum[2] };
     minimum.width += Math.max(0, this.offsetWidth - this.viewport.clientWidth);
     minimum.height += Math.max(0, this.offsetHeight - this.viewport.clientHeight);
-    return { minimum, preferred: { ...minimum } };
+    const insets = this.regionInsets(root.id);
+    const preferred = {
+      width: profile.horizontal.preferred.reduce((sum, value) => sum + value, 0) + 2 * profile.horizontal.channel.preferred + 3 * insets.width + Math.max(0, this.offsetWidth - this.viewport.clientWidth),
+      height: profile.vertical.preferred.reduce((sum, value) => sum + value, 0) + 2 * profile.vertical.channel.preferred + 3 * insets.height + Math.max(0, this.offsetHeight - this.viewport.clientHeight)
+    };
+    return { minimum, preferred };
   }
   frontierPosition(targetId) {
     const target = this.layoutBounds.get(targetId);

@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "56f9c68529491ada2036747eeaabb43a3eb8540fe8a0625cd2d5b3a1af3b7b63"
+      "sha256": "55b92dd618ec2ea9da9d8fb59913bd4ae51c8f5c2a91c8f484d3e72ae6f3f439"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -2612,6 +2612,10 @@
       "type": "VisualizerSlot.HolonType"
     },
     {
+      "key": "HolonInspector.VisualizerControlsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
     },
@@ -2921,6 +2925,10 @@
     },
     {
       "key": "LoadHolonsResult.TitleBarSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "LoadHolonsResult.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType"
     },
     {

@@ -212,7 +212,7 @@ instance HolonInspector.NodeVisualizer {
     ]
     ApplicableToType -> HolonType.TypeDescriptor
     OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
-    HasSlot -> [HolonInspector.TitleBarSlot, HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot, LoadHolons.DiagnosticsSlot, LoadHolons.CommittedHolonsSlot]
+    HasSlot -> [HolonInspector.TitleBarSlot, HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.VisualizerControlsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot, LoadHolons.DiagnosticsSlot, LoadHolons.CommittedHolonsSlot]
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
   }
 }
@@ -230,6 +230,15 @@ instance HolonInspector.PropertyMapSlot {
 instance HolonInspector.ActionsSlot {
   type VisualizerSlot.HolonType
   VisualizerSlotDescription "Show the actions available for this item and provide access to them."
+  relationships {
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+    RequiresOperator -> PresentActions.VisualizerOperator
+  }
+}
+
+instance HolonInspector.VisualizerControlsSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Present the centrally declared Visualizer controls within the title band."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
     RequiresOperator -> PresentActions.VisualizerOperator
@@ -292,7 +301,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:47021de8582dbe34da8d0e6cdaccb31654c82b038ab7713123db972588db473f"
+  VisualizerArtifactDigest "sha256:1828672e07e7a3a0d3134447dddeb8a95b56a5b07bbb9f4fdc6c2d120338dc75"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -373,7 +382,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:8e7c9ac96ddbbf727f1929e892785a494f3545e2d6ede65b24db8cee60135a6d"
+  VisualizerArtifactDigest "sha256:3cbb9079853c54e52913073603d13460e9a21799aed5ad9455baf9b420cc2c26"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1135,7 +1144,7 @@ instance LoadHolons.NodeVisualizer {
   relationships {
     ApplicableToType -> HolonLoadResponse.DanceResponseType
     OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
-    HasSlot -> [LoadHolonsResult.TitleBarSlot, LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.CollectionsSlot]
+    HasSlot -> [LoadHolonsResult.TitleBarSlot, LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.VisualizerControlsSlot, LoadHolonsResult.CollectionsSlot]
     ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
   }
 }
@@ -1144,7 +1153,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:f9038a170adc5708eb1979c7859c37217724f237506c72da266e04f0282ecc8a"
+  VisualizerArtifactDigest "sha256:392cdd097067ebd4dc8003205c44434535726a7eaf12c179cbac2275d97d36d1"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1160,6 +1169,15 @@ instance LoadHolonsResult.PropertyMapSlot {
 instance LoadHolonsResult.ActionsSlot {
   type VisualizerSlot.HolonType
   VisualizerSlotDescription "Provide access to the actions available for this load result."
+  relationships {
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+    RequiresOperator -> PresentActions.VisualizerOperator
+  }
+}
+
+instance LoadHolonsResult.VisualizerControlsSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Present the centrally declared Visualizer controls within the title band."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
     RequiresOperator -> PresentActions.VisualizerOperator
@@ -2784,7 +2802,7 @@ instance NodeTitleBarTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.node-title-bar"
-  VisualizerArtifactDigest "sha256:8e38f4c0660162a0dfc965be527aa484b8acbc707d5560641e21225af368e0c5"
+  VisualizerArtifactDigest "sha256:afb9e991d98c82fd6bd0637fd2b4df50f4ad9d81cda4a38ec5f8be9657353405"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

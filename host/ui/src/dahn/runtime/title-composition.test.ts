@@ -48,19 +48,19 @@ async function fixture(subjectActions: ActionNode[] = [], interactions?: ActionI
   const Node = await runtime.realize(owner) as CustomElementConstructor;
   const node: any = document.createElement(defineCustomElementOnce('fixture-composed-title-node', Node));
   const properties = document.createElement('section'); properties.innerHTML = '<input value="retained edit">';
-  node.setContext({ ...context, childVisualizers: new Map([['titleBar', title], ['actions', actions], ['properties', properties]]) });
+  node.setContext({ ...context, childVisualizers: new Map([['titleBar', title], ['actions', actions], ['visualizerActions', actions.controls], ['properties', properties]]) });
   document.body.append(node); node.setOccurrenceRestorationHandler(vi.fn());
   const inspect = vi.fn(); node.setVisualizerInformationHandler(inspect, 'Containing Node');
   applyNodePresentation(node, { width: 800, height: 640, presentation: 'inspect' });
   return { node, title, actions, activations, properties, owner, subject, runtime, transaction, materialize, compact: ref(compact.key), ref, inspect };
 }
-it('selects one Title Bar and one mixed ActionBar with the unchanged Holon subject', async () => {
+it('selects one Title Bar and two source-independent ActionBars with the unchanged Holon subject', async () => {
   const f = await fixture(); const target = withVisualizerComposition(selectedVisualizerInspection(f.title)!);
   expect(target.subject).toBe(f.subject); expect(target.owner).toBe(f.owner);
   expect(target.composition!()).toEqual([]);
-  expect(f.transaction.selectVisualizer.mock.calls.map(([request]: any) => request.requestedKind)).toEqual(['titleBar', 'actionBar']);
-  expect(f.actions.querySelectorAll('[data-action-id]')).toHaveLength(4);
-  const information = f.actions.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLElement;
+  expect(f.transaction.selectVisualizer.mock.calls.map(([request]: any) => request.requestedKind)).toEqual(['titleBar', 'actionBar', 'actionBar']);
+  expect(f.actions.controls.querySelectorAll('[data-action-id]')).toHaveLength(4);
+  const information = f.actions.controls.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLElement;
   information.click(); expect(f.inspect).toHaveBeenCalledWith(information);
   const before = f.transaction.selectVisualizer.mock.calls.length, modules = f.materialize.mock.calls.length;
   applyNodePresentation(f.node, { width: 80, height: 64, presentation: 'compact' });
@@ -69,11 +69,11 @@ it('selects one Title Bar and one mixed ActionBar with the unchanged Holon subje
 it('replaces only identity presentation while preserving the sibling bar and its bindings', async () => {
   const f = await fixture(); const old = withVisualizerComposition(selectedVisualizerInspection(f.title)!);
   const node = f.node, input = f.properties.querySelector('input'), allocation = node.getNodeInspectorAllocation();
-  const close = f.actions.querySelector('[data-action-id="CloseOccurrence.VisualizerOperator"]');
+  const close = f.actions.controls.querySelector('[data-action-id="CloseOccurrence.VisualizerOperator"]');
   const next = await old.choices!.choose!(f.compact, () => true);
   expect(next.subject).toBe(f.subject); expect(next.owner).toBe(f.owner); expect(next.slot).toBe(old.slot); expect(next.occurrenceId).toBe(old.occurrenceId);
   expect(old.isLive()).toBe(false); expect(next.isLive()).toBe(true);
-  expect(f.actions.querySelector('[data-action-id="CloseOccurrence.VisualizerOperator"]')).toBe(close);
+  expect(f.actions.controls.querySelector('[data-action-id="CloseOccurrence.VisualizerOperator"]')).toBe(close);
   expect(f.node).toBe(node); expect(f.properties.querySelector('input')).toBe(input); expect(input!.value).toBe('retained edit');
   expect(node.getNodeInspectorAllocation()).toEqual(allocation); expect(f.transaction.recordVisualizerUse).toHaveBeenCalledOnce();
 });
@@ -95,13 +95,13 @@ it('revokes title and nested inspection targets when the containing Node is reti
   expect(f.actions.isConnected).toBe(true);
 });
 
-it('combines a bound loader workflow with standards without selecting an Action Visualizer', async () => {
+it('routes a bound loader workflow separately from standards without selecting an Action Visualizer', async () => {
   const dance = { key: async () => 'LoadHolons.DanceType' } as any;
   const interaction = { canDismiss: () => true, dispose: vi.fn(async () => {}), focus: vi.fn(), closed: new Promise<void>(() => {}) };
   const interactions = { openLoadHolons: vi.fn(() => interaction) };
   const f = await fixture([{ id: 'load', kind: 'action', label: 'Load Holons', dance }], interactions);
-  expect(f.actions.querySelectorAll('[data-action-id]')).toHaveLength(5);
-  expect(f.transaction.selectVisualizer.mock.calls.map(([request]: any) => request.requestedKind)).toEqual(['titleBar', 'actionBar']);
+  expect(f.actions.querySelectorAll('[data-action-id]')).toHaveLength(1);
+  expect(f.transaction.selectVisualizer.mock.calls.map(([request]: any) => request.requestedKind)).toEqual(['titleBar', 'actionBar', 'actionBar']);
   expect(interactions.openLoadHolons).not.toHaveBeenCalled();
   const load = f.actions.querySelector<HTMLButtonElement>('[data-action-id="load"]')!;
   load.click();
@@ -116,4 +116,22 @@ it('rejects incomplete standard-action updates without changing the live present
   const before = f.actions.innerHTML;
   expect(() => f.actions.setOccurrenceActions({}, vi.fn())).toThrow('Missing required action state');
   expect(f.actions.innerHTML).toBe(before);
+});
+
+it('shows subject actions only in Properties and retains independent title controls in every mode', async () => {
+  const f = await fixture([{ id: 'query', kind: 'action', label: 'Query Dance', dance: { key: async () => 'Query.DanceType' } as any }]);
+  expect(f.node.titleBar.element.contains(f.actions)).toBe(false);
+  expect(f.node.titleBar.element.contains(f.actions.controls)).toBe(true);
+  expect(f.actions.inert).toBe(false);
+  f.node.setNodeOwnedCollection(document.createElement('section'));
+  expect(f.actions.inert).toBe(true); expect(f.actions.controls.inert).not.toBe(true);
+  expect(f.node.propertiesHeading.hidden).toBe(false);
+  f.node.propertiesToggle.click();
+  expect(f.actions.inert).toBe(false); expect(f.node.propertiesHeading.hidden).toBe(false);
+  expect(f.node.propertiesToggle.textContent).toBe('Properties');
+  for (const presentation of ['relationship', 'compact']) {
+    applyNodePresentation(f.node, { width: 800, height: 640, presentation });
+    expect(f.actions.inert).toBe(true); expect(f.actions.controls.inert).not.toBe(true);
+    expect(f.actions.controls.querySelectorAll('[data-action-id]')).toHaveLength(4);
+  }
 });

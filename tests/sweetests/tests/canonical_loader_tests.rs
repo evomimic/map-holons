@@ -115,7 +115,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
     let contract = saved("NodeActions.Contract");
-    for key in ["HolonInspector.ActionsSlot", "LoadHolonsResult.ActionsSlot"] {
+    for key in ["HolonInspector.VisualizerControlsSlot", "LoadHolonsResult.VisualizerControlsSlot"] {
         let slot = saved(key);
         assert!(slot
             .related_holons("UsesNodeActionsContract")
