@@ -12210,7 +12210,3 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "holochain_wasmer_host"
-version = "0.0.102"

@@ -22,6 +22,11 @@
 //! | `warn`       | Literally everything at WARN                                            |
 //! | `error`      | Literally everything at ERROR                                           |
 //!
+//! In dev mode (`MAP_START_MODE=dev`), the DHT publish workflow defaults to ERROR
+//! because an isolated conductor has no remote peers to publish to. An explicit
+//! `holochain::core::workflow::publish_dht_ops_workflow=warn` directive restores
+//! its warnings when needed.
+//!
 //! ### `WASM_LOG` — wasm/zome log passthrough
 //!
 //! Holochain's conductor reads `WASM_LOG` to decide which zome log events to
@@ -70,7 +75,7 @@ const WASM_TARGETS: &[&str] = &[
 /// Raise individual entries here if you need to debug the network/DHT layer.
 const HOLOCHAIN_NOISY_CRATES: &[(&str, &str)] = &[
     ("holochain", "warn"),         // Core conductor — very chatty at info/debug
-    ("holochain_data", "error"), // DB layer — migration messages etc.
+    ("holochain_data", "error"),   // DB layer — migration messages etc.
     ("holochain_types", "warn"),   // Type-system internals
     ("holochain_p2p", "warn"),     // P2P networking
     ("kitsune2_core", "error"),    // Kitsune2 DHT core
@@ -134,7 +139,14 @@ fn build_env_filter() -> EnvFilter {
     });
 
     eprintln!("[LOGGING] RUST_LOG={}", rust_log);
-    let mut expanded = expand_host_shorthands(&rust_log);
+    // Put dev defaults first so an explicit RUST_LOG directive for the same
+    // target can restore publish diagnostics. Production keeps its usual filter.
+    let dev_defaults = if crate::env::dev_mode_enabled() {
+        "holochain::core::workflow::publish_dht_ops_workflow=error,"
+    } else {
+        ""
+    };
+    let mut expanded = format!("{dev_defaults}{}", expand_host_shorthands(&rust_log));
     eprintln!("[LOGGING] Host filter expanded: {}", expanded);
 
     // ── WASM_LOG (zome passthrough) ───────────────────────────────────────
@@ -160,7 +172,8 @@ fn build_env_filter() -> EnvFilter {
     eprintln!("[LOGGING] Final filter: {}", expanded);
     EnvFilter::from_str(&expanded).unwrap_or_else(|e| {
         eprintln!("[LOGGING] Invalid filter string ({e}), falling back to 'host:warn'");
-        EnvFilter::from_str(&expand_host_shorthands("host:warn")).unwrap()
+        EnvFilter::from_str(&format!("{dev_defaults}{}", expand_host_shorthands("host:warn")))
+            .unwrap()
     })
 }
 

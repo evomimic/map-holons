@@ -91,8 +91,12 @@ Before conductor build in dev mode, `clean_dev_conductor_state(...)` runs.
 Preserved:
 
 - `databases/db.key`
-- `databases/wasm/`
-- `wasm-cache/`
+- `databases/wasm.db`
+- `databases/wasm.db-wal`, `wasm.db-shm`, and `wasm.db-journal`, when present
+
+Holochain 0.7 stores both WASM source and compiled modules in `wasm.db`. Its encryption key
+and SQLite recovery files must stay together so pending writes can be recovered on restart.
+The old `databases/wasm/` and `wasm-cache/` paths are no longer used and are removed during reset.
 
 Deleted:
 
@@ -124,15 +128,25 @@ RUST_LOG=info
 RUST_LOG=holochain_runtime=debug,conductora_lib=debug
 ```
 
+Conductora defaults `holochain::core::workflow::publish_dht_ops_workflow` to `error` in dev mode
+to suppress repeated `NoPeersForLocation` warnings from an isolated conductor. This filters logs;
+the publishing workflow still runs. Production uses the normal logging settings. To restore the
+workflow's warnings explicitly, include its target in `RUST_LOG`:
+
+```sh
+RUST_LOG=host:warn,holochain::core::workflow::publish_dht_ops_workflow=warn npm run start:host
+```
+
 Key lines to watch:
 
 - `Running in DEV MODE: using in-memory keystore and forcing local-only network config. NOT FOR PRODUCTION USE!`
 - `[LAUNCH] DEV MODE: using persistent dev conductor dir ...`
-- `[LAUNCH] DEV MODE: wasm DB + wasm-cache found — warm start ...`
-- `[LAUNCH] DEV MODE: no existing wasm cache — cold start, WASM will compile`
+- `[LAUNCH] DEV MODE: existing wasm.db found — preserving cached modules for reuse`
+- `[LAUNCH] DEV MODE: no reusable wasm.db found — cold start, WASM will compile`
 - `[LAUNCH] DEV MODE: conductor state reset in ...`
 - `[LAUNCH] Total launch_holochain_runtime: ...`
 - `[HOLOCHAIN SETUP] App install/update done in ...`
+
 
 ## Notes
 
