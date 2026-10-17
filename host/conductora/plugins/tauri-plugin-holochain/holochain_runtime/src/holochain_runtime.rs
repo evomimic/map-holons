@@ -49,10 +49,10 @@ pub struct HolochainRuntime {
 
 /// Local bootstrap responses can occupy one frame larger than the library's
 /// 16 MiB frame default. Honor the existing bounded message allowance for such
-/// frames, retaining the five-minute cold-bootstrap request timeout.
+/// frames. Allow ten minutes for cold Core Schema bootstrap requests.
 fn local_websocket_config() -> WebsocketConfig {
     let mut config = WebsocketConfig::CLIENT_DEFAULT;
-    config.default_request_timeout = std::time::Duration::from_secs(60 * 5);
+    config.default_request_timeout = std::time::Duration::from_secs(60 * 10);
     config.max_frame_size = config.max_message_size;
     config
 }
@@ -408,6 +408,6 @@ mod websocket_configuration_tests {
         assert!(observed_response_bytes <= config.max_frame_size);
         assert_eq!(config.max_frame_size, config.max_message_size);
         assert_eq!(config.max_message_size, WebsocketConfig::CLIENT_DEFAULT.max_message_size);
-        assert_eq!(config.default_request_timeout, std::time::Duration::from_secs(300));
+        assert_eq!(config.default_request_timeout, std::time::Duration::from_secs(600));
     }
 }
