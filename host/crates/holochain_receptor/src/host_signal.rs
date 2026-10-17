@@ -5,6 +5,7 @@ use integrity_core_types::{LocalId, PersistenceTimestamp};
 
 /// Typed host-side signal produced by the decode adapter after `on_signal` fires.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum HostSignal {
     /// Decoded signal from the configured holons zome.
     Holons { cell_id: CellId, zome_name: ZomeName, signal: HolonsZomeSignal },

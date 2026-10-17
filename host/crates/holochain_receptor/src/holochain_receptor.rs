@@ -35,6 +35,7 @@ pub struct HolochainReceptor {
     /// `RuntimeInitiatorState` so zome calls flow through the same connection.
     pub client: Arc<HolochainConductorClient>,
     raw_tx: broadcast::Sender<Signal>,
+    #[allow(dead_code)]
     decoded_tx: broadcast::Sender<HostSignal>,
     action_event_tx: broadcast::Sender<ActionEvent>,
 }
@@ -108,6 +109,7 @@ impl HolochainReceptor {
     /// This is adapter-internal. External consumers should use
     /// [`subscribe_action_events`](Self::subscribe_action_events) which emits
     /// identification-only [`ActionEvent`]s that do not carry holon state.
+    #[allow(dead_code)]
     pub(crate) fn subscribe_decoded(&self) -> broadcast::Receiver<HostSignal> {
         self.decoded_tx.subscribe()
     }
