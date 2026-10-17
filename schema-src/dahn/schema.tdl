@@ -211,7 +211,7 @@ instance HolonInspector.NodeVisualizer {
       SlotPadding.DesignToken,
     ]
     ApplicableToType -> HolonType.TypeDescriptor
-    OffersOperator -> [ApplyNodePresentation.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
+    OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
     HasSlot -> [HolonInspector.TitleBarSlot, HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot, LoadHolons.DiagnosticsSlot, LoadHolons.CommittedHolonsSlot]
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
   }
@@ -250,7 +250,7 @@ instance HolonInspector.SingleValueSlot {
   VisualizerSlotDescription "Inspect the item reached through a connection that has a single destination."
   relationships {
     AcceptsVisualizerType -> NodeVisualizer.HolonType
-    RequiresOperator -> ApplyNodePresentation.VisualizerOperator
+    RequiresOperator -> ApplyNodePresentationV2.VisualizerOperator
   }
 }
 
@@ -283,7 +283,7 @@ instance GenericActionsTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.actions"
-  VisualizerArtifactDigest "sha256:4b0c20b961c02528189eef7e84d7a25e808688b5848c262dcebf13f280297df2"
+  VisualizerArtifactDigest "sha256:f2d7b3369f5b7b5f42dd889d1468f9ec42e0a8099b88ab08a8e2776624cbfe07"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -292,7 +292,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:097c7e193076a93ceb7ec27b34a29292c8ea08b68e362fbfadffb720894f20bb"
+  VisualizerArtifactDigest "sha256:b2db07698f93558e2b49b314364d01b173135ed174e382e9680e6203c57ac382"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -365,7 +365,7 @@ instance PathInspector.RootNodeSlot {
   VisualizerSlotDescription "Show an item’s details, provide access to its actions, and let you explore its connections."
   relationships {
     AcceptsVisualizerType -> NodeVisualizer.HolonType
-    RequiresOperator -> ApplyNodePresentation.VisualizerOperator
+    RequiresOperator -> ApplyNodePresentationV2.VisualizerOperator
   }
 }
 
@@ -373,7 +373,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:c82a7a2201f0ae11fc4f899ca0a4b30e9e36ccb144ee93f205e152067c8b5780"
+  VisualizerArtifactDigest "sha256:8e7c9ac96ddbbf727f1929e892785a494f3545e2d6ede65b24db8cee60135a6d"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1134,7 +1134,7 @@ instance LoadHolons.NodeVisualizer {
   VisualizerDescription "Groups load-result details above tabbed result collections, with a side rail for related items. The title bar supports the same exploration and expansion controls as Holon Inspector."
   relationships {
     ApplicableToType -> HolonLoadResponse.DanceResponseType
-    OffersOperator -> [ApplyNodePresentation.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
+    OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
     HasSlot -> [LoadHolonsResult.TitleBarSlot, LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.CollectionsSlot]
     ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
   }
@@ -1144,7 +1144,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:7bad2bdc25cf46c5482deef059bb1d80eee291736b2f055cc388d90543881512"
+  VisualizerArtifactDigest "sha256:6f34b1773981006cc871382a579da06aa18cd5fbce2627c60c2dce89b4c6f46c"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2328,38 +2328,38 @@ inverse relationship (VisualizerOperator.HolonType)-[OperatorForPresentationActi
   }
 }
 
-relationship (NodePresentationInput.HolonType)-[RequiredCapabilities]->(NodePresentationCapability.HolonType) {
+relationship (NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source NodePresentationInput.HolonType
-  target NodePresentationCapability.HolonType
+  source NodePresentationAssignment.HolonType
+  target NodePresentationRequest.HolonType
   deletion_semantic Allow
   relationships {
-    HasInverse -> RequiredByNodePresentation
-    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> RequestedByNodePresentation
+    Constraints -> ZeroOrOne.CardinalityConstraint
   }
   header {
-    description: "RequiredCapabilities semantic declaration."
-    display_name: "RequiredCapabilities"
-    display_plural: "RequiredCapabilities records"
-    plural: "RequiredCapabilitiesRecords"
+    description: "RequestedPresentation semantic declaration."
+    display_name: "RequestedPresentation"
+    display_plural: "RequestedPresentation records"
+    plural: "RequestedPresentationRecords"
   }
 }
 
-inverse relationship (NodePresentationCapability.HolonType)-[RequiredByNodePresentation]->(NodePresentationInput.HolonType) {
+inverse relationship (NodePresentationRequest.HolonType)-[RequestedByNodePresentation]->(NodePresentationAssignment.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
-  source NodePresentationCapability.HolonType
-  target NodePresentationInput.HolonType
+  source NodePresentationRequest.HolonType
+  target NodePresentationAssignment.HolonType
   deletion_semantic Allow
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }
   header {
-    description: "Inverse of RequiredCapabilities."
-    display_name: "RequiredByNodePresentation"
-    display_plural: "RequiredByNodePresentation records"
-    plural: "RequiredByNodePresentationRecords"
+    description: "Inverse of RequestedPresentation."
+    display_name: "RequestedByNodePresentation"
+    display_plural: "RequestedByNodePresentation records"
+    plural: "RequestedByNodePresentationRecords"
   }
 }
 
@@ -2433,38 +2433,38 @@ holon MetaPresentationAction.MetaHolonType {
   }
 }
 
-holon NodePresentationCapability.HolonType {
+holon NodePresentationRequest.HolonType {
   relationships {
-    InstanceProperties -> CapabilityIdentity.PropertyType
+    InstanceProperties -> PresentationRequestIdentity.PropertyType
   }
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "NodePresentationCapability.HolonType"
-    display_name: "NodePresentationCapability"
-    display_plural: "NodePresentationCapability records"
-    plural: "NodePresentationCapabilityRecords"
+    description: "NodePresentationRequest.HolonType"
+    display_name: "NodePresentationRequest"
+    display_plural: "NodePresentationRequest records"
+    plural: "NodePresentationRequestRecords"
   }
 }
 
-instance Inspect.NodePresentationCapability {
-  type NodePresentationCapability.HolonType
-  CapabilityIdentity "inspect"
+instance Inspect.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "inspect"
 }
 
-instance NavigateSingular.NodePresentationCapability {
-  type NodePresentationCapability.HolonType
-  CapabilityIdentity "navigate-singular"
+instance Relationship.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "relationship"
 }
 
-instance NavigatePlural.NodePresentationCapability {
-  type NodePresentationCapability.HolonType
-  CapabilityIdentity "navigate-plural"
+instance CollectionContext.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "collection-context"
 }
 
-instance PresentActiveCollection.NodePresentationCapability {
-  type NodePresentationCapability.HolonType
-  CapabilityIdentity "present-active-collection"
+instance Compact.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "compact"
 }
 
 property PresentationWidth.PropertyType {
@@ -2506,18 +2506,18 @@ property PresentationRequiresRestore.PropertyType {
   }
 }
 
-holon NodePresentationInput.HolonType {
+holon NodePresentationAssignment.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "Whole CSS pixel dimensions and one canonical capability set. The ApplyNodePresentation contract requires the declared Path participation profile; identity and Restore are unconditional. No invocation holon is persisted for resize."
-    display_name: "NodePresentationInput"
-    display_plural: "NodePresentationInput records"
-    plural: "NodePresentationInputRecords"
+    description: "Whole CSS pixel dimensions and an optional explicit presentation request. Omission preserves current presentation. Inspect resumes remembered Properties or Collection; Relationship and Compact preserve memory. Collection context permits local full-content switching. Identity and Restore remain available. No invocation holon is persisted for resize."
+    display_name: "NodePresentationAssignment"
+    display_plural: "NodePresentationAssignment records"
+    plural: "NodePresentationAssignmentRecords"
   }
   relationships {
     InstanceProperties -> [PresentationWidth.PropertyType, PresentationHeight.PropertyType]
-    InstanceRelationships -> [(NodePresentationInput.HolonType)-[RequiredCapabilities]->(NodePresentationCapability.HolonType)]
+    InstanceRelationships -> [(NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType)]
   }
 }
 
@@ -2557,11 +2557,11 @@ holon PresentationResult.HolonType {
   }
 }
 
-instance ApplyNodePresentation.VisualizerOperator {
+instance ApplyNodePresentationV2.VisualizerOperator {
   type VisualizerOperator.HolonType
-  VisualizerDescription "ApplyNodePresentation: identity-bound local presentation contract; complete compliance is promised before selection."
+  VisualizerDescription "ApplyNodePresentationV2: dimensions with optional explicit presentation request, independent of shared tracks. Incompatible with the retired capability-set input; participants promise the complete contract before selection."
   relationships {
-    InputType -> NodePresentationInput.HolonType
+    InputType -> NodePresentationAssignment.HolonType
     ResultType -> PresentationResult.HolonType
   }
 }
@@ -2784,7 +2784,7 @@ instance NodeTitleBarTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.node-title-bar"
-  VisualizerArtifactDigest "sha256:a164b4f70b312d69ffc61d8a762102138c8eab1f2dd1c8a5011ac356fd78f3d1"
+  VisualizerArtifactDigest "sha256:8e38f4c0660162a0dfc965be527aa484b8acbc707d5560641e21225af368e0c5"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2793,7 +2793,7 @@ instance ExplorePresentationTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.presentation-action"
-  VisualizerArtifactDigest "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2802,7 +2802,7 @@ instance ClosePresentationTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.presentation-action"
-  VisualizerArtifactDigest "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2811,7 +2811,7 @@ instance ExpandRestorePresentationTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.presentation-action"
-  VisualizerArtifactDigest "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2820,21 +2820,21 @@ instance InspectPresentationTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.presentation-action"
-  VisualizerArtifactDigest "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
 
-property CapabilityIdentity.PropertyType {
+property PresentationRequestIdentity.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
   IsValueRequired true
   header {
-    description: "CapabilityIdentity local presentation contract field."
-    display_name: "CapabilityIdentity"
-    display_plural: "CapabilityIdentity values"
-    plural: "CapabilityIdentityValues"
+    description: "PresentationRequestIdentity local presentation contract field."
+    display_name: "PresentationRequestIdentity"
+    display_plural: "PresentationRequestIdentity values"
+    plural: "PresentationRequestIdentityValues"
   }
 }
 

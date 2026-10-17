@@ -1,9 +1,11 @@
+import { actionIcon } from './action-icons.js';
 /** Operator-backed action; it never fabricates a Dance or resolves a DOM ancestor. */
 export default class PresentationAction extends HTMLElement {
   get visualizerOperations() { return { 'ApplyPresentationAction.VisualizerOperator': state => {
     this.button.disabled = !state.available;
     const label = state.label || this.context.title;
-    this.button.textContent = this.glyph || label;
+    const icon = actionIcon(this.context.presentationOperator, label === 'Restore');
+    if (icon) this.button.replaceChildren(icon); else this.button.textContent = label;
     this.button.title = state.available ? label : state.reason;
     this.button.setAttribute('aria-label', `${label}${state.available ? '' : `: ${state.reason}`}`);
     return { status: 'applied' };
@@ -22,7 +24,8 @@ export default class PresentationAction extends HTMLElement {
     }[context.presentationOperator];
     this.glyph = appearance?.[1];
     if (appearance) this.button.dataset[appearance[0]] = 'true';
-    this.button.textContent = this.glyph || context.title;
+    const icon = actionIcon(context.presentationOperator);
+    if (icon) this.button.append(icon); else this.button.textContent = context.title;
     this.button.style.cssText = 'min-width:28px;max-width:100%;min-height:28px;font:inherit;color:inherit;background:transparent;border:0;cursor:pointer;';
     this.button.addEventListener('click', () => {
       if (!this.isConnected || this.button.disabled) return;

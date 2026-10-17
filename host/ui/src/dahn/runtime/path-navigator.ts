@@ -1,4 +1,4 @@
-import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
+import { applyNodePresentation, assignedNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
 import { registerVisualizerInspection, revokeVisualizerInformationControls, selectedVisualizerInspection } from './visualizer-information-control';
 import { placeTraversal, promoteTraversal, compactTraversal, type TraversalCell } from './traversal-layout';
 import { destinationPaint } from './destination-paint';
@@ -395,7 +395,7 @@ export class PathNavigator implements PathNavigation {
       profile?.next('validate allocation and rebind navigation');
       if (!this.dismissible(occurrence)) throw new Error('Finish the active interaction before changing this Visualizer.');
       const oldControl = prior.element as VisualizerElement, newControl = prepared!.element as VisualizerElement;
-      const allocation = oldControl.getNodeInspectorAllocation?.();
+      const allocation = assignedNodePresentation(oldControl) ?? oldControl.getNodeInspectorAllocation?.();
       if (!allocation || !newControl.visualizerOperations || !newControl.setVisualizerInformationHandler) throw new Error('Node allocation participation is unavailable.');
       applyNodePresentation(newControl, allocation);
       // Rebind descriptor-classified rail targets rather than carrying old affordance objects.

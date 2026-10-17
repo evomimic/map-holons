@@ -1,12 +1,6 @@
 /** Path-owned participation policy. Content and retained band counts are not inputs. */
-export const APPLY_NODE_PRESENTATION = 'ApplyNodePresentation.VisualizerOperator';
-export const CAPABILITIES = ['inspect', 'navigate-singular', 'navigate-plural', 'present-active-collection'];
-const canonical = [[], ['inspect'], ['navigate-singular'], ['navigate-plural', 'present-active-collection'], ['navigate-singular', 'navigate-plural', 'present-active-collection']];
-export function nodeCapabilities(horizontal, vertical) {
-  if (horizontal === 'compact' || vertical === 'compact') return [];
-  if (horizontal === 'expanded' && vertical === 'expanded') return ['inspect'];
-  return [...(horizontal === 'partial' ? ['navigate-singular'] : []), ...(vertical === 'partial' ? ['navigate-plural', 'present-active-collection'] : [])];
-}
+export const APPLY_NODE_PRESENTATION = 'ApplyNodePresentationV2.VisualizerOperator';
+export const PRESENTATION_REQUESTS = ['inspect', 'collection-context', 'relationship', 'compact'];
 /** Theme font size scales the tested default profile; each owner passes its own inputs. */
 export function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
@@ -23,27 +17,34 @@ export function resolveAxis(profile, budget, frame = 0) {
   const f = P === M ? 1 : Math.max(0, Math.min(1, (budget - frame - M) / (P - M)));
   return { compact: Math.ceil(minimum[0] + f * (preferred[0] - minimum[0])), partial: Math.ceil(minimum[1] + f * (preferred[1] - minimum[1])), expanded: Math.ceil(minimum[2] + f * (preferred[2] - minimum[2])), channel: Math.ceil(channel.minimum + f * (channel.preferred - channel.minimum)) };
 }
-export function validateNodePresentation(input) {
-  const caps = input?.requiredCapabilities;
-  if (!Array.isArray(caps) || new Set(caps).size !== caps.length
-      || !canonical.some(set => set.length === caps.length && set.every(c => caps.includes(c)))) throw new Error('Invalid Node capabilities');
-  const inspect = caps.includes('inspect'), plural = caps.includes('navigate-plural'), singular = caps.includes('navigate-singular');
+export function validateNodePresentation(input, mode = 'properties') {
+  if (!input || 'requiredCapabilities' in input || (input.presentation !== undefined && !PRESENTATION_REQUESTS.includes(input.presentation))) throw new Error('Invalid Node presentation assignment');
+  const effective = input.presentation === 'compact' || input.presentation === 'relationship' ? input.presentation
+    : input.presentation ? 'properties' : mode;
   const profile = participationProfile();
-  const minimum = { width: profile.horizontal.minimum[inspect || plural && !singular ? 2 : singular ? 1 : 0], height: profile.vertical.minimum[inspect || singular && !plural ? 2 : plural ? 1 : 0] };
-  if (!Number.isFinite(input.width) || !Number.isFinite(input.height) || input.width < minimum.width || input.height < minimum.height) throw new Error('Node presentation is outside the supported participation range');
-  return { width: input.width, height: input.height, requiredCapabilities: [...caps] };
+  const minimum = { width: profile.horizontal.minimum[effective === 'compact' ? 0 : effective === 'relationship' ? 1 : 2],
+    height: profile.vertical.minimum[effective === 'compact' ? 0 : 1] };
+  if (!Number.isInteger(input.width) || !Number.isInteger(input.height) || input.width < minimum.width || input.height < minimum.height) throw new Error('Node presentation is outside the supported participation range');
+  return { width: input.width, height: input.height, ...(input.presentation === undefined ? {} : { presentation: input.presentation }) };
 }
 /** Invoke only the explicitly admitted receiver; no private-name or renderer fallback. */
-const accepted = new WeakMap();
+// Shared stable symbol lets the authored runtime and bundled artifacts read the
+// same last owner assignment during atomic Visualizer replacement.
+const accepted = Symbol.for('map.dahn.node-presentation-v2');
+/** Retained owner assignment for atomic replacement; this is not child mode discovery. */
+export function assignedNodePresentation(element) {
+  const input = element[accepted];
+  return input && { ...input };
+}
 export function applyNodePresentation(element, input) {
   const binding = element.visualizerOperations?.[APPLY_NODE_PRESENTATION];
   if (typeof binding !== 'function') throw new Error('Missing ApplyNodePresentation binding');
-  validateNodePresentation(input);
-  const prior = accepted.get(element);
+  validateNodePresentation(input, input.presentation === undefined ? 'compact' : undefined);
+  const prior = element[accepted];
   try {
     const result = binding(input);
     if (!result || result.status !== 'applied') throw new Error(result?.reason || 'Node refused its contracted presentation');
-    accepted.set(element, input);
+    element[accepted] = { ...input, presentation: input.presentation ?? prior?.presentation ?? 'inspect' };
     return result;
   } catch (error) {
     if (prior) { try { binding(prior); } catch { /* The owner exposes recovery for the violated contract. */ } }

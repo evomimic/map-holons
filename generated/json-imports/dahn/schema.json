@@ -578,7 +578,7 @@
           "name": "OffersOperator",
           "target": [
             {
-              "$ref": "ApplyNodePresentation.VisualizerOperator"
+              "$ref": "ApplyNodePresentationV2.VisualizerOperator"
             },
             {
               "$ref": "ExploreOccurrence.VisualizerOperator"
@@ -685,7 +685,7 @@
           "name": "RequiresOperator",
           "target": [
             {
-              "$ref": "ApplyNodePresentation.VisualizerOperator"
+              "$ref": "ApplyNodePresentationV2.VisualizerOperator"
             }
           ]
         }
@@ -771,7 +771,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:4b0c20b961c02528189eef7e84d7a25e808688b5848c262dcebf13f280297df2",
+        "VisualizerArtifactDigest": "sha256:f2d7b3369f5b7b5f42dd889d1468f9ec42e0a8099b88ab08a8e2776624cbfe07",
         "VisualizerImplementationKey": "dahn.actions",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -782,7 +782,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:097c7e193076a93ceb7ec27b34a29292c8ea08b68e362fbfadffb720894f20bb",
+        "VisualizerArtifactDigest": "sha256:b2db07698f93558e2b49b314364d01b173135ed174e382e9680e6203c57ac382",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -975,7 +975,7 @@
           "name": "RequiresOperator",
           "target": [
             {
-              "$ref": "ApplyNodePresentation.VisualizerOperator"
+              "$ref": "ApplyNodePresentationV2.VisualizerOperator"
             }
           ]
         }
@@ -986,7 +986,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:c82a7a2201f0ae11fc4f899ca0a4b30e9e36ccb144ee93f205e152067c8b5780",
+        "VisualizerArtifactDigest": "sha256:8e7c9ac96ddbbf727f1929e892785a494f3545e2d6ede65b24db8cee60135a6d",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3181,7 +3181,7 @@
           "name": "OffersOperator",
           "target": [
             {
-              "$ref": "ApplyNodePresentation.VisualizerOperator"
+              "$ref": "ApplyNodePresentationV2.VisualizerOperator"
             },
             {
               "$ref": "ExploreOccurrence.VisualizerOperator"
@@ -3207,7 +3207,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:7bad2bdc25cf46c5482deef059bb1d80eee291736b2f055cc388d90543881512",
+        "VisualizerArtifactDigest": "sha256:6f34b1773981006cc871382a579da06aa18cd5fbce2627c60c2dce89b4c6f46c",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -7000,14 +7000,14 @@
       ]
     },
     {
-      "key": "(NodePresentationInput.HolonType)-[RequiredCapabilities]->(NodePresentationCapability.HolonType)",
+      "key": "(NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "RequiredCapabilities",
-        "TypeNamePlural": "RequiredCapabilitiesRecords",
-        "DisplayName": "RequiredCapabilities",
-        "DisplayNamePlural": "RequiredCapabilities records",
-        "Description": "RequiredCapabilities semantic declaration.",
+        "TypeName": "RequestedPresentation",
+        "TypeNamePlural": "RequestedPresentationRecords",
+        "DisplayName": "RequestedPresentation",
+        "DisplayNamePlural": "RequestedPresentation records",
+        "Description": "RequestedPresentation semantic declaration.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -7031,7 +7031,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "NodePresentationInput.HolonType"
+              "$ref": "NodePresentationAssignment.HolonType"
             }
           ]
         },
@@ -7039,7 +7039,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "NodePresentationCapability.HolonType"
+              "$ref": "NodePresentationRequest.HolonType"
             }
           ]
         },
@@ -7047,7 +7047,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(NodePresentationCapability.HolonType)-[RequiredByNodePresentation]->(NodePresentationInput.HolonType)"
+              "$ref": "(NodePresentationRequest.HolonType)-[RequestedByNodePresentation]->(NodePresentationAssignment.HolonType)"
             }
           ]
         },
@@ -7055,21 +7055,21 @@
           "name": "Constraints",
           "target": [
             {
-              "$ref": "ZeroOrMore.CardinalityConstraint"
+              "$ref": "ZeroOrOne.CardinalityConstraint"
             }
           ]
         }
       ]
     },
     {
-      "key": "(NodePresentationCapability.HolonType)-[RequiredByNodePresentation]->(NodePresentationInput.HolonType)",
+      "key": "(NodePresentationRequest.HolonType)-[RequestedByNodePresentation]->(NodePresentationAssignment.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "RequiredByNodePresentation",
-        "TypeNamePlural": "RequiredByNodePresentationRecords",
-        "DisplayName": "RequiredByNodePresentation",
-        "DisplayNamePlural": "RequiredByNodePresentation records",
-        "Description": "Inverse of RequiredCapabilities.",
+        "TypeName": "RequestedByNodePresentation",
+        "TypeNamePlural": "RequestedByNodePresentationRecords",
+        "DisplayName": "RequestedByNodePresentation",
+        "DisplayNamePlural": "RequestedByNodePresentation records",
+        "Description": "Inverse of RequestedPresentation.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -7093,7 +7093,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "NodePresentationCapability.HolonType"
+              "$ref": "NodePresentationRequest.HolonType"
             }
           ]
         },
@@ -7101,7 +7101,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "NodePresentationInput.HolonType"
+              "$ref": "NodePresentationAssignment.HolonType"
             }
           ]
         },
@@ -7320,14 +7320,14 @@
       ]
     },
     {
-      "key": "NodePresentationCapability.HolonType",
+      "key": "NodePresentationRequest.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "NodePresentationCapability",
-        "TypeNamePlural": "NodePresentationCapabilityRecords",
-        "DisplayName": "NodePresentationCapability",
-        "DisplayNamePlural": "NodePresentationCapability records",
-        "Description": "NodePresentationCapability.HolonType"
+        "TypeName": "NodePresentationRequest",
+        "TypeNamePlural": "NodePresentationRequestRecords",
+        "DisplayName": "NodePresentationRequest",
+        "DisplayNamePlural": "NodePresentationRequest records",
+        "Description": "NodePresentationRequest.HolonType"
       },
       "relationships": [
         {
@@ -7350,38 +7350,38 @@
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "CapabilityIdentity.PropertyType"
+              "$ref": "PresentationRequestIdentity.PropertyType"
             }
           ]
         }
       ]
     },
     {
-      "key": "Inspect.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType",
+      "key": "Inspect.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType",
       "properties": {
-        "CapabilityIdentity": "inspect"
+        "PresentationRequestIdentity": "inspect"
       }
     },
     {
-      "key": "NavigateSingular.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType",
+      "key": "Relationship.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType",
       "properties": {
-        "CapabilityIdentity": "navigate-singular"
+        "PresentationRequestIdentity": "relationship"
       }
     },
     {
-      "key": "NavigatePlural.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType",
+      "key": "CollectionContext.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType",
       "properties": {
-        "CapabilityIdentity": "navigate-plural"
+        "PresentationRequestIdentity": "collection-context"
       }
     },
     {
-      "key": "PresentActiveCollection.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType",
+      "key": "Compact.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType",
       "properties": {
-        "CapabilityIdentity": "present-active-collection"
+        "PresentationRequestIdentity": "compact"
       }
     },
     {
@@ -7499,14 +7499,14 @@
       ]
     },
     {
-      "key": "NodePresentationInput.HolonType",
+      "key": "NodePresentationAssignment.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "NodePresentationInput",
-        "TypeNamePlural": "NodePresentationInputRecords",
-        "DisplayName": "NodePresentationInput",
-        "DisplayNamePlural": "NodePresentationInput records",
-        "Description": "Whole CSS pixel dimensions and one canonical capability set. The ApplyNodePresentation contract requires the declared Path participation profile; identity and Restore are unconditional. No invocation holon is persisted for resize."
+        "TypeName": "NodePresentationAssignment",
+        "TypeNamePlural": "NodePresentationAssignmentRecords",
+        "DisplayName": "NodePresentationAssignment",
+        "DisplayNamePlural": "NodePresentationAssignment records",
+        "Description": "Whole CSS pixel dimensions and an optional explicit presentation request. Omission preserves current presentation. Inspect resumes remembered Properties or Collection; Relationship and Compact preserve memory. Collection context permits local full-content switching. Identity and Restore remain available. No invocation holon is persisted for resize."
       },
       "relationships": [
         {
@@ -7540,7 +7540,7 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(NodePresentationInput.HolonType)-[RequiredCapabilities]->(NodePresentationCapability.HolonType)"
+              "$ref": "(NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType)"
             }
           ]
         }
@@ -7654,17 +7654,17 @@
       ]
     },
     {
-      "key": "ApplyNodePresentation.VisualizerOperator",
+      "key": "ApplyNodePresentationV2.VisualizerOperator",
       "type": "VisualizerOperator.HolonType",
       "properties": {
-        "VisualizerDescription": "ApplyNodePresentation: identity-bound local presentation contract; complete compliance is promised before selection."
+        "VisualizerDescription": "ApplyNodePresentationV2: dimensions with optional explicit presentation request, independent of shared tracks. Incompatible with the retired capability-set input; participants promise the complete contract before selection."
       },
       "relationships": [
         {
           "name": "InputType",
           "target": [
             {
-              "$ref": "NodePresentationInput.HolonType"
+              "$ref": "NodePresentationAssignment.HolonType"
             }
           ]
         },
@@ -8283,7 +8283,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:a164b4f70b312d69ffc61d8a762102138c8eab1f2dd1c8a5011ac356fd78f3d1",
+        "VisualizerArtifactDigest": "sha256:8e38f4c0660162a0dfc965be527aa484b8acbc707d5560641e21225af368e0c5",
         "VisualizerImplementationKey": "dahn.node-title-bar",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -8294,7 +8294,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616",
+        "VisualizerArtifactDigest": "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3",
         "VisualizerImplementationKey": "dahn.presentation-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -8305,7 +8305,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616",
+        "VisualizerArtifactDigest": "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3",
         "VisualizerImplementationKey": "dahn.presentation-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -8316,7 +8316,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616",
+        "VisualizerArtifactDigest": "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3",
         "VisualizerImplementationKey": "dahn.presentation-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -8327,21 +8327,21 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:3755b246a21f32c633434d6cc3b302d5d2e802801f631b0191f9c866bac2d616",
+        "VisualizerArtifactDigest": "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3",
         "VisualizerImplementationKey": "dahn.presentation-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
     },
     {
-      "key": "CapabilityIdentity.PropertyType",
+      "key": "PresentationRequestIdentity.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "CapabilityIdentity",
-        "TypeNamePlural": "CapabilityIdentityValues",
-        "DisplayName": "CapabilityIdentity",
-        "DisplayNamePlural": "CapabilityIdentity values",
-        "Description": "CapabilityIdentity local presentation contract field.",
+        "TypeName": "PresentationRequestIdentity",
+        "TypeNamePlural": "PresentationRequestIdentityValues",
+        "DisplayName": "PresentationRequestIdentity",
+        "DisplayNamePlural": "PresentationRequestIdentity values",
+        "Description": "PresentationRequestIdentity local presentation contract field.",
         "IsValueRequired": true
       },
       "relationships": [

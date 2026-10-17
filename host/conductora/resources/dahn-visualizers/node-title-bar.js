@@ -4,19 +4,27 @@
 function createNodeTitleBar(context, options) {
   const title = context.childVisualizers?.get("titleBar");
   const actions = context.childVisualizers?.get("actions");
-  const element = document.createElement("header");
-  element.style.cssText = "display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-width:0;min-height:0;overflow:hidden;";
-  element.append(title);
-  if (actions) element.append(actions);
   if (!title?.visualizerOperations?.["ApplyTitlePresentation.VisualizerOperator"]) throw new Error("Node requires an admitted selected Title Bar");
+  const element = document.createElement("header");
+  element.dataset.nodeTitleHeader = "true";
+  element.style.cssText = "display:flex;align-items:center;min-width:0;min-height:0;overflow:auto;";
+  element.append(title);
+  title.style.flex = "1 1 0";
+  title.style.minWidth = "80px";
+  if (actions) {
+    actions.style.flex = "0 1 60%";
+    actions.style.minWidth = "44px";
+    actions.style.maxWidth = "60%";
+    element.append(actions);
+  }
   let state = {}, information;
   const operations = {
     ...context.presentationOperators,
     "ExploreOccurrence.VisualizerOperator": () => options.explore?.(),
     "CloseOccurrence.VisualizerOperator": () => options.close?.(),
     "RestoreNodePresentation.VisualizerOperator": () => {
-      options.restoreLocal?.();
       if (state.collapsed) return options.restore?.();
+      options.restoreLocal?.();
       return { status: "already-satisfied" };
     },
     "ExpandRestoreOccurrence.VisualizerOperator": () => state.collapsed ? options.restore?.() : options.maximize?.(state.maximized ? "restore" : "maximize"),
@@ -32,18 +40,26 @@ function createNodeTitleBar(context, options) {
       "InspectOccurrence.VisualizerOperator": { available: !!information, reason: "Occurrence inspection is unavailable." }
     };
     actions?.setOccurrenceActions?.(actionsState, invoke);
-    return binding({
-      width: state.width ?? 800,
-      height: Math.max(32, (state.height ?? 96) / 2),
+    const width = state.width ?? 800;
+    const actionWidth = actions ? Math.max(44, Math.min(width * 0.6, width - 80)) : 0;
+    const titleWidth = Math.max(80, width - actionWidth);
+    title.style.flex = `0 0 ${titleWidth}px`;
+    if (actions) {
+      actions.style.flex = `0 0 ${actionWidth}px`;
+      actions.style.maxWidth = `${actionWidth}px`;
+    }
+    const result = binding({
+      width: titleWidth,
+      height: Math.max(32, state.height ?? 48),
       title: options.title,
       holonKey: options.holonKey,
       requiresRestore: !!state.requiresRestore
     });
+    return result;
   };
   const update = (patch) => {
     state = { ...state, ...patch };
-    state.collapsed = state.vertical !== "full-height" || state.horizontal !== "full-width";
-    state.requiresRestore = !!state.localExpanded || state.collapsed;
+    state.requiresRestore = !!state.collapsed;
     publish();
   };
   const invoke = (key, invoker) => {

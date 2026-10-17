@@ -4,7 +4,7 @@ import { composeNodeTitle } from '../src/dahn/runtime/title-composition';
 import { MaterializedVisualizerRuntime } from '../src/dahn/runtime/materialized-visualizer-runtime';
 import { MaterializedVisualizerCache } from '../src/dahn/runtime/materialized-visualizer-cache';
 import { defineCustomElementOnce } from '../src/dahn/visualizers/define-custom-element-once';
-import { applyNodePresentation, nodeCapabilities, participationProfile } from '../../conductora/visualizer-src/node-presentation.js';
+import { applyNodePresentation, participationProfile } from '../../conductora/visualizer-src/node-presentation.js';
 
 /** Browser fixture backend supplies explicit semantic selections. Rust compatibility
  * is tested separately against the real reference layer; this fixture exercises
@@ -36,7 +36,7 @@ const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCach
   return { source: await (await fetch(`/resources/${filename}.js`)).text(), format: 'ESModule', entrypoint: 'default' };
 } }));
 let serial = 0;
-export async function mount(kind: string, horizontal: string, vertical: string, textScale = 1, activeCollection = true) {
+export async function mount(kind: string, mode: string, textScale = 1, activeCollection = true, budget = 'minimum') {
   document.body.replaceChildren();
   titleChoice = kind === 'loader' ? 'CompactTitleBar.TitleBarVisualizer' : 'NodeTitleBar.TitleBarVisualizer';
   const owner = ref(kind === 'generic' ? 'HolonInspector.NodeVisualizer' : 'LoadHolons.NodeVisualizer');
@@ -72,11 +72,13 @@ export async function mount(kind: string, horizontal: string, vertical: string, 
   node.setVisualizerInformationHandler(() => {}, 'Fixture Node');
   node.style.fontSize = `${16 * textScale}px`;
   const profile = participationProfile(16 * textScale);
-  const index = (state: string) => state === 'expanded' ? 2 : state === 'partial' ? 1 : 0;
-  const grant = { width: profile.horizontal.minimum[index(horizontal)], height: profile.vertical.minimum[index(vertical)], requiredCapabilities: nodeCapabilities(horizontal, vertical) };
+  const horizontal = mode === 'compact' ? 0 : mode === 'relationship' ? 1 : 2;
+  const vertical = mode === 'compact' ? 0 : mode === 'relationship' ? 1 : 2;
+  const grant = { width: profile.horizontal[budget][horizontal], height: profile.vertical[budget][vertical], presentation: mode === 'compact' || mode === 'relationship' ? mode : 'inspect' };
   document.body.append(node);
   await runtime.admitOffered(node, owner);
   applyNodePresentation(node, grant);
+  if (mode === 'collection') node.setNodeOwnedCollection(collection);
   await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
   return { grant, bounds: node.getBoundingClientRect().toJSON() };
 }
@@ -99,17 +101,14 @@ export function measure() {
     if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) failures.push(`Sibling overlap: ${first.tagName}/${second.tagName}`);
   }
   const propertyList = node.querySelector('[data-dahn-properties-list]');
-  if (node.getNodeInspectorAllocation().requiredCapabilities.includes('inspect') && propertyList?.getBoundingClientRect().height < 100 * (parseFloat(node.style.fontSize) / 16)) failures.push(`Properties viewport too short: ${propertyList.getBoundingClientRect().height}px`);
-  return { failures, edit: node.querySelector('[data-dahn-properties] input')?.value, restored: node.dataset.restored, capabilities: node.getNodeInspectorAllocation().requiredCapabilities };
+  if (node.dataset.inspectorMode === 'properties' && propertyList?.getBoundingClientRect().height < 100 * (parseFloat(node.style.fontSize) / 16)) failures.push(`Properties viewport too short: ${propertyList.getBoundingClientRect().height}px`);
+  return { failures, edit: node.querySelector('[data-dahn-properties] input')?.value, restored: node.dataset.restored, mode: node.dataset.inspectorMode };
 }
-export function reassign(horizontal: string, vertical: string, textScale: number) {
+export function reassign(presentation: string | undefined, textScale: number, compact = false) {
   const node: any = document.body.firstElementChild;
   const profile = participationProfile(16 * textScale);
-  const index = (state: string) => ['compact', 'partial', 'expanded'].indexOf(state);
-  applyNodePresentation(node, { width: profile.horizontal.minimum[index(horizontal)], height: profile.vertical.minimum[index(vertical)], requiredCapabilities: nodeCapabilities(horizontal, vertical) });
+  applyNodePresentation(node, { width: profile.horizontal.minimum[compact ? 0 : 2], height: profile.vertical.minimum[compact ? 0 : 2], ...(presentation ? { presentation } : {}) });
 }
-// Preserve the observed failure shape without shipping its retired renderer:
-// intrinsic action rows intersect a Collection after the body collapses to zero.
 export function historicalOverlapDetected() {
   const owner = document.createElement('section');
   owner.style.cssText = 'position:relative;width:360px;height:280px;';

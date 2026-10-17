@@ -241,7 +241,7 @@ export interface VisualizerElement extends HTMLElement, Partial<NodeInspectorPar
   /** Idempotent release of implementation-owned presentation resources. */
   dispose?(): void;
   /** Accepts borrowed action-owned collection content at publication. */
-  setNodeOwnedCollection?(content: HTMLElement): void;
+  setNodeOwnedCollection?(content: HTMLElement, activate?: boolean): void;
   setNodeOwnedSummary?(content: HTMLElement): void;
   setContext(context: VisualizerContext): void;
   /** Explicit completion of initialization; replacement requires this readiness signal. */

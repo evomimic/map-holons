@@ -2,13 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { defineCustomElementOnce } from './define-custom-element-once';
-import { APPLY_NODE_PRESENTATION, nodeCapabilities, participationProfile, resolveAxis } from '../../../../conductora/visualizer-src/node-presentation.js';
+import { APPLY_NODE_PRESENTATION, participationProfile, resolveAxis } from '../../../../conductora/visualizer-src/node-presentation.js';
 const source = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/path-inspector.js'), 'utf8');
 const { default: Path } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 function node(id: string, row: number, column: number, parent?: string, axis?: string): any {
   const element: any = document.createElement('section');
   element.textContent = id;
-  element.visualizerOperations = { [APPLY_NODE_PRESENTATION]: vi.fn(input => { element.assignment = input; return { status: 'applied' }; }) };
+  element.visualizerOperations = { [APPLY_NODE_PRESENTATION]: vi.fn(input => { element.assignment = { ...input }; if (input.presentation) element.presentation = input.presentation; return { status: 'applied' }; }) };
   element.getSpatialExtents = () => { throw new Error('Child geometry must remain opaque'); };
   return { id, row, rowId: `r${row}`, column, element, ...(parent ? { provenance: { parentOccurrenceId: parent, kind: axis === 'horizontal' ? 'singular-relationship' : 'collection-member' } } : {}) };
 }
@@ -26,23 +26,24 @@ beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn());
 });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
-it('implements all nine canonical capability assignments with minimal dominance', () => {
-  for (const horizontal of ['compact', 'partial', 'expanded']) for (const vertical of ['compact', 'partial', 'expanded']) {
-    const caps = nodeCapabilities(horizontal, vertical);
-    if (horizontal === 'compact' || vertical === 'compact') expect(caps).toEqual([]);
-    else if (horizontal === 'expanded' && vertical === 'expanded') expect(caps).toEqual(['inspect']);
-    else expect(caps).toEqual([...(horizontal === 'partial' ? ['navigate-singular'] : []), ...(vertical === 'partial' ? ['navigate-plural', 'present-active-collection'] : [])]);
-  }
-});
-it('protects only the latest source of each axis and aggregates both axes before deriving capabilities', () => {
-  const items = [node('A', 0, 1), node('B', 0, 2, 'A', 'horizontal'), node('C', 1, 2, 'B', 'vertical'), node('D', 1, 3, 'C', 'horizontal'), node('E', 2, 3, 'D', 'vertical')];
+it('compresses A/B together after A↓B→C and restores A without changing B presentation or placement', () => {
+  const items = [node('A', 0, 1), node('B', 1, 1, 'A', 'vertical'), node('C', 1, 2, 'B', 'horizontal')];
   const { path, publish } = fixture(items);
-  expect(items.map(item => item.element.assignment.requiredCapabilities)).toEqual([[], [], ['navigate-singular', 'navigate-plural', 'present-active-collection'], ['navigate-plural', 'present-active-collection'], ['inspect']]);
-  const positions = items.map(item => [item.id, item.row, item.column]);
-  publish(items, { occurrenceId: 'C', mode: 'restore' });
-  expect(items.map(item => item.element.assignment.requiredCapabilities)).toEqual([['navigate-singular', 'navigate-plural', 'present-active-collection'], ['navigate-plural', 'present-active-collection'], ['inspect'], [], []]);
-  expect(items.map(item => [item.id, item.row, item.column])).toEqual(positions);
-  expect(path.regions.get('C').dataset.focused).toBe('true');
+  expect(items.map(item => item.element.presentation)).toEqual(['relationship', 'relationship', 'inspect']);
+  expect(items[0].element.assignment.width).toBe(items[1].element.assignment.width);
+  const positions = items.map(item => [item.row, item.column]);
+  publish(items, { occurrenceId: 'A', mode: 'restore' });
+  expect(items.map(item => item.element.presentation)).toEqual(['inspect', 'relationship', 'inspect']);
+  expect(items[0].element.assignment.width).toBe(items[1].element.assignment.width);
+  expect(items[1].element.assignment.presentation).toBeUndefined();
+  path.allocateRows();
+  expect(items.map(item => item.element.presentation)).toEqual(['inspect', 'relationship', 'inspect']);
+  expect(items.map(item => [item.row, item.column])).toEqual(positions);
+});
+it('assigns latest contextual sources independently of shared track intersections', () => {
+  const items = [node('A', 0, 1), node('B', 0, 2, 'A', 'horizontal'), node('C', 1, 2, 'B', 'vertical')];
+  fixture(items);
+  expect(items.map(item => item.element.presentation)).toEqual(['relationship', 'collection-context', 'inspect']);
 });
 it.each(['horizontal', 'vertical'])('keeps %s state dimensions stable as history grows and expired sources go offscreen', axis => {
   const items = [node('0', 0, 1)]; const { path, publish } = fixture(items);
@@ -76,7 +77,7 @@ it('gives pending and materialized destinations equal rectangles regardless of s
   const complete = node('B', 0, 2, 'A', 'horizontal'); complete.element.textContent = 'very long target content '.repeat(100);
   publish([root, complete], { occurrenceId: 'B', mode: 'traverse' });
   expect(path.layoutBounds.get('B')).toEqual(expected);
-  expect(complete.element.assignment.requiredCapabilities).toEqual(['inspect']);
+  expect(complete.element.presentation).toBe('inspect');
   publish([root, { ...complete, message: 'A long recoverable error '.repeat(20) }], { occurrenceId: 'B', mode: 'traverse' });
   expect(path.layoutBounds.get('B')).toEqual(expected);
 });
@@ -85,7 +86,7 @@ it('allocates shared bands uniformly and leaves sparse cells empty', () => {
   const { path } = fixture(items, 'C');
   expect(items[0].element.assignment.height).toBe(items[1].element.assignment.height);
   expect(items[1].element.assignment.width).toBe(items[2].element.assignment.width);
-  expect(items[3].element.assignment.requiredCapabilities).toEqual([]);
+  expect(items[3].element.presentation).toBe('compact');
   expect(path.regions.size).toBe(4);
   expect(path.regions.get('X').style.gridRow).toBe('3');
 });
@@ -150,7 +151,7 @@ it.each(['horizontal', 'vertical'])('animates pending %s navigation over fixed p
     const focus = { occurrenceId: 'B', mode: 'traverse' };
     publish([source], focus, target);
     const geometry = [...path.layoutBounds];
-    const assignment = structuredClone(source.element.assignment);
+    const assignment = { width: source.element.assignment.width, height: source.element.assignment.height }; const presentation = source.element.presentation;
     expect(path.dataset.traversalPhase).toBe('source-compressing');
     const transition = path.traversalTransition;
     const tick = (now: number) => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(now)); };
@@ -158,7 +159,7 @@ it.each(['horizontal', 'vertical'])('animates pending %s navigation over fixed p
     expect(path.dataset.traversalPhase).toBe('traversal-revealing');
     publish([source, target], focus);
     expect([...path.layoutBounds]).toEqual(geometry);
-    expect(source.element.assignment).toEqual(assignment);
+    expect(source.element.assignment).toMatchObject(assignment); expect(source.element.presentation).toBe(presentation);
     path.viewport.dispatchEvent(new Event('wheel'));
     expect(path.traversalTransition).toBeUndefined(); expect(transition.cancelled).toBe(true);
     const position = [path.viewport.scrollLeft, path.viewport.scrollTop];

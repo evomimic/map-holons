@@ -32,73 +32,46 @@ try {
   await page.waitForFunction(() => !!window.allocationFixture);
   if (!await page.evaluate(() => window.allocationFixture.historicalOverlapDetected())) throw new Error('Historical overlap regression oracle failed');
   let cases = 0;
-  for (const kind of ['generic', 'loader']) for (const scale of [1, 1.25, 2]) for (const horizontal of ['compact', 'partial', 'expanded']) for (const vertical of ['compact', 'partial', 'expanded']) {
-    await page.evaluate(args => window.allocationFixture.mount(...args), [kind, horizontal, vertical, scale]);
+  for (const kind of ['generic', 'loader']) for (const scale of [1, 1.25, 2]) for (const mode of ['properties', 'collection', 'relationship', 'compact']) for (const budget of ['minimum', 'preferred']) {
+    await page.evaluate(args => window.allocationFixture.mount(...args), [kind, mode, scale, true, budget]);
     const result = await page.evaluate(() => window.allocationFixture.measure());
-    if (result.failures.length) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: ${result.failures.join('; ')}`);
-    // Action controls are components of the single Node-owned bar and fit its grant.
-    const actionBounds = await page.evaluate(() => {
-      const bars = [...document.querySelectorAll('[data-dahn-node-actions]')];
-      if (bars.length !== 1) return 'Expected exactly one Node ActionBar';
-      const bar = bars[0], owner = bar.getBoundingClientRect();
-      for (const control of bar.querySelectorAll('[data-overflow-row] > button')) {
-        if (getComputedStyle(control).visibility === 'hidden') continue;
-        const rect = control.getBoundingClientRect();
-        if (rect.bottom > owner.bottom + 1 || rect.top < owner.top - 1) return 'Action control exceeds bar allocation';
-      }
-      if (bar.querySelectorAll('[data-action-id]').length !== 4) return 'Missing standard Action components';
-      return '';
-    });
-    if (actionBounds) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: ${actionBounds}`);
-    // The identity Restore remains reachable at every non-inspect assignment.
-    if (!result.capabilities.includes('inspect')) {
+    const context = `${kind} ${mode} ${budget} @${scale}`;
+    if (result.failures.length) throw new Error(`${context}: ${result.failures.join('; ')}`);
+    if (result.mode !== mode) throw new Error(`${context}: wrong presentation ${result.mode}`);
+    const bars = await page.locator('[data-dahn-node-actions]').count();
+    if (bars !== 1) throw new Error(`${context}: expected one selected ActionBar`);
+    if (mode === 'relationship' || mode === 'compact') {
       const identity = page.locator('[data-node-title-bar] > button'); await identity.focus(); await page.keyboard.press('Enter');
-      if (!(await page.evaluate(() => window.allocationFixture.measure())).restored) throw new Error('Keyboard Restore failed');
+      if (!(await page.evaluate(() => window.allocationFixture.measure())).restored) throw new Error(`${context}: keyboard Restore failed`);
     }
-    // Required navigation remains focusable and hittable after local scrolling.
-    if (result.capabilities.includes('navigate-plural') || result.capabilities.includes('inspect')) {
-      const member = page.getByRole('button', { name: 'Open Collection member 29', exact: true });
-      await member.focus();
-      await member.evaluate(element => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
-      const hittable = await member.evaluate(element => {
-        const rect = element.getBoundingClientRect();
-        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return document.activeElement === element && !!hit && element.contains(hit);
-      });
-      if (!hittable) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: Collection navigation is clipped or obscured`);
-    }
-    if (result.capabilities.includes('navigate-singular') || result.capabilities.includes('inspect')) {
+    if (mode === 'properties' || mode === 'relationship') {
       const singular = page.getByRole('button', { name: /^Navigate singular relationship/ });
-      if (result.capabilities.includes('inspect') && !await singular.isVisible()) throw new Error(`${kind} @${scale}: Full inspection hides the entire singular rail behind disclosure`);
       if (!await singular.isVisible()) await page.getByRole('button', { name: 'More relationships', exact: true }).click();
-      await singular.focus();
-      await singular.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
-      const hittable = await singular.evaluate(element => {
-        const rect = element.getBoundingClientRect();
-        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return document.activeElement === element && !!hit && element.contains(hit);
-      });
-      if (!hittable) throw new Error(`${kind} ${horizontal}/${vertical} @${scale}: Singular navigation is clipped or obscured`);
+      await singular.focus(); await singular.evaluate(element => element.scrollIntoView({ block: 'nearest' }));
+      if (!await singular.evaluate(element => { const r = element.getBoundingClientRect(); return document.activeElement === element && element.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)); })) throw new Error(`${context}: relationship control is obscured`);
     }
-    // Compression and restoration reuse the exact selected content and edit.
-    await page.evaluate(scale => window.allocationFixture.reassign('compact', 'compact', scale), scale);
-    await page.evaluate(scale => window.allocationFixture.reassign('expanded', 'expanded', scale), scale);
+    if (mode === 'collection') {
+      const member = page.getByRole('button', { name: 'Open Collection member 29', exact: true });
+      await member.focus(); await member.evaluate(element => element.scrollIntoView({ block: 'nearest' }));
+      if (!await member.evaluate(element => { const r = element.getBoundingClientRect(); return document.activeElement === element && element.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)); })) throw new Error(`${context}: collection navigation is obscured`);
+      await page.getByRole('button', { name: 'Properties', exact: true }).click();
+      const local = await page.evaluate(() => window.allocationFixture.measure());
+      if (local.mode !== 'properties' || local.edit !== result.edit) throw new Error(`${context}: local Properties return lost state`);
+      // Re-enter Collection using the same selected child; no selection or materialization.
+      await page.evaluate(() => { const node = document.body.firstElementChild; const child = node.querySelector('nav[aria-label="Non-table Collection"]'); node.setNodeOwnedCollection(child); });
+    }
+    const remembered = (await page.evaluate(() => window.allocationFixture.measure())).mode;
+    await page.evaluate(scale => window.allocationFixture.reassign('compact', scale, true), scale);
+    await page.evaluate(scale => window.allocationFixture.reassign(undefined, scale), scale);
+    if ((await page.evaluate(() => window.allocationFixture.measure())).mode !== 'compact') throw new Error(`${context}: width silently restored presentation`);
+    await page.evaluate(scale => window.allocationFixture.reassign('inspect', scale), scale);
     const restored = await page.evaluate(() => window.allocationFixture.measure());
-    if (restored.edit !== result.edit || restored.failures.length) throw new Error(`Resize lost content or containment: ${restored.failures.join('; ')}`);
-    for (let step = 0; step < 12; step++) await page.keyboard.press('Tab');
-    if (!result.edit.startsWith('retained-')) throw new Error('Retained edit state was lost');
-    cases++;
-  }
-  for (const kind of ['generic', 'loader']) for (const scale of [1, 1.25, 2]) {
-    await page.evaluate(args => window.allocationFixture.mount(...args), [kind, 'expanded', 'expanded', scale, false]);
-    const result = await page.evaluate(() => window.allocationFixture.measure());
-    if (result.failures.length) throw new Error(`Unopened Collection: ${result.failures.join('; ')}`);
-    const height = await page.locator('[data-dahn-properties-list]').evaluate(element => element.getBoundingClientRect().height);
-    if (height < 250 * scale) throw new Error(`Unopened viewer still consumes Properties space: ${kind} @${scale}: ${height}`);
+    if (restored.edit !== result.edit || restored.failures.length) throw new Error(`${context}: Restore lost state/containment: ${restored.failures.join('; ')}`);
+    if (remembered === 'collection' && restored.mode !== 'collection') throw new Error(`${context}: forgot Collection`);
     cases++;
   }
   if (process.env.MAP_ALLOCATION_SCREENSHOT) {
-    await page.evaluate(() => window.allocationFixture.mount('generic', 'expanded', 'expanded', 1, false));
+    await page.evaluate(() => window.allocationFixture.mount('generic', 'properties', 1, false, 'preferred'));
     await page.screenshot({ path: process.env.MAP_ALLOCATION_SCREENSHOT });
   }
   if (errors.length) throw new Error(errors.join('\n'));

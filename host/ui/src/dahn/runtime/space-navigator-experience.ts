@@ -147,7 +147,7 @@ export class SpaceNavigatorExperience {
             if (parent) parent.insertBefore(owned, next);
             if (summary && summaryParent) summaryParent.insertBefore(summary, summaryNext ?? null);
           };
-          try { control.setNodeOwnedCollection!(owned); if (summary) control.setNodeOwnedSummary!(summary); }
+          try { control.setNodeOwnedCollection!(owned, false); if (summary) control.setNodeOwnedSummary!(summary); }
           catch (error) { restore(); throw error; }
           return restore;
         };

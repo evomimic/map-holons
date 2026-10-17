@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "8a24f012ebe1fe663686a5f169b62b939496f0db51b20c05ad4061bf16441878"
+      "sha256": "f99c92de238e8a956ab264304ce1aae9ad0e1fb22391f9471cc07dad7447cd9d"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -672,12 +672,12 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(NodePresentationCapability.HolonType)-[RequiredByNodePresentation]->(NodePresentationInput.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+      "key": "(NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(NodePresentationInput.HolonType)-[RequiredCapabilities]->(NodePresentationCapability.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+      "key": "(NodePresentationRequest.HolonType)-[RequestedByNodePresentation]->(NodePresentationAssignment.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)",
@@ -1268,7 +1268,7 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "ApplyNodePresentation.VisualizerOperator",
+      "key": "ApplyNodePresentationV2.VisualizerOperator",
       "type": "VisualizerOperator.HolonType"
     },
     {
@@ -1392,10 +1392,6 @@
       "type": "MetaVisualizerType.MetaHolonType"
     },
     {
-      "key": "CapabilityIdentity.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor"
-    },
-    {
       "key": "CardinalityConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
     },
@@ -1418,6 +1414,10 @@
     {
       "key": "ClosePresentationTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "CollectionContext.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType"
     },
     {
       "key": "CollectionHeaderSurfaceBackground.DesignToken",
@@ -1510,6 +1510,10 @@
     {
       "key": "CommitsAttempted.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Compact.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType"
     },
     {
       "key": "CompactTitleBar.TitleBarVisualizer",
@@ -2672,8 +2676,8 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
-      "key": "Inspect.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType"
+      "key": "Inspect.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType"
     },
     {
       "key": "InspectOccurrence.VisualizerOperator",
@@ -3220,14 +3224,6 @@
       "type": "DesignToken.HolonType"
     },
     {
-      "key": "NavigatePlural.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType"
-    },
-    {
-      "key": "NavigateSingular.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType"
-    },
-    {
       "key": "NewHolon.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
@@ -3252,11 +3248,11 @@
       "type": "DesignToken.HolonType"
     },
     {
-      "key": "NodePresentationCapability.HolonType",
+      "key": "NodePresentationAssignment.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
-      "key": "NodePresentationInput.HolonType",
+      "key": "NodePresentationRequest.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
@@ -3352,10 +3348,6 @@
       "type": "VisualizerOperator.HolonType"
     },
     {
-      "key": "PresentActiveCollection.NodePresentationCapability",
-      "type": "NodePresentationCapability.HolonType"
-    },
-    {
       "key": "PresentationAction.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -3369,6 +3361,10 @@
     },
     {
       "key": "PresentationHeight.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PresentationRequestIdentity.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
@@ -3562,6 +3558,10 @@
     {
       "key": "RedoToMarker.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "Relationship.NodePresentationRequest",
+      "type": "NodePresentationRequest.HolonType"
     },
     {
       "key": "RelationshipCollectionPolicy.ValidationRule",

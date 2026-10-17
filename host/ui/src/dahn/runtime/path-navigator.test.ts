@@ -134,11 +134,11 @@ describe('vertical traversal through selected artifacts', () => {
     const table = f.root.element.querySelector('table');
     const title = (element: HTMLElement) => element.querySelector<HTMLButtonElement>('[data-holon-inspector-title] button')!;
     title(child.element).click();
-    expect(allocations()).toEqual(['partial', 'expanded', 'compact']);
+    expect(allocations()).toEqual(['compact', 'expanded', 'expanded']);
     title(f.root.element).click();
-    expect(allocations()).toEqual(['expanded', 'compact', 'compact']);
+    expect(allocations()).toEqual(['expanded', 'expanded', 'expanded']);
     title(retained[2].element).click();
-    expect(allocations()).toEqual(['compact', 'partial', 'expanded']);
+    expect(allocations()).toEqual(['expanded', 'expanded', 'expanded']);
     title(f.root.element).click();
     expect(f.path()).toEqual(retained);
     expect(f.root.element.querySelector('table')).toBe(table);

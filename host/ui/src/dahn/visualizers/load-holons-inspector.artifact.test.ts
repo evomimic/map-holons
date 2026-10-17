@@ -12,27 +12,21 @@ it('adopts actual owned summary and Collection instances without changing the Pa
   node.setOccurrenceRestorationHandler(vi.fn());
   const summary = document.createElement('section'), collection = document.createElement('nav');
   summary.innerHTML = '<input value="retained request">'; collection.dataset.selection = 'retained member';
-  node.setNodeOwnedSummary(summary); node.setNodeOwnedCollection(collection);
-  const grant = { width: 800, height: 640, requiredCapabilities: ['inspect'] }; applyNodePresentation(node, grant);
+  node.setNodeOwnedSummary(summary); node.setNodeOwnedCollection(collection, false);
+  applyNodePresentation(node, { width: 800, height: 640, presentation: 'inspect' });
+  expect(node.dataset.inspectorMode).toBe('properties');
+  expect(collection.hidden).toBe(true);
+  node.collectionsExpand.click();
+  expect(node.dataset.inspectorMode).toBe('collection');
+  const grant = { width: 800, height: 640, presentation: 'inspect' }; applyNodePresentation(node, grant);
   const report = vi.fn(); node.addEventListener('dahn-spatial-extents-changed', report);
   summary.dispatchEvent(new CustomEvent('dahn-content-extent-changed', { bubbles: true }));
-  applyNodePresentation(node, { width: 80, height: 64, requiredCapabilities: [] });
+  applyNodePresentation(node, { width: 80, height: 64, presentation: 'compact' });
   applyNodePresentation(node, grant);
-  expect(node.getNodeInspectorAllocation()).toEqual(grant); expect(report).not.toHaveBeenCalled();
+  expect(node.getNodeInspectorAllocation()).toEqual({ width: grant.width, height: grant.height }); expect(report).not.toHaveBeenCalled();
   expect(node.properties.firstChild).toBe(summary); expect(node.collections.contains(collection)).toBe(true);
   expect(summary.querySelector('input')!.value).toBe('retained request'); expect(collection.dataset.selection).toBe('retained member');
   node.remove();
 });
-it('clears incompatible Collection emphasis and retains both-context navigation', () => {
-  const node: any = document.createElement(defineCustomElementOnce('fixture-context-loader-node', Loader));
-  node.setContext(selectedTitleContext({ title: 'Load Holons', childVisualizers: new Map([['collections', document.createElement('nav')]]) }));
-  node.setOccurrenceRestorationHandler(vi.fn());
-  applyNodePresentation(node, { width: 800, height: 640, requiredCapabilities: ['inspect'] });
-  node.collectionsMaximized = true;
-  applyNodePresentation(node, { width: 180, height: 200, requiredCapabilities: ['navigate-singular', 'navigate-plural', 'present-active-collection'] });
-  expect(node.collectionsMaximized).toBe(false); expect(node.collections.inert).toBe(false); expect(node.rail.inert).toBe(false);
-  applyNodePresentation(node, { width: 800, height: 640, requiredCapabilities: ['inspect'] }); expect(node.collectionsMaximized).toBe(false);
-});
-
 beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn()); });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });

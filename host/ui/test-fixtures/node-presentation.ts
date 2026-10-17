@@ -1,9 +1,12 @@
-import { nodeCapabilities, participationProfile } from '../../conductora/visualizer-src/node-presentation.js';
+import { participationProfile } from '../../conductora/visualizer-src/node-presentation.js';
 /** Translate historical test vectors into the canonical input (no production axis protocol). */
 export function presentationAssignment(input: any) {
   const state = (axis: string) => axis?.startsWith('full') ? 'expanded' : axis?.startsWith('partial') ? 'partial' : 'compact';
-  return { width: input.width, height: input.height,
-    requiredCapabilities: input.requiredCapabilities ?? nodeCapabilities(state(input.horizontal), state(input.vertical)) };
+  const horizontal = state(input.horizontal), vertical = state(input.vertical);
+  const presentation = input.presentation ?? (horizontal === 'compact' || vertical === 'compact' ? 'compact'
+    : horizontal === 'partial' ? 'relationship' : vertical === 'partial' ? 'collection-context' : 'inspect');
+  return { width: input.width, height: input.height, presentation };
+
 }
 /** Declared policy data for fixtures; never a report from a selected child. */
 export function profileExtents() {

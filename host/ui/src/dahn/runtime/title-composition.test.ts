@@ -51,7 +51,7 @@ async function fixture(subjectActions: ActionNode[] = [], interactions?: ActionI
   node.setContext({ ...context, childVisualizers: new Map([['titleBar', title], ['actions', actions], ['properties', properties]]) });
   document.body.append(node); node.setOccurrenceRestorationHandler(vi.fn());
   const inspect = vi.fn(); node.setVisualizerInformationHandler(inspect, 'Containing Node');
-  applyNodePresentation(node, { width: 800, height: 640, requiredCapabilities: ['inspect'] });
+  applyNodePresentation(node, { width: 800, height: 640, presentation: 'inspect' });
   return { node, title, actions, activations, properties, owner, subject, runtime, transaction, materialize, compact: ref(compact.key), ref, inspect };
 }
 it('selects one Title Bar and one mixed ActionBar with the unchanged Holon subject', async () => {
@@ -63,7 +63,7 @@ it('selects one Title Bar and one mixed ActionBar with the unchanged Holon subje
   const information = f.actions.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLElement;
   information.click(); expect(f.inspect).toHaveBeenCalledWith(information);
   const before = f.transaction.selectVisualizer.mock.calls.length, modules = f.materialize.mock.calls.length;
-  applyNodePresentation(f.node, { width: 80, height: 64, requiredCapabilities: [] });
+  applyNodePresentation(f.node, { width: 80, height: 64, presentation: 'compact' });
   expect(f.transaction.selectVisualizer).toHaveBeenCalledTimes(before); expect(f.materialize).toHaveBeenCalledTimes(modules);
 });
 it('replaces only identity presentation while preserving the sibling bar and its bindings', async () => {
@@ -85,7 +85,7 @@ it('retains the current title and edit state on preparation failure or stale aut
   await expect(old.choices!.choose!(f.compact, () => false)).rejects.toThrow('stale');
 });
 it('rejects missing callable offers before publishing a selected child', async () => {
-  const f = await fixture(); const slot = { relatedHolons: async () => [f.ref('ApplyNodePresentation.VisualizerOperator')] };
+  const f = await fixture(); const slot = { relatedHolons: async () => [f.ref('ApplyNodePresentationV2.VisualizerOperator')] };
   await expect(f.runtime.admit(document.createElement('div'), slot as never)).rejects.toThrow('Missing required');
   await expect(f.runtime.admitOffered(document.createElement('div'), f.owner)).rejects.toThrow('Missing offered');
 });

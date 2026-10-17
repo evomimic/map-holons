@@ -1,5 +1,6 @@
+import { initialInspectorPresentation, inspectorPresentation, selectInspectorView } from './inspector-presentation.js';
 import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
-import { inspectorLayout, boundedRegion } from './inspector-layout.js';
+import { inspectorLayout, applyInspectorGeometry } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 /** Specialized properties and result collections within ordinary Node allocation. */
@@ -18,16 +19,18 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.propertyVisualizer = content;
     this.properties.replaceChildren(content);
   }
-  setNodeOwnedCollection(content) {
+  setNodeOwnedCollection(content, activate = true) {
+    this.ownedCollection = content;
     this.collections.replaceChildren(this.collectionsExpand, this.discoveryStatus, content);
     Object.assign(content.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
     this.hasCollections = true;
     this.ownedCollectionOpen = true;
+    if (activate) this.presentationState = selectInspectorView(this.presentationState, 'collection');
     this.collectionsExpand.hidden = false;
     this.collectionsExpand.style.display = 'block';
     if (this.allocation) this.setNodeInspectorAllocation(this.allocation);
   }
-  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation, requiredCapabilities: [...this.allocation.requiredCapabilities] }; }
+  getNodeInspectorAllocation() { return this.allocation && { ...this.allocation }; }
   restoreNodeCollectionSelection(affordance) {
     const tab = this.collectionControls.get(affordance);
     if (!tab) throw new Error('Selected collection is unavailable.');
@@ -35,10 +38,11 @@ export default class LoadHolonsInspector extends HTMLElement {
   }
   setContext(context) {
     this.unsubscribe?.();
+    this.presentationState = initialInspectorPresentation();
     this.style.cssText = 'display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-panel-corner-radius);background:var(--dahn-canvas-surface-background);color:var(--dahn-canvas-text-color);';
     this.titleBar = createNodeTitleBar(context, {
       title: context.title ?? 'Load Holons', holonKey: context.holonKey ?? context.title,
-      restoreLocal: () => { if (this.collectionsMaximized) { this.collectionsMaximized = false; this.setNodeInspectorAllocation(this.allocation); } },
+      restoreLocal: () => {},
       restore: () => this.restore?.(), explore: () => this.explore?.(), close: () => this.close?.(),
       maximize: operation => this.attention?.(operation),
     });
@@ -74,8 +78,8 @@ export default class LoadHolonsInspector extends HTMLElement {
 
     this.collections = document.createElement('section');
     this.collections.style.cssText = 'min-width:0;min-height:0;overflow:auto;flex:1 1 auto;';
-    this.collectionsExpand = control('Maximize Collections', '⤢', () => {
-      this.collectionsMaximized = !this.collectionsMaximized;
+    this.collectionsExpand = control('Results', 'Results', () => {
+      this.presentationState = selectInspectorView(this.presentationState, 'collection');
       this.setNodeInspectorAllocation(this.allocation);
     });
     this.collectionsExpand.style.cssText += 'display:block;margin-left:auto;min-height:28px;';
@@ -93,7 +97,9 @@ export default class LoadHolonsInspector extends HTMLElement {
         const tab = document.createElement('button'); tab.type = 'button'; tab.textContent = affordance.label;
         tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false');
         tab.addEventListener('click', () => context.collectionActivation.activate(affordance, 'LoadHolonsResult.CollectionsSlot', update => {
-          this.activeCollection = affordance;
+          if (update.placement === 'source') return;
+          this.activeCollection = update.state === 'unresolved' ? undefined : affordance;
+          this.presentationState = selectInspectorView(this.presentationState, update.state === 'unresolved' ? 'properties' : 'collection');
           for (const button of tabs.children) button.setAttribute('aria-selected', String(button === tab));
           if (update.content) viewer.replaceChildren(update.content);
           else {
@@ -113,13 +119,23 @@ export default class LoadHolonsInspector extends HTMLElement {
     }
     this.hasCollections = !!collections;
     this.ownedCollectionOpen = !!context.childVisualizers?.get('collections');
+    this.ownedCollection = context.childVisualizers?.get('collections');
     this.collectionsExpand.hidden = !this.hasCollections;
     this.collectionsExpand.style.display = this.hasCollections ? 'block' : 'none';
-    this.content = document.createElement('section');
-    this.content.style.cssText = 'display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;gap:.75rem;flex:1 1 auto;';
-    this.content.append(this.properties, this.collections);
-    this.body.append(this.content, this.rail);
-    this.replaceChildren(heading, this.body);
+    this.propertiesHeading = document.createElement('header');
+    this.propertiesHeading.dataset.propertiesTitleBar = 'true';
+    this.propertiesHeading.style.cssText = 'min-width:0;min-height:0;align-items:center;';
+    this.propertiesToggle = document.createElement('button');
+    this.propertiesToggle.type = 'button'; this.propertiesToggle.textContent = 'Properties';
+    this.propertiesToggle.style.cssText = 'text-align:left;flex:1;min-width:0;color:inherit;background:transparent;border:0;font:inherit;';
+    this.propertiesToggle.addEventListener('click', () => {
+      this.presentationState = selectInspectorView(this.presentationState, 'properties');
+      if (this.allocation) this.applyNodePresentation(this.allocation);
+    });
+    this.propertiesHeading.append(this.propertiesToggle);
+    this.content = this.body;
+    this.body.replaceChildren(this.propertiesHeading, this.properties, this.rail);
+    this.replaceChildren(heading, this.body, this.collections);
     this.unsubscribe = context.relationshipDiscovery?.subscribe(() => {
       this.discoveryStatus.replaceChildren();
       let pending = 0;
@@ -145,7 +161,6 @@ export default class LoadHolonsInspector extends HTMLElement {
         this.hasCollections = [...this.collectionControls.values()].some(tab => !tab.hidden);
         this.collectionsExpand.hidden = !this.hasCollections;
         this.collectionsExpand.style.display = this.hasCollections ? 'block' : 'none';
-        if (!this.hasCollections) this.collectionsMaximized = false;
         this.setNodeInspectorAllocation(this.allocation);
       }
       for (const [affordance, button] of this.controls) {
@@ -189,32 +204,22 @@ export default class LoadHolonsInspector extends HTMLElement {
   setOccurrenceRestorationHandler(handler) { this.restore = handler; }
   get visualizerOperations() { return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: input => this.applyNodePresentation(input) }; }
   applyNodePresentation(input) {
-    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), !!(this.activeCollection || this.ownedCollectionOpen));
-    this.allocation = { width: input.width, height: input.height, requiredCapabilities: [...input.requiredCapabilities] };
-    Object.assign(this.style, { width: `${layout.width}px`, height: `${layout.height}px` });
-    this.heading.style.height = `${layout.title}px`; this.heading.style.flex = `0 0 ${layout.title}px`;
-    if (!layout.inspect) this.collectionsMaximized = false;
-    this.titleBar.update({ width: layout.width, height: layout.title, vertical: layout.vertical, horizontal: layout.horizontal, localExpanded: !!this.collectionsMaximized });
-    if (this.body) {
-      boundedRegion(this.body, layout.singular || layout.plural, 'Load result navigation');
-      boundedRegion(this.properties, layout.inspect && !this.collectionsMaximized, 'Load summary — scroll for more');
-      boundedRegion(this.rail, layout.singular, 'Single-valued relationships — scroll for more');
-      boundedRegion(this.collections, layout.plural, 'Result collections — scroll for more');
-      this.body.style.display = layout.singular || layout.plural ? 'flex' : 'none';
-      this.body.style.overflow = 'hidden'; this.body.style.position = 'relative';
-      this.content.hidden = false; this.content.style.display = 'flex'; this.content.style.gap = '0';
-      this.properties.style.display = this.properties.hidden ? 'none' : 'block';
-      this.properties.style.height = `${layout.body}px`; this.properties.style.flex = `0 0 ${layout.body}px`;
-      this.collections.style.display = layout.plural ? 'flex' : 'none';
-      this.collections.style.flex = '1 1 0'; this.collections.style.flexDirection = 'column';
-      this.rail.style.display = layout.singular ? 'flex' : 'none';
-      this.rail.style.maxWidth = layout.inspect ? 'min(40%, 14rem)' : layout.plural ? '40%' : '100%';
-      this.rail.style.flex = layout.inspect || layout.plural ? '0 1 14rem' : '1 1 0';
-      // Both-context keeps the rail and the active Collection independently usable.
-      if (!layout.inspect && !layout.plural) { this.content.hidden = true; this.content.style.display = 'none'; }
-      this.collectionsExpand.setAttribute('aria-label', this.collectionsMaximized ? 'Restore Collections' : 'Maximize Collections');
-      if ([this.properties, this.collections, this.body].some(region => region.inert && region.contains(document.activeElement))) this.titleControl.focus();
-    }
+    const next = inspectorPresentation(this.presentationState ?? initialInspectorPresentation(), input.presentation);
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode);
+    this.presentationState = next;
+    if (input.presentation !== undefined) this.collectionContext = input.presentation === 'collection-context';
+    this.allocation = { width: input.width, height: input.height };
+    const active = document.activeElement;
+    applyInspectorGeometry({ root: this, title: this.heading, body: this.body,
+      heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.properties,
+      rail: this.rail, collections: this.collections }, layout);
+    if (this.propertyVisualizer) Object.assign(this.propertyVisualizer.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
+    this.titleBar.update({ width: layout.width, height: layout.title, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });
+    this.collectionsExpand.hidden = !this.ownedCollectionOpen;
+    this.collectionsExpand.style.display = this.ownedCollectionOpen ? 'block' : 'none';
+    if (this.ownedCollection) { this.ownedCollection.hidden = layout.mode !== 'collection'; this.ownedCollection.inert = layout.mode !== 'collection'; }
+    if (this.collectionViewer) { this.collectionViewer.inert = layout.mode !== 'collection'; this.collectionViewer.style.display = layout.mode === 'collection' ? 'flex' : 'none'; }
+    if ([this.properties, this.collections, this.body, this.rail].some(region => region.inert && region.contains(active))) this.titleControl.focus();
     return { status: 'applied' };
   }
   setNodeInspectorAllocation(input) { if (input) return this.applyNodePresentation(input); }

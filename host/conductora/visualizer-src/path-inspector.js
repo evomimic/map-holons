@@ -1,4 +1,5 @@
-import { participationProfile, resolveAxis, nodeCapabilities, applyNodePresentation } from './node-presentation.js';
+import { contextualPresentations } from './path-presentation.js';
+import { participationProfile, resolveAxis, applyNodePresentation } from './node-presentation.js';
 
 export default class PathInspectorElement extends HTMLElement {
   static compositionSlots = { node: 'PathInspector.RootNodeSlot' };
@@ -225,7 +226,7 @@ export default class PathInspectorElement extends HTMLElement {
     }
     this.lineage.style.visibility = 'hidden';
     Object.assign(region.style, { position: 'absolute', gridArea: 'auto', left: '0', top: '0', width: `${width}px`, height: `${height}px`, boxSizing: 'border-box' });
-    this.assign(occurrence, { width: width - insets.width, height: height - insets.height, requiredCapabilities: ['inspect'] });
+    this.assign(occurrence, { width: width - insets.width, height: height - insets.height, presentation: 'inspect' });
     this.view.scale = 1;
     this.view.setGeometry(width, height, width, height);
     this.view.position(0, 0);
@@ -258,24 +259,17 @@ export default class PathInspectorElement extends HTMLElement {
     const allocations = Array.from({ length: columns }, () => 'compact');
     this.rowAllocations.clear();
     for (const id of rows) this.rowAllocations.set(id, 'compact');
-    // Protect the latest source on each ancestry axis, at most two sources.
-    const protectedSources = new Map();
-    let child = frontier;
-    const seen = new Set();
-    while (child && !seen.has(child.id)) {
-      seen.add(child.id);
-      const parent = this.occurrences.find(item => item.id === (child.provenance?.parentOccurrenceId ?? child.parentOccurrenceId));
-      if (!parent) break;
-      const axis = child.axis ?? (child.provenance?.kind === 'singular-relationship' ? 'horizontal' : 'vertical');
-      if (!protectedSources.has(axis)) protectedSources.set(axis, parent);
-      child = parent;
+    const rank = { compact: 0, partial: 1, expanded: 2 };
+    const widen = (previous, next) => rank[next] > rank[previous] ? next : previous;
+    for (const occurrence of this.occurrences) {
+      const intent = this.presentationAssignments?.get(occurrence.id) ?? 'inspect';
+      const column = (occurrence.column ?? 1) - 1;
+      const width = intent === 'compact' ? 'compact' : intent === 'relationship' ? 'partial' : 'expanded';
+      const height = intent === 'compact' ? 'compact' : intent === 'inspect' ? 'expanded' : 'partial';
+      allocations[column] = widen(allocations[column], width);
+      const rowId = this.rowId(occurrence);
+      this.rowAllocations.set(rowId, widen(this.rowAllocations.get(rowId), height));
     }
-    for (const [axis, source] of protectedSources) {
-      allocations[(source.column ?? 1) - 1] = 'partial';
-      this.rowAllocations.set(this.rowId(source), 'partial');
-    }
-    allocations[(frontier.column ?? 1) - 1] = 'expanded';
-    this.rowAllocations.set(this.rowId(frontier), 'expanded');
     const heights = rows.map(id => vertical[this.rowAllocations.get(id)] + frame.height);
     const statusHeights = rows.map(() => 0);
     this.columnWidths = allocations.map(state => horizontal[state] + frame.width);
@@ -296,9 +290,9 @@ export default class PathInspectorElement extends HTMLElement {
       const allocation = {
         width: Math.max(0, this.columnWidths[(occurrence.column ?? 1) - 1] - insets.width),
         height: Math.max(0, heights[row] - insets.height),
-        requiredCapabilities: nodeCapabilities(allocations[(occurrence.column ?? 1) - 1], this.rowAllocations.get(this.rowId(occurrence))),
+        ...(this.pendingPresentations?.has(occurrence.id) ? { presentation: this.pendingPresentations.get(occurrence.id) } : {}),
       };
-      if (this.attention?.id !== occurrence.id) this.assign(occurrence, allocation);
+      if (this.attention?.id !== occurrence.id && this.assign(occurrence, allocation)) this.pendingPresentations?.delete(occurrence.id);
       this.layoutBounds.set(occurrence.id, {
         x: this.columnOffsets[(occurrence.column ?? 1) - 1],
         y: heights.slice(0, row).reduce((sum, height, index) => sum + height + statusHeights[index] + gap, 0),
@@ -460,6 +454,25 @@ export default class PathInspectorElement extends HTMLElement {
     const focusChanged = focus ? focus !== this.focus : added.length > 0;
     const frontier = focus ? occurrences.find(item => item.id === focus.occurrenceId) : added.at(-1);
     this.focus = focus;
+    this.presentationAssignments ??= new Map();
+    this.pendingPresentations ??= new Map();
+    if (focusChanged && focus?.mode === 'restore' && frontier && !removed) {
+      this.presentationAssignments.set(frontier.id, 'inspect');
+      this.pendingPresentations.set(frontier.id, 'inspect');
+    } else if ((focusChanged && focus?.mode === 'traverse') || removed || (!this.presentationAssignments.size && occurrences.length)) {
+      this.presentationAssignments = contextualPresentations(occurrences, focus?.occurrenceId);
+      this.pendingPresentations = new Map(this.presentationAssignments);
+    }
+    for (const occurrence of occurrences) {
+      if (!this.presentationAssignments.has(occurrence.id)) {
+        this.presentationAssignments.set(occurrence.id, 'inspect');
+        this.pendingPresentations.set(occurrence.id, 'inspect');
+      }
+      if (this.regions.get(occurrence.id)?.nodeElement !== occurrence.element) this.pendingPresentations.set(occurrence.id, this.presentationAssignments.get(occurrence.id));
+    }
+    for (const id of this.presentationAssignments.keys()) if (!all.some(item => item.id === id)) {
+      this.presentationAssignments.delete(id); this.pendingPresentations.delete(id);
+    }
     const live = new Set(all.map(occurrence => occurrence.id));
     for (const [id, region] of this.regions) {
       if (!live.has(id)) { this.clearVisualizerReplacement(region); region.remove(); this.regions.delete(id); }
@@ -594,6 +607,7 @@ export default class PathInspectorElement extends HTMLElement {
     try {
       applyNodePresentation(occurrence.element, allocation);
       delete this.regions.get(occurrence.id).dataset.contractViolation;
+      return true;
     } catch (error) {
       const region = this.regions.get(occurrence.id);
       region.dataset.contractViolation = 'true';
