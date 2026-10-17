@@ -153,7 +153,8 @@ mod tests {
 
         let rendered = format!(
             "{} {}",
-            network_config.bootstrap_url, /*network_config.signal_url,*/ network_config.relay_url
+            network_config.bootstrap_url,
+            /*network_config.signal_url,*/ network_config.relay_url
         );
         assert!(!rendered.contains("holochain.org"), "public endpoint survived: {rendered}");
         assert!(!rendered.contains("iroh.link"), "public endpoint survived: {rendered}");

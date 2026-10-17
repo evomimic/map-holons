@@ -32,7 +32,7 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
 
     //if let Some(signal_url) = &holochain_config.signal_url {
     //    network_config.signal_url = url2::Url2::parse(signal_url);
-   // }
+    // }
 
     //if let Some(proxy_url) = &holochain_config.proxy_url {
     //   network_config.proxy_url = Some(url2::Url2::parse(proxy_url));
