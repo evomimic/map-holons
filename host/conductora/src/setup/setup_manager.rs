@@ -26,6 +26,19 @@ impl SetupManager {
         }
     }
 
+    /// Preserve the provider's failure detail at the application startup boundary.
+    fn startup_failure(provider_name: &str, event_name: &str, payload: &str) -> anyhow::Error {
+        let detail = serde_json::from_str::<String>(payload)
+            .ok()
+            .filter(|message| !message.trim().is_empty());
+        let message =
+            format!("Provider '{}' emitted startup failure event '{}'", provider_name, event_name);
+        match detail {
+            Some(detail) => anyhow::anyhow!("{}: {}", message, detail),
+            None => anyhow::anyhow!(message),
+        }
+    }
+
     async fn wait_for_provider_ready(
         handle: &AppHandle,
         provider_name: &str,
@@ -61,16 +74,12 @@ impl SetupManager {
             let failure_event_name = failure_event.to_string();
             let failure_sender = Arc::clone(&ready_sender);
             let provider_name = provider_name.clone();
-            handle.once(failure_event_name.clone(), move |_event| {
-                tracing::error!("[SETUP MANAGER] Received '{}' failure event.", failure_event_name);
-                Self::resolve_ready(
-                    &failure_sender,
-                    Err(anyhow::anyhow!(
-                        "Provider '{}' emitted startup failure event '{}'",
-                        provider_name,
-                        failure_event_name
-                    )),
-                );
+            handle.once(failure_event_name.clone(), move |event| {
+                let error =
+                    Self::startup_failure(&provider_name, &failure_event_name, event.payload());
+                tracing::error!("[SETUP MANAGER] {}", error);
+                tracing::debug!("[SETUP MANAGER] Received '{}' failure event.", failure_event_name);
+                Self::resolve_ready(&failure_sender, Err(error));
             })
         });
 
@@ -218,5 +227,31 @@ impl SetupManager {
         setup.create_window(handle, "").await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn startup_failure_preserves_provider_detail() {
+        let payload = serde_json::to_string("DatabaseError: SQL logic error").unwrap();
+        let error =
+            SetupManager::startup_failure("holochain_dev", "holochain://setup-failed", &payload);
+        let message = error.to_string();
+        assert!(message.contains("holochain_dev"));
+        assert!(message.contains("DatabaseError: SQL logic error"));
+    }
+
+    #[test]
+    fn startup_failure_handles_events_without_detail() {
+        for payload in ["null", "{}", "\"\"", "not json"] {
+            let message =
+                SetupManager::startup_failure("holochain_dev", "holochain://setup-failed", payload)
+                    .to_string();
+            assert!(message.contains("holochain://setup-failed"));
+            assert!(!message.ends_with(": "));
+        }
     }
 }

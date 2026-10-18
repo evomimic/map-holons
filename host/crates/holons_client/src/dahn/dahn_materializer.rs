@@ -171,7 +171,12 @@ impl DahnMaterializer {
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "PathInspector.RootedNavigationVisualizer" => "path-inspector.js",
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
-            "ConnectionsFirstInspector.NodeVisualizer" => "connections-first-inspector.js",
+            "ConnectionsFirstInspector.NodeVisualizer" => return Err(HolonError::NotImplemented(
+                "Connections First has been retired. Update the DAHN schema and explicitly choose a compatible Node Visualizer; existing holons and usage records are retained.".into())),
+            "NodeTitleBar.TitleBarVisualizer" => "node-title-bar.js",
+            "CompactTitleBar.TitleBarVisualizer" => "compact-title-bar.js",
+            "ExplorePresentation.ActionVisualizer" | "ClosePresentation.ActionVisualizer"
+            | "ExpandRestorePresentation.ActionVisualizer" | "InspectPresentation.ActionVisualizer" => "presentation-action.js",
             "VisualizerInspector.Visualizer" => "visualizer-inspector.js",
             "DiscoveryTree.StructureVisualizer" => "discovery-tree.js",
             "DiscoveryLevels.StructureVisualizer" => "discovery-levels.js",
@@ -319,6 +324,17 @@ mod tests {
                 .to_string_lossy(),
             "/artifacts/holon-inspector.js"
         );
+    }
+
+    #[test]
+    fn retired_connections_first_is_unavailable_with_explicit_recovery() {
+        let materializer = DahnMaterializer::new("/artifacts".into());
+        let key = MapString::from("ConnectionsFirstInspector.NodeVisualizer");
+        assert!(!materializer.artifact_available(&key).unwrap());
+        let error = materializer.artifact_for(&key).unwrap_err().to_string();
+        assert!(error.contains("retired"));
+        assert!(error.contains("explicitly choose"));
+        assert!(error.contains("usage records are retained"));
     }
 
     #[test]

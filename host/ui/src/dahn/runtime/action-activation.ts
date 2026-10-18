@@ -7,9 +7,11 @@ import type { HolonReference, MapTransaction } from '../deps';
 export interface ActionBinding {
   readonly subject: HolonReference;
   readonly dance: HolonReference;
-  /** Selected presentation owner, retained for owned result-slot composition. */
+  /** Containing presentation owner, retained for workflow result-slot composition. */
   readonly visualizer: HolonReference;
   readonly occurrence: HTMLElement;
+  /** Actual activating component, when activation came from a rendered control. */
+  readonly invoker?: HTMLElement;
   readonly label: string;
   readonly mountPresentation?: (element: HTMLElement, owner: ActionInteraction) => { focus(): void; remove(): void };
   readonly presentResult?: (request: {
@@ -32,16 +34,16 @@ export interface ActionInteractions {
   openLoadHolons(binding: ActionBinding): ActionInteraction;
 }
 
-/** Generic occurrence lifetime. Selected Action Visualizers supply the interaction factory. */
+/** Workflow occurrence lifetime. The composing owner supplies the interaction factory. */
 export class ActionActivation {
   private interaction?: ActionInteraction;
   private disposed = false;
   constructor(readonly binding: ActionBinding) {}
 
-  activate(open: (binding: ActionBinding) => ActionInteraction): void {
+  activate(open: (binding: ActionBinding) => ActionInteraction, invoker?: HTMLElement): void {
     if (this.disposed) return;
     if (this.interaction) { this.interaction.focus(); return; }
-    const interaction = open(this.binding);
+    const interaction = open(invoker ? { ...this.binding, invoker } : this.binding);
     this.interaction = interaction;
     void interaction.closed.then(() => { if (this.interaction === interaction) this.interaction = undefined; });
   }

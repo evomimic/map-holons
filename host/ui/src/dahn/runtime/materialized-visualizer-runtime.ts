@@ -38,6 +38,24 @@ export class MaterializedVisualizerRuntime {
     return matches[0];
   }
 
+  /** Admission checks actual callable bindings for the slot's complete contract. */
+  async admit(element: HTMLElement, slot: HolonReference): Promise<void> {
+    const operations = (element as HTMLElement & { visualizerOperations?: Record<string, unknown> }).visualizerOperations;
+    for (const operator of await slot.relatedHolons('RequiresOperator')) {
+      const key = await operator.key();
+      if (!key || typeof operations?.[key] !== 'function') throw new Error(`Missing required Visualizer Operator binding: ${key}`);
+    }
+  }
+
+  /** Offered declarations must also have materialized callables, independent of slot use. */
+  async admitOffered(element: HTMLElement, selected: HolonReference): Promise<void> {
+    const bindings = (element as HTMLElement & { visualizerOperations?: Record<string, unknown> }).visualizerOperations;
+    for (const operator of await selected.relatedHolons('OffersOperator')) {
+      const key = await operator.key();
+      if (!key || typeof bindings?.[key] !== 'function') throw new Error(`Missing offered Visualizer Operator binding: ${key}`);
+    }
+  }
+
   /** A presentation may supply its own transaction-scoped materialization cache;
    * verified module identity remains shared across the experience's realizations. */
   async realize(selectedVisualizer: HolonReference, cache = this.cache): Promise<unknown> {

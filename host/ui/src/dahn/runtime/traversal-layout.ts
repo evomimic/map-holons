@@ -20,28 +20,42 @@ export function orderedTraversalSiblings(cells: readonly TraversalCell[], parent
   return [...groups.values()].sort((a, b) => (b[0].groupOrder ?? b[0].order) - (a[0].groupOrder ?? a[0].order)).flat();
 }
 
-/**
- * Reserve a group's outward terminal cell, moving only later branches outward.
- * Earlier group members retain their coordinates. Close compaction is separate.
+/** Insert a new forward band once; later destinations take the canonical cell.
+ * Existing branches move only outward. Semantic grouping never anchors pixels.
  */
-export function placeTraversal(cells: TraversalCell[], target: TraversalCell): void {
+export function placeTraversal(cells: TraversalCell[], target: TraversalCell, established = false): void {
   const source = cells.find(cell => cell.id === target.parent)!;
-  const axis = target.axis === 'horizontal' ? 'row' : 'column';
-  const forward = axis === 'row' ? 'column' : 'row';
-  const siblings = orderedTraversalSiblings(cells, source.id, target.axis);
-  const index = siblings.indexOf(target);
-  const preceding = siblings.slice(0, index).flatMap(sibling => descendants(cells, sibling.id));
-  target[axis] = Math.max(source[axis], ...preceding.map(cell => cell[axis] + 1));
+  const forward = target.axis === 'horizontal' ? 'column' : 'row';
+  const cross = target.axis === 'horizontal' ? 'row' : 'column';
+  const siblings = cells.filter(cell => cell !== target && cell.parent === source.id && cell.axis === target.axis);
+  if (!siblings.length && !established) {
+    for (const cell of cells) if (cell !== target && cell[forward] > source[forward]) cell[forward]++;
+  }
   target[forward] = source[forward] + 1;
-  let terminal = target[axis];
-  for (const sibling of siblings.slice(index + 1)) {
-    const branch = descendants(cells, sibling.id);
-    const minimum = Math.min(...branch.map(cell => cell[axis]));
-    const shift = Math.max(0, terminal + 1 - minimum);
-    for (const cell of branch) cell[axis] += shift;
-    terminal = Math.max(...branch.map(cell => cell[axis]));
+  target[cross] = source[cross];
+  // Vacate the canonical lane as a whole branch, preserving alternative order.
+  const canonical = siblings.find(cell => cell[cross] === source[cross]);
+  if (canonical) {
+    const moving = siblings.filter(cell => cell[cross] >= canonical[cross]);
+    for (const root of moving) for (const cell of descendants(cells, root.id)) cell[cross]++;
   }
   resolveCollisions(cells, target.id, true);
+}
+
+/** Reactivating through a source exchanges branch positions; direct Restore does not. */
+export function promoteTraversal(cells: TraversalCell[], incomingId: string, outgoingId?: string): void {
+  const incoming = cells.find(cell => cell.id === incomingId)!;
+  const source = cells.find(cell => cell.id === incoming.parent)!;
+  const outgoing = cells.find(cell => cell.id === outgoingId);
+  const old = { row: incoming.row, column: incoming.column };
+  const canonical = { row: source.row + (incoming.axis === 'vertical' ? 1 : 0), column: source.column + (incoming.axis === 'horizontal' ? 1 : 0) };
+  const translate = (root: TraversalCell, position: {row: number; column: number}) => {
+    const dr = position.row - root.row, dc = position.column - root.column;
+    for (const cell of descendants(cells, root.id)) { cell.row += dr; cell.column += dc; }
+  };
+  if (outgoing && outgoing !== incoming) translate(outgoing, old);
+  translate(incoming, canonical);
+  resolveCollisions(cells, incoming.id, true);
 }
 
 function descendants(cells: readonly TraversalCell[], root: string): TraversalCell[] {
@@ -57,43 +71,11 @@ function descendants(cells: readonly TraversalCell[], root: string): TraversalCe
   return cells.filter(cell => ids.has(cell.id));
 }
 
-/** Pack whole branches on either side of an anchored member, preserving group order. */
-function packTraversalSiblings(cells: TraversalCell[], anchor: TraversalCell): void {
-  const axis = anchor.axis === 'horizontal' ? 'row' : 'column';
-  const siblings = orderedTraversalSiblings(cells, anchor.parent!, anchor.axis);
-  const index = siblings.indexOf(anchor);
-  const bounds = (cell: TraversalCell) => {
-    const branch = descendants(cells, cell.id);
-    return { branch, min: Math.min(...branch.map(item => item[axis])), max: Math.max(...branch.map(item => item[axis])) };
-  };
-  const extent = bounds(anchor);
-  let before = extent.min, after = extent.max;
-  for (const sibling of siblings.slice(0, index).reverse()) {
-    const { branch, min, max } = bounds(sibling);
-    const shift = before - 1 - max;
-    for (const cell of branch) cell[axis] += shift;
-    before = min + shift;
-  }
-  for (const sibling of siblings.slice(index + 1)) {
-    const { branch, min, max } = bounds(sibling);
-    const shift = after + 1 - min;
-    for (const cell of branch) cell[axis] += shift;
-    after = max + shift;
-  }
-}
-
-/** Reclaim a closed sibling's space without changing surviving branch internals. */
-export function compactTraversal(cells: TraversalCell[], parent: string, axis: 'horizontal' | 'vertical', preferred?: string): void {
-  const siblings = orderedTraversalSiblings(cells, parent, axis);
-  const anchor = siblings.find(cell => cell.id === preferred) ?? siblings.at(-1);
-  if (!anchor) return;
-  const source = cells.find(cell => cell.id === parent)!;
-  const coordinate = axis === 'horizontal' ? 'row' : 'column';
-  const delta = source[coordinate] - anchor[coordinate];
-  for (const cell of descendants(cells, anchor.id)) cell[coordinate] += delta;
-  packTraversalSiblings(cells, anchor);
-  resolveCollisions(cells, anchor.id);
-  normalize(cells);
+/** Close reclaims wholly empty bands across the entire retained surface. */
+export function compactTraversal(cells: TraversalCell[], _parent?: string, _axis?: 'horizontal' | 'vertical', _preferred?: string): void {
+  const rows = [...new Set(cells.map(cell => cell.row))].sort((a, b) => a - b);
+  const columns = [...new Set(cells.map(cell => cell.column))].sort((a, b) => a - b);
+  for (const cell of cells) { cell.row = rows.indexOf(cell.row); cell.column = columns.indexOf(cell.column) + 1; }
 }
 
 /**
@@ -129,7 +111,7 @@ function resolveCollisions(cells: TraversalCell[], protectedId: string, outwardO
       const obstacle = pair.find(cell => !subtree.includes(cell));
       if (!obstacle) continue;
       const axis = branch.axis === 'horizontal' ? 'row' : 'column';
-      const siblings = orderedTraversalSiblings(cells, branch.parent!, branch.axis);
+      const siblings = cells.filter(cell => cell.parent === branch.parent && cell.axis === branch.axis).sort((a, b) => a[axis] - b[axis]);
       const index = siblings.indexOf(branch);
       const preferred = branch[axis] <= obstacle[axis] ? -1 : 1;
       for (const direction of outwardOnly ? [1] : [preferred, -preferred]) {
@@ -149,11 +131,4 @@ function resolveCollisions(cells: TraversalCell[], protectedId: string, outwardO
     if (!translated) throw new Error('Traversal projection cannot separate retained branches.');
   }
   throw new Error('Traversal projection did not converge.');
-}
-
-/** Translation keeps sparse bands and branch distances; it never squeezes empty bands. */
-function normalize(cells: TraversalCell[]): void {
-  const row = Math.min(...cells.map(cell => cell.row));
-  const column = Math.min(...cells.map(cell => cell.column)) - 1;
-  for (const cell of cells) { cell.row -= row; cell.column -= column; }
 }

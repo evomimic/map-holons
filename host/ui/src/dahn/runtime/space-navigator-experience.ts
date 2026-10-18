@@ -1,3 +1,5 @@
+import { composeNodeActions } from './node-actions';
+import { composeNodeTitle } from './title-composition';
 import { VISUALIZER_INFORMATION_EVENT, bindVisualizerInformationControl } from './visualizer-information-control';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
@@ -101,16 +103,23 @@ export class SpaceNavigatorExperience {
         if ((implementation as { usesOwnedResultSummary?: boolean }).usesOwnedResultSummary) {
           if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected result Node is not an HTMLElement constructor');
           const root = document.createElement(defineCustomElementOnce('map-selected-node-visualizer', implementation as CustomElementConstructor)) as VisualizerElement;
-          if (!root.getNodeInspectorExtents || !root.setNodeInspectorAllocation) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
+          if (!root.visualizerOperations) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
           const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
           const discovery = new NodeRelationshipDiscovery(transaction, subject, affordances.singularRelationships);
+          const titleElement = await composeNodeTitle(transaction, materialized, transaction.bindSavedReference(visualizer), {
+            title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
+          });
+          const actionsElement = await composeNodeActions(transaction, materialized, transaction.bindSavedReference(visualizer), {
+            target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
+          });
           root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, visualizerUsage: usage,
-            childVisualizers: new Map([['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
+            childVisualizers: new Map([['titleBar', titleElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls], ['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
             nodeAffordances: affordances, relationshipDiscovery: discovery,
             activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
           });
+          await materialized.admitOffered(root, visualizer);
           node = { element: root, ready: root.ready, collectionActivation: { ...collections, dispose: () => discovery.dispose() },
-            dispose: () => discovery.dispose(), relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
+            dispose: () => { (titleElement as VisualizerElement).dispose?.(); actionsElement.dispose(); discovery.dispose(); }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
         } else {
           node = await realizeNode(transaction, materialized, subject, review.bindSavedReference(visualizer), theme, canvas, stage, undefined, review, usage);
           const activation = node.collectionActivation;
@@ -138,13 +147,14 @@ export class SpaceNavigatorExperience {
             if (parent) parent.insertBefore(owned, next);
             if (summary && summaryParent) summaryParent.insertBefore(summary, summaryNext ?? null);
           };
-          try { control.setNodeOwnedCollection!(owned); if (summary) control.setNodeOwnedSummary!(summary); }
+          try { control.setNodeOwnedCollection!(owned, false); if (summary) control.setNodeOwnedSummary!(summary); }
           catch (error) { restore(); throw error; }
           return restore;
         };
         return node;
       };
       const rootNode = await realizeResult(subject, review.bindSavedReference(selected));
+      await materialized.admit(rootNode.element, slot);
       rootNode.adoptOwnedPresentation?.();
       const root = rootNode.element;
       signal.throwIfAborted();

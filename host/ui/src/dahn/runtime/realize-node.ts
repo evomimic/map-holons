@@ -1,6 +1,7 @@
+import { composeNodeTitle } from './title-composition';
 import { bindVisualizerInformationControl } from './visualizer-information-control';
 import { ActionActivation, type ActionInteractions } from './action-activation';
-import type { ActionNode } from '../contracts/actions';
+import { composeNodeActions } from './node-actions';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
 import type { RelationshipAffordance } from '../contracts/affordances';
 import { NodeCollectionActivation } from './collection-activation';
@@ -52,11 +53,6 @@ export async function realizeNode(
     !(nodeImplementation.prototype instanceof HTMLElement)
   ) {
     throw new Error('Selected Node implementation does not export an HTMLElement constructor.');
-  }
-  const nodePrototype = nodeImplementation.prototype as VisualizerElement;
-  if (typeof nodePrototype.getNodeInspectorExtents !== 'function'
-    || typeof nodePrototype.setNodeInspectorAllocation !== 'function') {
-    throw new Error('Selected Node does not fulfill the Node Inspector slot compression contract.');
   }
   const nodeTag = defineCustomElementOnce(
     'map-selected-node-visualizer',
@@ -185,43 +181,9 @@ export async function realizeNode(
       return propertiesElement;
     });
     onStage?.('select and materialize Actions');
-    const actionsElement = await renderVisualizerRegion('Node actions', async () => {
-      const actionSlot = await materialized.slot(selectedVisualizer, 'action');
-      const selection = await transaction.selectVisualizer({
-        subject, requestedKind: 'actionBar', owner: { visualizer: selectedVisualizer }, theme: theme.reference,
-        slot: actionSlot,
-      });
-      const implementation = await materialized.realize(selection.selected);
-      if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
-        throw new Error('Selected Action implementation does not export an HTMLElement constructor.');
-      }
-      const tag = defineCustomElementOnce('map-node-actions', implementation as CustomElementConstructor);
-      const element = document.createElement(tag) as HTMLElement & { setContext(context: VisualizerContext): void };
-      const children = new Map<string, HTMLElement>();
-      const compose = async (actions: ActionNode[]): Promise<void> => {
-        for (const action of actions) {
-          if (action.kind === 'group') { await compose(action.children ?? []); continue; }
-          children.set(action.id, await renderVisualizerRegion(action.label, async () => {
-            if (!action.dance) throw new Error('Action has no bound Dance descriptor');
-            const childSlot = await materialized.slot(selection.selected, 'action');
-            const selected = await transaction.selectVisualizer({ subject: action.dance, requestedKind: 'action', owner: { visualizer: selection.selected }, theme: theme.reference, slot: childSlot });
-            const implementation = await materialized.realize(selected.selected);
-            if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Selected Action is not an HTMLElement constructor');
-            const tag = defineCustomElementOnce('map-selected-action', implementation as CustomElementConstructor);
-            const child = document.createElement(tag) as VisualizerElement;
-            const activation = new ActionActivation({ subject, dance: action.dance, visualizer: selected.selected, occurrence: child, label: action.label });
-            actionActivations.push(activation);
-            child.setContext({ target: { reference: subject }, holon: view, actions: [], theme, canvas, actionActivation: activation, actionInteractions });
-            await bindVisualizerInformationControl(child, transaction, action.dance, selection.selected, childSlot, selected.selected);
-            return child;
-          }));
-        }
-      };
-      await compose(affordances.actions);
-      element.setContext({ target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas, childVisualizers: children });
-    await bindVisualizerInformationControl(element, transaction, subject, selectedVisualizer, actionSlot, selection.selected);
-    return element;
-  });
+    const actionsElement = await composeNodeActions(transaction, materialized, selectedVisualizer, {
+      target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas,
+    }, actionActivations, actionInteractions);
   onStage?.('compose node');
   const element = document.createElement(nodeTag) as HTMLElement & {
     setContext(context: VisualizerContext): void;
@@ -233,6 +195,9 @@ export async function realizeNode(
     ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
   ]);
   collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction, { theme, canvas }, affordances.collections);
+  const titleElement = await composeNodeTitle(transaction, materialized, selectedVisualizer, {
+    title: `${typeDisplayName}: ${holonKey}`, holonKey, target: { reference: subject }, holon: view, actions: [], theme, canvas,
+  });
   element.setContext({
       collectionActivation,
       visualizerUsage,
@@ -251,12 +216,15 @@ export async function realizeNode(
       theme,
       canvas,
       nodeAffordances: affordances,
-      childVisualizers: new Map([['properties', propertiesElement], ['actions', actionsElement]]),
+      childVisualizers: new Map([['titleBar', titleElement], ['properties', propertiesElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls]]),
     });
+    await materialized.admitOffered(element, selectedVisualizer);
     const initialized = (element as VisualizerElement).ready;
-    const children = [propertiesElement, actionsElement, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*')];
+    const children = [titleElement, propertiesElement, actionsElement, actionsElement.controls, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*'), ...actionsElement.controls.querySelectorAll('*')];
     const ready = initialized && Promise.all([initialized, ...children.map(child => (child as VisualizerElement).ready)]).then(() => {});
     const dispose = () => {
+      (titleElement as VisualizerElement).dispose?.();
+      actionsElement.dispose();
       collectionActivation?.dispose();
       for (const action of actionActivations) void action.dispose().catch(console.error);
     };

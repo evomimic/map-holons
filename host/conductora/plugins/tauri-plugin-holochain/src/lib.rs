@@ -494,7 +494,7 @@ pub fn async_init<R: Runtime>(
                     launch_and_setup_holochain(handle.clone(), passphrase, config).await
                 {
                     tracing::error!("Failed to launch holochain: {err:?}");
-                    if let Err(err) = handle.emit("holochain://setup-failed", ()) {
+                    if let Err(err) = handle.emit("holochain://setup-failed", format!("{err:?}")) {
                         tracing::error!(
                             "Failed to emit \"holochain://setup-failed\" event: {err:?}"
                         );

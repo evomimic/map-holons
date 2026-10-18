@@ -114,6 +114,36 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
+    let contract = saved("NodeActions.Contract");
+    for key in ["HolonInspector.VisualizerControlsSlot", "LoadHolonsResult.VisualizerControlsSlot"]
+    {
+        let slot = saved(key);
+        assert!(slot
+            .related_holons("UsesNodeActionsContract")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&contract));
+        assert!(contract
+            .related_holons("ContractForNodeActionsSlot")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&slot));
+    }
+    let standards = contract.related_holons("StandardNodeActions").unwrap();
+    assert_eq!(standards.read().unwrap().get_members().len(), 4);
+    for action in standards.read().unwrap().get_members() {
+        assert!(action
+            .related_holons("StandardActionOfNodeContract")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .contains(&contract));
+    }
     let space = context.get_space_holon().unwrap().unwrap();
     let MapResult::VisualizerDiscovery(discovery) = command(
         &runtime,
@@ -128,7 +158,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                 slot: saved("PathInspector.RootNodeSlot"),
                 theme: saved("Demo1.DeepOceanTheme"),
             },
-            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            current_selection: Some(saved("HolonInspector.NodeVisualizer")),
             retain_evidence: true,
         },
     )
@@ -217,28 +247,14 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             space.clone(),
             "PathInspector.RootedNavigationVisualizer",
             "PathInspector.RootNodeSlot",
-            "ConnectionsFirstInspector.NodeVisualizer",
+            "HolonInspector.NodeVisualizer",
         ),
         (
             map_commands_contract::VisualizerKind::ActionBar,
-            space,
+            space.clone(),
             "HolonInspector.NodeVisualizer",
             "HolonInspector.ActionsSlot",
             "GenericActions.ActionBarVisualizer",
-        ),
-        (
-            map_commands_contract::VisualizerKind::Action,
-            saved("LoadHolons.DanceType"),
-            "GenericActions.ActionBarVisualizer",
-            "GenericActions.ActionSlot",
-            "LoadHolons.ActionVisualizer",
-        ),
-        (
-            map_commands_contract::VisualizerKind::Action,
-            saved("MaterializeVisualizer.DanceType"),
-            "GenericActions.ActionBarVisualizer",
-            "GenericActions.ActionSlot",
-            "UnsupportedAction.ActionVisualizer",
         ),
     ] {
         let selection_request = || map_commands_contract::VisualizerSelectionRequest {
@@ -280,9 +296,24 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .iter()
             .any(|candidate| candidate.visualizer == selection.selected
                 && !candidate.declared_on.is_empty()));
+        if kind == map_commands_contract::VisualizerKind::ActionBar {
+            let wrong_role = "NodeTitleBar.TitleBarVisualizer";
+            assert!(
+                command(
+                    &runtime,
+                    &context,
+                    TransactionAction::ChooseVisualizer {
+                        request: selection_request(),
+                        candidate: saved(wrong_role),
+                    },
+                )
+                .await
+                .is_err(),
+                "A TitleBar without PresentActions must not fulfill an ActionBar slot"
+            );
+        }
         if kind == map_commands_contract::VisualizerKind::Node {
-            for key in ["ConnectionsFirstInspector.NodeVisualizer", "HolonInspector.NodeVisualizer"]
-            {
+            for key in ["HolonInspector.NodeVisualizer"] {
                 assert!(discovery
                     .candidates
                     .iter()
@@ -893,7 +924,7 @@ async fn discovery_explanation_reads_existing_usage_without_committing() {
                 slot: saved("PathInspector.RootNodeSlot"),
                 theme: saved("Demo1.DeepOceanTheme"),
             },
-            current_selection: Some(saved("ConnectionsFirstInspector.NodeVisualizer")),
+            current_selection: Some(saved("HolonInspector.NodeVisualizer")),
             retain_evidence: true,
         },
     )
@@ -901,7 +932,7 @@ async fn discovery_explanation_reads_existing_usage_without_committing() {
     .unwrap() else {
         panic!("discovery")
     };
-    assert_eq!(discovery.candidates.len(), 2, "Other slot kinds must not enter Node discovery");
+    assert_eq!(discovery.candidates.len(), 1, "Other slot kinds must not enter Node discovery");
     let destination = new_context(&runtime).await;
     let MapResult::Reference(subject) = command(
         &runtime,

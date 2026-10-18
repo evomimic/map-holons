@@ -1,3 +1,4 @@
+import { presentationAssignment } from '../../../test-fixtures/node-presentation';
 import { destinationPaint } from './destination-paint';
 import { selectedVisualizerInspection, withVisualizerComposition } from './visualizer-information-control';
 import { readFile } from 'node:fs/promises';
@@ -17,11 +18,20 @@ vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) 
 
 const importer = (source: string) => import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const artifacts = Object.fromEntries(await Promise.all(
-  ['holon-inspector', 'connections-first-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
+  ['node-title-bar', 'presentation-action', 'holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
-const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'ConnectionsFirstInspector.PropertyMapSlot', 'ConnectionsFirstInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
-const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
+const titleActions = new Map([['Explore', 'ExploreOccurrence'], ['Close', 'CloseOccurrence'], ['ExpandRestore', 'ExpandRestoreOccurrence'], ['Inspect', 'InspectOccurrence']]);
+const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async (relation: string) => {
+  if (relation === 'HasSlot') return ['HolonInspector.VisualizerControlsSlot', 'HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(selected);
+  if (relation === 'UsesNodeActionsContract') return [selected('NodeActions.Contract')];
+  if (relation === 'StandardNodeActions') return [...titleActions.keys()].map(key => selected(`${key}PresentationAction.HolonType`));
+  if (relation === 'PresentationOperator') return [selected(`${titleActions.get(key.split('Presentation')[0])}.VisualizerOperator`)];
+  return [];
+} }) as unknown as HolonReference;
+const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), titleBar: selected('node-title-bar'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
+const selectFixture = async (request: any) => ({ selected: visualizers[request.requestedKind as keyof typeof visualizers] });
+artifacts['alternative-node'] = artifacts['holon-inspector'].replace('this.dataset.visualizerId = "holon-inspector";', 'this.dataset.visualizerId = "alternative-node"; this.dataset.alternateNode = "true";');
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
 const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
 function subject(name: string) {
@@ -55,7 +65,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
     ref.relatedHolons.mockImplementation(async name => collection([name === 'First' ? a : name === 'Second' ? b : rootSubject]));
   }
-  const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'propertyMap' | 'actionBar' }) => ({ selected: visualizers[request.requestedKind] }));
+  const selectVisualizer = vi.fn(selectFixture);
   const transaction = {
     chooseVisualizer: vi.fn(async (_request, candidate) => ({ selected: candidate })),
     discoverVisualizers: vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] })),
@@ -139,8 +149,8 @@ describe('vertical traversal through selected artifacts', () => {
     activate(rows[1]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(4));
     expect(retained.every(item => f.path().includes(item))).toBe(true);
-    expect(retained[1].column).toBe(1);
-    expect(retained[2].column).toBe(1);
+    expect(retained[1].column).toBe(2);
+    expect(retained[2].column).toBe(2);
     expect(retained[0].column).toBe(1);
   });
 
@@ -188,8 +198,8 @@ describe('vertical traversal through selected artifacts', () => {
     const provenance = child.provenance;
     activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
     const alternative = f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item.subject === f.a)!;
-    expect(alternative.column).toBe(f.path()[0].column! + 1);
-    expect(child.column).toBeLessThan(alternative.column!); expect(descendant.column).toBe(child.column);
+    expect(alternative.column).toBe(f.path()[0].column);
+    expect(child.column).toBeGreaterThan(alternative.column!); expect(descendant.column).toBe(child.column);
     expect(child.provenance).toBe(provenance);
     expect(descendant.provenance?.parentOccurrenceId).toBe(child.id);
     expect(f.root.element.querySelector('table')).toBe(table);
@@ -200,8 +210,9 @@ describe('vertical traversal through selected artifacts', () => {
     activate(rows[1]);
     await vi.waitFor(() => expect(f.element.querySelector(`[data-path-occurrence="${child.id}"]`)?.getAttribute('data-focused')).toBe('true'));
     expect(nodeSelections(f)).toHaveLength(calls);
-    expect(f.path().map(item => [item.id, item.rowId, item.column])).toEqual(coordinates);
-    expect(f.path()).toContain(alternative);
+    expect(child.column).toBe(f.path()[0].column);
+    expect(f.path()).not.toContain(alternative);
+    expect(alternative.element.isConnected).toBe(false);
     // Restoring again after another row's expansion is an explicit focus request.
     f.navigation.restore(f.path()[0].id);
     activate(rows[1]);
@@ -234,8 +245,8 @@ describe('vertical traversal through selected artifacts', () => {
     activate(returnedRows[0]);
     await vi.waitFor(() => expect(f.element.querySelector(`[data-path-occurrence="${child.id}"]`)?.getAttribute('data-focused')).toBe('true'));
     expect(nodeSelections(f)).toHaveLength(calls);
-    expect(f.path()).toHaveLength(4);
-    expect(child.column).toBe(2);
+    expect(f.path()).toHaveLength(3);
+    expect(child.column).toBe(1);
     expect(child.provenance).toBe(retained[1].provenance);
   });
 
@@ -252,44 +263,27 @@ describe('vertical traversal through selected artifacts', () => {
     expect(f.path()[1].provenance?.affordance.label).toBe('Other');
   });
 
-  it('inserts repeated and nested alternatives without collisions and traverses displaced anchors', async () => {
+  it('inserts nested source-adjacent alternatives, retaining explored branches and disposing each once', async () => {
     const f = await fixture(); const rootRows = await openCollection(f.root.element);
     activate(rootRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
-    const a = f.path()[1]; const aRows = await openCollection(a.element);
+    const a = f.path()[1], aRows = await openCollection(a.element);
     activate(aRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
-    const b = f.path()[2]; const bRows = await openCollection(b.element);
-    activate(bRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    const bottom = f.path()[3];
+    const b = f.path().find(item => item.provenance?.parentOccurrenceId === a.id)!;
+    const bRows = await openCollection(b.element); activate(bRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    const bottom = f.path().find(item => item.provenance?.parentOccurrenceId === b.id)!;
     activate(aRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(5));
-    const nested = f.path().find(item => item.provenance?.parentOccurrenceId === a.id && item.id !== b.id)!;
-    expect(nested.column).toBe(a.column! + 1);
-    expect(b.column).toBeLessThan(nested.column!); expect(bottom.column).toBe(b.column);
+    const nested = f.path().find(item => item.provenance?.parentOccurrenceId === a.id && item !== b)!;
+    expect(nested.column).toBe(a.column); expect(b.column).toBeGreaterThan(nested.column!);
     activate(rootRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(6));
-    const canonical = f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item.id !== a.id)!;
-    expect(canonical.column).toBe(nested.column! + 1);
-    expect(a.column).toBeLessThan(canonical.column!);
-    const canonicalRows = await openCollection(canonical.element);
-    activate(canonicalRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(7));
-    activate(rootRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(8));
-    expect(a.column).toBeLessThan(canonical.column!);
-    expect(b.column).toBe(bottom.column); expect(nested.column).toBe(a.column! + 1);
-    // Continue a leaf in a displaced column, then branch from its displaced owner.
-    const nestedRows = await openCollection(nested.element);
-    activate(nestedRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(9));
-    activate(aRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(10));
-    expect(b.column).toBeLessThan(nested.column!); expect(nested.column).toBeGreaterThan(a.column!);
-    expect(bottom.column).toBe(b.column);
-    const positions = f.path().map(item => `${item.rowId}:${item.column}`);
-    expect(new Set(positions).size).toBe(positions.length);
+    const canonical = f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item !== a)!;
+    expect(canonical.column).toBe(f.path()[0].column); expect(a.column).toBeGreaterThan(canonical.column!);
+    const nestedRows = await openCollection(nested.element); activate(nestedRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(7));
+    activate(aRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(8));
+    expect(new Set(f.path().map(item => `${item.row}:${item.column}`)).size).toBe(8);
+    expect(bottom.provenance?.parentOccurrenceId).toBe(b.id); expect(b.provenance?.parentOccurrenceId).toBe(a.id);
     for (const item of [a, b, bottom, nested, canonical]) expect(item.element.isConnected).toBe(true);
-    expect(bottom.provenance?.parentOccurrenceId).toBe(b.id);
-    expect(b.provenance?.parentOccurrenceId).toBe(a.id);
-    const regions = [...f.element.querySelectorAll<HTMLElement>('[data-path-occurrence]')];
-    expect(regions).toHaveLength(10);
-    expect(regions.filter(region => region.style.gridRow === String(f.path()[0].row! + 1))).toHaveLength(1);
-    const dispose = f.path().map(item => vi.spyOn((item as any).node.collectionActivation, 'dispose'));
-    f.navigation.dispose(); f.navigation.dispose();
-    for (const spy of dispose) expect(spy).toHaveBeenCalledTimes(1);
+    const disposal = f.path().map(item => vi.spyOn((item as any).node.collectionActivation, 'dispose'));
+    f.navigation.dispose(); f.navigation.dispose(); for (const spy of disposal) expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('reserves geometry on failure while retaining descendants, then fills the same destination on retry', async () => {
@@ -302,9 +296,9 @@ describe('vertical traversal through selected artifacts', () => {
     activate(rows[1]); await vi.waitFor(() => expect(f.destination()?.retry).toBeDefined());
     const region = f.element.querySelector('[data-path-destination]');
     expect(f.path().map(item => item.element)).toEqual(retained.map(item => item.element));
-    expect(f.path().map(item => item.column)).toEqual([1, 1, 1]);
+    expect(f.path().map(item => item.column)).toEqual([1, 2, 2]);
     f.destination()!.retry!(); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    expect(retained[1].column).toBe(1); expect(retained[2].column).toBe(1);
+    expect(retained[1].column).toBe(2); expect(retained[2].column).toBe(2);
     expect(f.path().find(item => item.subject === f.b && item.provenance?.parentOccurrenceId === retained[0].id)!.element.parentElement).toBe(region);
   });
 
@@ -340,7 +334,7 @@ describe('vertical traversal through selected artifacts', () => {
     activate(childRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
     activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
     expect(f.path().find(item => item.provenance?.parentOccurrenceId === f.path()[0].id && item.id !== a.id)?.subject).toBe(f.b);
-    expect(a.column).toBe(1);
+    expect(a.column).toBe(2);
   });
 
   it.each(['selection', 'materialization', 'descriptor'])('keeps an existing leaf on %s failure and allows retry', async stage => {
@@ -439,7 +433,7 @@ describe('singular traversal through selected artifacts', () => {
     const b = await right(f, root, 1);
     expect(b.rowId).toBe(root.rowId);
     expect(a.rowId).not.toBe(root.rowId);
-    expect(a.row).toBeGreaterThan(root.row!); expect(descendant.row! - a.row!).toBe(1);
+    expect(a.row).toBeGreaterThan(root.row!); expect(descendant.row!).toBeGreaterThan(a.row!);
     expect([a.column, descendant.column, b.column]).toEqual([2, 2, 2]);
     expect([a.id, descendant.id]).toEqual(ids);
     expect([a.provenance, descendant.provenance]).toEqual(provenance);
@@ -455,7 +449,8 @@ describe('singular traversal through selected artifacts', () => {
     const calls = nodeSelections(f).length;
     await right(f, root);
     expect(nodeSelections(f)).toHaveLength(calls);
-    expect(f.path().map(item => [item.id, item.rowId, item.column])).toEqual(coordinates);
+    expect(a.row).toBe(root.row);
+    expect(f.path()).not.toContain(c);
     expect(f.element.querySelector(`[data-path-occurrence="${a.id}"]`)?.getAttribute('data-focused')).toBe('true');
     expect(a.element.isConnected && descendant.element.isConnected).toBe(true);
   });
@@ -467,7 +462,7 @@ describe('singular traversal through selected artifacts', () => {
     const a = f.path()[1]; const childRows = await openCollection(a.element); activate(childRows[1]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(3));
     activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
-    expect(a.column).toBe(1);
+    expect(a.column).toBe(2);
     const horizontal = await right(f, a);
     expect(horizontal.rowId).toBe(a.rowId); expect(horizontal.column).toBe(a.column! + 1);
     const horizontalRows = await openCollection(horizontal.element); activate(horizontalRows[2]);
@@ -563,7 +558,7 @@ it('preserves horizontal continuations when vertical alternatives append', async
   const next = await right(f, root, 1);
   expect(next.column).toBe(root.column! + 1);
   expect(a.column).toBe(descendant.column);
-  expect(descendant.row! - a.row!).toBe(1);
+  expect(descendant.row!).toBeGreaterThan(a.row!);
   expect(descendant.provenance?.parentOccurrenceId).toBe(a.id);
   expect(new Set(f.path().map(item => `${item.rowId}:${item.column}`)).size).toBe(f.path().length);
 });
@@ -996,7 +991,7 @@ describe('occurrence branch closure', () => {
     const path = f.element as any;
     path.viewportWidth = 600; path.viewportHeight = 500; path.allocateRows(); path.view.zoom(0.5);
     const width = path.view.width;
-    const close = b.element.querySelector<HTMLButtonElement>('[data-close-occurrence]')!;
+    const close = b.element.querySelector<HTMLButtonElement>('[data-action-id="CloseOccurrence.VisualizerOperator"]')!;
     close.focus(); close.click();
     expect(f.path()).toEqual([a]);
     expect(path.focus.occurrenceId).toBe(a.id);
@@ -1016,7 +1011,7 @@ describe('occurrence branch closure', () => {
     const revision = semanticWork(f.transaction).revision;
     let last: unknown;
     const unsubscribe = f.navigation.subscribe((path, focus) => { last = { path, focus }; });
-    const close = f.root.element.querySelector<HTMLButtonElement>('[data-close-occurrence]')!;
+    const close = f.root.element.querySelector<HTMLButtonElement>('[data-action-id="CloseOccurrence.VisualizerOperator"]')!;
     close.focus(); close.click();
     expect(last).toEqual({ path: [], focus: undefined });
     expect(f.element.isConnected).toBe(true);
@@ -1159,17 +1154,17 @@ it('switches a singular button with older groups below the new source-aligned ta
   expect(edges).toContainEqual([first.id, onward.id]);
 });
 
-it('promotes retained horizontal siblings into a closed child position beside a surviving parent', async () => {
+it('retains sparse rows after closing a selected child and only reclaims entirely empty bands', async () => {
   const f = await fixture(); const root = f.path()[0];
   const first = await right(f, root); const descendant = await right(f, first);
   const second = await right(f, root, 1); await right(f, second);
   const third = await right(f, root, 2);
   f.navigation.close(third.id);
-  expect((second as any).row).toBe((root as any).row);
-  expect(second.rowId).toBe(root.rowId);
+  expect((second as any).row).toBeGreaterThan((root as any).row);
+  expect(second.rowId).not.toBe(root.rowId);
   f.navigation.close(second.id);
-  expect((first as any).row).toBe((root as any).row);
-  expect(first.rowId).toBe(root.rowId);
+  expect((first as any).row).toBe((root as any).row + 1);
+  expect(first.rowId).not.toBe(root.rowId);
   expect((descendant as any).row).toBe((first as any).row);
   expect(first.provenance?.parentOccurrenceId).toBe(root.id);
   expect(descendant.provenance?.parentOccurrenceId).toBe(first.id);
@@ -1188,7 +1183,7 @@ it('moves a surviving pending destination with its retained branch when an earli
   f.navigation.close(top.id);
   expect(f.destination()).toBe(pending);
   expect(pending.row).toBe(f.path().find(item => item.id === retained.id)!.row);
-  expect(retained.rowId).toBe(root.rowId);
+  expect(retained.rowId).not.toBe(root.rowId);
   gate.resolve(); await vi.waitFor(() => expect(f.destination()).toBeUndefined());
   const completed = f.path().find(item => item.id === pending.id)!;
   expect((completed as any).row).toBe((retained as any).row);
@@ -1202,7 +1197,7 @@ it('routes Explore from here through a live occurrence without changing the sour
   const open = vi.fn();
   const f = await fixture(open);
   const before = f.path().map(item => ({ id: item.id, subject: item.subject, element: item.element }));
-  f.element.querySelector<HTMLButtonElement>('[data-explore-from-here]')!.click();
+  f.element.querySelector<HTMLButtonElement>('[data-action-id="ExploreOccurrence.VisualizerOperator"]')!.click();
   expect(open).toHaveBeenCalledExactlyOnceWith(f.rootSubject);
   expect(f.path().map(item => ({ id: item.id, subject: item.subject, element: item.element }))).toEqual(before);
   f.navigation.reRoot('foreign-or-stale');
@@ -1227,28 +1222,22 @@ it('re-rooting a middle occurrence preserves its entire source chain and descend
   const c = await right(f, b);
   const d = await right(f, c);
   const before = f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }));
-  f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${c.id}"] [data-explore-from-here]`)!.click();
+  // Relationship presentation exposes Close only; restore before exploring here.
+  c.element.querySelector<HTMLButtonElement>('[data-node-title-bar] > button')!.click();
+  f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${c.id}"] [data-action-id="ExploreOccurrence.VisualizerOperator"]`)!.click();
   expect(open).toHaveBeenCalledExactlyOnceWith(c.subject);
   expect(f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }))).toEqual(before);
   expect([a, b, c, d].every(item => item.element.isConnected)).toBe(true);
-  expect(f.element.querySelector(`[data-path-occurrence="${d.id}"]`)?.getAttribute('data-focused')).toBe('true');
+  expect(f.element.querySelector(`[data-path-occurrence="${c.id}"]`)?.getAttribute('data-focused')).toBe('true');
 });
 
-it('reserves minimal strips for restoration instead of offering Explore from here', async () => {
-  const open = vi.fn();
-  const f = await fixture(open);
-  const root = f.path()[0];
-  const a = await right(f, root);
-  await right(f, a);
-  const control = f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${root.id}"] [data-explore-from-here]`)!;
-  expect(control.title).toBe('Explore from here');
-  expect(control.getAttribute('aria-label')).toBe('Explore from here');
-  expect(control.parentElement!.querySelector('[data-close-occurrence]')).not.toBeNull();
-  expect(control.parentElement!.querySelector('[data-maximize-inspector]')).not.toBeNull();
-  expect(control.hidden).toBe(true);
-  f.navigation.restore(root.id);
-  expect(control.hidden).toBe(false);
-  expect(open).not.toHaveBeenCalled();
+it('keeps minimal identity Restore operable while exposing only Close', async () => {
+  const f = await fixture(vi.fn()); const root = f.path()[0];
+  const a = await right(f, root); await right(f, a);
+  const identity = root.element.querySelector<HTMLButtonElement>('[data-node-title-bar] > button')!;
+  expect(identity.getAttribute('aria-expanded')).toBe('false');
+  expect([...root.element.querySelectorAll<HTMLElement>('[data-action-id]')].map(button => button.dataset.actionId)).toEqual(['CloseOccurrence.VisualizerOperator']);
+  identity.click(); expect(f.element.querySelector(`[data-path-occurrence="${root.id}"]`)?.getAttribute('data-row-allocation')).toBe('expanded');
 });
 
 it('revisits an earlier traversal group with a final pending position and preserves both descendant branches', async () => {
@@ -1262,10 +1251,10 @@ it('revisits an earlier traversal group with a final pending position and preser
   await vi.waitFor(() => expect(f.destination()).toBeDefined());
   const pending = f.destination()!;
   const projectedRoot = f.path().find(item => item.id === root.id)!;
-  expect(pending.row).toBe(first.row! + 1);
+  expect(pending.row).toBe(projectedRoot.row);
   expect(pending.column).toBe(projectedRoot.column! + 1);
-  expect(f.path().find(item => item.id === first.id)!.row).toBeLessThan(pending.row);
-  expect(f.path().find(item => item.id === second.id)!.row).toBeLessThan(pending.row);
+  expect(f.path().find(item => item.id === first.id)!.row).toBeGreaterThan(pending.row);
+  expect(f.path().find(item => item.id === second.id)!.row).toBeGreaterThan(pending.row);
   const projected = f.path().map(item => [item.id, item.row, item.column]);
   const finalPosition = [pending.row, pending.column];
   paint.resolve(); await vi.waitFor(() => expect(f.destination()).toBeUndefined());
@@ -1278,7 +1267,7 @@ it('revisits an earlier traversal group with a final pending position and preser
   expect(firstChild.row).toBe(first.row); expect(secondChild.row).toBe(second.row);
   expect(f.element.querySelector(`[data-traversal-label="${newest.id}"]`)?.textContent).toBe('First');
   f.navigation.close(first.id);
-  expect(newest.row).toBe(root.row); expect(second.row).toBeLessThan(newest.row!);
+  expect(newest.row).toBe(root.row); expect(second.row).toBeGreaterThan(newest.row!);
 });
 
 it('compacts vertical traversal groups without discarding surviving descendant geometry', async () => {
@@ -1288,9 +1277,9 @@ it('compacts vertical traversal groups without discarding surviving descendant g
   const first = f.path()[1]; const child = await right(f, first);
   activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
   const second = f.path().find(item => item.provenance?.parentOccurrenceId === root.id && item.id !== first.id)!;
-  expect(first.column).toBeLessThan(second.column!);
+  expect(first.column).toBeGreaterThan(second.column!);
   f.navigation.close(second.id);
-  expect(first.column).toBe(root.column);
+  expect(first.column).toBe(root.column! + 1);
   expect(child.column).toBe(first.column! + 1);
   expect(child.row).toBe(first.row);
   expect(child.provenance?.parentOccurrenceId).toBe(first.id);
@@ -1299,7 +1288,7 @@ it('compacts vertical traversal groups without discarding surviving descendant g
 it('binds information to distinct occurrences of the same subject and their selected definitions', async () => {
   const inspect = vi.fn();
   const f = await fixture(undefined, inspect);
-  (f.root.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
+  (f.root.element.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLButtonElement).click();
   const first = inspect.mock.calls[0][0];
   expect(first.selectedVisualizer).toBe(visualizers.node);
   const pathRegions = f.element.getVisualizerComposition!();
@@ -1311,12 +1300,12 @@ it('binds information to distinct occurrences of the same subject and their sele
   expect(pathRegions.find(region => region.label === 'View controls')!.children!.map(region => region.label)).toEqual(['Zoom out', 'Zoom in', 'Zoom to Fit', 'Actual Size']);
   const alternate = selected('alternate-inspector');
   artifacts['alternate-inspector'] = artifacts['holon-inspector'];
-  f.selectVisualizer.mockImplementation(async request => ({ selected: request.requestedKind === 'node' ? alternate : visualizers[request.requestedKind] }));
+  f.selectVisualizer.mockImplementation(async request => request.requestedKind === 'node' ? { selected: alternate } : selectFixture(request));
   const rows = await openCollection(f.root.element);
   activate(rows[2]);
   await vi.waitFor(() => expect(f.path()).toHaveLength(2));
   const child = f.path()[1];
-  (child.element.querySelector('[data-visualizer-information]') as HTMLButtonElement).click();
+  (child.element.querySelector('[data-action-id="InspectOccurrence.VisualizerOperator"]') as HTMLButtonElement).click();
   const second = inspect.mock.calls[1][0];
   expect(second.subject).toBe(first.subject);
   expect(second.occurrenceId).not.toBe(first.occurrenceId);
@@ -1335,8 +1324,8 @@ it('provides independently bound information controls for composed Properties, P
   const f = await fixture();
   const targets: VisualizerInspectionTarget[] = [];
   f.element.addEventListener('dahn-visualizer-information', event => targets.push((event as CustomEvent).detail));
-  const controls = [...f.root.element.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')];
-  expect(controls).toHaveLength(4);
+  const controls = [...f.root.element.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')].filter(button => button.parentElement!.style.display !== 'none');
+  expect(controls).toHaveLength(5);
   for (const button of controls) button.click();
   expect(new Set(targets.map(target => target.selectedVisualizer))).toEqual(new Set([visualizers.propertyMap, visualizers.property, visualizers.value, visualizers.actionBar]));
   expect(targets.every(target => target.subject === f.rootSubject && target.isLive())).toBe(true);
@@ -1358,7 +1347,7 @@ it('uses the active semantic Theme after an explicit Theme change', async () => 
 
 
 describe('explicit occurrence Visualizer choice', () => {
-  const alternate = selected('connections-first-inspector');
+  const alternate = selected('alternative-node');
   const targetOf = (f: Awaited<ReturnType<typeof fixture>>, index = 0) => selectedVisualizerInspection(f.path()[index].element)!;
 
   it('blanks the chosen occurrence during preparation and restores its mounted state immediately on cancellation', async () => {
@@ -1440,7 +1429,7 @@ describe('explicit occurrence Visualizer choice', () => {
     expect(other.element).toBe(otherElement);
     expect(other.subject).toBe(f.rootSubject);
     expect((f.path()[0].element as VisualizerElement).getNodeInspectorAllocation!()).toEqual(allocation);
-    expect(f.path()[0].element.dataset.visualizerId).toBe('connections-first-inspector');
+    expect(f.path()[0].element.dataset.visualizerId).toBe('alternative-node');
     expect(f.path()[0].element.querySelector('[role=tab][aria-selected=true]')).not.toBeNull();
     const snapshot = await (f.path()[0] as any).node.collectionActivation.captureViewState();
     expect(snapshot).toEqual(beforeState);
@@ -1463,7 +1452,7 @@ describe('explicit occurrence Visualizer choice', () => {
       f.realize.mockImplementationOnce(async (...args) => {
         const node = await realize(...args);
         if (stage === 'initialization') node.ready = Promise.reject(new Error(stage));
-        else (node.element as VisualizerElement).setNodeInspectorAllocation = () => { throw new Error(stage); };
+        else (node.element as any).applyNodePresentation = () => { throw new Error(stage); };
         return node;
       });
     }
@@ -1516,7 +1505,7 @@ it('recovers the working Node after synchronous owner publication failure withou
   const unsubscribe = f.navigation.subscribe(path => {
     if (path[0].selectedVisualizer !== visualizers.node && fail) { fail = false; throw new Error('mount failed'); }
   });
-  await expect(target.choices!.choose(selected('connections-first-inspector'), () => true)).rejects.toThrow('mount failed');
+  await expect(target.choices!.choose(selected('alternative-node'), () => true)).rejects.toThrow('mount failed');
   expect(f.path()[0].element).toBe(f.root.element); expect(f.root.element.isConnected).toBe(true);
   expect(f.transaction.recordVisualizerUse).not.toHaveBeenCalled();
   await openCollection(f.root.element);
@@ -1531,7 +1520,7 @@ it('cancels an unresolved initialization promise and releases preparation withou
   });
   const controller = new AbortController();
   const target = selectedVisualizerInspection(f.root.element)!;
-  const pending = target.choices!.choose(selected('connections-first-inspector'), () => true, controller.signal);
+  const pending = target.choices!.choose(selected('alternative-node'), () => true, controller.signal);
   const rejected = expect(pending).rejects.toThrow('cancelled');
   await vi.waitFor(() => expect(prepared).toBeDefined()); controller.abort(); await rejected;
   expect(prepared!.element.isConnected).toBe(false);
@@ -1542,11 +1531,11 @@ it('cancels an unresolved initialization promise and releases preparation withou
 
 it('materializes a real alternative with a different expanded layout and independently owned child slots', async () => {
   const f = await fixture(undefined, () => {});
-  const alternate = await f.realize(f.rootSubject as never, selected('connections-first-inspector'));
-  (alternate.element as VisualizerElement).setNodeInspectorAllocation!({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' });
-  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2');
+  const alternate = await f.realize(f.rootSubject as never, selected('alternative-node'));
+  (alternate.element as VisualizerElement).applyNodePresentation(presentationAssignment({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' }));
+  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2 / 4');
   expect((alternate.element as any).propertyViewer.style.gridRow).toBe('3');
   expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
-  expect((await f.runtime.realize(selected('connections-first-inspector')) as any).compositionSlots.collection).toBe('ConnectionsFirstInspector.CollectionsSlot');
+  expect((await f.runtime.realize(selected('alternative-node')) as any).compositionSlots.collection).toBe('HolonInspector.CollectionsSlot');
   alternate.dispose?.(); f.navigation.dispose();
 });

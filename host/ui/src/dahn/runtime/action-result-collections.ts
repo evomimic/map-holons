@@ -9,7 +9,7 @@ import { semanticWork } from './semantic-work';
 import type { VisualizerPresentationRegion } from '../contracts/visualizers';
 
 interface ActionResultBase {
-  /** Composition role declared by the selected Action Visualizer implementation. */
+  /** Composition role declared by the workflow presentation owner. */
   role: string;
   label: string;
 

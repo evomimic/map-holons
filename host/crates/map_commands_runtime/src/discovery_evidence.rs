@@ -112,6 +112,7 @@ impl DiscoveryEvidence {
             &mut subject,
             "DiscoveryRequestedKind",
             match snapshot.request.requested_kind {
+                map_commands_contract::VisualizerKind::TitleBar => "title_bar",
                 map_commands_contract::VisualizerKind::Node => "node",
                 map_commands_contract::VisualizerKind::Property => "property",
                 map_commands_contract::VisualizerKind::Value => "value",
