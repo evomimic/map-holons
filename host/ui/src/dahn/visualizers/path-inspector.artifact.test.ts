@@ -26,18 +26,18 @@ beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', vi.fn());
 });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
-it('compresses A/B together after A↓B→C and restores A without changing B presentation or placement', () => {
+it('compresses A/B together after A↓B→C and restores A with all descendants compact and placement preserved', () => {
   const items = [node('A', 0, 1), node('B', 1, 1, 'A', 'vertical'), node('C', 1, 2, 'B', 'horizontal')];
   const { path, publish } = fixture(items);
   expect(items.map(item => item.element.presentation)).toEqual(['relationship', 'relationship', 'inspect']);
   expect(items[0].element.assignment.width).toBe(items[1].element.assignment.width);
   const positions = items.map(item => [item.row, item.column]);
   publish(items, { occurrenceId: 'A', mode: 'restore' });
-  expect(items.map(item => item.element.presentation)).toEqual(['inspect', 'relationship', 'inspect']);
+  expect(items.map(item => item.element.presentation)).toEqual(['inspect', 'compact', 'compact']);
   expect(items[0].element.assignment.width).toBe(items[1].element.assignment.width);
-  expect(items[1].element.assignment.presentation).toBeUndefined();
+  expect(items[1].element.assignment.presentation).toBe('compact');
   path.allocateRows();
-  expect(items.map(item => item.element.presentation)).toEqual(['inspect', 'relationship', 'inspect']);
+  expect(items.map(item => item.element.presentation)).toEqual(['inspect', 'compact', 'compact']);
   expect(items.map(item => [item.row, item.column])).toEqual(positions);
 });
 it('assigns latest contextual sources independently of shared track intersections', () => {
@@ -182,4 +182,58 @@ it('requests the fixed three-part preferred footprint without measuring descenda
   expect(path.getSpatialExtents()).toEqual(first);
   const context = items.at(-2).element.assignment;
   expect(context.height).toBeGreaterThanOrEqual(profile.vertical.minimum[1]);
+});
+
+it('uses available width for a single column when the information panel reduces the viewport', () => {
+  const { path } = fixture([node('A', 0, 1)], 'A', 1450);
+  const initial = path.columnWidths[0];
+  path.viewportWidth = 1080;
+  path.allocateRows();
+  expect(path.columnWidths[0]).toBe(initial);
+  expect(path.columnWidths[0]).toBeLessThanOrEqual(1080);
+});
+
+it.each(['horizontal', 'vertical'])('restores exactly one occurrence through repeated %s backtracking and forward selection', axis => {
+  const items = Array.from({ length: 4 }, (_, i) => node(String(i), axis === 'vertical' ? i : 0, axis === 'horizontal' ? i + 1 : 1, i ? String(i - 1) : undefined, axis));
+  const { publish } = fixture(items);
+  const topology = items.map(item => [item.id, item.row, item.column]);
+  for (const selected of ['2', '1', '0', '1', '2', '3']) {
+    publish(items, { occurrenceId: selected, mode: 'restore' });
+    expect(items.map(item => item.element.presentation)).toEqual(items.map(item => item.id === selected ? 'inspect' : 'compact'));
+    expect(items.map(item => [item.id, item.row, item.column])).toEqual(topology);
+  }
+});
+it('marks the left boundary with the actual inbound edge and clears the cue when all content fits', () => {
+  const items = [node('A', 0, 1), node('B', 0, 2, 'A', 'horizontal'), node('C', 0, 3, 'B', 'horizontal')];
+  const { path } = fixture(items, 'C', 500, 900);
+  path.view.position(path.layoutBounds.get('B').x, 0);
+  const cue = path.querySelector('[data-boundary-traversal-source="A"][data-boundary-traversal-target="B"]');
+  expect(cue).not.toBeNull();
+  expect(cue.dataset.boundaryDirection).toBe('left');
+  path.requestView('zoom-to-fit');
+  expect(path.querySelectorAll('[data-boundary-direction]')).toHaveLength(0);
+});
+
+it('reserves separate label and arrowhead space for a downward traversal in column two', () => {
+  const items = [node('A', 0, 1), node('B', 0, 2, 'A', 'horizontal'), node('C', 1, 2, 'B', 'vertical')];
+  items[2].provenance.traversal = { label: 'InstanceProperties' };
+  const { path } = fixture(items, 'C', 1080, 900);
+  const label = path.lineage.querySelector('[data-traversal-label="C"]');
+  const labelBottom = Number(label.getAttribute('y')) + Number(label.getAttribute('height'));
+  const arrowTip = path.layoutBounds.get('C').y - 4;
+  expect(arrowTip - labelBottom).toBeGreaterThanOrEqual(8);
+});
+
+it('does not revive compressed horizontal ancestors when a restored middle occurrence traverses vertically', () => {
+  const items = [node('A', 0, 1), node('B', 0, 2, 'A', 'horizontal'), node('C', 0, 3, 'B', 'horizontal'), node('X', 0, 4, 'C', 'horizontal')];
+  const { path, publish } = fixture(items, 'X');
+  publish(items, { occurrenceId: 'C', mode: 'restore' });
+  expect(items.map(item => item.element.presentation)).toEqual(['compact', 'compact', 'inspect', 'compact']);
+  const leftWidth = path.layoutBounds.get('B').width;
+  items.push(node('D', 1, 3, 'C', 'vertical'));
+  publish(items, { occurrenceId: 'D', mode: 'traverse' });
+  expect(items.map(item => item.element.presentation)).toEqual(['compact', 'compact', 'collection-context', 'compact', 'inspect']);
+  expect(path.layoutBounds.get('B').width).toBe(leftWidth);
+  path.allocateRows();
+  expect(items[1].element.presentation).toBe('compact');
 });

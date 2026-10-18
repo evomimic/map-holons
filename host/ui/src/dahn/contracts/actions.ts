@@ -19,4 +19,6 @@ export type PresentedAction = { id: string; label: string } & (
 
 export interface ActionsPresentation {
   readonly actions: readonly PresentedAction[];
+  /** The owner reserves space for the complete supplied action set when false. */
+  readonly overflow?: boolean;
 }

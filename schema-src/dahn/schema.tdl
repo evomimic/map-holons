@@ -292,7 +292,7 @@ instance GenericActionsTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.actions"
-  VisualizerArtifactDigest "sha256:f2d7b3369f5b7b5f42dd889d1468f9ec42e0a8099b88ab08a8e2776624cbfe07"
+  VisualizerArtifactDigest "sha256:1d24c08fa4ef0bd8a6331063c15901799580ef94e9a94f922d9c667b66533575"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -301,7 +301,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:1828672e07e7a3a0d3134447dddeb8a95b56a5b07bbb9f4fdc6c2d120338dc75"
+  VisualizerArtifactDigest "sha256:258f459b327a0dd1ec2f16fe1b21e61267cce3ddb03bd51e91f21ae33c2685c4"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -382,7 +382,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:3cbb9079853c54e52913073603d13460e9a21799aed5ad9455baf9b420cc2c26"
+  VisualizerArtifactDigest "sha256:30d563a96abf35995bbf332d524601692f68820355ba4a000585085b3973f227"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1153,7 +1153,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:392cdd097067ebd4dc8003205c44434535726a7eaf12c179cbac2275d97d36d1"
+  VisualizerArtifactDigest "sha256:9e08c914cc775b9502d388dba30b9a54ca0006e7ab19b9d2173f84d4dd207941"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2802,7 +2802,7 @@ instance NodeTitleBarTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.node-title-bar"
-  VisualizerArtifactDigest "sha256:afb9e991d98c82fd6bd0637fd2b4df50f4ad9d81cda4a38ec5f8be9657353405"
+  VisualizerArtifactDigest "sha256:4620177b4c08a8f02cefa3e3c40e58874f3d64829e9725712bcf0f20ac2db127"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -2996,7 +2996,7 @@ instance CompactTitleBarTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.compact-title-bar"
-  VisualizerArtifactDigest "sha256:f0cb5706a8dbbbcf4b14d3631d83c3b89185d9b95717c20259341fd5394cd346"
+  VisualizerArtifactDigest "sha256:df1cc40e33345c759d2b723a27bfaf33dc33cad86b40d3053dc659131d9c693d"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

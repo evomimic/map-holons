@@ -1,3 +1,5 @@
+import { layoutTitleIdentity } from './node-title-bar.js';
+
 /** Independent compact title realization: compact identity disclosure. */
 export default class CompactTitleBar extends HTMLElement {
   get visualizerOperations() { return { 'ApplyTitlePresentation.VisualizerOperator': input => this.apply(input) }; }
@@ -12,10 +14,10 @@ export default class CompactTitleBar extends HTMLElement {
   }
   setOwnerInvocation(invoke) { this.invoke = invoke; }
   apply(input) {
-    if (!Number.isFinite(input.width) || !Number.isFinite(input.height) || input.width < 80 || input.height < 32 || !input.title) throw new Error('Invalid compact title grant');
+    if (!Number.isFinite(input.width) || !Number.isFinite(input.height) || input.width < 1 || input.height < 32 || !input.title) throw new Error('Invalid compact title grant');
     this.input = input; this.identity.textContent = input.holonKey || input.title;
     this.identity.setAttribute('aria-label', `${input.requiresRestore ? 'Restore: ' : ''}${input.title}`); this.identity.title = input.title;
-    this.style.width = `${input.width}px`; this.style.height = `${input.height}px`;
+    layoutTitleIdentity(this, this.identity, input);
     return { status: 'applied' };
   }
   getVisualizerComposition() { return []; }

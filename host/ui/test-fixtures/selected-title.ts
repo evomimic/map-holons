@@ -12,9 +12,9 @@ export function selectedTitleContext(context: any = {}, TitleConstructor = Title
   const title: any = document.createElement(defineCustomElementOnce('fixture-selected-title', TitleConstructor));
   const bar: any = document.createElement(defineCustomElementOnce('fixture-selected-node-actions', Actions));
   let actions = [...standard].map(([id, label]) => ({ id, label, kind: 'action', available: false, reason: 'Not bound', activate: () => {} }));
-  bar.setOccurrenceActions = (states: any, invoke: any) => {
+  bar.setOccurrenceActions = (states: any, invoke: any, presentation = 'all') => {
     actions = actions.map(action => ({ ...action, ...states[action.id], activate: (invoker: HTMLElement) => invoke(action.id, invoker) }));
-    bar.visualizerOperations['PresentActions.VisualizerOperator']({ actions });
+    bar.visualizerOperations['PresentActions.VisualizerOperator']({ actions: presentation === 'close-only' ? actions.filter(action => action.id === 'CloseOccurrence.VisualizerOperator') : actions, overflow: false });
   };
   title.setContext({ childVisualizers: new Map() });
   const subject: any = document.createElement(defineCustomElementOnce('fixture-selected-holon-actions', Actions));

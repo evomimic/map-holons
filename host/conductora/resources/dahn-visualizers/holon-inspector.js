@@ -21,7 +21,7 @@ var PRESENTATION_REQUESTS = ["inspect", "collection-context", "relationship", "c
 function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map((n) => n * scale), preferred: preferred.map((n) => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 320, 480], [64, 400, 720], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 320, 480], [64, 400, 720], [48, 64]) };
 }
 function validateNodePresentation(input, mode = "properties") {
   if (!input || "requiredCapabilities" in input || input.presentation !== void 0 && !PRESENTATION_REQUESTS.includes(input.presentation)) throw new Error("Invalid Node presentation assignment");
@@ -35,32 +35,72 @@ function validateNodePresentation(input, mode = "properties") {
   return { width: input.width, height: input.height, ...input.presentation === void 0 ? {} : { presentation: input.presentation } };
 }
 
+// host/conductora/visualizer-src/action-icons.js
+function actionIcon(operator, restore = false) {
+  const paths = {
+    "ExploreOccurrence.VisualizerOperator": "M8 5H5v14h14v-3 M12 5h7v7 M19 5L9 15",
+    "CloseOccurrence.VisualizerOperator": "M6 6l12 12 M18 6L6 18",
+    "ExpandRestoreOccurrence.VisualizerOperator": restore ? "M19 5l-6 6m0-5v5h5 M5 19l6-6m-5 0h5v5" : "M14 5h5v5 M19 5l-6 6 M10 19H5v-5 M5 19l6-6",
+    "InspectOccurrence.VisualizerOperator": "M9 9l3 6 3-6"
+  };
+  if (!paths[operator]) return void 0;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "18");
+  svg.setAttribute("height", "18");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.style.cssText = "display:block;flex:none;";
+  if (operator === "InspectOccurrence.VisualizerOperator") {
+    const circle = document.createElementNS(svg.namespaceURI, "circle");
+    circle.setAttribute("cx", "12");
+    circle.setAttribute("cy", "12");
+    circle.setAttribute("r", "9");
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("stroke", "currentColor");
+    svg.append(circle);
+  }
+  const path = document.createElementNS(svg.namespaceURI, "path");
+  path.setAttribute("d", paths[operator]);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.8");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  svg.append(path);
+  return svg;
+}
+
 // host/conductora/visualizer-src/inspector-layout.js
-function inspectorLayout(input, titleHeight = 48, mode = "properties") {
+function inspectorLayout(input, titleHeight = 48, mode = "properties", requestedPane) {
   const grant = validateNodePresentation(input, mode);
   const inspect = mode === "properties", plural = mode === "collection", singular = inspect || mode === "relationship";
   const scale = titleHeight / 48;
-  const title = Math.min(grant.height, titleHeight);
-  const subjectActions = inspect ? 48 * scale : 0;
-  const remaining = grant.height - title - subjectActions;
-  const heading = inspect || plural ? Math.min(32 * scale, remaining) : 0;
-  const tabs = inspect ? Math.min(56 * scale, remaining) : 0;
-  const actions = inspect ? Math.min(32 * scale, remaining - tabs) : 0;
-  const body = mode === "compact" ? 0 : plural ? heading : remaining - tabs;
+  const title = mode === "compact" ? grant.height : Math.min(grant.height, titleHeight);
+  const pane = requestedPane === "properties" && inspect ? "properties" : void 0;
+  const subjectActions = inspect && !pane ? 48 * scale : 0;
+  const groupHeading = !pane && (inspect || plural) ? 32 * scale : 0;
+  const remaining = grant.height - title - groupHeading - subjectActions;
+  const heading = inspect ? Math.min(32 * scale, remaining) : 0;
+  const tabs = inspect && !pane ? Math.min(56 * scale, remaining) : 0;
+  const actions = inspect && !pane ? Math.min(32 * scale, remaining - tabs) : 0;
+  const body = mode === "compact" || plural ? 0 : remaining - tabs;
   return {
     ...grant,
     mode,
+    pane,
     inspect,
     singular,
     plural,
     details: inspect,
+    groupHeading,
     heading,
     title,
     subjectActions,
     actions,
     body,
-    collection: mode === "compact" || mode === "relationship" ? 0 : plural ? remaining - heading : tabs,
-    showRail: singular
+    collection: mode === "compact" || mode === "relationship" ? 0 : plural ? remaining : tabs,
+    showRail: singular && !pane
   };
 }
 function boundedRegion(element, visible, label) {
@@ -74,7 +114,10 @@ function boundedRegion(element, visible, label) {
   }
 }
 function applyInspectorGeometry(parts, layout) {
-  const { root, title, body, heading, toggle, properties, filters, rail, collections, subjectActions } = parts;
+  const { root, title, body, heading, groupHeading, toggle, properties, filters, rail, collections, subjectActions } = parts;
+  for (const [group, members] of Object.entries({ title: [title], inspection: [groupHeading, subjectActions, body], collection: [collections] })) {
+    for (const member of members) if (member) member.dataset.inspectorGroup = group;
+  }
   Object.assign(root.style, {
     display: "grid",
     width: `${layout.width}px`,
@@ -82,17 +125,24 @@ function applyInspectorGeometry(parts, layout) {
     boxSizing: "border-box",
     gap: "0",
     gridTemplateColumns: "minmax(0, 1fr)",
-    gridTemplateRows: `${layout.title}px ${layout.subjectActions}px ${layout.body}px ${layout.collection}px`
+    gridTemplateRows: `${layout.title}px ${layout.groupHeading}px ${layout.subjectActions}px ${layout.body}px ${layout.collection}px`
   });
   Object.assign(title.style, { gridRow: "1", height: `${layout.title}px`, minWidth: "0", minHeight: "0" });
   const show = (element, visible, display, label) => {
     boundedRegion(element, visible, label);
     if (element) element.style.display = visible ? display : "none";
   };
+  show(groupHeading, layout.groupHeading > 0, "flex", "Properties, Actions & Relationships");
+  if (groupHeading) Object.assign(groupHeading.style, {
+    gridRow: "2",
+    gridColumn: "1",
+    background: layout.inspect ? "color-mix(in srgb, var(--dahn-panel-surface-background) 72%, var(--dahn-action-surface-background))" : "transparent"
+  });
+  if (root.inspectionLabel) root.inspectionLabel.hidden = !layout.inspect;
   show(body, layout.body > 0, "grid", "Node navigation and details");
-  show(subjectActions, layout.inspect, "block", "Holon actions");
-  if (subjectActions) Object.assign(subjectActions.style, { gridRow: "2", height: `${layout.subjectActions}px`, overflow: "auto" });
-  show(heading, layout.inspect || layout.mode === "collection", "flex", "Properties");
+  show(subjectActions, layout.inspect && !layout.pane, "block", "Holon actions");
+  if (subjectActions) Object.assign(subjectActions.style, { gridRow: "3", height: `${layout.subjectActions}px`, overflow: "auto" });
+  show(heading, layout.heading > 0, "flex", "Properties");
   show(properties, layout.details, "flex", "Properties \u2014 scroll for more");
   show(filters, layout.details && layout.actions > 0, "flex", "Relationship discovery");
   show(rail, layout.showRail, "flex", "Single-valued relationships \u2014 scroll for more");
@@ -102,33 +152,103 @@ function applyInspectorGeometry(parts, layout) {
   if (toggle) {
     toggle.setAttribute("aria-expanded", String(layout.details));
     toggle.disabled = layout.inspect;
-    toggle.textContent = layout.inspect ? "Properties" : "\u2039 Properties";
+    toggle.hidden = layout.inspect;
+    toggle.textContent = layout.inspect ? "Properties, Actions & Relationships" : "\u2039 Properties, Actions & Relationships";
+    toggle.setAttribute("aria-label", "Properties, Actions & Relationships");
     toggle.style.cursor = layout.inspect ? "default" : "pointer";
-    toggle.title = layout.inspect ? "Properties" : "Show Properties";
+    toggle.title = layout.inspect ? "Properties, Actions & Relationships" : "Show Properties, Actions & Relationships";
   }
   Object.assign(body.style, {
-    gridRow: "3",
+    gridRow: "4",
+    rowGap: "0",
     gridColumn: "1",
     gridTemplateColumns: layout.inspect && layout.showRail ? "minmax(0, 1fr) minmax(0, min(40%, 14rem))" : "minmax(0, 1fr)",
-    gridTemplateRows: layout.inspect ? `${layout.heading}px ${layout.actions}px minmax(0, 1fr)` : "minmax(0, 1fr)"
+    gridTemplateRows: layout.inspect ? `${layout.actions}px ${layout.heading}px minmax(0, 1fr)` : "minmax(0, 1fr)"
   });
-  if (heading) Object.assign(heading.style, { gridRow: "1", gridColumn: "1 / -1" });
-  if (filters) Object.assign(filters.style, { gridRow: "2", gridColumn: "1 / -1" });
+  if (heading) Object.assign(heading.style, {
+    gridRow: "2",
+    gridColumn: "1",
+    fontSize: ".9375em",
+    fontWeight: "600",
+    background: "transparent",
+    borderBottom: "1px solid var(--dahn-slot-border-color)"
+  });
+  if (filters) Object.assign(filters.style, { gridRow: "1", gridColumn: "1 / -1" });
   Object.assign(properties.style, { gridRow: "3", gridColumn: "1", flexDirection: "column" });
   Object.assign(rail.style, {
-    gridRow: layout.inspect ? "3" : "1",
+    gridRow: layout.inspect ? "2 / 4" : "1",
     gridColumn: layout.inspect ? "2" : "1",
     justifySelf: "end",
     width: "100%",
     maxWidth: layout.inspect ? "14rem" : "100%"
   });
-  Object.assign(collections.style, { gridRow: "4", gridColumn: "1", flexDirection: "column" });
+  Object.assign(collections.style, { gridRow: "5", gridColumn: "1", flexDirection: "column" });
+  const groupBorder = "var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)";
+  for (const member of [subjectActions, body]) if (member) Object.assign(member.style, {
+    borderInline: layout.inspect && !layout.pane ? groupBorder : "0",
+    background: layout.inspect && !layout.pane ? "color-mix(in srgb, var(--dahn-panel-surface-background) 88%, var(--dahn-action-surface-background))" : "transparent"
+  });
+  body.style.borderBottom = layout.inspect && !layout.pane ? groupBorder : "0";
 }
-function configurePropertiesReturn(button) {
-  button.textContent = "\u2039 Properties";
-  button.setAttribute("aria-label", "Properties");
-  button.title = "Show Properties";
+function configureInspectionReturn(button) {
+  button.textContent = "\u2039 Properties, Actions & Relationships";
+  button.setAttribute("aria-label", "Properties, Actions & Relationships");
+  button.title = "Show Properties, Actions & Relationships";
   button.style.cssText = "text-align:left;flex:1;min-width:0;height:100%;box-sizing:border-box;cursor:pointer;font:inherit;font-weight:600;padding:0 .75rem;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-action-corner-radius);background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);";
+}
+function applyPaneControls(parts, layout, relayout) {
+  const { root, heading, collectionTabs, collectionReturn } = parts;
+  if (root.localPaneAttention && root.localPaneAttention !== layout.pane) root.localPaneAttention = void 0;
+  root.dataset.paneAttention = layout.pane ?? "";
+  const size = 32 * layout.title / 48;
+  let button = root.propertiesPaneControl;
+  if (!button) {
+    button = root.propertiesPaneControl = document.createElement("button");
+    button.type = "button";
+    button.dataset.paneAttentionControl = "properties";
+  }
+  if (button.parentElement !== heading) heading.append(button);
+  const expanded = layout.pane === "properties";
+  const label = `${expanded ? "Restore" : "Expand"} Properties pane`;
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.setAttribute("aria-pressed", String(expanded));
+  button.replaceChildren(actionIcon("ExpandRestoreOccurrence.VisualizerOperator", expanded));
+  button.style.cssText = `display:flex;align-items:center;justify-content:center;flex:0 0 ${size}px;width:${size}px;height:${size}px;box-sizing:border-box;padding:4px;border:0;background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;`;
+  button.hidden = !layout.inspect;
+  button.inert = !layout.inspect;
+  if (!layout.inspect) button.style.display = "none";
+  button.onclick = () => {
+    root.localPaneAttention = expanded ? void 0 : "properties";
+    relayout();
+    button.focus({ preventScroll: true });
+  };
+  if (collectionTabs) {
+    collectionTabs.hidden = false;
+    collectionTabs.inert = false;
+    collectionTabs.style.paddingRight = "0px";
+  }
+  if (collectionReturn) {
+    Object.assign(collectionReturn.style, { minHeight: `${size}px`, marginRight: "0px" });
+    collectionReturn.inert = false;
+  }
+}
+function createInspectionGroupHeader(root, returnToInspection) {
+  const header = root.inspectionHeading = document.createElement("header");
+  header.dataset.inspectionGroupHeader = "true";
+  header.style.cssText = "display:flex;align-items:center;min-width:0;min-height:0;";
+  const button = root.propertiesToggle = document.createElement("button");
+  button.type = "button";
+  configureInspectionReturn(button);
+  button.addEventListener("click", () => {
+    returnToInspection();
+    root.propertiesHeading?.focus({ preventScroll: true });
+  });
+  const label = root.inspectionLabel = document.createElement("span");
+  label.textContent = "Properties, Actions & Relationships";
+  label.style.cssText = "min-width:0;padding:0 .75rem;font-size:1em;font-weight:600;color:var(--dahn-canvas-text-color);";
+  header.append(label, button);
+  return header;
 }
 
 // host/conductora/visualizer-src/node-title-bar.js
@@ -141,14 +261,14 @@ function createNodeTitleBar(context, options) {
   element.style.cssText = "display:flex;align-items:center;min-width:0;min-height:0;overflow:auto;";
   element.append(title);
   title.style.flex = "1 1 0";
-  title.style.minWidth = "80px";
+  title.style.minWidth = "0";
   if (actions) {
     actions.style.flex = "0 1 60%";
     actions.style.minWidth = "44px";
     actions.style.maxWidth = "60%";
     element.append(actions);
   }
-  let state = {}, information;
+  let state = {}, information, informationName;
   const operations = {
     ...context.presentationOperators,
     "ExploreOccurrence.VisualizerOperator": () => options.explore?.(),
@@ -168,20 +288,41 @@ function createNodeTitleBar(context, options) {
       "ExploreOccurrence.VisualizerOperator": { available: !!state.canExplore, reason: "Explore is unavailable in this context." },
       "CloseOccurrence.VisualizerOperator": { available: !!state.canClose, reason: "Close is unavailable in this context." },
       "ExpandRestoreOccurrence.VisualizerOperator": { available: state.collapsed || !!state.canMaximize, reason: "Expansion is unavailable in this context.", label: state.collapsed || state.maximized ? "Restore" : "Expand" },
-      "InspectOccurrence.VisualizerOperator": { available: !!information, reason: "Occurrence inspection is unavailable." }
+      "InspectOccurrence.VisualizerOperator": { available: !!information, reason: "Occurrence inspection is unavailable.", label: informationName || "Show Visualizer" }
     };
-    actions?.setOccurrenceActions?.(actionsState, invoke);
     const width = state.width ?? 800;
-    const actionWidth = actions ? Math.max(44, Math.min(204, width - 80)) : 0;
-    const titleWidth = Math.max(80, width - actionWidth);
-    title.style.flex = `0 0 ${titleWidth}px`;
-    if (actions) {
-      actions.style.flex = `0 0 ${actionWidth}px`;
-      actions.style.maxWidth = `${actionWidth}px`;
-    }
+    const scale = Math.max(1, (parseFloat(getComputedStyle(element).fontSize) || 16) / 16);
+    const fullActionsWidth = 240 * scale;
+    const reduced = ["relationship", "compact"].includes(state.mode) || width < fullActionsWidth + 80 * scale;
+    element.dataset.titleActions = reduced ? "close-only" : "all";
+    actions?.setOccurrenceActions?.(actionsState, invoke, reduced ? "close-only" : "all");
+    const height = Math.max(32, state.height ?? 48);
+    const stacked = state.mode === "compact" && width < 320 * scale && height >= 64 * scale;
+    const actionsHeight = stacked ? Math.min(48 * scale, height - 32 * scale) : height;
+    const actionWidth = actions ? reduced ? Math.min(48 * scale, width - 1) : fullActionsWidth : 0;
+    const titleWidth = stacked ? width : Math.max(1, width - actionWidth);
+    const titleHeight = stacked && actions ? height - actionsHeight : height;
+    element.dataset.titleLayout = stacked ? "stacked" : "inline";
+    element.style.background = "var(--dahn-action-surface-background)";
+    Object.assign(element.style, {
+      display: "grid",
+      gridTemplateColumns: stacked ? "minmax(0, 1fr)" : `minmax(0, 1fr) ${actionWidth}px`,
+      gridTemplateRows: stacked && actions ? `${actionsHeight}px minmax(0, 1fr)` : "minmax(0, 1fr)",
+      alignItems: "stretch"
+    });
+    Object.assign(title.style, { gridRow: stacked && actions ? "2" : "1", gridColumn: "1", minHeight: "0" });
+    if (actions) Object.assign(actions.style, {
+      gridRow: "1",
+      gridColumn: stacked ? "1" : "2",
+      justifySelf: "end",
+      width: `${actionWidth}px`,
+      maxWidth: `${actionWidth}px`,
+      height: `${actionsHeight}px`,
+      minWidth: "0"
+    });
     const result = binding({
       width: titleWidth,
-      height: Math.max(32, state.height ?? 48),
+      height: titleHeight,
       title: options.title,
       holonKey: options.holonKey,
       requiresRestore: !!state.requiresRestore
@@ -199,6 +340,11 @@ function createNodeTitleBar(context, options) {
     if (typeof operation !== "function") throw new Error(`Missing occurrence operation: ${key}`);
     return operation(invoker);
   };
+  element.addEventListener("click", (event) => {
+    if (state.mode !== "compact" || event.defaultPrevented) return;
+    if (event.composedPath().some((target) => target instanceof Element && target.matches('button, a, input, select, textarea, [role="button"]'))) return;
+    invoke("RestoreNodePresentation.VisualizerOperator", element);
+  });
   title.setOwnerInvocation(invoke);
   const status = document.createElement("span");
   status.setAttribute("role", "status");
@@ -211,8 +357,9 @@ function createNodeTitleBar(context, options) {
     presentationStatus: status,
     operations,
     update,
-    setInformation(handler) {
+    setInformation(handler, displayName) {
       information = handler;
+      informationName = displayName;
       publish();
     }
   };
@@ -297,7 +444,7 @@ var HolonInspectorElement = class extends HTMLElement {
   }
   applyNodePresentation(input) {
     const next = inspectorPresentation(this.presentationState ?? initialInspectorPresentation(), input.presentation);
-    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode);
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode, this.localPaneAttention);
     this.presentationState = next;
     if (input.presentation !== void 0) this.collectionContext = input.presentation === "collection-context";
     this.allocation = { width: input.width, height: input.height };
@@ -323,7 +470,7 @@ var HolonInspectorElement = class extends HTMLElement {
   adaptBudget() {
     if (!this.body || !this.singleValueRail || !this.allocation) return;
     const scale = Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16);
-    const layout = inspectorLayout(this.allocation, 48 * scale, this.presentationState.mode);
+    const layout = inspectorLayout(this.allocation, 48 * scale, this.presentationState.mode, this.localPaneAttention);
     this.titleHeight = layout.title;
     const active = document.activeElement;
     applyInspectorGeometry({
@@ -332,6 +479,7 @@ var HolonInspectorElement = class extends HTMLElement {
       body: this.body,
       subjectActions: this.actionsVisualizer,
       heading: this.propertiesHeading,
+      groupHeading: this.inspectionHeading,
       toggle: this.propertiesToggle,
       properties: this.propertyViewer,
       filters: this.actionBar,
@@ -346,7 +494,8 @@ var HolonInspectorElement = class extends HTMLElement {
     this.collectionViewer.style.flex = "1 1 0";
     this.collectionViewer.style.minHeight = "0";
     this.collectionViewer.style.overflow = "auto";
-    this.titleBar.update({ width: layout.width, height: layout.title, collapsed: this.collectionContext || ["relationship", "compact"].includes(layout.mode) });
+    this.titleBar.update({ width: layout.width, height: layout.title, mode: layout.mode, collapsed: this.collectionContext || ["relationship", "compact"].includes(layout.mode) });
+    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collectionRegion, collectionTabs: this.collectionTabBar }, layout, () => this.adaptBudget());
     this.updateMaximizeControls();
     if ([this.body, this.propertyViewer, this.actionBar, this.collectionRegion, this.singleValueRail].some((region) => region.inert && region.contains(active))) this.titleControl.focus();
     if (this.isConnected) this.scheduleLayout();
@@ -571,6 +720,7 @@ var HolonInspectorElement = class extends HTMLElement {
     select();
   }
   setContext(context) {
+    this.localPaneAttention = void 0;
     this.disconnectedCallback();
     this.presentationState = initialInspectorPresentation();
     this.collectionActivation = context.collectionActivation;
@@ -629,14 +779,14 @@ var HolonInspectorElement = class extends HTMLElement {
     if (this.discovery) {
       const label = document.createElement("label");
       Object.assign(label.style, { marginLeft: "auto", whiteSpace: "nowrap" });
-      const toggle2 = document.createElement("input");
-      toggle2.type = "checkbox";
-      toggle2.dataset.showEmptyRelationships = "true";
-      toggle2.addEventListener("change", () => {
-        this.showEmpty = toggle2.checked;
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.dataset.showEmptyRelationships = "true";
+      toggle.addEventListener("change", () => {
+        this.showEmpty = toggle.checked;
         this.updateRelationships();
       });
-      label.append(toggle2, " Show Empty Relationships");
+      label.append(toggle, " Show Empty Relationships");
       const status = document.createElement("div");
       status.dataset.relationshipDiscoveryStatus = "true";
       status.style.flexBasis = "100%";
@@ -734,19 +884,19 @@ var HolonInspectorElement = class extends HTMLElement {
     const propertiesHeading = this.propertiesHeading = document.createElement("header");
     propertiesHeading.dataset.propertiesTitleBar = "true";
     propertiesHeading.style.cssText = "grid-column:1 / -1;grid-row:1;display:flex;align-items:center;min-width:0;min-height:0;";
-    const toggle = this.propertiesToggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.textContent = "Properties";
-    configurePropertiesReturn(toggle);
-    toggle.addEventListener("click", () => this.selectView("properties"));
-    propertiesHeading.append(toggle);
+    const propertiesLabel = document.createElement("span");
+    propertiesLabel.textContent = "Properties";
+    propertiesLabel.style.cssText = "flex:1;min-width:0;padding:0 .75rem;font-weight:600;";
+    this.propertiesHeading.style.background = "var(--dahn-action-surface-background)";
+    this.propertiesHeading.append(propertiesLabel);
+    createInspectionGroupHeader(this, () => this.selectView("properties"));
     body.append(propertiesHeading, actionBar, propertyViewer, singleValueRail);
     this.layouts = [railLayout, collectionLayout];
     const style = document.createElement("style");
     style.textContent = `[data-dahn-holon-inspector] [data-singular-relationship][aria-pressed="true"], [data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
-    this.replaceChildren(style, title, this.actionsVisualizer, body, collectionRegion);
+    this.replaceChildren(style, title, this.inspectionHeading, this.actionsVisualizer, body, collectionRegion);
     this.adaptBudget();
     if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();

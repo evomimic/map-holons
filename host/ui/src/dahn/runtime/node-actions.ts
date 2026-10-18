@@ -13,7 +13,7 @@ type ActionBarElement = HTMLElement & {
 
 export interface NodeActionBar extends HTMLElement {
   readonly controls: HTMLElement;
-  setOccurrenceActions(states: Record<string, { available: boolean; reason: string; label?: string }>, invoke: (key: string, invoker: HTMLElement) => unknown): void;
+  setOccurrenceActions(states: Record<string, { available: boolean; reason: string; label?: string }>, invoke: (key: string, invoker: HTMLElement) => unknown, presentation?: 'all' | 'close-only'): void;
   dispose(): void;
 }
 
@@ -76,19 +76,29 @@ export async function composeNodeActions(transaction: MapTransaction, runtime: M
         if (supported) activation.activate(binding => interactions!.openLoadHolons(binding), invoker); } };
   }));
   const subjectActions = await bind(context.actions);
-  const publish = () => controlsBar.present({ actions: occurrenceActions });
+  let presentation: 'all' | 'close-only' = 'all';
+  const publish = () => {
+    const reduced = presentation === 'close-only';
+    // This composition owns which bound actions are presented; the selected bar
+    // retains generic rendering and the full set of activation bindings stays local.
+    const badge = controls.querySelector<HTMLElement>(':scope > [data-visualizer-information-control]');
+    if (badge) { badge.style.display = reduced ? 'none' : 'inline-flex'; badge.inert = reduced; }
+    controls.style.paddingInlineEnd = reduced ? '0' : '24px';
+    return controlsBar.present({ actions: reduced ? occurrenceActions.filter(action => action.id === 'CloseOccurrence.VisualizerOperator') : occurrenceActions, overflow: false });
+  };
   subjectBar.present({ actions: subjectActions });
   publish();
   const dispose = bar.dispose?.bind(bar);
   const composed = Object.assign(bar, {
     controls,
-    setOccurrenceActions(states: Record<string, { available: boolean; reason: string; label?: string }>, handler: typeof invoke) {
+    setOccurrenceActions(states: Record<string, { available: boolean; reason: string; label?: string }>, handler: typeof invoke, requested: 'all' | 'close-only' = 'all') {
       if (typeof handler !== 'function') throw new Error('Occurrence activation authority is not bound');
       for (const action of occurrenceActions) {
         const state = states[action.id];
         if (typeof state?.available !== 'boolean' || !state.available && !state.reason) throw new Error(`Missing required action state: ${action.id}`);
       }
       invoke = handler;
+      presentation = requested;
       occurrenceActions = occurrenceActions.map(action => ({ ...action, ...states[action.id], label: states[action.id].label ?? action.label }));
       publish();
     },

@@ -149,6 +149,11 @@ export default class PathInspectorElement extends HTMLElement {
     this.emptyState.style.position = 'absolute';
     this.emptyState.style.inset = '16px';
     viewport.append(this.emptyState);
+    this.boundaryCues = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.boundaryCues.dataset.pathBoundaryCues = 'true';
+    this.boundaryCues.setAttribute('aria-hidden', 'true');
+    Object.assign(this.boundaryCues.style, { position: 'absolute', pointerEvents: 'none', overflow: 'hidden', zIndex: '2', color: 'var(--dahn-muted-text-color)' });
+    viewport.append(this.boundaryCues);
     this.replaceChildren(title, viewport);
     if (context.navigation) {
       this.unsubscribe = context.navigation.subscribe((occurrences, focus, destination) => this.renderPath(occurrences, focus, destination));
@@ -261,6 +266,9 @@ export default class PathInspectorElement extends HTMLElement {
     this.surface.style.rowGap = `${gap}px`; this.surface.style.columnGap = `${columnGap}px`;
     const frontier = this.occurrences.find(item => item.id === this.focus?.occurrenceId) ?? this.occurrences.at(-1);
     const columns = Math.max(...this.occurrences.map(item => item.column ?? 1));
+    // One column can use the available viewport without reserving absent horizontal context.
+    if (columns === 1) horizontal.expanded = Math.max(profile.horizontal.minimum[2],
+      Math.min(profile.horizontal.preferred[2], (this.viewportWidth || this.viewport.clientWidth || 1280) - frame.width));
     const allocations = Array.from({ length: columns }, () => 'compact');
     this.rowAllocations.clear();
     for (const id of rows) this.rowAllocations.set(id, 'compact');
@@ -462,10 +470,11 @@ export default class PathInspectorElement extends HTMLElement {
     this.presentationAssignments ??= new Map();
     this.pendingPresentations ??= new Map();
     if (focusChanged && focus?.mode === 'restore' && frontier && !removed) {
-      this.presentationAssignments.set(frontier.id, 'inspect');
-      this.pendingPresentations.set(frontier.id, 'inspect');
+      // Title selection has one expanded occurrence, independently of prior selections.
+      this.presentationAssignments = new Map(occurrences.map(item => [item.id, item.id === frontier.id ? 'inspect' : 'compact']));
+      this.pendingPresentations = new Map(this.presentationAssignments);
     } else if ((focusChanged && focus?.mode === 'traverse') || removed || (!this.presentationAssignments.size && occurrences.length)) {
-      this.presentationAssignments = contextualPresentations(occurrences, focus?.occurrenceId);
+      this.presentationAssignments = contextualPresentations(occurrences, focus?.occurrenceId, this.presentationAssignments);
       this.pendingPresentations = new Map(this.presentationAssignments);
     }
     for (const occurrence of occurrences) {
@@ -672,6 +681,54 @@ export default class PathInspectorElement extends HTMLElement {
     controls.append(this.viewStatus);
     return controls;
   }
+  renderBoundaryCues(directions) {
+    const layer = this.boundaryCues;
+    if (!layer) return;
+    const view = this.view, width = view.viewportWidth, height = view.viewportHeight;
+    Object.assign(layer.style, { left: `${this.viewport.scrollLeft}px`, top: `${this.viewport.scrollTop}px` });
+    layer.setAttribute('width', String(width)); layer.setAttribute('height', String(height));
+    layer.replaceChildren();
+    if (this.attention || width <= 0 || height <= 0) return;
+    const svg = (name, attributes) => {
+      const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+      for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
+      layer.append(element); return element;
+    };
+    // These boundary channels are view cues, not margins or new navigation edges.
+    for (const direction of directions) {
+      const horizontal = direction === 'left' || direction === 'right';
+      const channel = svg('rect', { x: direction === 'right' ? width - 3 : 0,
+        y: direction === 'below' ? height - 3 : 0, width: horizontal ? 3 : width,
+        height: horizontal ? height : 3, fill: 'currentColor', opacity: '.65' });
+      channel.dataset.boundaryDirection = direction;
+    }
+    const project = bounds => ({ x: bounds.x * view.scale - this.viewport.scrollLeft,
+      y: bounds.y * view.scale - this.viewport.scrollTop, width: bounds.width * view.scale, height: bounds.height * view.scale });
+    for (const child of this.occurrences ?? []) {
+      const sourceId = child.provenance?.parentOccurrenceId ?? child.parentOccurrenceId;
+      const sourceBounds = this.layoutBounds.get(sourceId), targetBounds = this.layoutBounds.get(child.id);
+      if (!sourceBounds || !targetBounds) continue;
+      const source = project(sourceBounds), target = project(targetBounds);
+      if (target.x + target.width <= 0 || target.x >= width || target.y + target.height <= 0 || target.y >= height) continue;
+      const horizontal = child.provenance?.kind === 'singular-relationship' || child.axis === 'horizontal';
+      const direction = horizontal && source.x + source.width <= 0 ? 'left'
+        : !horizontal && source.y + source.height <= 0 ? 'above' : undefined;
+      if (!direction) continue;
+      const center = horizontal ? target.y + target.height / 2 : target.x + target.width / 2;
+      if (center < 10 || center > (horizontal ? height : width) - 10) continue;
+      // Preserve the actual direction of the inbound traversal at the clipped boundary.
+      svg('rect', { x: horizontal ? 0 : center - 10, y: horizontal ? center - 10 : 0,
+        width: horizontal ? 24 : 20, height: horizontal ? 20 : 24,
+        fill: 'var(--dahn-panel-surface-background)' });
+      const arrow = svg('path', { d: horizontal
+        ? `M 2 ${center} H 20 M 13 ${center - 6} L 20 ${center} L 13 ${center + 6}`
+        : `M ${center} 2 V 20 M ${center - 6} 13 L ${center} 20 L ${center + 6} 13`,
+        fill: 'none', stroke: 'currentColor', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+      arrow.dataset.boundaryDirection = direction;
+      arrow.dataset.boundaryTraversalSource = sourceId;
+      arrow.dataset.boundaryTraversalTarget = child.id;
+    }
+  }
   updateVisibility() {
     if (!this.viewStatus) return;
     const directions = new Set();
@@ -683,6 +740,7 @@ export default class PathInspectorElement extends HTMLElement {
       region.dataset.viewportVisibility = visibility.state;
       visibility.directions.forEach(direction => directions.add(direction));
     }
+    this.renderBoundaryCues(directions);
     this.viewStatus.textContent = `${Math.round(this.view.scale * 100)}%${directions.size ? ` · More content ${[...directions].join(', ')}` : ''}`;
     this.viewStatus.title = this.viewStatus.textContent;
     this.viewButtons.forEach(button => { button.disabled = !this.view.ready; });

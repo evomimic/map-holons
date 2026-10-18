@@ -1,6 +1,6 @@
 import { initialInspectorPresentation, inspectorPresentation, selectInspectorView } from './inspector-presentation.js';
 import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
-import { inspectorLayout, applyInspectorGeometry, configurePropertiesReturn } from './inspector-layout.js';
+import { inspectorLayout, applyInspectorGeometry, applyPaneControls, createInspectionGroupHeader } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 /** Specialized properties and result collections within ordinary Node allocation. */
@@ -37,6 +37,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     const disabled = tab.disabled; tab.disabled = false; tab.click(); tab.disabled = disabled;
   }
   setContext(context) {
+    this.localPaneAttention = undefined;
     this.unsubscribe?.();
     this.presentationState = initialInspectorPresentation();
     this.style.cssText = 'display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;border:1px solid var(--dahn-slot-border-color);border-radius:var(--dahn-panel-corner-radius);background:var(--dahn-canvas-surface-background);color:var(--dahn-canvas-text-color);';
@@ -132,17 +133,14 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.propertiesHeading = document.createElement('header');
     this.propertiesHeading.dataset.propertiesTitleBar = 'true';
     this.propertiesHeading.style.cssText = 'min-width:0;min-height:0;align-items:center;';
-    this.propertiesToggle = document.createElement('button');
-    this.propertiesToggle.type = 'button'; this.propertiesToggle.textContent = 'Properties';
-    configurePropertiesReturn(this.propertiesToggle);
-    this.propertiesToggle.addEventListener('click', () => {
-      this.presentationState = selectInspectorView(this.presentationState, 'properties');
-      if (this.allocation) this.applyNodePresentation(this.allocation);
-    });
-    this.propertiesHeading.append(this.propertiesToggle);
+    const propertiesLabel = document.createElement('span'); propertiesLabel.textContent = 'Properties';
+    propertiesLabel.style.cssText = 'flex:1;min-width:0;padding:0 .75rem;font-weight:600;';
+    this.propertiesHeading.style.background = 'var(--dahn-action-surface-background)';
+    this.propertiesHeading.append(propertiesLabel);
+    createInspectionGroupHeader(this, () => { this.presentationState = selectInspectorView(this.presentationState, 'properties'); this.setNodeInspectorAllocation(this.allocation); });
     this.content = this.body;
     this.body.replaceChildren(this.propertiesHeading, this.properties, this.rail);
-    this.replaceChildren(heading, this.actionsVisualizer, this.body, this.collections);
+    this.replaceChildren(heading, this.inspectionHeading, this.actionsVisualizer, this.body, this.collections);
     this.unsubscribe = context.relationshipDiscovery?.subscribe(() => {
       this.discoveryStatus.replaceChildren();
       let pending = 0;
@@ -213,20 +211,21 @@ export default class LoadHolonsInspector extends HTMLElement {
   get visualizerOperations() { return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: input => this.applyNodePresentation(input) }; }
   applyNodePresentation(input) {
     const next = inspectorPresentation(this.presentationState ?? initialInspectorPresentation(), input.presentation);
-    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode);
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode, this.localPaneAttention);
     this.presentationState = next;
     if (input.presentation !== undefined) this.collectionContext = input.presentation === 'collection-context';
     this.allocation = { width: input.width, height: input.height };
     const active = document.activeElement;
     applyInspectorGeometry({ root: this, title: this.heading, body: this.body,
-      subjectActions: this.actionsVisualizer, heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.properties,
+      subjectActions: this.actionsVisualizer, heading: this.propertiesHeading, groupHeading: this.inspectionHeading, toggle: this.propertiesToggle, properties: this.properties,
       rail: this.rail, collections: this.collections }, layout);
     if (this.propertyVisualizer) Object.assign(this.propertyVisualizer.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
-    this.titleBar.update({ width: layout.width, height: layout.title, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });
+    this.titleBar.update({ width: layout.width, height: layout.title, mode: layout.mode, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });
     this.collectionsExpand.hidden = !this.ownedCollectionOpen;
     this.collectionsExpand.style.display = this.ownedCollectionOpen ? 'block' : 'none';
     if (this.ownedCollection) { this.ownedCollection.hidden = layout.mode !== 'collection'; this.ownedCollection.inert = layout.mode !== 'collection'; }
     if (this.collectionViewer) { this.collectionViewer.inert = layout.mode !== 'collection'; this.collectionViewer.style.display = layout.mode === 'collection' ? 'flex' : 'none'; }
+    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collections, collectionTabs: this.collectionTabBar, collectionReturn: this.collectionsExpand }, layout, () => this.setNodeInspectorAllocation(this.allocation));
     if ([this.properties, this.collections, this.body, this.rail].some(region => region.inert && region.contains(active))) this.titleControl.focus();
     return { status: 'applied' };
   }

@@ -41,7 +41,7 @@ var ActionsElement = class extends HTMLElement {
   get visualizerOperations() {
     return { "PresentActions.VisualizerOperator": (input) => {
       if (!Array.isArray(input?.actions)) throw new Error("PresentActions requires supplied actions");
-      this.setActions(input.actions);
+      this.setActions(input.actions, input.overflow !== false);
       return { status: "applied" };
     } };
   }
@@ -69,7 +69,7 @@ var ActionsElement = class extends HTMLElement {
       if (this.isConnected) this.layout.fit();
     });
   }
-  setActions(actions) {
+  setActions(actions, allowOverflow = true) {
     const validate = (items, seen = /* @__PURE__ */ new Set()) => {
       for (const action of items) {
         if (!action.id || !action.label || seen.has(action.id)) throw new Error("Invalid or duplicate Action identity");
@@ -124,7 +124,7 @@ var ActionsElement = class extends HTMLElement {
       controls.set(action.id, button);
       return button;
     });
-    const sameShape = JSON.stringify(actions.map(shape)) === this.shape;
+    const sameShape = JSON.stringify(actions.map(shape)) === this.shape && allowOverflow === this.allowOverflow;
     function shape(action) {
       return [action.id, action.kind, action.children?.map(shape)];
     }
@@ -133,7 +133,7 @@ var ActionsElement = class extends HTMLElement {
     if (!sameShape) {
       this.disconnectedCallback();
       if (!this.surface) {
-        this.style.cssText = "display:block;position:relative;height:100%;min-height:0;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;";
+        Object.assign(this.style, { display: "block", position: "relative", height: "100%", minHeight: "0", minWidth: "0", maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" });
         this.surface = document.createElement("div");
         this.append(this.surface);
         this.notice = document.createElement("div");
@@ -151,7 +151,8 @@ var ActionsElement = class extends HTMLElement {
         this.notice.append(this.status, this.dismiss);
         this.append(this.notice);
       }
-      this.layout = horizontalOverflow(this.surface, components, "More actions");
+      this.layout = horizontalOverflow(this.surface, components, "More actions", allowOverflow);
+      this.allowOverflow = allowOverflow;
       this.shape = JSON.stringify(actions.map(shape));
       if (this.isConnected) this.connectedCallback();
     }
@@ -159,7 +160,7 @@ var ActionsElement = class extends HTMLElement {
   }
 };
 var nextOverflowId = 0;
-function horizontalOverflow(host, controls, label) {
+function horizontalOverflow(host, controls, label, allowOverflow = true) {
   Object.assign(host.style, { display: "block", minWidth: "0", maxWidth: "100%", height: "100%", maxHeight: "100%", boxSizing: "border-box", overflow: "hidden", position: "relative" });
   const row = document.createElement("div");
   row.dataset.overflowRow = "true";
@@ -168,6 +169,10 @@ function horizontalOverflow(host, controls, label) {
   more.type = "button";
   more.dataset.overflowMore = "true";
   more.textContent = label;
+  if (!allowOverflow) {
+    more.hidden = true;
+    more.style.display = "none";
+  }
   more.setAttribute("aria-expanded", "false");
   Object.assign(more.style, { boxSizing: "border-box", maxHeight: "100%", font: "inherit", cursor: "pointer", border: "0", padding: "var(--dahn-action-padding-block) var(--dahn-action-padding-inline)", color: "var(--dahn-action-text-color)", background: "var(--dahn-action-surface-background)", borderRadius: "var(--dahn-action-corner-radius)" });
   Object.assign(more.style, { flex: "0 0 auto", maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" });
@@ -259,6 +264,12 @@ function horizontalOverflow(host, controls, label) {
       return;
     }
     close();
+    if (!allowOverflow) {
+      hidden = [];
+      controls.forEach((control) => show(control, true));
+      show(more, false);
+      return;
+    }
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
     const widths = controls.map((control) => control.offsetWidth);

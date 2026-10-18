@@ -5,7 +5,7 @@ export const PRESENTATION_REQUESTS = ['inspect', 'collection-context', 'relation
 export function participationProfile(fontSize = 16) {
   const scale = Math.max(1, fontSize / 16);
   const axis = (minimum, preferred, channel) => ({ minimum: minimum.map(n => n * scale), preferred: preferred.map(n => n * scale), channel: { minimum: channel[0] * scale, preferred: channel[1] * scale } });
-  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 320, 480], [64, 400, 720], [24, 64]) };
+  return { horizontal: axis([80, 180, 360], [96, 240, 800], [48, 144]), vertical: axis([64, 320, 480], [64, 400, 720], [48, 64]) };
 }
 export function resolveAxis(profile, budget, frame = 0) {
   const { minimum, preferred, channel } = profile;

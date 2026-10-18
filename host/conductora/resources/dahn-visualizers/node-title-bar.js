@@ -10,14 +10,14 @@ function createNodeTitleBar(context, options) {
   element.style.cssText = "display:flex;align-items:center;min-width:0;min-height:0;overflow:auto;";
   element.append(title);
   title.style.flex = "1 1 0";
-  title.style.minWidth = "80px";
+  title.style.minWidth = "0";
   if (actions) {
     actions.style.flex = "0 1 60%";
     actions.style.minWidth = "44px";
     actions.style.maxWidth = "60%";
     element.append(actions);
   }
-  let state = {}, information;
+  let state = {}, information, informationName;
   const operations = {
     ...context.presentationOperators,
     "ExploreOccurrence.VisualizerOperator": () => options.explore?.(),
@@ -37,20 +37,41 @@ function createNodeTitleBar(context, options) {
       "ExploreOccurrence.VisualizerOperator": { available: !!state.canExplore, reason: "Explore is unavailable in this context." },
       "CloseOccurrence.VisualizerOperator": { available: !!state.canClose, reason: "Close is unavailable in this context." },
       "ExpandRestoreOccurrence.VisualizerOperator": { available: state.collapsed || !!state.canMaximize, reason: "Expansion is unavailable in this context.", label: state.collapsed || state.maximized ? "Restore" : "Expand" },
-      "InspectOccurrence.VisualizerOperator": { available: !!information, reason: "Occurrence inspection is unavailable." }
+      "InspectOccurrence.VisualizerOperator": { available: !!information, reason: "Occurrence inspection is unavailable.", label: informationName || "Show Visualizer" }
     };
-    actions?.setOccurrenceActions?.(actionsState, invoke);
     const width = state.width ?? 800;
-    const actionWidth = actions ? Math.max(44, Math.min(204, width - 80)) : 0;
-    const titleWidth = Math.max(80, width - actionWidth);
-    title.style.flex = `0 0 ${titleWidth}px`;
-    if (actions) {
-      actions.style.flex = `0 0 ${actionWidth}px`;
-      actions.style.maxWidth = `${actionWidth}px`;
-    }
+    const scale = Math.max(1, (parseFloat(getComputedStyle(element).fontSize) || 16) / 16);
+    const fullActionsWidth = 240 * scale;
+    const reduced = ["relationship", "compact"].includes(state.mode) || width < fullActionsWidth + 80 * scale;
+    element.dataset.titleActions = reduced ? "close-only" : "all";
+    actions?.setOccurrenceActions?.(actionsState, invoke, reduced ? "close-only" : "all");
+    const height = Math.max(32, state.height ?? 48);
+    const stacked = state.mode === "compact" && width < 320 * scale && height >= 64 * scale;
+    const actionsHeight = stacked ? Math.min(48 * scale, height - 32 * scale) : height;
+    const actionWidth = actions ? reduced ? Math.min(48 * scale, width - 1) : fullActionsWidth : 0;
+    const titleWidth = stacked ? width : Math.max(1, width - actionWidth);
+    const titleHeight = stacked && actions ? height - actionsHeight : height;
+    element.dataset.titleLayout = stacked ? "stacked" : "inline";
+    element.style.background = "var(--dahn-action-surface-background)";
+    Object.assign(element.style, {
+      display: "grid",
+      gridTemplateColumns: stacked ? "minmax(0, 1fr)" : `minmax(0, 1fr) ${actionWidth}px`,
+      gridTemplateRows: stacked && actions ? `${actionsHeight}px minmax(0, 1fr)` : "minmax(0, 1fr)",
+      alignItems: "stretch"
+    });
+    Object.assign(title.style, { gridRow: stacked && actions ? "2" : "1", gridColumn: "1", minHeight: "0" });
+    if (actions) Object.assign(actions.style, {
+      gridRow: "1",
+      gridColumn: stacked ? "1" : "2",
+      justifySelf: "end",
+      width: `${actionWidth}px`,
+      maxWidth: `${actionWidth}px`,
+      height: `${actionsHeight}px`,
+      minWidth: "0"
+    });
     const result = binding({
       width: titleWidth,
-      height: Math.max(32, state.height ?? 48),
+      height: titleHeight,
       title: options.title,
       holonKey: options.holonKey,
       requiresRestore: !!state.requiresRestore
@@ -68,6 +89,11 @@ function createNodeTitleBar(context, options) {
     if (typeof operation !== "function") throw new Error(`Missing occurrence operation: ${key}`);
     return operation(invoker);
   };
+  element.addEventListener("click", (event) => {
+    if (state.mode !== "compact" || event.defaultPrevented) return;
+    if (event.composedPath().some((target) => target instanceof Element && target.matches('button, a, input, select, textarea, [role="button"]'))) return;
+    invoke("RestoreNodePresentation.VisualizerOperator", element);
+  });
   title.setOwnerInvocation(invoke);
   const status = document.createElement("span");
   status.setAttribute("role", "status");
@@ -80,8 +106,9 @@ function createNodeTitleBar(context, options) {
     presentationStatus: status,
     operations,
     update,
-    setInformation(handler) {
+    setInformation(handler, displayName) {
       information = handler;
+      informationName = displayName;
       publish();
     }
   };
@@ -107,21 +134,34 @@ var NodeTitleBar = class extends HTMLElement {
     this.invoke = invoke;
   }
   apply(input) {
-    if (!Number.isFinite(input.width) || !Number.isFinite(input.height) || input.width < 80 || input.height < 32 || !input.title) throw new Error("Invalid Title Bar presentation");
+    if (!Number.isFinite(input.width) || !Number.isFinite(input.height) || input.width < 1 || input.height < 32 || !input.title) throw new Error("Invalid Title Bar presentation");
     this.input = input;
     this.identity.textContent = input.requiresRestore ? input.holonKey || input.title : input.title;
     this.identity.title = input.title;
     this.identity.setAttribute("aria-label", `${input.requiresRestore ? "Restore: " : ""}${input.title}`);
     this.identity.setAttribute("aria-expanded", String(!input.requiresRestore));
-    this.style.width = `${input.width}px`;
-    this.style.height = `${input.height}px`;
+    layoutTitleIdentity(this, this.identity, input);
     return { status: "applied" };
   }
   getVisualizerComposition() {
     return [];
   }
 };
+function layoutTitleIdentity(element, identity, input) {
+  Object.assign(element.style, { width: `${input.width}px`, height: `${input.height}px` });
+  Object.assign(identity.style, {
+    width: "100%",
+    height: "100%",
+    boxSizing: "border-box",
+    fontSize: "1.125em",
+    fontWeight: "700",
+    whiteSpace: input.requiresRestore ? "normal" : "nowrap",
+    overflowWrap: "anywhere",
+    textOverflow: input.requiresRestore ? "clip" : "ellipsis"
+  });
+}
 export {
   createNodeTitleBar,
-  NodeTitleBar as default
+  NodeTitleBar as default,
+  layoutTitleIdentity
 };

@@ -125,13 +125,13 @@ it('shows subject actions only in Properties and retains independent title contr
   expect(f.actions.inert).toBe(false);
   f.node.setNodeOwnedCollection(document.createElement('section'));
   expect(f.actions.inert).toBe(true); expect(f.actions.controls.inert).not.toBe(true);
-  expect(f.node.propertiesHeading.hidden).toBe(false);
+  expect(f.node.inspectionHeading.hidden).toBe(false);
   f.node.propertiesToggle.click();
-  expect(f.actions.inert).toBe(false); expect(f.node.propertiesHeading.hidden).toBe(false);
-  expect(f.node.propertiesToggle.textContent).toBe('Properties');
+  expect(f.actions.inert).toBe(false); expect(f.node.inspectionHeading.hidden).toBe(false);
+  expect(f.node.propertiesToggle.textContent).toBe('Properties, Actions & Relationships');
   for (const presentation of ['relationship', 'compact']) {
     applyNodePresentation(f.node, { width: 800, height: 640, presentation });
     expect(f.actions.inert).toBe(true); expect(f.actions.controls.inert).not.toBe(true);
-    expect(f.actions.controls.querySelectorAll('[data-action-id]')).toHaveLength(4);
+    expect(f.actions.controls.querySelectorAll('[data-action-id]')).toHaveLength(1);
   }
 });

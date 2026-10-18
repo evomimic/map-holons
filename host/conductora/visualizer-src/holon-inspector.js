@@ -1,6 +1,6 @@
 import { initialInspectorPresentation, inspectorPresentation, selectInspectorView } from './inspector-presentation.js';
 import { APPLY_NODE_PRESENTATION } from './node-presentation.js';
-import { inspectorLayout, applyInspectorGeometry, configurePropertiesReturn } from './inspector-layout.js';
+import { inspectorLayout, applyInspectorGeometry, applyPaneControls, createInspectionGroupHeader } from './inspector-layout.js';
 import { createNodeTitleBar } from './node-title-bar.js';
 
 export default class HolonInspectorElement extends HTMLElement {
@@ -60,7 +60,7 @@ export default class HolonInspectorElement extends HTMLElement {
   get visualizerOperations() { return { ...this.titleBar?.operations, [APPLY_NODE_PRESENTATION]: input => this.applyNodePresentation(input) }; }
   applyNodePresentation(input) {
     const next = inspectorPresentation(this.presentationState ?? initialInspectorPresentation(), input.presentation);
-    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode);
+    const layout = inspectorLayout(input, 48 * Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16), next.mode, this.localPaneAttention);
     this.presentationState = next;
     if (input.presentation !== undefined) this.collectionContext = input.presentation === 'collection-context';
     this.allocation = { width: input.width, height: input.height };
@@ -81,18 +81,19 @@ export default class HolonInspectorElement extends HTMLElement {
   adaptBudget() {
     if (!this.body || !this.singleValueRail || !this.allocation) return;
     const scale = Math.max(1, (parseFloat(getComputedStyle(this).fontSize) || 16) / 16);
-    const layout = inspectorLayout(this.allocation, 48 * scale, this.presentationState.mode);
+    const layout = inspectorLayout(this.allocation, 48 * scale, this.presentationState.mode, this.localPaneAttention);
     this.titleHeight = layout.title;
     const active = document.activeElement;
     applyInspectorGeometry({ root: this, title: this.titleBar.element, body: this.body,
-      subjectActions: this.actionsVisualizer, heading: this.propertiesHeading, toggle: this.propertiesToggle, properties: this.propertyViewer,
+      subjectActions: this.actionsVisualizer, heading: this.propertiesHeading, groupHeading: this.inspectionHeading, toggle: this.propertiesToggle, properties: this.propertyViewer,
       filters: this.actionBar, rail: this.singleValueRail, collections: this.collectionRegion }, layout);
     this.collectionViewer.inert = layout.mode !== 'collection';
     this.collectionViewer.style.display = layout.mode === 'collection' ? 'flex' : 'none';
     if (this.propertiesVisualizer) Object.assign(this.propertiesVisualizer.style, { flex: '1 1 0', minHeight: '0', height: 'auto' });
     this.collectionTabBar.style.flex = '0 1 auto'; this.collectionTabBar.style.overflow = 'auto';
     this.collectionViewer.style.flex = '1 1 0'; this.collectionViewer.style.minHeight = '0'; this.collectionViewer.style.overflow = 'auto';
-    this.titleBar.update({ width: layout.width, height: layout.title, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });
+    this.titleBar.update({ width: layout.width, height: layout.title, mode: layout.mode, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });
+    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collectionRegion, collectionTabs: this.collectionTabBar }, layout, () => this.adaptBudget());
     this.updateMaximizeControls();
     if ([this.body, this.propertyViewer, this.actionBar, this.collectionRegion, this.singleValueRail].some(region => region.inert && region.contains(active))) this.titleControl.focus();
     if (this.isConnected) this.scheduleLayout();
@@ -294,6 +295,7 @@ export default class HolonInspectorElement extends HTMLElement {
   }
 
   setContext(context) {
+    this.localPaneAttention = undefined;
     this.disconnectedCallback();
     this.presentationState = initialInspectorPresentation();
     this.collectionActivation = context.collectionActivation;
@@ -451,11 +453,11 @@ export default class HolonInspectorElement extends HTMLElement {
     const propertiesHeading = this.propertiesHeading = document.createElement('header');
     propertiesHeading.dataset.propertiesTitleBar = 'true';
     propertiesHeading.style.cssText = 'grid-column:1 / -1;grid-row:1;display:flex;align-items:center;min-width:0;min-height:0;';
-    const toggle = this.propertiesToggle = document.createElement('button');
-    toggle.type = 'button'; toggle.textContent = 'Properties';
-    configurePropertiesReturn(toggle);
-    toggle.addEventListener('click', () => this.selectView('properties'));
-    propertiesHeading.append(toggle);
+    const propertiesLabel = document.createElement('span'); propertiesLabel.textContent = 'Properties';
+    propertiesLabel.style.cssText = 'flex:1;min-width:0;padding:0 .75rem;font-weight:600;';
+    this.propertiesHeading.style.background = 'var(--dahn-action-surface-background)';
+    this.propertiesHeading.append(propertiesLabel);
+    createInspectionGroupHeader(this, () => this.selectView('properties'));
     body.append(propertiesHeading, actionBar, propertyViewer, singleValueRail);
 
     this.layouts = [railLayout, collectionLayout];
@@ -463,7 +465,7 @@ export default class HolonInspectorElement extends HTMLElement {
     style.textContent = `[data-dahn-holon-inspector] [data-singular-relationship][aria-pressed="true"], [data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
-    this.replaceChildren(style, title, this.actionsVisualizer, body, collectionRegion);
+    this.replaceChildren(style, title, this.inspectionHeading, this.actionsVisualizer, body, collectionRegion);
     this.adaptBudget();
     if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();

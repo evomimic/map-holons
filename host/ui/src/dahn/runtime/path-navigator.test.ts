@@ -134,11 +134,11 @@ describe('vertical traversal through selected artifacts', () => {
     const table = f.root.element.querySelector('table');
     const title = (element: HTMLElement) => element.querySelector<HTMLButtonElement>('[data-holon-inspector-title] button')!;
     title(child.element).click();
-    expect(allocations()).toEqual(['compact', 'expanded', 'expanded']);
+    expect(allocations()).toEqual(['compact', 'expanded', 'compact']);
     title(f.root.element).click();
-    expect(allocations()).toEqual(['expanded', 'expanded', 'expanded']);
+    expect(allocations()).toEqual(['expanded', 'compact', 'compact']);
     title(retained[2].element).click();
-    expect(allocations()).toEqual(['expanded', 'expanded', 'expanded']);
+    expect(allocations()).toEqual(['compact', 'compact', 'expanded']);
     title(f.root.element).click();
     expect(f.path()).toEqual(retained);
     expect(f.root.element.querySelector('table')).toBe(table);
@@ -1222,19 +1222,21 @@ it('re-rooting a middle occurrence preserves its entire source chain and descend
   const c = await right(f, b);
   const d = await right(f, c);
   const before = f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }));
+  // Relationship presentation exposes Close only; restore before exploring here.
+  c.element.querySelector<HTMLButtonElement>('[data-node-title-bar] > button')!.click();
   f.element.querySelector<HTMLButtonElement>(`[data-path-occurrence="${c.id}"] [data-action-id="ExploreOccurrence.VisualizerOperator"]`)!.click();
   expect(open).toHaveBeenCalledExactlyOnceWith(c.subject);
   expect(f.path().map(item => ({ id: item.id, subject: item.subject, provenance: item.provenance, row: item.row, column: item.column, element: item.element }))).toEqual(before);
   expect([a, b, c, d].every(item => item.element.isConnected)).toBe(true);
-  expect(f.element.querySelector(`[data-path-occurrence="${d.id}"]`)?.getAttribute('data-focused')).toBe('true');
+  expect(f.element.querySelector(`[data-path-occurrence="${c.id}"]`)?.getAttribute('data-focused')).toBe('true');
 });
 
-it('keeps minimal identity Restore operable while preserving standard action membership', async () => {
+it('keeps minimal identity Restore operable while exposing only Close', async () => {
   const f = await fixture(vi.fn()); const root = f.path()[0];
   const a = await right(f, root); await right(f, a);
   const identity = root.element.querySelector<HTMLButtonElement>('[data-node-title-bar] > button')!;
   expect(identity.getAttribute('aria-expanded')).toBe('false');
-  expect(root.element.querySelectorAll('[data-action-id]')).toHaveLength(4);
+  expect([...root.element.querySelectorAll<HTMLElement>('[data-action-id]')].map(button => button.dataset.actionId)).toEqual(['CloseOccurrence.VisualizerOperator']);
   identity.click(); expect(f.element.querySelector(`[data-path-occurrence="${root.id}"]`)?.getAttribute('data-row-allocation')).toBe('expanded');
 });
 
@@ -1531,7 +1533,7 @@ it('materializes a real alternative with a different expanded layout and indepen
   const f = await fixture(undefined, () => {});
   const alternate = await f.realize(f.rootSubject as never, selected('alternative-node'));
   (alternate.element as VisualizerElement).applyNodePresentation(presentationAssignment({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' }));
-  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('3');
+  expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2 / 4');
   expect((alternate.element as any).propertyViewer.style.gridRow).toBe('3');
   expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
   expect((await f.runtime.realize(selected('alternative-node')) as any).compositionSlots.collection).toBe('HolonInspector.CollectionsSlot');
