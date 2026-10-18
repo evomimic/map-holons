@@ -10,6 +10,7 @@ use holochain::prelude::{
 };
 use holochain::sweettest::{
     DynSweetRendezvous, SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
+    SweetLocalRendezvous,
 };
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::session_state::SessionStateWire;
@@ -87,37 +88,26 @@ impl DanceEnvelopeTransport for MockConductorConfig {
     }
 }
 
-/// Builds the standard sweettest conductor config with every WAN endpoint redirected to an
-/// unroutable local address.
+/// Uses a live loopback rendezvous server while preserving standard gossip tuning.
 ///
-/// Sweettests run a single in-process conductor and never peer, so their network dependency is
-/// accidental rather than designed. `SweetConductorConfig::standard()` supplies rendezvous
-/// placeholders for bootstrap and relay URLs. Replace both with `127.0.0.1:1` so these tests
-/// need neither a rendezvous server nor the public endpoints in `NetworkConfig::default()`.
-/// Public endpoints cause per-conductor `net_report` probe timeouts on startup and trip local
-/// outbound firewalls. The loopback addresses mirror the host's dev-mode profile in
-/// `launch/config.rs` rather than inventing a second convention.
-///
-/// The relay deliberately uses HTTPS: nothing here sets `relayAllowPlainText`, and the
-/// transport rejects a plaintext relay URL without that flag.
-///
-/// Only the URLs are touched. `advanced` is left as `standard()` built it — unlike the host's dev
-/// mode, it is not cleared, because `standard()` stores its `k2Gossip` interval tuning there and
-/// clearing it would silently revert those timings. `target_arc_factor` is likewise left alone:
-/// with no peers there is nothing to gossip with, so lowering it would change DHT arc behaviour
-/// without removing any traffic.
-fn local_only_config() -> SweetConductorConfig {
-    SweetConductorConfig::standard().tune_network_config(|network| {
-        network.bootstrap_url = url2::url2!("http://127.0.0.1:1");
-        network.relay_url = url2::url2!("https://127.0.0.1:1");
-    })
+/// Holochain waits for the relay to assign an address before publishing local agent info.
+/// An unreachable relay therefore prevents app installation even for a single-agent test.
+/// Sweettest enables plaintext relay support for this local test infrastructure.
+fn local_only_config(rendezvous: &DynSweetRendezvous) -> SweetConductorConfig {
+    SweetConductorConfig::standard().apply_rendezvous(rendezvous)
+}
+
+/// Keeps the local rendezvous alive with the conductor, including across probe restarts.
+async fn create_local_conductor() -> SweetConductor {
+    let rendezvous = SweetLocalRendezvous::new().await;
+    SweetConductor::from_config_rendezvous(local_only_config(&rendezvous), rendezvous).await
 }
 
 /// Initializes a new Holochain SweetConductor instance for use in integration tests.
 ///
 /// This helper function:
 /// - Loads the DNA bundle defined by `DNA_FILEPATH`.
-/// - Spawns a SweetConductor whose WAN endpoints are all pointed at unroutable local addresses
+/// - Spawns a SweetConductor whose bootstrap and relay endpoints use a live loopback server
 ///   (see [`local_only_config()`]).
 /// - Creates a single test agent and installs the DNA.
 /// - Extracts the initialized [`SweetCell`], [`AgentPubKey`], and [`SweetConductor`] into a
@@ -144,9 +134,7 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
 
-    let mut conductor =
-        SweetConductor::create_with_defaults(local_only_config(), None, None::<DynSweetRendezvous>)
-            .await;
+    let mut conductor = create_local_conductor().await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
     let app = conductor
         .setup_app_for_agent("app", holochain_agent.clone(), &[dna.clone()])
@@ -224,9 +212,7 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     info!("Current working directory: {:?}", std::env::current_dir().unwrap());
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
-    let mut conductor =
-        SweetConductor::create_with_defaults(local_only_config(), None, None::<DynSweetRendezvous>)
-            .await;
+    let mut conductor = create_local_conductor().await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
     let app = conductor
         .setup_app_for_agent("probe-enabled-app", holochain_agent.clone(), &[dna])
@@ -412,44 +398,24 @@ pub async fn create_test_dance_initiator() -> Arc<dyn DanceInitiator + Send + Sy
 mod tests {
     use super::*;
 
-    /// Pins the local-only intent at the config level, where it is deterministic. The suite-level
-    /// evidence (no WAN dialing, no NAT-discovery socket churn) is observational and cannot be
-    /// asserted from inside a test, so this guards the thing that produces it: an endpoint left
-    /// unassigned would leave a rendezvous placeholder instead of a local-only address.
-    #[test]
-    fn every_wan_endpoint_is_local_only() {
-        let network = &local_only_config().network;
+    /// Both endpoints must resolve to the live loopback server, preserving standard tuning.
+    #[tokio::test]
+    async fn rendezvous_endpoints_are_local_and_preserve_gossip_tuning() {
+        let rendezvous = SweetLocalRendezvous::new().await;
+        let config = local_only_config(&rendezvous);
+        let network = &config.network;
 
         for (field, url) in
             [("bootstrap_url", &network.bootstrap_url), ("relay_url", &network.relay_url)]
         {
             assert_eq!(url.host_str(), Some("127.0.0.1"), "{field} is not local-only: {url}");
+            let port = url.port().expect("local rendezvous must allocate a port");
+            tokio::net::TcpStream::connect(("127.0.0.1", port))
+                .await
+                .expect("rendezvous endpoint must be listening");
         }
-    }
-
-    /// A plaintext scheme would be rejected by the transport's `validate_config` unless the
-    /// `relayAllowPlainText` flag were set, which `local_only_config()` deliberately does
-    /// not set. See the doc comment there.
-    #[test]
-    fn relay_uses_tls_scheme() {
-        let network = &local_only_config().network;
-
-        assert_eq!(network.relay_url.scheme(), "https");
-    }
-
-    /// `standard()` stores its gossip interval tuning in `advanced`; clearing that field to
-    /// suppress WAN config would silently revert those timings for every sweettest.
-    #[test]
-    fn gossip_tuning_from_standard_config_survives() {
-        let advanced = local_only_config()
-            .network
-            .advanced
-            .clone()
-            .expect("standard() should have populated advanced with gossip tuning");
-
-        assert!(
-            advanced.get("k2Gossip").is_some(),
-            "k2Gossip tuning was dropped from advanced: {advanced}"
-        );
+        assert_eq!(network.bootstrap_url, url2::url2!("{}", rendezvous.bootstrap_addr()));
+        assert_eq!(network.relay_url, url2::url2!("{}", rendezvous.relay_addr()));
+        assert_eq!(network.advanced, SweetConductorConfig::standard().network.advanced);
     }
 }
