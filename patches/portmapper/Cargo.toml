@@ -11,9 +11,9 @@
 
 [package]
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.91"
 name = "portmapper"
-version = "0.12.0"
+version = "0.19.3"
 authors = ["n0 team"]
 build = false
 autolib = false
@@ -64,40 +64,37 @@ features = [
     "deref",
 ]
 
-[dependencies.futures-lite]
-version = "2.5"
-
-[dependencies.futures-util]
-version = "0.3.25"
-
 [dependencies.hyper-util]
 version = "0.1.11"
 
 [dependencies.igd-next]
-version = "0.16.1"
+version = "0.17.0"
 features = ["aio_tokio"]
 
 [dependencies.iroh-metrics]
-version = "0.37"
+version = "1.0.1"
 default-features = false
 
 [dependencies.libc]
 version = "0.2.139"
 
 [dependencies.n0-error]
-version = "0.1.0"
+version = "1.0.0"
+
+[dependencies.n0-future]
+version = "0.3.2"
 
 [dependencies.netwatch]
-version = "0.12.0"
+version = "0.19.3"
 
 [dependencies.num_enum]
 version = "0.7"
 
 [dependencies.rand]
-version = "0.9"
+version = "0.10"
 
 [dependencies.serde]
-version = "1"
+version = "1.0.185"
 features = [
     "derive",
     "rc",
@@ -122,8 +119,6 @@ features = [
     "net",
     "fs",
     "io-std",
-    "signal",
-    "process",
 ]
 
 [dependencies.tokio-util]
@@ -149,7 +144,7 @@ features = ["serde"]
 version = "0.9"
 
 [dev-dependencies.rand_chacha]
-version = "0.9"
+version = "0.10"
 
 [dev-dependencies.tokio]
 version = "1"
@@ -173,4 +168,7 @@ missing_debug_implementations = "warn"
 [lints.rust.unexpected_cfgs]
 level = "warn"
 priority = 0
-check-cfg = ["cfg(iroh_docsrs)"]
+check-cfg = [
+    "cfg(iroh_docsrs)",
+    "cfg(skip_patchbay)",
+]
