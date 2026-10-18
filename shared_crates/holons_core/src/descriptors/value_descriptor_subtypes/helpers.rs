@@ -1,5 +1,7 @@
 use crate::descriptors::inheritance::effective_relationship_targets;
-use crate::descriptors::{accessor_helpers, OperatorDescriptor, TypeHeader};
+use crate::descriptors::{
+    accessor_helpers, same_definition, Descriptor, OperatorDescriptor, ResolvedOperator, TypeHeader,
+};
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
 use core_types::HolonError;
@@ -28,7 +30,7 @@ pub(crate) fn unsupported_operator(
     Err(unsupported_operator_error(holon, operator_descriptor)?)
 }
 
-fn unsupported_operator_error(
+pub(crate) fn unsupported_operator_error(
     holon: &HolonReference,
     operator_descriptor: &OperatorDescriptor,
 ) -> Result<HolonError, HolonError> {
@@ -48,35 +50,31 @@ pub(crate) fn supported_operators(
         .collect())
 }
 
+/// Returns whether `holon` affords this exact operator descriptor.
+///
+/// Affordance is by descriptor identity: an unrelated descriptor sharing an
+/// afforded operator's name is not afforded, and an extension operator must be
+/// afforded itself rather than through its ancestor.
 pub(crate) fn supports_operator(
     holon: &HolonReference,
     operator_descriptor: &OperatorDescriptor,
 ) -> Result<bool, HolonError> {
-    let operator_name = operator_descriptor.operator_name()?;
-    for supported_operator in supported_operators(holon)? {
-        if supported_operator.operator_name()? == operator_name {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    Ok(supported_operators(holon)?
+        .iter()
+        .any(|supported| same_definition(supported.holon(), operator_descriptor.holon())))
 }
 
-pub(crate) fn require_supported_operator(
-    holon: &HolonReference,
-    operator_descriptor: &OperatorDescriptor,
-) -> Result<(), HolonError> {
-    // Descriptor affordance gate: subtype wrappers are public execution surfaces,
-    // so they enforce the same applicability contract as ValueDescriptor.
-    if supports_operator(holon, operator_descriptor)? {
-        return Ok(());
+/// Returns the single authored operand of a binary operator.
+pub(crate) fn single_operand<'a>(
+    op: &ResolvedOperator,
+    operands: &'a [BaseValue],
+) -> Result<&'a BaseValue, HolonError> {
+    match operands {
+        [operand] => Ok(operand),
+        _ => Err(HolonError::OperandCountMismatch {
+            operator: op.operator().operator_name()?.to_string(),
+            expected: 1,
+            found: operands.len(),
+        }),
     }
-
-    Err(unsupported_operator_error(holon, operator_descriptor)?)
-}
-
-pub(crate) fn type_name_is(
-    operator_descriptor: &OperatorDescriptor,
-    expected: &str,
-) -> Result<bool, HolonError> {
-    Ok(operator_descriptor.operator_name()?.0 .0 == expected)
 }

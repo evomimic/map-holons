@@ -1,19 +1,19 @@
 use std::collections::HashSet;
 
 use crate::descriptors::value_descriptor_subtypes::helpers::{
-    supported_operators as collect_supported_operators,
+    single_operand, supported_operators as collect_supported_operators,
     supports_operator as descriptor_supports_operator,
     unsupported_operator as descriptor_unsupported_operator,
     value_kind_mismatch as descriptor_value_kind_mismatch,
 };
 use crate::descriptors::{
     accessor_helpers, Descriptor, EnumValueDescriptor, IntegerValueDescriptor, OperatorDescriptor,
-    StringValueDescriptor, TypeHeader, ValueArrayDescriptor,
+    OperatorKind, ResolvedOperator, StringValueDescriptor, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
-use type_names::{CoreOperatorTypeName, ToOperatorName};
+use type_names::{CoreRelationshipTypeName, ToOperatorName};
 
 /// Runtime wrapper for value-type descriptors.
 ///
@@ -21,6 +21,7 @@ use type_names::{CoreOperatorTypeName, ToOperatorName};
 /// and operator execution. Subtype wrappers own the local behavior for each
 /// value kind, while this wrapper resolves the kind through the descriptor
 /// inheritance chain and enforces descriptor-level affordances.
+#[derive(Debug, Clone)]
 pub struct ValueDescriptor {
     holon: HolonReference,
 }
@@ -56,6 +57,16 @@ impl ValueDescriptor {
             }
             ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
         }
+    }
+
+    /// Returns inherited constraint occurrences with their declaring descriptors.
+    /// Ancestor contributions precede local contributions; duplicates remain visible.
+    ///
+    /// This only reads the attached constraints; it evaluates none of them.
+    pub fn effective_constraints(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        super::effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Constraints)
     }
 
     /// Returns operators afforded by this descriptor across its inheritance chain.
@@ -122,47 +133,59 @@ impl ValueDescriptor {
         Ok(false)
     }
 
-    /// Applies an afforded operator to runtime operands using this descriptor's value kind.
+    /// Applies an afforded binary operator to a subject and one authored operand.
+    ///
+    /// Resolves `op` against this descriptor on every call; callers applying one
+    /// operator repeatedly should resolve it once with
+    /// [`OperatorDescriptor::resolve_for_subject`] and invoke the result.
     pub fn apply_operator(
         &self,
         op: &OperatorDescriptor,
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
-        let value_kind = self.value_kind()?;
-        if let ValueDescriptorKind::Unsupported(found) = value_kind {
-            return Err(self.wrong_value_kind(found));
-        }
+        op.resolve_for_subject(self)?.invoke(lhs, std::slice::from_ref(rhs))
+    }
 
-        if !self.supports_operator(op)? {
-            return self.unsupported_operator(op);
-        }
-
-        match value_kind {
+    /// Executes a resolved operator whose operand count and representations are checked.
+    /// Dispatches on the value kind cached at resolution, so execution reads no lineage.
+    pub(crate) fn evaluate_operator(
+        &self,
+        op: &ResolvedOperator,
+        subject: &BaseValue,
+        operands: &[BaseValue],
+    ) -> Result<bool, HolonError> {
+        match op.subject_kind() {
             ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => {
-                IntegerValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
+                IntegerValueDescriptor::from_holon(self.holon.clone())
+                    .evaluate(op, subject, operands)
             }
             ValueDescriptorKind::BaseValue(BaseValueKind::String) => {
-                StringValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
+                StringValueDescriptor::from_holon(self.holon.clone())
+                    .evaluate(op, subject, operands)
             }
             ValueDescriptorKind::BaseValue(BaseValueKind::Boolean) => {
-                self.apply_boolean_operator(op, lhs, rhs)
+                self.evaluate_boolean(op, subject, operands)
             }
             ValueDescriptorKind::BaseValue(BaseValueKind::Enum) => {
-                EnumValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
+                EnumValueDescriptor::from_holon(self.holon.clone()).evaluate(op, subject, operands)
             }
             ValueDescriptorKind::BaseValue(BaseValueKind::Bytes) => {
-                self.apply_bytes_operator(op, lhs, rhs)
+                self.evaluate_bytes(op, subject, operands)
             }
-            ValueDescriptorKind::AnyBaseValue => self.unsupported_operator(op),
-            ValueDescriptorKind::ValueArray => {
-                // Array execution is explicitly deferred; arrays may expose
-                // affordances structurally before they have runtime semantics.
-                ValueArrayDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
-            }
-            ValueDescriptorKind::Unsupported(_) => {
-                unreachable!("Unsupported returns before affordance checks")
-            }
+            // Array execution is explicitly deferred; arrays may expose affordances
+            // structurally before they have runtime semantics.
+            ValueDescriptorKind::AnyBaseValue
+            | ValueDescriptorKind::ValueArray
+            | ValueDescriptorKind::Unsupported(_) => self.unsupported_operator(op.operator()),
+        }
+    }
+
+    /// Returns this descriptor's value kind, rejecting lineages with no supported anchor.
+    pub(crate) fn supported_value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
+        match self.value_kind()? {
+            ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
+            kind => Ok(kind),
         }
     }
 
@@ -233,15 +256,16 @@ impl ValueDescriptor {
         }
     }
 
-    fn apply_boolean_operator(
+    fn evaluate_boolean(
         &self,
-        op: &OperatorDescriptor,
-        lhs: &BaseValue,
-        rhs: &BaseValue,
+        op: &ResolvedOperator,
+        subject: &BaseValue,
+        operands: &[BaseValue],
     ) -> Result<bool, HolonError> {
-        if op.operator_name()? != CoreOperatorTypeName::EqualsOperator.as_operator_name() {
-            return self.unsupported_operator(op);
+        if op.kind() != OperatorKind::Equals {
+            return self.unsupported_operator(op.operator());
         }
+        let (lhs, rhs) = (subject, single_operand(op, operands)?);
 
         let lhs = match lhs {
             BaseValue::BooleanValue(value) => value,
@@ -254,15 +278,16 @@ impl ValueDescriptor {
         Ok(lhs == rhs)
     }
 
-    fn apply_bytes_operator(
+    fn evaluate_bytes(
         &self,
-        op: &OperatorDescriptor,
-        lhs: &BaseValue,
-        rhs: &BaseValue,
+        op: &ResolvedOperator,
+        subject: &BaseValue,
+        operands: &[BaseValue],
     ) -> Result<bool, HolonError> {
-        if op.operator_name()? != CoreOperatorTypeName::EqualsOperator.as_operator_name() {
-            return self.unsupported_operator(op);
+        if op.kind() != OperatorKind::Equals {
+            return self.unsupported_operator(op.operator());
         }
+        let (lhs, rhs) = (subject, single_operand(op, operands)?);
 
         let lhs = match lhs {
             BaseValue::BytesValue(value) => value,
@@ -328,13 +353,13 @@ const _: fn() = || {
 mod tests {
     use super::*;
     use crate::core_shared_objects::transactions::TransactionContext;
-    use crate::descriptors::test_support;
+    use crate::descriptors::test_support::{self, core_operator};
     use crate::reference_layer::TransientReference;
     use crate::reference_layer::WritableHolon;
     use base_types::{MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
     use core_types::HolonError;
     use std::sync::Arc;
-    use type_names::CoreRelationshipTypeName;
+    use type_names::CoreOperatorTypeName;
 
     #[test]
     fn layout_classification_uses_nearest_local_anchor_without_root_lookups(
@@ -862,7 +887,7 @@ mod tests {
     #[test]
     fn apply_operator_executes_afforded_integer_operator() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None)?;
         let mut value =
             new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
         value.add_related_holons(
@@ -909,7 +934,7 @@ mod tests {
     #[test]
     fn apply_operator_handles_boolean_equals_inline() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None)?;
         let mut value =
             new_descriptor_holon(&context, "boolean-value", "BooleanValueType", "Value")?;
         value.add_related_holons(
@@ -960,7 +985,7 @@ mod tests {
     fn apply_operator_reports_unsupported_for_afforded_boolean_non_equals_operator(
     ) -> Result<(), HolonError> {
         let context = build_context();
-        let less_than = new_descriptor_holon(&context, "less-than", "LessThanOperator", "Holon")?;
+        let less_than = core_operator(&context, CoreOperatorTypeName::LessThanOperator, None)?;
         let mut value =
             new_descriptor_holon(&context, "boolean-value", "BooleanValueType", "Value")?;
         value.add_related_holons(
@@ -987,7 +1012,7 @@ mod tests {
     #[test]
     fn apply_operator_dispatches_enum_values() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None)?;
         let parent = new_descriptor_holon(&context, "enum-parent", "EnumValueType", "Value")?;
         let red = new_descriptor_holon(&context, "red", "Red", "EnumVariant")?;
         let blue = new_descriptor_holon(&context, "blue", "Blue", "EnumVariant")?;
@@ -1018,7 +1043,7 @@ mod tests {
     #[test]
     fn apply_operator_dispatches_array_to_deferred_execution() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None)?;
         let mut array = new_descriptor_holon(&context, "array", "ValueArrayValueType", "Value")?;
         array.add_related_holons(
             CoreRelationshipTypeName::AffordsOperator,

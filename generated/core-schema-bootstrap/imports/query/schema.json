@@ -6,7 +6,8 @@
       "../core/concrete-value-types.json",
       "../core/abstract-value-types.json",
       "../core/property-types.json",
-      "../core/relationship-types.json"
+      "../core/relationship-types.json",
+      "../core/operator-types.json"
     ],
     "source_files": [
       "docs/core/map-queries/command-dance-query-schema-tdl.md",
@@ -199,7 +200,7 @@
         "TypeNamePlural": "SeedHolonsExpressions",
         "DisplayName": "Seed Holons",
         "DisplayNamePlural": "Seed Holons Expressions",
-        "Description": "Root-only source expression. Expands the invocation's focal HolonSpace over its Owns relationship; accepts no input collection. SeedPredicate is an optional payload with no QRY2 evaluation."
+        "Description": "Root-only source expression. Expands the invocation's focal HolonSpace over its Owns relationship; accepts no input collection. An optional SeedPredicate filters the owned holons, validated against the Owns target type."
       },
       "relationships": [
         {
@@ -244,7 +245,7 @@
         "TypeNamePlural": "ExpandExpressions",
         "DisplayName": "Expand",
         "DisplayNamePlural": "Expand Expressions",
-        "Description": "Navigation expression. Expands each input member over the named outbound relationship resolved through the member's HolonDescriptor. ExpansionPredicate is an optional payload with no QRY2 evaluation."
+        "Description": "Navigation expression. Expands each input member over the named outbound relationship resolved against the input collection's declared ElementType. An optional ExpansionPredicate filters the navigated targets, validated against the relationship's target type."
       },
       "relationships": [
         {
@@ -297,7 +298,7 @@
         "TypeNamePlural": "QueryPredicates",
         "DisplayName": "Query Predicate",
         "DisplayNamePlural": "Query Predicates",
-        "Description": "Abstract predicate attached to a query expression. Concrete predicate forms, operators, and evaluation are defined by later slices.",
+        "Description": "Abstract anchor of the shared Predicate model. A predicate is definition state that evaluates against one candidate to a Boolean; it is neither a collection operand nor a Next continuation.",
         "IsAbstractType": true
       },
       "relationships": [
@@ -314,6 +315,205 @@
           "target": [
             {
               "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ComparisonPredicate.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ComparisonPredicate",
+        "TypeNamePlural": "ComparisonPredicates",
+        "DisplayName": "Comparison Predicate",
+        "DisplayNamePlural": "Comparison Predicates",
+        "Description": "Applies one operator to the value of one named property. PropertyName supplies the subject; the ordered Operands supply exactly Arity minus one authored literals, each typed by the operator's operand specification at its position."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "PropertyName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ComparisonPredicate.HolonType)-[Operator]->(OperatorType.HolonType)"
+            },
+            {
+              "$ref": "(ComparisonPredicate.HolonType)-[Operands]->(LiteralOperand.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AnyOf.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "AnyOf",
+        "TypeNamePlural": "AnyOfPredicates",
+        "DisplayName": "Any Of",
+        "DisplayNamePlural": "Any Of Predicates",
+        "Description": "Disjunction of one or more ordered child predicates. True exactly when at least one child is true; every child is validated and evaluated, so a true branch never hides another branch's error. An empty group is invalid."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LiteralOperand.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LiteralOperand",
+        "TypeNamePlural": "LiteralOperands",
+        "DisplayName": "Literal Operand",
+        "DisplayNamePlural": "Literal Operands",
+        "Description": "Definition-state literal envelope: one scalar OperandValue and the ValueType it is declared as. The declared type must equal or extend the type the operator requires at the operand's position."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "OperandValue.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(LiteralOperand.HolonType)-[ValueType]->(ValueType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Filter.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Filter",
+        "TypeNamePlural": "FilterExpressions",
+        "DisplayName": "Filter",
+        "DisplayNamePlural": "Filter Expressions",
+        "Description": "Collection transformation that retains exactly the input occurrences for which its Predicate is true, preserving their order, duplicate occurrences, and declared ElementType."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Filter.HolonType)-[Predicate]->(QueryPredicate.HolonType)"
             }
           ]
         },
@@ -2721,7 +2921,7 @@
         "TypeNamePlural": "SeedPredicates",
         "DisplayName": "Seed Predicate",
         "DisplayNamePlural": "Seed Predicates",
-        "Description": "Optional predicate payload attached to a SeedHolons expression. Definition state only; QRY2 neither evaluates nor pushes it down.",
+        "Description": "Optional predicate attached to a SeedHolons expression. The owned holons are filtered by it with the same evaluator as Filter.",
         "IsDefinitional": true,
         "DeletionSemantic": "Block"
       },
@@ -2854,7 +3054,7 @@
         "TypeNamePlural": "ExpansionPredicates",
         "DisplayName": "Expansion Predicate",
         "DisplayNamePlural": "Expansion Predicates",
-        "Description": "Optional predicate payload attached to an Expand expression. Definition state only; QRY2 neither evaluates nor pushes it down.",
+        "Description": "Optional predicate attached to an Expand expression. The navigated targets are filtered by it with the same evaluator as Filter.",
         "IsDefinitional": true,
         "DeletionSemantic": "Block"
       },
@@ -2958,6 +3158,673 @@
           "target": [
             {
               "$ref": "Expand.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Filter.HolonType)-[Predicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Predicate",
+        "TypeNamePlural": "Predicates",
+        "DisplayName": "Predicate",
+        "DisplayNamePlural": "Predicates",
+        "Description": "The predicate a Filter applies to each input occurrence.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Filter.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryPredicate.HolonType)-[PredicateForFilters]->(Filter.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicateForFilters]->(Filter.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PredicateForFilters",
+        "TypeNamePlural": "PredicateForFilters",
+        "DisplayName": "Predicate For Filters",
+        "DisplayNamePlural": "Predicate For Filters",
+        "Description": "Inverse of Predicate, from a predicate to the Filters that apply it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Filter.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Predicates",
+        "TypeNamePlural": "Predicates",
+        "DisplayName": "Predicates",
+        "DisplayNamePlural": "Predicates",
+        "Description": "Ordered child predicates of an AnyOf.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "AnyOf.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryPredicate.HolonType)-[PredicatesForAnyOf]->(AnyOf.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicatesForAnyOf]->(AnyOf.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PredicatesForAnyOf",
+        "TypeNamePlural": "PredicatesForAnyOf",
+        "DisplayName": "Predicates For Any Of",
+        "DisplayNamePlural": "Predicates For Any Of",
+        "Description": "Inverse of Predicates, from a predicate to the AnyOf groups containing it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "AnyOf.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ComparisonPredicate.HolonType)-[Operator]->(OperatorType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Operator",
+        "TypeNamePlural": "Operators",
+        "DisplayName": "Operator",
+        "DisplayNamePlural": "Operators",
+        "Description": "The operator a ComparisonPredicate applies. It must be effectively afforded by the selected property's ValueType.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ComparisonPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(OperatorType.HolonType)-[OperatorForPredicates]->(ComparisonPredicate.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OperatorType.HolonType)-[OperatorForPredicates]->(ComparisonPredicate.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperatorForPredicates",
+        "TypeNamePlural": "OperatorForPredicates",
+        "DisplayName": "Operator For Predicates",
+        "DisplayNamePlural": "Operator For Predicates",
+        "Description": "Inverse of Operator, from an operator to the comparison predicates that apply it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ComparisonPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ComparisonPredicate.HolonType)-[Operands]->(LiteralOperand.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Operands",
+        "TypeNamePlural": "Operands",
+        "DisplayName": "Operands",
+        "DisplayNamePlural": "Operands",
+        "Description": "Ordered authored operands of a ComparisonPredicate; relationship position is operand position after the subject. The operator's specifications fix the valid count.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ComparisonPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LiteralOperand.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(LiteralOperand.HolonType)-[OperandsForPredicates]->(ComparisonPredicate.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LiteralOperand.HolonType)-[OperandsForPredicates]->(ComparisonPredicate.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperandsForPredicates",
+        "TypeNamePlural": "OperandsForPredicates",
+        "DisplayName": "Operands For Predicates",
+        "DisplayNamePlural": "Operands For Predicates",
+        "Description": "Inverse of Operands, from a literal operand to the comparison predicates using it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LiteralOperand.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ComparisonPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LiteralOperand.HolonType)-[ValueType]->(ValueType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValueType",
+        "TypeNamePlural": "ValueTypes",
+        "DisplayName": "Value Type",
+        "DisplayNamePlural": "Value Types",
+        "Description": "Declared ValueType of a LiteralOperand's value.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LiteralOperand.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ValueType.TypeDescriptor)-[ValueTypeForLiteralOperands]->(LiteralOperand.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[ValueTypeForLiteralOperands]->(LiteralOperand.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValueTypeForLiteralOperands",
+        "TypeNamePlural": "ValueTypeForLiteralOperands",
+        "DisplayName": "Value Type For Literal Operands",
+        "DisplayNamePlural": "Value Type For Literal Operands",
+        "Description": "Inverse of a LiteralOperand's ValueType, from a ValueType to the literal operands declared as it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LiteralOperand.HolonType"
             }
           ]
         },
@@ -3343,7 +4210,7 @@
         "TypeNamePlural": "PropertyNames",
         "DisplayName": "Property Name",
         "DisplayNamePlural": "Property Names",
-        "Description": "Name of the property an OrderBySpec sorts by, resolved at execution time against each input member's effective property surface. No default.",
+        "Description": "Name of the property an OrderBySpec sorts by or a ComparisonPredicate selects as its subject, resolved at execution time against the input collection's declared ElementType, inherited declarations included. No default.",
         "IsValueRequired": true
       },
       "relationships": [
@@ -3368,6 +4235,52 @@
           "target": [
             {
               "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperandValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "OperandValue",
+        "TypeNamePlural": "OperandValues",
+        "DisplayName": "Operand Value",
+        "DisplayNamePlural": "Operand Values",
+        "Description": "Scalar value of a LiteralOperand. Arrays and structured values are outside this envelope. No default.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "BaseValueValueType.ValueType"
             }
           ]
         },

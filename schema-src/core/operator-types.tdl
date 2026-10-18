@@ -20,7 +20,11 @@ holon MetaOperatorType.MetaHolonType {
   relationships {
     InstanceProperties -> [
       Arity.PropertyType,
-      OperatorCategory.PropertyType
+      OperatorCategory.PropertyType,
+      CaseMatching.PropertyType
+    ]
+    InstanceRelationships -> [
+      (OperatorType.HolonType)-[OperandSpecifications]->(OperandSpecification.HolonType)
     ]
   }
 }
@@ -98,6 +102,230 @@ enum OperatorCategory.MapEnumValueType {
         display_name: "Ordering"
       }
     }
+    variant Matching {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Operators that test whether a subject value matches authored literal content, such as substring containment, under the operator's declared matching policy."
+        display_name: "Matching"
+      }
+    }
+  }
+}
+
+enum CaseMatching.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Enum value type selecting how a string matching operator compares letter case."
+    display_name: "Case Matching"
+    display_plural: "Case Matching Modes"
+    plural: "CaseMatchingModes"
+  }
+  variants {
+    variant CaseSensitive {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Matches the original scalar sequences without case folding."
+        display_name: "Case Sensitive"
+      }
+    }
+    variant UnicodeDefaultCaseFold {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Applies Unicode 17.0.0 full default case folding (CaseFolding.txt C and F mappings) to both strings before literal matching. No normalization or locale tailoring is applied."
+        display_name: "Unicode Default Case Fold"
+      }
+    }
+  }
+}
+
+enum OperandValueTypeRule.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Enum value type selecting how an operand specification resolves its required operand ValueType."
+    display_name: "Operand Value Type Rule"
+    display_plural: "Operand Value Type Rules"
+    plural: "OperandValueTypeRules"
+  }
+  variants {
+    variant SameAsSubject {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The operand requires the exact resolved subject ValueType, retaining its effective constraints. OperandValueType must be absent."
+        display_name: "Same As Subject"
+      }
+    }
+    variant FixedValueType {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The operand requires the ValueType referenced by exactly one OperandValueType relationship."
+        display_name: "Fixed Value Type"
+      }
+    }
+  }
+}
+
+property CaseMatching.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value CaseMatching.MapEnumValueType
+  header {
+    description: "Case-matching policy of a string matching operator. Declared by matching operators only; equality and ordering operators do not declare it."
+    display_name: "case_matching"
+    display_plural: "case_matching_modes"
+    plural: "CaseMatchingModes"
+  }
+}
+
+property OperandRole.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Durable role name of an authored operand position, such as ComparisonValue or Substring."
+    display_name: "operand_role"
+    display_plural: "operand_roles"
+    plural: "OperandRoles"
+  }
+}
+
+property OperandValueTypeRule.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value OperandValueTypeRule.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "How an operand specification resolves its required operand ValueType."
+    display_name: "operand_value_type_rule"
+    display_plural: "operand_value_type_rules"
+    plural: "OperandValueTypeRules"
+  }
+}
+
+holon OperandSpecification.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Operator metadata describing one authored operand position: its durable role, human-facing label, and the rule resolving its required ValueType. An operator's ordered specifications cover every execution operand after the subject."
+    display_name: "Operand Specification"
+    display_plural: "Operand Specifications"
+    plural: "OperandSpecifications"
+  }
+  relationships {
+    InstanceProperties -> [
+      OperandRole.PropertyType,
+      DisplayName.PropertyType,
+      Description.PropertyType,
+      OperandValueTypeRule.PropertyType
+    ]
+    InstanceRelationships -> [
+      (OperandSpecification.HolonType)-[OperandValueType]->(ValueType.TypeDescriptor)
+    ]
+  }
+}
+
+def relationship (OperatorType.HolonType)-[OperandSpecifications]->(OperandSpecification.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OperandSpecificationsForOperators
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source OperatorType.HolonType
+  target OperandSpecification.HolonType
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Ordered specifications of an operator's authored operands; relationship position defines each operand's position after the subject. The count must equal Arity minus one."
+    display_name: "OperandSpecifications Relationship"
+    display_plural: "OperandSpecifications Relationships"
+    plural: "OperandSpecificationsRelationships"
+  }
+}
+
+inverse relationship (OperandSpecification.HolonType)-[OperandSpecificationsForOperators]->(OperatorType.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source OperandSpecification.HolonType
+  target OperatorType.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of OperandSpecifications, from an operand specification to the operators that declare it."
+    display_name: "OperandSpecificationsForOperators Relationship"
+    display_plural: "OperandSpecificationsForOperators Relationships"
+    plural: "OperandSpecificationsForOperatorsRelationships"
+  }
+}
+
+def relationship (OperandSpecification.HolonType)-[OperandValueType]->(ValueType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> OperandValueTypeForSpecifications
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source OperandSpecification.HolonType
+  target ValueType.TypeDescriptor
+  deletion_semantic Block
+  header {
+    description: "Required operand ValueType of a FixedValueType operand specification. Exactly one is required for FixedValueType and none is permitted for SameAsSubject."
+    display_name: "OperandValueType Relationship"
+    display_plural: "OperandValueType Relationships"
+    plural: "OperandValueTypeRelationships"
+  }
+}
+
+inverse relationship (ValueType.TypeDescriptor)-[OperandValueTypeForSpecifications]->(OperandSpecification.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source ValueType.TypeDescriptor
+  target OperandSpecification.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of OperandValueType, from a ValueType to the operand specifications that require it."
+    display_name: "OperandValueTypeForSpecifications Relationship"
+    display_plural: "OperandValueTypeForSpecifications Relationships"
+    plural: "OperandValueTypeForSpecificationsRelationships"
+  }
+}
+
+instance EqualsComparisonValue.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "ComparisonValue"
+  DisplayName "Comparison Value"
+  Description "Value compared with the subject for equality."
+  OperandValueTypeRule SameAsSubject
+}
+
+instance LessThanComparisonValue.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "ComparisonValue"
+  DisplayName "Comparison Value"
+  Description "Value the subject must be ordered before."
+  OperandValueTypeRule SameAsSubject
+}
+
+instance ContainsSubstring.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "Substring"
+  DisplayName "Substring"
+  Description "Literal text the subject must contain. It need not satisfy the subject's specialized constraints."
+  OperandValueTypeRule FixedValueType
+  relationships {
+    OperandValueType -> MapStringValueType.StringValueType
   }
 }
 
@@ -138,6 +366,9 @@ holon EqualsOperator.OperatorType {
     display_plural: "Equals Operators"
     plural: "EqualsOperators"
   }
+  relationships {
+    OperandSpecifications -> EqualsComparisonValue.OperandSpecification
+  }
 }
 
 holon LessThanOperator.OperatorType {
@@ -150,5 +381,25 @@ holon LessThanOperator.OperatorType {
     display_name: "Less Than"
     display_plural: "Less Than Operators"
     plural: "LessThanOperators"
+  }
+  relationships {
+    OperandSpecifications -> LessThanComparisonValue.OperandSpecification
+  }
+}
+
+holon ContainsOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Matching
+  CaseMatching UnicodeDefaultCaseFold
+  header {
+    description: "Returns true iff the subject string contains the authored substring under the operator's case-matching policy. The substring is literal text, never a pattern; an empty substring matches every present string."
+    display_name: "Contains"
+    display_plural: "Contains Operators"
+    plural: "ContainsOperators"
+  }
+  relationships {
+    OperandSpecifications -> ContainsSubstring.OperandSpecification
   }
 }

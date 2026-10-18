@@ -153,7 +153,7 @@ pub fn query_qry1_scaffold_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_execute_query_step(
         saved_query.clone(),
-        QueryInputSpec::Collection(vec![saved_expression.clone()]),
+        QueryInputSpec::collection("UnimplementedQueryExpression", vec![saved_expression.clone()]),
         QueryRoute::Direct,
         QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some(
@@ -163,7 +163,7 @@ pub fn query_qry1_scaffold_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     test_case.add_execute_query_step(
         saved_query.clone(),
-        QueryInputSpec::Collection(vec![]),
+        QueryInputSpec::collection("UnimplementedQueryExpression", vec![]),
         QueryRoute::Direct,
         QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some(
@@ -173,7 +173,7 @@ pub fn query_qry1_scaffold_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     test_case.add_execute_query_step(
         saved_query.clone(),
-        QueryInputSpec::Collection(vec![saved_expression]),
+        QueryInputSpec::collection("UnimplementedQueryExpression", vec![saved_expression]),
         QueryRoute::QueryDance,
         QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some("QueryDance routes to the same seam and propagates NotImplemented".to_string()),

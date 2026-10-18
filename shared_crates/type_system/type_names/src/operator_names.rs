@@ -78,6 +78,7 @@ impl ToOperatorName for &OperatorName {
 /// Stable MAP Core operator type names backed by concrete `OperatorType` descriptors.
 #[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
 pub enum CoreOperatorTypeName {
+    ContainsOperator,
     EqualsOperator,
     LessThanOperator,
 }
@@ -92,6 +93,11 @@ impl CoreOperatorTypeName {
     }
 }
 
+/// Canonical key of an operator descriptor: `<OperatorName>.OperatorType`.
+pub fn operator_type_descriptor_key(operator_name: &MapString) -> MapString {
+    MapString(format!("{operator_name}.OperatorType"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,7 +108,11 @@ mod tests {
     }
 
     fn all_core_operator_type_names() -> Vec<CoreOperatorTypeName> {
-        vec![CoreOperatorTypeName::EqualsOperator, CoreOperatorTypeName::LessThanOperator]
+        vec![
+            CoreOperatorTypeName::ContainsOperator,
+            CoreOperatorTypeName::EqualsOperator,
+            CoreOperatorTypeName::LessThanOperator,
+        ]
     }
 
     #[test]
@@ -150,6 +160,15 @@ mod tests {
         assert_eq!(
             expected_operator_name("LessThanOperator"),
             (&core_operator_type_name).to_operator_name()
+        );
+    }
+
+    #[test]
+    fn operator_descriptor_keys_use_the_operator_type_family() {
+        let name = CoreOperatorTypeName::ContainsOperator.as_operator_name().0;
+        assert_eq!(
+            MapString("ContainsOperator.OperatorType".to_string()),
+            operator_type_descriptor_key(&name)
         );
     }
 }

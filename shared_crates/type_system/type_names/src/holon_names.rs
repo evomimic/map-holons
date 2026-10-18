@@ -72,11 +72,13 @@ pub enum CoreHolonTypeName {
     DanceInvocation,
     DeclaredRelationshipType,
     Holon,
+    HolonCollection,
     HolonError,
     HolonLoadError,
     HolonSpace,
     HolonType,
     InverseRelationshipType,
+    OperandSpecification,
     Projection,
     Schema,
     Transaction,
@@ -88,6 +90,59 @@ impl CoreHolonTypeName {
         let class_case = format!("{self:?}").to_case(Case::Pascal);
         MapString(class_case)
     }
+}
+
+/// Canonical Query Schema holon type names consumed by the Query runtime.
+#[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
+pub enum QueryHolonTypeName {
+    AnyOf,
+    ComparisonPredicate,
+    Distinct,
+    ExecutionInstance,
+    Expand,
+    Filter,
+    Limit,
+    LiteralOperand,
+    OrderBy,
+    OrderBySpec,
+    Query,
+    QueryExpressionExecution,
+    SeedHolons,
+    Skip,
+}
+
+impl QueryHolonTypeName {
+    /// Canonical holon type name in ClassCase (UpperCamel).
+    pub fn as_holon_name(&self) -> MapString {
+        MapString(format!("{self:?}").to_case(Case::Pascal))
+    }
+}
+
+/// Canonical Query Dance Adapter Schema dance type names.
+#[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
+pub enum QueryDanceTypeName {
+    QueryDance,
+}
+
+impl QueryDanceTypeName {
+    /// Canonical dance type name in ClassCase (UpperCamel).
+    pub fn as_dance_name(&self) -> DanceName {
+        DanceName(MapString(format!("{self:?}").to_case(Case::Pascal)))
+    }
+}
+
+impl ToDanceName for QueryDanceTypeName {
+    fn to_dance_name(self) -> DanceName {
+        self.as_dance_name()
+    }
+}
+
+/// Canonical key of a concrete holon type descriptor: `<TypeName>.HolonType`.
+///
+/// Concrete holon types are keyed by their own type name and the `HolonType`
+/// descriptor family, independent of the abstract type they extend.
+pub fn holon_type_descriptor_key(type_name: &MapString) -> MapString {
+    MapString(format!("{type_name}.HolonType"))
 }
 
 #[cfg(test)]
@@ -130,6 +185,55 @@ mod tests {
         assert_eq!(
             MapString("HolonError".to_string()),
             CoreHolonTypeName::HolonError.as_holon_name()
+        );
+        assert_eq!(
+            MapString("HolonCollection".to_string()),
+            CoreHolonTypeName::HolonCollection.as_holon_name()
+        );
+    }
+
+    #[test]
+    fn query_holon_type_names_match_their_variants() {
+        use strum::VariantNames as _;
+        let variants = [
+            QueryHolonTypeName::AnyOf,
+            QueryHolonTypeName::ComparisonPredicate,
+            QueryHolonTypeName::Distinct,
+            QueryHolonTypeName::ExecutionInstance,
+            QueryHolonTypeName::Expand,
+            QueryHolonTypeName::Filter,
+            QueryHolonTypeName::Limit,
+            QueryHolonTypeName::LiteralOperand,
+            QueryHolonTypeName::OrderBy,
+            QueryHolonTypeName::OrderBySpec,
+            QueryHolonTypeName::Query,
+            QueryHolonTypeName::QueryExpressionExecution,
+            QueryHolonTypeName::SeedHolons,
+            QueryHolonTypeName::Skip,
+        ];
+        assert_eq!(QueryHolonTypeName::VARIANTS.len(), variants.len());
+        for (variant_name, variant) in QueryHolonTypeName::VARIANTS.iter().zip(variants) {
+            assert_eq!(MapString(variant_name.to_string()), variant.as_holon_name());
+        }
+    }
+
+    #[test]
+    fn query_dance_type_name_is_a_dance_name() {
+        assert_eq!(
+            DanceName(MapString("QueryDance".to_string())),
+            QueryDanceTypeName::QueryDance.to_dance_name()
+        );
+    }
+
+    #[test]
+    fn holon_type_descriptor_key_uses_the_holon_type_family() {
+        assert_eq!(
+            MapString("HolonCollection.HolonType".to_string()),
+            holon_type_descriptor_key(&CoreHolonTypeName::HolonCollection.as_holon_name())
+        );
+        assert_eq!(
+            MapString("OrderBySpec.HolonType".to_string()),
+            holon_type_descriptor_key(&QueryHolonTypeName::OrderBySpec.as_holon_name())
         );
     }
 

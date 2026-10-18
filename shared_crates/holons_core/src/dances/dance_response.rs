@@ -237,6 +237,16 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::StringLengthOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnknownOperatorCategory { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnknownCaseMatching { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnknownOperandValueTypeRule { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
+            HolonError::InvalidOperatorMetadata { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::OperandCountMismatch { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::IncompatibleLiteralType { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnsupportedValueConstraint { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
             HolonError::UnsupportedOperator { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnsupportedStagedTraversal { .. } => {
                 ResponseStatusCode::UnprocessableEntity

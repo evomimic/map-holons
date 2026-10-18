@@ -5,7 +5,9 @@ use crate::descriptors::{walk_extends_chain, HolonDescriptor, TypeHeader};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, RelationshipName};
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToPropertyName};
+use type_names::{
+    CorePropertyTypeName, CoreRelationshipTypeName, ToPropertyName, ToRelationshipName,
+};
 
 /// Resolves a descriptor-definition property self-first through its `Extends` lineage.
 ///
@@ -118,45 +120,42 @@ pub(crate) fn require_integer<T: ToPropertyName>(
     }
 }
 
-/// Returns the single target of a required singular descriptor relationship.
-pub(crate) fn require_single_related(
+/// Returns the members of `relationship_name` on `holon` in relationship order,
+/// duplicate occurrences included.
+pub(crate) fn related_members<T: ToRelationshipName>(
     holon: &HolonReference,
-    relationship_name: CoreRelationshipTypeName,
-) -> Result<HolonReference, HolonError> {
-    let relationship = relationship_name.as_relationship_name().to_string();
+    relationship_name: T,
+) -> Result<Vec<HolonReference>, HolonError> {
     let collection_arc = holon.related_holons(relationship_name)?;
     let collection = collection_arc.read().map_err(lock_error)?;
-    let members = collection.get_members();
-
-    match members.as_slice() {
-        [] => Err(HolonError::MissingRequiredRelationship {
-            relationship,
-            descriptor: descriptor_label(holon),
-        }),
-        [single] => Ok(single.clone()),
-        many => Err(HolonError::MultipleRelatedHolons {
-            relationship,
-            descriptor: descriptor_label(holon),
-            count: many.len(),
-        }),
-    }
+    Ok(collection.get_members().clone())
 }
 
-/// Returns the optional target of a singular descriptor relationship.
-pub(crate) fn optional_single_related(
+/// Returns the single target of a required singular relationship.
+pub(crate) fn require_single_related<T: ToRelationshipName>(
     holon: &HolonReference,
-    relationship_name: CoreRelationshipTypeName,
-) -> Result<Option<HolonReference>, HolonError> {
-    let relationship = relationship_name.as_relationship_name().to_string();
-    let collection_arc = holon.related_holons(relationship_name)?;
-    let collection = collection_arc.read().map_err(lock_error)?;
-    let members = collection.get_members();
+    relationship_name: T,
+) -> Result<HolonReference, HolonError> {
+    let relationship_name = relationship_name.to_relationship_name();
+    optional_single_related(holon, &relationship_name)?.ok_or_else(|| {
+        HolonError::MissingRequiredRelationship {
+            relationship: relationship_name.to_string(),
+            descriptor: descriptor_label(holon),
+        }
+    })
+}
 
-    match members.as_slice() {
+/// Returns the optional target of a singular relationship.
+pub(crate) fn optional_single_related<T: ToRelationshipName>(
+    holon: &HolonReference,
+    relationship_name: T,
+) -> Result<Option<HolonReference>, HolonError> {
+    let relationship_name = relationship_name.to_relationship_name();
+    match related_members(holon, &relationship_name)?.as_slice() {
         [] => Ok(None),
         [single] => Ok(Some(single.clone())),
         many => Err(HolonError::MultipleRelatedHolons {
-            relationship,
+            relationship: relationship_name.to_string(),
             descriptor: descriptor_label(holon),
             count: many.len(),
         }),

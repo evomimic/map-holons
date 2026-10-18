@@ -289,7 +289,7 @@
         "TypeNamePlural": "StringValueTypes",
         "DisplayName": "String Value Type",
         "DisplayNamePlural": "String Value Types",
-        "Description": "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals and LessThan operator affordances additively. A specialization retains those affordances and may add its own operators.",
+        "Description": "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals, LessThan, and Contains operator affordances additively. A specialization retains those affordances and may add its own operators.",
         "IsAbstractType": true,
         "DefinesInstanceTypeKind": true
       },
@@ -318,6 +318,9 @@
             },
             {
               "$ref": "LessThanOperator.OperatorType"
+            },
+            {
+              "$ref": "ContainsOperator.OperatorType"
             }
           ]
         },
