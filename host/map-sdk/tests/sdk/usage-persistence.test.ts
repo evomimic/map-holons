@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({
+  invalidateVisualizerBindings: vi.fn(),
   beginVisualizerUsageBatch: vi.fn(), submitVisualizerUsageBatch: vi.fn(),
   selectVisualizer: vi.fn(), selectVisualizerUsage: vi.fn(), recordVisualizerUse: vi.fn(),
   getVisualizerUsagePersistence: vi.fn(), retryVisualizerUsagePersistence: vi.fn(), saveVisualizerUsage: vi.fn(),
@@ -105,4 +106,26 @@ it('uses the Usage prepared with automatic selection without issuing a second se
   expect(api.selectVisualizer).toHaveBeenCalledOnce();
   expect(api.selectVisualizerUsage).not.toHaveBeenCalled();
   expect(api.recordVisualizerUse).toHaveBeenCalledOnce();
+});
+
+
+it('flushes semantic invalidation before admitting the next presentation round', async () => {
+  const tx = createMapTransaction(41);
+  tx.invalidateVisualizerBindings();
+  tx.invalidateVisualizerBindings();
+  await tx.withVisualizerUsageBatch(async () => {});
+  expect(api.invalidateVisualizerBindings).toHaveBeenCalledExactlyOnceWith(41);
+  expect(api.invalidateVisualizerBindings.mock.invocationCallOrder[0]).toBeLessThan(api.beginVisualizerUsageBatch.mock.invocationCallOrder[0]);
+  await tx.withVisualizerUsageBatch(async () => {});
+  expect(api.invalidateVisualizerBindings).toHaveBeenCalledOnce();
+});
+
+it('does not admit a presentation using stale bindings when invalidation fails', async () => {
+  const tx = createMapTransaction(41);
+  tx.invalidateVisualizerBindings();
+  api.invalidateVisualizerBindings.mockRejectedValueOnce(new Error('invalidation unavailable'));
+  await expect(tx.withVisualizerUsageBatch(async () => {})).rejects.toThrow('invalidation unavailable');
+  expect(api.beginVisualizerUsageBatch).not.toHaveBeenCalled();
+  await tx.withVisualizerUsageBatch(async () => {});
+  expect(api.invalidateVisualizerBindings).toHaveBeenCalledTimes(2);
 });

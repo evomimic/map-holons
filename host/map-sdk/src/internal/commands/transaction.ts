@@ -524,3 +524,7 @@ export function retryVisualizerUsagePersistence(txId: TxId, batchId: string): Pr
 export function saveVisualizerUsage(txId: TxId, usage: HolonReferenceWire): Promise<void> {
   return runTransactionCommand(txId, { SaveVisualizerUsage: { usage } }, expectNone);
 }
+
+export function invalidateVisualizerBindings(txId: TxId): Promise<void> {
+  return runTransactionCommand(txId, 'InvalidateVisualizerBindings', expectNone);
+}

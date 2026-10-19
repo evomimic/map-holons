@@ -17,6 +17,7 @@ mod tests;
 #[cfg(test)]
 mod collection_tests;
 
+mod prepared_visualizer_bindings;
 mod usage_persistence;
 mod usage_transactions;
 

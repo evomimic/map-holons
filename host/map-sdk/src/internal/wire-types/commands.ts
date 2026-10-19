@@ -118,6 +118,7 @@ export type TransactionActionWire =
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
   | { DiscoverVisualizers: { request: VisualizerSelectionRequestWire; current_selection: HolonReferenceWire | null; retain_evidence?: boolean } }
   | { FindVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire } }
+  | 'InvalidateVisualizerBindings'
   | 'BeginVisualizerUsageBatch'
   | 'SubmitVisualizerUsageBatch'
   | { GetVisualizerUsagePersistence: { batch_id: string } }
@@ -231,6 +232,7 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
+  'InvalidateVisualizerBindings',
   'BeginVisualizerUsageBatch',
   'SubmitVisualizerUsageBatch',
   'Dispose',

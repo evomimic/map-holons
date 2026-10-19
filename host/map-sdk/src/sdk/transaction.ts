@@ -128,6 +128,7 @@ const MAP_TRANSACTION_CONSTRUCTION = Symbol('MapTransactionConstruction');
 export class MapTransaction {
   private completedLoadSpace?: HolonReference;
   private usageBatchDepth = 0;
+  private visualizerBindingsInvalidated = false;
   private usageBatchTail: Promise<void> = Promise.resolve();
   private readonly usageBatches: string[] = [];
   private usageReports: Promise<void>[] = [];
@@ -159,6 +160,11 @@ export class MapTransaction {
   }
 
   private async runVisualizerUsageBatch<T>(work: () => Promise<T>): Promise<T> {
+    if (this.visualizerBindingsInvalidated) {
+      this.visualizerBindingsInvalidated = false;
+      try { await internalTransaction.invalidateVisualizerBindings(txIdFor(this)); }
+      catch (error) { this.visualizerBindingsInvalidated = true; throw error; }
+    }
     await internalTransaction.beginVisualizerUsageBatch(txIdFor(this));
     ++this.usageBatchDepth;
     let presented = false;
@@ -184,6 +190,9 @@ export class MapTransaction {
       if (batch) { this.lastUsageBatch = batch; this.usageBatches.push(batch); }
     }
   }
+
+  /** Retire established bindings before the next presentation round after a semantic change. */
+  invalidateVisualizerBindings(): void { this.visualizerBindingsInvalidated = true; }
 
   /** Session-local identity; no implicit polling or dependency on later gestures. */
   get lastVisualizerUsageBatch(): string | undefined { return this.lastUsageBatch; }

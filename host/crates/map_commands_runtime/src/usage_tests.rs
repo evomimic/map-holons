@@ -35,6 +35,7 @@ struct Store {
     rejected: AtomicBool,
     incomplete: AtomicBool,
     block_commit: AtomicBool,
+    artifact_missing: AtomicBool,
     commit_gate: Mutex<bool>,
     commit_changed: std::sync::Condvar,
 }
@@ -91,7 +92,7 @@ impl HolonServiceApi for Store {
         _: &Arc<TransactionContext>,
         _: &HolonReference,
     ) -> Result<bool, HolonError> {
-        Ok(true)
+        Ok(!self.artifact_missing.load(Ordering::SeqCst))
     }
     fn get_saved_holon_by_key_internal(
         &self,
@@ -1063,5 +1064,304 @@ fn automatic_selection_without_a_usage_round_remains_read_only() -> Result<(), H
         .iter()
         .any(|(_, name)| name == "UsedByVisualizerUsage"));
     assert!(store.commits.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn reopening_same_context_reuses_authorized_selection_and_live_usage_without_backend_reads(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let first = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let live = first.usage.unwrap().usage;
+    let first_batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, first_batch);
+    service.begin(&space, &caller)?;
+    store.relationship_reads.lock().unwrap().clear();
+    store.anchor_reads.lock().unwrap().clear();
+    let reopened = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert_eq!(reopened.selected, first.selected);
+    assert_eq!(reopened.usage.unwrap().usage, live);
+    assert!(
+        store.relationship_reads.lock().unwrap().is_empty(),
+        "Reopen must consume its established binding rather than resolve selection and Usage again"
+    );
+    assert!(store.anchor_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn established_bindings_do_not_alias_request_dimensions_or_contexts() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, batch);
+    let mut variants = vec![request(&caller, 3, 30), request(&caller, 2, 31)];
+    let mut theme = request(&caller, 2, 30);
+    theme.theme = reference(&caller, 61);
+    variants.push(theme);
+    let mut owner = request(&caller, 2, 30);
+    owner.owner = VisualizerOwner::Dancer(reference(&caller, 40));
+    variants.push(owner);
+    let mut kind = request(&caller, 2, 30);
+    kind.requested_kind = VisualizerKind::PropertyMap;
+    variants.push(kind);
+    service.begin(&space, &caller)?;
+    for variant in variants {
+        store.relationship_reads.lock().unwrap().clear();
+        let _ = service.select_visualizer(&caller, variant);
+        assert!(
+            !store.relationship_reads.lock().unwrap().is_empty(),
+            "A different matching context must undergo authoritative resolution"
+        );
+    }
+    let other = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    service.begin(&space, &other)?;
+    store.relationship_reads.lock().unwrap().clear();
+    service.select_visualizer(&other, request(&other, 2, 30))?;
+    assert!(!store.relationship_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn semantic_refresh_and_disposal_retire_bindings() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, batch);
+    service.invalidate_bindings()?;
+    store.edge(1, "HasApplicableVisualizer", &[21]);
+    service.begin(&space, &caller)?;
+    let refreshed = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert_eq!(refreshed.selected, reference(&caller, 21));
+    let live = refreshed.usage.unwrap().usage;
+    let batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, batch);
+    service.release_context(caller.tx_id())?;
+    service.begin(&space, &caller)?;
+    store.relationship_reads.lock().unwrap().clear();
+    let renewed = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert_ne!(renewed.usage.unwrap().usage, live);
+    assert!(!store.relationship_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn missing_artifact_cannot_be_authorized_by_a_retained_binding() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, batch);
+    service.begin(&space, &caller)?;
+    store.artifact_missing.store(true, Ordering::SeqCst);
+    assert!(service.select_visualizer(&caller, request(&caller, 2, 30)).is_err());
+    store.artifact_missing.store(false, Ordering::SeqCst);
+    assert_eq!(
+        service.select_visualizer(&caller, request(&caller, 2, 30))?.selected,
+        reference(&caller, 20)
+    );
+    Ok(())
+}
+
+#[test]
+fn published_explicit_choice_replaces_automatic_binding_and_delayed_report_cannot_undo_it(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let automatic = service.select_visualizer(&caller, request(&caller, 2, 30))?.usage.unwrap();
+    let batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, batch);
+    store.edge(1, "HasApplicableVisualizer", &[20, 21]);
+    service.begin(&space, &caller)?;
+    let chosen =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 21),
+        chosen.usage,
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 2),
+    )?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        automatic.usage,
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 1),
+    )?;
+    let batch = service.submit(&caller)?.unwrap();
+    wait_saved(&service, batch);
+    service.begin(&space, &caller)?;
+    assert_eq!(
+        service.select_visualizer(&caller, request(&caller, 2, 30))?.selected,
+        reference(&caller, 21)
+    );
+    Ok(())
+}
+
+#[test]
+fn semantic_change_suspends_reuse_and_retires_resolutions_completed_during_the_change(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let change = service.begin_binding_change()?;
+    store.relationship_reads.lock().unwrap().clear();
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert!(!store.relationship_reads.lock().unwrap().is_empty());
+    drop(change);
+    store.relationship_reads.lock().unwrap().clear();
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert!(!store.relationship_reads.lock().unwrap().is_empty());
+    store.relationship_reads.lock().unwrap().clear();
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert!(store.relationship_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[tokio::test]
+async fn command_dispatch_reuses_bindings_across_transient_builders_and_retires_them_for_semantic_writes(
+) -> Result<(), HolonError> {
+    use map_commands_contract::{
+        HolonAction, HolonCommand, MapCommand, MapResult, TransactionAction, TransactionCommand,
+        WritableHolonAction,
+    };
+    let (store, space, _) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let session = Arc::new(crate::RuntimeSession::new(space, None));
+    let tx = session.begin_transaction().await?;
+    let caller = session.get_transaction(&tx)?;
+    let runtime = crate::Runtime::new(session.clone());
+    let execute = |action| {
+        runtime.execute_command(
+            MapCommand::Transaction(TransactionCommand { context: caller.clone(), action }),
+            crate::ExecutionPolicy::default(),
+        )
+    };
+    execute(TransactionAction::BeginVisualizerUsageBatch).await?;
+    execute(TransactionAction::SelectVisualizer { request: request(&caller, 2, 30) }).await?;
+    let MapResult::Value(BaseValue::StringValue(batch)) =
+        execute(TransactionAction::SubmitVisualizerUsageBatch).await?
+    else {
+        panic!("accepted batch");
+    };
+    wait_saved(&session.usage_transactions, batch.0.parse().unwrap());
+    execute(TransactionAction::BeginVisualizerUsageBatch).await?;
+    // Invocation builders create transient data without changing saved selection inputs.
+    execute(TransactionAction::NewHolon { key: Some("presentation-invocation".into()) }).await?;
+    store.relationship_reads.lock().unwrap().clear();
+    execute(TransactionAction::SelectVisualizer { request: request(&caller, 2, 30) }).await?;
+    assert!(store.relationship_reads.lock().unwrap().is_empty());
+    // Even a rejected semantic write invalidates conservatively through the real ingress.
+    let result = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: caller.clone(),
+                target: reference(&caller, 20),
+                action: HolonAction::Write(WritableHolonAction::WithPropertyValue {
+                    name: PropertyName("Key".into()),
+                    value: BaseValue::StringValue("changed".into()),
+                }),
+            }),
+            crate::ExecutionPolicy::default(),
+        )
+        .await;
+    assert!(result.is_err(), "saved references are read-only");
+    store.relationship_reads.lock().unwrap().clear();
+    execute(TransactionAction::SelectVisualizer { request: request(&caller, 2, 30) }).await?;
+    assert!(!store.relationship_reads.lock().unwrap().is_empty());
+    execute(TransactionAction::InvalidateVisualizerBindings).await?;
+    store.relationship_reads.lock().unwrap().clear();
+    execute(TransactionAction::SelectVisualizer { request: request(&caller, 2, 30) }).await?;
+    assert!(!store.relationship_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn repeated_composition_consumes_all_established_bindings_without_selection_or_usage_reads(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    for subject in 300..323 {
+        store.nodes.lock().unwrap().insert(subject, PropertyMap::new());
+        store.edge(subject, "DescribedBy", &[1]);
+    }
+    let service = UsageTransactions::default();
+    for round in 0..2 {
+        service.begin(&space, &caller)?;
+        store.relationship_reads.lock().unwrap().clear();
+        store.anchor_reads.lock().unwrap().clear();
+        for (index, subject) in (300..323).enumerate() {
+            let selection = service.select_visualizer(&caller, request(&caller, subject, 30))?;
+            service.record(
+                &space,
+                &caller,
+                request(&caller, subject, 30),
+                selection.selected,
+                selection.usage.unwrap().usage,
+                VisualizerChoiceOrigin::Automatic,
+                usage_report(&service, (round * 23 + index + 1) as u64),
+            )?;
+        }
+        if round == 1 {
+            assert!(
+                store.relationship_reads.lock().unwrap().is_empty(),
+                "All 23 prepared selection/Usage bindings must avoid backend resolution on repeat"
+            );
+            assert!(store.anchor_reads.lock().unwrap().is_empty());
+        }
+        let batch = service.submit(&caller)?.unwrap();
+        wait_saved(&service, batch);
+    }
+    assert_eq!(store.commits.lock().unwrap().len(), 1);
+    Ok(())
+}
+
+#[test]
+fn retained_binding_reopens_without_waiting_for_its_pending_usage_commit() -> Result<(), HolonError>
+{
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    store.block_commit.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let first = service.submit(&caller)?.unwrap();
+    let entered = store.commit_gate.lock().unwrap();
+    let (entered, timeout) = store
+        .commit_changed
+        .wait_timeout_while(entered, std::time::Duration::from_secs(2), |entered| !*entered)
+        .unwrap();
+    assert!(!timeout.timed_out());
+    drop(entered);
+    service.begin(&space, &caller)?;
+    store.relationship_reads.lock().unwrap().clear();
+    service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert!(store.relationship_reads.lock().unwrap().is_empty());
+    let second = service.submit(&caller)?.unwrap();
+    assert_eq!(service.status(second)?, crate::usage_persistence::SaveStatus::Queued);
+    store.block_commit.store(false, Ordering::SeqCst);
+    store.commit_changed.notify_all();
+    wait_saved(&service, first);
+    wait_saved(&service, second);
     Ok(())
 }

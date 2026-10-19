@@ -99,6 +99,8 @@ pub enum TransactionAction {
     /// Find an existing usage without creating records or resuming pending writes.
     /// Open an explicit startup or gesture round for independent Usage persistence.
     BeginVisualizerUsageBatch,
+    /// Retire derived selection bindings after a semantic context refresh.
+    InvalidateVisualizerBindings,
     /// Hand off a closed round to background commit; never await backend completion.
     SubmitVisualizerUsageBatch,
     /// Inspect the status of a previously accepted background batch.
@@ -288,6 +290,7 @@ impl TransactionAction {
             // The caller only supplies retained evidence, including committed load results.
             // Writes are confined to an independent usage transaction, never this caller's nursery.
             TransactionAction::BeginVisualizerUsageBatch
+            | TransactionAction::InvalidateVisualizerBindings
             | TransactionAction::SubmitVisualizerUsageBatch
             | TransactionAction::GetVisualizerUsagePersistence { .. }
             | TransactionAction::RetryVisualizerUsagePersistence { .. }
@@ -345,6 +348,7 @@ impl TransactionAction {
             TransactionAction::ReleaseVisualizerDiscovery { .. } => "release_visualizer_discovery",
             TransactionAction::DiscoverVisualizers { .. } => "discover_visualizers",
             TransactionAction::ChooseVisualizer { .. } => "choose_visualizer",
+            TransactionAction::InvalidateVisualizerBindings => "invalidate_visualizer_bindings",
             TransactionAction::BeginVisualizerUsageBatch => "begin_visualizer_usage_batch",
             TransactionAction::SubmitVisualizerUsageBatch => "submit_visualizer_usage_batch",
             TransactionAction::GetVisualizerUsagePersistence { .. } => {

@@ -125,6 +125,10 @@ pub async fn handle_transaction(
                 context, request, candidate,
             )?))
         }
+        TransactionAction::InvalidateVisualizerBindings => {
+            session.usage_transactions.invalidate_bindings()?;
+            Ok(MapResult::None)
+        }
         TransactionAction::BeginVisualizerUsageBatch => {
             session.usage_transactions.begin(session.space_manager(), context)?;
             Ok(MapResult::None)

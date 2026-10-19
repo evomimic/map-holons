@@ -113,6 +113,37 @@ impl Runtime {
             }
         }
 
+        // Saved inputs authorize retained bindings. Invocation/transient construction
+        // does not alter those inputs; persistent edits and unknown dances may.
+        let binding_change = match &command {
+            MapCommand::Holon(cmd) => {
+                matches!(&cmd.action, map_commands_contract::HolonAction::Write(_))
+                    && !matches!(cmd.target, holons_core::HolonReference::Transient(_))
+            }
+            MapCommand::Transaction(cmd) => match &cmd.action {
+                TransactionAction::NewHolon { .. } => false,
+                TransactionAction::UndoLast
+                | TransactionAction::RedoLast
+                | TransactionAction::UndoToMarker { .. }
+                | TransactionAction::RedoToMarker { .. } => true,
+                TransactionAction::DanceV2 { invocation } => {
+                    // These kernel contracts construct presentation/query artifacts;
+                    // they do not edit the saved semantic selection graph.
+                    !matches!(
+                        invocation.dance_name()?.to_string().as_str(),
+                        "MaterializeVisualizer" | "QueryDance"
+                    )
+                }
+                _ => lifecycle_policy.mutation != MutationClassification::ReadOnly,
+            },
+            MapCommand::Space(_) => false,
+        };
+        let _binding_change = if binding_change {
+            Some(self.session.usage_transactions.begin_binding_change()?)
+        } else {
+            None
+        };
+
         let tx_id_for_snapshot = context.as_ref().map(|ctx| ctx.tx_id());
         let profile = std::env::var_os("MAP_PROFILE").is_some();
         let route_started = std::time::Instant::now();

@@ -96,6 +96,7 @@ pub enum TransactionActionWire {
     },
     /// Open an explicit startup or gesture round for independent Usage persistence.
     BeginVisualizerUsageBatch,
+    InvalidateVisualizerBindings,
     /// Hand off a closed round to background commit; never await backend completion.
     SubmitVisualizerUsageBatch,
     /// Inspect the status of a previously accepted background batch.
@@ -349,6 +350,9 @@ impl TransactionActionWire {
             }
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
+            }
+            TransactionActionWire::InvalidateVisualizerBindings => {
+                Ok(TransactionAction::InvalidateVisualizerBindings)
             }
             TransactionActionWire::BeginVisualizerUsageBatch => {
                 Ok(TransactionAction::BeginVisualizerUsageBatch)

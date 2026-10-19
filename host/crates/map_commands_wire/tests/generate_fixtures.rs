@@ -73,6 +73,10 @@ fn generate_fixtures() {
     );
     for (name, action) in [
         (
+            "request-invalidate-visualizer-bindings.json",
+            TransactionActionWire::InvalidateVisualizerBindings,
+        ),
+        (
             "request-begin-visualizer-usage-batch.json",
             TransactionActionWire::BeginVisualizerUsageBatch,
         ),

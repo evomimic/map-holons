@@ -18,6 +18,9 @@ use map_commands_contract::{
     VisualizerUseReport,
 };
 
+use crate::prepared_visualizer_bindings::{
+    same_request, PreparedVisualizerBinding, PreparedVisualizerBindings,
+};
 use crate::usage_persistence::{SaveOutcome, SaveStatus, UsagePersistence, UsageSave};
 
 #[derive(Default)]
@@ -46,19 +49,6 @@ struct PreparedUsage {
     usage: String,
     descriptor: HolonReference,
     usage_type: HolonReference,
-}
-
-fn same_request(a: &VisualizerSelectionRequest, b: &VisualizerSelectionRequest) -> bool {
-    use map_commands_contract::VisualizerOwner;
-    a.subject == b.subject
-        && a.requested_kind == b.requested_kind
-        && a.slot == b.slot
-        && a.theme == b.theme
-        && match (&a.owner, &b.owner) {
-            (VisualizerOwner::Visualizer(a), VisualizerOwner::Visualizer(b))
-            | (VisualizerOwner::Dancer(a), VisualizerOwner::Dancer(b)) => a == b,
-            _ => false,
-        }
 }
 
 struct Report {
@@ -91,6 +81,7 @@ pub(crate) struct UsageTransactions {
     live: Mutex<HashMap<(TxId, String), LiveUsage>>,
     preferences: Arc<Mutex<HashMap<(HolonId, HolonId), (VisualizerUseReport, String)>>>,
     persistence: UsagePersistence,
+    bindings: PreparedVisualizerBindings,
     preference_order: Mutex<HashMap<(HolonId, HolonId), Arc<Mutex<PreferenceOrder>>>>,
 }
 
@@ -111,6 +102,7 @@ impl Default for UsageTransactions {
             live: Default::default(),
             preferences: Default::default(),
             persistence: Default::default(),
+            bindings: Default::default(),
             preference_order: Default::default(),
         }
     }
@@ -186,6 +178,26 @@ impl UsageTransactions {
     pub(crate) fn release_context(&self, tx_id: TxId) -> Result<(), HolonError> {
         self.active.lock().map_err(lock_error)?.remove(&tx_id);
         self.live.lock().map_err(lock_error)?.retain(|(owner, _), _| *owner != tx_id);
+        self.bindings.release(tx_id)
+    }
+
+    /// Suspend reuse while a semantic command changes the selection context.
+    pub(crate) fn begin_binding_change(
+        &self,
+    ) -> Result<crate::prepared_visualizer_bindings::BindingChange<'_>, HolonError> {
+        let change = self.bindings.begin_change()?;
+        for batch in self.active.lock().map_err(lock_error)?.values_mut() {
+            batch.prepared.clear();
+        }
+        Ok(change)
+    }
+
+    /// Retire derived bindings after an explicit semantic context refresh.
+    pub(crate) fn invalidate_bindings(&self) -> Result<(), HolonError> {
+        self.bindings.invalidate()?;
+        for batch in self.active.lock().map_err(lock_error)?.values_mut() {
+            batch.prepared.clear();
+        }
         Ok(())
     }
 
@@ -249,21 +261,69 @@ impl UsageTransactions {
         request: VisualizerSelectionRequest,
     ) -> Result<map_commands_contract::VisualizerSelection, HolonError> {
         let started = std::time::Instant::now();
+        let prepare_usage = self.active.lock().map_err(lock_error)?.contains_key(&caller.tx_id());
+        let generation = self.bindings.generation()?;
+        if prepare_usage {
+            if let Some(binding) = self.bindings.get(caller.tx_id(), &request)? {
+                // Availability is a cheap host catalog/file check; retained metadata
+                // never permits executing an implementation that disappeared.
+                let identity_unchanged = single(&binding.usage.usage, "UsesVisualizer")?
+                    == binding.selected
+                    && single(&binding.usage.usage, "ForSubjectType")? == binding.descriptor
+                    && single(&binding.usage.usage, "DescribedBy")? == binding.usage_type;
+                if identity_unchanged
+                    && caller.visualizer_artifact_available(&binding.selected)?
+                    && self.bindings.is_current(generation)?
+                {
+                    let usage =
+                        VisualizerUsageSelection { initialized: false, ..binding.usage.clone() };
+                    self.prepare(
+                        caller,
+                        request.clone(),
+                        binding.selected.clone(),
+                        binding.descriptor,
+                        &usage,
+                    )?;
+                    if std::env::var_os("MAP_PROFILE").is_some() {
+                        eprintln!("[MAP-PROFILE] command=select_visualizer binding_reused=true total_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
+                    }
+                    return Ok(map_commands_contract::VisualizerSelection {
+                        selected: binding.selected,
+                        requested_kind: request.requested_kind,
+                        alternatives_available: binding.alternatives_available,
+                        usage: Some(usage),
+                    });
+                }
+                self.bindings.invalidate()?;
+            }
+        }
         let (mut selection, descriptor) =
             dahn_selection::select_visualizer_with_subject_type(caller, request.clone())?;
         let selection_ms = started.elapsed().as_secs_f64() * 1000.0;
         let usage_started = std::time::Instant::now();
-        let prepare_usage = self.active.lock().map_err(lock_error)?.contains_key(&caller.tx_id());
         if prepare_usage {
-            selection.usage = Some(self.select_prevalidated(
+            let usage = self.select_prevalidated(
                 caller,
-                request,
+                request.clone(),
                 selection.selected.clone(),
-                descriptor,
-            )?);
+                descriptor.clone(),
+            )?;
+            self.bindings.retain(
+                caller.tx_id(),
+                generation,
+                PreparedVisualizerBinding {
+                    request,
+                    selected: selection.selected.clone(),
+                    descriptor,
+                    usage: usage.clone(),
+                    usage_type: single(&usage.usage, "DescribedBy")?,
+                    alternatives_available: selection.alternatives_available,
+                },
+            )?;
+            selection.usage = Some(usage);
         }
         if std::env::var_os("MAP_PROFILE").is_some() {
-            eprintln!("[MAP-PROFILE] command=select_visualizer selection_ms={:.3} usage_ms={:.3} usage_prepared={}",
+            eprintln!("[MAP-PROFILE] command=select_visualizer selection_ms={:.3} usage_ms={:.3} usage_prepared={} binding_reused=false",
                 selection_ms, usage_started.elapsed().as_secs_f64() * 1000.0, prepare_usage);
         }
         Ok(selection)
@@ -489,6 +549,7 @@ impl UsageTransactions {
                 "Invalid or expired presentation report identity".into(),
             ));
         }
+        let mut establish_binding = false;
         if origin == VisualizerChoiceOrigin::Explicit {
             let scope = (slot.holon_id()?, descriptor.holon_id()?);
             let mut latest = self.preferences.lock().map_err(lock_error)?;
@@ -503,6 +564,7 @@ impl UsageTransactions {
             }
             if latest.get(&scope).is_none_or(|(previous, _)| previous.sequence <= report.sequence) {
                 latest.insert(scope, (report.clone(), identity.clone()));
+                establish_binding = true;
             }
         }
         self.capture_snapshot(caller, &usage, false)?;
@@ -533,7 +595,33 @@ impl UsageTransactions {
             .iter()
             .any(|old| old.usage == identity && old.report == report && old.origin == origin)
         {
-            batch.reports.push(Report { usage: identity, slot, descriptor, origin, report });
+            batch.reports.push(Report {
+                usage: identity,
+                slot,
+                descriptor: descriptor.clone(),
+                origin,
+                report,
+            });
+        }
+        if establish_binding {
+            // Publication, rather than mere candidate authorization, establishes the choice.
+            self.bindings.invalidate()?;
+            self.bindings.retain(
+                caller.tx_id(),
+                self.bindings.generation()?,
+                PreparedVisualizerBinding {
+                    request,
+                    selected,
+                    descriptor,
+                    usage_type: single(&usage, "DescribedBy")?,
+                    usage: VisualizerUsageSelection {
+                        usage,
+                        initialized: false,
+                        report_session: self.report_session.clone(),
+                    },
+                    alternatives_available: false,
+                },
+            )?;
         }
         Ok(())
     }
