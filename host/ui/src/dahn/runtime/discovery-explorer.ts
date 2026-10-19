@@ -147,7 +147,9 @@ export class DiscoveryExplorerOwner {
       mounted.element.setVisualizerInformationHandler?.(invoker => this.inspect(this.inspectionTarget(invoker, mounted.element)), label);
       if (this.explicitPending) {
         this.explicitPending = false;
-        if (this.usage) reportSuccessfulVisualizerUse(this.evidenceTransaction!, this.request(), this.selected!, this.usage, `${this.target.occurrenceId}:discovery`);
+        if (this.usage) await this.evidenceTransaction!.withVisualizerUsageBatch(async () => {
+          reportSuccessfulVisualizerUse(this.evidenceTransaction!, this.request(), this.selected!, this.usage!, `${this.target.occurrenceId}:discovery`);
+        });
       }
     })());
   }
@@ -164,7 +166,7 @@ export class DiscoveryExplorerOwner {
   }
 
   private choose(candidate: HolonReference, current: () => boolean, signal: AbortSignal | undefined, invoker: HTMLElement): Promise<VisualizerInspectionTarget> {
-    return this.track((async () => {
+    return this.track(this.evidenceTransaction!.withVisualizerUsageBatch(async () => {
       const generation = this.generation;
       const valid = () => !this.disposed && !signal?.aborted && current() && this.target.isLive() && generation === this.generation;
       if (!valid()) throw new Error('Explorer choice is closed or superseded.');
@@ -181,7 +183,7 @@ export class DiscoveryExplorerOwner {
         try { prepared.element.dispose?.(); }
         finally { prepared.element.remove(); await prepared.transaction.dispose(); }
       }
-    })());
+    }));
   }
 
   private async releaseMounted(): Promise<void> {

@@ -13,6 +13,7 @@ session_receptor = { path = "../session_receptor" }
 base_types = { workspace = true }
 core_types = { workspace = true }
 serde_json = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "net"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

@@ -246,7 +246,7 @@ async fn usage_commands_validate_retained_subject_after_commit() {
     };
     // This fixture deliberately lacks a valid composition contract. Admission must reach
     // semantic validation instead of rejecting the archived caller's lifecycle.
-    let expected = dahn_selection::usage_subject_type(&request())
+    let expected = dahn_selection::choose_visualizer(&context, request(), subject.clone())
         .expect_err("incomplete composition contract");
     for action in [
         TransactionAction::SelectVisualizerUsage { request: request(), selected: subject.clone() },

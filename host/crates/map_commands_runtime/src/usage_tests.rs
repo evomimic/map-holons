@@ -31,7 +31,12 @@ struct Store {
     relationship_reads: Mutex<Vec<(u32, String)>>,
     anchor_reads: Mutex<Vec<String>>,
     fail: AtomicBool,
+    unavailable: AtomicBool,
+    rejected: AtomicBool,
     incomplete: AtomicBool,
+    block_commit: AtomicBool,
+    commit_gate: Mutex<bool>,
+    commit_changed: std::sync::Condvar,
 }
 fn id(n: u32) -> HolonId {
     HolonId::Local(LocalId(n.to_le_bytes().to_vec()))
@@ -170,6 +175,22 @@ impl HolonServiceApi for Store {
         context: &Arc<TransactionContext>,
         staged: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
+        if self.block_commit.load(Ordering::SeqCst) {
+            let mut entered = self.commit_gate.lock().unwrap();
+            *entered = true;
+            self.commit_changed.notify_all();
+            while self.block_commit.load(Ordering::SeqCst) {
+                entered = self.commit_changed.wait(entered).unwrap();
+            }
+        }
+        if self.unavailable.swap(false, Ordering::SeqCst) {
+            return Err(HolonError::ServiceNotAvailable("offline".into()));
+        }
+        if self.rejected.swap(false, Ordering::SeqCst) {
+            let mut response = context.mutation().new_holon(Some("rejected-response".into()))?;
+            response.with_property_value("CommitRequestStatus", "Rejected")?;
+            return Ok(response);
+        }
         if self.fail.swap(false, Ordering::SeqCst) {
             return Err(HolonError::Misc("injected commit failure".into()));
         }
@@ -322,57 +343,6 @@ fn request(
 }
 
 #[test]
-fn finding_usage_never_initializes_or_commits_and_preserves_existing_configuration(
-) -> Result<(), HolonError> {
-    let (store, space, caller) = setup();
-    let usages = UsageTransactions::default();
-    for _ in 0..2 {
-        assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
-    }
-    assert!(store.commits.lock().unwrap().is_empty());
-    let initialized =
-        usages.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    assert!(initialized.initialized);
-    let commits = store.commits.lock().unwrap().len();
-    let found = usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.unwrap();
-    assert!(!found.initialized);
-    assert_eq!(found.usage.holon_id()?, initialized.usage.holon_id()?);
-    assert_eq!(store.commits.lock().unwrap().len(), commits);
-    Ok(())
-}
-
-#[test]
-fn finding_usage_does_not_resume_a_failed_initialization_commit() -> Result<(), HolonError> {
-    let (store, space, caller) = setup();
-    let usages = UsageTransactions::default();
-    store.fail.store(true, Ordering::SeqCst);
-    assert!(usages
-        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-        .is_err());
-    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
-    assert!(store.commits.lock().unwrap().is_empty());
-    Ok(())
-}
-
-#[test]
-fn finding_usage_does_not_expose_or_retry_a_partially_persisted_initialization(
-) -> Result<(), HolonError> {
-    let (store, space, caller) = setup();
-    let usages = UsageTransactions::default();
-    store.incomplete.store(true, Ordering::SeqCst);
-    assert!(usages
-        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-        .is_err());
-    let commits = store.commits.lock().unwrap().len();
-    assert!(commits > 0);
-    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_none());
-    assert_eq!(store.commits.lock().unwrap().len(), commits);
-    usages.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    assert!(usages.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.is_some());
-    Ok(())
-}
-
-#[test]
 fn discovery_projection_resolves_each_record_type_once() -> Result<(), HolonError> {
     use crate::discovery_evidence::DiscoveryEvidence;
     use map_commands_contract::{
@@ -475,287 +445,6 @@ fn discovery_projection_consumes_captured_facts_without_rediscovery() -> Result<
     Ok(())
 }
 #[test]
-fn usage_persists_independently_and_reuses_by_type_across_instances_slots_and_restart(
-) -> Result<(), HolonError> {
-    let (store, space, caller) = setup();
-    let service = UsageTransactions::default();
-    let edit = caller.mutation().new_holon(Some("unrelated-edit".into()))?;
-    caller.mutation().stage_new_holon(edit)?;
-    let result =
-        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    assert!(result.initialized);
-    assert!(matches!(result.usage, HolonReference::Smart(_)));
-    assert!(caller.is_open());
-    assert_eq!(caller.lookup().staged_count()?, 1);
-    assert!(!store.commits.lock().unwrap().contains(&caller.tx_id().value()));
-    let usage = dahn_selection::usage::VisualizerUsage::from_holon(&caller, result.usage.clone())?;
-    assert!(usage.property_salience_overrides()?.is_empty());
-    assert!(usage.relationship_salience_overrides()?.is_empty());
-    assert!(usage.action_salience_overrides()?.is_empty());
-    assert!(usage.action_group_overrides()?.is_empty());
-    assert!(usage.selected_slots()?.is_empty());
-    let reused =
-        service.select(&space, &caller, request(&caller, 3, 31), reference(&caller, 20))?;
-    assert!(!reused.initialized);
-    assert_eq!(result.usage, reused.usage);
-    let person =
-        service.select(&space, &caller, request(&caller, 4, 30), reference(&caller, 20))?;
-    assert_ne!(result.usage, person.usage);
-    let restarted = Arc::new(HolonSpaceManager::new_with_managers(
-        None,
-        store,
-        None,
-        ServiceRoutingPolicy::BlockExternal,
-    ));
-    let caller2 = restarted.get_transaction_manager().open_public_transaction(restarted.clone())?;
-    let reused = UsageTransactions::default().select(
-        &restarted,
-        &caller2,
-        request(&caller2, 2, 30),
-        reference(&caller2, 20),
-    )?;
-    assert!(!reused.initialized);
-    assert_eq!(reused.usage.holon_id()?, result.usage.holon_id()?);
-    Ok(())
-}
-#[test]
-fn failed_and_incomplete_commits_retry_same_work_without_duplicates() -> Result<(), HolonError> {
-    let (store, space, caller) = setup();
-    let service = UsageTransactions::default();
-    store.fail.store(true, Ordering::SeqCst);
-    assert!(service
-        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-        .is_err());
-    store.incomplete.store(true, Ordering::SeqCst);
-    assert!(service
-        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-        .is_err());
-    let result =
-        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    assert!(result.initialized);
-    assert_eq!(dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?.len(), 1);
-    assert_eq!(caller.lookup().staged_count()?, 0);
-    assert!(caller.is_open());
-    Ok(())
-}
-#[test]
-fn concurrent_initializers_converge() {
-    let (_, space, caller) = setup();
-    let service = Arc::new(UsageTransactions::default());
-    let joins: Vec<_> = (0..4)
-        .map(|_| {
-            let space = space.clone();
-            let caller = caller.clone();
-            let service = service.clone();
-            std::thread::spawn(move || {
-                service
-                    .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-                    .unwrap()
-            })
-        })
-        .collect();
-    let results: Vec<_> = joins.into_iter().map(|join| join.join().unwrap()).collect();
-    assert_eq!(results.iter().filter(|r| r.initialized).count(), 1);
-    assert!(results.iter().all(|r| r.usage == results[0].usage));
-}
-#[test]
-fn successful_explicit_use_remembers_preference_exploration_does_not() -> Result<(), HolonError> {
-    let (_, space, caller) = setup();
-    let service = UsageTransactions::default();
-    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    service.record(
-        &space,
-        &caller,
-        request(&caller, 2, 30),
-        reference(&caller, 20),
-        first.usage.clone(),
-        VisualizerChoiceOrigin::Explicit,
-        report(&service),
-    )?;
-    let alternate =
-        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
-    service.record(
-        &space,
-        &caller,
-        request(&caller, 2, 30),
-        reference(&caller, 21),
-        alternate.usage,
-        VisualizerChoiceOrigin::Exploratory,
-        report(&service),
-    )?;
-    let preferences =
-        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
-    assert_eq!(preferences.len(), 1);
-    assert_eq!(dahn_selection::usage::single(&preferences[0], "PreferredUsage")?, first.usage);
-    assert_eq!(
-        dahn_selection::usage::VisualizerUsage::from_holon(&caller, first.usage.clone())?
-            .selected_slots()?,
-        vec![reference(&caller, 30)]
-    );
-    assert!(service
-        .record(
-            &space,
-            &caller,
-            request(&caller, 4, 30),
-            reference(&caller, 20),
-            first.usage,
-            VisualizerChoiceOrigin::Explicit,
-            report(&service),
-        )
-        .is_err());
-    Ok(())
-}
-
-#[test]
-fn existing_configuration_and_slot_association_win_over_ambiguous_matches() -> Result<(), HolonError>
-{
-    let (store, space, caller) = setup();
-    for n in [200, 201] {
-        store.property(n, "Key", BaseValue::StringValue(format!("usage-{n}").into()));
-        store.edge(n, "DescribedBy", &[100]);
-        store.edge(n, "UsesVisualizer", &[20]);
-        store.edge(n, "ForSubjectType", &[1]);
-    }
-    store.edge(200, "PropertySalienceOverrides", &[70]);
-    let service = UsageTransactions::default();
-    assert!(service
-        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-        .is_err());
-    store.edge(200, "SelectedForSlot", &[30]);
-    let result =
-        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    assert!(!result.initialized);
-    assert_eq!(result.usage, reference(&caller, 200));
-    assert_eq!(
-        dahn_selection::usage::VisualizerUsage::from_holon(&caller, result.usage)?
-            .property_salience_overrides()?,
-        vec![reference(&caller, 70)]
-    );
-    assert!(store.commits.lock().unwrap().is_empty());
-    store.edge(201, "SelectedForSlot", &[30]);
-    assert!(service
-        .select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))
-        .is_err());
-    Ok(())
-}
-#[test]
-fn incomplete_outcome_finishes_before_a_new_preference_supersedes_it() -> Result<(), HolonError> {
-    let (store, space, caller) = setup();
-    let service = UsageTransactions::default();
-    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    let second =
-        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
-    store.incomplete.store(true, Ordering::SeqCst);
-    assert!(service
-        .record(
-            &space,
-            &caller,
-            request(&caller, 2, 30),
-            reference(&caller, 20),
-            first.usage,
-            VisualizerChoiceOrigin::Explicit,
-            report(&service),
-        )
-        .is_err());
-    service.record(
-        &space,
-        &caller,
-        request(&caller, 2, 30),
-        reference(&caller, 21),
-        second.usage.clone(),
-        VisualizerChoiceOrigin::Explicit,
-        report(&service),
-    )?;
-    let preferences =
-        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
-    assert_eq!(preferences.len(), 1);
-    assert_eq!(dahn_selection::usage::single(&preferences[0], "PreferredUsage")?, second.usage);
-    Ok(())
-}
-
-fn report(service: &UsageTransactions) -> map_commands_contract::VisualizerUseReport {
-    static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-    map_commands_contract::VisualizerUseReport {
-        session: service.report_session.clone(),
-        occurrence_id: "test-node".into(),
-        sequence: SEQUENCE.fetch_add(1, Ordering::SeqCst),
-    }
-}
-
-#[test]
-fn delayed_choice_from_another_occurrence_cannot_undo_newer_preference() -> Result<(), HolonError> {
-    let (_, space, caller) = setup();
-    let service = UsageTransactions::default();
-    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
-    let second =
-        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
-    let old = report(&service);
-    let mut newer = report(&service);
-    newer.occurrence_id = "another-node".into();
-    service.record(
-        &space,
-        &caller,
-        request(&caller, 2, 30),
-        reference(&caller, 21),
-        second.usage.clone(),
-        VisualizerChoiceOrigin::Explicit,
-        newer.clone(),
-    )?;
-    service.record(
-        &space,
-        &caller,
-        request(&caller, 2, 30),
-        reference(&caller, 20),
-        first.usage.clone(),
-        VisualizerChoiceOrigin::Explicit,
-        old,
-    )?;
-    service.record(
-        &space,
-        &caller,
-        request(&caller, 2, 30),
-        reference(&caller, 21),
-        second.usage.clone(),
-        VisualizerChoiceOrigin::Explicit,
-        newer.clone(),
-    )?;
-    let preferences =
-        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
-    assert_eq!(preferences.len(), 1);
-    assert_eq!(dahn_selection::usage::single(&preferences[0], "PreferredUsage")?, second.usage);
-    assert!(service
-        .record(
-            &space,
-            &caller,
-            request(&caller, 2, 30),
-            reference(&caller, 20),
-            first.usage.clone(),
-            VisualizerChoiceOrigin::Explicit,
-            newer
-        )
-        .is_err());
-    assert_eq!(
-        dahn_selection::usage::VisualizerUsage::from_holon(&caller, first.usage.clone())?
-            .selected_slots()?,
-        vec![reference(&caller, 30)]
-    );
-    let mut expired = report(&service);
-    expired.session = "expired".into();
-    assert!(service
-        .record(
-            &space,
-            &caller,
-            request(&caller, 2, 30),
-            reference(&caller, 21),
-            second.usage,
-            VisualizerChoiceOrigin::Explicit,
-            expired
-        )
-        .is_err());
-    Ok(())
-}
-
-#[test]
 fn usage_lookup_reads_only_selected_visualizer_usages() -> Result<(), HolonError> {
     let (store, _, context) = setup();
     // A usage of another Visualizer deliberately lacks ForSubjectType.
@@ -814,4 +503,565 @@ fn usage_creation_rejects_missing_relationship_target_type() {
     .is_err());
     assert!(store.commits.lock().unwrap().is_empty());
     assert!(store.anchor_reads.lock().unwrap().is_empty());
+}
+
+fn wait_saved(service: &UsageTransactions, id: u64) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    loop {
+        match service.status(id).unwrap() {
+            crate::usage_persistence::SaveStatus::Saved => return,
+            crate::usage_persistence::SaveStatus::Failed(error)
+            | crate::usage_persistence::SaveStatus::ServicePaused(error) => {
+                panic!("background save failed: {error}")
+            }
+            _ => assert!(std::time::Instant::now() < deadline, "save did not complete"),
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+}
+fn usage_report(
+    service: &UsageTransactions,
+    sequence: u64,
+) -> map_commands_contract::VisualizerUseReport {
+    map_commands_contract::VisualizerUseReport {
+        session: service.report_session.clone(),
+        occurrence_id: format!("node-{sequence}"),
+        sequence,
+    }
+}
+
+#[test]
+fn startup_round_returns_live_usages_then_commits_one_independent_batch() -> Result<(), HolonError>
+{
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    let unrelated = caller.mutation().new_holon(Some("foreground-edit".into()))?;
+    caller.mutation().stage_new_holon(unrelated)?;
+    service.begin(&space, &caller)?;
+    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let second =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
+    assert!(matches!(first.usage, HolonReference::Transient(_)));
+    assert!(matches!(second.usage, HolonReference::Transient(_)));
+    assert!(store.commits.lock().unwrap().is_empty(), "selection must not commit");
+    assert_eq!(caller.lookup().staged_count()?, 1);
+    let id = service.submit(&caller)?.unwrap();
+    wait_saved(&service, id);
+    assert_eq!(store.commits.lock().unwrap().len(), 1);
+    assert_ne!(store.commits.lock().unwrap()[0], caller.tx_id().value());
+    assert!(caller.is_open());
+    assert_eq!(caller.lookup().staged_count()?, 1);
+    assert_eq!(dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn blocked_backend_does_not_block_selection_lookup_or_queue_acceptance() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.block_commit.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let first = service.submit(&caller)?.unwrap();
+    {
+        let gate = store.commit_gate.lock().unwrap();
+        let (_gate, timeout) = store
+            .commit_changed
+            .wait_timeout_while(gate, std::time::Duration::from_secs(2), |entered| !*entered)
+            .unwrap();
+        assert!(!timeout.timed_out(), "worker never entered commit");
+    }
+    // Commit is held behind a gate until AFTER these foreground operations finish.
+    let another = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    assert!(service.find(&another, request(&another, 2, 30), reference(&another, 20))?.is_none());
+    service.begin(&space, &another)?;
+    let usage =
+        service.select(&space, &another, request(&another, 2, 30), reference(&another, 21))?;
+    assert!(usage.initialized);
+    let second = service.submit(&another)?.unwrap();
+    assert_eq!(service.status(second)?, crate::usage_persistence::SaveStatus::Queued);
+    store.block_commit.store(false, Ordering::SeqCst);
+    store.commit_changed.notify_all();
+    wait_saved(&service, first);
+    wait_saved(&service, second);
+    Ok(())
+}
+
+#[test]
+fn closing_source_context_after_acceptance_preserves_snapshot() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.block_commit.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let id = service.submit(&caller)?.unwrap();
+    caller.dispose()?;
+    store.block_commit.store(false, Ordering::SeqCst);
+    store.commit_changed.notify_all();
+    wait_saved(&service, id);
+    let next = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    assert!(service.find(&next, request(&next, 2, 30), reference(&next, 20))?.is_some());
+    Ok(())
+}
+
+#[test]
+fn later_live_revision_updates_same_durable_usage_without_overwriting_live_state(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let id = service.submit(&caller)?.unwrap();
+    wait_saved(&service, id);
+    let saved =
+        service.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.unwrap().usage;
+    let mut live = first.usage.clone();
+    live.with_property_value("Key", "updated-live")?;
+    service.begin(&space, &caller)?;
+    service.capture(&caller, &live)?;
+    let id = service.submit(&caller)?.unwrap();
+    live.with_property_value("Key", "newer-unsaved")?;
+    wait_saved(&service, id);
+    assert_eq!(live.key()?, Some("newer-unsaved".into()));
+    assert_eq!(
+        store.nodes.lock().unwrap()[&number(&saved.holon_id()?)][&PropertyName("Key".into())],
+        BaseValue::StringValue("updated-live".into())
+    );
+    assert_eq!(dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?.len(), 1);
+    assert_eq!(store.commits.lock().unwrap().len(), 2);
+    Ok(())
+}
+
+#[test]
+fn usage_and_successful_use_share_one_commit_and_explicit_preference() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let first = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        first.usage.clone(),
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 2),
+    )?;
+    let second =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 21),
+        second.usage,
+        VisualizerChoiceOrigin::Exploratory,
+        usage_report(&service, 3),
+    )?;
+    let id = service.submit(&caller)?.unwrap();
+    wait_saved(&service, id);
+    let usage =
+        service.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.unwrap().usage;
+    let preferences =
+        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
+    assert_eq!(preferences.len(), 1);
+    assert_eq!(single_preferred(&preferences[0])?, usage);
+    assert_eq!(
+        dahn_selection::usage::related(&usage, "SelectedForSlot")?,
+        vec![reference(&caller, 30)]
+    );
+    assert_eq!(store.commits.lock().unwrap().len(), 1);
+    Ok(())
+}
+fn single_preferred(reference: &HolonReference) -> Result<HolonReference, HolonError> {
+    dahn_selection::usage::single(reference, "PreferredUsage")
+}
+
+#[test]
+fn incomplete_commit_resumes_same_transaction_without_duplicate_creation() -> Result<(), HolonError>
+{
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.incomplete.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let id = service.submit(&caller)?.unwrap();
+    wait_saved(&service, id);
+    let commits = store.commits.lock().unwrap();
+    assert_eq!(commits.len(), 2);
+    assert_eq!(commits[0], commits[1]);
+    assert_eq!(dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn unknown_failure_is_retained_for_explicit_retry_without_automatic_repetition(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.fail.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let id = service.submit(&caller)?.unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !matches!(service.status(id)?, crate::usage_persistence::SaveStatus::Failed(_)) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    assert!(store.commits.lock().unwrap().is_empty());
+    service.retry(id)?;
+    wait_saved(&service, id);
+    assert_eq!(dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn service_outage_pauses_following_batches_without_repeated_backend_attempts(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.unavailable.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let first = service.submit(&caller)?.unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !matches!(service.status(first)?, crate::usage_persistence::SaveStatus::ServicePaused(_))
+    {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    let other = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    service.begin(&space, &other)?;
+    service.select(&space, &other, request(&other, 2, 30), reference(&other, 21))?;
+    let second = service.submit(&other)?.unwrap();
+    assert_eq!(service.status(second)?, crate::usage_persistence::SaveStatus::Queued);
+    assert!(store.commits.lock().unwrap().is_empty());
+    service.retry(first)?;
+    wait_saved(&service, first);
+    wait_saved(&service, second);
+    assert_eq!(store.commits.lock().unwrap().len(), 2);
+    Ok(())
+}
+
+#[test]
+fn rejected_commit_does_not_enter_automatic_incomplete_retry_policy() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.rejected.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let id = service.submit(&caller)?.unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        if let crate::usage_persistence::SaveStatus::Failed(reason) = service.status(id)? {
+            assert!(reason.contains("rejected"), "{reason}");
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    assert!(store.commits.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn queued_updates_coalesce_and_continue_after_creation_without_another_gesture(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.block_commit.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    let selection =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let first = service.submit(&caller)?.unwrap();
+    let mut live = selection.usage;
+    service.begin(&space, &caller)?;
+    live.with_property_value("Key", "intermediate")?;
+    service.capture(&caller, &live)?;
+    live.with_property_value("Key", "latest")?;
+    service.capture(&caller, &live)?;
+    let second = service.submit(&caller)?.unwrap();
+    store.block_commit.store(false, Ordering::SeqCst);
+    store.commit_changed.notify_all();
+    wait_saved(&service, first);
+    wait_saved(&service, second);
+    let members = dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?;
+    assert_eq!(members.len(), 1);
+    assert_eq!(
+        store.nodes.lock().unwrap()[&number(&members[0].holon_id()?)][&PropertyName("Key".into())],
+        BaseValue::StringValue("latest".into())
+    );
+    assert_eq!(store.commits.lock().unwrap().len(), 2);
+    Ok(())
+}
+
+#[test]
+fn stale_explicit_report_preserves_successful_use_without_replacing_latest_choice(
+) -> Result<(), HolonError> {
+    let (_store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let latest =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        latest.usage,
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 2),
+    )?;
+    let stale = service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 21))?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 21),
+        stale.usage,
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 1),
+    )?;
+    let id = service.submit(&caller)?.unwrap();
+    wait_saved(&service, id);
+    let latest =
+        service.find(&caller, request(&caller, 2, 30), reference(&caller, 20))?.unwrap().usage;
+    let stale =
+        service.find(&caller, request(&caller, 2, 30), reference(&caller, 21))?.unwrap().usage;
+    let preferences =
+        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
+    assert_eq!(preferences.len(), 1);
+    assert_eq!(single_preferred(&preferences[0])?, latest);
+    assert_eq!(
+        dahn_selection::usage::related(&stale, "SelectedForSlot")?,
+        vec![reference(&caller, 30)]
+    );
+    Ok(())
+}
+
+#[test]
+fn local_failure_does_not_block_an_unrelated_usage_batch() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.fail.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let failed = service.submit(&caller)?.unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !matches!(service.status(failed)?, crate::usage_persistence::SaveStatus::Failed(_)) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    let other = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    service.begin(&space, &other)?;
+    service.select(&space, &other, request(&other, 2, 30), reference(&other, 21))?;
+    let next = service.submit(&other)?.unwrap();
+    wait_saved(&service, next);
+    assert!(matches!(service.status(failed)?, crate::usage_persistence::SaveStatus::Failed(_)));
+    assert_eq!(store.commits.lock().unwrap().len(), 1);
+    Ok(())
+}
+
+#[test]
+fn live_usage_snapshot_capture_does_not_resolve_descriptors() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let selection =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    store.relationship_reads.lock().unwrap().clear();
+    store.anchor_reads.lock().unwrap().clear();
+    service.capture(&caller, &selection.usage)?;
+    assert!(
+        store.relationship_reads.lock().unwrap().is_empty(),
+        "Snapshot capture must copy live state without descriptor resolution"
+    );
+    assert!(store.anchor_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn prepared_successful_use_capture_does_not_repeat_selection_or_snapshot_resolution(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let selection =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    store.relationship_reads.lock().unwrap().clear();
+    store.anchor_reads.lock().unwrap().clear();
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        selection.usage,
+        VisualizerChoiceOrigin::Automatic,
+        usage_report(&service, 1),
+    )?;
+    assert!(
+        store.relationship_reads.lock().unwrap().is_empty(),
+        "Recording a prepared presentation must not repeat selection or clone completion"
+    );
+    assert!(store.anchor_reads.lock().unwrap().is_empty());
+    Ok(())
+}
+
+#[test]
+fn usage_subject_type_resolution_does_not_repeat_owner_and_theme_assessment(
+) -> Result<(), HolonError> {
+    let (store, _space, caller) = setup();
+    assert_eq!(
+        dahn_selection::usage_subject_type(&request(&caller, 2, 30))?,
+        reference(&caller, 1)
+    );
+    assert!(
+        !store
+            .relationship_reads
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(source, _)| [30, 40, 60].contains(source)),
+        "Resolving the semantic descriptor must not reassess the selection owner, slot, and theme"
+    );
+    Ok(())
+}
+
+#[test]
+fn repeated_automatic_presentation_does_not_commit_an_unchanged_usage() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    for sequence in 1..=2 {
+        service.begin(&space, &caller)?;
+        let selected =
+            service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+        service.record(
+            &space,
+            &caller,
+            request(&caller, 2, 30),
+            reference(&caller, 20),
+            selected.usage,
+            VisualizerChoiceOrigin::Automatic,
+            usage_report(&service, sequence),
+        )?;
+        let batch = service.submit(&caller)?.unwrap();
+        wait_saved(&service, batch);
+    }
+    assert_eq!(
+        store.commits.lock().unwrap().len(),
+        1,
+        "An unchanged successful-use association needs no second backend transaction"
+    );
+    Ok(())
+}
+
+#[test]
+fn prepared_report_rejects_changed_request_or_usage_identity() -> Result<(), HolonError> {
+    let (_store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let selected =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let mut wrong = request(&caller, 2, 30);
+    wrong.owner = VisualizerOwner::Visualizer(reference(&caller, 21));
+    assert!(service
+        .record(
+            &space,
+            &caller,
+            wrong,
+            reference(&caller, 20),
+            selected.usage.clone(),
+            VisualizerChoiceOrigin::Automatic,
+            usage_report(&service, 1)
+        )
+        .is_err());
+    let mut usage = selected.usage;
+    usage.remove_related_holons("UsesVisualizer", vec![reference(&caller, 20)])?;
+    usage.add_related_holons("UsesVisualizer", vec![reference(&caller, 21)])?;
+    assert!(service
+        .record(
+            &space,
+            &caller,
+            request(&caller, 2, 30),
+            reference(&caller, 20),
+            usage,
+            VisualizerChoiceOrigin::Automatic,
+            usage_report(&service, 2)
+        )
+        .is_err());
+    Ok(())
+}
+
+#[test]
+fn queued_snapshot_owns_relationship_members_independently_of_live_edits() -> Result<(), HolonError>
+{
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.block_commit.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
+    let first = service.submit(&caller)?.unwrap();
+    let other = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    service.begin(&space, &other)?;
+    let mut live =
+        service.select(&space, &other, request(&other, 2, 30), reference(&other, 21))?.usage;
+    live.add_related_holons("PropertySalienceOverrides", vec![reference(&other, 20)])?;
+    service.capture(&other, &live)?;
+    let second = service.submit(&other)?.unwrap();
+    live.remove_related_holons("PropertySalienceOverrides", vec![reference(&other, 20)])?;
+    live.add_related_holons("PropertySalienceOverrides", vec![reference(&other, 21)])?;
+    store.block_commit.store(false, Ordering::SeqCst);
+    store.commit_changed.notify_all();
+    wait_saved(&service, first);
+    wait_saved(&service, second);
+    let saved = service.find(&other, request(&other, 2, 30), reference(&other, 21))?.unwrap().usage;
+    assert_eq!(
+        dahn_selection::usage::related(&saved, "PropertySalienceOverrides")?,
+        vec![reference(&other, 20)]
+    );
+    Ok(())
+}
+
+#[test]
+fn automatic_selection_prepares_usage_without_repeating_eligibility_assessment(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let selection = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert_eq!(selection.selected, reference(&caller, 20));
+    assert!(selection.usage.as_ref().unwrap().initialized);
+    assert_eq!(
+        store
+            .relationship_reads
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, name)| name == "HasApplicableVisualizer")
+            .count(),
+        1,
+        "Usage preparation must use the selection's resolved context rather than assess it again"
+    );
+    let id = service.submit(&caller)?.unwrap();
+    wait_saved(&service, id);
+    assert_eq!(store.commits.lock().unwrap().len(), 1);
+    Ok(())
+}
+
+#[test]
+fn automatic_selection_without_a_usage_round_remains_read_only() -> Result<(), HolonError> {
+    let (store, _space, caller) = setup();
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    let service = UsageTransactions::default();
+    let selection = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert!(selection.usage.is_none());
+    assert!(!store
+        .relationship_reads
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|(_, name)| name == "UsedByVisualizerUsage"));
+    assert!(store.commits.lock().unwrap().is_empty());
+    Ok(())
 }

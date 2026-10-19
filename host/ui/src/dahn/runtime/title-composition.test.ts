@@ -28,6 +28,9 @@ async function fixture(subjectActions: ActionNode[] = [], interactions?: ActionI
   }
   const owner = ref('HolonInspector.NodeVisualizer'), subject = ref('Subject');
   const transaction: any = {
+    withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
     selectVisualizer: vi.fn(async (request: any) => ({ selected: ref(request.requestedKind === 'titleBar' ? 'NodeTitleBar.TitleBarVisualizer' : request.requestedKind === 'actionBar' ? 'GenericActions.ActionBarVisualizer' : `${(await request.subject.key()).split('PresentationAction')[0]}Presentation.ActionVisualizer`) })),
     chooseVisualizer: vi.fn(async (_request, candidate) => ({ selected: candidate })),
     discoverVisualizers: vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] })),

@@ -95,7 +95,7 @@ export interface VisualizerSelection {
   alternativesAvailable: boolean;
 }
 
-/** Persisted configuration, prepared independently; not proof of successful use. */
+/** Live configuration, ready independently of persistence; not proof of successful use. */
 export interface VisualizerUsageSelection {
   usage: HolonReference;
   initialized: boolean;
@@ -127,6 +127,16 @@ const MAP_TRANSACTION_CONSTRUCTION = Symbol('MapTransactionConstruction');
  */
 export class MapTransaction {
   private completedLoadSpace?: HolonReference;
+  private usageBatchDepth = 0;
+  private usageBatchTail: Promise<void> = Promise.resolve();
+  private readonly usageBatches: string[] = [];
+  private usageReports: Promise<void>[] = [];
+  private lastUsageBatch?: string;
+  private selectedUsage = new WeakMap<HolonReference, { request: VisualizerSelectionRequest; usage: VisualizerUsageSelection }>();
+  private automaticSequence = 0;
+  private automaticPublished = false;
+  private automaticUses: { selected: HolonReference; occurrenceId: string }[] = [];
+
   private materializationTail: Promise<void> = Promise.resolve();
 
   constructor(txId: TxId, token: typeof MAP_TRANSACTION_CONSTRUCTION) {
@@ -139,6 +149,59 @@ export class MapTransaction {
 
   /** Whether a handle was bound through this context, without exposing wire identity. */
   owns(reference: HolonReference): boolean { return referenceBelongsTo(reference, txIdFor(this)); }
+
+  /** One startup/gesture round. Await queue acceptance, never backend commit.
+   * Rounds queue on this transaction; do not await a nested round on the same owner. */
+  withVisualizerUsageBatch<T>(work: () => Promise<T>): Promise<T> {
+    const round = this.usageBatchTail.then(() => this.runVisualizerUsageBatch(work));
+    this.usageBatchTail = round.then(() => {}, () => {});
+    return round;
+  }
+
+  private async runVisualizerUsageBatch<T>(work: () => Promise<T>): Promise<T> {
+    await internalTransaction.beginVisualizerUsageBatch(txIdFor(this));
+    ++this.usageBatchDepth;
+    let presented = false;
+    try { const result = await work(); presented = true; return result; }
+    finally {
+      if (presented && this.automaticPublished) {
+        for (const { selected, occurrenceId } of this.automaticUses.splice(0)) {
+          const prepared = this.selectedUsage.get(selected);
+          if (prepared) {
+            const capture = this.recordVisualizerUse(prepared.request, selected, prepared.usage.usage, 'automatic', {
+              session: prepared.usage.reportSession, occurrenceId, sequence: ++this.automaticSequence,
+            });
+            void capture.catch(error => console.warn('[DAHN] Usage outcome capture failed', error));
+          }
+        }
+      } else this.automaticUses = [];
+      this.automaticPublished = false;
+      --this.usageBatchDepth;
+      // Capture outcomes before handoff; report errors do not invalidate the live presentation.
+      const reports = this.usageReports.splice(0);
+      await Promise.allSettled(reports);
+      const batch = await internalTransaction.submitVisualizerUsageBatch(txIdFor(this));
+      if (batch) { this.lastUsageBatch = batch; this.usageBatches.push(batch); }
+    }
+  }
+
+  /** Session-local identity; no implicit polling or dependency on later gestures. */
+  get lastVisualizerUsageBatch(): string | undefined { return this.lastUsageBatch; }
+  get visualizerUsageBatches(): readonly string[] { return [...this.usageBatches]; }
+
+  async visualizerUsagePersistence(batchId = this.lastUsageBatch) {
+    if (!batchId) return undefined;
+    const status = await internalTransaction.getVisualizerUsagePersistence(txIdFor(this), batchId);
+    return { batchId: status.batch_id, state: status.state, error: status.error ?? undefined };
+  }
+
+  async retryVisualizerUsagePersistence(batchId = this.lastUsageBatch): Promise<void> {
+    if (batchId) await internalTransaction.retryVisualizerUsagePersistence(txIdFor(this), batchId);
+  }
+
+  async saveVisualizerUsage(usage: HolonReference): Promise<void> {
+    await internalTransaction.saveVisualizerUsage(txIdFor(this), unwrapHolonReference(usage));
+  }
 
   async commit(): Promise<void> {
     await internalTransaction.commit(txIdFor(this));
@@ -501,11 +564,29 @@ export class MapTransaction {
       txId,
       this.selectionRequestWire(request),
     );
-    return {
-      selected: createHolonReference(txId, wire.selected),
-      requestedKind: fromVisualizerKindWire(wire.requested_kind),
-      alternativesAvailable: wire.alternatives_available,
-    };
+    const selected = createHolonReference(txId, wire.selected);
+    if (wire.usage) {
+      const usage = { usage: createHolonReference(txId, wire.usage.usage), initialized: wire.usage.initialized, reportSession: wire.usage.report_session };
+      this.selectedUsage.set(selected, { request, usage });
+    } else if (this.usageBatchDepth) {
+      throw new Error('Selection did not return the Usage prepared for the active round');
+    }
+    return { selected, requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
+  }
+
+  /** Capture startup-selected identities through the same Usage lifecycle as later selections. */
+  async prepareVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection> {
+    const usage = await this.selectVisualizerUsage(request, selected);
+    this.selectedUsage.set(selected, { request, usage });
+    return usage;
+  }
+
+  /** The presentation owner confirms publication after attachment/admission succeeds. */
+  confirmVisualizerUsagePresentation(): void { this.automaticPublished = true; }
+
+  /** Called only after an actual selected child has been realized, never merely discovered. */
+  async recordSelectedVisualizerUse(selected: HolonReference, occurrenceId: string): Promise<void> {
+    if (this.usageBatchDepth && this.selectedUsage.has(selected)) this.automaticUses.push({ selected, occurrenceId });
   }
 
   private selectionRequestWire(request: VisualizerSelectionRequest): VisualizerSelectionRequestWire {
@@ -562,7 +643,6 @@ export class MapTransaction {
     return { selected: createHolonReference(txId, result.selected), requestedKind: fromVisualizerKindWire(result.requested_kind), alternativesAvailable: result.alternatives_available };
   }
 
-  /** Select/initialize persisted usage without committing this transaction's edits. */
   /** Read existing configuration; absence does not create or persist a usage. */
   async findVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection | null> {
     const txId = txIdFor(this);
@@ -571,6 +651,7 @@ export class MapTransaction {
     return result === null ? null : { usage: createHolonReference(txId, result.usage), initialized: false, reportSession: result.report_session };
   }
 
+  /** Select a live Usage and capture its snapshot in the current persistence round. */
   async selectVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection> {
     const txId = txIdFor(this);
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
@@ -582,7 +663,9 @@ export class MapTransaction {
   async recordVisualizerUse(request: VisualizerSelectionRequest, selected: HolonReference, usage: HolonReference, origin: VisualizerChoiceOrigin, report: VisualizerUseReport): Promise<void> {
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
     const origins = { automatic: 'Automatic', explicit: 'Explicit', exploratory: 'Exploratory' } as const;
-    await internalTransaction.recordVisualizerUse(txIdFor(this), this.selectionRequestWire(request), bind(selected), bind(usage), origins[origin], { session: report.session, occurrence_id: report.occurrenceId, sequence: report.sequence });
+    const capture = internalTransaction.recordVisualizerUse(txIdFor(this), this.selectionRequestWire(request), bind(selected), bind(usage), origins[origin], { session: report.session, occurrence_id: report.occurrenceId, sequence: report.sequence });
+    this.usageReports.push(capture);
+    await capture;
   }
 
   /**

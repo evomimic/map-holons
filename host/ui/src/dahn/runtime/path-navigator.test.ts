@@ -71,6 +71,8 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     discoverVisualizers: vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] })),
     selectVisualizerUsage: vi.fn(async () => ({ usage: selected('usage'), initialized: false, reportSession: 'test-session' })),
     recordVisualizerUse: vi.fn(async () => {}),
+    withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
     selectVisualizer,
     selectPropertyVisualizer: vi.fn(async () => ({ selected: visualizers.property })),
     selectValueVisualizer: vi.fn(async () => ({ selected: visualizers.value })),

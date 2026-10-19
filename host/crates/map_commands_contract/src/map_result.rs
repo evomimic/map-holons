@@ -63,6 +63,7 @@ pub enum MapResult {
     VisualizerSelection(VisualizerSelection),
     VisualizerDiscovery(super::VisualizerDiscovery),
     VisualizerUsageSelection(super::VisualizerUsageSelection),
+    VisualizerUsagePersistence(super::VisualizerUsagePersistence),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
@@ -98,6 +99,8 @@ pub struct VisualizerSelection {
     pub selected: HolonReference,
     pub requested_kind: VisualizerKind,
     pub alternatives_available: bool,
+    /// Live configuration prepared in the same operation during an open Usage round.
+    pub usage: Option<super::VisualizerUsageSelection>,
 }
 
 /// A collection whose declared element type survives empty membership.

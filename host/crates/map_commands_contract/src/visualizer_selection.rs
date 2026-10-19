@@ -55,7 +55,7 @@ pub enum DiscoveryStopReason {
     LineageExhausted,
 }
 
-/// A persisted configuration anchor, prepared but not evidence of successful use.
+/// Live configuration, ready independently of background persistence; not successful-use evidence.
 #[derive(Debug, Clone)]
 pub struct VisualizerUsageSelection {
     pub usage: HolonReference,
@@ -79,4 +79,12 @@ pub struct VisualizerUseReport {
     pub session: String,
     pub occurrence_id: String,
     pub sequence: u64,
+}
+
+/// Status of a session-local background persistence batch.
+#[derive(Debug)]
+pub struct VisualizerUsagePersistence {
+    pub batch_id: base_types::MapString,
+    pub state: String,
+    pub error: Option<String>,
 }

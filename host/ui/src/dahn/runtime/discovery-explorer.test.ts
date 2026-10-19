@@ -36,6 +36,9 @@ function fixture() {
   });
   const evidenceTx = {
     findVisualizerUsage: vi.fn(async (): Promise<any> => null),
+    withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
     selectVisualizer: vi.fn(async () => ({ selected })),
     chooseVisualizer: vi.fn(async () => ({ selected: alternative })),
     selectVisualizerUsage: vi.fn(async () => ({ usage: reference('Usage'), reportSession: 'session' })),

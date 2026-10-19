@@ -367,6 +367,7 @@ pub fn select_collection_visualizer(
                 selected,
                 requested_kind: VisualizerKind::Collection,
                 alternatives_available: false,
+                usage: None,
             });
         }
     }

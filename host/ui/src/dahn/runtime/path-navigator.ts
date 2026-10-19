@@ -326,7 +326,14 @@ export class PathNavigator implements PathNavigation {
   }
 
   /** Preparation never mutates the live occurrence; publication retains its owner identity. */
-  private async replaceVisualizer(occurrence: Occurrence, prior: RealizedNode, candidate: HolonReference, sessionCurrent: () => boolean, signal?: AbortSignal): Promise<VisualizerInspectionTarget> {
+  private replaceVisualizer(occurrence: Occurrence, prior: RealizedNode, candidate: HolonReference, sessionCurrent: () => boolean, signal?: AbortSignal): Promise<VisualizerInspectionTarget> {
+    const transaction = this.contextFor(occurrence.subject);
+    const profile = NavigationProfile.start();
+    occurrence.choiceAbort?.abort();
+    return transaction.withVisualizerUsageBatch(() => this.replaceVisualizerInBatch(occurrence, prior, candidate, sessionCurrent, signal, profile));
+  }
+
+  private async replaceVisualizerInBatch(occurrence: Occurrence, prior: RealizedNode, candidate: HolonReference, sessionCurrent: () => boolean, signal: AbortSignal | undefined, profile: ReturnType<typeof NavigationProfile.start>): Promise<VisualizerInspectionTarget> {
     occurrence.choiceAbort?.abort();
     const cancellation = occurrence.choiceAbort = new AbortController();
     const abort = () => cancellation.abort();
@@ -345,7 +352,6 @@ export class PathNavigator implements PathNavigation {
       owner: { visualizer: this.parentVisualizer }, slot: this.nodeSlot, theme: this.selectionTheme() };
     let prepared: RealizedNode | undefined;
     let published = false;
-    const profile = NavigationProfile.start();
     let outcome = 'visualizer replacement failed';
     const clearPreparation = () => {
       if (occurrence.choiceAbort !== cancellation || !occurrence.visualizerReplacement) return;
@@ -449,6 +455,7 @@ export class PathNavigator implements PathNavigation {
       }
       catch (error) { undoAdoption?.(); Object.assign(occurrence, previous); for (const item of provenance) item.child.provenance = item.prior; this.bindOccurrence(occurrence); this.publish(); throw error; }
       published = true;
+      transaction.confirmVisualizerUsagePresentation();
       outcome = 'visualizer replaced';
       ++occurrence.generation;
       this.replacementPublished?.(prepared!, occurrence === this.root);
@@ -598,14 +605,16 @@ export class PathNavigator implements PathNavigation {
       try {
         await painted;
         if (!current()) return;
-        await work.realize(async () => {
+        await this.contextFor(intent.reference).withVisualizerUsageBatch(() => work.realize(async () => {
           if (!current()) return;
           const selection = await this.contextFor(intent.reference).selectVisualizer({ subject: intent.reference, requestedKind: 'node', slot: this.nodeSlot, owner: { visualizer: this.parentVisualizer }, theme: this.selectionTheme() });
           if (!current()) return;
           candidate = await this.realize(intent.reference, selection.selected);
           if (!current()) { candidate.collectionActivation.dispose(); return; }
           this.commitDestination(owner, this.occurrence(candidate, intent.reference, selection.selected, destination.row, destination.column, provenance), destination);
-        });
+          await this.contextFor(intent.reference).recordSelectedVisualizerUse(selection.selected, `node-${destination.row}-${destination.column}`);
+          this.contextFor(intent.reference).confirmVisualizerUsagePresentation();
+        }));
       } catch (error) {
         candidate?.collectionActivation.dispose();
         if (!current()) return;
@@ -728,7 +737,7 @@ export class PathNavigator implements PathNavigation {
         const painted = destinationPaint();
         await painted;
         if (!current()) return;
-        await work.realize(async () => {
+        await this.contextFor(reference).withVisualizerUsageBatch(() => work.realize(async () => {
           if (!current()) return;
           profile?.next('select node');
           const selection = await this.contextFor(reference).selectVisualizer({ subject: reference, requestedKind: 'node', slot: this.nodeSlot, owner: { visualizer: this.parentVisualizer }, theme: this.selectionTheme() });
@@ -739,7 +748,9 @@ export class PathNavigator implements PathNavigation {
           const provenance: SingularProvenance = { kind: 'singular-relationship', parentOccurrenceId: owner.id, affordance, traversal: this.traversal(owner, affordance) };
           this.commitDestination(owner, this.occurrence(candidate, reference, selection.selected, destination!.row, destination!.column, provenance), destination!);
           this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
-        });
+          await this.contextFor(reference).recordSelectedVisualizerUse(selection.selected, `node-${destination!.row}-${destination!.column}`);
+          this.contextFor(reference).confirmVisualizerUsagePresentation();
+        }));
       } catch (error) {
         outcome = 'error'; candidate?.collectionActivation.dispose();
         if (!current()) return;

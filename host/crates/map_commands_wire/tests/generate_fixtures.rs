@@ -50,7 +50,76 @@ fn generate_fixtures() {
                 selected: staged_reference(41, uuid_b()),
                 requested_kind: map_commands_wire::VisualizerKindWire::Structure,
                 alternatives_available: true,
+                usage: None,
             })),
+        ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-selection-with-usage.json",
+        &response(
+            152,
+            Ok(MapResultWire::VisualizerSelection(map_commands_wire::VisualizerSelectionWire {
+                selected: staged_reference(41, uuid_b()),
+                requested_kind: map_commands_wire::VisualizerKindWire::Node,
+                alternatives_available: false,
+                usage: Some(map_commands_wire::VisualizerUsageSelectionWire {
+                    usage: transient_reference(41, uuid_a()),
+                    initialized: true,
+                    report_session: "fixture-session".into(),
+                }),
+            })),
+        ),
+    );
+    for (name, action) in [
+        (
+            "request-begin-visualizer-usage-batch.json",
+            TransactionActionWire::BeginVisualizerUsageBatch,
+        ),
+        (
+            "request-submit-visualizer-usage-batch.json",
+            TransactionActionWire::SubmitVisualizerUsageBatch,
+        ),
+        (
+            "request-visualizer-usage-persistence.json",
+            TransactionActionWire::GetVisualizerUsagePersistence { batch_id: "1".into() },
+        ),
+        (
+            "request-retry-visualizer-usage-persistence.json",
+            TransactionActionWire::RetryVisualizerUsagePersistence { batch_id: "1".into() },
+        ),
+        (
+            "request-save-visualizer-usage.json",
+            TransactionActionWire::SaveVisualizerUsage {
+                usage: HolonReferenceWire::Transient(TransientReferenceWire::new(
+                    tx_id(41),
+                    TemporaryId(Uuid::parse_str(uuid_a()).unwrap()),
+                )),
+            },
+        ),
+    ] {
+        write_fixture(
+            &fixtures_dir,
+            name,
+            &request(
+                156,
+                MapCommandWire::Transaction(TransactionCommandWire { tx_id: tx_id(41), action }),
+                default_options(),
+            ),
+        );
+    }
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-visualizer-usage-persistence.json",
+        &response(
+            156,
+            Ok(MapResultWire::VisualizerUsagePersistence(
+                map_commands_wire::VisualizerUsagePersistenceWire {
+                    batch_id: "1".into(),
+                    state: "service_paused".into(),
+                    error: Some("offline".into()),
+                },
+            )),
         ),
     );
     for (name, action) in [
@@ -199,7 +268,10 @@ fn generate_fixtures() {
             155,
             Ok(MapResultWire::VisualizerUsageSelection(
                 map_commands_wire::VisualizerUsageSelectionWire {
-                    usage: smart_reference(41, HolonId::Local(LocalId(vec![99])), None),
+                    usage: HolonReferenceWire::Transient(TransientReferenceWire::new(
+                        tx_id(41),
+                        TemporaryId(Uuid::parse_str(uuid_a()).unwrap()),
+                    )),
                     initialized: true,
                     report_session: "presentation-session".into(),
                 },

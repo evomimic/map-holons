@@ -125,6 +125,49 @@ pub async fn handle_transaction(
                 context, request, candidate,
             )?))
         }
+        TransactionAction::BeginVisualizerUsageBatch => {
+            session.usage_transactions.begin(session.space_manager(), context)?;
+            Ok(MapResult::None)
+        }
+        TransactionAction::SubmitVisualizerUsageBatch => {
+            Ok(match session.usage_transactions.submit(context)? {
+                Some(id) => MapResult::Value(BaseValue::StringValue(id.to_string().into())),
+                None => MapResult::None,
+            })
+        }
+        TransactionAction::SaveVisualizerUsage { usage } => {
+            session.usage_transactions.capture(context, &usage)?;
+            Ok(MapResult::None)
+        }
+        TransactionAction::GetVisualizerUsagePersistence { batch_id } => {
+            let id = batch_id
+                .0
+                .parse()
+                .map_err(|_| HolonError::InvalidParameter("Invalid Usage batch identity".into()))?;
+            use crate::usage_persistence::SaveStatus;
+            let (state, error) = match session.usage_transactions.status(id)? {
+                SaveStatus::Queued => ("queued", None),
+                SaveStatus::Saving => ("saving", None),
+                SaveStatus::Saved => ("saved", None),
+                SaveStatus::Failed(error) => ("failed", Some(error)),
+                SaveStatus::ServicePaused(error) => ("service_paused", Some(error)),
+            };
+            Ok(MapResult::VisualizerUsagePersistence(
+                map_commands_contract::VisualizerUsagePersistence {
+                    batch_id,
+                    state: state.into(),
+                    error,
+                },
+            ))
+        }
+        TransactionAction::RetryVisualizerUsagePersistence { batch_id } => {
+            let id = batch_id
+                .0
+                .parse()
+                .map_err(|_| HolonError::InvalidParameter("Invalid Usage batch identity".into()))?;
+            session.usage_transactions.retry(id)?;
+            Ok(MapResult::None)
+        }
         TransactionAction::FindVisualizerUsage { request, selected } => {
             Ok(match session.usage_transactions.find(context, request, selected)? {
                 Some(usage) => MapResult::VisualizerUsageSelection(usage),
@@ -151,9 +194,9 @@ pub async fn handle_transaction(
             )?;
             Ok(MapResult::None)
         }
-        TransactionAction::SelectVisualizer { request } => {
-            Ok(MapResult::VisualizerSelection(dahn_selection::select_visualizer(context, request)?))
-        }
+        TransactionAction::SelectVisualizer { request } => Ok(MapResult::VisualizerSelection(
+            session.usage_transactions.select_visualizer(context, request)?,
+        )),
         TransactionAction::FetchArtifact { handle } => {
             Ok(MapResult::Value(BaseValue::BytesValue(context.fetch_artifact(&handle)?)))
         }

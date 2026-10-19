@@ -4,7 +4,9 @@ use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::Descriptor;
-use holons_core::{HolonReference, ReadableHolon, StagedReference, WritableHolon};
+use holons_core::{
+    HolonReference, ReadableHolon, StagedReference, TransientReference, WritableHolon,
+};
 use map_commands_contract::VisualizerUsageSelection;
 
 /// Holonic configuration anchor. Durable state is read through the bound reference.
@@ -149,6 +151,16 @@ pub fn initialize_usage(
     visualizer: HolonReference,
     subject_type: HolonReference,
 ) -> Result<StagedReference, HolonError> {
+    let usage = initialize_live_usage(context, visualizer, subject_type)?;
+    context.mutation().stage_new_holon(usage)
+}
+
+/// Initialize live configuration without staging or committing the presentation transaction.
+pub fn initialize_live_usage(
+    context: &Arc<TransactionContext>,
+    visualizer: HolonReference,
+    subject_type: HolonReference,
+) -> Result<TransientReference, HolonError> {
     let usage_type = visualizer
         .holon_descriptor()?
         .resolve_available_relationship("UsedByVisualizerUsage")?
@@ -164,7 +176,7 @@ pub fn initialize_usage(
     usage.add_related_holons("DescribedBy", vec![usage_type])?;
     usage.add_related_holons("UsesVisualizer", vec![visualizer])?;
     usage.add_related_holons("ForSubjectType", vec![subject_type])?;
-    context.mutation().stage_new_holon(usage)
+    Ok(usage)
 }
 
 /// Project a committed usage into the caller's space capability, never the private transaction.

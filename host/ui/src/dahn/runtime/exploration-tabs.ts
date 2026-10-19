@@ -9,6 +9,7 @@ export interface ExplorationPresentation {
   readonly element: VisualizerElement;
   readonly title: string;
   canDismiss?(): boolean;
+  onPresented?(): void | Promise<void>;
   dispose(): void | Promise<void>;
 }
 
@@ -38,7 +39,7 @@ export class ExplorationTabs extends HTMLElement {
   private activationRevision = 0;
   private disposed = false;
 
-  constructor(private readonly realize: RealizeExploration) {
+  constructor(private readonly realize: RealizeExploration, private readonly round?: (work: () => Promise<void>) => Promise<void>) {
     super();
     this.dataset['explorationTabs'] = 'true';
     Object.assign(this.style, { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '0', minWidth: '0', gap: 'var(--dahn-canvas-gap)' });
@@ -72,7 +73,11 @@ export class ExplorationTabs extends HTMLElement {
   }
 
   /** A pending tab acknowledges intent immediately; failures resolve locally. */
-  async open(anchor: HolonReference): Promise<void> {
+  open(anchor: HolonReference): Promise<void> {
+    return this.round ? this.round(() => this.openRound(anchor)) : this.openRound(anchor);
+  }
+
+  private async openRound(anchor: HolonReference): Promise<void> {
     if (this.disposed) return;
     const revision = this.activationRevision;
     const id = `exploration-${++nextTab}`;
@@ -107,6 +112,7 @@ export class ExplorationTabs extends HTMLElement {
       if (this.disposed || !this.tabs.has(id)) { presentation.dispose(); return; }
       tab.presentation = presentation;
       panel.append(presentation.element);
+      await presentation.onPresented?.();
       button.textContent = presentation.title;
       button.disabled = false;
       button.removeAttribute('aria-busy');

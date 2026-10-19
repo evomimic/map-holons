@@ -118,6 +118,11 @@ export type TransactionActionWire =
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
   | { DiscoverVisualizers: { request: VisualizerSelectionRequestWire; current_selection: HolonReferenceWire | null; retain_evidence?: boolean } }
   | { FindVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire } }
+  | 'BeginVisualizerUsageBatch'
+  | 'SubmitVisualizerUsageBatch'
+  | { GetVisualizerUsagePersistence: { batch_id: string } }
+  | { RetryVisualizerUsagePersistence: { batch_id: string } }
+  | { SaveVisualizerUsage: { usage: HolonReferenceWire } }
   | { SelectVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire } }
   | { RecordVisualizerUse: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire; usage: HolonReferenceWire; origin: 'Automatic' | 'Explicit' | 'Exploratory'; report: { session: string; occurrence_id: string; sequence: number } } }
   | { ChooseVisualizer: { request: VisualizerSelectionRequestWire; candidate: HolonReferenceWire } }
@@ -226,6 +231,8 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
+  'BeginVisualizerUsageBatch',
+  'SubmitVisualizerUsageBatch',
   'Dispose',
   'Commit',
   'UndoLast',
@@ -345,6 +352,9 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'DiscoverVisualizers') && isRecord(value.DiscoverVisualizers) &&
       isVisualizerSelectionRequestWire(value.DiscoverVisualizers['request']) &&
       (value.DiscoverVisualizers['current_selection'] === null || isHolonReferenceWire(value.DiscoverVisualizers['current_selection']))) ||
+    (hasSingleKey(value, 'GetVisualizerUsagePersistence') && isRecord(value.GetVisualizerUsagePersistence) && isString(value.GetVisualizerUsagePersistence['batch_id'])) ||
+    (hasSingleKey(value, 'RetryVisualizerUsagePersistence') && isRecord(value.RetryVisualizerUsagePersistence) && isString(value.RetryVisualizerUsagePersistence['batch_id'])) ||
+    (hasSingleKey(value, 'SaveVisualizerUsage') && isRecord(value.SaveVisualizerUsage) && isHolonReferenceWire(value.SaveVisualizerUsage['usage'])) ||
     (hasSingleKey(value, 'FindVisualizerUsage') && isRecord(value.FindVisualizerUsage) &&
       isVisualizerSelectionRequestWire(value.FindVisualizerUsage['request']) && isHolonReferenceWire(value.FindVisualizerUsage['selected'])) ||
     (hasSingleKey(value, 'SelectVisualizerUsage') && isRecord(value.SelectVisualizerUsage) &&

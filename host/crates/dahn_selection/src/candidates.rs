@@ -76,23 +76,7 @@ fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, Ho
     }
     let mds = one(&request.theme, "ForMetaDesignSystem")?;
     let tokens = members(&mds, "DefinesDesignToken")?;
-    let start = match request.requested_kind {
-        VisualizerKind::Property | VisualizerKind::Action => request.subject.clone(),
-        VisualizerKind::Value => {
-            PropertyDescriptor::from_holon(request.subject.clone()).value_type()?.holon().clone()
-        }
-        VisualizerKind::TitleBar
-        | VisualizerKind::Node
-        | VisualizerKind::PropertyMap
-        | VisualizerKind::ActionBar
-        | VisualizerKind::RootedNavigation
-        | VisualizerKind::Structure => request.subject.holon_descriptor()?.holon().clone(),
-        _ => {
-            return Err(HolonError::InvalidParameter(
-                "Use the dedicated Canvas or Collection selection contract".into(),
-            ))
-        }
-    };
+    let start = usage_subject_type(request)?;
     Ok(AssessmentContext { accepted, tokens, start, slot: request.slot.clone() })
 }
 
@@ -194,16 +178,29 @@ pub fn select_visualizer(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
 ) -> Result<VisualizerSelection, HolonError> {
+    select_visualizer_with_subject_type(context, request).map(|(selection, _)| selection)
+}
+
+/// Return the exact descriptor resolved by selection, for immediate Usage preparation.
+/// The result does not authorize a later selection or bypass current eligibility checks.
+pub fn select_visualizer_with_subject_type(
+    context: &Arc<TransactionContext>,
+    request: VisualizerSelectionRequest,
+) -> Result<(VisualizerSelection, HolonReference), HolonError> {
     let facts = resolve(&request)?;
     for descriptor in walk_extends_chain(&facts.start) {
         let descriptor = descriptor?;
         if let Some(selected) = sole_viable(&at_level(context, &facts, &descriptor)?, &descriptor)?
         {
-            return Ok(VisualizerSelection {
-                selected,
-                requested_kind: request.requested_kind,
-                alternatives_available: false,
-            });
+            return Ok((
+                VisualizerSelection {
+                    selected,
+                    requested_kind: request.requested_kind,
+                    alternatives_available: false,
+                    usage: None,
+                },
+                facts.start.clone(),
+            ));
         }
         if boundary(&descriptor)? {
             break;
@@ -280,6 +277,7 @@ pub fn choose_visualizer(
                 selected: candidate,
                 requested_kind: request.requested_kind,
                 alternatives_available: false,
+                usage: None,
             });
         }
         if boundary(&descriptor)? {
@@ -296,5 +294,22 @@ pub fn choose_visualizer(
 pub fn usage_subject_type(
     request: &VisualizerSelectionRequest,
 ) -> Result<HolonReference, HolonError> {
-    Ok(resolve(request)?.start)
+    let start = match request.requested_kind {
+        VisualizerKind::Property | VisualizerKind::Action => request.subject.clone(),
+        VisualizerKind::Value => {
+            PropertyDescriptor::from_holon(request.subject.clone()).value_type()?.holon().clone()
+        }
+        VisualizerKind::TitleBar
+        | VisualizerKind::Node
+        | VisualizerKind::PropertyMap
+        | VisualizerKind::ActionBar
+        | VisualizerKind::RootedNavigation
+        | VisualizerKind::Structure => request.subject.holon_descriptor()?.holon().clone(),
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Use the dedicated Canvas or Collection selection contract".into(),
+            ))
+        }
+    };
+    Ok(start)
 }

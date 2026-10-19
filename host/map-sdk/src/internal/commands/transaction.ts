@@ -499,3 +499,28 @@ export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRe
 export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory', report: { session: string; occurrence_id: string; sequence: number }): Promise<void> {
   return runTransactionCommand(txId, { RecordVisualizerUse: { request, selected, usage, origin, report } }, expectNone);
 }
+
+/** Explicit Usage batch ownership, independent of subject transaction commit. */
+export function beginVisualizerUsageBatch(txId: TxId): Promise<void> {
+  return runTransactionCommand(txId, 'BeginVisualizerUsageBatch', expectNone);
+}
+export function submitVisualizerUsageBatch(txId: TxId): Promise<string | null> {
+  return runTransactionCommand(txId, 'SubmitVisualizerUsageBatch', result => {
+    if (result === 'None') return null;
+    const value = expectValue(result);
+    if (!('StringValue' in value)) throw new TypeError('Expected Usage batch identity');
+    return value.StringValue;
+  });
+}
+export function getVisualizerUsagePersistence(txId: TxId, batchId: string) {
+  return runTransactionCommand(txId, { GetVisualizerUsagePersistence: { batch_id: batchId } }, result => {
+    if (typeof result !== 'object' || result === null || !('VisualizerUsagePersistence' in result)) throw new TypeError('Expected Usage persistence status');
+    return result.VisualizerUsagePersistence;
+  });
+}
+export function retryVisualizerUsagePersistence(txId: TxId, batchId: string): Promise<void> {
+  return runTransactionCommand(txId, { RetryVisualizerUsagePersistence: { batch_id: batchId } }, expectNone);
+}
+export function saveVisualizerUsage(txId: TxId, usage: HolonReferenceWire): Promise<void> {
+  return runTransactionCommand(txId, { SaveVisualizerUsage: { usage } }, expectNone);
+}

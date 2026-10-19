@@ -94,6 +94,22 @@ pub enum TransactionActionWire {
         request: VisualizerSelectionRequestWire,
         candidate: HolonReferenceWire,
     },
+    /// Open an explicit startup or gesture round for independent Usage persistence.
+    BeginVisualizerUsageBatch,
+    /// Hand off a closed round to background commit; never await backend completion.
+    SubmitVisualizerUsageBatch,
+    /// Inspect the status of a previously accepted background batch.
+    GetVisualizerUsagePersistence {
+        batch_id: MapString,
+    },
+    /// Explicitly retry retained work, including release of a known service pause.
+    RetryVisualizerUsagePersistence {
+        batch_id: MapString,
+    },
+    /// Capture a subsequent live Usage revision in the current round.
+    SaveVisualizerUsage {
+        usage: HolonReferenceWire,
+    },
     FindVisualizerUsage {
         request: VisualizerSelectionRequestWire,
         selected: HolonReferenceWire,
@@ -333,6 +349,21 @@ impl TransactionActionWire {
             }
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
+            }
+            TransactionActionWire::BeginVisualizerUsageBatch => {
+                Ok(TransactionAction::BeginVisualizerUsageBatch)
+            }
+            TransactionActionWire::SubmitVisualizerUsageBatch => {
+                Ok(TransactionAction::SubmitVisualizerUsageBatch)
+            }
+            TransactionActionWire::GetVisualizerUsagePersistence { batch_id } => {
+                Ok(TransactionAction::GetVisualizerUsagePersistence { batch_id })
+            }
+            TransactionActionWire::RetryVisualizerUsagePersistence { batch_id } => {
+                Ok(TransactionAction::RetryVisualizerUsagePersistence { batch_id })
+            }
+            TransactionActionWire::SaveVisualizerUsage { usage } => {
+                Ok(TransactionAction::SaveVisualizerUsage { usage: usage.bind(context)? })
             }
             TransactionActionWire::FindVisualizerUsage { request, selected } => {
                 Ok(TransactionAction::FindVisualizerUsage {

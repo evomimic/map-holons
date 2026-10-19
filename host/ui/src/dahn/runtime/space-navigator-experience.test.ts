@@ -40,7 +40,10 @@ beforeEach(() => {
   const dancerSlot = reference('SpaceNavigator.RootedNavigationSlot'), nodeSlot = reference('Node slot');
   const path = reference('Path'), node = reference('Node');
   binding = {
-    transaction: { selectVisualizer: vi.fn(async request => ({ selected: request.requestedKind === 'node' ? node : path })), commit: vi.fn(), stageNewHolon: vi.fn(), stageNewVersion: vi.fn(), abandon: vi.fn() } as never,
+    transaction: { withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
+    selectVisualizer: vi.fn(async request => ({ selected: request.requestedKind === 'node' ? node : path })), commit: vi.fn(), stageNewHolon: vi.fn(), stageNewVersion: vi.fn(), abandon: vi.fn() } as never,
     dancer: { ...reference('Dancer'), relatedHolons: vi.fn(async () => [dancerSlot]) } as never,
     holonSpace: reference('HolonSpace'), initialNavigationVisualizer: path, initialNodeVisualizer: node,
     materialized: { realize: vi.fn(async () => NavigationElement), slot: vi.fn(async () => nodeSlot) } as never,
@@ -192,10 +195,16 @@ it('selects the response Node in its loader context and expands saved members wi
     mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
     const present = openLoadHolons.mock.calls[0][0].presentResult;
     const response = reference('Response'), member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
-    const loader = { owns: (ref: unknown) => ref === response, committed: true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: resultNode })),
+    const loader = { owns: (ref: unknown) => ref === response, committed: true, bindSavedReference: (ref: unknown) => ref, withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
+    selectVisualizer: vi.fn(async () => ({ selected: resultNode })),
       chooseVisualizer: vi.fn(async (_request, candidate) => ({ selected: candidate })),
       selectVisualizerUsage: vi.fn(async () => ({ usage: reference('Usage'), reportSession: 'result-session' })), recordVisualizerUse: vi.fn(async () => {}) };
-    const review = { bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
+    const review = { bindSavedReference: (ref: unknown) => ref, withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
+    selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
     const collection = document.createElement('section'), properties = document.createElement('section');
     const affordance = { kind: 'result', label: 'Committed holons', role: 'committed' };
     const lifecycle = { setBeforeChange: vi.fn(), sourceAffordance: (source: HTMLElement) => source === collection ? affordance : undefined, close: vi.fn(), dispose: vi.fn() };
@@ -302,7 +311,10 @@ it('realizes a retained request root through the standard selected Node composit
     mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
     const present = openLoadHolons.mock.calls[0][0].presentResult;
     const request = reference('LoadRequest');
-    const loader = { owns: () => true, bindSavedReference: (ref: unknown) => ref, selectVisualizer: vi.fn(async () => ({ selected })) };
+    const loader = { owns: () => true, bindSavedReference: (ref: unknown) => ref, withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
+    selectVisualizer: vi.fn(async () => ({ selected })) };
     const presentation = { bindSavedReference: (ref: unknown) => ref };
     const path = await present({ transaction: loader, review: presentation, subject: request, signal: new AbortController().signal });
     expect(loader.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ subject: request, requestedKind: 'node', slot }));
@@ -312,4 +324,22 @@ it('realizes a retained request root through the standard selected Node composit
     path.dispose();
     expect(roots[1].collectionActivation.dispose).toHaveBeenCalledOnce();
   } finally { realize.mockRestore(); slots.mockRestore(); }
+});
+
+it('checks retained save status and retries only on explicit request', async () => {
+  const transaction = binding.transaction as unknown as Record<string, unknown>;
+  transaction.visualizerUsageBatches = ['batch-1'];
+  const check = vi.fn().mockResolvedValue({ batchId: 'batch-1', state: 'service_paused' });
+  const retry = vi.fn(async () => { check.mockResolvedValue({ batchId: 'batch-1', state: 'saved' }); });
+  transaction.visualizerUsagePersistence = check;
+  transaction.retryVisualizerUsagePersistence = retry;
+  expect(check).not.toHaveBeenCalled();
+  const refresh = [...experience.element.querySelectorAll('button')].find(button => button.textContent === 'Check save status')!;
+  refresh.click();
+  await vi.waitFor(() => expect(experience.element.textContent).toContain('the service is unavailable'));
+  expect(retry).not.toHaveBeenCalled();
+  [...experience.element.querySelectorAll('button')].find(button => button.textContent === 'Retry save')!.click();
+  await vi.waitFor(() => expect(experience.element.textContent).toContain('Appearance changes saved.'));
+  expect(retry).toHaveBeenCalledExactlyOnceWith('batch-1');
+  expect(check).toHaveBeenCalledTimes(2);
 });

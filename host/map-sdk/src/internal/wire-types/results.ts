@@ -36,12 +36,14 @@ export interface VisualizerSelectionWire {
   selected: HolonReferenceWire;
   requested_kind: VisualizerKindWire;
   alternatives_available: boolean;
+  usage?: VisualizerUsageSelectionWire;
 }
 
 function isVisualizerSelectionWire(value: unknown): value is VisualizerSelectionWire {
   return isRecord(value) && isHolonReferenceWire(value['selected']) &&
     isVisualizerKindWire(value['requested_kind']) &&
-    typeof value['alternatives_available'] === 'boolean';
+    typeof value['alternatives_available'] === 'boolean' &&
+    (value['usage'] === undefined || isVisualizerUsageSelectionWire(value['usage']));
 }
 
 function isQualifiedRelationshipWire(
@@ -76,6 +78,7 @@ export type MapResultWire =
   | { VisualizerSelection: VisualizerSelectionWire }
   | { VisualizerDiscovery: VisualizerDiscoveryWire }
   | { VisualizerUsageSelection: VisualizerUsageSelectionWire }
+  | { VisualizerUsagePersistence: VisualizerUsagePersistenceWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { DescribedCollection: DescribedHolonCollectionWire }
@@ -106,6 +109,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
         (Number.isSafeInteger(value.EffectiveCardinality['maximum']) && (value.EffectiveCardinality['maximum'] as number) >= (value.EffectiveCardinality['minimum'] as number)))) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
     (hasSingleKey(value, 'VisualizerSelection') && isVisualizerSelectionWire(value.VisualizerSelection)) ||
+    (hasSingleKey(value, 'VisualizerUsagePersistence') && isVisualizerUsagePersistenceWire(value.VisualizerUsagePersistence)) ||
     (hasSingleKey(value, 'VisualizerUsageSelection') && isVisualizerUsageSelectionWire(value.VisualizerUsageSelection)) ||
     (hasSingleKey(value, 'VisualizerDiscovery') && isVisualizerDiscoveryWire(value.VisualizerDiscovery)) ||
     (hasSingleKey(value, 'References') &&
@@ -158,4 +162,15 @@ export interface VisualizerUsageSelectionWire {
 }
 export function isVisualizerUsageSelectionWire(value: unknown): value is VisualizerUsageSelectionWire {
   return isRecord(value) && isHolonReferenceWire(value['usage']) && typeof value['initialized'] === 'boolean' && typeof value['report_session'] === 'string';
+}
+
+export interface VisualizerUsagePersistenceWire {
+  batch_id: string;
+  state: 'queued' | 'saving' | 'saved' | 'failed' | 'service_paused';
+  error: string | null;
+}
+export function isVisualizerUsagePersistenceWire(value: unknown): value is VisualizerUsagePersistenceWire {
+  return isRecord(value) && typeof value['batch_id'] === 'string' &&
+    ['queued', 'saving', 'saved', 'failed', 'service_paused'].includes(value['state'] as string) &&
+    (value['error'] === null || typeof value['error'] === 'string');
 }

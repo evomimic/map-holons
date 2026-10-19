@@ -232,6 +232,7 @@ impl RuntimeSession {
         let session = self.get_client_session(tx_id)?;
         self.admission(*tx_id)?.dispose()?;
         self.discoveries.release_transaction(tx_id)?;
+        self.usage_transactions.release_context(*tx_id)?;
         session.context().dispose()?;
         session.cleanup().await?;
         self.active_sessions

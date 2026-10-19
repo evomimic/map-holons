@@ -7,7 +7,8 @@
 mod candidates;
 mod selection;
 pub use candidates::{
-    choose_visualizer, discover_visualizers, select_visualizer, usage_subject_type,
+    choose_visualizer, discover_visualizers, select_visualizer,
+    select_visualizer_with_subject_type, usage_subject_type,
 };
 
 pub use selection::{

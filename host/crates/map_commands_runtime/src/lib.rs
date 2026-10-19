@@ -17,6 +17,7 @@ mod tests;
 #[cfg(test)]
 mod collection_tests;
 
+mod usage_persistence;
 mod usage_transactions;
 
 #[cfg(test)]

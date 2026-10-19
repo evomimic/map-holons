@@ -1,3 +1,4 @@
+import { semanticWork } from './semantic-work';
 import { reportSuccessfulVisualizerUse } from './successful-visualizer-use';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { VisualizerContext, VisualizerElement, VisualizerInspectionTarget } from '../contracts/visualizers';
@@ -51,7 +52,7 @@ export async function composeNodeTitle(
       selectedVisualizer: visualizer, displayName, element: title, invoker: title, isLive,
       choices: {
         discover: () => transaction.discoverVisualizers(request, visualizer),
-        choose: async (candidate, stillCurrent, signal) => {
+        choose: (candidate, stillCurrent, signal) => transaction.withVisualizerUsageBatch(() => semanticWork(transaction).realize(async () => {
           if (!isLive() || !stillCurrent()) throw new Error('Title Bar occurrence is stale');
           const ticket = generation;
           const choice = await transaction.chooseVisualizer(request, candidate);
@@ -63,7 +64,7 @@ export async function composeNodeTitle(
           const next = await register();
           reportSuccessfulVisualizerUse(transaction, request, choice.selected, usage, occurrenceId);
           return next;
-        },
+        })),
       } });
   };
   const register = async () => {
@@ -82,5 +83,6 @@ export async function composeNodeTitle(
   host.dispose = () => { generation++; current?.dispose?.(); invoke = () => { throw new Error('Title occurrence is retired'); }; };
   selected = (await transaction.selectVisualizer(request)).selected;
   current = await ready(selected); host.append(current); await register();
+  await transaction.recordSelectedVisualizerUse(selected, occurrenceId);
   return host;
 }

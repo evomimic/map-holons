@@ -1,0 +1,12 @@
+{
+  "request_id": 156,
+  "result": {
+    "Ok": {
+      "VisualizerUsagePersistence": {
+        "batch_id": "1",
+        "state": "service_paused",
+        "error": "offline"
+      }
+    }
+  }
+}

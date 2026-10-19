@@ -60,6 +60,7 @@ export async function realizeNode(
   );
   const view = new DahnHolonView(subject);
   const actionActivations: ActionActivation[] = [];
+  const usageSelections: HolonReference[] = [];
   let collectionActivation: NodeCollectionActivation | undefined;
   try {
     onStage?.('classify node affordances');
@@ -144,6 +145,7 @@ export async function realizeNode(
               });
 
               await bindVisualizerInformationControl(renderedValue, transaction, subject, propertySelection.selected, valueSlot, valueSelection.selected, 'start');
+              usageSelections.push(valueSelection.selected);
               return renderedValue;
             });
             const propertyElement = document.createElement(propertyTag) as HTMLElement & {
@@ -160,6 +162,7 @@ export async function realizeNode(
               childVisualizers: new Map([['value', valueElement]]),
             });
             await bindVisualizerInformationControl(propertyElement, transaction, subject, propertiesSelection.selected, propertySlot, propertySelection.selected, 'start');
+            usageSelections.push(propertySelection.selected);
             return propertyElement;
           });
         });
@@ -178,6 +181,7 @@ export async function realizeNode(
         childVisualizers: propertyVisualizers,
       });
       await bindVisualizerInformationControl(propertiesElement, transaction, subject, selectedVisualizer, propertiesSlot, propertiesSelection.selected);
+      usageSelections.push(propertiesSelection.selected);
       return propertiesElement;
     });
     onStage?.('select and materialize Actions');
@@ -219,6 +223,7 @@ export async function realizeNode(
       childVisualizers: new Map([['titleBar', titleElement], ['properties', propertiesElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls]]),
     });
     await materialized.admitOffered(element, selectedVisualizer);
+    for (const selected of usageSelections) await transaction.recordSelectedVisualizerUse(selected, `component-${crypto.randomUUID()}`);
     const initialized = (element as VisualizerElement).ready;
     const children = [titleElement, propertiesElement, actionsElement, actionsElement.controls, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*'), ...actionsElement.controls.querySelectorAll('*')];
     const ready = initialized && Promise.all([initialized, ...children.map(child => (child as VisualizerElement).ready)]).then(() => {});

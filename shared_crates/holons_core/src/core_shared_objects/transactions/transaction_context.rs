@@ -380,10 +380,15 @@ impl TransactionContext {
         self.get_holon_service().fetch_holon_internal(self, id)
     }
 
-    pub(crate) fn new_transient_from_clone_model(
+    /// Materialize a retained runtime clone model in this transaction.
+    ///
+    /// This performs ordinary default completion. Callers that capture a live
+    /// snapshot may defer this work until the destination transaction needs it.
+    pub fn new_transient_from_clone_model(
         &self,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError> {
+        self.assert_allowed(TransactionOperation::CreateTransient)?;
         let transient_service =
             Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>;
         transient_service.new_from_clone_model(holon_clone_model)
