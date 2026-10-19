@@ -14,3 +14,17 @@ slow-timeout = { period = "120s", terminate-after = 5 }
 fail-fast = false
 # Repeat slow tests in the end-of-run summary.
 final-status-level = "slow"
+
+# Heavy CI shards, selected by MAP_NEXTEST_PROFILE=ci-<shard> (see .github/workflows/ci.yml).
+# `ci-rest` is the complement of the other shard, so a new test file always runs somewhere; keep
+# its exclusion list in step when moving binaries between shards. Lib unit tests and
+# fixture_authoring_tests are left out because they already run in the light tier.
+# The grouping is a first guess; rebalance from the PASS [ ...s ] durations.
+
+[profile.ci-dance-storage]
+inherits = "ci"
+default-filter = "binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests)"
+
+[profile.ci-rest]
+inherits = "ci"
+default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests))"

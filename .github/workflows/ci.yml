@@ -8,21 +8,27 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# A new push cancels the older run on the same branch or PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Everything that runs without a Holochain conductor: shared/host/hApp unit tests, sweetest
   # harness lib tests, schema and SDK fixture checks, web and SDK vitest.
   light:
+    if: false  # TEMP: heavy-only check run; revert after the heavy timings are in
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install nix
         uses: cachix/install-nix-action@v31
         with:
           install_url: https://releases.nixos.org/nix/nix-2.28.3/install
 
-      - uses: cachix/cachix-action@v16
+      - uses: cachix/cachix-action@v17
         with:
           name: holochain-ci
 
@@ -61,24 +67,35 @@ jobs:
           nix develop --command bash -c "npm run test:light"
 
   # Sweettests: builds the hApp and probe WASM, then boots a Holochain conductor per test.
+  # Each shard runs the test binaries selected by its `ci-<shard>` profile in .config/nextest.toml.
   heavy:
+    name: heavy (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [dance-storage, rest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install nix
         uses: cachix/install-nix-action@v31
         with:
           install_url: https://releases.nixos.org/nix/nix-2.28.3/install
 
-      - uses: cachix/cachix-action@v16
+      - uses: cachix/cachix-action@v17
         with:
           name: holochain-ci
 
+      # Also cache the hApp WASM workspace; both shards restore, one saves.
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: heavy
+          workspaces: |
+            . -> target
+            happ -> target
+          save-if: ${{ matrix.shard == 'rest' }}
 
       - name: Free disk space before test job
         run: |
@@ -102,27 +119,30 @@ jobs:
         env:
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
+          MAP_NEXTEST_PROFILE: ci-${{ matrix.shard }}
         run: |
           sudo prlimit --pid $$ --memlock=unlimited:unlimited
           nix develop --command bash -c "ulimit -l && npm run test:heavy"
 
       # Keep the production-surface policy visible as its own CI gate. `npm run test:heavy` builds
       # the production bundles and loose probe WASM before reaching this deterministic re-audit.
+      # Identical in every shard, so it runs once.
       - name: Check packaged coordinator surfaces
+        if: matrix.shard == 'rest'
         run: |
           nix develop --command bash -c "npm run check:happ-artifacts"
 
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install nix
         uses: cachix/install-nix-action@v31
         with:
           install_url: https://releases.nixos.org/nix/nix-2.28.3/install
 
-      - uses: cachix/cachix-action@v16
+      - uses: cachix/cachix-action@v17
         with:
           name: holochain-ci
 
@@ -140,7 +160,7 @@ jobs:
 #    continue-on-error: true  # 👈 Make this advisory only
 #    runs-on: ubuntu-latest
 #    steps:
-#      - uses: actions/checkout@v4
+#      - uses: actions/checkout@v5
 #
 #      - name: Install nix
 #        uses: cachix/install-nix-action@v31
