@@ -1,13 +1,14 @@
 //! Bootstrap schemas must be discoverable through ordinary Space navigation.
 
 use holons_core::ReadableHolon;
-use holons_test::{init_test_runtime, DancesTestCase};
+use holons_test::{init_commit_performance_runtime, DancesTestCase};
 use std::collections::BTreeSet;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn bootstrap_space_exposes_selected_schemas_and_committed_inverses() {
     let mut test_case = DancesTestCase::default();
-    let (runtime, transaction_id) = init_test_runtime(&mut test_case).await;
+    // Retains the backend so the conductor can be shut down explicitly below.
+    let (runtime, transaction_id, backend) = init_commit_performance_runtime(&mut test_case).await;
     let context = runtime.session().get_transaction(&transaction_id).unwrap();
     let space = context.get_space_holon().unwrap().expect("bootstrap Space");
 
@@ -49,4 +50,10 @@ async fn bootstrap_space_exposes_selected_schemas_and_committed_inverses() {
         assert_eq!(spaces[0].holon_id(), space.holon_id());
     }
     runtime.session().archive_transaction(&transaction_id).unwrap();
+
+    // Release every owner of the backend, then await the conductor shutdown explicitly.
+    drop(space);
+    drop(context);
+    drop(runtime);
+    backend.shutdown().await;
 }

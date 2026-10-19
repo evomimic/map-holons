@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use base_types::MapString;
 use holochain::conductor::api::error::ConductorApiError;
-use holochain::conductor::CellError;
+use holochain::conductor::{CellError, ConductorHandle};
 use holochain::core::ribosome::error::RibosomeError;
 use holochain::prelude::AgentPubKey;
 use holochain::prelude::{
@@ -41,6 +41,31 @@ pub struct MockConductorConfig {
     pub conductor: SweetConductor,
     pub agent: AgentPubKey,
     pub cell: SweetCell,
+}
+
+impl MockConductorConfig {
+    /// Awaits conductor shutdown instead of leaving it to `SweetConductor::drop`, which only
+    /// spawns a detached shutdown task, and which never runs at all while the backend is leaked.
+    ///
+    /// Drop the `Runtime` and everything derived from it first. The backend can still be leaked
+    /// by a reference cycle: cached relationship collections hold `SmartReference`s, whose
+    /// `SpaceReadHandle` keeps the owning `HolonSpaceManager` (and so this backend) alive. In that
+    /// case the conductor is shut down through its shared handle and the backend is deliberately
+    /// leaked, so `SweetConductor::drop` can never attempt a second shutdown.
+    pub async fn shutdown(self: Arc<Self>) {
+        match Arc::try_unwrap(self) {
+            Ok(MockConductorConfig { mut conductor, .. }) => conductor.shutdown().await,
+            Err(shared) => {
+                let handle: ConductorHandle = (**shared.conductor).clone();
+                handle
+                    .shutdown()
+                    .await
+                    .expect("conductor shutdown task failed")
+                    .expect("conductor shutdown reported an error");
+                std::mem::forget(shared);
+            }
+        }
+    }
 }
 
 /// Implements envelope transport for the Sweetest mock conductor backend.
