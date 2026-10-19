@@ -45,6 +45,7 @@
           packages = with pkgs; [
             nodejs_24
             binaryen
+            cargo-nextest # Per-test timing and hang timeouts for the CI heavy tier (.config/nextest.toml)
           ];
 
           # Env vars

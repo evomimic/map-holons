@@ -1,0 +1,16 @@
+# cargo-nextest config for the root workspace; used by `npm run sweet:test:ci` (CI heavy tier).
+# Nextest prints each test's duration and terminates tests that hang, which plain `cargo test`
+# cannot do on stable Rust.
+
+[profile.default]
+# Sweettests share host resources (ports, conductors); run them one at a time, as `sweet:test` does.
+test-threads = 1
+# Mark a test SLOW after 2 minutes and terminate it after 5 periods (10 minutes).
+# First guesses; tune from real CI timings.
+slow-timeout = { period = "120s", terminate-after = 5 }
+
+[profile.ci]
+# One hung or failing test must not hide the results of the rest.
+fail-fast = false
+# Repeat slow tests in the end-of-run summary.
+final-status-level = "slow"

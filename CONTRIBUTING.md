@@ -99,15 +99,12 @@ All pull requests are automatically validated by our GitHub Actions CI workflows
 
 ### ✅ What the CI Checks Do
 
-- **Test** — Runs `npm test`, including backend integration tests (Sweetest)
+- **Light** — Runs the SDK wire-fixture and schema checks, then `npm run test:light` (all unit tests: shared crates, host, hApp, sweetest harness lib, web, SDK). No Holochain conductor.
+- **Heavy** — Runs `npm run test:heavy`: builds the hApp and probes, then runs the sweetests under `cargo-nextest`, which prints each test's duration and terminates tests that hang (see `.config/nextest.toml`). Then re-audits the packaged coordinator surfaces.
 - **Format** — Runs `npm run fmt:check` inside `nix develop` to enforce Rust formatting across `host`, `happ`, and `tests/sweetests`
 - **CI Pass Aggregator** — Combines and reports status of all required checks
 
-> 📝 **Note:** Unit tests are currently excluded from CI due to compatibility issues with the GitHub Actions Ubuntu environment. Run them locally before submitting PRs.
-
-```bash
-npm run test:unit
-```
+Light and Heavy run in parallel, so unit test failures are reported without waiting for the sweetests. `npm test` still runs both tiers locally.
 
 ---
 
@@ -117,7 +114,7 @@ To avoid failed checks:
 
 - Run `npm run fmt` locally to format all Rust code covered by the repo-level formatting contract (`host`, `happ`, and `tests/sweetests`)
 - Run `npm run fmt:check` if you want the same formatting validation used in CI
-- Ensure integration tests pass with `npm run sweetest`
+- Ensure unit tests pass with `npm run test:light` and integration tests with `npm run sweetest`
 - Keep commits clean and scoped — large formatting-only changes should be separated
 
 ---

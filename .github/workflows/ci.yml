@@ -9,8 +9,11 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  # Everything that runs without a Holochain conductor: shared/host/hApp unit tests, sweetest
+  # harness lib tests, schema and SDK fixture checks, web and SDK vitest.
+  light:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +27,8 @@ jobs:
           name: holochain-ci
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: light
 
       - name: Free disk space before test job
         run: |
@@ -48,15 +53,61 @@ jobs:
         run: |
           nix develop --command bash -c "npm run map-schema:verify:coreschema"
 
-      - name: Test
+      - name: Light tests
         env:
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
         run: |
-          nix develop --command bash -c "npm test"
+          nix develop --command bash -c "npm run test:light"
 
-      # Keep the production-surface policy visible as its own CI gate. `npm test` builds the
-      # production bundles and loose probe WASM before reaching this deterministic re-audit.
+  # Sweettests: builds the hApp and probe WASM, then boots a Holochain conductor per test.
+  heavy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.28.3/install
+
+      - uses: cachix/cachix-action@v16
+        with:
+          name: holochain-ci
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: heavy
+
+      - name: Free disk space before test job
+        run: |
+          echo "Disk usage before cleanup:"
+          df -h
+          rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/ghc || true
+          sudo docker system prune -af || true
+          echo "Disk usage after cleanup:"
+          df -h
+
+      - name: Install dependencies
+        run: |
+          nix develop --command bash -c "npm ci"
+
+      # SQLCipher mlocks its key buffers; the runner's default RLIMIT_MEMLOCK (~64 KB) is exhausted
+      # by each conductor's encrypted databases, which logs `sqlcipher_mlock ... errno=12`. Raise the
+      # limit for this shell so the nix/cargo/test children inherit it; `ulimit -l` confirms it.
+      - name: Heavy tests
+        env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited
+          nix develop --command bash -c "ulimit -l && npm run test:heavy"
+
+      # Keep the production-surface policy visible as its own CI gate. `npm run test:heavy` builds
+      # the production bundles and loose probe WASM before reaching this deterministic re-audit.
       - name: Check packaged coordinator surfaces
         run: |
           nix develop --command bash -c "npm run check:happ-artifacts"
@@ -103,7 +154,7 @@ jobs:
   ci_pass:
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    needs: [ test, fmt ]  # 👈 exclude 'lint'
+    needs: [ light, heavy, fmt ]  # 👈 exclude 'lint'
     steps:
       - name: Check status
         uses: re-actors/alls-green@release/v1
