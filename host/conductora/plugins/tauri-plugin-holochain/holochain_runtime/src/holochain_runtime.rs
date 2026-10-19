@@ -47,6 +47,16 @@ pub struct HolochainRuntime {
     pub conductor_handle: ConductorHandle,
 }
 
+/// Local bootstrap responses can occupy one frame larger than the library's
+/// 16 MiB frame default. Honor the existing bounded message allowance for such
+/// frames. Allow ten minutes for cold Core Schema bootstrap requests.
+fn local_websocket_config() -> WebsocketConfig {
+    let mut config = WebsocketConfig::CLIENT_DEFAULT;
+    config.default_request_timeout = std::time::Duration::from_secs(60 * 10);
+    config.max_frame_size = config.max_message_size;
+    config
+}
+
 impl HolochainRuntime {
     pub async fn launch(
         passphrase: SharedLockedArray,
@@ -57,8 +67,7 @@ impl HolochainRuntime {
 
     /// Builds an `AdminWebsocket` ready to use
     pub async fn admin_websocket(&self) -> crate::Result<AdminWebsocket> {
-        let mut config = WebsocketConfig::CLIENT_DEFAULT;
-        config.default_request_timeout = std::time::Duration::new(60 * 5, 0);
+        let config = local_websocket_config();
 
         let admin_ws = AdminWebsocket::connect_with_config(
             format!("localhost:{}", self.admin_port),
@@ -127,8 +136,7 @@ impl HolochainRuntime {
         // Core-schema bootstrap is a single zome call that can legitimately take longer
         // than the websocket client's one-minute default on a fresh conductor.
         // Keep this aligned with the admin websocket timeout above.
-        let mut config = WebsocketConfig::CLIENT_DEFAULT;
-        config.default_request_timeout = std::time::Duration::new(60 * 5, 0);
+        let config = local_websocket_config();
         let config = Arc::new(config);
         let mut request = ConnectRequest::new(SocketAddr::new(
             Ipv4Addr::LOCALHOST.into(),
@@ -385,5 +393,22 @@ impl HolochainRuntime {
             .map_err(|e| crate::Error::HolochainShutdownError(e.to_string()))?
             .map_err(|e| crate::Error::HolochainShutdownError(e.to_string()))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod websocket_configuration_tests {
+    use super::local_websocket_config;
+    use holochain_client::WebsocketConfig;
+
+    #[test]
+    fn bootstrap_response_fits_one_frame_without_raising_the_message_limit() {
+        let config = local_websocket_config();
+        let observed_response_bytes = 17_325_981;
+        assert!(observed_response_bytes > WebsocketConfig::CLIENT_DEFAULT.max_frame_size);
+        assert!(observed_response_bytes <= config.max_frame_size);
+        assert_eq!(config.max_frame_size, config.max_message_size);
+        assert_eq!(config.max_message_size, WebsocketConfig::CLIENT_DEFAULT.max_message_size);
+        assert_eq!(config.default_request_timeout, std::time::Duration::from_secs(600));
     }
 }

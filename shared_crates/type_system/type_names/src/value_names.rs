@@ -17,6 +17,8 @@ pub enum CoreValueTypeName {
     RequiredExecutionContext,
     MapBytesValueType,
     MapEnumValueType,
+    MapIntegerValueType,
+    MapStringValueType,
     MapValueArrayType,
     StringValueType,
     ValueBoolean,
@@ -38,6 +40,14 @@ impl CoreValueTypeName {
     }
 }
 
+/// Canonical key of a concrete value type descriptor: `<TypeName>.<FamilyName>`.
+///
+/// Concrete value types are keyed by their own type name and the abstract
+/// value family they extend, such as `MapStringValueType.StringValueType`.
+pub fn value_type_descriptor_key(type_name: &MapString, family: &CoreValueTypeName) -> MapString {
+    MapString(format!("{type_name}.{}", family.as_value_name()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,6 +65,14 @@ mod tests {
         assert_eq!(
             MapString("MapEnumValueType".to_string()),
             CoreValueTypeName::MapEnumValueType.as_value_name()
+        );
+        assert_eq!(
+            MapString("MapIntegerValueType".to_string()),
+            CoreValueTypeName::MapIntegerValueType.as_value_name()
+        );
+        assert_eq!(
+            MapString("MapStringValueType".to_string()),
+            CoreValueTypeName::MapStringValueType.as_value_name()
         );
         assert_eq!(
             MapString("MapValueArrayType".to_string()),
@@ -103,6 +121,17 @@ mod tests {
         assert_eq!(
             MapString("ValueArrayString".to_string()),
             CoreValueTypeName::ValueArrayString.as_value_name()
+        );
+    }
+
+    #[test]
+    fn value_type_descriptor_key_joins_the_type_and_its_family() {
+        assert_eq!(
+            value_type_descriptor_key(
+                &CoreValueTypeName::MapStringValueType.as_value_name(),
+                &CoreValueTypeName::StringValueType
+            ),
+            MapString("MapStringValueType.StringValueType".to_string())
         );
     }
 }

@@ -5,9 +5,9 @@ use super::persisted_read_support::{
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
-    DanceDescriptor, DeclaredRelationshipDescriptor, HolonDescriptor, OperatorCategory,
-    OperatorDescriptor, PropertyDescriptor, RelationshipDescriptor, ValueArrayDescriptor,
-    ValueDescriptor,
+    CaseMatching, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor,
+    OperandValueTypeRule, OperatorCategory, OperatorDescriptor, OperatorKind, PropertyDescriptor,
+    RelationshipDescriptor, ValueArrayDescriptor, ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
@@ -579,6 +579,67 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
             &BaseValue::IntegerValue(MapInteger(5)),
         )
         .expect("IntegerValueType LessThanOperator execution"));
+
+    // Operand specifications: Equals compares against the subject's own type;
+    // Contains takes one literal substring of fixed MapStringValueType.
+    let equals_specifications =
+        equals.operand_specifications().expect("EqualsOperator operand specifications");
+    assert_eq!(equals_specifications.len(), 1);
+    assert_eq!(
+        equals_specifications[0].rule().expect("EqualsOperator operand rule"),
+        OperandValueTypeRule::SameAsSubject
+    );
+
+    let contains =
+        OperatorDescriptor::from_holon(find_holon_by_key(&holons, "ContainsOperator.OperatorType"));
+    assert_eq!(contains.arity().expect("ContainsOperator arity"), 2);
+    assert_eq!(
+        contains.operator_category().expect("ContainsOperator operator_category"),
+        OperatorCategory::Matching
+    );
+    assert_eq!(
+        contains.kind().expect("ContainsOperator kind"),
+        OperatorKind::Contains(CaseMatching::UnicodeDefaultCaseFold)
+    );
+    let contains_specifications =
+        contains.operand_specifications().expect("ContainsOperator operand specifications");
+    assert_eq!(contains_specifications.len(), 1);
+    let substring = &contains_specifications[0];
+    assert_eq!(substring.role().expect("Substring role").0, "Substring");
+    assert_eq!(substring.rule().expect("Substring rule"), OperandValueTypeRule::FixedValueType);
+    assert_eq!(
+        substring
+            .operand_value_type()
+            .expect("Substring operand type read")
+            .expect("Substring operand type")
+            .holon(),
+        map_string.holon()
+    );
+
+    assert!(map_string
+        .supports_operator(&contains)
+        .expect("MapStringValueType inherits ContainsOperator"));
+    let resolved_contains =
+        contains.resolve_for_subject(&map_string).expect("ContainsOperator resolves on strings");
+    for (subject, literal, expected) in
+        [("Straße", "STRASSE", true), ("Graph Theory", "graph", true), ("Graph", "tree", false)]
+    {
+        assert_eq!(
+            resolved_contains
+                .invoke(
+                    &BaseValue::StringValue(MapString(subject.to_string())),
+                    &[BaseValue::StringValue(MapString(literal.to_string()))],
+                )
+                .expect("ContainsOperator execution"),
+            expected,
+            "{subject} contains {literal}"
+        );
+    }
+    assert!(matches!(
+        contains.resolve_for_subject(&integer),
+        Err(HolonError::UnsupportedOperator { operator, value_type, .. })
+            if operator == "ContainsOperator" && value_type == "IntegerValueType"
+    ));
 
     let boolean =
         ValueDescriptor::from_holon(find_holon_by_key(&holons, "BooleanValueType.ValueType"));

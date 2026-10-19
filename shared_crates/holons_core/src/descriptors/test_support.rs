@@ -370,3 +370,104 @@ pub(crate) fn stage_update_snapshot(
         Holon::Staged(StagedHolon::new_for_update_from_clone_model(model, source)?);
     Ok(staged)
 }
+
+/// Operator metadata for [`stage_operator`].
+pub(crate) struct OperatorFixture<'a> {
+    /// Descriptor TypeName; the descriptor is keyed `<type_name>.OperatorType`.
+    pub(crate) type_name: &'a str,
+    /// Stored `OperatorCategory` variant.
+    pub(crate) category: &'a str,
+    /// Stored `CaseMatching` variant, declared only when present.
+    pub(crate) case_matching: Option<&'a str>,
+    /// Fixed operand ValueType; `None` declares a `SameAsSubject` operand.
+    pub(crate) operand_type: Option<&'a HolonReference>,
+    /// Ancestor operator descriptor, for extension operators.
+    pub(crate) extends: Option<&'a HolonReference>,
+}
+
+/// Stages a binary operator descriptor with the metadata operator resolution reads:
+/// `Arity` 2, its category, an optional case-matching policy, and one staged
+/// operand specification. Staged holons cannot reference transient ones, so the
+/// specification and any operand ValueType must already be staged or saved.
+pub(crate) fn stage_operator(
+    context: &Arc<TransactionContext>,
+    fixture: OperatorFixture<'_>,
+) -> Result<HolonReference, HolonError> {
+    use base_types::{MapEnumValue, MapInteger};
+
+    let rule = if fixture.operand_type.is_some() { "FixedValueType" } else { "SameAsSubject" };
+    let mut specification =
+        new_test_holon(context, &format!("{}Operand.OperandSpecification", fixture.type_name))?;
+    specification
+        .with_property_value(CorePropertyTypeName::OperandRole, "Operand")?
+        .with_property_value(CorePropertyTypeName::DisplayName, "Operand")?
+        .with_property_value(
+            CorePropertyTypeName::OperandValueTypeRule,
+            MapEnumValue(MapString(rule.to_string())),
+        )?;
+    if let Some(operand_type) = fixture.operand_type {
+        specification.add_related_holons(
+            CoreRelationshipTypeName::OperandValueType,
+            vec![operand_type.clone()],
+        )?;
+    }
+    let specification: HolonReference = context.mutation().stage_new_holon(specification)?.into();
+
+    let mut operator = new_descriptor_holon(
+        context,
+        &format!("{}.OperatorType", fixture.type_name),
+        fixture.type_name,
+        "Operator",
+    )?;
+    operator.with_property_value(CorePropertyTypeName::Arity, MapInteger(2))?.with_property_value(
+        CorePropertyTypeName::OperatorCategory,
+        MapEnumValue(MapString(fixture.category.to_string())),
+    )?;
+    if let Some(case_matching) = fixture.case_matching {
+        operator.with_property_value(
+            CorePropertyTypeName::CaseMatching,
+            MapEnumValue(MapString(case_matching.to_string())),
+        )?;
+    }
+    operator
+        .add_related_holons(CoreRelationshipTypeName::OperandSpecifications, vec![specification])?;
+    if let Some(parent) = fixture.extends {
+        operator.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone()])?;
+    }
+    Ok(context.mutation().stage_new_holon(operator)?.into())
+}
+
+/// Returns the canonical core operator descriptor, staging it on first use.
+///
+/// Equals and LessThan take a `SameAsSubject` operand. Contains takes a fixed
+/// `substring_type` operand and declares `UnicodeDefaultCaseFold`.
+pub(crate) fn core_operator(
+    context: &Arc<TransactionContext>,
+    operator: type_names::CoreOperatorTypeName,
+    substring_type: Option<&HolonReference>,
+) -> Result<HolonReference, HolonError> {
+    use type_names::CoreOperatorTypeName::*;
+
+    let type_name = operator.as_operator_name().0;
+    let key = MapString(format!("{type_name}.OperatorType"));
+    match context.lookup().get_staged_holon_by_base_key(&key) {
+        Ok(existing) => return Ok(existing.into()),
+        Err(HolonError::HolonNotFound(_)) => {}
+        Err(error) => return Err(error),
+    }
+    let (category, case_matching, operand_type) = match operator {
+        EqualsOperator => ("Equality", None, None),
+        LessThanOperator => ("Ordering", None, None),
+        ContainsOperator => ("Matching", Some("UnicodeDefaultCaseFold"), substring_type),
+    };
+    stage_operator(
+        context,
+        OperatorFixture {
+            type_name: &type_name.0,
+            category,
+            case_matching,
+            operand_type,
+            extends: None,
+        },
+    )
+}

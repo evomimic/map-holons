@@ -1,3 +1,5 @@
+import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
+import { withSelectedTitle } from '../../../test-fixtures/selected-title';
 import { semanticWork } from './semantic-work';
 import { destinationPaint } from './destination-paint';
 import { readFile } from 'node:fs/promises';
@@ -14,6 +16,7 @@ vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) 
 const tableSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/table-collection.js'), 'utf8');
 const valueSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/scalar-value.js'), 'utf8');
 const nodeSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/holon-inspector.js'), 'utf8');
+const loaderNodeSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/load-holons-inspector.js'), 'utf8');
 const importer = (source: string) => import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const wait = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 const property = (name: string, kind = 'StringValue', array = false) => ({ propertyName: async () => name, displayName: async () => `${name} heading`, valueKind: async () => kind, isArray: async () => array });
@@ -106,9 +109,30 @@ describe('selected collection activation', () => {
     updates.at(-1)!.retry!(); await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
   });
 
+  it.each(['generic', 'loader'])('%s reopens the retained active collection after Properties without retrieval, selection or materialization', async kind => {
+    const f = fixture(); const module = await importer(kind === 'generic' ? nodeSource : loaderNodeSource);
+    const node: any = document.createElement(defineCustomElementOnce('test-reopen-collection', withSelectedTitle(module.default)));
+    node.setContext({ collectionActivation: f.activation, childVisualizers: new Map([['properties', document.createElement('input')]]), nodeAffordances: { collections: [tab('Available Schemas')] } });
+    document.body.append(node);
+    applyNodePresentation(node, { width: 800, height: 640, presentation: 'inspect' });
+    const tabControl = node.querySelector('[role=tab]'); tabControl.click();
+    const viewer = node.collectionViewer;
+    await vi.waitFor(() => expect(viewer.querySelector('table')).not.toBeNull());
+    const table = viewer.firstElementChild; viewer.scrollTop = 71;
+    const allocation = node.getNodeInspectorAllocation();
+    const counts = [f.owner.describedRelatedHolons.mock.calls.length, f.transaction.selectCollectionVisualizer.mock.calls.length, f.materialize.mock.calls.length];
+    for (let cycle = 0; cycle < 3; cycle++) {
+      node.propertiesToggle.click(); expect(node.dataset.inspectorMode).toBe('properties');
+      tabControl.click(); expect(node.dataset.inspectorMode).toBe('collection');
+      expect(viewer.firstElementChild).toBe(table); expect(viewer.scrollTop).toBe(71);
+      expect(node.getNodeInspectorAllocation()).toEqual(allocation);
+    }
+    expect([f.owner.describedRelatedHolons.mock.calls.length, f.transaction.selectCollectionVisualizer.mock.calls.length, f.materialize.mock.calls.length]).toEqual(counts);
+  });
+
   it('mounts beneath the original Node without replacing Properties and keeps arrays disabled', async () => {
     const f = fixture(); const module = await importer(nodeSource);
-    const node = document.createElement(defineCustomElementOnce('test-collection-node', module.default)) as HTMLElement & { setContext(context: unknown): void };
+    const node = document.createElement(defineCustomElementOnce('test-collection-node', withSelectedTitle(module.default))) as HTMLElement & { setContext(context: unknown): void };
     const properties = document.createElement('input'); properties.value = 'retained';
     node.setContext({ collectionActivation: f.activation, childVisualizers: new Map([['properties', properties]]), nodeAffordances: { collections: [tab('A'), tab('B'), { kind: 'property', label: 'Array' }] } });
     document.body.append(node);
@@ -133,7 +157,7 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
   f.owner.describedRelatedHolons.mockResolvedValue(data);
   const nodeModule = await importer(nodeSource);
   const pathModule = await importer(await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/path-inspector.js'), 'utf8'));
-  const node = document.createElement(defineCustomElementOnce('test-interactive-node', nodeModule.default)) as HTMLElement & { setContext(context: unknown): void };
+  const node = document.createElement(defineCustomElementOnce('test-interactive-node', withSelectedTitle(nodeModule.default))) as HTMLElement & { setContext(context: unknown): void };
   const path = document.createElement(defineCustomElementOnce('test-interactive-path', pathModule.default)) as HTMLElement & { setContext(context: unknown): void };
   const inspect = vi.fn();
   node.setContext({ collectionActivation: f.activation, childVisualizers: new Map([['properties', document.createElement('section')]]), nodeAffordances: { collections: [tab('A'), tab('B')] } });

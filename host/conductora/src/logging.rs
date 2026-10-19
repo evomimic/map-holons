@@ -55,11 +55,12 @@ use tracing_subscriber::EnvFilter;
 
 /// Host-side application crates owned by this project.
 const HOST_CRATES: &[&str] = &[
-    "conductora_lib",     // Tauri application logic (setup, commands, config)
-    "holons_client",      // Client-side holons state management
-    "holons_receptor",    // Receptor trait implementations
-    "holochain_receptor", // Holochain-specific receptor
-    "holons_recovery",    // SQLite transaction recovery store
+    "conductora_lib",         // Tauri application logic (setup, commands, config)
+    "tauri_plugin_holochain", // Plugin startup and setup failures
+    "holons_client",          // Client-side holons state management
+    "holons_receptor",        // Receptor trait implementations
+    "holochain_receptor",     // Holochain-specific receptor
+    "holons_recovery",        // SQLite transaction recovery store
 ];
 
 /// Tracing targets injected by holochain when a zome calls `hdk::tracing!`.
@@ -219,5 +220,20 @@ fn expand_host_shorthands(input: &str) -> String {
 fn push_holochain_noise_filter(parts: &mut Vec<String>) {
     for (krate, level) in HOLOCHAIN_NOISY_CRATES {
         parts.push(format!("{krate}={level}"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tracing_subscriber::prelude::*;
+
+    #[test]
+    fn startup_failure_logs_are_enabled_by_host_warn() {
+        let subscriber = tracing_subscriber::registry()
+            .with(EnvFilter::new(expand_host_shorthands("host:warn")));
+        tracing::subscriber::with_default(subscriber, || {
+            assert!(tracing::enabled!(target: "tauri_plugin_holochain", tracing::Level::ERROR));
+        });
     }
 }

@@ -56,6 +56,7 @@ fn required_text(reference: &HolonReference, name: &str) -> Result<String, Holon
 struct AssessmentContext {
     accepted: Vec<HolonReference>,
     tokens: Vec<HolonReference>,
+    slot: HolonReference,
     start: HolonReference,
 }
 
@@ -80,7 +81,8 @@ fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, Ho
         VisualizerKind::Value => {
             PropertyDescriptor::from_holon(request.subject.clone()).value_type()?.holon().clone()
         }
-        VisualizerKind::Node
+        VisualizerKind::TitleBar
+        | VisualizerKind::Node
         | VisualizerKind::PropertyMap
         | VisualizerKind::ActionBar
         | VisualizerKind::RootedNavigation
@@ -91,7 +93,7 @@ fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, Ho
             ))
         }
     };
-    Ok(AssessmentContext { accepted, tokens, start })
+    Ok(AssessmentContext { accepted, tokens, start, slot: request.slot.clone() })
 }
 
 fn assess(
@@ -107,7 +109,7 @@ fn assess(
             break;
         }
     }
-    if !compatible {
+    if !compatible || !crate::operators::fulfills_operators(&facts.slot, candidate)? {
         return Ok(VisualizerAssessment::IncompatibleSlot);
     }
     if members(candidate, "ConsumesDesignToken")?.iter().any(|token| !facts.tokens.contains(token))

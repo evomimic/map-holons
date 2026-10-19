@@ -18,20 +18,24 @@ pub mod inverse_relationship_descriptor;
 pub mod inverse_resolution;
 pub mod key_rule_descriptor;
 mod kind_semantics;
+pub mod operand_specification;
 pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
+pub mod resolved_operator;
 #[cfg(test)]
 mod schema_contract_tests;
 mod schema_ownership;
 #[cfg(test)]
 mod semantic_products_tests;
+pub mod string_matching;
 mod structural_diagnosis;
 #[cfg(test)]
 pub(crate) mod test_support;
 pub mod transaction_descriptor;
 pub mod type_header;
+pub mod type_membership;
 mod universal_descriptor_contract;
 pub mod value_descriptor;
 pub mod value_descriptor_subtypes;
@@ -62,21 +66,27 @@ pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;
 pub use key_rule_descriptor::KeyRuleDescriptor;
 pub use kind_semantics::{DescribingCompatibility, DescriptorKindRoots, KindResolutionError};
+pub use operand_specification::{OperandSpecification, OperandValueTypeRule};
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::{EffectiveValue, PropertyDescriptor};
 pub use relationship_descriptor::{EffectiveCardinality, RelationshipDescriptor, TargetBinding};
+pub use resolved_operator::{OperatorKind, ResolvedOperator};
 pub use schema_ownership::{
     resolve_schema_ownership, resolve_schema_ownership_with_reader, schema_components,
     schema_components_with_reader, schema_dependencies, schema_dependencies_with_reader,
     schema_rules, schema_rules_with_reader, SchemaOwnershipKind, SchemaOwnershipResolution,
 };
+pub use string_matching::CaseMatching;
 pub use structural_diagnosis::{
     resolve_describing_type, resolve_describing_type_with_reader, DescribingTypeResolution,
     ExtendsLineageDefect, ExtendsLineageDiagnosis, StructuralPrerequisites, ValidExtendsLineage,
 };
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
+pub use type_membership::{
+    classify_descriptor_lineage, classify_holon_type, has_type, require_holon_type,
+};
 pub use universal_descriptor_contract::UniversalDescriptorContract;
 pub use value_descriptor::{ValueDescriptor, ValueDescriptorKind};
 pub use value_descriptor_subtypes::{

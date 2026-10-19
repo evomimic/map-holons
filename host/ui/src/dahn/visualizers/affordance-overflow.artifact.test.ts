@@ -1,3 +1,4 @@
+import { withSelectedTitle } from '../../../test-fixtures/selected-title';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
@@ -20,23 +21,19 @@ const measure = (element: Element, width: number, height = 30) => {
 async function artifact(name: string) {
   const source = await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8');
   const module = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
-  return document.createElement(defineCustomElementOnce(`test-overflow-${name}`, module.default)) as HTMLElement & { setContext(context: unknown): void };
+  return document.createElement(defineCustomElementOnce(`test-overflow-${name}`, withSelectedTitle(module.default))) as HTMLElement & { setContext(context: unknown): void };
 }
-it('reports ActionGroup ownership and its actual selected Action children through overflow movement', async () => {
+it('keeps Action components grouped through overflow without selected child inspection targets', async () => {
   const element = await artifact('actions') as any;
-  const child = document.createElement('button'); child.textContent = 'Run';
-  element.setContext({ actions: [{ kind: 'group', label: 'Tools', children: [{ id: 'run', label: 'Run' }] }], childVisualizers: new Map([['run', child]]) });
+  element.visualizerOperations['PresentActions.VisualizerOperator']({ actions: [{ id: 'tools', kind: 'group', label: 'Tools', children: [{ id: 'run', kind: 'action', label: 'Run', available: true, activate: vi.fn() }] }] });
   document.body.append(element);
-  const group = element.getVisualizerComposition()[0];
-  expect(group.label).toBe('Tools'); expect(group.element.getAttribute('role')).toBe('group');
-  expect(group.children).toEqual([{ label: 'Run', element: child }]);
+  const group = element.querySelector('[role="group"]'), child = element.querySelector('[data-action-id="run"]');
+  expect(element.getVisualizerComposition()).toEqual([]);
   const row = element.querySelector('[data-overflow-row]');
   Object.defineProperty(row, 'clientWidth', { get: () => 50 });
-  measure(group.element, 200); measure(row.querySelector('[data-overflow-more]'), 100);
+  measure(group, 200); measure(row.querySelector('[data-overflow-more]'), 100);
   flush(); row.querySelector('[data-overflow-more]').click();
-  expect(group.element.isConnected).toBe(true);
-  expect(group.element.contains(child)).toBe(true);
-  expect(element.getVisualizerComposition()[0]).toBe(group);
+  expect(group.isConnected).toBe(true); expect(group.contains(child)).toBe(true);
 });
 it.each(['actions', 'holon-inspector'])('keeps %s horizontal controls in one row and exposes only spillovers in the disclosure', async name => {
   const element = await artifact(name);
@@ -45,8 +42,9 @@ it.each(['actions', 'holon-inspector'])('keeps %s horizontal controls in one row
     const button = document.createElement('button'); button.textContent = item.label; button.disabled = true;
     return [item.id, button] as const;
   }));
-  element.setContext({ actions: items, childVisualizers, nodeAffordances: { collections: items } });
-  const row = element.querySelector<HTMLElement>('[data-overflow-row]')!;
+  if (name === 'actions') (element as any).visualizerOperations['PresentActions.VisualizerOperator']({ actions: items.map(item => ({ ...item, kind: 'action', available: false, reason: 'Unavailable', activate: vi.fn() })) });
+  else element.setContext({ actions: items, childVisualizers, nodeAffordances: { collections: items } });
+  const row = element.querySelector<HTMLElement>(name === 'actions' ? '[data-overflow-row]' : '[data-holon-inspector-collections-slot] [data-overflow-row]')!;
   const more = row.querySelector<HTMLButtonElement>('[data-overflow-more]')!;
   const buttons = [...row.querySelectorAll<HTMLButtonElement>('button:disabled')];
   row.style.gap = '10px';
@@ -60,7 +58,7 @@ it.each(['actions', 'holon-inspector'])('keeps %s horizontal controls in one row
   expect(buttons.map(button => button.style.visibility)).toEqual(['visible', 'hidden', 'hidden']);
   expect(row.style.flexWrap).toBe('nowrap');
   more.click();
-  const popup = element.querySelector<HTMLElement>('[data-overflow-popup]')!;
+  const popup = (name === 'actions' ? element : element.querySelector('[data-holon-inspector-collections-slot]')!).querySelector<HTMLElement>('[data-overflow-popup]')!;
   expect(popup.hidden).toBe(false);
   expect([...popup.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Two', 'Three']);
   expect([...popup.querySelectorAll('button')].every(button => button.disabled)).toBe(true);
@@ -106,7 +104,7 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   const activate = vi.fn((_item, _slot, publish) => publish({ state: 'loading' })); const dispose = vi.fn();
   const tabs = ['One', 'Two', 'Three'].map(label => ({ kind: 'relationship', label, relationship: { direction: 'declared' } }));
   node.setContext({ collectionActivation: { activate, dispose }, nodeAffordances: { collections: tabs } });
-  const row = node.querySelector<HTMLElement>('[data-overflow-row]')!;
+  const row = node.querySelector<HTMLElement>('[data-holon-inspector-collections-slot] [data-overflow-row]')!;
   let width = 200;
   Object.defineProperty(row, 'clientWidth', { get: () => width }); row.style.gap = '10px';
   const controls = [...row.querySelectorAll<HTMLButtonElement>('[role=tab]')];
@@ -114,7 +112,7 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   controls.forEach(control => measure(control, 80)); measure(more, 100);
   document.body.append(node); flush();
   more.click();
-  const popup = node.querySelector<HTMLElement>('[data-overflow-popup]')!;
+  const popup = node.querySelector<HTMLElement>('[data-holon-inspector-collections-slot] [data-overflow-popup]')!;
   const entry = popup.querySelector<HTMLButtonElement>('button')!;
   expect(entry.disabled).toBe(false); expect(entry.tabIndex).toBe(0);
   entry.click();
@@ -171,16 +169,17 @@ it('keeps live enabled action handlers and groups in overflow without loader-spe
   const invoke = vi.fn();
   const make = (label: string) => { const button = document.createElement('button'); button.textContent = label; button.addEventListener('click', invoke); measure(button, 80); return button; };
   const first = make('First test action'), second = make('Second test action');
-  bar.setContext({ actions: [{ kind: 'group', label: 'Test group', children: [{ id: 'first' }, { id: 'second' }] }], childVisualizers: new Map([['first', first], ['second', second]]) });
+  (bar as any).visualizerOperations['PresentActions.VisualizerOperator']({ actions: [{ id: 'group', kind: 'group', label: 'Test group', children: ['first', 'second'].map(id => ({ id, kind: 'action', label: id, available: true, activate: invoke })) }] });
+  const firstControl = bar.querySelector<HTMLElement>('[data-action-id="first"]')!, secondControl = bar.querySelector<HTMLElement>('[data-action-id="second"]')!;
   const group = bar.querySelector<HTMLElement>('[role=group]')!; measure(group, 170);
   const row = bar.querySelector<HTMLElement>('[data-overflow-row]')!;
   Object.defineProperty(row, 'clientWidth', { get: () => 100 });
   const more = bar.querySelector<HTMLButtonElement>('[data-overflow-more]')!; measure(more, 80);
   document.body.append(bar); flush(); more.click();
   expect(bar.querySelector('[data-overflow-popup]')!.contains(group)).toBe(true);
-  expect(group.contains(first)).toBe(true); expect(group.contains(second)).toBe(true);
-  second.click(); expect(invoke).toHaveBeenCalledOnce();
+  expect(group.contains(firstControl)).toBe(true); expect(group.contains(secondControl)).toBe(true);
+  secondControl.click(); expect(invoke).toHaveBeenCalledOnce();
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
   expect(row.contains(group)).toBe(true);
-  first.click(); expect(invoke).toHaveBeenCalledTimes(2);
+  firstControl.click(); expect(invoke).toHaveBeenCalledTimes(2);
 });

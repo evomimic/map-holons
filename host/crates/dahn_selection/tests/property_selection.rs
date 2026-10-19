@@ -774,3 +774,69 @@ fn structure_discovery_reports_actual_lineage_exhaustion_without_node_requiremen
     assert_eq!(discovery.stop_reason, map_commands_contract::DiscoveryStopReason::LineageExhausted);
     assert_eq!(discovery.ancestry[0], Graph::reference(&context, 2));
 }
+
+#[test]
+fn required_operators_filter_candidates_before_selection_and_explicit_choice() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    graph.edge(2, "HasApplicableVisualizer", &[22]);
+    graph.edge(30, "RequiresOperator", &[80, 81]);
+    graph.edge(80, "InputType", &[82]);
+    graph.edge(80, "ResultType", &[83]);
+    graph.edge(81, "InputType", &[82]);
+    graph.edge(81, "ResultType", &[83]);
+    graph.edge(20, "OffersOperator", &[80]);
+    graph.edge(22, "OffersOperator", &[81, 80]);
+    let context = candidate_context(graph);
+    let request = candidate_request(&context);
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, request.clone()).unwrap().selected,
+        Graph::reference(&context, 22)
+    );
+    assert!(dahn_selection::choose_visualizer(
+        &context,
+        request.clone(),
+        Graph::reference(&context, 20)
+    )
+    .is_err());
+    assert!(dahn_selection::choose_visualizer(&context, request, Graph::reference(&context, 22))
+        .is_ok());
+}
+
+#[test]
+fn malformed_operator_contract_is_an_evaluation_error() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    graph.edge(30, "RequiresOperator", &[80]);
+    graph.edge(20, "OffersOperator", &[80]);
+    graph.edge(80, "InputType", &[82]);
+    assert!(slot_select(graph, 30, Some(40)).is_err());
+}
+
+#[test]
+fn title_selection_preserves_subject_owner_theme_and_discovers_ancestor_alternative() {
+    let mut graph = slot_graph();
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(2, "HasApplicableVisualizer", &[20]);
+    graph.edge(3, "HasApplicableVisualizer", &[22]);
+    graph.edge(30, "RequiresOperator", &[80]);
+    graph.edge(80, "InputType", &[82]);
+    graph.edge(80, "ResultType", &[83]);
+    graph.edge(20, "OffersOperator", &[80]);
+    graph.edge(22, "OffersOperator", &[80]);
+    let context = candidate_context(graph);
+    let mut request = candidate_request(&context);
+    request.requested_kind = VisualizerKind::TitleBar;
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, request.clone()).unwrap().selected,
+        Graph::reference(&context, 20)
+    );
+    let discovery = dahn_selection::discover_visualizers(&context, request.clone(), None).unwrap();
+    assert_eq!(discovery.candidates.len(), 2);
+    assert_eq!(
+        dahn_selection::choose_visualizer(&context, request, Graph::reference(&context, 22))
+            .unwrap()
+            .selected,
+        Graph::reference(&context, 22)
+    );
+}

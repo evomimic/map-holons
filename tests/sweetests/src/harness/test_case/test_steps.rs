@@ -189,12 +189,21 @@ pub enum QueryRoute {
 pub enum QueryInputSpec {
     /// No `Input` / `InitialInput` at all (a source root such as `SeedHolons`).
     None,
-    /// An explicit `HolonCollection` holon whose members are these fixture references.
-    Collection(Vec<TestReference>),
+    /// An explicit `HolonCollection` holon declaring `element_type` — a canonical
+    /// holon type name such as `Book`, resolved through its `<Name>.HolonType`
+    /// key — whose members are these fixture references.
+    Collection { element_type: String, members: Vec<TestReference> },
     /// One source holon through the direct single-holon convenience, which
     /// normalizes it into a transient singleton collection inside QueryCore.
     /// Direct route only: the Dance contract stays collection-shaped.
     SingleHolon(TestReference),
+}
+
+impl QueryInputSpec {
+    /// An explicit collection declaring the canonical holon type `element_type`.
+    pub fn collection(element_type: &str, members: Vec<TestReference>) -> Self {
+        Self::Collection { element_type: element_type.to_string(), members }
+    }
 }
 
 /// What an `ExecuteQuery` step asserts after the run.

@@ -4,7 +4,7 @@ schema "MAP DAHN Schema-v0.1.0" {
   depends_on "MAP Design Tokens Schema-v0.1.0"
   depends_on "MAP Meta Design System Schema-v0.1.0"
   header {
-    description: "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Capability taxonomies, compatibility/release contracts, Visualizer Commons stewardship, and dynamic acquisition are deliberately deferred."
+    description: "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Required/offered local Visualizer Operators govern composition compatibility. Visualizer Commons stewardship and dynamic acquisition remain deferred."
   }
 }
 
@@ -94,7 +94,9 @@ abstract holon Visualizer.HolonType {
       (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType),
       (Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor),
       (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType),
-      (Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)
+      (Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType),
+      (Visualizer.HolonType)-[OffersOperator]->(VisualizerOperator.HolonType),
+      (Visualizer.HolonType)-[AdditionalNodeActions]->(MetaPresentationAction.MetaHolonType)
     ]
   }
 }
@@ -209,81 +211,14 @@ instance HolonInspector.NodeVisualizer {
       SlotPadding.DesignToken,
     ]
     ApplicableToType -> HolonType.TypeDescriptor
-    HasSlot -> [HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot]
+    OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
+    HasSlot -> [HolonInspector.TitleBarSlot, HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.VisualizerControlsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot, LoadHolons.DiagnosticsSlot, LoadHolons.CommittedHolonsSlot]
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
   }
 }
 
 // A nearer HolonSpace alternative preserves the existing automatic specificity policy.
 // Interactive discovery still offers the generic Holon Inspector from its ancestor.
-instance ConnectionsFirstInspector.NodeVisualizer {
-  type NodeVisualizer.HolonType
-  DisplayName "Connections First Inspector"
-  VisualizerDescription "Places single connections above the detail fields in an expanded card. Keeps the action bar and related collection tabs, with the same compression and navigation controls."
-  relationships {
-    ConsumesDesignToken -> [
-      RelationshipNavigationSurfaceBackground.DesignToken,
-      RelationshipNavigationTextColor.DesignToken,
-      ActionCornerRadius.DesignToken,
-      ActionHoverSurfaceBackground.DesignToken,
-      ActionPaddingBlock.DesignToken,
-      ActionPaddingInline.DesignToken,
-      ActionSurfaceBackground.DesignToken,
-      ActionTextColor.DesignToken,
-      CanvasGap.DesignToken,
-      CanvasHeadingFontWeight.DesignToken,
-      CanvasSurfaceBackground.DesignToken,
-      CanvasTextColor.DesignToken,
-      ControlGap.DesignToken,
-      FocusRingColor.DesignToken,
-      FocusRingWidth.DesignToken,
-      InspectorRailWidth.DesignToken,
-      NodeHeadingFontSize.DesignToken,
-      PanelCornerRadius.DesignToken,
-      PanelSurfaceBackground.DesignToken,
-      SlotBorderColor.DesignToken,
-      SlotBorderStyle.DesignToken,
-      SlotBorderWidth.DesignToken,
-      SlotPadding.DesignToken,
-    ]
-    ApplicableToType -> HolonSpace.HolonType
-    HasSlot -> [ConnectionsFirstInspector.PropertyMapSlot, ConnectionsFirstInspector.ActionsSlot, ConnectionsFirstInspector.CollectionsSlot, ConnectionsFirstInspector.SingleValueSlot]
-    ImplementedBy -> ConnectionsFirstInspectorTypeScript.VisualizerImplementation
-  }
-}
-
-instance ConnectionsFirstInspector.PropertyMapSlot {
-  type VisualizerSlot.HolonType
-  VisualizerSlotDescription "Show the details recorded for this item."
-  relationships {
-    AcceptsVisualizerType -> PropertyMapVisualizer.HolonType
-  }
-}
-
-instance ConnectionsFirstInspector.ActionsSlot {
-  type VisualizerSlot.HolonType
-  VisualizerSlotDescription "Show the actions available for this item and provide access to them."
-  relationships {
-    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
-  }
-}
-
-instance ConnectionsFirstInspector.CollectionsSlot {
-  type VisualizerSlot.HolonType
-  VisualizerSlotDescription "Present a group of related items so you can examine its members and open an item."
-  relationships {
-    AcceptsVisualizerType -> CollectionVisualizer.HolonType
-  }
-}
-
-instance ConnectionsFirstInspector.SingleValueSlot {
-  type VisualizerSlot.HolonType
-  VisualizerSlotDescription "Inspect the item reached through a connection that has a single destination."
-  relationships {
-    AcceptsVisualizerType -> NodeVisualizer.HolonType
-  }
-}
-
 instance HolonInspector.PropertyMapSlot {
   type VisualizerSlot.HolonType
   VisualizerSlotDescription "Show the details recorded for this item."
@@ -297,6 +232,17 @@ instance HolonInspector.ActionsSlot {
   VisualizerSlotDescription "Show the actions available for this item and provide access to them."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+    RequiresOperator -> PresentActions.VisualizerOperator
+  }
+}
+
+instance HolonInspector.VisualizerControlsSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Present the centrally declared Visualizer controls within the title band."
+  relationships {
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+    RequiresOperator -> PresentActions.VisualizerOperator
+    UsesNodeActionsContract -> NodeActions.Contract
   }
 }
 
@@ -313,6 +259,7 @@ instance HolonInspector.SingleValueSlot {
   VisualizerSlotDescription "Inspect the item reached through a connection that has a single destination."
   relationships {
     AcceptsVisualizerType -> NodeVisualizer.HolonType
+    RequiresOperator -> ApplyNodePresentationV2.VisualizerOperator
   }
 }
 
@@ -322,6 +269,7 @@ instance GenericActions.ActionBarVisualizer {
   VisualizerDescription "Arranges actions as buttons in a horizontal bar. Actions that do not fit are collected in a More actions menu."
   relationships {
     ApplicableToType -> HolonType.TypeDescriptor
+    OffersOperator -> PresentActions.VisualizerOperator
     ConsumesDesignToken -> [
       ActionCornerRadius.DesignToken,
       ActionPaddingBlock.DesignToken,
@@ -336,7 +284,6 @@ instance GenericActions.ActionBarVisualizer {
       SlotBorderStyle.DesignToken,
       SlotBorderWidth.DesignToken,
     ]
-    HasSlot -> GenericActions.ActionSlot
     ImplementedBy -> GenericActionsTypeScript.VisualizerImplementation
   }
 }
@@ -345,7 +292,7 @@ instance GenericActionsTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.actions"
-  VisualizerArtifactDigest "sha256:6624e737368fc58f9f33a13168fc22f8bdb7ec557ec09b7146cf52c9891bca0f"
+  VisualizerArtifactDigest "sha256:1d24c08fa4ef0bd8a6331063c15901799580ef94e9a94f922d9c667b66533575"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -354,16 +301,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:ffbdaa107698143325a0ea9c48ba072e2ca467cba7b4f03c2b3241e97838091a"
-  VisualizerModuleFormat "ESModule"
-  Entrypoint "default"
-}
-
-instance ConnectionsFirstInspectorTypeScript.VisualizerImplementation {
-  type VisualizerImplementation.HolonType
-  VisualizerImplementationRuntime TypeScript
-  VisualizerImplementationKey "dahn.connections-first-inspector"
-  VisualizerArtifactDigest "sha256:860f4bc40b55e020d161b412a633859aa6cb8b35e3c8e9e6fd73b8de1084b51f"
+  VisualizerArtifactDigest "sha256:258f459b327a0dd1ec2f16fe1b21e61267cce3ddb03bd51e91f21ae33c2685c4"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -436,6 +374,7 @@ instance PathInspector.RootNodeSlot {
   VisualizerSlotDescription "Show an item’s details, provide access to its actions, and let you explore its connections."
   relationships {
     AcceptsVisualizerType -> NodeVisualizer.HolonType
+    RequiresOperator -> ApplyNodePresentationV2.VisualizerOperator
   }
 }
 
@@ -443,7 +382,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:5925afe38b1f9afd1195666cf0df18b583472355ff5dd7b0dee4efcb6f628004"
+  VisualizerArtifactDigest "sha256:30d563a96abf35995bbf332d524601692f68820355ba4a000585085b3973f227"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -649,14 +588,6 @@ holon ActionBarVisualizer.HolonType {
   }
 }
 
-instance GenericActions.ActionSlot {
-  type VisualizerSlot.HolonType
-  VisualizerSlotDescription "Identify an available action and provide a way to invoke it when supported."
-  relationships {
-    AcceptsVisualizerType -> ActionVisualizer.HolonType
-  }
-}
-
 instance UnsupportedAction.ActionVisualizer {
   type ActionVisualizer.HolonType
   DisplayName "Unsupported Action"
@@ -765,7 +696,7 @@ holon VisualizerSlot.HolonType {
   }
   relationships {
     InstanceProperties -> VisualizerSlotDescription.PropertyType
-    InstanceRelationships -> (VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)
+    InstanceRelationships -> [(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType), (VisualizerSlot.HolonType)-[RequiresOperator]->(VisualizerOperator.HolonType), (VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType)]
   }
 }
 
@@ -1212,7 +1143,8 @@ instance LoadHolons.NodeVisualizer {
   VisualizerDescription "Groups load-result details above tabbed result collections, with a side rail for related items. The title bar supports the same exploration and expansion controls as Holon Inspector."
   relationships {
     ApplicableToType -> HolonLoadResponse.DanceResponseType
-    HasSlot -> [LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.CollectionsSlot]
+    OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
+    HasSlot -> [LoadHolonsResult.TitleBarSlot, LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.VisualizerControlsSlot, LoadHolonsResult.CollectionsSlot]
     ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
   }
 }
@@ -1221,7 +1153,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:4130b0052bac015c8023c0320456b785b47f09a74f555e0753da4683c8ea950a"
+  VisualizerArtifactDigest "sha256:9e08c914cc775b9502d388dba30b9a54ca0006e7ab19b9d2173f84d4dd207941"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1239,6 +1171,17 @@ instance LoadHolonsResult.ActionsSlot {
   VisualizerSlotDescription "Provide access to the actions available for this load result."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+    RequiresOperator -> PresentActions.VisualizerOperator
+  }
+}
+
+instance LoadHolonsResult.VisualizerControlsSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Present the centrally declared Visualizer controls within the title band."
+  relationships {
+    AcceptsVisualizerType -> ActionBarVisualizer.HolonType
+    RequiresOperator -> PresentActions.VisualizerOperator
+    UsesNodeActionsContract -> NodeActions.Contract
   }
 }
 
@@ -2118,5 +2061,954 @@ inverse relationship (TypeDescriptor)-[EvidenceForDiscoveryDeclarations]->(Visua
     display_name: "EvidenceForDiscoveryDeclarations"
     display_plural: "EvidenceForDiscoveryDeclarations Records"
     plural: "EvidenceForDiscoveryDeclarationsRecords"
+  }
+}
+
+// Local composition contracts; Core Operator semantics remain separate.
+
+relationship (VisualizerSlot.HolonType)-[RequiresOperator]->(VisualizerOperator.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target VisualizerOperator.HolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> RequiredBySlot
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "RequiresOperator semantic declaration."
+    display_name: "RequiresOperator"
+    display_plural: "RequiresOperator records"
+    plural: "RequiresOperatorRecords"
+  }
+}
+
+inverse relationship (VisualizerOperator.HolonType)-[RequiredBySlot]->(VisualizerSlot.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerOperator.HolonType
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of RequiresOperator."
+    display_name: "RequiredBySlot"
+    display_plural: "RequiredBySlot records"
+    plural: "RequiredBySlotRecords"
+  }
+}
+
+relationship (Visualizer.HolonType)-[OffersOperator]->(VisualizerOperator.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target VisualizerOperator.HolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> OfferedByVisualizer
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "OffersOperator semantic declaration."
+    display_name: "OffersOperator"
+    display_plural: "OffersOperator records"
+    plural: "OffersOperatorRecords"
+  }
+}
+
+inverse relationship (VisualizerOperator.HolonType)-[OfferedByVisualizer]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerOperator.HolonType
+  target Visualizer.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of OffersOperator."
+    display_name: "OfferedByVisualizer"
+    display_plural: "OfferedByVisualizer records"
+    plural: "OfferedByVisualizerRecords"
+  }
+}
+
+relationship (VisualizerOperator.HolonType)-[InputType]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerOperator.HolonType
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> InputOfVisualizerOperator
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  header {
+    description: "InputType semantic declaration."
+    display_name: "InputType"
+    display_plural: "InputType records"
+    plural: "InputTypeRecords"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[InputOfVisualizerOperator]->(VisualizerOperator.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerOperator.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of InputType."
+    display_name: "InputOfVisualizerOperator"
+    display_plural: "InputOfVisualizerOperator records"
+    plural: "InputOfVisualizerOperatorRecords"
+  }
+}
+
+relationship (VisualizerOperator.HolonType)-[ResultType]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerOperator.HolonType
+  target TypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> ResultOfVisualizerOperator
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  header {
+    description: "ResultType semantic declaration."
+    display_name: "ResultType"
+    display_plural: "ResultType records"
+    plural: "ResultTypeRecords"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[ResultOfVisualizerOperator]->(VisualizerOperator.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerOperator.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of ResultType."
+    display_name: "ResultOfVisualizerOperator"
+    display_plural: "ResultOfVisualizerOperator records"
+    plural: "ResultOfVisualizerOperatorRecords"
+  }
+}
+
+relationship (NodeActionsContract.HolonType)-[StandardNodeActions]->(MetaHolonType.MetaTypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source NodeActionsContract.HolonType
+  target MetaHolonType.MetaTypeDescriptor
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> StandardActionOfNodeContract
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "StandardNodeActions semantic declaration."
+    display_name: "StandardNodeActions"
+    display_plural: "StandardNodeActions records"
+    plural: "StandardNodeActionsRecords"
+  }
+}
+
+inverse relationship (MetaHolonType.MetaTypeDescriptor)-[StandardActionOfNodeContract]->(NodeActionsContract.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source MetaHolonType.MetaTypeDescriptor
+  target NodeActionsContract.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of StandardNodeActions."
+    display_name: "StandardActionOfNodeContract"
+    display_plural: "StandardActionOfNodeContract records"
+    plural: "StandardActionOfNodeContractRecords"
+  }
+}
+
+relationship (VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target NodeActionsContract.HolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> ContractForNodeActionsSlot
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  header {
+    description: "UsesNodeActionsContract semantic declaration."
+    display_name: "UsesNodeActionsContract"
+    display_plural: "UsesNodeActionsContract records"
+    plural: "UsesNodeActionsContractRecords"
+  }
+}
+
+inverse relationship (NodeActionsContract.HolonType)-[ContractForNodeActionsSlot]->(VisualizerSlot.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source NodeActionsContract.HolonType
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of UsesNodeActionsContract."
+    display_name: "ContractForNodeActionsSlot"
+    display_plural: "ContractForNodeActionsSlot records"
+    plural: "ContractForNodeActionsSlotRecords"
+  }
+}
+
+relationship (Visualizer.HolonType)-[AdditionalNodeActions]->(MetaPresentationAction.MetaHolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target MetaPresentationAction.MetaHolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> AdditionalActionOfVisualizer
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "AdditionalNodeActions semantic declaration."
+    display_name: "AdditionalNodeActions"
+    display_plural: "AdditionalNodeActions records"
+    plural: "AdditionalNodeActionsRecords"
+  }
+}
+
+inverse relationship (MetaPresentationAction.MetaHolonType)-[AdditionalActionOfVisualizer]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source MetaPresentationAction.MetaHolonType
+  target Visualizer.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of AdditionalNodeActions."
+    display_name: "AdditionalActionOfVisualizer"
+    display_plural: "AdditionalActionOfVisualizer records"
+    plural: "AdditionalActionOfVisualizerRecords"
+  }
+}
+
+relationship (MetaPresentationAction.MetaHolonType)-[PresentationOperator]->(VisualizerOperator.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source MetaPresentationAction.MetaHolonType
+  target VisualizerOperator.HolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> OperatorForPresentationAction
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  header {
+    description: "PresentationOperator semantic declaration."
+    display_name: "PresentationOperator"
+    display_plural: "PresentationOperator records"
+    plural: "PresentationOperatorRecords"
+  }
+}
+
+inverse relationship (VisualizerOperator.HolonType)-[OperatorForPresentationAction]->(MetaPresentationAction.MetaHolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerOperator.HolonType
+  target MetaPresentationAction.MetaHolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of PresentationOperator."
+    display_name: "OperatorForPresentationAction"
+    display_plural: "OperatorForPresentationAction records"
+    plural: "OperatorForPresentationActionRecords"
+  }
+}
+
+relationship (NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source NodePresentationAssignment.HolonType
+  target NodePresentationRequest.HolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> RequestedByNodePresentation
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
+  header {
+    description: "RequestedPresentation semantic declaration."
+    display_name: "RequestedPresentation"
+    display_plural: "RequestedPresentation records"
+    plural: "RequestedPresentationRecords"
+  }
+}
+
+inverse relationship (NodePresentationRequest.HolonType)-[RequestedByNodePresentation]->(NodePresentationAssignment.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source NodePresentationRequest.HolonType
+  target NodePresentationAssignment.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of RequestedPresentation."
+    display_name: "RequestedByNodePresentation"
+    display_plural: "RequestedByNodePresentation records"
+    plural: "RequestedByNodePresentationRecords"
+  }
+}
+
+holon VisualizerOperator.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Fixed local callable contract identity. Offering it promises the complete described input domain, authority and behavior before selection; incompatible revisions use distinct identities."
+    display_name: "VisualizerOperator"
+    display_plural: "VisualizerOperator records"
+    plural: "VisualizerOperatorRecords"
+  }
+  relationships {
+    InstanceProperties -> [VisualizerDescription.PropertyType]
+    InstanceRelationships -> [(VisualizerOperator.HolonType)-[InputType]->(TypeDescriptor), (VisualizerOperator.HolonType)-[ResultType]->(TypeDescriptor)]
+  }
+}
+
+holon TitleBarVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "TitleBarVisualizer.HolonType"
+    display_name: "TitleBarVisualizer"
+    display_plural: "TitleBarVisualizer records"
+    plural: "TitleBarVisualizerRecords"
+  }
+}
+
+holon NodeActionsContract.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "NodeActionsContract.HolonType"
+    display_name: "NodeActionsContract"
+    display_plural: "NodeActionsContract records"
+    plural: "NodeActionsContractRecords"
+  }
+  relationships {
+    InstanceRelationships -> [(NodeActionsContract.HolonType)-[StandardNodeActions]->(MetaHolonType.MetaTypeDescriptor)]
+  }
+}
+
+holon PresentationAction.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "PresentationAction.HolonType"
+    display_name: "PresentationAction"
+    display_plural: "PresentationAction records"
+    plural: "PresentationActionRecords"
+  }
+  relationships {
+    InstanceProperties -> [DisplayName.PropertyType]
+    InstanceRelationships -> [(MetaPresentationAction.MetaHolonType)-[PresentationOperator]->(VisualizerOperator.HolonType)]
+  }
+}
+
+holon MetaPresentationAction.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "MetaPresentationAction.MetaHolonType"
+    display_name: "MetaPresentationAction"
+    display_plural: "MetaPresentationAction records"
+    plural: "MetaPresentationActionRecords"
+  }
+  relationships {
+    InstanceProperties -> ActionIcon.PropertyType
+    InstanceRelationships -> [(MetaPresentationAction.MetaHolonType)-[PresentationOperator]->(VisualizerOperator.HolonType)]
+  }
+}
+
+holon NodePresentationRequest.HolonType {
+  relationships {
+    InstanceProperties -> PresentationRequestIdentity.PropertyType
+  }
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "NodePresentationRequest.HolonType"
+    display_name: "NodePresentationRequest"
+    display_plural: "NodePresentationRequest records"
+    plural: "NodePresentationRequestRecords"
+  }
+}
+
+instance Inspect.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "inspect"
+}
+
+instance Relationship.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "relationship"
+}
+
+instance CollectionContext.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "collection-context"
+}
+
+instance Compact.NodePresentationRequest {
+  type NodePresentationRequest.HolonType
+  PresentationRequestIdentity "compact"
+}
+
+property PresentationWidth.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
+  header {
+    description: "PresentationWidth"
+    display_name: "PresentationWidth"
+    display_plural: "PresentationWidth records"
+    plural: "PresentationWidthRecords"
+  }
+}
+
+property PresentationHeight.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
+  header {
+    description: "PresentationHeight"
+    display_name: "PresentationHeight"
+    display_plural: "PresentationHeight records"
+    plural: "PresentationHeightRecords"
+  }
+}
+
+property PresentationRequiresRestore.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  header {
+    description: "PresentationRequiresRestore"
+    display_name: "PresentationRequiresRestore"
+    display_plural: "PresentationRequiresRestore records"
+    plural: "PresentationRequiresRestoreRecords"
+  }
+}
+
+holon NodePresentationAssignment.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Whole CSS pixel dimensions and an optional explicit presentation request. Omission preserves current presentation. Inspect resumes remembered Properties or Collection; Relationship and Compact preserve memory. Collection context permits local full-content switching. Identity and Restore remain available. No invocation holon is persisted for resize."
+    display_name: "NodePresentationAssignment"
+    display_plural: "NodePresentationAssignment records"
+    plural: "NodePresentationAssignmentRecords"
+  }
+  relationships {
+    InstanceProperties -> [PresentationWidth.PropertyType, PresentationHeight.PropertyType]
+    InstanceRelationships -> [(NodePresentationAssignment.HolonType)-[RequestedPresentation]->(NodePresentationRequest.HolonType)]
+  }
+}
+
+holon TitlePresentationInput.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Bounded title grant with unchanged subject identity and Restore access. The local adapter supplies identifying text and authorized state without persisting resize invocations."
+    display_name: "TitlePresentationInput"
+    display_plural: "TitlePresentationInput records"
+    plural: "TitlePresentationInputRecords"
+  }
+  relationships {
+    InstanceProperties -> [PresentationWidth.PropertyType, PresentationHeight.PropertyType, PresentationRequiresRestore.PropertyType, PresentationTitle.PropertyType, PresentationSubjectKey.PropertyType]
+  }
+}
+
+holon PresentationActionInput.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Occurrence-bound authority and explicit action availability, reason and invocation target; not a Dance input."
+    display_name: "PresentationActionInput"
+    display_plural: "PresentationActionInput records"
+    plural: "PresentationActionInputRecords"
+  }
+}
+
+holon PresentationResult.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Explicit applied, refused, unsupported or already-satisfied local result; browser paint is not implied."
+    display_name: "PresentationResult"
+    display_plural: "PresentationResult records"
+    plural: "PresentationResultRecords"
+  }
+}
+
+instance ApplyNodePresentationV2.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "ApplyNodePresentationV2: dimensions with optional explicit presentation request, independent of shared tracks. Incompatible with the retired capability-set input; participants promise the complete contract before selection."
+  relationships {
+    InputType -> NodePresentationAssignment.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+instance ApplyTitlePresentation.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "ApplyTitlePresentation: identity-bound local presentation contract; complete compliance is promised before selection."
+  relationships {
+    InputType -> TitlePresentationInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+holon ActionsPresentationInput.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Source-independent supplied Action tree: identities, labels, optional icons, availability/reasons and authorized activation bindings. Actions are components of the ActionBar; no per-Action Visualizer selection is required. Bindings remain local and presentation does not execute actions."
+    display_name: "Actions Presentation Input"
+    display_plural: "Actions Presentation Inputs"
+    plural: "ActionsPresentationInputs"
+  }
+}
+
+instance PresentActions.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "Present the parent-supplied Action set within its allocation, preserving activation bindings and accessible overflow regardless of action source. Presentation does not execute actions."
+  relationships {
+    InputType -> ActionsPresentationInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+instance ApplyPresentationAction.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "ApplyPresentationAction: identity-bound local presentation contract; complete compliance is promised before selection."
+  relationships {
+    InputType -> PresentationActionInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+instance ExploreOccurrence.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "ExploreOccurrence: identity-bound local presentation contract; complete compliance is promised before selection."
+  relationships {
+    InputType -> PresentationActionInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+instance CloseOccurrence.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "CloseOccurrence: identity-bound local presentation contract; complete compliance is promised before selection."
+  relationships {
+    InputType -> PresentationActionInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+instance ExpandRestoreOccurrence.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "ExpandRestoreOccurrence: identity-bound local presentation contract; complete compliance is promised before selection."
+  relationships {
+    InputType -> PresentationActionInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+instance InspectOccurrence.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "InspectOccurrence: identity-bound local presentation contract; complete compliance is promised before selection."
+  relationships {
+    InputType -> PresentationActionInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+holon ExplorePresentationAction.HolonType {
+  type MetaPresentationAction.MetaHolonType
+  extends HolonType.TypeDescriptor
+  ActionIcon "↗"
+  relationships {
+    PresentationOperator -> ExploreOccurrence.VisualizerOperator
+  }
+  header {
+    description: "Explore from here presentation affordance; the semantic subject remains the containing Node Holon."
+    display_name: "Explore from here"
+    display_plural: "ExplorePresentationAction records"
+    plural: "ExplorePresentationActionRecords"
+  }
+}
+
+holon ClosePresentationAction.HolonType {
+  type MetaPresentationAction.MetaHolonType
+  extends HolonType.TypeDescriptor
+  ActionIcon "×"
+  relationships {
+    PresentationOperator -> CloseOccurrence.VisualizerOperator
+  }
+  header {
+    description: "Close presentation affordance; the semantic subject remains the containing Node Holon."
+    display_name: "Close"
+    display_plural: "ClosePresentationAction records"
+    plural: "ClosePresentationActionRecords"
+  }
+}
+
+holon ExpandRestorePresentationAction.HolonType {
+  type MetaPresentationAction.MetaHolonType
+  extends HolonType.TypeDescriptor
+  ActionIcon "⤢"
+  relationships {
+    PresentationOperator -> ExpandRestoreOccurrence.VisualizerOperator
+  }
+  header {
+    description: "Expand / Restore presentation affordance; the semantic subject remains the containing Node Holon."
+    display_name: "Expand / Restore"
+    display_plural: "ExpandRestorePresentationAction records"
+    plural: "ExpandRestorePresentationActionRecords"
+  }
+}
+
+holon InspectPresentationAction.HolonType {
+  type MetaPresentationAction.MetaHolonType
+  extends HolonType.TypeDescriptor
+  ActionIcon "v"
+  relationships {
+    PresentationOperator -> InspectOccurrence.VisualizerOperator
+  }
+  header {
+    description: "Show Visualizer presentation affordance; the semantic subject remains the containing Node Holon."
+    display_name: "Show Visualizer"
+    display_plural: "InspectPresentationAction records"
+    plural: "InspectPresentationActionRecords"
+  }
+}
+
+instance NodeActions.Contract {
+  type NodeActionsContract.HolonType
+  relationships {
+    StandardNodeActions -> [ExplorePresentationAction.HolonType, ClosePresentationAction.HolonType, ExpandRestorePresentationAction.HolonType, InspectPresentationAction.HolonType]
+  }
+}
+
+instance HolonInspector.TitleBarSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Selected TitleBarSlot with independent inspection and bounded presentation."
+  relationships {
+    AcceptsVisualizerType -> TitleBarVisualizer.HolonType
+    RequiresOperator -> ApplyTitlePresentation.VisualizerOperator
+  }
+}
+
+instance LoadHolonsResult.TitleBarSlot {
+  type VisualizerSlot.HolonType
+  VisualizerSlotDescription "Selected TitleBarSlot with independent inspection and bounded presentation."
+  relationships {
+    AcceptsVisualizerType -> TitleBarVisualizer.HolonType
+    RequiresOperator -> ApplyTitlePresentation.VisualizerOperator
+  }
+}
+
+instance NodeTitleBar.TitleBarVisualizer {
+  type TitleBarVisualizer.HolonType
+  DisplayName "NodeTitleBar"
+  VisualizerDescription "Selected, bounded NodeTitleBar presentation with explicit local Operator bindings."
+  relationships {
+    ApplicableToType -> HolonType.TypeDescriptor
+    OffersOperator -> ApplyTitlePresentation.VisualizerOperator
+    ImplementedBy -> NodeTitleBarTypeScript.VisualizerImplementation
+  }
+}
+
+instance ExplorePresentation.ActionVisualizer {
+  type ActionVisualizer.HolonType
+  DisplayName "ExplorePresentation"
+  VisualizerDescription "Selected, bounded ExplorePresentation presentation with explicit local Operator bindings."
+  relationships {
+    ApplicableToType -> ExplorePresentationAction.HolonType
+    OffersOperator -> ApplyPresentationAction.VisualizerOperator
+    ImplementedBy -> ExplorePresentationTypeScript.VisualizerImplementation
+  }
+}
+
+instance ClosePresentation.ActionVisualizer {
+  type ActionVisualizer.HolonType
+  DisplayName "ClosePresentation"
+  VisualizerDescription "Selected, bounded ClosePresentation presentation with explicit local Operator bindings."
+  relationships {
+    ApplicableToType -> ClosePresentationAction.HolonType
+    OffersOperator -> ApplyPresentationAction.VisualizerOperator
+    ImplementedBy -> ClosePresentationTypeScript.VisualizerImplementation
+  }
+}
+
+instance ExpandRestorePresentation.ActionVisualizer {
+  type ActionVisualizer.HolonType
+  DisplayName "ExpandRestorePresentation"
+  VisualizerDescription "Selected, bounded ExpandRestorePresentation presentation with explicit local Operator bindings."
+  relationships {
+    ApplicableToType -> ExpandRestorePresentationAction.HolonType
+    OffersOperator -> ApplyPresentationAction.VisualizerOperator
+    ImplementedBy -> ExpandRestorePresentationTypeScript.VisualizerImplementation
+  }
+}
+
+instance InspectPresentation.ActionVisualizer {
+  type ActionVisualizer.HolonType
+  DisplayName "InspectPresentation"
+  VisualizerDescription "Selected, bounded InspectPresentation presentation with explicit local Operator bindings."
+  relationships {
+    ApplicableToType -> InspectPresentationAction.HolonType
+    OffersOperator -> ApplyPresentationAction.VisualizerOperator
+    ImplementedBy -> InspectPresentationTypeScript.VisualizerImplementation
+  }
+}
+
+instance NodeTitleBarTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.node-title-bar"
+  VisualizerArtifactDigest "sha256:4620177b4c08a8f02cefa3e3c40e58874f3d64829e9725712bcf0f20ac2db127"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance ExplorePresentationTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.presentation-action"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance ClosePresentationTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.presentation-action"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance ExpandRestorePresentationTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.presentation-action"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance InspectPresentationTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.presentation-action"
+  VisualizerArtifactDigest "sha256:a598b019ca019142d835ea21edec79b574ad141dbf6b2ca5a4ea9c5dc40f17f3"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+property PresentationRequestIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "PresentationRequestIdentity local presentation contract field."
+    display_name: "PresentationRequestIdentity"
+    display_plural: "PresentationRequestIdentity values"
+    plural: "PresentationRequestIdentityValues"
+  }
+}
+
+property PresentationTitle.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "PresentationTitle local presentation contract field."
+    display_name: "PresentationTitle"
+    display_plural: "PresentationTitle values"
+    plural: "PresentationTitleValues"
+  }
+}
+
+property PresentationSubjectKey.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "PresentationSubjectKey local presentation contract field."
+    display_name: "PresentationSubjectKey"
+    display_plural: "PresentationSubjectKey values"
+    plural: "PresentationSubjectKeyValues"
+  }
+}
+
+property ActionAvailabilityReason.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "ActionAvailabilityReason local presentation contract field."
+    display_name: "ActionAvailabilityReason"
+    display_plural: "ActionAvailabilityReason values"
+    plural: "ActionAvailabilityReasonValues"
+  }
+}
+
+property ActionLabel.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "ActionLabel local presentation contract field."
+    display_name: "ActionLabel"
+    display_plural: "ActionLabel values"
+    plural: "ActionLabelValues"
+  }
+}
+
+property ActionAvailable.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  header {
+    description: "ActionAvailable local presentation contract field."
+    display_name: "ActionAvailable"
+    display_plural: "ActionAvailable values"
+    plural: "ActionAvailableValues"
+  }
+}
+
+holon PresentationActionState.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Availability and authorized occurrence-bound target for a declared presentation Action."
+    display_name: "Presentation Action State"
+    display_plural: "Presentation Action States"
+    plural: "PresentationActionStates"
+  }
+  relationships {
+    InstanceProperties -> [ActionAvailable.PropertyType, ActionAvailabilityReason.PropertyType, ActionLabel.PropertyType]
+    InstanceRelationships -> (PresentationActionState.HolonType)-[ActionStateForOperator]->(VisualizerOperator.HolonType)
+  }
+}
+
+relationship (PresentationActionState.HolonType)-[ActionStateForOperator]->(VisualizerOperator.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source PresentationActionState.HolonType
+  target VisualizerOperator.HolonType
+  deletion_semantic Allow
+  relationships {
+    HasInverse -> OperatorWithActionState
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "ActionStateForOperator local contract membership."
+    display_name: "ActionStateForOperator"
+    display_plural: "ActionStateForOperator relationships"
+    plural: "ActionStateForOperatorRelationships"
+  }
+}
+inverse relationship (VisualizerOperator.HolonType)-[OperatorWithActionState]->(PresentationActionState.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerOperator.HolonType
+  target PresentationActionState.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse of ActionStateForOperator."
+    display_name: "OperatorWithActionState"
+    display_plural: "OperatorWithActionState relationships"
+    plural: "OperatorWithActionStateRelationships"
+  }
+}
+
+instance RestoreNodePresentation.VisualizerOperator {
+  type VisualizerOperator.HolonType
+  VisualizerDescription "Restores local Node emphasis within its current grant, forwarding an occurrence Restore request only when inspection capabilities are compressed. The selected title identity binds this authority explicitly."
+  relationships {
+    InputType -> PresentationActionInput.HolonType
+    ResultType -> PresentationResult.HolonType
+  }
+}
+
+// Loader results prefer the compact title; the generic inline title remains an
+// ancestor alternative through ordinary discovery and explicit choice.
+instance CompactTitleBar.TitleBarVisualizer {
+  type TitleBarVisualizer.HolonType
+  DisplayName "Compact Node Title"
+  VisualizerDescription "Compact subject identity and bound Restore access; the containing Node owns the sibling ActionBar."
+  relationships {
+    ApplicableToType -> HolonLoadResponse.DanceResponseType
+    OffersOperator -> ApplyTitlePresentation.VisualizerOperator
+    ImplementedBy -> CompactTitleBarTypeScript.VisualizerImplementation
+  }
+}
+
+instance CompactTitleBarTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.compact-title-bar"
+  VisualizerArtifactDigest "sha256:df1cc40e33345c759d2b723a27bfaf33dc33cad86b40d3053dc659131d9c693d"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+property ActionIcon.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Optional independently defined icon text for an Action component."
+    display_name: "Action Icon"
+    display_plural: "Action Icons"
+    plural: "ActionIcons"
   }
 }
