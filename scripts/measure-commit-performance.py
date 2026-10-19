@@ -153,7 +153,7 @@ def main():
             if args.link_profile:
                 run_env["MAP_COMMIT_PERF_LINK_OUTPUT"] = str((args.output / f"run-{run + 1:02}-links.json").resolve())
             with path.open("w") as log:
-                result = subprocess.run(["cargo", "test", "--manifest-path", "tests/sweetests/Cargo.toml", "--test", "commit_performance_tests", "measures_first_and_repeated_visualizer_usage_commits", "--", "--exact", "--nocapture", "--test-threads=1"], stdout=log, stderr=subprocess.STDOUT, env=run_env)
+                result = subprocess.run(["cargo", "test", "--manifest-path", "tests/sweetests/Cargo.toml", "--test", "commit_performance_tests", "measures_first_and_repeated_visualizer_usage_commits", "--", "--exact", "--ignored", "--nocapture", "--test-threads=1"], stdout=log, stderr=subprocess.STDOUT, env=run_env)
             if result.returncode:
                 print(f"Run failed; inspect {path}", file=sys.stderr)
                 return result.returncode

@@ -88,7 +88,8 @@ jobs:
         with:
           name: holochain-ci
 
-      # Also cache the hApp WASM workspace; both shards restore, one saves.
+      # Also cache the hApp WASM workspace; both shards restore, one saves. Save even when tests
+      # fail, so a red run does not throw away the ~17 minute sweettest build.
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: heavy
@@ -96,17 +97,12 @@ jobs:
             . -> target
             happ -> target
           save-if: ${{ matrix.shard == 'rest' }}
+          cache-on-failure: true
 
-      - name: Free disk space before test job
-        run: |
-          echo "Disk usage before cleanup:"
-          df -h
-          rm -rf "$AGENT_TOOLSDIRECTORY" || true
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /opt/ghc || true
-          sudo docker system prune -af || true
-          echo "Disk usage after cleanup:"
-          df -h
+      # No cleanup: the runner has ~85 GB free and a heavy run uses well under that; the old
+      # docker prune and SDK removals cost ~3 minutes.
+      - name: Disk usage
+        run: df -h
 
       - name: Install dependencies
         run: |
@@ -115,11 +111,16 @@ jobs:
       # SQLCipher mlocks its key buffers; the runner's default RLIMIT_MEMLOCK (~64 KB) is exhausted
       # by each conductor's encrypted databases, which logs `sqlcipher_mlock ... errno=12`. Raise the
       # limit for this shell so the nix/cargo/test children inherit it; `ulimit -l` confirms it.
+      # MAP_TEST_RUN_ROOT puts scripts/test-run.sh's TMPDIR, and so each conductor's database
+      # files, on tmpfs instead of runner disk. The test_context RUST_LOG directive prints the
+      # per-phase `[PERF-688] sweettest_bootstrap` timings, a few lines per test.
       - name: Heavy tests
         env:
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
           MAP_NEXTEST_PROFILE: ci-${{ matrix.shard }}
+          MAP_TEST_RUN_ROOT: /dev/shm/map-test-runs
+          RUST_LOG: warn,holons_test::harness::helpers::test_context=info
         run: |
           sudo prlimit --pid $$ --memlock=unlimited:unlimited
           nix develop --command bash -c "ulimit -l && npm run test:heavy"

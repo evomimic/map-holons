@@ -9,6 +9,19 @@ test-threads = 1
 # First guesses; tune from real CI timings.
 slow-timeout = { period = "120s", terminate-after = 5 }
 
+# Each dance_tests test is a whole suite on one bootstrapped conductor (runtime_behavior_matrix
+# runs 33 scenarios), so 10 minutes cannot fit it on a CI runner. Allow 30 minutes; tighten to
+# about twice the measured suite time. Default-profile overrides also apply to the ci profiles.
+[[profile.default.overrides]]
+filter = "binary(dance_tests)"
+slow-timeout = { period = "120s", terminate-after = 15 }
+
+# Probe-conductor bootstrap tests that hit or neared 10 minutes on CI (2026-10-19: canonical
+# loader TIMEOUT at 600s, commit_conflict 538s). Allow 20 minutes; tighten from measured times.
+[[profile.default.overrides]]
+filter = "binary(canonical_loader_tests) | binary(commit_conflict_tests)"
+slow-timeout = { period = "120s", terminate-after = 10 }
+
 [profile.ci]
 # One hung or failing test must not hide the results of the rest.
 fail-fast = false

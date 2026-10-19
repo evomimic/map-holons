@@ -15,6 +15,7 @@ use std::time::Instant;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread")]
+#[ignore = "explicit performance capture; run sweet:commit-perf"]
 async fn measures_first_and_repeated_visualizer_usage_commits() {
     let mut bootstrap = DancesTestCase::default();
     assert!(

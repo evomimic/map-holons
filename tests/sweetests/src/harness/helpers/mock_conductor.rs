@@ -118,8 +118,17 @@ impl DanceEnvelopeTransport for MockConductorConfig {
 /// Holochain waits for the relay to assign an address before publishing local agent info.
 /// An unreachable relay therefore prevents app installation even for a single-agent test.
 /// Sweettest enables plaintext relay support for this local test infrastructure.
+///
+/// Each conductor is an isolated single-agent node, so DHT publish and gossip have no peers.
+/// Left on, they re-scan every authored op (about 38k after the Core Schema bootstrap) every
+/// few seconds and contend with the test's own zome calls for the database.
 fn local_only_config(rendezvous: &DynSweetRendezvous) -> SweetConductorConfig {
-    SweetConductorConfig::standard().apply_rendezvous(rendezvous)
+    SweetConductorConfig::standard()
+        .tune_network_config(|network| {
+            network.disable_publish = true;
+            network.disable_gossip = true;
+        })
+        .apply_rendezvous(rendezvous)
 }
 
 /// Keeps the local rendezvous alive with the conductor, including across probe restarts.
@@ -442,5 +451,7 @@ mod tests {
         assert_eq!(network.bootstrap_url, url2::url2!("{}", rendezvous.bootstrap_addr()));
         assert_eq!(network.relay_url, url2::url2!("{}", rendezvous.relay_addr()));
         assert_eq!(network.advanced, SweetConductorConfig::standard().network.advanced);
+        assert!(network.disable_publish, "isolated conductors must not publish");
+        assert!(network.disable_gossip, "isolated conductors must not gossip");
     }
 }
