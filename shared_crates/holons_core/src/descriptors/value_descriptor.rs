@@ -192,16 +192,8 @@ impl ValueDescriptor {
     /// Classifies representation from the nearest local Instance TypeKind anchor.
     /// No canonical-key lookup or instance-value validation is performed.
     pub fn value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
-        self.value_kind_with_reader(&super::CurrentDescriptorReader)
-    }
-
-    /// Uses the selected schema view for every step, including prospective replacements.
-    pub fn value_kind_with_reader<R: super::DescriptorReader>(
-        &self,
-        reader: &R,
-    ) -> Result<ValueDescriptorKind, R::Error> {
         use BaseValueKind::*;
-        for ancestor in super::inheritance::walk_extends_chain_with_reader(&self.holon, reader) {
+        for ancestor in super::inheritance::walk_extends_chain(&self.holon) {
             let ancestor = ancestor?;
             let header = TypeHeader::new(&ancestor);
             if !header.defines_instance_type_kind()? {
@@ -478,58 +470,6 @@ mod tests {
             child.with_property_value("DefinesInstanceTypeKind", true)?;
             assert_eq!(descriptor.value_kind()?, ValueDescriptorKind::Unsupported("Custom".into()));
         }
-        Ok(())
-    }
-
-    #[test]
-    fn value_kind_reads_replacement_anchor_and_propagates_reader_errors() -> Result<(), HolonError>
-    {
-        struct Reader {
-            original: HolonReference,
-            replacement: HolonReference,
-            fail: bool,
-        }
-        impl super::super::DescriptorReader for Reader {
-            type Error = HolonError;
-            fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-                if reference == &self.original {
-                    if self.fail {
-                        return Err(HolonError::InvalidState("blocked replacement".into()));
-                    }
-                    return Ok(self.replacement.clone());
-                }
-                Ok(reference.clone())
-            }
-            fn operational_error(error: &HolonError) -> Option<&HolonError> {
-                Some(error)
-            }
-        }
-        let context = test_support::build_context();
-        let mut anchor =
-            test_support::new_descriptor_holon(&context, "anchor", "StringValueType", "Value")?;
-        anchor.with_property_value("DefinesInstanceTypeKind", true)?;
-        let mut replacement = test_support::new_descriptor_holon(
-            &context,
-            "replacement",
-            "IntegerValueType",
-            "Value",
-        )?;
-        replacement.with_property_value("DefinesInstanceTypeKind", true)?;
-        let mut child = test_support::new_descriptor_holon(&context, "child", "Custom", "Value")?;
-        child.with_property_value("DefinesInstanceTypeKind", false)?;
-        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.clone().into()])?;
-        let descriptor = ValueDescriptor::from_holon(child.into());
-        let mut reader =
-            Reader { original: anchor.into(), replacement: replacement.into(), fail: false };
-        assert_eq!(descriptor.value_kind()?, ValueDescriptorKind::BaseValue(BaseValueKind::String));
-        assert_eq!(
-            descriptor.value_kind_with_reader(&reader)?,
-            ValueDescriptorKind::BaseValue(BaseValueKind::Integer)
-        );
-        reader.fail = true;
-        assert!(
-            matches!(descriptor.value_kind_with_reader(&reader), Err(HolonError::InvalidState(message)) if message == "blocked replacement")
-        );
         Ok(())
     }
 

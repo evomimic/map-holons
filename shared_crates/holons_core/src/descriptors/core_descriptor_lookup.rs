@@ -27,54 +27,61 @@ pub fn resolve_core_descriptor(
     }
 }
 
-/// Resolves a canonical key for prospective assessment, distinguishing competing updates
-/// from unrelated same-key definitions. Selection never chooses one competitor's content.
-pub fn resolve_core_descriptor_with_reader<R: super::DescriptorReader>(
+/// Resolves an assessment anchor without substituting version-producing successors.
+/// Equivalent no-op and graph-only handles name one saved definition; their pending
+/// snapshots do not supply immutable anchor content. Distinct definitions remain ambiguous.
+pub fn resolve_assessment_anchor(
     context: &Arc<TransactionContext>,
     key: &str,
-    reader: &R,
-) -> Result<HolonReference, R::Error> {
+) -> Result<HolonReference, HolonError> {
+    use crate::core_shared_objects::holon::StagedState;
+    use crate::DefinitionIdentity;
+
     let key = MapString(key.to_owned());
     let staged = match context.lookup().get_staged_holons_by_base_key(&key) {
         Ok(staged) => staged,
         Err(HolonError::HolonNotFound(_)) => Vec::new(),
-        Err(error) => return Err(error.into()),
+        Err(error) => return Err(error),
     };
-    let mut live = Vec::new();
+    let mut resolved = None;
     for candidate in staged {
-        if candidate.is_live_validation_candidate()? {
-            live.push(HolonReference::from(candidate));
-        }
-    }
-    let Some(first) = live.first() else {
-        return reader.select(&context.lookup().get_saved_holon_by_key(&key)?.into());
-    };
-    let identity = crate::DefinitionIdentity::for_reference(first, context)?;
-    for other in &live[1..] {
-        if crate::DefinitionIdentity::for_reference(other, context)? != identity {
-            // Unrelated creates do not acquire canonical identity by sharing a key.
-            // Anchor resolution cannot choose which is Core; preserve the existing
-            // ambiguous-key operational error until the owning key invariant diagnoses it.
-            return Err(
-                HolonError::DuplicateError("Core descriptor key".into(), key.to_string()).into()
-            );
-        }
-    }
-    if live.len() > 1 {
-        return match identity {
-            crate::DefinitionIdentity::Saved(source) => {
-                // A key lookup names the saved definition, not either staged handle.
-                // Ask the reader to select its successor so competition remains visible.
-                let saved = HolonReference::smart_from_id(context.space_read_handle(), source);
-                reader.select(&saved)
+        let (state, source) = candidate.staged_state_and_source()?;
+        let identity = match state {
+            StagedState::ForCreate => DefinitionIdentity::Staged(candidate.temporary_id()),
+            StagedState::ForUpdate | StagedState::ForUpdateGraphOnly => {
+                let source = source.ok_or_else(|| {
+                    HolonError::InvalidState(format!(
+                        "Staged update {:?} has no saved source",
+                        candidate.temporary_id()
+                    ))
+                })?;
+                DefinitionIdentity::Saved(core_types::HolonId::Local(source))
             }
-            _ => {
-                Err(HolonError::DuplicateError("Core descriptor key".into(), key.to_string())
-                    .into())
-            }
+            _ => continue,
         };
+        match &resolved {
+            Some((previous, _)) if previous != &identity => {
+                return Err(HolonError::DuplicateError(
+                    "Core descriptor key".into(),
+                    key.to_string(),
+                ));
+            }
+            Some(_) => {}
+            None => {
+                let canonical = match &identity {
+                    DefinitionIdentity::Saved(id) => {
+                        HolonReference::smart_from_id(context.space_read_handle(), id.clone())
+                    }
+                    _ => candidate.into(),
+                };
+                resolved = Some((identity, canonical));
+            }
+        }
     }
-    reader.select(first)
+    match resolved {
+        Some((_, reference)) => Ok(reference),
+        None => Ok(context.lookup().get_saved_holon_by_key(&key)?.into()),
+    }
 }
 
 #[cfg(test)]

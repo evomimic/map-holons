@@ -1,4 +1,3 @@
-use super::{CurrentDescriptorReader, DescriptorReader};
 use std::{collections::HashSet, sync::Arc};
 
 use crate::core_shared_objects::transactions::TransactionContext;
@@ -170,35 +169,20 @@ pub fn effective_relationship_targets(
     start: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
 ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
-    effective_relationship_targets_with_reader(start, relationship_name, &CurrentDescriptorReader)
-}
-
-/// Resolves effective members using assessment-local content selection at every edge.
-pub fn effective_relationship_targets_with_reader<R: DescriptorReader>(
-    start: &HolonReference,
-    relationship_name: CoreRelationshipTypeName,
-    reader: &R,
-) -> Result<Vec<EffectiveRelationshipMember>, R::Error> {
     match inheritance_rule(&relationship_name) {
-        InheritanceRule::Local => local_relationship_members(start, relationship_name, reader),
+        InheritanceRule::Local => local_relationship_members(start, relationship_name),
         InheritanceRule::Additive => {
-            let mut lineage =
-                walk_extends_chain_with_reader(start, reader).collect::<Result<Vec<_>, _>>()?;
+            let mut lineage = walk_extends_chain(start).collect::<Result<Vec<_>, _>>()?;
             lineage.reverse();
             let mut members = Vec::new();
             for ancestor in lineage {
-                members.extend(local_relationship_members(
-                    &ancestor,
-                    relationship_name.clone(),
-                    reader,
-                )?);
+                members.extend(local_relationship_members(&ancestor, relationship_name.clone())?);
             }
             Ok(members)
         }
         InheritanceRule::Override => {
-            for ancestor in walk_extends_chain_with_reader(start, reader) {
-                let members =
-                    local_relationship_members(&ancestor?, relationship_name.clone(), reader)?;
+            for ancestor in walk_extends_chain(start) {
+                let members = local_relationship_members(&ancestor?, relationship_name.clone())?;
                 if !members.is_empty() {
                     return Ok(members);
                 }
@@ -208,12 +192,10 @@ pub fn effective_relationship_targets_with_reader<R: DescriptorReader>(
     }
 }
 
-fn local_relationship_members<R: DescriptorReader>(
+fn local_relationship_members(
     descriptor: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
-    reader: &R,
-) -> Result<Vec<EffectiveRelationshipMember>, R::Error> {
-    let descriptor = reader.select(descriptor)?;
+) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
     let collection_arc = descriptor.related_holons(relationship_name)?;
     let collection = collection_arc.read().map_err(lock_error)?;
     collection
@@ -221,11 +203,11 @@ fn local_relationship_members<R: DescriptorReader>(
         .iter()
         .map(|member| {
             Ok(EffectiveRelationshipMember {
-                member: reader.select(member)?,
+                member: member.clone(),
                 declared_on: descriptor.clone(),
             })
         })
-        .collect::<Result<_, R::Error>>()
+        .collect::<Result<_, HolonError>>()
 }
 
 /// Lazy iterator over a descriptor's `Extends` lineage.
@@ -236,24 +218,17 @@ fn local_relationship_members<R: DescriptorReader>(
 ///   next step
 /// - `visited` tracks already-yielded descriptors for cycle detection
 /// - `finished` marks terminal exhaustion after either the root or an error
-pub struct ExtendsIter<R: DescriptorReader = CurrentDescriptorReader> {
-    reader: R,
+pub struct ExtendsIter {
     context: Option<Arc<TransactionContext>>,
     next: Option<HolonReference>,
-    pending_error: Option<R::Error>,
+    pending_error: Option<HolonError>,
     visited: HashSet<crate::DefinitionIdentity>,
     finished: bool,
 }
 
 impl ExtendsIter {
     fn new(start: &HolonReference) -> Self {
-        Self::with_reader(start, CurrentDescriptorReader)
-    }
-}
-impl<R: DescriptorReader> ExtendsIter<R> {
-    fn with_reader(start: &HolonReference, reader: R) -> Self {
         Self {
-            reader,
             context: start.transaction_context(),
             next: Some(start.clone()),
             pending_error: None,
@@ -263,8 +238,8 @@ impl<R: DescriptorReader> ExtendsIter<R> {
     }
 }
 
-impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
-    type Item = Result<HolonReference, R::Error>;
+impl Iterator for ExtendsIter {
+    type Item = Result<HolonReference, HolonError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Terminal state: once the chain is exhausted or an error has been
@@ -280,13 +255,7 @@ impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
             return Some(Err(error));
         }
 
-        let current = match self.reader.select(&self.next.take()?) {
-            Ok(current) => current,
-            Err(error) => {
-                self.finished = true;
-                return Some(Err(error));
-            }
-        };
+        let current = self.next.take()?;
         if self.context.is_none() {
             self.context = current.transaction_context();
         }
@@ -316,30 +285,6 @@ impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
 
         Some(Ok(current))
     }
-}
-
-/// Uses the same lineage algorithm with explicit assessment content selection.
-pub fn walk_extends_chain_with_reader<'a, R: DescriptorReader>(
-    start: &HolonReference,
-    reader: &'a R,
-) -> ExtendsIter<&'a R> {
-    ExtendsIter::with_reader(start, reader)
-}
-
-/// Prospective lineage membership; every visited definition supplies selected content.
-pub fn equals_or_extends_with_reader<R: DescriptorReader>(
-    candidate: &HolonReference,
-    anchor: &HolonReference,
-    reader: &R,
-) -> Result<bool, R::Error> {
-    // Selecting the anchor prevents a contested definition from passing by identity alone.
-    let anchor = reader.select(anchor)?;
-    for ancestor in walk_extends_chain_with_reader(candidate, reader) {
-        if super::same_definition(&ancestor?, &anchor)? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 #[cfg(test)]

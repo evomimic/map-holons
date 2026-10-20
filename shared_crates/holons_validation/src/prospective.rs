@@ -5,7 +5,7 @@ use core_types::{
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::{
-    resolve_core_descriptor, AssessmentReadError, HolonReference, ProspectiveDescriptorReader,
+    resolve_assessment_anchor, AssessmentReadError, HolonReference, ProspectiveDescriptorReader,
 };
 use std::sync::Arc;
 
@@ -54,12 +54,12 @@ pub fn competing_replacement_findings(
 }
 
 /// Resolves a required validation anchor with a deliberate schema-upgrade diagnostic.
-/// Resolve anchors through the prospective replacement view.
+/// Resolve assessment anchors without substituting version-producing successors.
 pub fn resolve_validation_anchor(
     context: &Arc<TransactionContext>,
     key: &str,
 ) -> Result<HolonReference, AssessmentReadError> {
-    classify_anchor_resolution(resolve_core_descriptor(context, key).map_err(Into::into), key)
+    classify_anchor_resolution(resolve_assessment_anchor(context, key).map_err(Into::into), key)
 }
 
 /// Resolves a mandatory anchor without converting contested content to an operational error.

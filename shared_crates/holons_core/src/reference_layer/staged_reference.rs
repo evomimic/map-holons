@@ -387,7 +387,7 @@ impl StagedReference {
         self.id.clone()
     }
 
-    /// Returns the persisted version explicitly staged for replacement, if any.
+    /// Returns this candidate's exact saved source, if any.
     /// Creates have no source identity, even when they share a key with a saved holon.
     pub fn versioned_source_id(&self) -> Result<Option<LocalId>, HolonError> {
         let rc_holon = self.get_rc_holon()?;

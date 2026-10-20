@@ -1,7 +1,4 @@
-use super::{
-    effective_relationship_targets_with_reader, DescriptorReader, EffectiveRelationshipMember,
-    ValidExtendsLineage,
-};
+use super::{effective_relationship_targets, EffectiveRelationshipMember, ValidExtendsLineage};
 use crate::{DefinitionIdentity, HolonReference};
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
@@ -17,24 +14,18 @@ pub struct ConstraintContributions {
 
 impl ConstraintContributions {
     /// Reads both effective sets through the kernel's additive inheritance policy.
-    /// Supply a lineage diagnosed using the same reader and unchanged input snapshot.
-    pub fn resolve_with_reader<R: DescriptorReader>(
-        lineage: ValidExtendsLineage<'_>,
-        reader: &R,
-    ) -> Result<Self, R::Error> {
+    /// Supply a lineage diagnosed from the same unchanged input snapshot.
+    pub fn resolve(lineage: ValidExtendsLineage<'_>) -> Result<Self, HolonError> {
         let parent = lineage.members().get(1).cloned();
         let inherited = match &parent {
-            Some(parent) => effective_relationship_targets_with_reader(
-                parent,
-                CoreRelationshipTypeName::Constraints,
-                reader,
-            )?,
+            Some(parent) => {
+                effective_relationship_targets(parent, CoreRelationshipTypeName::Constraints)?
+            }
             None => Vec::new(),
         };
-        let effective = effective_relationship_targets_with_reader(
+        let effective = effective_relationship_targets(
             lineage.subject(),
             CoreRelationshipTypeName::Constraints,
-            reader,
         )?;
         Ok(Self { parent, inherited, effective })
     }
