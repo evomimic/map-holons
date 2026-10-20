@@ -44,6 +44,8 @@ fn saved_id(state: &TestExecutionState, token: &TestReference) -> LocalId {
     reference.holon_id().unwrap().local_id().clone()
 }
 
+/// Skipped in CI for now (`ci-rest` filter in `.config/nextest.toml`): it timed out at 600s and
+/// then at 1200s on a hosted runner, beyond comparable probe-conductor tests. Runs locally.
 #[tokio::test(flavor = "multi_thread")]
 async fn incomplete_commit_repeats_error_then_completes_relationship_retry() {
     let scenario = commit_incomplete_fixture().unwrap();
