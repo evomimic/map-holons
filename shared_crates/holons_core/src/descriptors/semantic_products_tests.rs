@@ -386,8 +386,13 @@ fn nearest_anchor_wins_and_foreign_transaction_is_rejected() -> Result<(), Holon
     abstract_anchor.with_property_value(P::IsAbstractType, true)?;
     assert!(TypeHeader::new(&abstract_anchor.into()).is_abstract_type()?);
     let foreign = new_test_holon(&build_context(), "foreign")?;
-    let foreign_diagnosis =
-        ExtendsLineageDiagnosis::assess(&foreign.into(), &roots.type_descriptor)?;
+    assert!(matches!(
+        ExtendsLineageDiagnosis::assess(&foreign.clone().into(), &roots.type_descriptor),
+        Err(HolonError::CrossTransactionReference { .. })
+    ));
+    let foreign: HolonReference = foreign.into();
+    // Build a valid foreign lineage to exercise the roots' transaction check independently.
+    let foreign_diagnosis = ExtendsLineageDiagnosis::assess(&foreign, &foreign)?;
     assert!(matches!(
         roots.instance_type_kind(foreign_diagnosis.valid_lineage().unwrap()),
         Err(HolonError::CrossTransactionReference { .. })
@@ -459,7 +464,7 @@ fn staged_ownership_and_local_dependencies_need_no_materialized_inverses() -> Re
 }
 
 #[test]
-fn saved_lineage_recognizes_staged_replacement_root() -> Result<(), HolonError> {
+fn saved_lineage_recognizes_no_op_staged_root() -> Result<(), HolonError> {
     use crate::core_shared_objects::holon::SavedHolon;
     use base_types::{BaseValue, MapInteger, MapString};
     use core_types::{HolonId, LocalId, PropertyMap};
@@ -504,13 +509,10 @@ fn saved_lineage_recognizes_staged_replacement_root() -> Result<(), HolonError> 
         replacement.clone(),
         replacement.clone(),
     )?;
-    // Ordinary reads retain saved identity and do not substitute staged content.
-    assert!(!same_definition(&child, &replacement));
-    assert!(!equals_or_extends(&saved_root.clone().into(), &replacement)?);
-    assert!(matches!(
-        ExtendsLineageDiagnosis::assess(&child, &replacement)?.defects.as_slice(),
-        [ExtendsLineageDefect::WrongTermination { .. }]
-    ));
+    // A no-op staged handle represents the saved definition; recognizing it does not substitute content.
+    assert!(!same_definition(&child, &replacement)?);
+    assert!(equals_or_extends(&saved_root.clone().into(), &replacement)?);
+    assert!(ExtendsLineageDiagnosis::assess(&child, &replacement)?.defects.is_empty());
     let HolonReference::Staged(staged) = &replacement else { panic!("staged replacement") };
     let reader = ProspectiveDescriptorReader::new(&context, std::slice::from_ref(staged))?;
     let roots = roots.with_reader(&reader);
@@ -531,7 +533,7 @@ fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_er
     impl DescriptorReader for FailingReader {
         type Error = HolonError;
         fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-            if same_definition(reference, &self.target) {
+            if same_definition(reference, &self.target)? {
                 return Err(if self.wrong_type {
                     HolonError::UnexpectedValueType(
                         "unreadable reference".into(),
@@ -567,7 +569,7 @@ fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_er
             let Err(KindResolutionError::InvalidDesignation { descriptor, error }) = result else {
                 panic!("readable malformed designation must retain its cause");
             };
-            assert!(same_definition(&descriptor, &reference));
+            assert!(same_definition(&descriptor, &reference)?);
             assert!(match error {
                 HolonError::EmptyField(_) => !wrong_type,
                 HolonError::UnexpectedValueType(..) => wrong_type,
@@ -613,14 +615,14 @@ fn effective_constraint_contributions_preserve_parent_identity_and_provenance(
     )?;
     assert_eq!(contributions.inherited.len(), 1);
     assert_eq!(contributions.effective.len(), 2);
-    assert!(contributions.missing_inherited().is_empty());
-    assert!(same_definition(&contributions.inherited[0].member, &inherited));
-    assert!(same_definition(&contributions.inherited[0].declared_on, &parent.into()));
+    assert!(contributions.missing_inherited()?.is_empty());
+    assert!(same_definition(&contributions.inherited[0].member, &inherited)?);
+    assert!(same_definition(&contributions.inherited[0].declared_on, &parent.into())?);
     // Explicit malformed product bypasses additive authoring: replacing provenance
     // is as invalid as removing the inherited identity entirely.
     contributions.effective[0].declared_on = subject;
-    assert_eq!(contributions.missing_inherited().len(), 1);
+    assert_eq!(contributions.missing_inherited()?.len(), 1);
     contributions.effective.clear();
-    assert_eq!(contributions.missing_inherited().len(), 1);
+    assert_eq!(contributions.missing_inherited()?.len(), 1);
     Ok(())
 }

@@ -61,7 +61,7 @@ pub fn resolve_schema_ownership_with_reader<R: DescriptorReader>(
     let describing = resolve_describing_type_with_reader(&owner, reader)?;
     if let DescribingTypeResolution::Unique(descriptor) = &describing {
         match walk_extends_chain_with_reader(descriptor, reader).collect::<Result<Vec<_>, _>>() {
-            Ok(lineage) if lineage_contains(&lineage, &schema_type) => {
+            Ok(lineage) if lineage_contains(&lineage, &schema_type)? => {
                 return Ok(SchemaOwnershipResolution::OwnedBy(owner))
             }
             Ok(_) => return Ok(SchemaOwnershipResolution::InvalidOwner { owner, describing }),

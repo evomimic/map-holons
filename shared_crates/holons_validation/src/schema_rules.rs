@@ -9,8 +9,8 @@ use core_types::{HolonError, RelationshipName};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type_with_reader, schema_dependencies_with_reader},
-    AssessmentReadError, ContractContributions, DescribingTypeResolution, DescriptorReader,
-    HolonReference, ProspectiveDescriptorReader, ProspectiveIdentity, ReadableHolon,
+    AssessmentReadError, ContractContributions, DefinitionIdentity, DescribingTypeResolution,
+    DescriptorReader, HolonReference, ProspectiveDescriptorReader, ReadableHolon,
 };
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -41,13 +41,13 @@ impl ReferenceGroup {
     }
 }
 
-fn grouped_references(groups: HashMap<ProspectiveIdentity, ReferenceGroup>) -> Vec<ReferenceGroup> {
+fn grouped_references(groups: HashMap<DefinitionIdentity, ReferenceGroup>) -> Vec<ReferenceGroup> {
     let mut groups: Vec<_> = groups.into_iter().collect();
     // Diagnostic reference strings are truncated; order by complete identity bytes.
     groups.sort_by_cached_key(|(identity, _)| match identity {
-        ProspectiveIdentity::Saved(id) => (0, id.to_canonical_bytes()),
-        ProspectiveIdentity::Staged(id) => (1, id.0.as_bytes().to_vec()),
-        ProspectiveIdentity::Transient(id) => (2, id.0.as_bytes().to_vec()),
+        DefinitionIdentity::Saved(id) => (0, id.to_canonical_bytes()),
+        DefinitionIdentity::Staged(id) => (1, id.0.as_bytes().to_vec()),
+        DefinitionIdentity::Transient(id) => (2, id.0.as_bytes().to_vec()),
     });
     groups.into_iter().map(|(_, group)| group).collect()
 }
@@ -71,18 +71,18 @@ pub(crate) fn dependency_cycles(
     reader: &ProspectiveDescriptorReader,
     schemas: &[ProspectiveSchema],
     collector: &mut ValidationCollector,
-) -> Result<HashMap<ProspectiveIdentity, Option<HolonReference>>, HolonError> {
+) -> Result<HashMap<DefinitionIdentity, Option<HolonReference>>, HolonError> {
     let mut results = HashMap::new();
     let mut active = HashSet::new();
     for view in schemas {
         let mut stack = vec![(view.schema.clone(), false, Vec::<HolonReference>::new())];
         while let Some((schema, leaving, dependencies)) = stack.pop() {
-            let id = ProspectiveIdentity::for_reference(&schema, context)?;
+            let id = DefinitionIdentity::for_reference(&schema, context)?;
             if leaving {
                 active.remove(&id);
                 let mut witness = results.get(&id).cloned().flatten();
                 for dependency in dependencies {
-                    let dependency_id = ProspectiveIdentity::for_reference(&dependency, context)?;
+                    let dependency_id = DefinitionIdentity::for_reference(&dependency, context)?;
                     witness = witness.or_else(|| results.get(&dependency_id).cloned().flatten());
                 }
                 results.insert(id, witness);
@@ -123,21 +123,21 @@ pub(crate) fn cross_schema_references_prepared(
     else {
         return Ok(());
     };
-    let local = ProspectiveIdentity::for_reference(&view.schema, context)?;
+    let local = DefinitionIdentity::for_reference(&view.schema, context)?;
     let direct = dependencies
         .iter()
-        .map(|target| ProspectiveIdentity::for_reference(target, context))
+        .map(|target| DefinitionIdentity::for_reference(target, context))
         .collect::<Result<HashSet<_>, _>>()?;
     let mut owners = HashMap::new();
-    let mut ambiguous = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
-    let mut missing_dependencies = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
+    let mut ambiguous = HashMap::<DefinitionIdentity, ReferenceGroup>::new();
+    let mut missing_dependencies = HashMap::<DefinitionIdentity, ReferenceGroup>::new();
     for source in view.components.iter().chain(&view.rules) {
         let Some(edges) = recover(packages.authored(source, reader), &view.schema, collector)?
         else {
             continue;
         };
         for (name, target) in edges {
-            let target_id = ProspectiveIdentity::for_reference(&target, context)?;
+            let target_id = DefinitionIdentity::for_reference(&target, context)?;
             if !owners.contains_key(&target_id) && !workset.ownership.contains_key(&target_id) {
                 let Some(selected) = recover(reader.select(&target), &view.schema, collector)?
                 else {
@@ -180,7 +180,7 @@ pub(crate) fn cross_schema_references_prepared(
                 continue;
             }
             let owner = &target_owners[0];
-            let owner_id = ProspectiveIdentity::for_reference(owner, context)?;
+            let owner_id = DefinitionIdentity::for_reference(owner, context)?;
             if owner_id != local && !direct.contains(&owner_id) {
                 missing_dependencies
                     .entry(owner_id)

@@ -146,7 +146,7 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
             }
         }
         if let Some(parent) = &contributions.parent {
-            for inherited in contributions.missing_inherited() {
+            for inherited in contributions.missing_inherited()? {
                 // Even an obligation removed by malformed effective-state construction must
                 // be inspected; otherwise loss could suppress its own preservation check.
                 let checked = self.check_constraint(&inherited.member, collector)?;
@@ -177,10 +177,10 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         collector: &mut ValidationCollector,
     ) -> Result<CheckedConstraint, Reader::Error> {
         let constraint = self.reader.select(constraint)?;
-        if let Some(checked) =
-            self.checked.iter().find(|checked| same_definition(&checked.constraint, &constraint))
-        {
-            return Ok(checked.clone());
+        for checked in &self.checked {
+            if same_definition(&checked.constraint, &constraint)? {
+                return Ok(checked.clone());
+            }
         }
         collector.observations.constraint_declaration_count += 1;
         let resolution = resolve_describing_type_with_reader(&constraint, self.reader)?;
@@ -223,7 +223,7 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
             )?;
             if let Some(lineage) = diagnosis.valid_lineage() {
                 let root = &self.roots.constraint_type;
-                if lineage.members().iter().any(|member| same_definition(member, root))
+                if lineage.contains(root)?
                     && matches!(constraint_type.property_value(P::IsAbstractType)?, Some(BaseValue::BooleanValue(value)) if !value.0)
                 {
                     let configuration = Configuration {
@@ -260,17 +260,17 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         let mut valid = true;
         // Family checks are identity-based and also apply to extension-owned subtypes.
         for root in &self.roots.bounded {
-            if lineage.members().iter().any(|member| same_definition(member, root)) {
+            if lineage.contains(root)? {
                 valid &= configuration.check_bounds(false, collector)?;
                 break;
             }
         }
         let cardinality = &self.roots.cardinality;
-        if lineage.members().iter().any(|member| same_definition(member, cardinality)) {
+        if lineage.contains(cardinality)? {
             valid &= configuration.check_bounds(true, collector)?;
         }
         let unique = &self.roots.unique_items;
-        if lineage.members().iter().any(|member| same_definition(member, unique)) {
+        if lineage.contains(unique)? {
             // No Boolean parameter controls this commitment. Undeclared parameters,
             // including any enable/disable field, are rejected by membership checking.
             for field in [P::Minimum, P::Maximum, P::MinimumIsInclusive, P::MaximumIsInclusive] {

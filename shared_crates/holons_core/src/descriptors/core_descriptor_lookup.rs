@@ -49,9 +49,9 @@ pub fn resolve_core_descriptor_with_reader<R: super::DescriptorReader>(
     let Some(first) = live.first() else {
         return reader.select(&context.lookup().get_saved_holon_by_key(&key)?.into());
     };
-    let identity = crate::ProspectiveIdentity::for_reference(first, context)?;
+    let identity = crate::DefinitionIdentity::for_reference(first, context)?;
     for other in &live[1..] {
-        if crate::ProspectiveIdentity::for_reference(other, context)? != identity {
+        if crate::DefinitionIdentity::for_reference(other, context)? != identity {
             // Unrelated creates do not acquire canonical identity by sharing a key.
             // Anchor resolution cannot choose which is Core; preserve the existing
             // ambiguous-key operational error until the owning key invariant diagnoses it.
@@ -62,7 +62,7 @@ pub fn resolve_core_descriptor_with_reader<R: super::DescriptorReader>(
     }
     if live.len() > 1 {
         return match identity {
-            crate::ProspectiveIdentity::Saved(source) => {
+            crate::DefinitionIdentity::Saved(source) => {
                 // A key lookup names the saved definition, not either staged handle.
                 // Ask the reader to select its successor so competition remains visible.
                 let saved = HolonReference::smart_from_id(context.space_read_handle(), source);

@@ -1643,11 +1643,11 @@ fn split_saved_schema_and_staged_binding_roots_are_compatible() -> Result<(), Ho
         &reader
     )
     .unwrap());
-    assert!(!holons_core::same_definition(&binding.rule, &rule_update.clone().into()));
+    assert!(holons_core::same_definition(&binding.rule, &rule_update.clone().into())?);
     assert!(holons_core::same_definition(
         &holons_core::DescriptorReader::select(&reader, &binding.rule).unwrap(),
         &rule_update.into()
-    ));
+    )?);
     // Content selection must also apply to effective binding discovery, not just equality.
     let contributions = holons_core::descriptors::effective_relationship_targets_with_reader(
         &fixture.nodes["Contract"],
@@ -1716,7 +1716,7 @@ fn binding_family_and_constraint_type_use_replacement_content() -> Result<(), Ho
         &reader,
     )
     .unwrap();
-    assert!(holons_core::same_definition(constraint.constraint_type.holon(), &wrong_family));
+    assert!(holons_core::same_definition(constraint.constraint_type.holon(), &wrong_family)?);
     Ok(())
 }
 
@@ -1810,14 +1810,14 @@ fn missing_new_validation_anchor_is_a_deliberate_schema_incompatibility() -> Res
     assert!(holons_core::same_definition(
         &resolve_validation_anchor(&fixture.context, key).unwrap(),
         &fixture.nodes[key]
-    ));
+    )?);
     // Split bootstrap can find this anchor saved while later definitions are staged.
     let mut saved = fixture.saved_snapshot()?;
     saved.node("LaterDefinition")?;
     assert!(holons_core::same_definition(
         &resolve_validation_anchor(&saved.context, key).unwrap(),
         &saved.nodes[key]
-    ));
+    )?);
     Ok(())
 }
 

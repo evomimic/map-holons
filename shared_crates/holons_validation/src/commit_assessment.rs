@@ -15,8 +15,8 @@ use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type_with_reader, SchemaOwnershipKind},
-    AssessmentReadError, ContractContributions, DescribingTypeResolution, DescriptorKindRoots,
-    DescriptorReader, HolonReference, ProspectiveDescriptorReader, ProspectiveIdentity,
+    AssessmentReadError, ContractContributions, DefinitionIdentity, DescribingTypeResolution,
+    DescriptorKindRoots, DescriptorReader, HolonReference, ProspectiveDescriptorReader,
     StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
 };
 use std::{
@@ -184,10 +184,6 @@ fn finish_assessment<'a>(
     Ok((PreparedAssessment::from_scope(candidates, report)?, observations))
 }
 
-fn classify(governing: &holons_core::ValidExtendsLineage<'_>, root: &HolonReference) -> bool {
-    governing.members().iter().any(|member| holons_core::same_definition(member, root))
-}
-
 /// Immutable prepared inputs and their cache leases live until assessment finishes.
 pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     context: &'a Arc<TransactionContext>,
@@ -255,7 +251,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         let describing_type = describing.unwrap_or(DescribingTypeResolution::Missing);
         let governing_lineage =
             if let DescribingTypeResolution::Unique(descriptor) = &describing_type {
-                if holons_core::same_definition(descriptor, &subject) {
+                if holons_core::same_definition(descriptor, &subject)? {
                     Some(subject_lineage.clone())
                 } else {
                     recover(
@@ -305,10 +301,14 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         };
         let governing =
             prerequisites.governing_lineage.as_ref().and_then(|lineage| lineage.valid_lineage());
-        let is_schema = governing.is_some_and(|lineage| classify(&lineage, &roots.schema));
-        let is_constraint =
-            governing.is_some_and(|lineage| classify(&lineage, &roots.constraints.constraint_type));
-        let is_rule = governing.is_some_and(|lineage| classify(&lineage, &roots.rule));
+        let is_schema =
+            governing.map(|lineage| lineage.contains(&roots.schema)).transpose()?.unwrap_or(false);
+        let is_constraint = governing
+            .map(|lineage| lineage.contains(&roots.constraints.constraint_type))
+            .transpose()?
+            .unwrap_or(false);
+        let is_rule =
+            governing.map(|lineage| lineage.contains(&roots.rule)).transpose()?.unwrap_or(false);
         if is_schema {
             schemas.push(subject.clone());
         }
@@ -390,7 +390,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         let mut prepared_index = HashMap::new();
         for (index, subject) in prepared.iter().enumerate() {
             prepared_index
-                .insert(ProspectiveIdentity::for_reference(&subject.subject, context)?, index);
+                .insert(DefinitionIdentity::for_reference(&subject.subject, context)?, index);
         }
         // Defined contracts are prepared before any subject consumes them. Include unstaged
         // governors, whose malformed definitions must block rather than escape as a read error.
@@ -407,7 +407,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 contracts.push(descriptor.clone());
             }
             for descriptor in contracts {
-                let identity = ProspectiveIdentity::for_reference(&descriptor, context)?;
+                let identity = DefinitionIdentity::for_reference(&descriptor, context)?;
                 if !checked_contracts.insert(identity.clone()) {
                     continue;
                 }
@@ -472,8 +472,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 continue;
             };
             for descriptor in &view.components {
-                declaration_members
-                    .insert(ProspectiveIdentity::for_reference(descriptor, context)?);
+                declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
                 let Some(diagnosis) = recover(
                     holons_core::ExtendsLineageDiagnosis::assess_with_reader(
                         descriptor,
@@ -493,13 +492,13 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 let result = declarations.assess_descriptor(lineage, &mut products, &mut collector);
                 recover(result, descriptor, &mut collector)?;
                 if let Some(index) =
-                    prepared_index.get(&ProspectiveIdentity::for_reference(descriptor, context)?)
+                    prepared_index.get(&DefinitionIdentity::for_reference(descriptor, context)?)
                 {
                     prepared[*index].products.append(products);
                 }
             }
             for rule in &view.rules {
-                declaration_members.insert(ProspectiveIdentity::for_reference(rule, context)?);
+                declaration_members.insert(DefinitionIdentity::for_reference(rule, context)?);
                 assess_configured_rule(
                     rule,
                     &roots.constraints.constraint_type,
@@ -516,7 +515,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         )?;
         for subject in &mut prepared {
             if !declaration_members
-                .contains(&ProspectiveIdentity::for_reference(&subject.subject, context)?)
+                .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)
             {
                 if subject.is_descriptor {
                     if let Some(lineage) = subject.prerequisites.subject_lineage.valid_lineage() {
@@ -538,7 +537,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 }
             }
             if subject.products.has_findings() {
-                invalid.insert(ProspectiveIdentity::for_reference(&subject.subject, context)?);
+                invalid.insert(DefinitionIdentity::for_reference(&subject.subject, context)?);
             }
             if let Some(governing) = subject
                 .prerequisites
@@ -570,7 +569,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         for view in &workset.schemas {
             collector.observations.schema_assessment_count += 1;
             let mut products = SchemaRuleProducts::default();
-            let id = ProspectiveIdentity::for_reference(&view.schema, context)?;
+            let id = DefinitionIdentity::for_reference(&view.schema, context)?;
             if let Some(Some(witness)) = cycles.get(&id) {
                 products.record(CoreValidationRuleName::SchemaDependenciesAcyclic, format!("Schema {} reaches a versioned DependsOn cycle containing {}; remove the cyclic dependency.", view.schema.reference_id_string(), witness.reference_id_string()));
             }
@@ -668,7 +667,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         // Mutually describing commitments are legal. If a later conformance check
         // invalidates an earlier dependent, expose that blocking result without re-evaluation.
         for subject in &prepared {
-            let id = ProspectiveIdentity::for_reference(&subject.subject, context)?;
+            let id = DefinitionIdentity::for_reference(&subject.subject, context)?;
             if readiness.invalid.contains(&id) && !readiness.diagnosed.contains(&id) {
                 blocked(
                     &mut collector,
@@ -693,7 +692,7 @@ fn assess_candidate(
     readiness: &mut ReadinessPropagation,
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
-    let id = ProspectiveIdentity::for_reference(&subject.subject, context)?;
+    let id = DefinitionIdentity::for_reference(&subject.subject, context)?;
     if let Some(dependency) = readiness.blocking_dependency(&id) {
         blocked(collector, &subject.subject, format!("Required prospective commitment {dependency} is invalid; correct its reported findings before retrying."));
     } else if let Some(governing) =
@@ -754,20 +753,20 @@ fn assess_configured_rule(
     Ok(())
 }
 
-type Dependencies = HashMap<ProspectiveIdentity, Vec<ProspectiveIdentity>>;
+type Dependencies = HashMap<DefinitionIdentity, Vec<DefinitionIdentity>>;
 
 /// Ephemeral assessment dependencies, not a descriptor cache or a second inheritance model.
 struct ReadinessPropagation {
     dependencies: Dependencies,
     reverse: Dependencies,
-    names: HashMap<String, ProspectiveIdentity>,
-    labels: HashMap<ProspectiveIdentity, String>,
-    invalid: HashSet<ProspectiveIdentity>,
-    diagnosed: HashSet<ProspectiveIdentity>,
+    names: HashMap<String, DefinitionIdentity>,
+    labels: HashMap<DefinitionIdentity, String>,
+    invalid: HashSet<DefinitionIdentity>,
+    diagnosed: HashSet<DefinitionIdentity>,
     observed: usize,
 }
 impl ReadinessPropagation {
-    fn invalidate(&mut self, identity: ProspectiveIdentity) {
+    fn invalidate(&mut self, identity: DefinitionIdentity) {
         let mut queue = VecDeque::from([identity]);
         while let Some(identity) = queue.pop_front() {
             if self.invalid.insert(identity.clone()) {
@@ -787,7 +786,7 @@ impl ReadinessPropagation {
         }
         self.observed = collector.violations().len();
     }
-    fn blocking_dependency(&self, subject: &ProspectiveIdentity) -> Option<&str> {
+    fn blocking_dependency(&self, subject: &DefinitionIdentity) -> Option<&str> {
         self.dependencies
             .get(subject)
             .into_iter()
@@ -811,14 +810,14 @@ fn commitment_order(
     let mut labels = HashMap::new();
     let mut pending = VecDeque::new();
     for (index, subject) in subjects.iter().enumerate() {
-        indices.insert(ProspectiveIdentity::for_reference(&subject.subject, context)?, index);
+        indices.insert(DefinitionIdentity::for_reference(&subject.subject, context)?, index);
         pending.push_back(subject.subject.clone());
     }
     for view in &workset.schemas {
         pending.push_back(view.schema.clone());
     }
     while let Some(subject) = pending.pop_front() {
-        let id = ProspectiveIdentity::for_reference(&subject, context)?;
+        let id = DefinitionIdentity::for_reference(&subject, context)?;
         names.insert(subject.reference_id_string(), id.clone());
         labels.entry(id.clone()).or_insert_with(|| subject.reference_id_string());
         if dependencies.contains_key(&id) {
@@ -839,13 +838,13 @@ fn commitment_order(
                 CoreRelationshipTypeName::ValidationBindings,
             ] {
                 for target in targets(&selected, edge)? {
-                    edges.push(ProspectiveIdentity::for_reference(&target, context)?);
+                    edges.push(DefinitionIdentity::for_reference(&target, context)?);
                     pending.push_back(target);
                 }
             }
             for edge in [CoreRelationshipTypeName::ComponentOf, CoreRelationshipTypeName::RuleOf] {
                 for owner in targets(&selected, edge)? {
-                    edges.push(ProspectiveIdentity::for_reference(&owner, context)?);
+                    edges.push(DefinitionIdentity::for_reference(&owner, context)?);
                     pending.push_back(owner);
                 }
             }
@@ -860,7 +859,7 @@ fn commitment_order(
     }
     let starts: Vec<_> = subjects
         .iter()
-        .map(|subject| ProspectiveIdentity::for_reference(&subject.subject, context))
+        .map(|subject| DefinitionIdentity::for_reference(&subject.subject, context))
         .collect::<Result<_, _>>()?;
     let order = crate::dependency_groups::dependency_groups(&starts, &dependencies)
         .into_iter()

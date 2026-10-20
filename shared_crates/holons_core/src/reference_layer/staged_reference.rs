@@ -404,6 +404,24 @@ impl StagedReference {
         }
     }
 
+    /// Snapshots lifecycle state and exact saved source under one lock for identity resolution.
+    pub(crate) fn staged_state_and_source(
+        &self,
+    ) -> Result<(StagedState, Option<LocalId>), HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!("Reading staged identity metadata: {error}"))
+        })?;
+        match &*holon {
+            Holon::Staged(staged) => {
+                Ok((staged.get_staged_state(), staged.versioned_source_id_ref().cloned()))
+            }
+            _ => {
+                Err(HolonError::InvalidType("StagedReference should point to a StagedHolon".into()))
+            }
+        }
+    }
+
     /// Returns the transaction id this reference is bound to.
     pub fn tx_id(&self) -> TxId {
         self.context_handle.tx_id()

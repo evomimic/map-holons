@@ -186,7 +186,7 @@ impl DescriptorRuleProducts {
                 };
                 if let Some(kind) = kind {
                     let is_root =
-                        same_definition(&subject, &reader.select(&roots.type_descriptor)?);
+                        same_definition(&subject, &reader.select(&roots.type_descriptor)?)?;
                     if (is_root && kind.is_some()) || (!is_root && kind.is_none()) {
                         self.violation(TypeDescriptorRootKindException, format!(
                             "Descriptor {} has instance kind {:?}; only TypeDescriptor {} may have none.",
@@ -297,10 +297,15 @@ impl DescriptorRuleProducts {
         for contribution in contributions {
             let member = reader.select(&contribution.member)?;
             let declared_on = reader.select(&contribution.declared_on)?;
-            if let Some((_, first_owner)) =
-                prior_members.iter().find(|(prior, _)| same_definition(prior, &member))
-            {
-                if !same_definition(first_owner, &declared_on) {
+            let mut first_owner = None;
+            for (prior, owner) in &prior_members {
+                if same_definition(prior, &member)? {
+                    first_owner = Some(owner);
+                    break;
+                }
+            }
+            if let Some(first_owner) = first_owner {
+                if !same_definition(first_owner, &declared_on)? {
                     self.violation(NoInheritedMemberRedeclaration, format!(
                         "Inherited {namespace} member {} was declared on both {} and {}; remove the later contribution.",
                         member.reference_id_string(),
@@ -426,11 +431,16 @@ impl DescriptorRuleProducts {
                 // The resolved anchor comes from this already drained lineage.
                 // Its suffix is exactly the anchor's ancestry; re-reading it would
                 // repeat the same graph walk for every member sharing that anchor.
-                lineage
-                    .members()
-                    .iter()
-                    .skip_while(|ancestor| !same_definition(ancestor, &kind))
-                    .any(|ancestor| same_definition(ancestor, &expected))
+                let mut reached_kind = false;
+                let mut matches_expected = false;
+                for ancestor in lineage.members() {
+                    reached_kind |= same_definition(ancestor, &kind)?;
+                    if reached_kind && same_definition(ancestor, &expected)? {
+                        matches_expected = true;
+                        break;
+                    }
+                }
+                matches_expected
             }
             None => false,
         };

@@ -1,6 +1,6 @@
 //! Explicit content selection for descriptor assessment; ordinary reference reads are unchanged.
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::{HolonReference, ProspectiveIdentity, StagedReference};
+use crate::{DefinitionIdentity, HolonReference, StagedReference};
 use core_types::{HolonError, HolonId, TemporaryId};
 use std::{
     collections::{HashMap, HashSet},
@@ -78,12 +78,14 @@ impl ProspectiveDescriptorReader {
         let mut seen = HashSet::new();
         for candidate in candidates {
             let reference = HolonReference::from(candidate);
-            let identity = ProspectiveIdentity::for_reference(&reference, context)?;
+            crate::assert_reference_transaction_compatible(&reference, context)?;
             if !candidate.is_live_validation_candidate()? || !seen.insert(candidate.temporary_id())
             {
                 continue;
             }
-            if let ProspectiveIdentity::Saved(source) = identity {
+            if let DefinitionIdentity::Saved(source) =
+                DefinitionIdentity::for_reference(&reference, context)?
+            {
                 grouped.entry(source).or_default().push(candidate.clone());
             }
         }
@@ -99,8 +101,8 @@ impl ProspectiveDescriptorReader {
         &self,
         reference: &HolonReference,
     ) -> Result<ProspectiveSelection, HolonError> {
-        let identity = ProspectiveIdentity::for_reference(reference, &self.context)?;
-        let ProspectiveIdentity::Saved(source) = identity else {
+        let identity = DefinitionIdentity::for_reference(reference, &self.context)?;
+        let DefinitionIdentity::Saved(source) = identity else {
             return Ok(ProspectiveSelection::Saved);
         };
         Ok(match self.replacements.get(&source).map(AsRef::as_ref) {
@@ -121,8 +123,8 @@ impl ProspectiveDescriptorReader {
 impl DescriptorReader for ProspectiveDescriptorReader {
     type Error = AssessmentReadError;
     fn select(&self, reference: &HolonReference) -> Result<HolonReference, Self::Error> {
-        let identity = ProspectiveIdentity::for_reference(reference, &self.context)?;
-        if let ProspectiveIdentity::Saved(source) = identity {
+        let identity = DefinitionIdentity::for_reference(reference, &self.context)?;
+        if let DefinitionIdentity::Saved(source) = identity {
             match self.replacements.get(&source).map(AsRef::as_ref) {
                 Some([single]) => return Ok(single.into()),
                 Some(candidates) if candidates.len() > 1 => {

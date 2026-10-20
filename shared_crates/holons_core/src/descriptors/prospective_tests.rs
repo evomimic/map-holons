@@ -54,8 +54,8 @@ fn selection_uses_full_ancestry_and_blocks_ambiguous_source_reads() -> Result<()
     let reader = ProspectiveDescriptorReader::new(&context, &[first.clone(), create.clone()])?;
     assert!(matches!(reader.selection(&saved[0])?, ProspectiveSelection::Replaced(_)));
     assert!(matches!(reader.selection(&create.into())?, ProspectiveSelection::Saved));
-    assert!(!same_definition(&saved[0], &first.clone().into()));
-    assert!(same_definition(&reader.select(&saved[0]).unwrap(), &first.clone().into()));
+    assert!(same_definition(&saved[0], &first.clone().into())?);
+    assert!(same_definition(&reader.select(&saved[0]).unwrap(), &first.clone().into())?);
     assert!(matches!(reader.selection(&saved[4])?, ProspectiveSelection::Saved));
     // Content equality and an unchanged ForUpdate state do not license choosing a winner.
     let second = stage_update_snapshot(&context, source, new_test_holon(&context, "saved-0")?)?;
@@ -81,8 +81,8 @@ fn selection_uses_full_ancestry_and_blocks_ambiguous_source_reads() -> Result<()
         Err(AssessmentReadError::Operational(HolonError::DuplicateError(..)))
     ));
     assert_eq!(
-        crate::ProspectiveIdentity::for_reference(&first.into(), &context)?,
-        crate::ProspectiveIdentity::for_reference(&second.into(), &context)?
+        crate::DefinitionIdentity::for_reference(&first.into(), &context)?,
+        crate::DefinitionIdentity::for_reference(&second.into(), &context)?
     );
     Ok(())
 }
@@ -100,7 +100,7 @@ fn replacement_parent_content_governs_lineage_and_cycles() -> Result<(), HolonEr
     let diagnosis =
         ExtendsLineageDiagnosis::assess_with_reader(&saved[2], &saved[0], &reader).unwrap();
     assert!(
-        matches!(diagnosis.defects.as_slice(), [ExtendsLineageDefect::WrongTermination { terminal }] if same_definition(terminal, &saved[4]))
+        matches!(diagnosis.defects.as_slice(), [ExtendsLineageDefect::WrongTermination { terminal }] if same_definition(terminal, &saved[4])?)
     );
     let diagnosis =
         ExtendsLineageDiagnosis::assess_with_reader(&saved[2], &saved[4], &reader).unwrap();
@@ -115,11 +115,11 @@ fn replacement_parent_content_governs_lineage_and_cycles() -> Result<(), HolonEr
     assert!(same_definition(
         &roots.instance_type_kind(diagnosis.valid_lineage().unwrap()).unwrap().unwrap(),
         &update.clone().into()
-    ));
+    )?);
     assert!(same_definition(
         &roots.required_describing_category(diagnosis.valid_lineage().unwrap()).unwrap().unwrap(),
         &saved[3]
-    ));
+    )?);
     // A prospective self-cycle through the old saved identity must be detected once.
     let cyclic = new_kind_descriptor(&context, "cycle", Some(&saved[1]), false)?;
     update.abandon_staged_changes(&context)?;

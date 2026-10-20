@@ -17,7 +17,7 @@ use crate::reference_layer::{assert_reference_transaction_compatible, HolonRefer
 #[derive(Clone, Debug)]
 pub struct UniversalDescriptorContract {
     descriptor_root: HolonReference,
-    member_ids: HashSet<crate::ProspectiveIdentity>,
+    member_ids: HashSet<crate::DefinitionIdentity>,
     context: Arc<TransactionContext>,
 }
 
@@ -40,12 +40,11 @@ impl UniversalDescriptorContract {
         assert_reference_transaction_compatible(&descriptor_root, context)?;
         let mut member_ids = HashSet::new();
         for property in meta_type.instance_properties()? {
-            member_ids
-                .insert(crate::ProspectiveIdentity::for_reference(property.holon(), context)?);
+            member_ids.insert(crate::DefinitionIdentity::for_reference(property.holon(), context)?);
         }
         for relationship in meta_type.instance_relationships()? {
             member_ids
-                .insert(crate::ProspectiveIdentity::for_reference(relationship.holon(), context)?);
+                .insert(crate::DefinitionIdentity::for_reference(relationship.holon(), context)?);
         }
         Ok(Self { descriptor_root, member_ids, context: Arc::clone(context) })
     }
@@ -68,7 +67,7 @@ impl UniversalDescriptorContract {
             .iter()
             .chain(&contributions.relationships)
             .map(|contribution| {
-                crate::ProspectiveIdentity::for_reference(&contribution.member, context)
+                crate::DefinitionIdentity::for_reference(&contribution.member, context)
             })
             .collect::<Result<_, HolonError>>()?;
         Ok(Self { descriptor_root, member_ids, context: Arc::clone(context) })
@@ -90,7 +89,7 @@ impl UniversalDescriptorContract {
         Ok(!is_abstract
             || self
                 .member_ids
-                .contains(&crate::ProspectiveIdentity::for_reference(&member, &self.context)?))
+                .contains(&crate::DefinitionIdentity::for_reference(&member, &self.context)?))
     }
 
     /// Implements `EnforceMinimum(H, M)` for a member of H's conformance contract.
@@ -110,7 +109,7 @@ impl UniversalDescriptorContract {
         Ok(!is_abstract
             || self
                 .member_ids
-                .contains(&crate::ProspectiveIdentity::for_reference(member, &self.context)?))
+                .contains(&crate::DefinitionIdentity::for_reference(member, &self.context)?))
     }
 }
 

@@ -1,10 +1,11 @@
 pub(crate) mod available_relationships;
+mod definition_identity;
 pub(crate) mod definitional_equivalence;
 pub mod holon_collection_api;
 pub mod holon_reference;
 pub mod holon_service_api;
 mod holon_staging_behavior;
-mod prospective_identity;
+mod lineage_identity;
 mod readable_holon;
 pub(crate) mod readable_impl;
 mod reference_compatibility;
@@ -18,6 +19,7 @@ mod undescribed_properties_tests;
 pub mod writable_holon;
 pub(crate) mod writable_impl;
 
+pub use definition_identity::DefinitionIdentity;
 pub use definitional_equivalence::{
     Divergence, EquivalenceOutcome, EquivalenceResolver, NoOpResolver, NodeResolution,
 };
@@ -25,7 +27,7 @@ pub use holon_collection_api::HolonCollectionApi;
 pub use holon_reference::HolonReference;
 pub use holon_service_api::HolonServiceApi;
 pub use holon_staging_behavior::HolonStagingBehavior;
-pub use prospective_identity::ProspectiveIdentity;
+pub use lineage_identity::LineageIdentity;
 pub use readable_holon::ReadableHolon;
 pub use reference_compatibility::assert_reference_transaction_compatible;
 pub use smart_reference::SmartReference;

@@ -6,7 +6,7 @@ use crate::{
     schema_view::{OwnedCandidate, SchemaWorkset},
 };
 use holons_core::{
-    HolonCollection, HolonCollectionApi, ProspectiveDescriptorReader, ProspectiveIdentity,
+    DefinitionIdentity, HolonCollection, HolonCollectionApi, ProspectiveDescriptorReader,
     ReadableHolon, SchemaOwnershipKind, StagedReference,
 };
 use std::sync::{Arc, RwLock};
@@ -130,20 +130,26 @@ fn replacements_move_both_membership_namespaces_and_assess_both_owners() -> Resu
     let a = workset
         .schemas
         .iter()
-        .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
+        .find(|view| {
+            holons_core::same_definition(&view.schema, &fixture.nodes["A"])
+                .expect("readable fixture identity")
+        })
         .unwrap();
     let b = workset
         .schemas
         .iter()
-        .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["B"]))
+        .find(|view| {
+            holons_core::same_definition(&view.schema, &fixture.nodes["B"])
+                .expect("readable fixture identity")
+        })
         .unwrap();
     assert_eq!(a.components.len(), 1);
-    assert!(holons_core::same_definition(&a.components[0], &fixture.nodes["OtherMember"]));
+    assert!(holons_core::same_definition(&a.components[0], &fixture.nodes["OtherMember"])?);
     assert!(a.rules.is_empty());
     assert_eq!(b.components.len(), 1);
     assert_eq!(b.rules.len(), 1);
-    assert!(holons_core::same_definition(&b.components[0], &member.into()));
-    assert!(holons_core::same_definition(&b.rules[0], &rule.into()));
+    assert!(holons_core::same_definition(&b.components[0], &member.into())?);
+    assert!(holons_core::same_definition(&b.rules[0], &rule.into())?);
     assert!(collector.into_report().is_accepted());
     Ok(())
 }
@@ -167,9 +173,7 @@ fn staged_schema_dependency_only_change_is_assessed_and_reaches_cycle() -> Resul
     )?;
     assert_eq!(workset.schemas.len(), 1);
     let cycles = dependency_cycles(&fixture.context, &reader, &workset.schemas, &mut collector)?;
-    assert!(
-        cycles[&ProspectiveIdentity::for_reference(&update.into(), &fixture.context)?].is_some()
-    );
+    assert!(cycles[&DefinitionIdentity::for_reference(&update.into(), &fixture.context)?].is_some());
     Ok(())
 }
 
@@ -361,7 +365,10 @@ fn direct_dependency_covers_cross_schema_component_reference() -> Result<(), Hol
     let a = workset
         .schemas
         .iter()
-        .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
+        .find(|view| {
+            holons_core::same_definition(&view.schema, &fixture.nodes["A"])
+                .expect("readable fixture identity")
+        })
         .unwrap();
     let mut products = SchemaRuleProducts::default();
     let packages = crate::descriptor_package::DescriptorPackages::construct(
@@ -466,7 +473,10 @@ fn ambiguous_target_ownership_blocks_once_per_target() -> Result<(), HolonError>
     let a = workset
         .schemas
         .iter()
-        .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
+        .find(|view| {
+            holons_core::same_definition(&view.schema, &fixture.nodes["A"])
+                .expect("readable fixture identity")
+        })
         .unwrap();
     let mut products = SchemaRuleProducts::default();
     let packages = crate::descriptor_package::DescriptorPackages::construct(

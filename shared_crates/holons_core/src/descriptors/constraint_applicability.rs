@@ -64,7 +64,7 @@ fn applies_to_members<R: DescriptorReader>(
     reader: &R,
 ) -> Result<bool, R::Error> {
     for target in applicable_descriptor_types_with_reader(constraint_type, reader)? {
-        if lineage_contains(lineage, &target) {
+        if lineage_contains(lineage, &target)? {
             return Ok(true);
         }
     }

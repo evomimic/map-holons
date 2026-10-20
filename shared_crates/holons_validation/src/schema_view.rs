@@ -10,7 +10,7 @@ use holons_core::{
     descriptors::{
         resolve_schema_ownership_with_reader, SchemaOwnershipKind, SchemaOwnershipResolution,
     },
-    DescriptorReader, HolonReference, ProspectiveDescriptorReader, ProspectiveIdentity,
+    DefinitionIdentity, DescriptorReader, HolonReference, ProspectiveDescriptorReader,
     ProspectiveSelection, StagedReference,
 };
 use std::{
@@ -35,7 +35,7 @@ pub(crate) struct OwnedCandidate {
 /// Identity-indexed scope built before any commitment is assessed.
 pub(crate) struct SchemaWorkset {
     pub schemas: Vec<ProspectiveSchema>,
-    pub ownership: HashMap<ProspectiveIdentity, Vec<HolonReference>>,
+    pub ownership: HashMap<DefinitionIdentity, Vec<HolonReference>>,
 }
 
 impl SchemaWorkset {
@@ -50,18 +50,18 @@ impl SchemaWorkset {
         let mut schemas = Vec::new();
         let mut scheduled = HashSet::new();
         let mut ownership = HashMap::new();
-        let mut staged_members = HashMap::<(ProspectiveIdentity, bool), Vec<HolonReference>>::new();
+        let mut staged_members = HashMap::<(DefinitionIdentity, bool), Vec<HolonReference>>::new();
         let mut changed = HashSet::new();
         for schema in directly_staged {
             schedule(context, schema, &mut scheduled, &mut schemas)?;
         }
         for candidate in owned {
-            let identity = ProspectiveIdentity::for_reference(&candidate.subject, context)?;
+            let identity = DefinitionIdentity::for_reference(&candidate.subject, context)?;
             let contested =
                 matches!(reader.selection(&candidate.subject)?, ProspectiveSelection::Contested(_));
             // Discover the old owner from saved content, never through replacement selection.
             // Removing membership affects that Schema even if prospective ownership is invalid.
-            if let ProspectiveIdentity::Saved(source) = &identity {
+            if let DefinitionIdentity::Saved(source) = &identity {
                 let saved =
                     HolonReference::smart_from_id(context.space_read_handle(), source.clone());
                 for owner in targets(&saved, ownership_edge(candidate.kind))? {
@@ -127,7 +127,7 @@ impl SchemaWorkset {
                 );
             }
             for owner in &owners {
-                let owner_id = ProspectiveIdentity::for_reference(owner, context)?;
+                let owner_id = DefinitionIdentity::for_reference(owner, context)?;
                 schedule(context, owner, &mut scheduled, &mut schemas)?;
                 if !contested {
                     staged_members
@@ -141,9 +141,9 @@ impl SchemaWorkset {
             }
         }
         for view in &mut schemas {
-            let identity = ProspectiveIdentity::for_reference(&view.schema, context)?;
+            let identity = DefinitionIdentity::for_reference(&view.schema, context)?;
             if matches!(reader.selection(&view.schema)?, ProspectiveSelection::Contested(_)) {
-                if let ProspectiveIdentity::Saved(source) = &identity {
+                if let DefinitionIdentity::Saved(source) = &identity {
                     // The Schema's own staged candidates may be assessed individually, but
                     // neither can supply its aggregate content in this Commit attempt.
                     view.schema =
@@ -156,7 +156,7 @@ impl SchemaWorkset {
             // Read persisted inverse membership from the saved source. A staged Schema clone
             // intentionally omits materialized inverses and is not a complete membership view.
             let saved = match &identity {
-                ProspectiveIdentity::Saved(id) => {
+                DefinitionIdentity::Saved(id) => {
                     Some(HolonReference::smart_from_id(context.space_read_handle(), id.clone()))
                 }
                 _ => None,
@@ -168,7 +168,7 @@ impl SchemaWorkset {
                 let mut seen = HashSet::new();
                 if let Some(saved) = &saved {
                     for member in targets(saved, edge)? {
-                        let member_id = ProspectiveIdentity::for_reference(&member, context)?;
+                        let member_id = DefinitionIdentity::for_reference(&member, context)?;
                         if changed.contains(&member_id) || !seen.insert(member_id) {
                             continue;
                         }
@@ -183,7 +183,7 @@ impl SchemaWorkset {
                     }
                 }
                 for member in staged_members.remove(&(identity.clone(), rule)).unwrap_or_default() {
-                    if seen.insert(ProspectiveIdentity::for_reference(&member, context)?) {
+                    if seen.insert(DefinitionIdentity::for_reference(&member, context)?) {
                         destination.push(member);
                     }
                 }
@@ -196,10 +196,10 @@ impl SchemaWorkset {
 fn schedule(
     context: &Arc<TransactionContext>,
     schema: &HolonReference,
-    seen: &mut HashSet<ProspectiveIdentity>,
+    seen: &mut HashSet<DefinitionIdentity>,
     views: &mut Vec<ProspectiveSchema>,
 ) -> Result<(), HolonError> {
-    if seen.insert(ProspectiveIdentity::for_reference(schema, context)?) {
+    if seen.insert(DefinitionIdentity::for_reference(schema, context)?) {
         views.push(ProspectiveSchema {
             schema: schema.clone(),
             components: Vec::new(),

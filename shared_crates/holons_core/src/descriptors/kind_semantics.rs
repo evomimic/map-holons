@@ -1,8 +1,8 @@
 //! Graph-derived descriptor categories; no category-name table or recursive validation.
 use super::{
-    definition_identity::{lineage_contains, same_definition},
-    resolve_core_descriptor, resolve_describing_type_with_reader, CurrentDescriptorReader,
-    DescribingTypeResolution, DescriptorReader, StructuralPrerequisites, ValidExtendsLineage,
+    definition_identity::same_definition, resolve_core_descriptor,
+    resolve_describing_type_with_reader, CurrentDescriptorReader, DescribingTypeResolution,
+    DescriptorReader, StructuralPrerequisites, ValidExtendsLineage,
 };
 use crate::{
     core_shared_objects::transactions::TransactionContext,
@@ -20,6 +20,12 @@ pub enum KindResolutionError<E> {
     InvalidDesignation { descriptor: Box<HolonReference>, error: HolonError },
     /// The assessment reader or reference could not supply the required state.
     Read(E),
+}
+
+impl<E: From<HolonError>> From<HolonError> for KindResolutionError<E> {
+    fn from(error: HolonError) -> Self {
+        Self::Read(error.into())
+    }
 }
 
 impl<E: From<HolonError>> KindResolutionError<E> {
@@ -109,7 +115,7 @@ impl<R: DescriptorReader> DescriptorKindRoots<R> {
     /// Classifies by the designated root's identity, never names or authored flags.
     pub fn is_descriptor(&self, lineage: ValidExtendsLineage<'_>) -> Result<bool, R::Error> {
         self.check_lineage(lineage)?;
-        Ok(lineage_contains(lineage.members(), &self.reader.select(&self.type_descriptor)?))
+        Ok(lineage.contains(&self.reader.select(&self.type_descriptor)?)?)
     }
 
     /// Returns the nearest locally designated anchor in an already diagnosed lineage.
@@ -135,7 +141,7 @@ impl<R: DescriptorReader> DescriptorKindRoots<R> {
         lineage: ValidExtendsLineage<'_>,
     ) -> Result<Option<HolonReference>, KindResolutionError<R::Error>> {
         let root = self.reader.select(&self.type_descriptor).map_err(KindResolutionError::Read)?;
-        if !lineage_contains(lineage.members(), &root) {
+        if !lineage.contains(&root)? {
             return Ok(None);
         }
         for item in lineage.members() {
@@ -166,7 +172,7 @@ impl<R: DescriptorReader> DescriptorKindRoots<R> {
     /// Meta-types specialize the designated meta-type root.
     pub fn is_meta_type(&self, lineage: ValidExtendsLineage<'_>) -> Result<bool, R::Error> {
         self.check_lineage(lineage)?;
-        Ok(lineage_contains(lineage.members(), &self.reader.select(&self.meta_type)?))
+        Ok(lineage.contains(&self.reader.select(&self.meta_type)?)?)
     }
 
     /// Uses the kind anchor's direct describer, with the normative root exception.
@@ -186,7 +192,7 @@ impl<R: DescriptorReader> DescriptorKindRoots<R> {
         if same_definition(
             lineage.subject(),
             &self.reader.select(&self.type_descriptor).map_err(KindResolutionError::Read)?,
-        ) {
+        )? {
             return Ok(Some(
                 self.reader.select(&self.meta_holon_type).map_err(KindResolutionError::Read)?,
             ));
@@ -230,14 +236,13 @@ impl<R: DescriptorReader> DescriptorKindRoots<R> {
         Ok(Some(DescribingCompatibility {
             category_matches: category
                 .as_ref()
-                .map(|category| lineage_contains(governing.members(), category)),
-            meta_type_corresponds: lineage_contains(
-                subject.members(),
+                .map(|category| governing.contains(category))
+                .transpose()?,
+            meta_type_corresponds: subject.contains(
                 &self.reader.select(&self.type_descriptor).map_err(KindResolutionError::Read)?,
-            ) == lineage_contains(
-                governing.members(),
+            )? == governing.contains(
                 &self.reader.select(&self.meta_type).map_err(KindResolutionError::Read)?,
-            ),
+            )?,
         }))
     }
 }

@@ -102,7 +102,7 @@ pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
         if !holons_core::same_definition(
             &reader.select(&binding.rule)?,
             &reader.select(&root.rule)?,
-        ) || root.level != level
+        )? || root.level != level
             || !equals_or_extends_with_reader(family.holon(), &root.family, reader)?
             || !equals_or_extends_with_reader(
                 binding.declaring_descriptor.holon(),

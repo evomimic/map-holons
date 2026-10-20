@@ -1,8 +1,9 @@
 use super::{
-    definition_identity::definition_identity, effective_relationship_targets_with_reader,
-    DescriptorReader, EffectiveRelationshipMember, ValidExtendsLineage,
+    effective_relationship_targets_with_reader, DescriptorReader, EffectiveRelationshipMember,
+    ValidExtendsLineage,
 };
-use crate::HolonReference;
+use crate::{DefinitionIdentity, HolonReference};
+use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 
 /// Parent and child effective obligations, retaining attachment provenance before normalization.
@@ -38,28 +39,33 @@ impl ConstraintContributions {
         Ok(Self { parent, inherited, effective })
     }
 
-    /// Finds lost identities or original declaring descriptors in linear time.
-    /// All references must already be selected in the same prospective view.
+    /// Finds lost definition identities or original declaring descriptors in linear time.
+    /// Mutable references must belong to the same transaction.
     /// No configuration comparison is involved: retained obligations still apply.
-    pub fn missing_inherited(&self) -> Vec<&EffectiveRelationshipMember> {
-        let retained: std::collections::HashSet<_> = self
+    pub fn missing_inherited(&self) -> Result<Vec<&EffectiveRelationshipMember>, HolonError> {
+        let context = self
             .effective
             .iter()
-            .map(|contribution| {
-                (
-                    definition_identity(&contribution.member),
-                    definition_identity(&contribution.declared_on),
-                )
-            })
-            .collect();
-        self.inherited
+            .chain(&self.inherited)
+            .flat_map(|contribution| [&contribution.member, &contribution.declared_on])
+            .find_map(HolonReference::transaction_context);
+        let identity = |reference: &HolonReference| {
+            DefinitionIdentity::for_optional_context(reference, context.as_ref())
+        };
+        let identities = |contribution: &EffectiveRelationshipMember| {
+            Ok((identity(&contribution.member)?, identity(&contribution.declared_on)?))
+        };
+        let retained = self
+            .effective
             .iter()
-            .filter(|contribution| {
-                !retained.contains(&(
-                    definition_identity(&contribution.member),
-                    definition_identity(&contribution.declared_on),
-                ))
-            })
-            .collect()
+            .map(identities)
+            .collect::<Result<std::collections::HashSet<_>, HolonError>>()?;
+        let mut missing = Vec::new();
+        for contribution in &self.inherited {
+            if !retained.contains(&identities(contribution)?) {
+                missing.push(contribution);
+            }
+        }
+        Ok(missing)
     }
 }

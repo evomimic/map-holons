@@ -431,7 +431,7 @@ fn extension_owned_constraint_and_dependency_owned_reuse_do_not_change_ownership
     let owners = fixture.nodes["ReusableRule"].related_holons(CoreRelationshipTypeName::RuleOf)?;
     let owners = owners.read().unwrap();
     assert_eq!(owners.get_members().len(), 1);
-    assert!(same_definition(&owners.get_members()[0], &fixture.nodes["CoreSchema"]));
+    assert!(same_definition(&owners.get_members()[0], &fixture.nodes["CoreSchema"])?);
     Ok(())
 }
 
@@ -527,7 +527,13 @@ fn malformed_describing_selections_are_findings_but_reader_failures_stay_operati
     impl DescriptorReader for Unreadable {
         type Error = HolonError;
         fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-            if self.subject.as_ref().is_none_or(|subject| same_definition(subject, reference)) {
+            if self
+                .subject
+                .as_ref()
+                .map(|subject| same_definition(subject, reference))
+                .transpose()?
+                .unwrap_or(true)
+            {
                 return Err(HolonError::EmptyField("reader failed".into()));
             }
             Ok(reference.clone())
@@ -687,10 +693,11 @@ fn fixed_family_roots_are_selected_once_for_the_declaration_scope() -> Result<()
     impl DescriptorReader for CountingReader {
         type Error = HolonError;
         fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-            if let Some(index) =
-                self.family_roots.iter().position(|root| same_definition(root, reference))
-            {
-                self.selections.borrow_mut()[index] += 1;
+            for (index, root) in self.family_roots.iter().enumerate() {
+                if same_definition(root, reference)? {
+                    self.selections.borrow_mut()[index] += 1;
+                    break;
+                }
             }
             Ok(reference.clone())
         }

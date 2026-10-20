@@ -85,6 +85,11 @@ impl ValidExtendsLineage<'_> {
         self.members
     }
 
+    /// Tests exact definition membership without re-reading the anchor for each member.
+    pub fn contains(&self, anchor: &HolonReference) -> Result<bool, HolonError> {
+        lineage_contains(self.members, anchor)
+    }
+
     /// Returns the subject at the start of this lineage.
     pub fn subject(&self) -> &HolonReference {
         &self.members[0]
@@ -132,13 +137,13 @@ impl ExtendsLineageDiagnosis {
         }
         let completed = defects.is_empty();
         // A root reached before a defect must still satisfy its own local invariant.
-        if lineage_contains(&lineage, &root)
+        if lineage_contains(&lineage, &root)?
             && !local_targets_with_reader(&root, CoreRelationshipTypeName::Extends, reader)?
                 .is_empty()
         {
             defects.push(ExtendsLineageDefect::RootHasParent);
         }
-        if completed && lineage.len() > 1 && !same_definition(lineage.last().unwrap(), &root) {
+        if completed && lineage.len() > 1 && !same_definition(lineage.last().unwrap(), &root)? {
             defects.push(ExtendsLineageDefect::WrongTermination {
                 terminal: lineage.last().unwrap().clone(),
             });
@@ -177,7 +182,7 @@ impl StructuralPrerequisites {
         let subject_lineage = ExtendsLineageDiagnosis::assess_with_reader(subject, root, reader)?;
         let governing_lineage = match &describing_type {
             DescribingTypeResolution::Unique(descriptor)
-                if same_definition(descriptor, &subject_lineage.lineage[0]) =>
+                if same_definition(descriptor, &subject_lineage.lineage[0])? =>
             {
                 Some(subject_lineage.clone())
             }

@@ -1,6 +1,7 @@
-use super::definition_identity::definition_identity;
 use super::{CurrentDescriptorReader, DescriptorReader};
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
+
+use crate::core_shared_objects::transactions::TransactionContext;
 
 use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
 use crate::reference_layer::{HolonReference, ReadableHolon};
@@ -103,7 +104,7 @@ pub fn equals_or_extends(
     anchor: &HolonReference,
 ) -> Result<bool, HolonError> {
     for ancestor in walk_extends_chain(candidate) {
-        if super::same_definition(&ancestor?, anchor) {
+        if super::same_definition(&ancestor?, anchor)? {
             return Ok(true);
         }
     }
@@ -237,9 +238,10 @@ fn local_relationship_members<R: DescriptorReader>(
 /// - `finished` marks terminal exhaustion after either the root or an error
 pub struct ExtendsIter<R: DescriptorReader = CurrentDescriptorReader> {
     reader: R,
+    context: Option<Arc<TransactionContext>>,
     next: Option<HolonReference>,
     pending_error: Option<R::Error>,
-    visited: HashSet<crate::ProspectiveIdentity>,
+    visited: HashSet<crate::DefinitionIdentity>,
     finished: bool,
 }
 
@@ -252,6 +254,7 @@ impl<R: DescriptorReader> ExtendsIter<R> {
     fn with_reader(start: &HolonReference, reader: R) -> Self {
         Self {
             reader,
+            context: start.transaction_context(),
             next: Some(start.clone()),
             pending_error: None,
             visited: HashSet::new(),
@@ -284,7 +287,18 @@ impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
                 return Some(Err(error));
             }
         };
-        let identity = definition_identity(&current);
+        if self.context.is_none() {
+            self.context = current.transaction_context();
+        }
+        let identity =
+            crate::DefinitionIdentity::for_optional_context(&current, self.context.as_ref());
+        let identity = match identity {
+            Ok(identity) => identity,
+            Err(error) => {
+                self.finished = true;
+                return Some(Err(error.into()));
+            }
+        };
         if !self.visited.insert(identity) {
             self.finished = true;
             return Some(Err(
@@ -321,7 +335,7 @@ pub fn equals_or_extends_with_reader<R: DescriptorReader>(
     // Selecting the anchor prevents a contested definition from passing by identity alone.
     let anchor = reader.select(anchor)?;
     for ancestor in walk_extends_chain_with_reader(candidate, reader) {
-        if super::same_definition(&ancestor?, &anchor) {
+        if super::same_definition(&ancestor?, &anchor)? {
             return Ok(true);
         }
     }

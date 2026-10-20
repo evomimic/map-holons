@@ -1,6 +1,7 @@
 use crate::descriptors::inheritance::effective_relationship_targets;
 use crate::descriptors::{
-    accessor_helpers, same_definition, Descriptor, OperatorDescriptor, ResolvedOperator, TypeHeader,
+    accessor_helpers, lineage_contains, Descriptor, OperatorDescriptor, ResolvedOperator,
+    TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
@@ -59,9 +60,8 @@ pub(crate) fn supports_operator(
     holon: &HolonReference,
     operator_descriptor: &OperatorDescriptor,
 ) -> Result<bool, HolonError> {
-    Ok(supported_operators(holon)?
-        .iter()
-        .any(|supported| same_definition(supported.holon(), operator_descriptor.holon())))
+    let supported = supported_operators(holon)?;
+    lineage_contains(supported.iter().map(|operator| operator.holon()), operator_descriptor.holon())
 }
 
 /// Returns the single authored operand of a binary operator.

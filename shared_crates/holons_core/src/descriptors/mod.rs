@@ -51,7 +51,7 @@ pub use core_descriptor_lookup::{resolve_core_descriptor, resolve_core_descripto
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
-pub use definition_identity::same_definition;
+pub use definition_identity::{lineage_contains, same_definition};
 pub use descriptor::Descriptor;
 pub use effective_relationships::{effective_relationship_declaration, QualifiedRelationship};
 pub use holon_descriptor::HolonDescriptor;
