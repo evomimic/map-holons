@@ -1,6 +1,6 @@
-//! Schema rule products over the bounded prospective workset.
+//! Schema rule products over the bounded Commit workset.
 use crate::{
-    assessment_support::{blocked, recover, targets},
+    assessment_support::{blocked, targets},
     handlers::rule_violation,
     schema_view::{ProspectiveSchema, SchemaWorkset},
     RuleOutcome, ValidationCollector, ValidationInvocation,
@@ -8,9 +8,9 @@ use crate::{
 use core_types::{HolonError, RelationshipName};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
-    descriptors::{resolve_describing_type_with_reader, schema_dependencies_with_reader},
-    AssessmentReadError, ContractContributions, DefinitionIdentity, DescribingTypeResolution,
-    DescriptorReader, HolonReference, ProspectiveDescriptorReader, ReadableHolon,
+    descriptors::{resolve_describing_type, schema_dependencies},
+    ContractContributions, DefinitionIdentity, DescribingTypeResolution, HolonReference,
+    ReadableHolon,
 };
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -68,10 +68,9 @@ impl SchemaRuleProducts {
 /// Memoization spans the entire aggregate scope; shared dependency suffixes are read once.
 pub(crate) fn dependency_cycles(
     context: &Arc<TransactionContext>,
-    reader: &ProspectiveDescriptorReader,
     schemas: &[ProspectiveSchema],
-    collector: &mut ValidationCollector,
 ) -> Result<HashMap<DefinitionIdentity, Option<HolonReference>>, HolonError> {
+    // Cycle memoization is per exact Schema definition.
     let mut results = HashMap::new();
     let mut active = HashSet::new();
     for view in schemas {
@@ -89,14 +88,7 @@ pub(crate) fn dependency_cycles(
             } else if active.contains(&id) {
                 results.insert(id, Some(schema));
             } else if !results.contains_key(&id) {
-                let Some(dependencies) = recover(
-                    schema_dependencies_with_reader(&schema, reader),
-                    &view.schema,
-                    collector,
-                )?
-                else {
-                    continue;
-                };
+                let dependencies = schema_dependencies(&schema)?;
                 active.insert(id);
                 stack.push((schema, true, dependencies.clone()));
                 for dependency in dependencies.into_iter().rev() {
@@ -111,18 +103,13 @@ pub(crate) fn dependency_cycles(
 /// Cross-schema declarations are local edges. Transitive lookup never licenses an edge.
 pub(crate) fn cross_schema_references_prepared(
     context: &Arc<TransactionContext>,
-    reader: &ProspectiveDescriptorReader,
     view: &ProspectiveSchema,
     workset: &SchemaWorkset,
     products: &mut SchemaRuleProducts,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
-    let Some(dependencies) =
-        recover(schema_dependencies_with_reader(&view.schema, reader), &view.schema, collector)?
-    else {
-        return Ok(());
-    };
+    let dependencies = schema_dependencies(&view.schema)?;
     let local = DefinitionIdentity::for_reference(&view.schema, context)?;
     let direct = dependencies
         .iter()
@@ -132,26 +119,19 @@ pub(crate) fn cross_schema_references_prepared(
     let mut ambiguous = HashMap::<DefinitionIdentity, ReferenceGroup>::new();
     let mut missing_dependencies = HashMap::<DefinitionIdentity, ReferenceGroup>::new();
     for source in view.components.iter().chain(&view.rules) {
-        let Some(edges) = recover(packages.authored(source, reader), &view.schema, collector)?
-        else {
-            continue;
-        };
+        let edges = packages.authored(source)?;
         for (name, target) in edges {
             let target_id = DefinitionIdentity::for_reference(&target, context)?;
             if !owners.contains_key(&target_id) && !workset.ownership.contains_key(&target_id) {
-                let Some(selected) = recover(reader.select(&target), &view.schema, collector)?
-                else {
-                    continue;
-                };
                 // Schema-valued references (notably ComponentOf/RuleOf) name their owner directly.
                 let targets = if name
                     == CoreRelationshipTypeName::ComponentOf.as_relationship_name()
                     || name == CoreRelationshipTypeName::RuleOf.as_relationship_name()
                 {
-                    vec![selected]
+                    vec![target.clone()]
                 } else {
-                    let mut result = targets(&selected, CoreRelationshipTypeName::ComponentOf)?;
-                    result.extend(targets(&selected, CoreRelationshipTypeName::RuleOf)?);
+                    let mut result = targets(&target, CoreRelationshipTypeName::ComponentOf)?;
+                    result.extend(targets(&target, CoreRelationshipTypeName::RuleOf)?);
                     result
                 };
                 owners.insert(target_id.clone(), targets);
@@ -216,18 +196,14 @@ pub(crate) fn cross_schema_references_prepared(
 /// and retain undeclared names so they cannot evade the fixed Commit check.
 pub(crate) fn authored_targets(
     source: &HolonReference,
-    reader: &ProspectiveDescriptorReader,
-) -> Result<Vec<(RelationshipName, HolonReference)>, AssessmentReadError> {
-    let source = reader.select(source)?;
-    if let HolonReference::Smart(saved) = &source {
-        let DescribingTypeResolution::Unique(descriptor) =
-            resolve_describing_type_with_reader(&source, reader)?
-        else {
+) -> Result<Vec<(RelationshipName, HolonReference)>, HolonError> {
+    if let HolonReference::Smart(saved) = source {
+        let DescribingTypeResolution::Unique(descriptor) = resolve_describing_type(source)? else {
             return Err(
                 HolonError::MissingDescribedBy { holon: source.reference_id_string() }.into()
             );
         };
-        let contract = ContractContributions::resolve_with_reader(&descriptor, reader)?;
+        let contract = ContractContributions::resolve(&descriptor)?;
         let names = crate::descriptor_package::declared_names(&contract)?;
         saved.prepare_relationships(&names)?;
         let mut result = Vec::new();

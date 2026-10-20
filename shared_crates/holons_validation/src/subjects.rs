@@ -12,7 +12,7 @@ pub struct ValueValidationSubject<'a> {
     pub path: &'a ValidationSubjectPath,
 }
 
-/// Read-only inputs prepared through the Commit assessment's prospective reader.
+/// Read-only inputs prepared through the Commit assessment's bound references.
 /// Handlers consume these facts without navigating to containing subjects.
 pub enum PreparedRuleSubject {
     /// Populated names absent from the selected effective contract.

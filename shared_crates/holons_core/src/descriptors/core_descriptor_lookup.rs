@@ -46,19 +46,14 @@ pub fn resolve_assessment_anchor(
     let mut resolved = None;
     for candidate in staged {
         let (state, source) = candidate.staged_state_and_source()?;
-        let identity = match state {
-            StagedState::ForCreate => DefinitionIdentity::Staged(candidate.temporary_id()),
-            StagedState::ForUpdate | StagedState::ForUpdateGraphOnly => {
-                let source = source.ok_or_else(|| {
-                    HolonError::InvalidState(format!(
-                        "Staged update {:?} has no saved source",
-                        candidate.temporary_id()
-                    ))
-                })?;
-                DefinitionIdentity::Saved(core_types::HolonId::Local(source))
-            }
-            _ => continue,
-        };
+        if !matches!(
+            state,
+            StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateGraphOnly
+        ) {
+            continue;
+        }
+        let identity =
+            DefinitionIdentity::from_staged_state(state, source, candidate.temporary_id())?;
         match &resolved {
             Some((previous, _)) if previous != &identity => {
                 return Err(HolonError::DuplicateError(
@@ -68,12 +63,7 @@ pub fn resolve_assessment_anchor(
             }
             Some(_) => {}
             None => {
-                let canonical = match &identity {
-                    DefinitionIdentity::Saved(id) => {
-                        HolonReference::smart_from_id(context.space_read_handle(), id.clone())
-                    }
-                    _ => candidate.into(),
-                };
+                let canonical = identity.definition_reference(context, &candidate.into());
                 resolved = Some((identity, canonical));
             }
         }

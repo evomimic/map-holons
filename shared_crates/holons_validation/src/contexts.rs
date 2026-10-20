@@ -15,15 +15,11 @@ pub struct ValueValidationContext {
 }
 
 impl ValueValidationContext {
-    /// Resolves the complete binding inventory with prospective reference selection.
-    pub fn resolve_in_view(
+    /// Resolves the complete binding inventory through assessment anchor resolution.
+    pub fn resolve(
         context: &Arc<TransactionContext>,
-        reader: &holons_core::ProspectiveDescriptorReader,
-    ) -> Result<Self, holons_core::AssessmentReadError> {
-        Ok(Self {
-            context: Arc::clone(context),
-            bindings: BindingRoots::resolve_in_view(context, reader)?,
-        })
+    ) -> Result<Self, crate::prospective::AnchorResolutionError> {
+        Ok(Self { context: Arc::clone(context), bindings: BindingRoots::resolve(context)? })
     }
 }
 
@@ -57,13 +53,10 @@ pub(crate) struct BindingRoots {
 }
 
 impl BindingRoots {
-    fn resolve_in_view(
+    fn resolve(
         context: &Arc<TransactionContext>,
-        reader: &holons_core::ProspectiveDescriptorReader,
-    ) -> Result<Self, holons_core::AssessmentReadError> {
-        Self::resolve_using(|key| {
-            crate::prospective::resolve_validation_anchor_in_view(context, key, reader)
-        })
+    ) -> Result<Self, crate::prospective::AnchorResolutionError> {
+        Self::resolve_using(|key| crate::prospective::resolve_validation_anchor(context, key))
     }
 
     fn resolve_using<E>(

@@ -1,4 +1,4 @@
-//! Prospective, DescriptorPackage-backed assessment of Commit candidates.
+//! DescriptorPackage-backed assessment of Commit candidates.
 //!
 //! `assess_commit_candidates` returns identity-only findings and coverage observations
 //! without changing staged content or validation outcomes. `validate_commit_candidates`
@@ -36,9 +36,7 @@ pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
 pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};
 pub use contexts::ValueValidationContext;
 pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
-pub use prospective::{
-    competing_replacement_findings, resolve_validation_anchor, resolve_validation_anchor_in_view,
-};
+pub use prospective::{resolve_validation_anchor, AnchorResolutionError};
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
     StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,

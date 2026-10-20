@@ -22,6 +22,7 @@ struct FixtureStorage {
     holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
+    read_errors: HashMap<HolonId, HolonError>,
 }
 impl HolonServiceApi for FixtureStorage {
     fn relationship_cache_policy(
@@ -69,6 +70,9 @@ impl HolonServiceApi for FixtureStorage {
         _: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        if let Some(error) = self.read_errors.get(id) {
+            return Err(error.clone());
+        }
         Ok(Holon::Saved(self.holons.get(id).expect("unexpected storage read").clone()))
     }
     fn fetch_related_holons_internal(
@@ -308,6 +312,14 @@ impl Fixture {
     /// Saves the fixture graph as service snapshots and opens a fresh empty Nursery.
     /// All relationship endpoints are rebound as saved references on read.
     pub fn saved_snapshot(&self) -> Result<Self, HolonError> {
+        self.saved_snapshot_with_read_errors(&[])
+    }
+
+    /// Injects backend failures while preserving ordinary bound-reference traversal.
+    pub fn saved_snapshot_with_read_errors(
+        &self,
+        failures: &[(&str, HolonError)],
+    ) -> Result<Self, HolonError> {
         use holons_core::core_shared_objects::holon::SavedHolon;
         let ids: BTreeMap<_, _> = self
             .nodes
@@ -336,6 +348,9 @@ impl Fixture {
                 }
             }
         }
+        for (key, error) in failures {
+            storage.read_errors.insert(ids[*key].clone(), error.clone());
+        }
         let storage = Arc::new(storage);
         let manager = Arc::new(HolonSpaceManager::new_with_managers(
             None,
@@ -352,17 +367,28 @@ impl Fixture {
     }
 
     /// Restores an update snapshot for a saved schema definition without requiring its
-    /// complete meta-contract. Tests can deliberately author malformed replacements.
-    pub fn replacement(&self, key: &str) -> Result<StagedReference, HolonError> {
-        self.replacement_with(key, |_| Ok(()))
+    /// complete meta-contract. Tests can deliberately author malformed successors.
+    pub fn stage_update_of(&self, key: &str) -> Result<StagedReference, HolonError> {
+        self.stage_update_snapshot(key, |_| Ok(()), false)
     }
 
-    pub fn replacement_with(
+    pub fn stage_update_of_with(
         &self,
         key: &str,
         edit: impl FnOnce(
             &mut holons_core::core_shared_objects::holon::HolonCloneModel,
         ) -> Result<(), HolonError>,
+    ) -> Result<StagedReference, HolonError> {
+        self.stage_update_snapshot(key, edit, true)
+    }
+
+    pub fn stage_update_snapshot(
+        &self,
+        key: &str,
+        edit: impl FnOnce(
+            &mut holons_core::core_shared_objects::holon::HolonCloneModel,
+        ) -> Result<(), HolonError>,
+        changed: bool,
     ) -> Result<StagedReference, HolonError> {
         use holons_core::core_shared_objects::holon::{HolonCloneModel, StagedHolon};
         let saved = &self.nodes[key];
@@ -389,11 +415,14 @@ impl Fixture {
         edit(&mut model)?;
         let transient = self.context.mutation().new_holon(Some(MapString(key.into())))?;
         let staged = self.context.mutation().stage_new_holon(transient)?;
-        *staged.get_holon_to_commit(&self.context)?.write().unwrap() =
-            Holon::Staged(StagedHolon::new_for_update_from_clone_model(
-                model,
-                saved.holon_id()?.local_id().clone(),
-            )?);
+        let mut holon = StagedHolon::new_for_update_from_clone_model(
+            model,
+            saved.holon_id()?.local_id().clone(),
+        )?;
+        if changed {
+            holon.note_property_mutation()?;
+        }
+        *staged.get_holon_to_commit(&self.context)?.write().unwrap() = Holon::Staged(holon);
         Ok(staged)
     }
 }

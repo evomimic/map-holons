@@ -1,11 +1,10 @@
 //! Assessment-local effective contracts. Holon content remains in bound references/caches.
 use crate::assessment_support::targets;
 use crate::schema_view::SchemaWorkset;
-use core_types::{HolonError, HolonId, RelationshipName, TemporaryId};
+use core_types::{HolonError, RelationshipName};
 use holons_core::{
-    core_shared_objects::transactions::TransactionContext, AssessmentReadError,
-    ContractContributions, DefinitionIdentity, DescriptorReader, EffectiveRelationshipMember,
-    HolonReference, ProspectiveDescriptorReader, ReadableHolon,
+    core_shared_objects::transactions::TransactionContext, ContractContributions,
+    DefinitionIdentity, EffectiveRelationshipMember, HolonReference, ReadableHolon,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -26,52 +25,32 @@ pub(crate) enum PackageState {
 /// The root's effective contract retains kernel contribution ordering and provenance.
 pub(crate) struct DescriptorPackage {
     pub root: HolonReference,
-    pub contract: Result<Arc<ContractContributions>, AssessmentReadError>,
+    pub contract: Result<Arc<ContractContributions>, HolonError>,
     pub state: PackageState,
     consumed: Cell<bool>,
 }
 
-/// Package roots share the same prepared saved memberships and prospective definitions.
+/// Package roots share exact prepared definitions and their saved memberships.
 /// Entries are discarded before another assessment or schema mutation.
 pub(crate) struct DescriptorPackages {
+    context: Arc<TransactionContext>,
+    // Immutable products and their consumption metrics belong to exact definitions.
     packages: HashMap<DefinitionIdentity, DescriptorPackage>,
-    definitions: HashMap<SelectedHandleKey, PreparedDefinition>,
-    authored: HashMap<
-        SelectedHandleKey,
-        Result<Vec<(RelationshipName, HolonReference)>, AssessmentReadError>,
-    >,
+    definitions: HashMap<DefinitionIdentity, PreparedDefinition>,
+    authored:
+        HashMap<DefinitionIdentity, Result<Vec<(RelationshipName, HolonReference)>, HolonError>>,
     _content: Vec<holons_core::core_shared_objects::holon_cache::SavedHolonRetention>,
     preparation: crate::PreparationMetrics,
-    authored_consumed: RefCell<HashSet<SelectedHandleKey>>,
+    authored_consumed: RefCell<HashSet<DefinitionIdentity>>,
 }
 
 /// Shared kernel products; configuration and other domain values remain on the holons.
 struct PreparedDefinition {
     constraints_consumed: Cell<bool>,
     bindings_consumed: Cell<bool>,
-    contract: Result<Arc<ContractContributions>, AssessmentReadError>,
-    constraints: Result<Vec<EffectiveRelationshipMember>, AssessmentReadError>,
-    bindings: Result<Vec<EffectiveRelationshipMember>, AssessmentReadError>,
-}
-
-/// Key for reader-selected handles, including no-op staged snapshots. This is
-/// distinct from definition identity: the reader can select several handles for
-/// one saved definition while package roots use `DefinitionIdentity`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum SelectedHandleKey {
-    Saved(HolonId),
-    Staged(TemporaryId),
-    Transient(TemporaryId),
-}
-
-fn selected_handle_key(reference: &HolonReference) -> SelectedHandleKey {
-    match reference {
-        HolonReference::Smart(saved) => SelectedHandleKey::Saved(saved.holon_id()),
-        HolonReference::Staged(staged) => SelectedHandleKey::Staged(staged.temporary_id()),
-        HolonReference::Transient(transient) => {
-            SelectedHandleKey::Transient(transient.temporary_id())
-        }
-    }
+    contract: Result<Arc<ContractContributions>, HolonError>,
+    constraints: Result<Vec<EffectiveRelationshipMember>, HolonError>,
+    bindings: Result<Vec<EffectiveRelationshipMember>, HolonError>,
 }
 
 /// Diagnostic type label without fetching content solely for profiling.
@@ -104,17 +83,15 @@ impl DescriptorPackages {
     #[cfg(test)]
     pub fn construct(
         context: &Arc<TransactionContext>,
-        reader: &ProspectiveDescriptorReader,
         roots: &[HolonReference],
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
     ) -> Result<Self, HolonError> {
-        Self::construct_with_observer(context, reader, roots, subjects, workset, &mut |_| {})
+        Self::construct_with_observer(context, roots, subjects, workset, &mut |_| {})
     }
 
     pub fn construct_with_observer(
         context: &Arc<TransactionContext>,
-        reader: &ProspectiveDescriptorReader,
         roots: &[HolonReference],
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
@@ -125,8 +102,8 @@ impl DescriptorPackages {
         let mut packages = HashMap::new();
         for root in roots {
             let identity = DefinitionIdentity::for_reference(root, context)?;
-            packages.entry(identity).or_insert_with(|| DescriptorPackage {
-                root: root.clone(),
+            packages.entry(identity.clone()).or_insert_with(|| DescriptorPackage {
+                root: identity.definition_reference(context, root),
                 contract: Err(HolonError::InvalidState(
                     "Descriptor package is still constructing".into(),
                 )
@@ -155,13 +132,9 @@ impl DescriptorPackages {
         let mut definitions_to_prepare = Vec::new();
         let mut content = Vec::new();
         while let Some((reference, role)) = pending.pop_front() {
-            let selected = match reader.select(&reference) {
-                Ok(selected) => selected,
-                Err(AssessmentReadError::Contested { .. }) => continue,
-                Err(AssessmentReadError::Operational(error)) => return Err(error),
-                Err(error) => return Err(HolonError::CommitFailure(error.to_string())),
-            };
-            let identity = selected_handle_key(&selected);
+            // Immutable products belong to definitions, never to a graph-only snapshot.
+            let identity = DefinitionIdentity::for_reference(&reference, context)?;
+            let selected = identity.definition_reference(context, &reference);
             if !seen.insert((identity.clone(), role)) {
                 continue;
             }
@@ -288,8 +261,7 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let contract =
-                ContractContributions::resolve_with_reader(&reference, reader).map(Arc::new);
+            let contract = ContractContributions::resolve(&reference).map(Arc::new);
             observer(crate::AssessmentEvent::PreparationOperation {
                 operation: "EffectiveContract",
                 role: "PreparedDefinition",
@@ -300,10 +272,9 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let constraints = holons_core::descriptors::effective_relationship_targets_with_reader(
+            let constraints = holons_core::descriptors::effective_relationship_targets(
                 &reference,
                 R::Constraints,
-                reader,
             );
             observer(crate::AssessmentEvent::PreparationOperation {
                 operation: "EffectiveConstraints",
@@ -315,10 +286,9 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let bindings = holons_core::descriptors::effective_relationship_targets_with_reader(
+            let bindings = holons_core::descriptors::effective_relationship_targets(
                 &reference,
                 R::ValidationBindings,
-                reader,
             );
             observer(crate::AssessmentEvent::PreparationOperation {
                 operation: "EffectiveBindings",
@@ -326,7 +296,7 @@ impl DescriptorPackages {
                 starting: false,
             });
             definitions.insert(
-                selected_handle_key(&reference),
+                DefinitionIdentity::for_reference(&reference, context)?,
                 PreparedDefinition {
                     constraints_consumed: Cell::new(false),
                     bindings_consumed: Cell::new(false),
@@ -339,14 +309,11 @@ impl DescriptorPackages {
         for root in roots {
             let identity = DefinitionIdentity::for_reference(root, context)?;
             let entry = packages.get_mut(&identity).expect("root registered before discovery");
-            entry.contract = match reader.select(root) {
-                Ok(selected) => definitions
-                    .get(&selected_handle_key(&selected))
-                    .ok_or_else(|| HolonError::InvalidState("Missing prepared descriptor".into()))?
-                    .contract
-                    .clone(),
-                Err(error) => Err(error),
-            };
+            entry.contract = definitions
+                .get(&identity)
+                .ok_or_else(|| HolonError::InvalidState("Missing prepared descriptor".into()))?
+                .contract
+                .clone();
             entry.state = PackageState::Constructed;
         }
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SchemaOwnershipPreparation));
@@ -355,27 +322,20 @@ impl DescriptorPackages {
         // Its targets require ownership reads, not recursive instance validation.
         for schema in &workset.schemas {
             for source in schema.components.iter().chain(&schema.rules) {
-                let edges = crate::schema_rules::authored_targets(source, reader);
-                if let Ok(selected) = reader.select(source) {
-                    authored.insert(selected_handle_key(&selected), edges.clone());
+                let identity = DefinitionIdentity::for_reference(source, context)?;
+                if authored.contains_key(&identity) {
+                    continue;
                 }
-                match edges {
-                    Ok(edges) => {
-                        for (_, target) in edges {
-                            match reader.select(&target) {
-                                Ok(HolonReference::Smart(saved)) => {
-                                    saved.prepare_relationships(&[
-                                        R::ComponentOf.as_relationship_name(),
-                                        R::RuleOf.as_relationship_name(),
-                                    ])?
-                                }
-                                Err(AssessmentReadError::Operational(error)) => return Err(error),
-                                _ => {}
-                            }
-                        }
+                let definition = identity.definition_reference(context, source);
+                let edges = crate::schema_rules::authored_targets(&definition);
+                authored.insert(identity, edges.clone());
+                for (_, target) in edges? {
+                    if let HolonReference::Smart(saved) = target {
+                        saved.prepare_relationships(&[
+                            R::ComponentOf.as_relationship_name(),
+                            R::RuleOf.as_relationship_name(),
+                        ])?;
                     }
-                    Err(AssessmentReadError::Operational(error)) => return Err(error),
-                    _ => {}
                 }
             }
         }
@@ -383,6 +343,7 @@ impl DescriptorPackages {
             observer(crate::AssessmentEvent::PreparationEdge { role, edge, requests, members });
         }
         Ok(Self {
+            context: Arc::clone(context),
             packages,
             definitions,
             authored,
@@ -395,9 +356,8 @@ impl DescriptorPackages {
     pub fn effective_bindings(
         &self,
         reference: &HolonReference,
-        reader: &ProspectiveDescriptorReader,
-    ) -> Result<Vec<EffectiveRelationshipMember>, AssessmentReadError> {
-        let definition = self.prepared_definition(reference, reader)?;
+    ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
+        let definition = self.prepared_definition(reference)?;
         definition.bindings_consumed.set(true);
         definition.bindings.clone()
     }
@@ -405,9 +365,8 @@ impl DescriptorPackages {
     pub fn effective_constraints(
         &self,
         reference: &HolonReference,
-        reader: &ProspectiveDescriptorReader,
-    ) -> Result<Vec<EffectiveRelationshipMember>, AssessmentReadError> {
-        let definition = self.prepared_definition(reference, reader)?;
+    ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
+        let definition = self.prepared_definition(reference)?;
         definition.constraints_consumed.set(true);
         definition.constraints.clone()
     }
@@ -415,21 +374,17 @@ impl DescriptorPackages {
     fn prepared_definition(
         &self,
         reference: &HolonReference,
-        reader: &ProspectiveDescriptorReader,
-    ) -> Result<&PreparedDefinition, AssessmentReadError> {
-        let selected = reader.select(reference)?;
+    ) -> Result<&PreparedDefinition, HolonError> {
         self.definitions
-            .get(&selected_handle_key(&selected))
+            .get(&DefinitionIdentity::for_reference(reference, &self.context)?)
             .ok_or_else(|| HolonError::InvalidState("Definition was not prepared".into()).into())
     }
 
     pub fn authored(
         &self,
         reference: &HolonReference,
-        reader: &ProspectiveDescriptorReader,
-    ) -> Result<Vec<(RelationshipName, HolonReference)>, AssessmentReadError> {
-        let selected = reader.select(reference)?;
-        let identity = selected_handle_key(&selected);
+    ) -> Result<Vec<(RelationshipName, HolonReference)>, HolonError> {
+        let identity = DefinitionIdentity::for_reference(reference, &self.context)?;
         self.authored_consumed.borrow_mut().insert(identity.clone());
         self.authored
             .get(&identity)

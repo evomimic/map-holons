@@ -2,7 +2,7 @@
 //!
 //! Preparation is split by family so a structural finding survives an unavailable
 //! kind or contract product. Commit orchestration supplies one product set per
-//! subject and selects prospective content before calling these methods.
+//! subject and supplies exact referenced definitions to these methods.
 
 use std::collections::BTreeMap;
 
@@ -10,10 +10,10 @@ use base_types::BaseValue;
 use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
     descriptors::{
-        effective_relationship_targets_with_reader, same_definition, ContractContributions,
+        effective_relationship_targets, same_definition, ContractContributions,
         DescriptorKindRoots, ExtendsLineageDefect, KindResolutionError, StructuralPrerequisites,
     },
-    Descriptor, DescriptorReader, HolonReference, ReadableHolon,
+    Descriptor, HolonReference, ReadableHolon,
 };
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName};
 
@@ -34,7 +34,7 @@ struct PreparedDiagnostic {
 }
 
 /// Family roots required by DS-CONTRACT-004. The roots are resolved once by the
-/// assessment and selected through the same reader as the member definitions.
+/// assessment and retain their exact definition identities.
 #[derive(Clone, Debug)]
 pub struct ContractKindRoots {
     /// Designated `PropertyType.TypeDescriptor` root.
@@ -47,9 +47,9 @@ pub struct ContractKindRoots {
 
 /// Findings prepared from kernel products, keyed by their canonical rule identity.
 /// Each bound handler translates only its own entries into the common finding model.
-/// Prepare each family once per subject, using the same reader and unchanged input
+/// Prepare each family once per subject, using the same unchanged input
 /// snapshot that supplied its kernel products. Discard the products on a read error.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct DescriptorRuleProducts {
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<PreparedDiagnostic>>,
 }
@@ -118,17 +118,16 @@ impl DescriptorRuleProducts {
     /// Read only graph-derived kind products after structural diagnosis.
     /// Descriptor-only checks use the kernel's classification; universal
     /// compatibility checks still apply to ordinary holons.
-    pub fn prepare_kind<R: DescriptorReader>(
+    pub fn prepare_kind(
         &mut self,
         prerequisites: &StructuralPrerequisites,
-        roots: &DescriptorKindRoots<R>,
-        reader: &R,
-    ) -> Result<(), R::Error> {
+        roots: &DescriptorKindRoots,
+    ) -> Result<(), HolonError> {
         use CoreValidationRuleName::*;
         let Some(subject_lineage) = prerequisites.subject_lineage.valid_lineage() else {
             return Ok(());
         };
-        let subject = reader.select(subject_lineage.subject())?;
+        let subject = (subject_lineage.subject()).clone();
         let is_descriptor = roots.is_descriptor(subject_lineage)?;
         if is_descriptor {
             let local_anchor = match subject
@@ -185,8 +184,7 @@ impl DescriptorRuleProducts {
                     Err(KindResolutionError::Read(error)) => return Err(error),
                 };
                 if let Some(kind) = kind {
-                    let is_root =
-                        same_definition(&subject, &reader.select(&roots.type_descriptor)?)?;
+                    let is_root = same_definition(&subject, &roots.type_descriptor.clone())?;
                     if (is_root && kind.is_some()) || (!is_root && kind.is_none()) {
                         self.violation(TypeDescriptorRootKindException, format!(
                             "Descriptor {} has instance kind {:?}; only TypeDescriptor {} may have none.",
@@ -247,13 +245,12 @@ impl DescriptorRuleProducts {
     /// constraint declaration assessment, not here.
     /// Default/key/value policies continue in C3; inverse, endpoint, collection,
     /// and governed occurrence policies continue in C4.
-    pub fn prepare_contract<R: DescriptorReader>(
+    pub fn prepare_contract(
         &mut self,
         contributions: &ContractContributions,
-        kind_roots: &DescriptorKindRoots<R>,
+        kind_roots: &DescriptorKindRoots,
         contract_roots: &ContractKindRoots,
-        reader: &R,
-    ) -> Result<(), R::Error> {
+    ) -> Result<(), HolonError> {
         self.prepare_namespace(
             &contributions.properties,
             &MemberNamespace {
@@ -265,7 +262,6 @@ impl DescriptorRuleProducts {
                 )],
             },
             kind_roots,
-            reader,
         )?;
         self.prepare_namespace(
             &contributions.relationships,
@@ -278,25 +274,23 @@ impl DescriptorRuleProducts {
                 ],
             },
             kind_roots,
-            reader,
         )?;
         Ok(())
     }
 
-    fn prepare_namespace<R: DescriptorReader>(
+    fn prepare_namespace(
         &mut self,
         contributions: &[holons_core::EffectiveRelationshipMember],
         definition: &MemberNamespace<'_>,
-        kind_roots: &DescriptorKindRoots<R>,
-        reader: &R,
-    ) -> Result<(), R::Error> {
+        kind_roots: &DescriptorKindRoots,
+    ) -> Result<(), HolonError> {
         use CoreValidationRuleName::*;
         let namespace = definition.name;
         let mut prior_members: Vec<(HolonReference, HolonReference)> = Vec::new();
         let mut names: Vec<(String, HolonReference, HolonReference)> = Vec::new();
         for contribution in contributions {
-            let member = reader.select(&contribution.member)?;
-            let declared_on = reader.select(&contribution.declared_on)?;
+            let member = contribution.member.clone();
+            let declared_on = contribution.declared_on.clone();
             let mut first_owner = None;
             for (prior, owner) in &prior_members {
                 if same_definition(prior, &member)? {
@@ -342,40 +336,31 @@ impl DescriptorRuleProducts {
                 }
             }
             for (edge, target_kind) in definition.required_edges {
-                let targets = self.require_one_target(&member, edge.clone(), namespace, reader)?;
+                let targets = self.require_one_target(&member, edge.clone(), namespace)?;
                 if let (Some(expected), [target]) = (target_kind, targets.as_slice()) {
                     self.check_member_kind(
                         target,
                         expected,
                         &format!("{namespace} {} target", edge.as_relationship_name()),
                         kind_roots,
-                        reader,
                     )?;
                 }
             }
-            self.check_member_kind(
-                &member,
-                definition.expected_kind,
-                namespace,
-                kind_roots,
-                reader,
-            )?;
+            self.check_member_kind(&member, definition.expected_kind, namespace, kind_roots)?;
         }
         Ok(())
     }
 
-    fn require_one_target<R: DescriptorReader>(
+    fn require_one_target(
         &mut self,
         member: &HolonReference,
         relationship: CoreRelationshipTypeName,
         namespace: &str,
-        reader: &R,
-    ) -> Result<Vec<HolonReference>, R::Error> {
-        let targets =
-            effective_relationship_targets_with_reader(member, relationship.clone(), reader)?
-                .into_iter()
-                .map(|contribution| contribution.member)
-                .collect::<Vec<_>>();
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        let targets = effective_relationship_targets(member, relationship.clone())?
+            .into_iter()
+            .map(|contribution| contribution.member)
+            .collect::<Vec<_>>();
         if targets.len() != 1 {
             self.violation(
                 CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
@@ -390,17 +375,15 @@ impl DescriptorRuleProducts {
         Ok(targets)
     }
 
-    fn check_member_kind<R: DescriptorReader>(
+    fn check_member_kind(
         &mut self,
         member: &HolonReference,
         expected: &HolonReference,
         role: &str,
-        roots: &DescriptorKindRoots<R>,
-        reader: &R,
-    ) -> Result<(), R::Error> {
+        roots: &DescriptorKindRoots,
+    ) -> Result<(), HolonError> {
         use holons_core::ExtendsLineageDiagnosis;
-        let diagnosis =
-            ExtendsLineageDiagnosis::assess_with_reader(member, &roots.type_descriptor, reader)?;
+        let diagnosis = ExtendsLineageDiagnosis::assess(member, &roots.type_descriptor)?;
         let Some(lineage) = diagnosis.valid_lineage() else {
             self.unresolved(
                 CoreValidationRuleName::ContractMemberKindCompatibility,
@@ -425,7 +408,7 @@ impl DescriptorRuleProducts {
             }
             Err(KindResolutionError::Read(error)) => return Err(error),
         };
-        let expected = reader.select(expected)?;
+        let expected = expected.clone();
         let compatible = match kind {
             Some(kind) => {
                 // The resolved anchor comes from this already drained lineage.

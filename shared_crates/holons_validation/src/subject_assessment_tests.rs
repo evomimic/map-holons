@@ -97,24 +97,22 @@ fn compatible_binding_in_view(
     governing: &HolonReference,
     level: crate::contexts::SubjectLevel,
     context: &ValueValidationContext,
-    reader: &holons_core::ProspectiveDescriptorReader,
-) -> Result<bool, holons_core::AssessmentReadError> {
-    use holons_core::{DescribingTypeResolution, DescriptorReader};
-    let rule = reader.select(&binding.rule)?;
+) -> Result<bool, HolonError> {
+    use holons_core::DescribingTypeResolution;
+    let rule = binding.rule.clone();
     let key = ValidationRuleKey(crate::commitments::required_key(&rule)?);
     let DescribingTypeResolution::Unique(family) =
-        holons_core::descriptors::resolve_describing_type_with_reader(&rule, reader)?
+        holons_core::descriptors::resolve_describing_type(&rule)?
     else {
         return Ok(false);
     };
-    crate::subject_assessment::compatible_binding_with_reader(
+    crate::subject_assessment::compatible_binding(
         binding,
         &holons_core::HolonDescriptor::from_holon(family),
         &key,
         governing,
         level,
         context,
-        reader,
     )
 }
 
@@ -378,7 +376,7 @@ fn bytes_binding_is_discovered_dispatched_and_rejects_a_mismatched_value_kind(
     assert_eq!(
         finding.subject,
         ValidationSubjectPath::Value {
-            holon_identity: subject.reference_id_string(),
+            holon_identity: crate::assessment_support::identity(&subject.clone().into()),
             property: "Title".into(),
         }
     );
@@ -879,7 +877,7 @@ fn malformed_member_contract_reports_findings_and_installs_outcomes() -> Result<
         ));
         assert!(report.unattached_findings()?.iter().any(|finding| finding.subject
             == ValidationSubjectPath::Holon {
-                holon_identity: fixture.nodes["Contract"].reference_id_string()
+                holon_identity: crate::assessment_support::identity(&fixture.nodes["Contract"])
             }
             && finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
     }
@@ -964,7 +962,9 @@ fn dispatch_c2_rule(
             fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
         ),
     };
-    let path = ValidationSubjectPath::Holon { holon_identity: subject.reference_id_string() };
+    let path = ValidationSubjectPath::Holon {
+        holon_identity: crate::assessment_support::identity(&subject.clone().into()),
+    };
     let mut collector = ValidationCollector::default();
     StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).unwrap()(
         ValidationInvocation::Descriptor { binding: &binding, path: &path, products },
@@ -1068,7 +1068,7 @@ fn structural_handlers_translate_cycle_termination_and_root_defects() -> Result<
 #[test]
 fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Result<(), HolonError>
 {
-    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
     let roots = c2_kind_roots(&mut fixture)?;
     fixture.node("Rootless")?;
@@ -1081,7 +1081,7 @@ fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Res
     let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
     let mut products = DescriptorRuleProducts::default();
     products.prepare_structure(&prerequisites, &roots.type_descriptor);
-    products.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    products.prepare_kind(&prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::UniqueTypeDescriptorRoot,
@@ -1103,7 +1103,7 @@ fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Res
 
 #[test]
 fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<(), HolonError> {
-    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
     let roots = c2_kind_roots(&mut fixture)?;
     let subject = fixture.nodes["Contract"].clone();
@@ -1114,7 +1114,7 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
         .unwrap()
         .remove_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind)?;
     let mut missing = DescriptorRuleProducts::default();
-    missing.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    missing.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
@@ -1132,7 +1132,7 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
         .unwrap()
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
     let mut non_abstract = DescriptorRuleProducts::default();
-    non_abstract.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    non_abstract.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
@@ -1150,7 +1150,7 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
 #[test]
 fn kind_handlers_reject_an_ordinary_holon_with_an_incompatible_describer() -> Result<(), HolonError>
 {
-    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
     let roots = c2_kind_roots(&mut fixture)?;
     let mut subject = fixture.context.mutation().new_holon(Some("ordinary".into()))?;
@@ -1158,7 +1158,7 @@ fn kind_handlers_reject_an_ordinary_holon_with_an_incompatible_describer() -> Re
     let subject: HolonReference = subject.into();
     let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    products.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::DescribingCategoryCompatibility,
@@ -1175,7 +1175,7 @@ fn kind_handlers_reject_an_ordinary_holon_with_an_incompatible_describer() -> Re
 #[test]
 fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion(
 ) -> Result<(), HolonError> {
-    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
     let roots = c2_kind_roots(&mut fixture)?;
     let meta_holon = fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone();
@@ -1186,7 +1186,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
         .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![meta_holon.clone()])?;
     let prerequisites = StructuralPrerequisites::assess(&meta_holon, &roots.type_descriptor)?;
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    products.prepare_kind(&prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
@@ -1198,7 +1198,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
     let root = fixture.nodes["TypeDescriptor"].clone();
     let root_prerequisites = StructuralPrerequisites::assess(&root, &root)?;
     let mut root_products = DescriptorRuleProducts::default();
-    root_products.prepare_kind(&root_prerequisites, &roots, &CurrentDescriptorReader)?;
+    root_products.prepare_kind(&root_prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::TypeDescriptorRootKindException,
@@ -1212,7 +1212,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
         .unwrap()
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
     let mut invalid_root_products = DescriptorRuleProducts::default();
-    invalid_root_products.prepare_kind(&root_prerequisites, &roots, &CurrentDescriptorReader)?;
+    invalid_root_products.prepare_kind(&root_prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::TypeDescriptorRootKindException,
@@ -1230,7 +1230,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
 #[test]
 fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
 ) -> Result<(), HolonError> {
-    use holons_core::{ContractContributions, CurrentDescriptorReader};
+    use holons_core::ContractContributions;
     let mut fixture = Fixture::new()?;
     let roots = c2_kind_roots(&mut fixture)?;
     fixture.node("Subtype")?;
@@ -1288,7 +1288,7 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
         value: fixture.nodes["StringValueType.ValueType"].clone(),
     };
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_contract(&contributions, &roots, &contract_roots, &CurrentDescriptorReader)?;
+    products.prepare_contract(&contributions, &roots, &contract_roots)?;
     for (rule, code) in [
         (CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001"),
         (CoreValidationRuleName::UniqueSemanticMemberNames, "DS-CONTRACT-002"),
@@ -1328,7 +1328,7 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
 #[test]
 fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> Result<(), HolonError>
 {
-    use holons_core::{ContractContributions, CurrentDescriptorReader};
+    use holons_core::ContractContributions;
     let mut fixture = Fixture::new()?;
     let roots = c2_kind_roots(&mut fixture)?;
     fixture
@@ -1431,7 +1431,6 @@ fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> R
             relationship: fixture.nodes["DeclaredRelationshipType.RelationshipType"].clone(),
             value: fixture.nodes["StringValueType.ValueType"].clone(),
         },
-        &CurrentDescriptorReader,
     )?;
     assert!(!products.has_findings());
     for rule in [
@@ -1500,9 +1499,7 @@ fn extension_binding_checks_all_matching_roots_regardless_of_order() -> Result<(
         ] {
             assert!(assessment.observations.dispatched_rule_keys.contains(name.as_str()));
         }
-        let candidates = std::slice::from_ref(&subject);
-        let reader = holons_core::ProspectiveDescriptorReader::new(&fixture.context, candidates)?;
-        let mut context = ValueValidationContext::resolve_in_view(&fixture.context, &reader)
+        let mut context = ValueValidationContext::resolve(&fixture.context)
             .map_err(|error| HolonError::CommitFailure(error.to_string()))?;
         let governing =
             &fixture.nodes[if admitted { "Contract" } else { "StringValueType.ValueType" }];
@@ -1520,7 +1517,7 @@ fn extension_binding_checks_all_matching_roots_regardless_of_order() -> Result<(
                 context.bindings.entries.reverse();
             }
             assert_eq!(
-                compatible_binding_in_view(&binding, governing, level, &context, &reader)
+                compatible_binding_in_view(&binding, governing, level, &context)
                     .map_err(|error| HolonError::CommitFailure(error.to_string()))?,
                 admitted
             );
@@ -1613,7 +1610,7 @@ fn unknown_rule_family_still_fails_closed_as_unsupported() -> Result<(), HolonEr
 #[test]
 fn split_saved_schema_and_staged_binding_roots_are_compatible() -> Result<(), HolonError> {
     use crate::contexts::SubjectLevel;
-    use holons_core::{ProspectiveDescriptorReader, ReadableHolon};
+    use holons_core::ReadableHolon;
     let fixture = readiness_fixture()?.saved_snapshot()?;
     // Earlier definitions are persisted; a later subject is staged independently.
     let mut subject = fixture.staged_subject("later-subject")?;
@@ -1621,14 +1618,10 @@ fn split_saved_schema_and_staged_binding_roots_are_compatible() -> Result<(), Ho
     assert!(validate_commit_candidates(&fixture.context, &[subject])?.is_accepted());
 
     let rule_key = CoreValidationRuleName::NoUndescribedProperties.as_str();
-    let rule_update = fixture.replacement(rule_key)?;
-    let family_update = fixture.replacement("HolonValidationRule.HolonType")?;
-    let descriptor_update = fixture.replacement("HolonType.TypeDescriptor")?;
-    let reader = ProspectiveDescriptorReader::new(
-        &fixture.context,
-        &[rule_update.clone(), family_update, descriptor_update],
-    )?;
-    let context = ValueValidationContext::resolve_in_view(&fixture.context, &reader).unwrap();
+    let rule_update = fixture.stage_update_of(rule_key)?;
+    let _family_update = fixture.stage_update_of("HolonValidationRule.HolonType")?;
+    let _descriptor_update = fixture.stage_update_of("HolonType.TypeDescriptor")?;
+    let context = ValueValidationContext::resolve(&fixture.context).unwrap();
     let binding = ResolvedValidationBinding {
         rule: fixture.nodes[rule_key].clone(),
         declaring_descriptor: holons_core::HolonDescriptor::from_holon(
@@ -1639,162 +1632,65 @@ fn split_saved_schema_and_staged_binding_roots_are_compatible() -> Result<(), Ho
         &binding,
         &fixture.nodes["Contract"],
         SubjectLevel::Holon,
-        &context,
-        &reader
+        &context
     )
     .unwrap());
     assert!(holons_core::same_definition(&binding.rule, &rule_update.clone().into())?);
-    assert!(holons_core::same_definition(
-        &holons_core::DescriptorReader::select(&reader, &binding.rule).unwrap(),
-        &rule_update.into()
-    )?);
-    // Content selection must also apply to effective binding discovery, not just equality.
-    let contributions = holons_core::descriptors::effective_relationship_targets_with_reader(
+    // Saved binding discovery preserves both the rule and its actual declaring descriptor.
+    let contributions = holons_core::descriptors::effective_relationship_targets(
         &fixture.nodes["Contract"],
         CoreRelationshipTypeName::ValidationBindings,
-        &reader,
     )
     .unwrap();
     assert_eq!(contributions.len(), 1);
-    assert!(matches!(&contributions[0].member, HolonReference::Staged(_)));
-    assert!(matches!(&contributions[0].declared_on, HolonReference::Staged(_)));
+    assert!(matches!(&contributions[0].member, HolonReference::Smart(_)));
+    assert!(matches!(&contributions[0].declared_on, HolonReference::Smart(_)));
     assert_eq!(contributions[0].member.key()?.unwrap().to_string(), rule_key);
     Ok(())
 }
 
 #[test]
-fn binding_family_and_constraint_type_use_replacement_content() -> Result<(), HolonError> {
-    use holons_core::{
-        EffectiveRelationshipMember, HolonCollection, HolonCollectionApi,
-        ProspectiveDescriptorReader,
-    };
+fn binding_family_and_constraint_type_follow_explicit_references() -> Result<(), HolonError> {
+    use holons_core::{EffectiveRelationshipMember, HolonCollection, HolonCollectionApi};
     use std::sync::{Arc, RwLock};
-    use type_names::ToRelationshipName;
     let fixture = readiness_fixture()?.saved_snapshot()?;
     let rule_key = CoreValidationRuleName::NoUndescribedProperties.as_str();
     let wrong_family = fixture.nodes["PropertyValidationRule.HolonType"].clone();
-    let update = fixture.replacement_with(rule_key, |model| {
+    let update = fixture.stage_update_of_with(rule_key, |model| {
         let mut members = HolonCollection::new_transient();
         members.add_references(vec![wrong_family.clone()])?;
         model.relationships.as_mut().unwrap().insert(
-            CoreRelationshipTypeName::DescribedBy.to_relationship_name(),
+            CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
             Arc::new(RwLock::new(members)),
         );
         Ok(())
     })?;
-    let reader = ProspectiveDescriptorReader::new(&fixture.context, std::slice::from_ref(&update))?;
-    let context = ValueValidationContext::resolve_in_view(&fixture.context, &reader).unwrap();
-    let binding = ResolvedValidationBinding {
-        rule: fixture.nodes[rule_key].clone(),
-        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
-            fixture.nodes["HolonType.TypeDescriptor"].clone(),
-        ),
-    };
-    assert!(!compatible_binding_in_view(
-        &binding,
-        &fixture.nodes["Contract"],
-        crate::contexts::SubjectLevel::Holon,
-        &context,
-        &reader
-    )
-    .unwrap());
-    let mut subject = fixture.staged_subject("replacement-family")?;
-    subject.with_property_value("Title", "present")?;
-    let assessment = assess_commit_candidates(&fixture.context, &[subject.clone(), update])?;
-    assert!(assessment.observations.discovered_rule_keys.contains(rule_key));
-    assert!(!assessment.observations.dispatched_rule_keys.contains(rule_key));
-    assert!(assessment.report.violations.iter().any(|finding| {
-        finding.rule_key.as_deref() == Some(rule_key)
-            && finding.subject == ValidationSubjectPath::Holon { holon_identity: subject.reference_id_string() }
-            && matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "IncompatibleValidationBinding")
-    }));
-    let constraint = ResolvedConstraint::with_reader(
-        EffectiveRelationshipMember {
+    let context = ValueValidationContext::resolve(&fixture.context).map_err(HolonError::from)?;
+    for (rule, compatible) in [(fixture.nodes[rule_key].clone(), true), (update.into(), false)] {
+        let binding = ResolvedValidationBinding {
+            rule,
+            declaring_descriptor: holons_core::HolonDescriptor::from_holon(
+                fixture.nodes["HolonType.TypeDescriptor"].clone(),
+            ),
+        };
+        assert_eq!(
+            compatible_binding_in_view(
+                &binding,
+                &fixture.nodes["Contract"],
+                crate::contexts::SubjectLevel::Holon,
+                &context
+            )?,
+            compatible
+        );
+        let constraint = ResolvedConstraint::resolve(EffectiveRelationshipMember {
             member: binding.rule,
             declared_on: fixture.nodes["HolonType.TypeDescriptor"].clone(),
-        },
-        &reader,
-    )
-    .unwrap();
-    assert!(holons_core::same_definition(constraint.constraint_type.holon(), &wrong_family)?);
-    Ok(())
-}
-
-#[test]
-fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result<(), HolonError> {
-    use holons_core::{AssessmentReadError, ProspectiveDescriptorReader};
-    let fixture = readiness_fixture()?.saved_snapshot()?;
-    let key = CoreValidationRuleName::NoUndescribedProperties.as_str();
-    let mut candidates = vec![fixture.replacement(key)?, fixture.replacement(key)?];
-    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
-    let first = competing_replacement_findings(&reader);
-    assert_eq!(first.len(), 2);
-    let resolved = holons_core::descriptors::resolve_core_descriptor_with_reader(
-        &fixture.context,
-        key,
-        &reader,
-    );
-    assert!(matches!(resolved, Err(AssessmentReadError::Contested { .. })));
-    assert!(matches!(
-        ValueValidationContext::resolve_in_view(&fixture.context, &reader),
-        Err(AssessmentReadError::Contested { .. })
-    ));
-    let baseline_length = first.iter().map(|finding| finding.message.len()).max().unwrap();
-    candidates.reverse();
-    assert_eq!(
-        first,
-        competing_replacement_findings(&ProspectiveDescriptorReader::new(
-            &fixture.context,
-            &candidates
-        )?)
-    );
-    for _ in 0..18 {
-        candidates.push(fixture.replacement(key)?);
-    }
-    let findings = competing_replacement_findings(&ProspectiveDescriptorReader::new(
-        &fixture.context,
-        &candidates,
-    )?);
-    assert_eq!(findings.len(), candidates.len());
-    let mut identities: Vec<_> =
-        candidates.iter().map(|candidate| candidate.reference_id_string()).collect();
-    identities.sort();
-    for finding in &findings {
-        assert!(
-            matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "CompetingStagedReplacements")
+        })?;
+        assert_eq!(
+            holons_core::same_definition(constraint.constraint_type.holon(), &wrong_family)?,
+            !compatible
         );
-        assert!(finding.rule_key.is_none());
-        assert!(finding.descriptor_identity.is_none());
-        let ValidationSubjectPath::Holon { holon_identity } = &finding.subject else {
-            panic!("candidate subject")
-        };
-        let other = if holon_identity == &identities[0] { &identities[1] } else { &identities[0] };
-        assert!(finding.message.contains(holon_identity));
-        assert!(finding.message.contains(other));
-        assert!(finding.message.contains("20 live replacements"));
-        assert!(finding
-            .message
-            .contains(&format!("{}", holons_core::ReadableHolon::holon_id(&fixture.nodes[key])?)));
-        assert!(finding.message.len() <= baseline_length + 1, "only the count gains a digit");
     }
-    // Commit orchestration prepares an assessment before installing outcomes. Its
-    // two-phase carrier installs and replaces these per-candidate findings.
-    let mut assessment = crate::outcomes::PreparedAssessment::default();
-    for candidate in &candidates {
-        let report = CommitValidationReport::from_candidate(
-            findings.iter().filter(|finding| matches!(&finding.subject, ValidationSubjectPath::Holon { holon_identity } if holon_identity == &candidate.reference_id_string())).cloned().collect(),
-        );
-        assessment.record_candidate(candidate, report);
-    }
-    assert!(!assessment.install_outcomes()?.is_accepted());
-    for candidate in &candidates[1..] {
-        candidate.abandon_staged_changes(&fixture.context)?;
-    }
-    let retry = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
-    assert!(competing_replacement_findings(&retry).is_empty());
-    let mut assessment = crate::outcomes::PreparedAssessment::default();
-    assessment.record_candidate(&candidates[0], CommitValidationReport::default());
-    assert!(assessment.install_outcomes()?.is_accepted());
     Ok(())
 }
 
@@ -1804,7 +1700,7 @@ fn missing_new_validation_anchor_is_a_deliberate_schema_incompatibility() -> Res
     let mut fixture = Fixture::empty()?;
     let key = "AtMostOneDirectParent.ValidationRule";
     assert!(
-        matches!(resolve_validation_anchor(&fixture.context, key), Err(holons_core::AssessmentReadError::SchemaIncompatible { missing_anchor }) if missing_anchor == key)
+        matches!(resolve_validation_anchor(&fixture.context, key), Err(crate::AnchorResolutionError::SchemaIncompatible { missing_anchor }) if missing_anchor == key)
     );
     fixture.node(key)?;
     assert!(holons_core::same_definition(
@@ -1845,21 +1741,25 @@ fn staged_ancestry_invariant_rejects_reconstructed_updates_in_both_assessment_mo
         ] {
             let fixture = readiness_fixture()?.saved_snapshot()?;
             let predecessor = CoreRelationshipTypeName::Predecessor.as_relationship_name();
-            let candidate = fixture.replacement_with("Contract", |model| {
-                let mut relationships = holons_core::StagedRelationshipMap::new_empty();
-                let members = match edge {
-                    Missing => vec![],
-                    Duplicate => vec![fixture.nodes["Contract"].clone(); 2],
-                    Mismatched => vec![fixture.nodes["TypeDescriptor"].clone()],
-                    Touched => vec![fixture.nodes["Contract"].clone()],
-                };
-                relationships.add_related_holons_with_keys(
-                    predecessor.clone(),
-                    members.into_iter().map(|r| (r, None)).collect(),
-                )?;
-                model.relationships = Some(holons_core::RelationshipMap::from(relationships));
-                Ok(())
-            })?;
+            let candidate = fixture.stage_update_snapshot(
+                "Contract",
+                |model| {
+                    let mut relationships = holons_core::StagedRelationshipMap::new_empty();
+                    let members = match edge {
+                        Missing => vec![],
+                        Duplicate => vec![fixture.nodes["Contract"].clone(); 2],
+                        Mismatched => vec![fixture.nodes["TypeDescriptor"].clone()],
+                        Touched => vec![fixture.nodes["Contract"].clone()],
+                    };
+                    relationships.add_related_holons_with_keys(
+                        predecessor.clone(),
+                        members.into_iter().map(|r| (r, None)).collect(),
+                    )?;
+                    model.relationships = Some(holons_core::RelationshipMap::from(relationships));
+                    Ok(())
+                },
+                false,
+            )?;
             if matches!(edge, Touched) {
                 let mut handle = candidate.clone();
                 handle.with_predecessor(Some(fixture.nodes["Contract"].clone()))?;
@@ -1923,7 +1823,7 @@ fn generic_predecessor_edit_promotes_and_is_rejected_by_both_assessment_modes(
     fixture.node("AncestrySubject")?;
     fixture.link("AncestrySubject", CoreRelationshipTypeName::DescribedBy, "Contract")?;
     let fixture = fixture.saved_snapshot()?;
-    let mut candidate = fixture.replacement("AncestrySubject")?;
+    let mut candidate = fixture.stage_update_of("AncestrySubject")?;
     candidate.remove_related_holons(
         CoreRelationshipTypeName::Predecessor,
         vec![fixture.nodes["AncestrySubject"].clone()],
@@ -1937,5 +1837,289 @@ fn generic_predecessor_edit_promotes_and_is_rejected_by_both_assessment_modes(
         validate_commit_candidates_with_profile(&fixture.context, &[candidate], |_| {}),
         Err(HolonError::InvalidState(_))
     ));
+    Ok(())
+}
+
+/// A saved contract's successor is a separate subject, never a substituted prerequisite.
+#[test]
+fn saved_book_keeps_title_v1_while_explicit_book_v2_depends_on_invalid_title_v2(
+) -> Result<(), HolonError> {
+    use holons_core::{HolonCollection, HolonCollectionApi};
+    use std::sync::{Arc, RwLock};
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let title = fixture.stage_update_of_with("Title.PropertyType", |model| {
+        use type_names::ToPropertyName;
+        model.properties.insert(
+            "IsValueRequired".to_property_name(),
+            BaseValue::BooleanValue(MapBoolean(false)),
+        );
+        Ok(())
+    })?;
+    let book = fixture.stage_update_of_with("Contract", |model| {
+        let mut members = HolonCollection::new_transient();
+        members.add_references(vec![
+            title.clone().into(),
+            fixture.nodes["Key.PropertyType"].clone(),
+        ])?;
+        model.relationships.as_mut().unwrap().insert(
+            CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
+            Arc::new(RwLock::new(members)),
+        );
+        Ok(())
+    })?;
+    let mut saved_consumer = fixture.staged_subject("saved-book-consumer")?;
+    saved_consumer.with_property_value("Title", "v1")?;
+    // Author the reference before attachment so malformed supporting content is
+    // diagnosed by assessment rather than attachment default preparation.
+    let mut input = fixture.context.mutation().new_holon(Some("explicit-book-consumer".into()))?;
+    input.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![book.clone().into()])?;
+    let explicit_consumer = fixture.context.mutation().stage_new_holon(input)?;
+    for reversed in [false, true] {
+        let mut candidates =
+            vec![saved_consumer.clone(), explicit_consumer.clone(), title.clone(), book.clone()];
+        if reversed {
+            candidates.reverse();
+        }
+        let report = validate_commit_candidates(&fixture.context, &candidates)?;
+        assert!(!report.is_accepted());
+        assert_eq!(saved_consumer.validation_state()?, ValidationState::Validated);
+        assert!(saved_consumer.validation_findings()?.is_empty());
+        assert_ne!(title.validation_state()?, ValidationState::Validated);
+        assert!(explicit_consumer.validation_findings()?.iter().any(|finding| matches!(
+            finding.kind,
+            CommitValidationViolationKind::UnresolvedLocalDependency
+        )));
+        let package = holons_core::ContractContributions::resolve(&book.clone().into())?;
+        assert!(package.properties.iter().any(|member| holons_core::same_definition(
+            &member.member,
+            &title.clone().into()
+        )
+        .unwrap()));
+        assert!(holons_core::ContractContributions::resolve(&fixture.nodes["Contract"])?
+            .properties
+            .iter()
+            .any(|member| holons_core::same_definition(
+                &member.member,
+                &fixture.nodes["Title.PropertyType"]
+            )
+            .unwrap()));
+    }
+    Ok(())
+}
+
+fn saved_instance_fixture() -> Result<Fixture, HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture
+        .node("Predecessor.Relationship")?
+        .with_property_value("TypeName", "Predecessor")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link(
+        "Predecessor.Relationship",
+        CoreRelationshipTypeName::Extends,
+        "DeclaredRelationshipType.RelationshipType",
+    )?;
+    fixture.link(
+        "Predecessor.Relationship",
+        CoreRelationshipTypeName::SourceType,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "Predecessor.Relationship",
+        CoreRelationshipTypeName::TargetType,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "HolonType.TypeDescriptor",
+        CoreRelationshipTypeName::InstanceRelationships,
+        "Predecessor.Relationship",
+    )?;
+    let mut instance = fixture.staged_subject("SavedInstance")?;
+    instance.with_property_value("Title", "original")?;
+    fixture.nodes.insert("SavedInstance".into(), instance.into());
+    fixture.saved_snapshot()
+}
+
+#[test]
+fn version_producing_siblings_each_validate_and_receive_outcomes() -> Result<(), HolonError> {
+    let fixture = saved_instance_fixture()?;
+    let mut first = fixture.stage_update_of("SavedInstance")?;
+    let mut second = fixture.stage_update_of("SavedInstance")?;
+    first.with_property_value("Title", "first")?;
+    second.with_property_value("Title", "second")?;
+    assert_ne!(
+        holons_core::DefinitionIdentity::for_reference(&first.clone().into(), &fixture.context)?,
+        holons_core::DefinitionIdentity::for_reference(&second.clone().into(), &fixture.context)?
+    );
+    for candidates in [[first.clone(), second.clone()], [second.clone(), first.clone()]] {
+        let report = validate_commit_candidates(&fixture.context, &candidates)?;
+        assert!(report.is_accepted(), "{report:?}");
+        assert_eq!(first.validation_state()?, ValidationState::Validated);
+        assert_eq!(second.validation_state()?, ValidationState::Validated);
+    }
+    Ok(())
+}
+
+#[test]
+fn no_op_and_graph_only_siblings_are_both_assessed_without_poisoning_saved_definition(
+) -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::WriteableHolonState;
+    let fixture = saved_instance_fixture()?;
+    let clean = fixture.stage_update_of("SavedInstance")?;
+    let graph = fixture.stage_update_of("SavedInstance")?;
+    // Assemble an unsupported relationship as a graph-only mutation. Its finding belongs
+    // to this candidate; it does not invalidate the immutable saved definition.
+    {
+        let handle = graph.get_holon_to_commit(&fixture.context)?;
+        let mut holon = handle.write().unwrap();
+        let Holon::Staged(staged) = &mut *holon else { unreachable!() };
+        staged.add_related_holons_with_keys(
+            core_types::RelationshipName("Unlicensed".into()),
+            vec![(fixture.nodes["Contract"].clone(), None)],
+        )?;
+        staged.note_relationship_mutation(false)?;
+    }
+    let mut consumer = fixture.staged_subject("consumer")?;
+    consumer.with_property_value("Title", "valid")?;
+    for candidates in [
+        vec![clean.clone(), graph.clone(), consumer.clone()],
+        vec![graph.clone(), consumer.clone(), clean.clone()],
+    ] {
+        clean.replace_validation_outcome(ValidationState::Invalid, Vec::new())?;
+        graph.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+        let report = validate_commit_candidates(&fixture.context, &candidates)?;
+        assert!(!report.is_accepted());
+        assert_eq!(clean.validation_state()?, ValidationState::Validated);
+        assert_eq!(graph.validation_state()?, ValidationState::Invalid);
+        assert!(graph.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "UndeclaredRelationship")));
+        assert_eq!(consumer.validation_state()?, ValidationState::Validated);
+    }
+    Ok(())
+}
+
+#[test]
+fn shared_definition_product_findings_reach_both_no_op_and_graph_only_candidates(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
+    fixture.link(
+        "Contract",
+        CoreRelationshipTypeName::DescribedBy,
+        "MetaHolonType.MetaTypeDescriptor",
+    )?;
+    fixture.link(
+        "MetaHolonType.MetaTypeDescriptor",
+        CoreRelationshipTypeName::ValidationBindings,
+        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions.as_str(),
+    )?;
+    let fixture = fixture.saved_snapshot()?;
+    let first = fixture.stage_update_of("Contract")?;
+    let second = fixture.stage_update_of("Contract")?;
+    {
+        let handle = second.get_holon_to_commit(&fixture.context)?;
+        let mut holon = handle.write().unwrap();
+        let Holon::Staged(staged) = &mut *holon else { unreachable!() };
+        staged.note_relationship_mutation(false)?;
+    }
+    for candidates in [[first.clone(), second.clone()], [second.clone(), first.clone()]] {
+        let report = validate_commit_candidates(&fixture.context, &candidates)?;
+        assert!(!report.is_accepted());
+        for candidate in &candidates {
+            assert_eq!(candidate.validation_state()?, ValidationState::Invalid);
+            assert!(candidate.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-CONTRACT-003")));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn finding_paths_distinguish_candidates_with_the_same_display_prefix() -> Result<(), HolonError> {
+    let fixture = Fixture::empty()?;
+    let handles = ["12345678-0000-0000-0000-000000000001", "12345678-0000-0000-0000-000000000002"]
+        .map(|id| {
+            holons_core::StagedReference::from_temporary_id(
+                fixture.context.context_handle(),
+                &core_types::TemporaryId(id.parse().unwrap()),
+            )
+        });
+    assert_eq!(handles[0].reference_id_string(), handles[1].reference_id_string());
+    assert_ne!(
+        crate::assessment_support::path(&handles[0].clone().into()),
+        crate::assessment_support::path(&handles[1].clone().into())
+    );
+    Ok(())
+}
+
+#[test]
+fn downstream_extends_saved_definition_stays_ready_when_graph_only_alias_fails(
+) -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::WriteableHolonState;
+    let mut fixture = readiness_fixture()?;
+    declare_abstract_property(&mut fixture)?;
+    fixture
+        .node("Predecessor.AbstractRelationship")?
+        .with_property_value("TypeName", "Predecessor")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link(
+        "Predecessor.AbstractRelationship",
+        CoreRelationshipTypeName::Extends,
+        "DeclaredRelationshipType.RelationshipType",
+    )?;
+    fixture.link(
+        "Predecessor.AbstractRelationship",
+        CoreRelationshipTypeName::SourceType,
+        "AbstractMetaType",
+    )?;
+    fixture.link(
+        "Predecessor.AbstractRelationship",
+        CoreRelationshipTypeName::TargetType,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "AbstractMetaType",
+        CoreRelationshipTypeName::InstanceRelationships,
+        "Predecessor.AbstractRelationship",
+    )?;
+    let parent = abstract_subject(&fixture)?;
+    fixture.nodes.insert("abstract-subject".into(), parent.into());
+    let fixture = fixture.saved_snapshot()?;
+    let clean = fixture.stage_update_of("abstract-subject")?;
+    let graph = fixture.stage_update_of("abstract-subject")?;
+    {
+        let handle = graph.get_holon_to_commit(&fixture.context)?;
+        let mut holon = handle.write().unwrap();
+        let Holon::Staged(staged) = &mut *holon else { unreachable!() };
+        staged.add_related_holons_with_keys(
+            core_types::RelationshipName("Unlicensed".into()),
+            vec![(fixture.nodes["HolonType.TypeDescriptor"].clone(), None)],
+        )?;
+        staged.note_relationship_mutation(false)?;
+    }
+    let mut input = fixture.context.mutation().new_holon(Some("child".into()))?;
+    for (edge, target) in [
+        (CoreRelationshipTypeName::Extends, "abstract-subject"),
+        (CoreRelationshipTypeName::ComponentOf, "AbstractSchema"),
+        (CoreRelationshipTypeName::DescribedBy, "AbstractMetaType"),
+    ] {
+        input.add_related_holons(edge, vec![fixture.nodes[target].clone()])?;
+    }
+    input
+        .with_property_value("IsAbstractType", true)?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    let child = fixture.context.mutation().stage_new_holon(input)?;
+    assert!(
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&child))?.is_accepted()
+    );
+    for candidates in [
+        vec![graph.clone(), clean.clone(), child.clone()],
+        vec![child.clone(), clean.clone(), graph.clone()],
+    ] {
+        let report = validate_commit_candidates(&fixture.context, &candidates)?;
+        assert!(!report.is_accepted());
+        assert_eq!(graph.validation_state()?, ValidationState::Invalid);
+        assert!(graph.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "UndeclaredRelationship")));
+        assert_eq!(clean.validation_state()?, ValidationState::Validated);
+        assert_eq!(child.validation_state()?, ValidationState::Validated);
+        assert!(child.validation_findings()?.is_empty());
+    }
     Ok(())
 }

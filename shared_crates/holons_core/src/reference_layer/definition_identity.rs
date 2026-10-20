@@ -35,6 +35,48 @@ impl DefinitionIdentity {
         Self::for_bound_reference(reference)
     }
 
+    /// Returns the immutable definition handle for this identity. Derive the identity
+    /// from `reference` in `context` first; pending candidate snapshots remain separate.
+    /// This does not redirect traversal or select a lineage head.
+    pub fn definition_reference(
+        &self,
+        context: &Arc<TransactionContext>,
+        reference: &HolonReference,
+    ) -> HolonReference {
+        match self {
+            Self::Saved(id) => {
+                HolonReference::smart_from_id(context.space_read_handle(), id.clone())
+            }
+            _ => reference.clone(),
+        }
+    }
+
+    /// Interprets one staged-state snapshot without taking a second candidate lock.
+    pub(crate) fn from_staged_state(
+        state: crate::core_shared_objects::holon::StagedState,
+        source: Option<core_types::LocalId>,
+        candidate: TemporaryId,
+    ) -> Result<Self, HolonError> {
+        use crate::core_shared_objects::holon::StagedState;
+        Ok(match state {
+            StagedState::ForUpdate | StagedState::ForUpdateGraphOnly => {
+                let source = source.ok_or_else(|| {
+                    HolonError::InvalidState(format!(
+                        "Staged update {candidate:?} has no saved source"
+                    ))
+                })?;
+                Self::Saved(HolonId::Local(source))
+            }
+            StagedState::Committed(id) => Self::Saved(HolonId::Local(id)),
+            StagedState::ForCreate | StagedState::ForUpdateNewVersion => Self::Staged(candidate),
+            StagedState::Abandoned => {
+                return Err(HolonError::InvalidState(format!(
+                    "Abandoned candidate {candidate:?} has no assessable definition"
+                )))
+            }
+        })
+    }
+
     /// Resolves an ordinary bound handle, checking transaction compatibility when
     /// a traversal or comparison has an established transaction context.
     pub(crate) fn for_optional_context(
@@ -50,32 +92,11 @@ impl DefinitionIdentity {
     /// Uses a handle's bound transaction for ordinary descriptor operations.
     /// Callers comparing temporary identities must ensure transaction compatibility.
     pub(crate) fn for_bound_reference(reference: &HolonReference) -> Result<Self, HolonError> {
-        use crate::core_shared_objects::holon::state::StagedState;
         match reference {
             HolonReference::Smart(saved) => Ok(Self::Saved(saved.holon_id())),
             HolonReference::Staged(staged) => {
                 let (state, source) = staged.staged_state_and_source()?;
-                Ok(match state {
-                    StagedState::ForUpdate | StagedState::ForUpdateGraphOnly => {
-                        let source = source.ok_or_else(|| {
-                            HolonError::InvalidState(format!(
-                                "Staged update {:?} has no saved source",
-                                staged.temporary_id()
-                            ))
-                        })?;
-                        Self::Saved(HolonId::Local(source))
-                    }
-                    StagedState::Committed(id) => Self::Saved(HolonId::Local(id)),
-                    StagedState::ForCreate | StagedState::ForUpdateNewVersion => {
-                        Self::Staged(staged.temporary_id())
-                    }
-                    StagedState::Abandoned => {
-                        return Err(HolonError::InvalidState(format!(
-                            "Abandoned candidate {:?} has no assessable definition",
-                            staged.temporary_id()
-                        )))
-                    }
-                })
+                Self::from_staged_state(state, source, staged.temporary_id())
             }
             HolonReference::Transient(transient) => Ok(Self::Transient(transient.temporary_id())),
         }
