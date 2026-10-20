@@ -122,6 +122,10 @@ impl DanceEnvelopeTransport for MockConductorConfig {
 /// Each conductor is an isolated single-agent node, so DHT publish and gossip have no peers.
 /// Left on, they re-scan every authored op (about 38k after the Core Schema bootstrap) every
 /// few seconds and contend with the test's own zome calls for the database.
+///
+/// Gossip is also what grows an agent's storage arc, so with it disabled the agent stays a
+/// non-authority and every read tries the network first. Setup therefore calls
+/// `declare_full_storage_arcs` after installing the app, as Holochain's own tests do.
 fn local_only_config(rendezvous: &DynSweetRendezvous) -> SweetConductorConfig {
     SweetConductorConfig::standard()
         .tune_network_config(|network| {
@@ -176,6 +180,7 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
         .unwrap();
 
     let cell = app.into_cells()[0].clone();
+    conductor.declare_full_storage_arcs(cell.dna_hash()).await;
     let agent_hash = holochain_agent.into_inner();
     let agent = AgentPubKey::from_raw_39(agent_hash);
 
@@ -294,6 +299,8 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     // appended coordinator and its integrity dependency survive a conductor restart.
     conductor.shutdown().await;
     conductor.startup().await;
+    // The restart rejoins the agent with an empty storage arc; claim the full arc again.
+    conductor.declare_full_storage_arcs(&installed_dna_hash).await;
 
     let after = conductor
         .get_dna_def(&cell_id)

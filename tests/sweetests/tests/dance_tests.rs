@@ -64,6 +64,9 @@ use fixture_cases::transaction_lifecycle_fixture::*;
 ///      set RUST_LOG to enable client-side (i.e., test code) tracing
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
+/// The `runtime_behavior_matrix` case is skipped in CI for now (`ci-dance` filter in
+/// `.config/nextest.toml`): one bootstrap plus 33 scenarios ran past 30 minutes on a hosted
+/// runner. It still runs locally.
 #[rstest]
 #[case::runtime_behavior_matrix(runtime_behavior_matrix_suite())]
 #[tokio::test(flavor = "multi_thread")]
@@ -73,6 +76,11 @@ async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
 
 /// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
 /// so it shares this suite's bootstrap instead of paying for its own.
+///
+/// Skipped in CI for now (`ci-dance` filter in `.config/nextest.toml`): it takes over 30 minutes
+/// on a hosted runner, about 2.5x local. Most of that is the whole-schema verification steps,
+/// which read relationships one dance call at a time; the ValidationBindings step reads every
+/// loaded holon (~1,060 reads).
 #[tokio::test(flavor = "multi_thread")]
 async fn pristine_bootstrap_and_loader() {
     let (runtime, initial_tx_id) = boot_dance_test_suite().await;

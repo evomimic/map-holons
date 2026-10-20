@@ -17,7 +17,6 @@ jobs:
   # Everything that runs without a Holochain conductor: shared/host/hApp unit tests, sweetest
   # harness lib tests, schema and SDK fixture checks, web and SDK vitest.
   light:
-    if: false  # TEMP: heavy-only check run; revert after the heavy timings are in
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -75,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [dance-storage, rest]
+        shard: [storage, rest]
     steps:
       - uses: actions/checkout@v5
 
@@ -133,6 +132,53 @@ jobs:
         run: |
           nix develop --command bash -c "npm run check:happ-artifacts"
 
+  # The dance_tests suites (one bootstrap each, then many scenarios) exceed 30 minutes per suite
+  # on a hosted runner, which does not fit a heavy shard. They run here with a long limit so they
+  # finish and report real durations. TEMP: not required by ci_pass until those durations are
+  # known and the suites fit a normal job; the steps mirror `heavy` and restore its cache.
+  # The dance_test_runner directive adds a timestamped `STARTING STEP` line per scenario step.
+  dance:
+    if: false  # TEMP: both dance suites are skipped in CI (see the ci-dance profile); re-enable with them
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.28.3/install
+
+      - uses: cachix/cachix-action@v17
+        with:
+          name: holochain-ci
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: heavy
+          workspaces: |
+            . -> target
+            happ -> target
+          save-if: false
+
+      - name: Disk usage
+        run: df -h
+
+      - name: Install dependencies
+        run: |
+          nix develop --command bash -c "npm ci"
+
+      - name: Dance tests
+        env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          MAP_NEXTEST_PROFILE: ci-dance
+          MAP_TEST_RUN_ROOT: /dev/shm/map-test-runs
+          RUST_LOG: warn,holons_test::harness::helpers::test_context=info,dance_tests::execution_steps::dance_test_runner=info
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited
+          nix develop --command bash -c "ulimit -l && npm run test:heavy"
+
   fmt:
     runs-on: ubuntu-latest
     steps:
@@ -175,7 +221,7 @@ jobs:
   ci_pass:
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    needs: [ light, heavy, fmt ]  # 👈 exclude 'lint'
+    needs: [ light, heavy, fmt ]  # 👈 exclude 'lint'; 'dance' is TEMP non-required (see above)
     steps:
       - name: Check status
         uses: re-actors/alls-green@release/v1

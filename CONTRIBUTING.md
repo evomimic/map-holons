@@ -101,6 +101,7 @@ All pull requests are automatically validated by our GitHub Actions CI workflows
 
 - **Light** — Runs the SDK wire-fixture and schema checks, then `npm run test:light` (all unit tests: shared crates, host, hApp, sweetest harness lib, web, SDK). No Holochain conductor.
 - **Heavy** — Runs `npm run test:heavy`: builds the hApp and probes, then runs the sweetests under `cargo-nextest`, which prints each test's duration and terminates tests that hang. Heavy runs as parallel shards; which test files each shard runs is defined by the `ci-<shard>` profiles in `.config/nextest.toml`. Then re-audits the packaged coordinator surfaces.
+- **Dance** — Runs the `dance_tests` suites (`ci-dance` profile) in their own job with a long time limit, because each suite takes longer than a heavy shard allows. Not required by the CI Pass Aggregator, and temporarily disabled: both suites are skipped in CI because they exceed their time limits on hosted runners. Run `npm run sweetest` locally before merging behaviour changes.
 - **Format** — Runs `npm run fmt:check` inside `nix develop` to enforce Rust formatting across `host`, `happ`, and `tests/sweetests`
 - **CI Pass Aggregator** — Combines and reports status of all required checks
 
