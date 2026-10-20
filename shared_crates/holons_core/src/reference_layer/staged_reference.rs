@@ -1582,6 +1582,53 @@ mod tests {
     }
 
     #[test]
+    fn predecessor_edits_keep_existing_mutation_classification() -> Result<(), HolonError> {
+        for generic in [false, true] {
+            let context = build_context_with_saved_holons(
+                vec![crate::core_shared_objects::holon::SavedHolon::new(
+                    LocalId(vec![1, 2, 3]),
+                    PropertyMap::new(),
+                    None,
+                    base_types::MapInteger(1),
+                )],
+                std::collections::HashMap::new(),
+            );
+            let (descriptor, _) =
+                staged_relationship_descriptor(&context, "Predecessor", Some(true))?;
+            let mut candidate = staged_update_source(&context, descriptor)?;
+            let source = crate::SmartReference::new_from_id(
+                context.space_read_handle(),
+                HolonId::Local(LocalId(vec![1, 2, 3])),
+            );
+            {
+                let handle = candidate.get_rc_holon()?;
+                let mut holon = handle.write().unwrap();
+                let Holon::Staged(staged) = &mut *holon else { panic!("staged candidate") };
+                staged.record_staging_predecessor(source.clone())?;
+            }
+            assert_eq!(candidate.staged_state()?, StagedState::ForUpdate);
+            assert_eq!(candidate.predecessor()?, Some(source.clone().into()));
+            if generic {
+                candidate.remove_related_holons(
+                    CoreRelationshipTypeName::Predecessor,
+                    vec![source.into()],
+                )?;
+                assert_eq!(candidate.staged_state()?, StagedState::ForUpdateNewVersion);
+            } else {
+                candidate.with_predecessor(None)?;
+                assert_eq!(candidate.staged_state()?, StagedState::ForUpdate);
+            }
+            let holon = candidate.get_rc_holon()?;
+            let holon = holon.read().unwrap();
+            let Holon::Staged(staged) = &*holon else { panic!("staged candidate") };
+            assert!(staged
+                .touched_relationship_names()
+                .contains(&CoreRelationshipTypeName::Predecessor.as_relationship_name()));
+        }
+        Ok(())
+    }
+
+    #[test]
     fn descriptor_replacement_versions_updates_and_same_descriptor_is_a_noop(
     ) -> Result<(), HolonError> {
         for graph_only in [false, true] {

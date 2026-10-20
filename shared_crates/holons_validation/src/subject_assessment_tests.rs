@@ -1823,3 +1823,119 @@ fn missing_new_validation_anchor_is_a_deliberate_schema_incompatibility() -> Res
 
 #[path = "schema_assessment_tests.rs"]
 mod schema_assessment;
+
+/// Both public assessment modes must reject malformed ancestry before preparation or writes.
+#[test]
+fn staged_ancestry_invariant_rejects_reconstructed_updates_in_both_assessment_modes(
+) -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::{holon::StagedState, WritableRelationship};
+    #[derive(Clone, Copy)]
+    enum AncestryCase {
+        Missing,
+        Duplicate,
+        Mismatched,
+        Touched,
+    }
+    use AncestryCase::*;
+    for edge in [Missing, Duplicate, Mismatched, Touched] {
+        for state in [
+            StagedState::ForUpdate,
+            StagedState::ForUpdateGraphOnly,
+            StagedState::ForUpdateNewVersion,
+        ] {
+            let fixture = readiness_fixture()?.saved_snapshot()?;
+            let predecessor = CoreRelationshipTypeName::Predecessor.as_relationship_name();
+            let candidate = fixture.replacement_with("Contract", |model| {
+                let mut relationships = holons_core::StagedRelationshipMap::new_empty();
+                let members = match edge {
+                    Missing => vec![],
+                    Duplicate => vec![fixture.nodes["Contract"].clone(); 2],
+                    Mismatched => vec![fixture.nodes["TypeDescriptor"].clone()],
+                    Touched => vec![fixture.nodes["Contract"].clone()],
+                };
+                relationships.add_related_holons_with_keys(
+                    predecessor.clone(),
+                    members.into_iter().map(|r| (r, None)).collect(),
+                )?;
+                model.relationships = Some(holons_core::RelationshipMap::from(relationships));
+                Ok(())
+            })?;
+            if matches!(edge, Touched) {
+                let mut handle = candidate.clone();
+                handle.with_predecessor(Some(fixture.nodes["Contract"].clone()))?;
+                assert_eq!(handle.staged_state()?, StagedState::ForUpdate);
+                assert_eq!(handle.predecessor()?, Some(fixture.nodes["Contract"].clone()));
+            }
+            {
+                let handle = candidate.get_holon_to_commit(&fixture.context)?;
+                let mut holon = handle.write().unwrap();
+                let Holon::Staged(staged) = &mut *holon else { unreachable!() };
+                match state {
+                    StagedState::ForUpdateGraphOnly => staged.note_relationship_mutation(false)?,
+                    StagedState::ForUpdateNewVersion => staged.note_property_mutation()?,
+                    _ => {}
+                }
+            }
+            let before = candidate.get_holon_to_commit(&fixture.context)?.read().unwrap().clone();
+            let reads = fixture.backend_relationship_reads();
+            for error in [
+                assess_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))
+                    .unwrap_err(),
+                validate_commit_candidates_with_profile(
+                    &fixture.context,
+                    std::slice::from_ref(&candidate),
+                    |_| {},
+                )
+                .unwrap_err(),
+            ] {
+                let HolonError::InvalidState(message) = error else { panic!("{error:?}") };
+                assert!(message.contains(&candidate.reference_id_string()));
+                assert!(message.contains("Predecessor"));
+                assert!(message.contains("observed"));
+            }
+            assert_eq!(fixture.backend_relationship_reads(), reads);
+            assert_eq!(*candidate.get_holon_to_commit(&fixture.context)?.read().unwrap(), before);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn generic_predecessor_edit_promotes_and_is_rejected_by_both_assessment_modes(
+) -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::holon::StagedState;
+    let mut fixture = readiness_fixture()?;
+    fixture
+        .node("Predecessor.Relationship")?
+        .with_property_value("TypeName", "Predecessor")?
+        .with_property_value("IsDefinitional", true)?
+        .with_property_value("AllowsDuplicates", false)?;
+    fixture.link(
+        "Predecessor.Relationship",
+        CoreRelationshipTypeName::Extends,
+        "DeclaredRelationshipType",
+    )?;
+    fixture.link(
+        "Contract",
+        CoreRelationshipTypeName::InstanceRelationships,
+        "Predecessor.Relationship",
+    )?;
+    fixture.node("AncestrySubject")?;
+    fixture.link("AncestrySubject", CoreRelationshipTypeName::DescribedBy, "Contract")?;
+    let fixture = fixture.saved_snapshot()?;
+    let mut candidate = fixture.replacement("AncestrySubject")?;
+    candidate.remove_related_holons(
+        CoreRelationshipTypeName::Predecessor,
+        vec![fixture.nodes["AncestrySubject"].clone()],
+    )?;
+    assert_eq!(candidate.staged_state()?, StagedState::ForUpdateNewVersion);
+    assert!(matches!(
+        assess_commit_candidates(&fixture.context, std::slice::from_ref(&candidate)),
+        Err(HolonError::InvalidState(_))
+    ));
+    assert!(matches!(
+        validate_commit_candidates_with_profile(&fixture.context, &[candidate], |_| {}),
+        Err(HolonError::InvalidState(_))
+    ));
+    Ok(())
+}

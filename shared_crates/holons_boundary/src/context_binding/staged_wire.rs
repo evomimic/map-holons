@@ -329,6 +329,94 @@ mod tests {
     }
 
     #[test]
+    fn staging_ancestry_survives_wire_and_retry_scope_without_becoming_touched(
+    ) -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::WritableRelationship;
+        use holons_core::{HolonReference, SmartReference, StagedRelationshipMap};
+        let space = test_space();
+        let source_context =
+            space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let destination_context =
+            space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let source_id = LocalId(vec![1, 2, 3]);
+        let predecessor = RelationshipName(MapString("Predecessor".into()));
+        let source = SmartReference::new_with_properties(
+            source_context.space_read_handle(),
+            core_types::HolonId::Local(source_id.clone()),
+            PropertyMap::from([(
+                core_types::PropertyName(MapString("Key".into())),
+                base_types::BaseValue::StringValue(MapString("source".into())),
+            )]),
+        );
+        for scope in [RelationshipCommitScope::Full, RelationshipCommitScope::TouchedOnly] {
+            for committed in [false, true] {
+                // Reconstruct the same untouched ancestry that the staging constructor records.
+                let mut relationships = StagedRelationshipMap::new_empty();
+                relationships.add_related_holons_with_keys(
+                    predecessor.clone(),
+                    vec![(source.clone().into(), None)],
+                )?;
+                let model = HolonCloneModel::new(
+                    MapInteger(2),
+                    None,
+                    PropertyMap::new(),
+                    Some(RelationshipMap::from(relationships)),
+                );
+                let mut staged =
+                    StagedHolon::new_for_update_from_clone_model(model, source_id.clone())?;
+                assert_eq!(staged.staged_state(), &StagedState::ForUpdate);
+                match scope {
+                    RelationshipCommitScope::Full => {
+                        staged.note_property_mutation()?;
+                        staged.prepare_full_relationship_commit_scope()?;
+                    }
+                    RelationshipCommitScope::TouchedOnly => {
+                        staged.add_related_holons(
+                            RelationshipName(MapString("Touched".into())),
+                            vec![],
+                        )?;
+                        staged.note_relationship_mutation(false)?;
+                        staged.prepare_touched_relationship_commit_scope()?;
+                    }
+                }
+                if committed {
+                    staged.to_committed(if scope == RelationshipCommitScope::Full {
+                        LocalId(vec![4])
+                    } else {
+                        source_id.clone()
+                    })?;
+                }
+                let wire: StagedHolonWire = serde_json::from_value(
+                    serde_json::to_value(StagedHolonWire::from(&staged)).unwrap(),
+                )
+                .unwrap();
+                for restored in
+                    [wire.clone().bind(&source_context)?, wire.rebind(&destination_context)?]
+                {
+                    assert_eq!(restored.relationship_commit_scope(), scope);
+                    assert_eq!(restored.staged_state(), staged.staged_state());
+                    assert!(!restored.touched_relationship_names().contains(&predecessor));
+                    let collection = restored.get_staged_relationship(&predecessor)?;
+                    let collection = collection.read().unwrap();
+                    let [HolonReference::Smart(actual)] = collection.get_members().as_slice()
+                    else {
+                        panic!("exact saved predecessor")
+                    };
+                    assert_eq!(actual.holon_id(), core_types::HolonId::Local(source_id.clone()));
+                    assert_eq!(
+                        restored
+                            .relationship_collections_for_commit()?
+                            .iter()
+                            .any(|(name, _)| name == &predecessor),
+                        scope == RelationshipCommitScope::Full
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn invalid_relationship_commit_scope_values_are_rejected() {
         let valid =
             serde_json::to_value(StagedHolonWire::from(&StagedHolon::new_for_create())).unwrap();

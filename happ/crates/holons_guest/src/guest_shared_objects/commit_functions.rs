@@ -15,11 +15,11 @@ use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
         transactions::TxId,
-        Holon, HolonCollection, ReadableHolonState, StagedHolon, WriteableHolonState,
+        Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
     descriptors::{resolve_inverse_relationship_name, TargetBinding},
     reference_layer::ReadableHolon,
-    HolonReference, SmartReference, StagedReference, WritableHolon,
+    HolonReference, StagedReference, WritableHolon,
 };
 
 use base_types::MapString;
@@ -918,7 +918,7 @@ fn commit_holon(
                 staged_holon.prepare_full_relationship_commit_scope()?;
                 // Storage decides how a version is written: it resolves the lineage this
                 // predecessor belongs to and roots the new version there. Immediate-predecessor
-                // ordering is not carried by the node — it is staged below as a SmartLink.
+                // ordering is not carried by the node; Pass 2 writes the assessed Predecessor edge.
                 let persist_started_at = performance_timestamp_micros();
                 let stored = persist_holon(HolonWriteRequest::PublishVersion {
                     holon_node: staged_holon.into_node_model(),
@@ -941,8 +941,6 @@ fn commit_holon(
                 );
 
                 let new_local_id = stored.version_metadata.version_id;
-
-                stage_predecessor_relationship(staged_holon, context, predecessor_id)?;
 
                 staged_holon.to_committed(new_local_id)?;
                 Ok(CommitOutcome::Saved { establishes_key_index_entry: true })
@@ -968,22 +966,6 @@ fn commit_holon(
             holon_write
         )))
     }
-}
-
-fn stage_predecessor_relationship(
-    staged_holon: &mut StagedHolon,
-    context: &Arc<TransactionContext>,
-    predecessor_id: LocalId,
-) -> Result<(), HolonError> {
-    let predecessor_reference =
-        SmartReference::new_from_id(context.space_read_handle(), HolonId::Local(predecessor_id));
-
-    staged_holon.add_related_holons_with_keys(
-        CoreRelationshipTypeName::Predecessor.as_relationship_name(),
-        vec![(predecessor_reference.into(), None)],
-    )?;
-
-    Ok(())
 }
 
 /// Persists one declared relationship collection and its resolved inverse.

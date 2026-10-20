@@ -11,7 +11,8 @@ use crate::{
     ConstraintDeclarationRoots, ContractKindRoots, DescriptorRuleProducts, ValidationCollector,
     ValidationObservations, ValueValidationContext,
 };
-use core_types::{CommitValidationViolationKind, HolonError};
+use core_types::{CommitValidationViolationKind, HolonError, HolonId};
+use holons_core::core_shared_objects::{holon::StagedState, Holon};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type_with_reader, SchemaOwnershipKind},
@@ -145,6 +146,7 @@ fn assess_commit_candidates_with_observer<'a>(
     if candidates.is_empty() {
         return Ok((PreparedAssessment::default(), ValidationObservations::default()));
     }
+    ensure_staged_ancestry_invariant(context, candidates)?;
     require_distinct_live_candidates(candidates)?;
     let reader = ProspectiveDescriptorReader::new(context, candidates)?;
     let mut collector = ValidationCollector::default();
@@ -173,6 +175,57 @@ fn assess_commit_candidates_with_observer<'a>(
         &mut observer,
     )?
     .assess(&mut observer)
+}
+
+/// Checks constructor-owned ancestry before assessment, including updates assembled through
+/// ungoverned operations or wire reconstruction. Reads only staged memory; malformed ancestry
+/// must never be repaired after assessment or replayed onto a graph-only source.
+fn ensure_staged_ancestry_invariant(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+) -> Result<(), HolonError> {
+    let predecessor = CoreRelationshipTypeName::Predecessor.as_relationship_name();
+    for candidate in candidates {
+        holons_core::assert_reference_transaction_compatible(&candidate.into(), context)?;
+        let rc_holon = candidate.get_holon_to_commit(context)?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!("Reading staged ancestry: {error}"))
+        })?;
+        let Holon::Staged(staged) = &*holon else {
+            return Err(HolonError::InvalidType("Expected a staged candidate".into()));
+        };
+        if !matches!(
+            staged.staged_state(),
+            StagedState::ForUpdate
+                | StagedState::ForUpdateGraphOnly
+                | StagedState::ForUpdateNewVersion
+        ) {
+            continue;
+        }
+        let collection = staged.get_staged_relationship(&predecessor)?;
+        let collection = collection.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!("Reading staged Predecessor: {error}"))
+        })?;
+        let members = collection.get_members();
+        let source = staged.versioned_source_id_ref();
+        let exact_source = match members.as_slice() {
+            [HolonReference::Smart(reference)] => {
+                source.is_some_and(|source| reference.holon_id() == HolonId::Local(source.clone()))
+            }
+            _ => false,
+        };
+        let touched = staged.touched_relationship_names().contains(&predecessor);
+        if !exact_source || touched {
+            return Err(HolonError::InvalidState(format!(
+                "Candidate {} requires one untouched Predecessor naming saved source {:?}; \
+                 observed Predecessor {:?}, touched={touched}",
+                candidate.reference_id_string(),
+                source,
+                members.iter().map(HolonReference::reference_id_string).collect::<Vec<_>>(),
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Preserve Commit's carrier grouping and finding order without installing outcomes.

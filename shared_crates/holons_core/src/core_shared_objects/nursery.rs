@@ -235,6 +235,7 @@ impl HolonStagingBehavior for Nursery {
     }
 
     /// Stage an existing holon for possible version-producing or graph-only mutation.
+    /// Records the exact saved source as untouched ancestry, persisted only if a new version is published.
     fn stage_new_version(
         &self,
         current_version: SmartReference,
@@ -265,15 +266,9 @@ impl HolonStagingBehavior for Nursery {
             staged_holon.note_property_mutation()?;
         }
 
+        staged_holon.record_staging_predecessor(current_version)?;
         let new_id = self.stage_holon(staged_holon)?;
-        let mut staged_reference = self.to_validated_staged_reference(&new_id)?;
-
-        // A new version's lineage is established at commit time. Drop any
-        // predecessor edge cloned from the source version so old lineage cannot
-        // be replayed onto the staged successor.
-        staged_reference.with_predecessor(None)?;
-
-        Ok(staged_reference)
+        self.to_validated_staged_reference(&new_id)
     }
 }
 
@@ -850,8 +845,8 @@ mod tests {
     }
 
     #[test]
-    fn stage_new_version_enters_update_lifecycle_without_predecessor_edge() -> Result<(), HolonError>
-    {
+    fn stage_new_version_records_exact_non_root_source_without_touching_ancestry(
+    ) -> Result<(), HolonError> {
         let source_id = LocalId(vec![1, 2, 3]);
         let original_title = BaseValue::StringValue(MapString("Original Title".to_string()));
         let mut properties = PropertyMap::new();
@@ -861,7 +856,12 @@ mod tests {
             BaseValue::StringValue(MapString("book-one".to_string())),
         );
         properties.insert(title.clone(), original_title.clone());
-        let source_holon = SavedHolon::new(source_id.clone(), properties, None, MapInteger(3));
+        let source_holon = SavedHolon::new(
+            source_id.clone(),
+            properties,
+            Some(LocalId(vec![9, 8, 7])),
+            MapInteger(3),
+        );
         let context = stage_version_test_context(
             source_id.clone(),
             source_holon,
@@ -881,7 +881,10 @@ mod tests {
             crate::DefinitionIdentity::Saved(HolonId::Local(source_id.clone())),
         );
         assert!(staged_reference.is_in_state(&context, StagedState::ForUpdate)?);
-        assert!(staged_reference.predecessor()?.is_none());
+        assert_eq!(
+            staged_reference.predecessor()?.unwrap().holon_id()?,
+            HolonId::Local(source_id.clone())
+        );
 
         let staged_holon = staged_reference.get_holon_to_commit(&context)?;
         let staged_holon = staged_holon.read().map_err(|e| {
@@ -895,7 +898,8 @@ mod tests {
         };
 
         assert_eq!(staged_holon.versioned_source_id_ref(), Some(&source_id));
-        assert_eq!(staged_holon.original_id_ref(), None);
+        assert!(staged_holon.touched_relationship_names().is_empty());
+        assert_eq!(staged_holon.original_id_ref(), Some(&LocalId(vec![9, 8, 7])));
         assert_eq!(staged_holon.version(), &MapInteger(3));
         assert_eq!(staged_holon.property_value(&title)?, Some(original_title));
 

@@ -8,7 +8,7 @@ use std::{
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use holons_core::core_shared_objects::{
-    space_manager::HolonSpaceManager, transactions::TransactionContext, Holon,
+    space_manager::HolonSpaceManager, transactions::TransactionContext, Holon, WritableRelationship,
 };
 use holons_core::{
     HolonCollection, HolonCollectionApi, HolonReference, HolonServiceApi, ReadableHolon,
@@ -378,6 +378,14 @@ impl Fixture {
                     .fetch_all_related_holons_internal(&self.context, &saved.holon_id()?)?,
             ),
         };
+        // Match staging's constructor-owned ancestry without marking it as an authored edit.
+        let mut relationships = model.relationships.as_ref().unwrap().clone_for_staged()?;
+        relationships.map.remove(&CoreRelationshipTypeName::Predecessor.as_relationship_name());
+        relationships.add_related_holons_with_keys(
+            CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+            vec![(saved.clone(), None)],
+        )?;
+        model.relationships = Some(holons_core::RelationshipMap::from(relationships));
         edit(&mut model)?;
         let transient = self.context.mutation().new_holon(Some(MapString(key.into())))?;
         let staged = self.context.mutation().stage_new_holon(transient)?;

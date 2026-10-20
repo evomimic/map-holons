@@ -127,3 +127,18 @@ async fn book_value_presentation_acceptance() {
     })
     .await;
 }
+
+/// Focused staging ancestry and persisted lineage checks; also covered by runtime_behavior_matrix.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused ancestry check; runtime_behavior_matrix covers these fixtures"]
+async fn staging_ancestry_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "staging_ancestry_acceptance",
+        test_cases: vec![
+            stage_new_version_fixture().unwrap(),
+            commit_sequential_lineage_fixture().unwrap(),
+            commit_non_root_lineage_fixture().unwrap(),
+        ],
+    })
+    .await;
+}

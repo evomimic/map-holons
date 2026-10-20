@@ -8,7 +8,8 @@ use crate::{
         holon::{AccessType, HolonCloneModel, HolonState, StagedState, ValidationState},
         ReadableHolonState, ReadableRelationship, WritableRelationship, WriteableHolonState,
     },
-    HolonCollection, HolonReference, RelationshipMap, StagedRelationshipMap,
+    HolonCollection, HolonCollectionApi, HolonReference, RelationshipMap, SmartReference,
+    StagedRelationshipMap,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -16,7 +17,7 @@ use core_types::{
     PropertyName, PropertyValue, RelationshipName,
 };
 use serde::{Deserialize, Serialize};
-use type_names::CorePropertyTypeName;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Pass-2 relationship persistence scope selected during Commit preparation.
 ///
@@ -151,6 +152,20 @@ impl StagedHolon {
             relationship_commit_scope,
             errors,
         }
+    }
+
+    /// Records constructor-owned ancestry without classifying a mutation or touching persistence scope.
+    pub(crate) fn record_staging_predecessor(
+        &mut self,
+        source: SmartReference,
+    ) -> Result<(), HolonError> {
+        let mut collection = HolonCollection::new_staged();
+        collection.add_references_with_keys(vec![(source.into(), None)])?;
+        self.staged_relationships.map.insert(
+            CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+            Arc::new(RwLock::new(collection)),
+        );
+        Ok(())
     }
 
     fn staged_relationships_from_model(
