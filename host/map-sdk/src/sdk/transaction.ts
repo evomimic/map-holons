@@ -660,11 +660,21 @@ export class MapTransaction {
     return result === null ? null : { usage: createHolonReference(txId, result.usage), initialized: false, reportSession: result.report_session };
   }
 
-  /** Select a live Usage and capture its snapshot in the current persistence round. */
-  async selectVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference): Promise<VisualizerUsageSelection> {
+  /** Select the default or an explicitly supplied Usage and capture its snapshot in the current round. */
+  async selectVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference, usage?: HolonReference): Promise<VisualizerUsageSelection> {
     const txId = txIdFor(this);
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
-    const result = await internalTransaction.selectVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected));
+    const result = usage === undefined
+      ? await internalTransaction.selectVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected))
+      : await internalTransaction.selectVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected), bind(usage));
+    return { usage: createHolonReference(txId, result.usage), initialized: result.initialized, reportSession: result.report_session };
+  }
+
+  /** Explicitly fork effective configuration for this subject type; shared edits use saveVisualizerUsage. */
+  async specializeVisualizerUsage(request: VisualizerSelectionRequest, selected: HolonReference, usage: HolonReference): Promise<VisualizerUsageSelection> {
+    const txId = txIdFor(this);
+    const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
+    const result = await internalTransaction.specializeVisualizerUsage(txId, this.selectionRequestWire(request), bind(selected), bind(usage));
     return { usage: createHolonReference(txId, result.usage), initialized: result.initialized, reportSession: result.report_session };
   }
 

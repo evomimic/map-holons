@@ -138,3 +138,100 @@ fn inventory_rejects_a_removed_canonical_validation_binding() -> Result<()> {
     assert!(error.to_string().contains(bytes_rule));
     Ok(())
 }
+
+/// Check authored descriptor and rule references before the much slower guest bootstrap.
+/// Lookup through a transitive schema dependency does not authorize a direct reference.
+fn require_direct_schema_dependencies(documents: &[Value]) -> Result<()> {
+    use std::collections::BTreeMap;
+    let holons: Vec<_> = documents
+        .iter()
+        .flat_map(|document| document["holons"].as_array().expect("canonical holons"))
+        .collect();
+    let mut owners = BTreeMap::new();
+    let mut dependencies = BTreeMap::new();
+    for holon in &holons {
+        let key = holon["key"].as_str().context("canonical key")?;
+        let relationships =
+            holon["relationships"].as_array().map(Vec::as_slice).unwrap_or_default();
+        if holon["type"] == "Schema.HolonType" {
+            owners.insert(key, key);
+            let declared: BTreeSet<_> = relationships
+                .iter()
+                .filter(|relationship| relationship["name"] == "DependsOn")
+                .flat_map(|relationship| {
+                    relationship["target"].as_array().expect("canonical targets")
+                })
+                .map(|target| target["$ref"].as_str().expect("canonical reference"))
+                .collect();
+            dependencies.insert(key, declared);
+        }
+        for relationship in relationships {
+            if matches!(relationship["name"].as_str(), Some("ComponentOf" | "RuleOf")) {
+                for target in relationship["target"].as_array().context("ownership targets")? {
+                    let owner = target["$ref"].as_str().context("owning schema")?;
+                    if let Some(previous) = owners.insert(key, owner) {
+                        ensure!(previous == owner, "conflicting schema ownership for {key}");
+                    }
+                }
+            }
+        }
+    }
+    let mut missing = BTreeSet::new();
+    for holon in holons {
+        let key = holon["key"].as_str().context("canonical key")?;
+        let Some(source_schema) = owners.get(key) else { continue };
+        let declared = dependencies.get(source_schema).context("owning schema definition")?;
+        let mut references = vec![holon["type"].as_str().context("canonical describing type")?];
+        for relationship in holon["relationships"].as_array().map(Vec::as_slice).unwrap_or_default()
+        {
+            for target in relationship["target"].as_array().context("relationship targets")? {
+                references.push(target["$ref"].as_str().context("relationship reference")?);
+            }
+        }
+        for target in references {
+            let Some(target_schema) = owners.get(target) else { continue };
+            if source_schema != target_schema && !declared.contains(target_schema) {
+                missing.insert(format!("{key} references {target}: {source_schema} must directly depend on {target_schema}"));
+            }
+        }
+    }
+    ensure!(missing.is_empty(), "missing direct schema dependencies: {missing:#?}");
+    Ok(())
+}
+
+#[test]
+fn canonical_descriptor_references_have_direct_schema_dependencies() -> Result<()> {
+    require_direct_schema_dependencies(&canonical_documents()?)
+}
+
+#[test]
+fn inventory_rejects_the_missing_design_token_dependency() -> Result<()> {
+    let mut documents = canonical_documents()?;
+    require_direct_schema_dependencies(&documents)?;
+    let mut removed = false;
+    for document in &mut documents {
+        for holon in document["holons"].as_array_mut().expect("canonical holons") {
+            if holon["key"] != "MAP DAHN Schema-v0.1.0" {
+                continue;
+            }
+            for relationship in holon["relationships"].as_array_mut().expect("schema relationships")
+            {
+                if relationship["name"] != "DependsOn" {
+                    continue;
+                }
+                relationship["target"].as_array_mut().expect("dependency targets").retain(
+                    |target| {
+                        let keep = target["$ref"] != "MAP Design Tokens Schema-v0.1.0";
+                        removed |= !keep;
+                        keep
+                    },
+                );
+            }
+        }
+    }
+    ensure!(removed, "regression fixture must remove the direct Design Token dependency");
+    let error = require_direct_schema_dependencies(&documents)
+        .expect_err("Visualizer token references require the direct Design Token dependency");
+    ensure!(error.to_string().contains("DesignToken.HolonType"), "unexpected finding: {error}");
+    Ok(())
+}

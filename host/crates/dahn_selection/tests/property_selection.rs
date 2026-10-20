@@ -23,7 +23,18 @@ struct Graph {
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
-        self.edges.insert((source, name.into()), targets.into());
+        if name == "HasSlot" {
+            let descriptor = self
+                .edges
+                .get(&(source, "DescribedBy".into()))
+                .and_then(|values| values.first())
+                .copied()
+                .unwrap_or(source + 100);
+            self.edges.insert((source, "DescribedBy".into()), vec![descriptor]);
+            self.edges.insert((descriptor, name.into()), targets.into());
+        } else {
+            self.edges.insert((source, name.into()), targets.into());
+        }
     }
     fn reference(context: &Arc<TransactionContext>, id: u8) -> HolonReference {
         HolonReference::smart_with_key(
@@ -86,6 +97,10 @@ impl HolonServiceApi for Graph {
         ] {
             properties.insert(PropertyName(name.into()), BaseValue::StringValue(value.into()));
         }
+        properties.insert(
+            PropertyName("CompositionRole".into()),
+            BaseValue::StringValue(format!("slot-{}", id.local_id().0[0]).into()),
+        );
         properties.insert(
             PropertyName("DefinesInstanceTypeKind".into()),
             BaseValue::BooleanValue(self.anchors.contains(&id.local_id().0[0]).into()),

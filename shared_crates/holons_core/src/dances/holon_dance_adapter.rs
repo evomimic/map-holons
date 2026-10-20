@@ -293,3 +293,32 @@ pub fn fetch_all_related_holons_dance(
         )),
     }
 }
+
+/// Terminal guest adapter for the read-only Visualizer Usage service transport.
+pub fn resolve_visualizer_usage_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter(
+            "Expected standalone Usage resolution transport".into(),
+        ));
+    }
+    let RequestBody::TargetHolons(name, inputs) = request.body else {
+        return Err(HolonError::InvalidParameter("Expected Usage resolution inputs".into()));
+    };
+    let [visualizer, subject_type, slot] = inputs.as_slice() else {
+        return Err(HolonError::InvalidParameter(
+            "Usage resolution requires Visualizer, subject type and Slot".into(),
+        ));
+    };
+    if name.to_string() != "UsageResolutionInputs"
+        || inputs.iter().any(|r| !matches!(r, HolonReference::Smart(_)))
+    {
+        return Err(HolonError::InvalidParameter("Usage resolution requires saved inputs".into()));
+    }
+    context
+        .resolve_visualizer_usage(visualizer, subject_type, slot)?
+        .into_projection(context)
+        .map(ResponseBody::HolonReference)
+}

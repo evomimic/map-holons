@@ -249,7 +249,11 @@ async fn usage_commands_validate_retained_subject_after_commit() {
     let expected = dahn_selection::choose_visualizer(&context, request(), subject.clone())
         .expect_err("incomplete composition contract");
     for action in [
-        TransactionAction::SelectVisualizerUsage { request: request(), selected: subject.clone() },
+        TransactionAction::SelectVisualizerUsage {
+            request: request(),
+            selected: subject.clone(),
+            usage: None,
+        },
         TransactionAction::RecordVisualizerUse {
             request: request(),
             selected: subject.clone(),

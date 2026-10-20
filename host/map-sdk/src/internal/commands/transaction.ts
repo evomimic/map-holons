@@ -492,8 +492,8 @@ export function findVisualizerUsage(txId: TxId, request: VisualizerSelectionRequ
   return runTransactionCommand(txId, { FindVisualizerUsage: { request, selected } }, result => result === 'None' ? null : expectVisualizerUsageSelection(result));
 }
 
-export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire) {
-  return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected } }, expectVisualizerUsageSelection);
+export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage?: HolonReferenceWire) {
+  return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected, ...(usage === undefined ? {} : { usage }) } }, expectVisualizerUsageSelection);
 }
 /** Caller reports a successfully admitted presentation; failed mounts must not report. */
 export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory', report: { session: string; occurrence_id: string; sequence: number }): Promise<void> {
@@ -527,4 +527,8 @@ export function saveVisualizerUsage(txId: TxId, usage: HolonReferenceWire): Prom
 
 export function invalidateVisualizerBindings(txId: TxId): Promise<void> {
   return runTransactionCommand(txId, 'InvalidateVisualizerBindings', expectNone);
+}
+
+export function specializeVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire) {
+  return runTransactionCommand(txId, { SpecializeVisualizerUsage: { request, selected, usage } }, expectVisualizerUsageSelection);
 }

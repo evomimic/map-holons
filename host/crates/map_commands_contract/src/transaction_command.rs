@@ -123,6 +123,14 @@ pub enum TransactionAction {
     SelectVisualizerUsage {
         request: VisualizerSelectionRequest,
         selected: HolonReference,
+        /// Explicit configuration choice bypasses default ancestry disambiguation.
+        usage: Option<HolonReference>,
+    },
+    /// Fork configuration for the actual subject descriptor only on explicit request.
+    SpecializeVisualizerUsage {
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+        usage: HolonReference,
     },
     /// Report successful presentation; failed/cancelled mounts must not invoke this action.
     RecordVisualizerUse {
@@ -223,32 +231,6 @@ pub enum TransactionAction {
     },
 }
 
-/// DAHN-wide classification of the Visualizer required by a request.
-///
-/// A kind constrains the class of Visualizer that can satisfy a request; it
-/// is not a local composition Slot and does not imply one implementation per
-/// kind.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VisualizerKind {
-    TitleBar,
-    Canvas,
-    Node,
-    /// Visualizes an organizing semantic topology.
-    Structure,
-    RootedNavigation,
-    Collection,
-    PropertyMap,
-    /// Visualizes one descriptor-defined property within a PropertyMap visualizer.
-    /// The request subject is the bound `PropertyDescriptor` holon, never a
-    /// raw entry from a PropertyMap.
-    Property,
-    Value,
-    /// Composes action slots for an affording holon.
-    ActionBar,
-    /// Selects an individual action using its Dance descriptor as subject.
-    Action,
-}
-
 impl TransactionAction {
     pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
@@ -295,6 +277,7 @@ impl TransactionAction {
             | TransactionAction::GetVisualizerUsagePersistence { .. }
             | TransactionAction::RetryVisualizerUsagePersistence { .. }
             | TransactionAction::SaveVisualizerUsage { .. }
+            | TransactionAction::SpecializeVisualizerUsage { .. }
             | TransactionAction::SelectVisualizerUsage { .. }
             | TransactionAction::RecordVisualizerUse { .. } => {
                 CommandLifecyclePolicy::holon_read_only()
@@ -360,6 +343,7 @@ impl TransactionAction {
             TransactionAction::SaveVisualizerUsage { .. } => "save_visualizer_usage",
             TransactionAction::FindVisualizerUsage { .. } => "find_visualizer_usage",
             TransactionAction::SelectVisualizerUsage { .. } => "select_visualizer_usage",
+            TransactionAction::SpecializeVisualizerUsage { .. } => "specialize_visualizer_usage",
             TransactionAction::RecordVisualizerUse { .. } => "record_visualizer_use",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",

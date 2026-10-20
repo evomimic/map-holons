@@ -13,10 +13,13 @@ const importer = (text: string) => import(`data:text/javascript;base64,${Buffer.
 function fixture(role: string, count = 2) {
   const members = Array.from({ length: count }, (_, i) => ({ key: async () => `${role}-${i}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: async () => ({ StringValue: `${role}-${i}` }) }));
   const collection = { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [{ propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false }] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
-  const slot = { key: async () => role === 'diagnostics' ? 'LoadHolons.DiagnosticsSlot' : 'LoadHolons.CommittedHolonsSlot' };
-  const parent = { key: async () => 'action', relatedHolons: vi.fn(async () => [slot]) };
+  const slot = { propertyValue: async () => ({ StringValue: role }), key: async () => role === 'diagnostics' ? 'LoadHolons.DiagnosticsSlot' : 'LoadHolons.CommittedHolonsSlot' };
+  const parentType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [slot] : [] };
+  const parent = { key: async () => 'action', relatedHolons: vi.fn(async () => [parentType]) };
   const value = { key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
-  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async () => [{ key: async () => 'TableCollection.ValueSlot' }] };
+  const valueSlot = { key: async () => 'TableCollection.ValueSlot', propertyValue: async () => ({ StringValue: 'value' }) };
+  const selectedType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [valueSlot] : [] };
+  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async (name: string) => name === 'DescribedBy' ? [selectedType] : [] };
   const transaction = { selectCollectionVisualizer: vi.fn(async () => ({ selected })), selectValueVisualizer: vi.fn(async () => ({ selected: value })), dispose: vi.fn() };
   const materialize = vi.fn(async (ref: unknown) => ({ source: ref === parent ? action : ref === value ? valueSource : source, format: 'ESModule' as const, entrypoint: 'default' }));
   const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
@@ -99,7 +102,7 @@ it('does not mount a late selection after the action owner is disposed', async (
   owner.dispose(); release({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(owner.element.querySelector('table')).toBeNull();
-  expect(f.materialize).toHaveBeenCalledTimes(1);
+  expect(f.materialize).not.toHaveBeenCalled();
 });
 
 it('selects projected rows normally and keeps producer order until explicit user sorting', async () => {

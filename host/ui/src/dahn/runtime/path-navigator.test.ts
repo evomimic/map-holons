@@ -22,12 +22,15 @@ const artifacts = Object.fromEntries(await Promise.all(
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
 const titleActions = new Map([['Explore', 'ExploreOccurrence'], ['Close', 'CloseOccurrence'], ['ExpandRestore', 'ExpandRestoreOccurrence'], ['Inspect', 'InspectOccurrence']]);
-const selected = (key: string) => ({ propertyValue: async () => ({ StringValue: key }), key: async () => key, relatedHolons: async (relation: string) => {
-  if (relation === 'HasSlot') return ['HolonInspector.VisualizerControlsSlot', 'HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].map(selected);
+const slotRoles: Record<string, string> = { 'HolonInspector.VisualizerControlsSlot': 'visualizerActions', 'HolonInspector.TitleBarSlot': 'titleBar', 'HolonInspector.PropertyMapSlot': 'propertyMap', 'HolonInspector.ActionsSlot': 'action', 'HolonInspector.CollectionsSlot': 'collection', 'DefaultPropertyMapVisualizer.PropertySlot': 'property', 'GenericProperty.ValueSlot': 'value', 'PathInspector.RootNodeSlot': 'node', 'TableCollection.ValueSlot': 'value' };
+const referenceCollection = (members: any[]) => Object.assign(members, { members });
+const selected = (key: string) => ({ equals: (other: any) => other.identity === key, identity: key, propertyValue: async (name: string) => ({ StringValue: name === 'CompositionRole' ? slotRoles[key] ?? key : key }), key: async () => key, relatedHolons: async (relation: string) => {
+  if (relation === 'DescribedBy') return referenceCollection([selected(`${key}-type`)]);
+  if (relation === 'HasSlot') return referenceCollection( ['HolonInspector.VisualizerControlsSlot', 'HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'HolonInspector.CollectionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].filter(slot => slot !== (key.startsWith('table-collection') ? 'GenericProperty.ValueSlot' : 'TableCollection.ValueSlot')).map(selected));
   if (relation === 'UsesNodeActionsContract') return [selected('NodeActions.Contract')];
   if (relation === 'StandardNodeActions') return [...titleActions.keys()].map(key => selected(`${key}PresentationAction.HolonType`));
   if (relation === 'PresentationOperator') return [selected(`${titleActions.get(key.split('Presentation')[0])}.VisualizerOperator`)];
-  return [];
+  return referenceCollection([]);
 } }) as unknown as HolonReference;
 const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), titleBar: selected('node-title-bar'), actionBar: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const selectFixture = async (request: any) => ({ selected: visualizers[request.requestedKind as keyof typeof visualizers] });
@@ -1538,6 +1541,6 @@ it('materializes a real alternative with a different expanded layout and indepen
   expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2 / 4');
   expect((alternate.element as any).propertyViewer.style.gridRow).toBe('3');
   expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
-  expect((await f.runtime.realize(selected('alternative-node')) as any).compositionSlots.collection).toBe('HolonInspector.CollectionsSlot');
+  expect(await (await f.runtime.slot(selected('alternative-node'), 'collection')).key()).toBe('HolonInspector.CollectionsSlot');
   alternate.dispose?.(); f.navigation.dispose();
 });

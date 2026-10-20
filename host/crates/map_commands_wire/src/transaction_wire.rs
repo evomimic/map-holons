@@ -118,6 +118,15 @@ pub enum TransactionActionWire {
     SelectVisualizerUsage {
         request: VisualizerSelectionRequestWire,
         selected: HolonReferenceWire,
+        /// Explicit configuration choice bypasses default ancestry disambiguation.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        usage: Option<HolonReferenceWire>,
+    },
+    /// Fork configuration for the actual subject descriptor only on explicit request.
+    SpecializeVisualizerUsage {
+        request: VisualizerSelectionRequestWire,
+        selected: HolonReferenceWire,
+        usage: HolonReferenceWire,
     },
     RecordVisualizerUse {
         request: VisualizerSelectionRequestWire,
@@ -375,10 +384,18 @@ impl TransactionActionWire {
                     selected: selected.bind(context)?,
                 })
             }
-            TransactionActionWire::SelectVisualizerUsage { request, selected } => {
+            TransactionActionWire::SelectVisualizerUsage { request, selected, usage } => {
                 Ok(TransactionAction::SelectVisualizerUsage {
                     request: request.bind(context)?,
                     selected: selected.bind(context)?,
+                    usage: usage.map(|value| value.bind(context)).transpose()?,
+                })
+            }
+            TransactionActionWire::SpecializeVisualizerUsage { request, selected, usage } => {
+                Ok(TransactionAction::SpecializeVisualizerUsage {
+                    request: request.bind(context)?,
+                    selected: selected.bind(context)?,
+                    usage: usage.bind(context)?,
                 })
             }
             TransactionActionWire::RecordVisualizerUse {

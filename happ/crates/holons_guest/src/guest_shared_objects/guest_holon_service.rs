@@ -697,7 +697,32 @@ impl GuestHolonService {
             };
         if status != "Complete" {
             let message = if status == "Rejected" {
-                "Core Schema bootstrap commit was rejected by semantic validation; inspect staged validation findings".to_string()
+                let mut findings = Vec::new();
+                for staged in staged_references {
+                    let key = staged
+                        .key()?
+                        .map(|key| key.0)
+                        .unwrap_or_else(|| staged.reference_id_string());
+                    for finding in staged.validation_findings()? {
+                        let dependency = matches!(
+                            finding.kind,
+                            core_types::CommitValidationViolationKind::UnresolvedLocalDependency
+                        );
+                        findings.push((
+                            dependency,
+                            format!("{key}: {:?}: {}", finding.kind, finding.message),
+                        ));
+                    }
+                }
+                let count = findings.len();
+                findings.sort();
+                let details = findings
+                    .into_iter()
+                    .take(20)
+                    .map(|(_, text)| text)
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                format!("Core Schema bootstrap commit was rejected by semantic validation ({count} staged findings): {details}")
             } else {
                 format!("Core Schema bootstrap commit did not complete (status: {status})")
             };

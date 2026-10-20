@@ -194,7 +194,7 @@
     },
     {
       "key": "TableCollectionVisualizer.CollectionVisualizer",
-      "type": "CollectionVisualizer.HolonType",
+      "type": "TableCollectionVisualizer.CollectionVisualizerType",
       "properties": {
         "DisplayName": "Table Collection",
         "VisualizerDescription": "Aligns items in rows and their properties in columns for comparison. Column headings sort the rows; More columns changes which properties are shown. Open a row to inspect its item."
@@ -256,14 +256,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "TableCollection.ValueSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -277,6 +269,10 @@
       "key": "TableCollection.ValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "value",
+        "CompositionRole": "value",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present the values of one property across all items in this column, using the same presentation for every row."
       },
       "relationships": [
@@ -306,7 +302,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:c210d3d20ee0a4b351122ab6d04f48723f4adde2e2070c7541c946b31f0f7db3",
+        "VisualizerArtifactDigest": "sha256:c87e062022b258e74eebc6d9b260f9ec1573bc77558a62d663ee1518b583edcf",
         "VisualizerImplementationKey": "dahn.table-collection",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -360,7 +356,7 @@
     },
     {
       "key": "VisualizerInspector.Visualizer",
-      "type": "VisualizerInspector.HolonType",
+      "type": "VisualizerInspector.VisualizerType",
       "properties": {
         "DisplayName": "Visualizer Inspector",
         "VisualizerDescription": "Shows the slot’s purpose and the current visualizer’s approach first. Expand presentation structure entries to inspect child presentations in place. Technical details stay collapsed, and the explore icon opens the visualizer as an item."
@@ -407,14 +403,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "VisualizerInspector.DiscoveryExplorerSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -429,7 +417,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:89e373b26677dc286bdd66ae71d22f2b6bbc1f8082d4af186a506f5dad70ee21",
+        "VisualizerArtifactDigest": "sha256:5c64a4caebb1efd85759b6e0faf15b33978c84fae44537967ac41c82b76be8c1",
         "VisualizerImplementationKey": "dahn.visualizer-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -468,6 +456,10 @@
       "key": "VisualizerInspector.DiscoveryExplorerSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "structure",
+        "CompositionRole": "discovery",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Explain the authoritative chain that identified the current Visualizer and its alternatives."
       },
       "relationships": [
@@ -554,6 +546,80 @@
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
+    },
+    {
+      "key": "TableCollectionVisualizer.CollectionVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "TableCollectionVisualizer",
+        "TypeNamePlural": "TableCollectionVisualizerCollectionVisualizerTypes",
+        "DisplayName": "TableCollectionVisualizer.CollectionVisualizer type",
+        "DisplayNamePlural": "TableCollectionVisualizer.CollectionVisualizer types",
+        "Description": "Composition grammar for TableCollectionVisualizer.CollectionVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Space Navigator Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "TableCollection.ValueSlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerInspector.VisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "VisualizerInspector",
+        "TypeNamePlural": "VisualizerInspectorVisualizerTypes",
+        "DisplayName": "VisualizerInspector.Visualizer type",
+        "DisplayNamePlural": "VisualizerInspector.Visualizer types",
+        "Description": "Composition grammar for VisualizerInspector.Visualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "VisualizerInspector.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Space Navigator Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "VisualizerInspector.DiscoveryExplorerSlot"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

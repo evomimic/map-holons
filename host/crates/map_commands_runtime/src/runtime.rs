@@ -131,7 +131,7 @@ impl Runtime {
                     // they do not edit the saved semantic selection graph.
                     !matches!(
                         invocation.dance_name()?.to_string().as_str(),
-                        "MaterializeVisualizer" | "QueryDance"
+                        "MaterializeVisualizer" | "QueryDance" | "ResolveVisualizerUsage"
                     )
                 }
                 _ => lifecycle_policy.mutation != MutationClassification::ReadOnly,

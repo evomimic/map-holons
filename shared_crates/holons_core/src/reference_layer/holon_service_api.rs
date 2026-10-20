@@ -111,6 +111,22 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         Ok(false)
     }
 
+    /// Resolve committed Visualizer configuration in the current authorized space.
+    /// Native clients delegate this read-only operation to the guest in one Dance.
+    fn resolve_visualizer_usage_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+        subject_type: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<crate::dances::VisualizerUsageResolution, HolonError> {
+        crate::dances::visualizer_usage_resolution::resolve_visualizer_usage(
+            visualizer,
+            subject_type,
+            slot,
+        )
+    }
+
     /// Materializes the executable artifact for a selected Visualizer.
     ///
     /// A Host-Authoritative service may satisfy this locally; a service whose

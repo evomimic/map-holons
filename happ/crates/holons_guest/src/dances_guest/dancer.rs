@@ -51,6 +51,8 @@ impl Dancer {
             .insert("get_saved_holon_by_key", get_saved_holon_by_key_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
+        dispatch_table
+            .insert("resolve_visualizer_usage", resolve_visualizer_usage_dance as DanceFunction);
         // Add more functions (in alphabetical order) as needed
 
         Dancer { dispatch_table }

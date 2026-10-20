@@ -27,3 +27,6 @@ pub use self::dance_v2_executor::{
 pub use self::implementation::DanceImplementation;
 pub use self::implementation_result::DanceImplementationResult;
 pub use self::materialized_visualizer::MaterializedVisualizer;
+
+pub mod visualizer_usage_resolution;
+pub use visualizer_usage_resolution::VisualizerUsageResolution;

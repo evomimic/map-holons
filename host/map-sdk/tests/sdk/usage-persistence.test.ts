@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({
   invalidateVisualizerBindings: vi.fn(),
   beginVisualizerUsageBatch: vi.fn(), submitVisualizerUsageBatch: vi.fn(),
-  selectVisualizer: vi.fn(), selectVisualizerUsage: vi.fn(), recordVisualizerUse: vi.fn(),
+  specializeVisualizerUsage: vi.fn(), selectVisualizer: vi.fn(), selectVisualizerUsage: vi.fn(), recordVisualizerUse: vi.fn(),
   getVisualizerUsagePersistence: vi.fn(), retryVisualizerUsagePersistence: vi.fn(), saveVisualizerUsage: vi.fn(),
 }));
 vi.mock('../../src/internal/commands/transaction', () => api);
@@ -128,4 +128,33 @@ it('does not admit a presentation using stale bindings when invalidation fails',
   expect(api.beginVisualizerUsageBatch).not.toHaveBeenCalled();
   await tx.withVisualizerUsageBatch(async () => {});
   expect(api.invalidateVisualizerBindings).toHaveBeenCalledTimes(2);
+});
+
+
+it('specializes only on explicit request and retains the existing background round boundary', async () => {
+  api.specializeVisualizerUsage.mockResolvedValue({ usage: { Transient: { tx_id: 41, id: '00000000-0000-0000-0000-000000000002' } }, initialized: true, report_session: 'session' });
+  const tx = createMapTransaction(41);
+  await tx.withVisualizerUsageBatch(async () => {
+    const shared = await tx.selectVisualizerUsage(request(), reference());
+    expect(api.specializeVisualizerUsage).not.toHaveBeenCalled();
+    const local = await tx.specializeVisualizerUsage(request(), reference(), shared.usage);
+    expect(tx.owns(local.usage)).toBe(true);
+    expect(local.initialized).toBe(true);
+    expect(unwrapHolonReference(local.usage)).not.toEqual(unwrapHolonReference(shared.usage));
+    expect(api.submitVisualizerUsageBatch).not.toHaveBeenCalled();
+  });
+  expect(api.specializeVisualizerUsage).toHaveBeenCalledOnce();
+  expect(api.submitVisualizerUsageBatch).toHaveBeenCalledOnce();
+  expect(api.getVisualizerUsagePersistence).not.toHaveBeenCalled();
+});
+
+it('allows an explicit supertype Usage selection without requesting subtype specialization', async () => {
+  const tx = createMapTransaction(41);
+  const ancestor = reference();
+  await tx.withVisualizerUsageBatch(async () => {
+    const chosen = await tx.selectVisualizerUsage(request(), reference(), ancestor);
+    expect(tx.owns(chosen.usage)).toBe(true);
+    expect(api.selectVisualizerUsage).toHaveBeenLastCalledWith(41, expect.anything(), unwrapHolonReference(reference()), unwrapHolonReference(ancestor));
+    expect(api.specializeVisualizerUsage).not.toHaveBeenCalled();
+  });
 });

@@ -5440,6 +5440,7 @@ dependencies = [
  "serde_json",
  "session_receptor",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -478,6 +478,45 @@ impl HolonServiceApi for ClientHolonService {
         self.dahn_materializer.is_available(visualizer)
     }
 
+    fn resolve_visualizer_usage_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+        subject_type: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<holons_core::dances::VisualizerUsageResolution, HolonError> {
+        let request = holon_dance_builders::build_resolve_visualizer_usage_dance_request(
+            visualizer.clone(),
+            subject_type.clone(),
+            slot.clone(),
+        )?;
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(response.error.unwrap_or_else(|| {
+                HolonError::Misc(format!(
+                    "ResolveVisualizerUsage failed: {:?} — {}",
+                    response.status_code, response.description.0
+                ))
+            }));
+        }
+        match response.body {
+            ResponseBody::HolonReference(body) => {
+                let resolved =
+                    holons_core::dances::VisualizerUsageResolution::from_projection(&body)?;
+                if resolved.search_path.first() != Some(subject_type) {
+                    return Err(HolonError::InvalidState(
+                        "Usage resolution returned a different starting descriptor".into(),
+                    ));
+                }
+                Ok(resolved)
+            }
+            other => Err(HolonError::InvalidParameter(format!(
+                "ResolveVisualizerUsage expected a projection, got {other:?}"
+            ))),
+        }
+    }
+
     fn materialize_visualizer_internal(
         &self,
         context: &Arc<TransactionContext>,

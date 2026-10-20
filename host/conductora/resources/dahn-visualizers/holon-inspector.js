@@ -391,7 +391,6 @@ var HolonInspectorElement = class extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { visualizerActions: "HolonInspector.VisualizerControlsSlot", titleBar: "HolonInspector.TitleBarSlot", propertyMap: "HolonInspector.PropertyMapSlot", action: "HolonInspector.ActionsSlot", diagnostics: "LoadHolons.DiagnosticsSlot", committed: "LoadHolons.CommittedHolonsSlot", collection: "HolonInspector.CollectionsSlot" };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute("aria-pressed", String(state.active === affordance));
@@ -563,7 +562,7 @@ var HolonInspectorElement = class extends HTMLElement {
           this.selectView("collection");
           return;
         }
-        this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, (update) => {
+        this.collectionActivation.activate(item, "collection", (update) => {
           if (update.placement !== "source" && update.state !== "unresolved") {
             this.activeCollection = item;
             this.collectionControls.forEach((control) => {
@@ -577,7 +576,7 @@ var HolonInspectorElement = class extends HTMLElement {
       };
       button.addEventListener("click", activate);
       this.collectionSelections.set(item, () => {
-        this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, (update) => {
+        this.collectionActivation.activate(item, "collection", (update) => {
           this.activeCollection = item;
           this.collectionControls.forEach((control) => {
             control.setAttribute("aria-selected", String(control === button));

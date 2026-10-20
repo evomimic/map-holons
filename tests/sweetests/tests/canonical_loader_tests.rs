@@ -75,6 +75,34 @@ async fn new_context(runtime: &Runtime) -> Arc<TransactionContext> {
     runtime.session().get_transaction(&tx_id).unwrap()
 }
 
+// Waiting is test verification only; command acceptance never waits for backend persistence.
+async fn save_usage_round(runtime: &Runtime, context: &Arc<TransactionContext>) {
+    let result =
+        command(runtime, context, TransactionAction::SubmitVisualizerUsageBatch).await.unwrap();
+    let MapResult::Value(base_types::BaseValue::StringValue(batch_id)) = result else {
+        panic!("Usage batch")
+    };
+    let started = std::time::Instant::now();
+    loop {
+        let MapResult::VisualizerUsagePersistence(status) = command(
+            runtime,
+            context,
+            TransactionAction::GetVisualizerUsagePersistence { batch_id: batch_id.clone() },
+        )
+        .await
+        .unwrap() else {
+            panic!("save status")
+        };
+        match status.state.as_str() {
+            "saved" => return,
+            "queued" | "saving" => {}
+            _ => panic!("Usage save failed: {:?}", status.error),
+        }
+        assert!(started.elapsed() < std::time::Duration::from_secs(300), "Usage save timed out");
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+}
+
 async fn load_navigator_package(runtime: &Runtime) -> Arc<TransactionContext> {
     // Collection implementations are supplied by the Space Navigator package, not Core Schema.
     let package_context = new_context(runtime).await;
@@ -377,25 +405,28 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         };
         assert_eq!(explicit.selected, selection.selected);
 
-        // Usage initialization owns its commit, even when this caller has pending edits.
+        // A live Usage renders before its independent batch commits, preserving caller edits.
         let usage_context = new_context(&runtime).await;
         let edit =
             usage_context.mutation().new_holon(Some("pending-usage-caller-edit".into())).unwrap();
         usage_context.mutation().stage_new_holon(edit).unwrap();
+        command(&runtime, &usage_context, TransactionAction::BeginVisualizerUsageBatch)
+            .await
+            .unwrap();
         let MapResult::VisualizerUsageSelection(usage) = command(
             &runtime,
             &usage_context,
             TransactionAction::SelectVisualizerUsage {
                 request: selection_request(),
                 selected: selection.selected.clone(),
+                usage: None,
             },
         )
         .await
         .unwrap() else {
             panic!("usage selection")
         };
-        assert!(usage.initialized);
-        assert!(matches!(usage.usage, HolonReference::Smart(_)));
+        assert!(matches!(usage.usage, HolonReference::Transient(_)));
         assert!(usage_context.is_open());
         assert_eq!(usage_context.lookup().staged_count().unwrap(), 1);
         for name in [
@@ -431,6 +462,19 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         )
         .await
         .unwrap();
+        save_usage_round(&runtime, &usage_context).await;
+        let MapResult::VisualizerUsageSelection(persisted) = command(
+            &runtime,
+            &usage_context,
+            TransactionAction::FindVisualizerUsage {
+                request: selection_request(),
+                selected: selection.selected.clone(),
+            },
+        )
+        .await
+        .unwrap() else {
+            panic!("saved Usage")
+        };
         let slot = saved(slot);
         let selected_usages = slot
             .related_holons_with_hint(
@@ -438,7 +482,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
                 holons_core::RelationshipReadHint::RequireFresh,
             )
             .unwrap();
-        assert!(selected_usages.read().unwrap().get_members().contains(&usage.usage));
+        assert!(selected_usages.read().unwrap().get_members().contains(&persisted.usage));
         let preferences = slot
             .related_holons_with_hint(
                 "HasVisualizerPreference",
@@ -452,13 +496,17 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .read()
             .unwrap()
             .get_members()
-            .contains(&usage.usage)));
+            .contains(&persisted.usage)));
+        command(&runtime, &usage_context, TransactionAction::BeginVisualizerUsageBatch)
+            .await
+            .unwrap();
         let MapResult::VisualizerUsageSelection(reused) = command(
             &runtime,
             &usage_context,
             TransactionAction::SelectVisualizerUsage {
                 request: selection_request(),
                 selected: selection.selected.clone(),
+                usage: None,
             },
         )
         .await
@@ -468,10 +516,11 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         assert!(!reused.initialized);
         assert_eq!(reused.usage, usage.usage);
         assert_eq!(usage_context.lookup().staged_count().unwrap(), 1);
+        save_usage_round(&runtime, &usage_context).await;
         command(&runtime, &usage_context, TransactionAction::Dispose).await.unwrap();
     }
     // Assert the authored forward edge and its committed inverse at the consuming seam.
-    let load_visualizer = saved("LoadHolons.ActionVisualizer");
+    let load_visualizer = saved("LoadHolons.ActionVisualizerType");
     for slot_key in ["LoadHolons.DiagnosticsSlot", "LoadHolons.CommittedHolonsSlot"] {
         let slot = saved(slot_key);
         assert!(load_visualizer

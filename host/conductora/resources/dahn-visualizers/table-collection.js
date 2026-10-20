@@ -39,7 +39,6 @@ function assertPresentation(presentation) {
 }
 /** Read-only collection renderer with occurrence-local selection and inspection intent. */
 export default class TableCollectionVisualizerElement extends HTMLElement {
-    static compositionSlots = { value: 'TableCollection.ValueSlot' };
     getVisualizerComposition() {
         return [...(this.columnHeadings ?? [])].map(([id, element]) => ({ label: this.presentation.columns.find(column => column.id === id).displayName, element }));
     }

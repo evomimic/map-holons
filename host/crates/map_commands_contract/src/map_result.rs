@@ -1,4 +1,4 @@
-use super::VisualizerKind;
+use super::VisualizerSelection;
 use base_types::BaseValue;
 use core_types::HolonId;
 use holons_core::core_shared_objects::transactions::TxId;
@@ -92,15 +92,6 @@ pub enum MapResult {
 
     /// Transitional dance-result exception retained for legacy and in-flight dance paths.
     DanceResponse(DanceResponse),
-}
-
-#[derive(Debug)]
-pub struct VisualizerSelection {
-    pub selected: HolonReference,
-    pub requested_kind: VisualizerKind,
-    pub alternatives_available: bool,
-    /// Live configuration prepared in the same operation during an open Usage round.
-    pub usage: Option<super::VisualizerUsageSelection>,
 }
 
 /// A collection whose declared element type survives empty membership.

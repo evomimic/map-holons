@@ -124,7 +124,8 @@ export type TransactionActionWire =
   | { GetVisualizerUsagePersistence: { batch_id: string } }
   | { RetryVisualizerUsagePersistence: { batch_id: string } }
   | { SaveVisualizerUsage: { usage: HolonReferenceWire } }
-  | { SelectVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire } }
+  | { SelectVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire; usage?: HolonReferenceWire } }
+  | { SpecializeVisualizerUsage: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire; usage: HolonReferenceWire } }
   | { RecordVisualizerUse: { request: VisualizerSelectionRequestWire; selected: HolonReferenceWire; usage: HolonReferenceWire; origin: 'Automatic' | 'Explicit' | 'Exploratory'; report: { session: string; occurrence_id: string; sequence: number } } }
   | { ChooseVisualizer: { request: VisualizerSelectionRequestWire; candidate: HolonReferenceWire } }
   | { SelectCollectionVisualizer: { collection: DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire } }
@@ -359,8 +360,10 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'SaveVisualizerUsage') && isRecord(value.SaveVisualizerUsage) && isHolonReferenceWire(value.SaveVisualizerUsage['usage'])) ||
     (hasSingleKey(value, 'FindVisualizerUsage') && isRecord(value.FindVisualizerUsage) &&
       isVisualizerSelectionRequestWire(value.FindVisualizerUsage['request']) && isHolonReferenceWire(value.FindVisualizerUsage['selected'])) ||
+    (hasSingleKey(value, 'SpecializeVisualizerUsage') && isRecord(value.SpecializeVisualizerUsage) &&
+      isVisualizerSelectionRequestWire(value.SpecializeVisualizerUsage['request']) && isHolonReferenceWire(value.SpecializeVisualizerUsage['selected']) && isHolonReferenceWire(value.SpecializeVisualizerUsage['usage'])) ||
     (hasSingleKey(value, 'SelectVisualizerUsage') && isRecord(value.SelectVisualizerUsage) &&
-      isVisualizerSelectionRequestWire(value.SelectVisualizerUsage['request']) && isHolonReferenceWire(value.SelectVisualizerUsage['selected'])) ||
+      isVisualizerSelectionRequestWire(value.SelectVisualizerUsage['request']) && isHolonReferenceWire(value.SelectVisualizerUsage['selected']) && (value.SelectVisualizerUsage['usage'] === undefined || isHolonReferenceWire(value.SelectVisualizerUsage['usage']))) ||
     (hasSingleKey(value, 'RecordVisualizerUse') && isRecord(value.RecordVisualizerUse) &&
       isVisualizerSelectionRequestWire(value.RecordVisualizerUse['request']) && isHolonReferenceWire(value.RecordVisualizerUse['selected']) &&
       isHolonReferenceWire(value.RecordVisualizerUse['usage']) && isString(value.RecordVisualizerUse['origin']) && ['Automatic', 'Explicit', 'Exploratory'].includes(value.RecordVisualizerUse['origin']) && isRecord(value.RecordVisualizerUse['report']) && isString(value.RecordVisualizerUse['report']['session']) && isString(value.RecordVisualizerUse['report']['occurrence_id']) && Number.isSafeInteger(value.RecordVisualizerUse['report']['sequence']) && Number(value.RecordVisualizerUse['report']['sequence']) > 0) ||

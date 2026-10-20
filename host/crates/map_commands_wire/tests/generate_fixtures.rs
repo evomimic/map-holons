@@ -139,6 +139,7 @@ fn generate_fixtures() {
             TransactionActionWire::SelectVisualizerUsage {
                 request: selection_request.clone(),
                 selected: smart_reference(41, HolonId::Local(LocalId(vec![20])), None),
+                usage: None,
             },
         ),
         (

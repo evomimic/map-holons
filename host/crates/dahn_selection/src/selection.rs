@@ -133,11 +133,15 @@ pub fn select_home_dancer(
         let subject_type = selection_context.active_holon_space.holon_descriptor()?.holon().clone();
         match select_for_slot(subject_type.clone(), &dancer_slot) {
             Ok(rooted_navigation_visualizer) => {
-                let path_slot = require_single_related(
-                    &rooted_navigation_visualizer,
-                    DahnRelationshipTypeName::HasSlot,
-                    "RootedNavigation NodeVisualizerSlot",
-                )?;
+                let slots = holons_core::dahn::composition_slots(&rooted_navigation_visualizer)?;
+                let path_slot = match slots.as_slice() {
+                    [slot] => slot.clone(),
+                    _ => {
+                        return Err(HolonError::InvalidParameter(
+                            "Expected one RootedNavigation Node Slot".into(),
+                        ))
+                    }
+                };
                 let root_node_visualizer = select_for_slot(subject_type, &path_slot)?;
                 compatible.push(HomeDancerSelection {
                     dancer: candidate,
@@ -221,7 +225,7 @@ fn select_for_slot(
             let candidate_type = candidate.holon_descriptor()?.holon().clone();
             for accepted_type in &accepted {
                 if equals_or_extends(&candidate_type, accepted_type)?
-                    && crate::operators::fulfills_operators(slot, &candidate)?
+                    && holons_core::dahn::fulfills_operators(slot, &candidate)?
                 {
                     if !candidates.iter().any(|c: &HolonReference| {
                         c.reference_id_string() == candidate.reference_id_string()
@@ -252,24 +256,6 @@ fn select_for_slot(
     Err(HolonError::NotImplemented(
         "No applicable Visualizer before descriptor lineage exhaustion".into(),
     ))
-}
-
-fn require_single_related<T: type_names::ToRelationshipName>(
-    holon: &HolonReference,
-    relationship: T,
-    description: &str,
-) -> Result<HolonReference, HolonError> {
-    let members = holon
-        .related_holons(relationship)?
-        .read()
-        .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
-        .get_members()
-        .clone();
-    match members.as_slice() {
-        [member] => Ok(member.clone()),
-        [] => Err(HolonError::NotImplemented(format!("Missing {description}"))),
-        _ => Err(HolonError::NotImplemented(format!("Ambiguous {description}"))),
-    }
 }
 
 /// Isolated deterministic bootstrap policy for currently bundled Visualizers.
@@ -339,12 +325,7 @@ pub fn select_collection_visualizer(
 ) -> Result<VisualizerSelection, HolonError> {
     let _ = holons_core::descriptors::HolonDescriptor::from_holon(collection.element_type.clone())
         .instance_properties()?;
-    let slots = parent
-        .related_holons(DahnRelationshipTypeName::HasSlot)?
-        .read()
-        .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
-        .get_members()
-        .clone();
+    let slots = holons_core::dahn::composition_slots(&parent)?;
     if !slots.iter().any(|candidate| candidate.reference_id_string() == slot.reference_id_string())
     {
         return Err(HolonError::InvalidParameter(

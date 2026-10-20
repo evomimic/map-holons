@@ -27,7 +27,7 @@ export interface CollectionUpdate {
   retry?: () => void;
 }
 export interface CollectionActivation {
-  activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean | void;
+  activate(affordance: CollectionAffordance, slotRole: string, publish: (update: CollectionUpdate) => void): boolean | void;
   close?(affordance: CollectionAffordance): void;
   dispose(): void;
 }
@@ -121,17 +121,17 @@ export class NodeCollectionActivation implements CollectionActivation {
 
   async settled(): Promise<void> { await this.preparation; if (this.preparationError) throw this.preparationError; }
 
-  activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean {
+  activate(affordance: CollectionAffordance, slotRole: string, publish: (update: CollectionUpdate) => void): boolean {
     if (this.disposed || semanticWork(this.transaction).paused || affordance.kind !== 'relationship') return false;
     if (this.selected === affordance && this.requested === affordance) return true;
     ++this.requestGeneration;
     this.requested = affordance;
     if (this.selected === affordance && this.content) return true;
-    this.load(affordance, slotKey, publish);
+    this.load(affordance, slotRole, publish);
     return true;
   }
 
-  private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void, retry = false, refreshing = false): void {
+  private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotRole: string, publish: (update: CollectionUpdate) => void, retry = false, refreshing = false): void {
     const request = ++this.requestGeneration;
     const work = semanticWork(this.transaction);
     const revision = work.revision;
@@ -145,7 +145,7 @@ export class NodeCollectionActivation implements CollectionActivation {
       }
       this.content?.setInspectHolonHandler(null);
       this.content = undefined;
-      this.selected = affordance; this.selectedSlot = slotKey;
+      this.selected = affordance; this.selectedSlot = slotRole;
       bindingGeneration = ++this.generation;
       allocated = true;
       this.activeRequest = request;
@@ -204,13 +204,13 @@ export class NodeCollectionActivation implements CollectionActivation {
             if (!collection.length) {
               this.pendingUpdate = undefined;
               outcome = 'collection empty';
-              publish({ state: 'loaded-empty', placement: 'destination', message: `${affordance.label}: No targets remain.`, retry: () => { if (current()) this.load(affordance, slotKey, publish, true); } });
+              publish({ state: 'loaded-empty', placement: 'destination', message: `${affordance.label}: No targets remain.`, retry: () => { if (current()) this.load(affordance, slotRole, publish, true); } });
               return;
             }
             profile?.next('collection visualizer selection');
             stage = 'Visualizer selection';
-            const slot = await this.presentation.getSavedHolonByBaseKey(slotKey);
-            if (slot === null) throw new Error('The requested Collections slot is unavailable');
+            const parent = this.presentation === this.transaction ? this.parentVisualizer : this.presentation.bindSavedReference(this.parentVisualizer);
+            const slot = await this.materialized.slot(parent, slotRole);
             const element = await realizeCollection(this.transaction, collection, this.parentVisualizer, slot,
               this.materialized, current, name => {
                 stage = name;
@@ -253,7 +253,7 @@ export class NodeCollectionActivation implements CollectionActivation {
         publish({
           state: 'error', placement: allocated ? 'destination' : 'source',
           message: `${stage}: ${error instanceof Error ? error.message : String(error)}`,
-          retry: () => { if (current()) this.load(affordance, slotKey, publish, true); },
+          retry: () => { if (current()) this.load(affordance, slotRole, publish, true); },
         });
       }
     })();

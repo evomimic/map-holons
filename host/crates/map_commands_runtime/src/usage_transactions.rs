@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use core_types::{HolonError, HolonId};
 use dahn_selection::usage::{
-    anchor, find_usage, initialize_live_usage, instances, record_key, single, VisualizerUsage,
+    anchor, initialize_live_usage, instances, record_key, single, VisualizerUsage,
 };
 use holons_core::core_shared_objects::transient_holon_manager::ToHolonCloneModel;
 use holons_core::core_shared_objects::{
@@ -22,6 +22,25 @@ use crate::prepared_visualizer_bindings::{
     same_request, PreparedVisualizerBinding, PreparedVisualizerBindings,
 };
 use crate::usage_persistence::{SaveOutcome, SaveStatus, UsagePersistence, UsageSave};
+
+/// Attribute backend trace events to preparation phases without changing their execution.
+/// The enclosing IPC span identifies the selection; nested phases must not be summed twice.
+fn profile_usage_phase<T>(
+    phase: &'static str,
+    operation: impl FnOnce() -> Result<T, HolonError>,
+) -> Result<T, HolonError> {
+    if std::env::var_os("MAP_PROFILE").is_none() {
+        return operation();
+    }
+    let span = tracing::info_span!(target: "map_profile", "usage.prepare", phase);
+    let _entered = span.enter();
+    let started = std::time::Instant::now();
+    let result = operation();
+    tracing::info!(target: "map_profile", usage_phase = phase,
+        phase_ms = started.elapsed().as_secs_f64() * 1000.0,
+        succeeded = result.is_ok());
+    result
+}
 
 #[derive(Default)]
 struct Progress {
@@ -49,6 +68,7 @@ struct PreparedUsage {
     usage: String,
     descriptor: HolonReference,
     usage_type: HolonReference,
+    usage_descriptor: HolonReference,
 }
 
 struct Report {
@@ -65,11 +85,27 @@ struct PreferenceOrder {
     committed: u64,
 }
 
+/// Committed answers only; live configuration is applied again for every request.
+/// Each entry serializes identical in-flight lookups, leaving different inputs independent.
+struct UsageResolutionEntry {
+    visualizer: HolonReference,
+    descriptor: HolonReference,
+    slot: HolonReference,
+    result: Mutex<Option<holons_core::dances::VisualizerUsageResolution>>,
+}
+
+struct UsageResolutionMemo {
+    generation: u64,
+    entries: Mutex<Vec<Arc<UsageResolutionEntry>>>,
+}
+
 struct Batch {
     context: Arc<TransactionContext>,
     snapshots: HashMap<String, Snapshot>,
     reports: Vec<Report>,
     prepared: Vec<PreparedUsage>,
+    selection_metadata: Option<(u64, Arc<Mutex<dahn_selection::PreparedSelectionMetadata>>)>,
+    usage_resolutions: Option<Arc<UsageResolutionMemo>>,
     preference_revisions: HashMap<(HolonId, HolonId), (Arc<Mutex<PreferenceOrder>>, u64)>,
 }
 
@@ -145,6 +181,8 @@ impl UsageTransactions {
                 snapshots: HashMap::new(),
                 reports: Vec::new(),
                 prepared: Vec::new(),
+                selection_metadata: None,
+                usage_resolutions: None,
                 preference_revisions: HashMap::new(),
             },
         );
@@ -156,10 +194,13 @@ impl UsageTransactions {
         &self,
         caller: &Arc<TransactionContext>,
     ) -> Result<Option<u64>, HolonError> {
-        let batch =
+        let mut batch =
             self.active.lock().map_err(lock_error)?.remove(&caller.tx_id()).ok_or_else(|| {
                 HolonError::InvalidState("No open Usage persistence round".into())
             })?;
+        // Metadata belongs to preparation, never to the background save queue.
+        batch.selection_metadata = None;
+        batch.usage_resolutions = None;
         if batch.snapshots.is_empty() {
             return Ok(None);
         }
@@ -218,14 +259,15 @@ impl UsageTransactions {
         let descriptor = dahn_selection::usage_subject_type(&request)?;
         let slot = saved(caller, &request.slot)?;
         dahn_selection::choose_visualizer(caller, request.clone(), selected.clone())?;
-        find_usage(&saved(caller, &selected)?, &saved(caller, &descriptor)?, &slot)?
+        caller
+            .resolve_visualizer_usage(
+                &saved(caller, &selected)?,
+                &saved(caller, &descriptor)?,
+                &slot,
+            )?
+            .usage
             .map(|usage| {
-                dahn_selection::usage::selection(
-                    caller,
-                    usage.holon().clone(),
-                    false,
-                    &self.report_session,
-                )
+                dahn_selection::usage::selection(caller, usage.clone(), false, &self.report_session)
             })
             .transpose()
     }
@@ -235,7 +277,37 @@ impl UsageTransactions {
         caller: &Arc<TransactionContext>,
         reference: HolonReference,
         initialized: bool,
+        selected: &HolonReference,
+        descriptor: &HolonReference,
     ) -> Result<VisualizerUsageSelection, HolonError> {
+        if let Some(key) = reference.key()? {
+            match caller.lookup().get_transient_holon_by_base_key(&key) {
+                Ok(existing) => {
+                    let existing: HolonReference = existing.into();
+                    if self
+                        .live
+                        .lock()
+                        .map_err(lock_error)?
+                        .contains_key(&(caller.tx_id(), existing.reference_id_string()))
+                    {
+                        if single(&existing, "UsesVisualizer")? != *selected
+                            || single(&existing, "ForSubjectType")? != *descriptor
+                        {
+                            return Err(HolonError::InvalidState(
+                                "Retained Usage identity no longer matches its saved source".into(),
+                            ));
+                        }
+                        return Ok(VisualizerUsageSelection {
+                            usage: existing,
+                            initialized: false,
+                            report_session: self.report_session.clone(),
+                        });
+                    }
+                }
+                Err(HolonError::HolonNotFound(_)) => {}
+                Err(error) => return Err(error),
+            }
+        }
         let source = matches!(reference, HolonReference::Smart(_)).then(|| reference.clone());
         let live: HolonReference = caller.clone_holon(&reference)?.into();
         let key = (caller.tx_id(), live.reference_id_string());
@@ -269,7 +341,7 @@ impl UsageTransactions {
                 // never permits executing an implementation that disappeared.
                 let identity_unchanged = single(&binding.usage.usage, "UsesVisualizer")?
                     == binding.selected
-                    && single(&binding.usage.usage, "ForSubjectType")? == binding.descriptor
+                    && single(&binding.usage.usage, "ForSubjectType")? == binding.usage_descriptor
                     && single(&binding.usage.usage, "DescribedBy")? == binding.usage_type;
                 if identity_unchanged
                     && caller.visualizer_artifact_available(&binding.selected)?
@@ -297,8 +369,35 @@ impl UsageTransactions {
                 self.bindings.invalidate()?;
             }
         }
-        let (mut selection, descriptor) =
-            dahn_selection::select_visualizer_with_subject_type(caller, request.clone())?;
+        let metadata = if prepare_usage && self.bindings.is_current(generation)? {
+            let mut active = self.active.lock().map_err(lock_error)?;
+            let batch = active.get_mut(&caller.tx_id()).ok_or_else(|| {
+                HolonError::InvalidState("Usage round closed during selection".into())
+            })?;
+            if batch.selection_metadata.as_ref().is_none_or(|(version, _)| *version != generation) {
+                batch.selection_metadata = Some((
+                    generation,
+                    Arc::new(Mutex::new(dahn_selection::PreparedSelectionMetadata::default())),
+                ));
+            }
+            batch.selection_metadata.as_ref().map(|(_, metadata)| Arc::clone(metadata))
+        } else {
+            None
+        };
+        let mut metadata_hits = 0;
+        let (mut selection, descriptor) = if let Some(metadata) = metadata {
+            let mut metadata = metadata.lock().map_err(lock_error)?;
+            let before = metadata.hits();
+            let selection = dahn_selection::select_visualizer_with_metadata(
+                caller,
+                request.clone(),
+                &mut metadata,
+            )?;
+            metadata_hits = metadata.hits() - before;
+            selection
+        } else {
+            dahn_selection::select_visualizer_with_subject_type(caller, request.clone())?
+        };
         let selection_ms = started.elapsed().as_secs_f64() * 1000.0;
         let usage_started = std::time::Instant::now();
         if prepare_usage {
@@ -315,6 +414,7 @@ impl UsageTransactions {
                     request,
                     selected: selection.selected.clone(),
                     descriptor,
+                    usage_descriptor: single(&usage.usage, "ForSubjectType")?,
                     usage: usage.clone(),
                     usage_type: single(&usage.usage, "DescribedBy")?,
                     alternatives_available: selection.alternatives_available,
@@ -323,8 +423,8 @@ impl UsageTransactions {
             selection.usage = Some(usage);
         }
         if std::env::var_os("MAP_PROFILE").is_some() {
-            eprintln!("[MAP-PROFILE] command=select_visualizer selection_ms={:.3} usage_ms={:.3} usage_prepared={} binding_reused=false",
-                selection_ms, usage_started.elapsed().as_secs_f64() * 1000.0, prepare_usage);
+            eprintln!("[MAP-PROFILE] command=select_visualizer selection_ms={:.3} usage_ms={:.3} usage_prepared={} binding_reused=false metadata_hits={}",
+                selection_ms, usage_started.elapsed().as_secs_f64() * 1000.0, prepare_usage, metadata_hits);
         }
         Ok(selection)
     }
@@ -341,6 +441,83 @@ impl UsageTransactions {
         self.select_prevalidated(caller, request, selected, descriptor)
     }
 
+    /// Reuse a committed lookup only within this round and semantic generation.
+    fn resolve_committed_usage(
+        &self,
+        caller: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+        descriptor: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<holons_core::dances::VisualizerUsageResolution, HolonError> {
+        let generation = self.bindings.generation()?;
+        let memo = if self.bindings.is_current(generation)? {
+            let mut active = self.active.lock().map_err(lock_error)?;
+            let batch = active.get_mut(&caller.tx_id()).ok_or_else(|| {
+                HolonError::InvalidState("Usage round closed during lookup".into())
+            })?;
+            if batch.usage_resolutions.as_ref().is_none_or(|memo| memo.generation != generation) {
+                batch.usage_resolutions = Some(Arc::new(UsageResolutionMemo {
+                    generation,
+                    entries: Mutex::new(Vec::new()),
+                }));
+            }
+            batch.usage_resolutions.clone()
+        } else {
+            None
+        };
+        let entry = if let Some(memo) = memo {
+            let mut entries = memo.entries.lock().map_err(lock_error)?;
+            if let Some(entry) = entries.iter().find(|entry| {
+                entry.visualizer == *visualizer
+                    && entry.descriptor == *descriptor
+                    && entry.slot == *slot
+            }) {
+                Some(Arc::clone(entry))
+            } else if entries.len() < 256 {
+                let entry = Arc::new(UsageResolutionEntry {
+                    visualizer: visualizer.clone(),
+                    descriptor: descriptor.clone(),
+                    slot: slot.clone(),
+                    result: Mutex::new(None),
+                });
+                entries.push(Arc::clone(&entry));
+                Some(entry)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let mut reused = false;
+        let result = if let Some(entry) = entry {
+            let mut saved = entry.result.lock().map_err(lock_error)?;
+            let current = self.bindings.is_current(generation)?;
+            if let Some(result) = saved.as_ref().filter(|_| current) {
+                reused = true;
+                result.clone()
+            } else {
+                // A failure leaves no answer behind, so a subsequent request can retry.
+                let result = caller.resolve_visualizer_usage(visualizer, descriptor, slot)?;
+                if self.bindings.is_current(generation)? {
+                    *saved = Some(result.clone());
+                }
+                result
+            }
+        } else {
+            caller.resolve_visualizer_usage(visualizer, descriptor, slot)?
+        };
+        if std::env::var_os("MAP_PROFILE").is_some() {
+            eprintln!(
+                "[MAP-PROFILE] usage_lookup memo_hit={} visualizer={} subject_type={} slot={}",
+                reused,
+                visualizer.reference_id_string(),
+                descriptor.reference_id_string(),
+                slot.reference_id_string()
+            );
+        }
+        Ok(result)
+    }
+
     /// Only reached immediately after selection or explicit-choice validation.
     fn select_prevalidated(
         &self,
@@ -349,50 +526,94 @@ impl UsageTransactions {
         selected: HolonReference,
         descriptor: HolonReference,
     ) -> Result<VisualizerUsageSelection, HolonError> {
-        let slot = saved(caller, &request.slot)?;
-        let visualizer = saved(caller, &selected)?;
-        let descriptor = saved(caller, &descriptor)?;
+        let (slot, visualizer, descriptor) = profile_usage_phase("resolve_saved_inputs", || {
+            Ok((
+                saved(caller, &request.slot)?,
+                saved(caller, &selected)?,
+                saved(caller, &descriptor)?,
+            ))
+        })?;
         if !self.active.lock().map_err(lock_error)?.contains_key(&caller.tx_id()) {
             return Err(HolonError::InvalidState(
                 "Select Usage inside an explicit persistence round".into(),
             ));
         }
-        let found = find_usage(&visualizer, &descriptor, &slot)?;
-        let key = match &found {
-            Some(usage) => usage.holon().key()?,
-            None => Some(record_key("visualizer-usage", &visualizer, &descriptor)?),
-        };
-        if let Some(key) = key {
-            match caller.lookup().get_transient_holon_by_base_key(&key) {
-                Ok(existing) => {
-                    let existing: HolonReference = existing.into();
-                    let value = VisualizerUsage::from_holon(caller, existing.clone())?;
-                    if value.visualizer()? == visualizer
-                        && value.subject_type()? == descriptor
-                        && self
-                            .live
-                            .lock()
-                            .map_err(lock_error)?
-                            .contains_key(&(caller.tx_id(), existing.reference_id_string()))
-                    {
-                        let result = VisualizerUsageSelection {
-                            usage: existing,
-                            initialized: false,
-                            report_session: self.report_session.clone(),
-                        };
-                        self.prepare(caller, request, selected, descriptor, &result)?;
-                        return Ok(result);
+        let resolution = profile_usage_phase("resolve_committed_usage", || {
+            self.resolve_committed_usage(caller, &visualizer, &descriptor, &slot)
+        })?;
+        let found = resolution.usage;
+        let existing = profile_usage_phase("find_transient_usage", || {
+            for scope in &resolution.search_path {
+                let key = if resolution.usage_type.as_ref() == Some(scope) {
+                    match &found {
+                        Some(usage) => usage.key()?,
+                        None => None,
+                    }
+                } else {
+                    Some(record_key("visualizer-usage", &visualizer, scope)?)
+                };
+                if let Some(key) = key {
+                    match caller.lookup().get_transient_holon_by_base_key(&key) {
+                        Ok(existing) => {
+                            let existing: HolonReference = existing.into();
+                            // Only this session's validated live configurations are eligible.
+                            let known = self
+                                .live
+                                .lock()
+                                .map_err(lock_error)?
+                                .contains_key(&(caller.tx_id(), existing.reference_id_string()));
+                            if known
+                                && single(&existing, "UsesVisualizer")? == visualizer
+                                && single(&existing, "ForSubjectType")? == *scope
+                            {
+                                return Ok(Some(VisualizerUsageSelection {
+                                    usage: existing,
+                                    initialized: false,
+                                    report_session: self.report_session.clone(),
+                                }));
+                            }
+                        }
+                        Err(HolonError::HolonNotFound(_)) => {}
+                        Err(error) => return Err(error),
                     }
                 }
-                Err(HolonError::HolonNotFound(_)) => {}
-                Err(error) => return Err(error),
+                // A nearer committed Usage takes precedence over a farther live default.
+                if resolution.usage_type.as_ref() == Some(scope) {
+                    break;
+                }
             }
+            Ok(None)
+        })?;
+        if std::env::var_os("MAP_PROFILE").is_some() {
+            tracing::info!(target: "map_profile", usage_resolution = if existing.is_some() {
+                "reused_transient"
+            } else if found.is_some() {
+                "cloned_saved"
+            } else {
+                "initialized_new"
+            }, saved_usage_found = found.is_some());
+        }
+        if let Some(result) = existing {
+            self.prepare(caller, request, selected, descriptor, &result)?;
+            return Ok(result);
         }
         let result = if let Some(usage) = found {
-            self.project(caller, usage.holon().clone(), false)?
+            profile_usage_phase("clone_saved_usage", || {
+                self.project(
+                    caller,
+                    usage.clone(),
+                    false,
+                    &visualizer,
+                    resolution.usage_type.as_ref().ok_or_else(|| {
+                        HolonError::InvalidState("Resolved Usage has no bound descriptor".into())
+                    })?,
+                )
+            })?
         } else {
-            let live: HolonReference =
-                initialize_live_usage(caller, visualizer, descriptor.clone())?.into();
+            let live: HolonReference = profile_usage_phase("initialize_defaults", || {
+                initialize_live_usage(caller, visualizer, resolution.default_type)
+            })?
+            .into();
             self.live.lock().map_err(lock_error)?.insert(
                 (caller.tx_id(), live.reference_id_string()),
                 LiveUsage { reference: live.clone(), progress: Default::default(), submitted: 0 },
@@ -407,6 +628,121 @@ impl UsageTransactions {
         Ok(result)
     }
 
+    /// Authorize a particular saved or retained live configuration independently of default resolution.
+    pub(crate) fn select_existing(
+        &self,
+        caller: &Arc<TransactionContext>,
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+        usage: HolonReference,
+    ) -> Result<VisualizerUsageSelection, HolonError> {
+        if !self.active.lock().map_err(lock_error)?.contains_key(&caller.tx_id()) {
+            return Err(HolonError::InvalidState("Select Usage inside a persistence round".into()));
+        }
+        dahn_selection::choose_visualizer(caller, request.clone(), selected.clone())?;
+        let descriptor = dahn_selection::usage_subject_type(&request)?;
+        let value = VisualizerUsage::from_holon(caller, usage.clone())?;
+        let scope = value.subject_type()?;
+        if value.visualizer()? != selected
+            || !holons_core::descriptors::equals_or_extends(&descriptor, &scope)?
+        {
+            return Err(HolonError::InvalidParameter(
+                "Selected Usage does not apply to this Visualizer and subject lineage".into(),
+            ));
+        }
+        let known = self
+            .live
+            .lock()
+            .map_err(lock_error)?
+            .contains_key(&(caller.tx_id(), usage.reference_id_string()));
+        let result = if known {
+            VisualizerUsageSelection {
+                usage,
+                initialized: false,
+                report_session: self.report_session.clone(),
+            }
+        } else if matches!(usage, HolonReference::Smart(_)) {
+            self.project(caller, usage, false, &selected, &scope)?
+        } else {
+            return Err(HolonError::InvalidParameter(
+                "Select a saved Usage or this context's live Usage".into(),
+            ));
+        };
+        self.prepare(caller, request, selected, descriptor, &result)?;
+        Ok(result)
+    }
+
+    /// Explicitly fork effective configuration for the actual subject descriptor.
+    /// Editing an inherited Usage directly continues to edit its shared scope.
+    pub(crate) fn specialize(
+        &self,
+        caller: &Arc<TransactionContext>,
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+        usage: HolonReference,
+    ) -> Result<VisualizerUsageSelection, HolonError> {
+        if !self.active.lock().map_err(lock_error)?.contains_key(&caller.tx_id()) {
+            return Err(HolonError::InvalidState(
+                "Specialize Usage inside a persistence round".into(),
+            ));
+        }
+        dahn_selection::choose_visualizer(caller, request.clone(), selected.clone())?;
+        let descriptor = dahn_selection::usage_subject_type(&request)?;
+        let value = VisualizerUsage::from_holon(caller, usage.clone())?;
+        if value.visualizer()? != selected
+            || !holons_core::descriptors::equals_or_extends(&descriptor, &value.subject_type()?)?
+        {
+            return Err(HolonError::InvalidParameter(
+                "Usage does not apply to this Visualizer and subject lineage".into(),
+            ));
+        }
+        // Respect existing subtype configuration rather than overwriting it with an ancestor copy.
+        let resolved = self.select_prevalidated(
+            caller,
+            request.clone(),
+            selected.clone(),
+            descriptor.clone(),
+        )?;
+        if single(&resolved.usage, "ForSubjectType")? == descriptor {
+            return Ok(resolved);
+        }
+        let key = record_key("visualizer-usage", &selected, &descriptor)?;
+        let mut model = usage.holon_clone_model()?;
+        model.original_id = None;
+        model.properties.insert(
+            core_types::PropertyName("Key".into()),
+            base_types::BaseValue::StringValue(key),
+        );
+        if let Some(relationships) = model.relationships.take() {
+            model.relationships =
+                Some(RelationshipMap::from(relationships.clone_for_new_source()?));
+        }
+        let mut specialized: HolonReference = caller.new_transient_from_clone_model(model)?.into();
+        let old_scope = single(&specialized, "ForSubjectType")?;
+        specialized.remove_related_holons("ForSubjectType", vec![old_scope])?;
+        specialized.add_related_holons("ForSubjectType", vec![descriptor.clone()])?;
+        let slots = dahn_selection::usage::related(&specialized, "SelectedForSlot")?;
+        if !slots.is_empty() {
+            specialized.remove_related_holons("SelectedForSlot", slots)?;
+        }
+        self.live.lock().map_err(lock_error)?.insert(
+            (caller.tx_id(), specialized.reference_id_string()),
+            LiveUsage {
+                reference: specialized.clone(),
+                progress: Default::default(),
+                submitted: 0,
+            },
+        );
+        let result = VisualizerUsageSelection {
+            usage: specialized,
+            initialized: true,
+            report_session: self.report_session.clone(),
+        };
+        self.bindings.invalidate()?;
+        self.prepare(caller, request, selected, descriptor, &result)?;
+        Ok(result)
+    }
+
     fn prepare(
         &self,
         caller: &Arc<TransactionContext>,
@@ -415,21 +751,26 @@ impl UsageTransactions {
         descriptor: HolonReference,
         result: &VisualizerUsageSelection,
     ) -> Result<(), HolonError> {
-        self.capture_snapshot(caller, &result.usage, result.initialized)?;
-        self.active
-            .lock()
-            .map_err(lock_error)?
-            .get_mut(&caller.tx_id())
-            .ok_or_else(|| HolonError::InvalidState("No open Usage persistence round".into()))?
-            .prepared
-            .push(PreparedUsage {
-                request,
-                selected,
-                descriptor,
-                usage_type: single(&result.usage, "DescribedBy")?,
-                usage: result.usage.reference_id_string(),
-            });
-        Ok(())
+        profile_usage_phase("capture_snapshot", || {
+            self.capture_snapshot(caller, &result.usage, result.initialized)
+        })?;
+        profile_usage_phase("prepare_report", || {
+            self.active
+                .lock()
+                .map_err(lock_error)?
+                .get_mut(&caller.tx_id())
+                .ok_or_else(|| HolonError::InvalidState("No open Usage persistence round".into()))?
+                .prepared
+                .push(PreparedUsage {
+                    request,
+                    selected,
+                    descriptor,
+                    usage_type: single(&result.usage, "DescribedBy")?,
+                    usage_descriptor: single(&result.usage, "ForSubjectType")?,
+                    usage: result.usage.reference_id_string(),
+                });
+            Ok(())
+        })
     }
 
     /// Snapshot within the open batch; repeated changes coalesce into its next revision.
@@ -515,30 +856,42 @@ impl UsageTransactions {
                             && prepared.selected == selected
                             && same_request(&prepared.request, &request)
                     })
-                    .map(|prepared| (prepared.descriptor.clone(), prepared.usage_type.clone()))
+                    .map(|prepared| {
+                        (
+                            prepared.descriptor.clone(),
+                            prepared.usage_type.clone(),
+                            prepared.usage_descriptor.clone(),
+                        )
+                    })
             });
-        let descriptor = if let Some((descriptor, usage_type)) = prepared_descriptor {
-            if single(&usage, "UsesVisualizer")? != selected
-                || single(&usage, "ForSubjectType")? != descriptor
-                || single(&usage, "DescribedBy")? != usage_type
-            {
-                return Err(HolonError::InvalidParameter(
-                    "Prepared Usage identity was changed".into(),
-                ));
-            }
-            descriptor
-        } else {
-            // Unprepared reports still undergo the ordinary eligibility checks.
-            let descriptor = dahn_selection::usage_subject_type(&request)?;
-            dahn_selection::choose_visualizer(caller, request.clone(), selected.clone())?;
-            let value = VisualizerUsage::from_holon(caller, usage.clone())?;
-            if value.visualizer()? != selected || value.subject_type()? != descriptor {
-                return Err(HolonError::InvalidParameter(
-                    "Reported Usage does not match the Visualizer and descriptor".into(),
-                ));
-            }
-            descriptor
-        };
+        let descriptor =
+            if let Some((descriptor, usage_type, usage_descriptor)) = prepared_descriptor {
+                if single(&usage, "UsesVisualizer")? != selected
+                    || single(&usage, "ForSubjectType")? != usage_descriptor
+                    || single(&usage, "DescribedBy")? != usage_type
+                {
+                    return Err(HolonError::InvalidParameter(
+                        "Prepared Usage identity was changed".into(),
+                    ));
+                }
+                descriptor
+            } else {
+                // Unprepared reports still undergo the ordinary eligibility checks.
+                let descriptor = dahn_selection::usage_subject_type(&request)?;
+                dahn_selection::choose_visualizer(caller, request.clone(), selected.clone())?;
+                let value = VisualizerUsage::from_holon(caller, usage.clone())?;
+                if value.visualizer()? != selected
+                    || !holons_core::descriptors::equals_or_extends(
+                        &descriptor,
+                        &value.subject_type()?,
+                    )?
+                {
+                    return Err(HolonError::InvalidParameter(
+                        "Reported Usage does not match the Visualizer and descriptor".into(),
+                    ));
+                }
+                descriptor
+            };
         let slot = request.slot.clone();
         if report.session != self.report_session
             || report.occurrence_id.is_empty()
@@ -613,6 +966,7 @@ impl UsageTransactions {
                     request,
                     selected,
                     descriptor,
+                    usage_descriptor: single(&usage, "ForSubjectType")?,
                     usage_type: single(&usage, "DescribedBy")?,
                     usage: VisualizerUsageSelection {
                         usage,

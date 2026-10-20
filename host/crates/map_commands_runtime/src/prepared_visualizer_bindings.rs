@@ -15,6 +15,7 @@ pub(crate) struct PreparedVisualizerBinding {
     pub request: VisualizerSelectionRequest,
     pub selected: HolonReference,
     pub descriptor: HolonReference,
+    pub usage_descriptor: HolonReference,
     pub usage: VisualizerUsageSelection,
     pub usage_type: HolonReference,
     pub alternatives_available: bool,

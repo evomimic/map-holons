@@ -16,3 +16,6 @@ pub use get_holon_by_id_dance::build_get_holon_by_id_dance_request;
 pub use get_saved_holon_by_key_dance::build_get_saved_holon_by_key_dance_request;
 pub use load_holons_dance::build_load_holons_dance_request;
 pub use query_relationships_dance::build_query_relationships_dance_request;
+
+pub mod resolve_visualizer_usage_dance;
+pub use resolve_visualizer_usage_dance::build_resolve_visualizer_usage_dance_request;

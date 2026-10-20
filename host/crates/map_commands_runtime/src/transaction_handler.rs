@@ -178,13 +178,24 @@ pub async fn handle_transaction(
                 None => MapResult::None,
             })
         }
-        TransactionAction::SelectVisualizerUsage { request, selected } => {
-            Ok(MapResult::VisualizerUsageSelection(session.usage_transactions.select(
-                session.space_manager(),
-                context,
-                request,
-                selected,
-            )?))
+        TransactionAction::SelectVisualizerUsage { request, selected, usage } => {
+            let selection = match usage {
+                Some(usage) => {
+                    session.usage_transactions.select_existing(context, request, selected, usage)?
+                }
+                None => session.usage_transactions.select(
+                    session.space_manager(),
+                    context,
+                    request,
+                    selected,
+                )?,
+            };
+            Ok(MapResult::VisualizerUsageSelection(selection))
+        }
+        TransactionAction::SpecializeVisualizerUsage { request, selected, usage } => {
+            Ok(MapResult::VisualizerUsageSelection(
+                session.usage_transactions.specialize(context, request, selected, usage)?,
+            ))
         }
         TransactionAction::RecordVisualizerUse { request, selected, usage, origin, report } => {
             session.usage_transactions.record(

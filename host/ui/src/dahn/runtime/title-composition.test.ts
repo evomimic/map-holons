@@ -23,7 +23,7 @@ async function fixture(subjectActions: ActionNode[] = [], interactions?: ActionI
   function ref(key: string): any {
     if (!references.has(key)) references.set(key, { key: async () => key,
       propertyValue: async (name: string) => ({ StringValue: records.get(key)?.properties?.[name] ?? key }),
-      relatedHolons: async (name: string) => (records.get(key)?.relationships?.find((edge: any) => edge.name === name)?.target ?? []).map((target: any) => ref(target.$ref)) });
+      relatedHolons: async (name: string) => name === 'DescribedBy' ? (records.get(key)?.type ? [ref(records.get(key).type)] : []) : (records.get(key)?.relationships?.find((edge: any) => edge.name === name)?.target ?? []).map((target: any) => ref(target.$ref)) });
     return references.get(key);
   }
   const owner = ref('HolonInspector.NodeVisualizer'), subject = ref('Subject');
