@@ -2,9 +2,9 @@ use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::{
-    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitCarrierFinding, ExpectedCommitStatus,
-    ExpectedDisposition, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, FixtureHolons, TestCaseInit, TestReference,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons,
+    TestCaseInit, TestReference,
 };
 use std::sync::Arc;
 
@@ -19,13 +19,12 @@ fn saved(
     test_case.add_lookup_saved_holon_by_key_step(holons, stub, key, None, None)
 }
 
-/// Staging only a descriptor assesses its saved owning Schema. The foreign
-/// property target requires a direct dependency, so the Schema finding travels
-/// through the response carrier. Correcting the descriptor permits a retry.
-pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonError> {
+/// Declared cross-schema dependency coverage is temporarily unenforced. A foreign
+/// property reference commits, while inherited-member redeclaration still rejects.
+pub fn commit_cross_schema_dependency_gap_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
-        "Unstaged Schema Commit finding",
-        "A staged descriptor exposes a saved Schema dependency finding and accepts correction",
+        "Cross-schema dependency coverage gap",
+        "A cross-schema reference commits while inherited-member redeclaration still rejects",
     );
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
@@ -41,7 +40,6 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         saved(&fixture_context, &mut test_case, &mut fixture_holons, "BookAuthorInverseSchema")?;
     let foreign =
         saved(&fixture_context, &mut test_case, &mut fixture_holons, "ThemeName.PropertyType")?;
-    let local = saved(&fixture_context, &mut test_case, &mut fixture_holons, "Title.PropertyType")?;
 
     let key = MapString("Book.SchemaReadiness.HolonType".into());
     let source = fixture_context.mutation().new_holon(Some(key.clone()))?;
@@ -86,7 +84,7 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         &mut fixture_holons,
         descriptor,
         CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
-        vec![foreign.clone()],
+        vec![foreign],
         None,
         None,
     )?;
@@ -99,44 +97,12 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         None,
     )?;
 
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
-    test_case.add_verify_commit_carrier_finding_step(
-        ExpectedCommitCarrierFinding {
-            schema_key: "BookAuthorInverseSchema".into(),
-            rule_code: "DS-SCHEMA-002".into(),
-            rule_key: "CrossSchemaDependenciesDeclared.ValidationRule".into(),
-            expected_rejected_holons: vec![ExpectedRejectedHolon {
-                token: descriptor.clone(),
-                validation_state: ValidationState::Invalid,
-                findings: vec![ExpectedValidationFinding {
-                    kind: CommitValidationViolationKind::UnresolvedLocalDependency,
-                    rule_key: None,
-                    subject: ExpectedValidationSubject::Holon,
-                }],
-            }],
-        },
-        None,
-    )?;
-    let descriptor = test_case.add_remove_related_holons_step(
-        &mut fixture_holons,
-        descriptor,
-        CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
-        vec![foreign],
-        None,
-        None,
-    )?;
-    let descriptor = test_case.add_add_related_holons_step(
-        &mut fixture_holons,
-        descriptor,
-        CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
-        vec![local],
-        None,
-        None,
-    )?;
+    // DS-SCHEMA-002 remains unbound until SchemaDependency restores local
+    // dependency coverage. Other descriptor checks continue through public Commit.
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
     test_case.add_match_saved_content_step()?;
 
-    // The accepted descriptor now defines a valid additive property. A later
+    // The accepted descriptor defines an additive foreign property. A later
     // version may add members, but reusing an inherited identity is a defect.
     test_case.add_begin_transaction_step(None, None)?;
     let inherited_key =

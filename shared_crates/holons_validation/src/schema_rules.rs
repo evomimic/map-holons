@@ -1,9 +1,7 @@
 //! Schema rule products over the bounded Commit workset.
 use crate::{
-    assessment_support::{blocked, targets},
-    handlers::rule_violation,
-    schema_view::{ProspectiveSchema, SchemaWorkset},
-    RuleOutcome, ValidationCollector, ValidationInvocation,
+    handlers::rule_violation, schema_view::ProspectiveSchema, RuleOutcome, ValidationCollector,
+    ValidationInvocation,
 };
 use core_types::{HolonError, RelationshipName};
 use holons_core::{
@@ -16,7 +14,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,
 };
-use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
+use type_names::CoreValidationRuleName;
 
 /// Prepared once per affected Schema; bound handlers never repeat graph traversal.
 #[derive(Default)]
@@ -24,33 +22,6 @@ pub struct SchemaRuleProducts {
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<String>>,
 }
 
-/// One diagnostic per affected identity, with a bounded example of the authored edges.
-struct ReferenceGroup {
-    definition: HolonReference,
-    owner_count: usize,
-    count: usize,
-    example: (String, String, String),
-}
-
-impl ReferenceGroup {
-    fn add(&mut self, example: (String, String, String)) {
-        self.count += 1;
-        if example < self.example {
-            self.example = example;
-        }
-    }
-}
-
-fn grouped_references(groups: HashMap<DefinitionIdentity, ReferenceGroup>) -> Vec<ReferenceGroup> {
-    let mut groups: Vec<_> = groups.into_iter().collect();
-    // Diagnostic reference strings are truncated; order by complete identity bytes.
-    groups.sort_by_cached_key(|(identity, _)| match identity {
-        DefinitionIdentity::Saved(id) => (0, id.to_canonical_bytes()),
-        DefinitionIdentity::Staged(id) => (1, id.0.as_bytes().to_vec()),
-        DefinitionIdentity::Transient(id) => (2, id.0.as_bytes().to_vec()),
-    });
-    groups.into_iter().map(|(_, group)| group).collect()
-}
 impl SchemaRuleProducts {
     pub(crate) fn record(&mut self, rule: CoreValidationRuleName, message: String) {
         self.diagnostics.entry(rule).or_default().push(message);
@@ -98,97 +69,6 @@ pub(crate) fn dependency_cycles(
         }
     }
     Ok(results)
-}
-
-/// Cross-schema declarations are local edges. Transitive lookup never licenses an edge.
-pub(crate) fn cross_schema_references_prepared(
-    context: &Arc<TransactionContext>,
-    view: &ProspectiveSchema,
-    workset: &SchemaWorkset,
-    products: &mut SchemaRuleProducts,
-    collector: &mut ValidationCollector,
-    packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<(), HolonError> {
-    let dependencies = schema_dependencies(&view.schema)?;
-    let local = DefinitionIdentity::for_reference(&view.schema, context)?;
-    let direct = dependencies
-        .iter()
-        .map(|target| DefinitionIdentity::for_reference(target, context))
-        .collect::<Result<HashSet<_>, _>>()?;
-    let mut owners = HashMap::new();
-    let mut ambiguous = HashMap::<DefinitionIdentity, ReferenceGroup>::new();
-    let mut missing_dependencies = HashMap::<DefinitionIdentity, ReferenceGroup>::new();
-    for source in view.components.iter().chain(&view.rules) {
-        let edges = packages.authored(source)?;
-        for (name, target) in edges {
-            let target_id = DefinitionIdentity::for_reference(&target, context)?;
-            if !owners.contains_key(&target_id) && !workset.ownership.contains_key(&target_id) {
-                // Schema-valued references (notably ComponentOf/RuleOf) name their owner directly.
-                let targets = if name
-                    == CoreRelationshipTypeName::ComponentOf.as_relationship_name()
-                    || name == CoreRelationshipTypeName::RuleOf.as_relationship_name()
-                {
-                    vec![target.clone()]
-                } else {
-                    let mut result = targets(&target, CoreRelationshipTypeName::ComponentOf)?;
-                    result.extend(targets(&target, CoreRelationshipTypeName::RuleOf)?);
-                    result
-                };
-                owners.insert(target_id.clone(), targets);
-            }
-            let target_owners =
-                workset.ownership.get(&target_id).or_else(|| owners.get(&target_id)).ok_or_else(
-                    || HolonError::CommitFailure("Missing assessed ownership".into()),
-                )?;
-            // Spaces, Schema holons, and other unowned instances are outside this rule.
-            // A staged definition missing required ownership is diagnosed by the workset.
-            if target_owners.is_empty() {
-                continue;
-            }
-            let example =
-                (source.reference_id_string(), name.to_string(), target.reference_id_string());
-            if target_owners.len() > 1 {
-                ambiguous
-                    .entry(target_id)
-                    .or_insert_with(|| ReferenceGroup {
-                        definition: target.clone(),
-                        owner_count: target_owners.len(),
-                        count: 0,
-                        example: example.clone(),
-                    })
-                    .add(example);
-                continue;
-            }
-            let owner = &target_owners[0];
-            let owner_id = DefinitionIdentity::for_reference(owner, context)?;
-            if owner_id != local && !direct.contains(&owner_id) {
-                missing_dependencies
-                    .entry(owner_id)
-                    .or_insert_with(|| ReferenceGroup {
-                        definition: owner.clone(),
-                        owner_count: 1,
-                        count: 0,
-                        example: example.clone(),
-                    })
-                    .add(example);
-            }
-        }
-    }
-    for group in grouped_references(ambiguous) {
-        let (source, name, target) = group.example;
-        blocked(collector, &view.schema, format!(
-            "Cannot check {} authored reference(s) to {}: target has {} prospective owners; for example {source} -[{name}]-> {target}.",
-            group.count, group.definition.reference_id_string(), group.owner_count
-        ));
-    }
-    for group in grouped_references(missing_dependencies) {
-        let (source, name, target) = group.example;
-        products.record(CoreValidationRuleName::CrossSchemaDependenciesDeclared, format!(
-            "Schema {} must directly DependsOn {} for {} authored reference(s); for example {source} -[{name}]-> {target}. Transitive reachability is insufficient.",
-            view.schema.reference_id_string(), group.definition.reference_id_string(), group.count
-        ));
-    }
-    Ok(())
 }
 
 /// Saved maps include materialized inverse navigation. Their authored surface is the
@@ -251,10 +131,4 @@ pub(crate) fn schema_dependencies_acyclic(
     c: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
     run(i, c, CoreValidationRuleName::SchemaDependenciesAcyclic, "DS-SCHEMA-001")
-}
-pub(crate) fn cross_schema_dependencies_declared(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::CrossSchemaDependenciesDeclared, "DS-SCHEMA-002")
 }

@@ -222,13 +222,6 @@ impl BindingRoots {
                 Holon,
                 SchemaAggregate,
             ),
-            (
-                CrossSchemaDependenciesDeclared,
-                "HolonValidationRule.HolonType",
-                "Schema.HolonType",
-                Holon,
-                SchemaAggregate,
-            ),
         ];
         let mut resolved = HashMap::<&str, HolonReference>::new();
         let mut get = |key: &'static str| -> Result<HolonReference, E> {

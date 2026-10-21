@@ -445,14 +445,14 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 }
             }
         }
-        // Each Schema gets its own declaration memo and collector scope. Shared reusable rules
-        // are checked once in that Schema, with their original ownership and subject intact.
+        // Only staged members are declaration subjects, grouped by exact Version-bound owner;
+        // saved unstaged members are not reread.
         // Declaration coverage belongs to exact definitions.
         let mut declaration_members = HashSet::new();
         let declaration_start = collector.violations().len();
         for view in &workset.schemas {
             let mut declarations = ConstraintDeclarationAssessment::new(&roots.constraints)?;
-            for descriptor in &view.components {
+            for descriptor in &view.staged_components {
                 declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
                 let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(
                     descriptor,
@@ -471,7 +471,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     }
                 }
             }
-            for rule in &view.rules {
+            for rule in &view.staged_rules {
                 declaration_members.insert(DefinitionIdentity::for_reference(rule, context)?);
                 assess_configured_rule(
                     rule,
@@ -543,14 +543,6 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             if let Some(Some(witness)) = cycles.get(&id) {
                 products.record(CoreValidationRuleName::SchemaDependenciesAcyclic, format!("Schema {} reaches a versioned DependsOn cycle containing {}; remove the cyclic dependency.", view.schema.reference_id_string(), witness.reference_id_string()));
             }
-            schema_rules::cross_schema_references_prepared(
-                context,
-                view,
-                &workset,
-                &mut products,
-                &mut collector,
-                &packages,
-            )?;
             if products.has_findings() {
                 invalid.insert(id.clone());
             }

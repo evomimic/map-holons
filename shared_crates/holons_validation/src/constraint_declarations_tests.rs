@@ -719,3 +719,53 @@ fn shared_constraint_declaration_findings_reach_every_saved_definition_candidate
     }
     Ok(())
 }
+
+#[test]
+fn staged_schema_member_keeps_declaration_checks_without_scanning_saved_members(
+) -> Result<(), HolonError> {
+    let mut fixture = fixture_with_commit_roots()?;
+    for key in ["SavedOwner", "SavedMemberV1", "SavedMemberV3", "SavedRule"] {
+        fixture.node(key)?;
+    }
+    fixture.link("SavedOwner", CoreRelationshipTypeName::Components, "SavedMemberV1")?;
+    fixture.link("SavedOwner", CoreRelationshipTypeName::Rules, "SavedRule")?;
+    fixture.link("SavedMemberV3", CoreRelationshipTypeName::Predecessor, "SavedMemberV1")?;
+    fixture.link("SavedOwner", CoreRelationshipTypeName::DescribedBy, "Schema.HolonType")?;
+    let fixture = fixture.saved_snapshot_with_read_errors(&[
+        ("SavedMemberV1", HolonError::InvalidState("unstaged membership is not a subject".into())),
+        ("SavedMemberV3", HolonError::InvalidState("membership does not select a head".into())),
+        ("SavedRule", HolonError::InvalidState("unstaged rule is not a subject".into())),
+    ])?;
+    // A staged component schedules its exact saved owner. That must not expand
+    // declaration assessment to the owner's saved Components or Rules.
+    let mut descriptor = fixture.context.mutation().stage_new_holon(
+        fixture.context.mutation().new_holon(Some(MapString("NewDescriptor".into())))?,
+    )?;
+    descriptor.with_property_value("DefinesInstanceTypeKind", false)?;
+    descriptor.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![fixture.nodes["StringValueType.ValueType"].clone()],
+    )?;
+    descriptor.add_related_holons(
+        CoreRelationshipTypeName::ComponentOf,
+        vec![fixture.nodes["SavedOwner"].clone()],
+    )?;
+    let mut invalid = fixture.context.mutation().stage_new_holon(
+        fixture.context.mutation().new_holon(Some(MapString("InvalidConstraint".into())))?,
+    )?;
+    invalid.with_property_value("Minimum", -1_i64)?;
+    invalid.with_descriptor(fixture.nodes[CARDINALITY].clone())?;
+    descriptor
+        .add_related_holons(CoreRelationshipTypeName::Constraints, vec![invalid.clone().into()])?;
+    descriptor.with_descriptor(fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone())?;
+    let assessment = assess_commit_candidates(&fixture.context, &[descriptor])?;
+    assert!(assessment.report.violations.iter().any(
+        |finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code }
+            if code == "DS-CONSTRAINT-003")
+            && finding.subject == crate::assessment_support::path(&invalid.clone().into())
+    ));
+    for edge in [CoreRelationshipTypeName::Components, CoreRelationshipTypeName::Rules] {
+        assert_eq!(fixture.backend_reads_for(&edge), 0, "unexpected {edge:?} scan");
+    }
+    Ok(())
+}

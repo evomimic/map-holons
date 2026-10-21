@@ -23,6 +23,7 @@ struct FixtureStorage {
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
     read_errors: HashMap<HolonId, HolonError>,
+    reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
     fn relationship_cache_policy(
@@ -82,6 +83,7 @@ impl HolonServiceApi for FixtureStorage {
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
         self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        *self.reads_by_relationship.lock().unwrap().entry(name.clone()).or_default() += 1;
         assert!(self.holons.contains_key(source), "unexpected storage relationship read");
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
@@ -213,7 +215,6 @@ impl Fixture {
             CoreValidationRuleName::ContractMemberKindCompatibility,
             CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
             CoreValidationRuleName::SchemaDependenciesAcyclic,
-            CoreValidationRuleName::CrossSchemaDependenciesDeclared,
         ] {
             fixture.node(rule.as_str())?;
         }
@@ -307,6 +308,17 @@ impl Fixture {
         self.saved_storage
             .as_ref()
             .map_or(0, |storage| storage.reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    pub fn backend_reads_for(&self, edge: &CoreRelationshipTypeName) -> usize {
+        self.saved_storage.as_ref().map_or(0, |storage| {
+            *storage
+                .reads_by_relationship
+                .lock()
+                .unwrap()
+                .get(&edge.as_relationship_name())
+                .unwrap_or(&0)
+        })
     }
 
     /// Saves the fixture graph as service snapshots and opens a fresh empty Nursery.
@@ -566,7 +578,6 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         CoreValidationRuleName::ContractMemberKindCompatibility,
         CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
         CoreValidationRuleName::SchemaDependenciesAcyclic,
-        CoreValidationRuleName::CrossSchemaDependenciesDeclared,
     ] {
         fixture.node(rule.as_str())?;
         fixture.link(

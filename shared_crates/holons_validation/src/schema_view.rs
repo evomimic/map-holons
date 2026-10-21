@@ -16,11 +16,12 @@ use std::{
 };
 use type_names::CoreRelationshipTypeName;
 
-/// The two membership namespaces are intentionally independent.
+/// Staged declaration subjects grouped by their exact Schema owner.
+/// Saved inverse membership is not a validation-subject discovery path.
 pub(crate) struct ProspectiveSchema {
     pub schema: HolonReference,
-    pub components: Vec<HolonReference>,
-    pub rules: Vec<HolonReference>,
+    pub staged_components: Vec<HolonReference>,
+    pub staged_rules: Vec<HolonReference>,
 }
 
 /// A staged commitment remains in the workset even if ownership cannot be resolved.
@@ -32,8 +33,6 @@ pub(crate) struct OwnedCandidate {
 /// Identity-indexed scope built before any commitment is assessed.
 pub(crate) struct SchemaWorkset {
     pub schemas: Vec<ProspectiveSchema>,
-    // Ownership evidence is keyed by member definition, independently of candidate findings.
-    pub ownership: HashMap<DefinitionIdentity, Vec<HolonReference>>,
 }
 
 impl SchemaWorkset {
@@ -46,22 +45,18 @@ impl SchemaWorkset {
     ) -> Result<Self, HolonError> {
         let mut schemas = Vec::new();
         let mut scheduled = HashSet::new();
-        let mut ownership = HashMap::new();
         // Membership grouping is by exact owner definition, not candidate or ancestry.
         let mut staged_members = HashMap::<(DefinitionIdentity, bool), Vec<HolonReference>>::new();
-        let mut changed = HashSet::new();
         for schema in directly_staged {
             schedule(context, schema, &mut scheduled, &mut schemas)?;
         }
         for candidate in owned {
-            let identity = DefinitionIdentity::for_reference(&candidate.subject, context)?;
             // A successor adds its own membership; it does not remove its predecessor's.
             for owner in targets(&candidate.subject, ownership_edge(candidate.kind))? {
                 schedule(context, &owner, &mut scheduled, &mut schemas)?;
             }
             let resolution =
                 resolve_schema_ownership(&candidate.subject, candidate.kind, schema_type)?;
-            changed.insert(identity.clone());
             let (owners, defect) = match resolution {
                 SchemaOwnershipResolution::OwnedBy(owner) => (vec![owner], None),
                 SchemaOwnershipResolution::Missing => {
@@ -100,33 +95,14 @@ impl SchemaWorkset {
                     .or_default()
                     .push(candidate.subject.clone());
             }
-            ownership.insert(identity, owners);
         }
         for view in &mut schemas {
             let identity = DefinitionIdentity::for_reference(&view.schema, context)?;
-            // Read persisted inverse membership from the saved source. A staged Schema clone
-            // intentionally omits materialized inverses and is not a complete membership view.
-            let saved = match &identity {
-                DefinitionIdentity::Saved(id) => {
-                    Some(HolonReference::smart_from_id(context.space_read_handle(), id.clone()))
-                }
-                _ => None,
-            };
-            for (edge, rule, destination) in [
-                (CoreRelationshipTypeName::Components, false, &mut view.components),
-                (CoreRelationshipTypeName::Rules, true, &mut view.rules),
-            ] {
+            for (rule, destination) in
+                [(false, &mut view.staged_components), (true, &mut view.staged_rules)]
+            {
                 // Deduplicate exact member definitions within this owner.
                 let mut seen = HashSet::new();
-                if let Some(saved) = &saved {
-                    for member in targets(saved, edge)? {
-                        let member_id = DefinitionIdentity::for_reference(&member, context)?;
-                        if changed.contains(&member_id) || !seen.insert(member_id) {
-                            continue;
-                        }
-                        destination.push(member);
-                    }
-                }
                 for member in staged_members.remove(&(identity.clone(), rule)).unwrap_or_default() {
                     if seen.insert(DefinitionIdentity::for_reference(&member, context)?) {
                         destination.push(member);
@@ -134,7 +110,7 @@ impl SchemaWorkset {
                 }
             }
         }
-        Ok(Self { schemas, ownership })
+        Ok(Self { schemas })
     }
 }
 
@@ -148,8 +124,8 @@ fn schedule(
     if seen.insert(identity.clone()) {
         views.push(ProspectiveSchema {
             schema: identity.definition_reference(context, schema),
-            components: Vec::new(),
-            rules: Vec::new(),
+            staged_components: Vec::new(),
+            staged_rules: Vec::new(),
         });
     }
     Ok(())

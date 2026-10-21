@@ -7,7 +7,7 @@ use holons_core::{
     DefinitionIdentity, EffectiveRelationshipMember, HolonReference, ReadableHolon,
 };
 use std::{
-    cell::{Cell, RefCell},
+    cell::Cell,
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
     sync::Arc,
 };
@@ -30,18 +30,15 @@ pub(crate) struct DescriptorPackage {
     consumed: Cell<bool>,
 }
 
-/// Package roots share exact prepared definitions and their saved memberships.
+/// Package roots share exact prepared definitions.
 /// Entries are discarded before another assessment or schema mutation.
 pub(crate) struct DescriptorPackages {
     context: Arc<TransactionContext>,
     // Immutable products and their consumption metrics belong to exact definitions.
     packages: HashMap<DefinitionIdentity, DescriptorPackage>,
     definitions: HashMap<DefinitionIdentity, PreparedDefinition>,
-    authored:
-        HashMap<DefinitionIdentity, Result<Vec<(RelationshipName, HolonReference)>, HolonError>>,
     _content: Vec<holons_core::core_shared_objects::holon_cache::SavedHolonRetention>,
     preparation: crate::PreparationMetrics,
-    authored_consumed: RefCell<HashSet<DefinitionIdentity>>,
 }
 
 /// Shared kernel products; configuration and other domain values remain on the holons.
@@ -122,10 +119,6 @@ impl DescriptorPackages {
             .collect();
         for schema in &workset.schemas {
             pending.push_back((schema.schema.clone(), Schema));
-            pending
-                .extend(schema.components.iter().cloned().map(|reference| (reference, Commitment)));
-            // Rules may be configured constraints; their applicability must be prepared too.
-            pending.extend(schema.rules.iter().cloned().map(|reference| (reference, Constraint)));
         }
         let mut seen = HashSet::new();
         let mut content_seen = HashSet::new();
@@ -220,7 +213,7 @@ impl DescriptorPackages {
                 demand.0 += 1;
                 demand.1 += members.len();
                 // C2 checks these endpoint/applicability identities without requiring the
-                // referenced holon's full contract. Ownership demand is added separately.
+                // referenced holon's full contract.
                 if matches!(edge, R::SourceType | R::TargetType | R::ApplicableToDescriptorTypes) {
                     continue;
                 }
@@ -316,29 +309,6 @@ impl DescriptorPackages {
                 .clone();
             entry.state = PackageState::Constructed;
         }
-        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SchemaOwnershipPreparation));
-        let mut authored = HashMap::new();
-        // Cross-schema checks inspect the complete declared surface of affected definitions.
-        // Its targets require ownership reads, not recursive instance validation.
-        for schema in &workset.schemas {
-            for source in schema.components.iter().chain(&schema.rules) {
-                let identity = DefinitionIdentity::for_reference(source, context)?;
-                if authored.contains_key(&identity) {
-                    continue;
-                }
-                let definition = identity.definition_reference(context, source);
-                let edges = crate::schema_rules::authored_targets(&definition);
-                authored.insert(identity, edges.clone());
-                for (_, target) in edges? {
-                    if let HolonReference::Smart(saved) = target {
-                        saved.prepare_relationships(&[
-                            R::ComponentOf.as_relationship_name(),
-                            R::RuleOf.as_relationship_name(),
-                        ])?;
-                    }
-                }
-            }
-        }
         for ((role, edge), (requests, members)) in edge_demand {
             observer(crate::AssessmentEvent::PreparationEdge { role, edge, requests, members });
         }
@@ -346,10 +316,8 @@ impl DescriptorPackages {
             context: Arc::clone(context),
             packages,
             definitions,
-            authored,
             _content: content,
             preparation,
-            authored_consumed: RefCell::default(),
         })
     }
 
@@ -378,20 +346,6 @@ impl DescriptorPackages {
         self.definitions
             .get(&DefinitionIdentity::for_reference(reference, &self.context)?)
             .ok_or_else(|| HolonError::InvalidState("Definition was not prepared".into()).into())
-    }
-
-    pub fn authored(
-        &self,
-        reference: &HolonReference,
-    ) -> Result<Vec<(RelationshipName, HolonReference)>, HolonError> {
-        let identity = DefinitionIdentity::for_reference(reference, &self.context)?;
-        self.authored_consumed.borrow_mut().insert(identity.clone());
-        self.authored
-            .get(&identity)
-            .ok_or_else(|| {
-                HolonError::InvalidState("Schema relationship surface was not prepared".into())
-            })?
-            .clone()
     }
 
     pub fn get(
@@ -425,7 +379,6 @@ impl DescriptorPackages {
                 .values()
                 .filter(|definition| definition.bindings_consumed.get())
                 .count(),
-            authored_surface_consumers: self.authored_consumed.borrow().len(),
             ..self.preparation.clone()
         }
     }

@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     assessment_support::path,
     outcomes::PreparedAssessment,
-    schema_rules::{cross_schema_references_prepared, dependency_cycles, SchemaRuleProducts},
+    schema_rules::dependency_cycles,
     schema_view::{OwnedCandidate, SchemaWorkset},
 };
 use holons_core::{
@@ -88,8 +88,8 @@ fn descriptor_only_staging_schedules_one_schema_and_keeps_memberships_separate(
         &mut collector,
     )?;
     assert_eq!(workset.schemas.len(), 1);
-    assert_eq!(workset.schemas[0].components.len(), 2);
-    assert_eq!(workset.schemas[0].rules.len(), 1);
+    assert_eq!(workset.schemas[0].staged_components.len(), 2);
+    assert_eq!(workset.schemas[0].staged_rules.len(), 1);
     assert!(collector.into_report().is_accepted());
     assert!(!candidates
         .iter()
@@ -131,10 +131,10 @@ fn successors_establish_new_memberships_without_scheduling_previous_owners(
                 .expect("readable fixture identity")
         })
         .unwrap();
-    assert_eq!(b.components.len(), 1);
-    assert_eq!(b.rules.len(), 1);
-    assert!(holons_core::same_definition(&b.components[0], &member.into())?);
-    assert!(holons_core::same_definition(&b.rules[0], &rule.into())?);
+    assert_eq!(b.staged_components.len(), 1);
+    assert_eq!(b.staged_rules.len(), 1);
+    assert!(holons_core::same_definition(&b.staged_components[0], &member.into())?);
+    assert!(holons_core::same_definition(&b.staged_rules[0], &rule.into())?);
     assert!(collector.into_report().is_accepted());
     Ok(())
 }
@@ -162,301 +162,6 @@ fn staged_schema_dependency_follows_exact_saved_targets_without_substitution(
 }
 
 #[test]
-fn direct_dependencies_are_required_for_components_and_owned_rules() -> Result<(), HolonError> {
-    let mut fixture = schema_fixture()?;
-    fixture.link("A", CoreRelationshipTypeName::DependsOn, "B")?;
-    fixture.link("B", CoreRelationshipTypeName::DependsOn, "C")?;
-    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
-    fixture.link("OwnedRule", CoreRelationshipTypeName::RuleOf, "A")?;
-    fixture.link("Foreign", CoreRelationshipTypeName::ComponentOf, "C")?;
-    for source in ["Member", "OwnedRule"] {
-        fixture.link(source, CoreRelationshipTypeName::ValueType, "Foreign")?;
-    }
-    describe_schemas(&mut fixture)?;
-    let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[],
-        &[
-            owned(&fixture, "Member", SchemaOwnershipKind::Component),
-            owned(&fixture, "OwnedRule", SchemaOwnershipKind::Rule),
-        ],
-        &mut collector,
-    )?;
-    let mut products = SchemaRuleProducts::default();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
-        &fixture.context,
-        &[],
-        &[],
-        &workset,
-    )?;
-    cross_schema_references_prepared(
-        &fixture.context,
-        &workset.schemas[0],
-        &workset,
-        &mut products,
-        &mut collector,
-        &packages,
-    )?;
-    let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
-    fixture.node(rule.as_str())?;
-    let binding = ResolvedValidationBinding {
-        rule: fixture.nodes[rule.as_str()].clone(),
-        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
-            fixture.nodes["Schema.HolonType"].clone(),
-        ),
-    };
-    StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).unwrap()(
-        ValidationInvocation::Schema {
-            binding: &binding,
-            path: &path(&fixture.nodes["A"]),
-            products: &products,
-        },
-        &mut collector,
-    )?;
-    let report = collector.into_report();
-    assert_eq!(report.violations.len(), 1);
-    assert!(report.violations.iter().all(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-SCHEMA-002")));
-    assert!(report.violations[0].message.contains("2 authored reference(s)"));
-    assert!(report.violations[0].message.contains(&fixture.nodes["C"].reference_id_string()));
-    Ok(())
-}
-
-#[test]
-fn schema_references_ignore_space_instances_and_schema_targets() -> Result<(), HolonError> {
-    let mut fixture = schema_fixture()?;
-    fixture.node("Space")?;
-    fixture.link("Space", CoreRelationshipTypeName::OwnedBy, "Space")?;
-    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
-    fixture.link("Member", CoreRelationshipTypeName::OwnedBy, "Space")?;
-    fixture.link("Member", CoreRelationshipTypeName::ValueType, "B")?;
-    describe_schemas(&mut fixture)?;
-    let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[],
-        &[owned(&fixture, "Member", SchemaOwnershipKind::Component)],
-        &mut collector,
-    )?;
-    let mut products = SchemaRuleProducts::default();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
-        &fixture.context,
-        &[],
-        &[],
-        &workset,
-    )?;
-    cross_schema_references_prepared(
-        &fixture.context,
-        &workset.schemas[0],
-        &workset,
-        &mut products,
-        &mut collector,
-        &packages,
-    )?;
-    assert!(!products.has_findings());
-    assert!(collector.into_report().is_accepted());
-    assert_eq!(
-        fixture.nodes["Space"]
-            .related_holons(CoreRelationshipTypeName::OwnedBy)?
-            .read()
-            .unwrap()
-            .get_count()
-            .0,
-        1,
-        "the space self-reference remains authored but is outside the Schema component workset"
-    );
-    Ok(())
-}
-
-#[test]
-fn same_schema_component_reference_needs_no_dependency() -> Result<(), HolonError> {
-    let mut fixture = schema_fixture()?;
-    for key in ["Member", "OtherMember"] {
-        fixture.link(key, CoreRelationshipTypeName::ComponentOf, "A")?;
-    }
-    fixture.link("Member", CoreRelationshipTypeName::ValueType, "OtherMember")?;
-    describe_schemas(&mut fixture)?;
-    let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[],
-        &[
-            owned(&fixture, "Member", SchemaOwnershipKind::Component),
-            owned(&fixture, "OtherMember", SchemaOwnershipKind::Component),
-        ],
-        &mut collector,
-    )?;
-    let mut products = SchemaRuleProducts::default();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
-        &fixture.context,
-        &[],
-        &[],
-        &workset,
-    )?;
-    cross_schema_references_prepared(
-        &fixture.context,
-        &workset.schemas[0],
-        &workset,
-        &mut products,
-        &mut collector,
-        &packages,
-    )?;
-    assert!(!products.has_findings());
-    assert!(collector.into_report().is_accepted());
-    Ok(())
-}
-
-#[test]
-fn direct_dependency_covers_cross_schema_component_reference() -> Result<(), HolonError> {
-    let mut fixture = schema_fixture()?;
-    fixture.link("A", CoreRelationshipTypeName::DependsOn, "B")?;
-    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
-    fixture.link("Foreign", CoreRelationshipTypeName::ComponentOf, "B")?;
-    fixture.link("Member", CoreRelationshipTypeName::ValueType, "Foreign")?;
-    describe_schemas(&mut fixture)?;
-    let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[],
-        &[
-            owned(&fixture, "Member", SchemaOwnershipKind::Component),
-            owned(&fixture, "Foreign", SchemaOwnershipKind::Component),
-        ],
-        &mut collector,
-    )?;
-    let a = workset
-        .schemas
-        .iter()
-        .find(|view| {
-            holons_core::same_definition(&view.schema, &fixture.nodes["A"])
-                .expect("readable fixture identity")
-        })
-        .unwrap();
-    let mut products = SchemaRuleProducts::default();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
-        &fixture.context,
-        &[],
-        &[],
-        &workset,
-    )?;
-    cross_schema_references_prepared(
-        &fixture.context,
-        a,
-        &workset,
-        &mut products,
-        &mut collector,
-        &packages,
-    )?;
-    assert!(!products.has_findings());
-    assert!(collector.into_report().is_accepted());
-    Ok(())
-}
-
-#[test]
-fn missing_target_ownership_keeps_its_own_finding() -> Result<(), HolonError> {
-    let mut fixture = schema_fixture()?;
-    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
-    fixture.link("Member", CoreRelationshipTypeName::ValueType, "Foreign")?;
-    describe_schemas(&mut fixture)?;
-    let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[],
-        &[
-            owned(&fixture, "Member", SchemaOwnershipKind::Component),
-            owned(&fixture, "Foreign", SchemaOwnershipKind::Component),
-        ],
-        &mut collector,
-    )?;
-    let mut products = SchemaRuleProducts::default();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
-        &fixture.context,
-        &[],
-        &[],
-        &workset,
-    )?;
-    cross_schema_references_prepared(
-        &fixture.context,
-        &workset.schemas[0],
-        &workset,
-        &mut products,
-        &mut collector,
-        &packages,
-    )?;
-    assert!(!products.has_findings());
-    let report = collector.into_report();
-    assert_eq!(report.violation_count(), 1);
-    assert!(
-        matches!(&report.violations[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership")
-    );
-    assert_eq!(report.violations[0].subject, path(&fixture.nodes["Foreign"]));
-    Ok(())
-}
-
-#[test]
-fn ambiguous_target_ownership_blocks_once_per_target() -> Result<(), HolonError> {
-    let mut fixture = schema_fixture()?;
-    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
-    fixture.link("OwnedRule", CoreRelationshipTypeName::RuleOf, "A")?;
-    for owner in ["B", "C"] {
-        fixture.link("Foreign", CoreRelationshipTypeName::ComponentOf, owner)?;
-    }
-    for source in ["Member", "OwnedRule"] {
-        fixture.link(source, CoreRelationshipTypeName::ValueType, "Foreign")?;
-    }
-    describe_schemas(&mut fixture)?;
-    let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[],
-        &[
-            owned(&fixture, "Member", SchemaOwnershipKind::Component),
-            owned(&fixture, "OwnedRule", SchemaOwnershipKind::Rule),
-            owned(&fixture, "Foreign", SchemaOwnershipKind::Component),
-        ],
-        &mut collector,
-    )?;
-    let a = workset
-        .schemas
-        .iter()
-        .find(|view| {
-            holons_core::same_definition(&view.schema, &fixture.nodes["A"])
-                .expect("readable fixture identity")
-        })
-        .unwrap();
-    let mut products = SchemaRuleProducts::default();
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
-        &fixture.context,
-        &[],
-        &[],
-        &workset,
-    )?;
-    cross_schema_references_prepared(
-        &fixture.context,
-        a,
-        &workset,
-        &mut products,
-        &mut collector,
-        &packages,
-    )?;
-    assert!(!products.has_findings());
-    let report = collector.into_report();
-    assert_eq!(report.violation_count(), 2);
-    assert!(report.violations.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership")));
-    assert!(report.violations.iter().any(|finding| {
-        finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
-            && finding.message.contains("2 authored reference(s)")
-    }));
-    Ok(())
-}
-
-#[test]
 fn missing_multiple_and_invalid_owners_are_findings_in_both_namespaces() -> Result<(), HolonError> {
     for kind in [SchemaOwnershipKind::Component, SchemaOwnershipKind::Rule] {
         for owners in [vec![], vec!["A", "B"], vec!["Foreign"]] {
@@ -473,11 +178,14 @@ fn missing_multiple_and_invalid_owners_are_findings_in_both_namespaces() -> Resu
                 &[owned(&fixture, "Member", kind)],
                 &mut collector,
             )?;
-            assert_eq!(
-                workset.ownership.len(),
-                1,
-                "invalid ownership must not drop the staged commitment"
-            );
+            for view in &workset.schemas {
+                let members = match kind {
+                    SchemaOwnershipKind::Component => &view.staged_components,
+                    SchemaOwnershipKind::Rule => &view.staged_rules,
+                };
+                assert_eq!(members.len(), 1, "invalid ownership must not drop the staged member");
+                assert!(holons_core::same_definition(&members[0], &fixture.nodes["Member"])?);
+            }
             assert_eq!(workset.schemas.len(), owners.len());
             assert_eq!(collector.into_report().violation_count(), 1);
         }
@@ -722,10 +430,7 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
         CoreRelationshipTypeName::Extends,
         "HolonType.TypeDescriptor",
     )?;
-    for rule in [
-        CoreValidationRuleName::SchemaDependenciesAcyclic,
-        CoreValidationRuleName::CrossSchemaDependenciesDeclared,
-    ] {
+    for rule in [CoreValidationRuleName::SchemaDependenciesAcyclic] {
         fixture.link(
             "Schema.HolonType",
             CoreRelationshipTypeName::ValidationBindings,
@@ -842,7 +547,6 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
             crate::AssessmentPhase::SchemaWorksetPreparation,
             crate::AssessmentPhase::PackageDiscovery,
             crate::AssessmentPhase::PreparedProducts,
-            crate::AssessmentPhase::SchemaOwnershipPreparation,
             crate::AssessmentPhase::PackageValidation,
             crate::AssessmentPhase::InstanceValidation,
         ]
@@ -952,5 +656,86 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
     let report = constructed.assess(|_| {})?.0.into_report();
     assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
     assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
+    Ok(())
+}
+
+#[test]
+fn schema_dependency_cycles_do_not_read_saved_memberships() -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    fixture.link("A", CoreRelationshipTypeName::DependsOn, "B")?;
+    fixture.link("B", CoreRelationshipTypeName::DependsOn, "A")?;
+    fixture.link("A", CoreRelationshipTypeName::Components, "Member")?;
+    fixture.link("A", CoreRelationshipTypeName::Rules, "OwnedRule")?;
+    describe_schemas(&mut fixture)?;
+    let fixture = fixture.saved_snapshot_with_read_errors(&[
+        ("Member", HolonError::InvalidState("saved member must not be assessed".into())),
+        ("OwnedRule", HolonError::InvalidState("saved rule must not be assessed".into())),
+    ])?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &fixture.nodes["Schema.HolonType"],
+        &[fixture.nodes["A"].clone()],
+        &[],
+        &mut collector,
+    )?;
+    assert!(workset.schemas[0].staged_components.is_empty());
+    assert!(workset.schemas[0].staged_rules.is_empty());
+    let cycles = dependency_cycles(&fixture.context, &workset.schemas)?;
+    assert!(cycles[&DefinitionIdentity::for_reference(&fixture.nodes["A"], &fixture.context)?]
+        .is_some());
+    // Package construction must not rediscover members excluded by the workset.
+    crate::descriptor_package::DescriptorPackages::construct(&fixture.context, &[], &[], &workset)?;
+    for edge in [CoreRelationshipTypeName::Components, CoreRelationshipTypeName::Rules] {
+        assert_eq!(fixture.backend_reads_for(&edge), 0, "unexpected {edge:?} scan");
+    }
+    Ok(())
+}
+
+#[test]
+fn stale_cross_schema_dependency_binding_fails_closed() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
+    assert!(StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).is_none());
+    fixture.link(
+        "Schema.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "Schema.HolonType",
+        CoreRelationshipTypeName::InstanceProperties,
+        "Key.PropertyType",
+    )?;
+    fixture.node(rule.as_str())?;
+    fixture.link(
+        rule.as_str(),
+        CoreRelationshipTypeName::DescribedBy,
+        "HolonValidationRule.HolonType",
+    )?;
+    fixture.link(
+        "Schema.HolonType",
+        CoreRelationshipTypeName::ValidationBindings,
+        rule.as_str(),
+    )?;
+    let fixture = fixture.saved_snapshot()?;
+    let mut schema = fixture.context.mutation().stage_new_holon(
+        fixture.context.mutation().new_holon(Some(MapString("StaleCoreSchema".into())))?,
+    )?;
+    schema.with_descriptor(fixture.nodes["Schema.HolonType"].clone())?;
+    let assessment = assess_commit_candidates(&fixture.context, &[schema.clone()])?;
+    assert_eq!(assessment.report.violation_count(), 1, "{:#?}", assessment.report.violations);
+    let finding = &assessment.report.violations[0];
+    assert_eq!(finding.kind, CommitValidationViolationKind::UnsupportedValidationRule);
+    assert_eq!(finding.rule_key.as_deref(), Some(rule.as_str()));
+    assert_eq!(finding.subject, path(&schema.into()));
+    assert_eq!(
+        finding.descriptor_identity.as_deref(),
+        Some(fixture.nodes["Schema.HolonType"].reference_id_string().as_str())
+    );
+    assert!(assessment.observations.discovered_rule_keys.contains(rule.as_str()));
+    assert!(!assessment.observations.dispatched_rule_keys.contains(rule.as_str()));
+    // Pre-production stores must use the regenerated bootstrap: a stale mandatory
+    // binding remains fail-closed even though its native handler has been retired.
     Ok(())
 }

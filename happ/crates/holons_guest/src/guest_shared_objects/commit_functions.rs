@@ -420,10 +420,10 @@ pub fn commit(
                 }
             }
             holons_validation::AssessmentEvent::Preparation(metrics) => {
-                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={} authored_surface_consumers={}",
+                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={}",
                     metrics.package_roots, metrics.subjects, metrics.affected_schemas,
                     metrics.distinct_content, metrics.identity_role_visits, metrics.contract_consumers,
-                    metrics.constraint_consumers, metrics.binding_consumers, metrics.authored_surface_consumers);
+                    metrics.constraint_consumers, metrics.binding_consumers);
             }
             holons_validation::AssessmentEvent::PreparationEdge {
                 role,

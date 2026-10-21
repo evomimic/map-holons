@@ -75,11 +75,11 @@
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "a0d2159c42231d80fe7f19af6c8f7c9250b092ca0ef41868e8c00048b0d6b977"
+      "sha256": "59ba6cc17ed76ea71d0c808d69e066e0ef9a5815c547c332cc80d37624e1a8dd"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "e666816f399b6278216c5bb4d7768bcc7f085654675371f03da5f941487d6b0b"
+      "sha256": "8614a153984919db8cebbae8f8223ece7f782ca3d0523e26c39dd70c3d8e3087"
     },
     {
       "path": "imports/core/validation.json",

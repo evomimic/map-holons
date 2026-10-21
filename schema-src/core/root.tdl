@@ -247,8 +247,7 @@ holon Schema.HolonType {
   }
   relationships {
     ValidationBindings -> [
-      SchemaDependenciesAcyclic.ValidationRule,
-      CrossSchemaDependenciesDeclared.ValidationRule
+      SchemaDependenciesAcyclic.ValidationRule
     ]
     InstanceProperties -> [
       Description.PropertyType,
@@ -520,6 +519,7 @@ inverse relationship (Schema.HolonType)-[Rules]->(Rule.HolonType) {
   extends InverseRelationshipType.RelationshipType
   source Schema.HolonType
   target Rule.HolonType
+  TargetBinding Lineage
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }

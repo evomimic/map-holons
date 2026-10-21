@@ -21,7 +21,7 @@ fn all_fixtures_author_without_a_conductor() {
     commit_disposition_fixture::commit_unsupported_pass_one_fixture().unwrap();
     commit_lineage_fixture::commit_sequential_lineage_fixture().unwrap();
     commit_lineage_fixture::commit_non_root_lineage_fixture().unwrap();
-    commit_schema_fixture::commit_unstaged_schema_finding_fixture().unwrap();
+    commit_schema_fixture::commit_cross_schema_dependency_gap_fixture().unwrap();
     commit_schema_fixture::commit_schema_cycle_fixture().unwrap();
     commit_strict_contract_fixture::commit_strict_contract_fixture().unwrap();
     commit_validation_fixture::commit_validation_fixture().unwrap();

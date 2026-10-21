@@ -89,7 +89,6 @@ fn expected_rule_keys() -> BTreeSet<String> {
         "ContractMemberKindCompatibility",
         "InheritedValueConstraintNonRelaxation",
         "SchemaDependenciesAcyclic",
-        "CrossSchemaDependenciesDeclared",
     ]
     .into_iter()
     .map(|name| format!("{name}.ValidationRule"))
@@ -136,5 +135,48 @@ fn inventory_rejects_a_removed_canonical_validation_binding() -> Result<()> {
     let error =
         require_expected_bindings(&documents).expect_err("a dropped rule must fail inventory");
     assert!(error.to_string().contains(bytes_rule));
+    Ok(())
+}
+
+#[test]
+fn schema_membership_bindings_preserve_directional_version_ownership() -> Result<()> {
+    let documents = canonical_documents()?;
+    for (key, binding) in [
+        ("(Schema.HolonType)-[Components]->(TypeDescriptor)", "Lineage"),
+        ("(Schema.HolonType)-[Rules]->(Rule.HolonType)", "Lineage"),
+        ("(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)", "Version"),
+        ("(Rule.HolonType)-[RuleOf]->(Schema.HolonType)", "Version"),
+    ] {
+        let holon = documents
+            .iter()
+            .flat_map(|document| document["holons"].as_array().unwrap())
+            .find(|holon| holon["key"] == key)
+            .with_context(|| format!("missing relationship {key}"))?;
+        // Omitted TargetBinding retains the kernel's Version default.
+        assert_eq!(
+            holon["properties"]["TargetBinding"].as_str().unwrap_or("Version"),
+            binding,
+            "{key}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn cross_schema_dependency_rule_is_retained_as_unbound_vocabulary() -> Result<()> {
+    let documents = canonical_documents()?;
+    let key = "CrossSchemaDependenciesDeclared.ValidationRule";
+    let rule = documents
+        .iter()
+        .flat_map(|document| document["holons"].as_array().unwrap())
+        .find(|holon| holon["key"] == key)
+        .context("DS-SCHEMA-002 vocabulary must remain available")?;
+    assert_eq!(rule["properties"]["SemanticAuthority"], "DS-SCHEMA-002");
+    assert!(!authored_binding_inventory(&documents).contains(key));
+    // Declared cross-schema dependency coverage is temporarily unenforced until
+    // SchemaDependency supplies local restoration inputs; DS-SCHEMA-001 stays bound.
+    assert!(
+        authored_binding_inventory(&documents).contains("SchemaDependenciesAcyclic.ValidationRule")
+    );
     Ok(())
 }
