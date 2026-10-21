@@ -12,6 +12,7 @@ pub mod holon_pool;
 pub mod nursery;
 pub mod nursery_access;
 pub mod nursery_access_internal;
+pub mod pending_relationship_deltas;
 pub mod read_observations;
 pub mod relationship_behavior;
 pub mod relationship_cache;

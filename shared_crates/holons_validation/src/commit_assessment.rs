@@ -148,6 +148,11 @@ fn assess_commit_candidates_with_observer<'a>(
     require_distinct_live_candidates(candidates)?;
     let mut collector = ValidationCollector::default();
     crate::prospective::assess_required_anchor_updates(context, candidates, &mut collector)?;
+    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
+        context,
+        candidates,
+        &mut collector,
+    )?;
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::ReadinessResolution));
     let roots = ReadinessContext::resolve(context).map_err(HolonError::from)?;
     construct_assessment_with_observer(context, candidates, &roots, collector, &mut observer)?

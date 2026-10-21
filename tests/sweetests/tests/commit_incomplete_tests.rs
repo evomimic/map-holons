@@ -249,3 +249,80 @@ async fn incomplete_commit_repeats_error_then_completes_relationship_retry() {
         next_step = sequence.end_step;
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition() {
+    let scenario = fixture_cases::commit_incomplete_fixture::graph_overlap_retry_fixture().unwrap();
+    let mut bootstrap = DancesTestCase::default();
+    let (runtime, tx_id, control) = init_probe_test_runtime(&mut bootstrap).await;
+    let case = &scenario.case;
+    let mut state = TestExecutionState::new(
+        runtime,
+        tx_id.clone(),
+        case.test_session_state.get_transient_holons().clone(),
+        case.test_session_state.fixture_head_index().clone(),
+    );
+    state.activate_transaction(tx_id).unwrap();
+    let mut loaded = false;
+    let mut query_loaded = false;
+    run_segment(
+        case,
+        case.steps[..scenario.first_attempt].to_vec(),
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    let source = saved_id(&state, &scenario.source);
+    let target = saved_id(&state, &scenario.added);
+    let encoded = encode_smartlink_tag(&SmartLinkTagInput {
+        target_id: HolonId::Local(target.clone()),
+        relationship_name: "ReferencesProperty".to_relationship_name(),
+        canonical_key: CanonicalKey::new(STALE_KEY).unwrap(),
+        occurrence_id: None,
+        relationship_property_values: PropertyMap::new(),
+        target_property_cache_candidates: Vec::new(),
+    })
+    .unwrap();
+    let planted = control.plant_stale_link(source.clone(), target, encoded).await;
+    run_segment(
+        case,
+        vec![case.steps[scenario.first_attempt].clone()],
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    assert_eq!(control.delete_link(planted).await, DeleteSmartLinkOutcome::Deleted);
+    let before =
+        control.live_links(source.clone(), "ReferencesProperty".to_relationship_name()).await;
+    run_segment(
+        case,
+        case.steps[scenario.first_attempt + 1..scenario.after_rejection].to_vec(),
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    let after = control.live_links(source, "ReferencesProperty".to_relationship_name()).await;
+    assert_eq!(before, after, "rejected retry must perform no relationship writes");
+    let context = state.context();
+    let live = context
+        .staged_references()
+        .unwrap()
+        .into_iter()
+        .filter(|c| c.is_live_validation_candidate().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(live.len(), 1);
+    let findings = live[0].validation_findings().unwrap();
+    assert_eq!(findings.len(), 1);
+    assert!(findings[0].message.contains("outstanding replay from an incomplete Commit"));
+    run_segment(
+        case,
+        case.steps[scenario.after_rejection..].to_vec(),
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+}

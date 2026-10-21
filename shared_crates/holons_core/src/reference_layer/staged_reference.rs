@@ -1245,6 +1245,7 @@ mod tests {
             original.original_id_ref().cloned(),
             original.versioned_source_id_ref().cloned(),
             original.touched_relationship_names().clone(),
+            original.pending_relationship_deltas().clone(),
             original.relationship_commit_scope(),
             vec![HolonError::NotImplemented("persistence failure".into())],
         );
@@ -2087,6 +2088,13 @@ mod tests {
 
         assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 1);
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
+        let rc = staged_source.get_holon_to_commit(&context)?;
+        let holon = rc.read().unwrap();
+        let Holon::Staged(staged) = &*holon else { panic!("staged") };
+        assert!(
+            staged.pending_relationship_deltas().is_empty(),
+            "hydration and duplicate filtering must not record an addition"
+        );
         Ok(())
     }
 
@@ -2203,6 +2211,13 @@ mod tests {
 
         assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 2);
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdateNewVersion)?);
+        let rc = staged_source.get_holon_to_commit(&context)?;
+        let holon = rc.read().unwrap();
+        let Holon::Staged(staged) = &*holon else { panic!("staged") };
+        assert!(
+            staged.pending_relationship_deltas()[&"AuthoredBy".to_relationship_name()]
+                .repeated_occurrence
+        );
         Ok(())
     }
 

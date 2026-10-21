@@ -342,13 +342,12 @@ impl Fixture {
     }
 
     pub fn backend_reads_for(&self, edge: &CoreRelationshipTypeName) -> usize {
+        self.backend_reads_for_name(&edge.as_relationship_name())
+    }
+
+    pub fn backend_reads_for_name(&self, name: &RelationshipName) -> usize {
         self.saved_storage.as_ref().map_or(0, |storage| {
-            *storage
-                .reads_by_relationship
-                .lock()
-                .unwrap()
-                .get(&edge.as_relationship_name())
-                .unwrap_or(&0)
+            *storage.reads_by_relationship.lock().unwrap().get(name).unwrap_or(&0)
         })
     }
 

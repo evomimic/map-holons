@@ -21,6 +21,7 @@ mod execution_steps;
 mod fixture_cases;
 
 use execution_steps::dance_test_runner::{run_dance_test_suite, DanceTestSuite};
+use fixture_cases::commit_graph_only_fixture::*;
 use rstest::*;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
@@ -93,6 +94,11 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_non_root_lineage_fixture().unwrap(),
             commit_version_siblings_fixture().unwrap(),
             commit_no_op_and_graph_only_siblings_fixture().unwrap(),
+            commit_disjoint_graph_additions_fixture().unwrap(),
+            commit_identical_graph_additions_fixture().unwrap(),
+            commit_graph_overlap_rejection_fixture().unwrap(),
+            commit_graph_then_version_fixture().unwrap(),
+            commit_version_then_graph_fixture().unwrap(),
             commit_branch_across_transactions_fixture().unwrap(),
             commit_cross_schema_dependency_gap_fixture().unwrap(),
             commit_schema_cycle_fixture().unwrap(),

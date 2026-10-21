@@ -13,6 +13,12 @@ fn all_fixtures_author_without_a_conductor() {
     bootstrap_operational_schema_fixture::bootstrap_operational_schema_fixture().unwrap();
     commit_sibling_fixture::commit_version_siblings_fixture().unwrap();
     commit_sibling_fixture::commit_no_op_and_graph_only_siblings_fixture().unwrap();
+    commit_graph_only_fixture::commit_disjoint_graph_additions_fixture().unwrap();
+    commit_incomplete_fixture::graph_overlap_retry_fixture().unwrap();
+    commit_graph_only_fixture::commit_identical_graph_additions_fixture().unwrap();
+    commit_graph_only_fixture::commit_graph_overlap_rejection_fixture().unwrap();
+    commit_graph_only_fixture::commit_graph_then_version_fixture().unwrap();
+    commit_graph_only_fixture::commit_version_then_graph_fixture().unwrap();
     commit_sibling_fixture::commit_branch_across_transactions_fixture().unwrap();
     commit_disposition_fixture::commit_no_action_fixture().unwrap();
     commit_disposition_fixture::commit_mixed_dispositions_fixture().unwrap();

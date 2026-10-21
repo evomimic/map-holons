@@ -17,6 +17,7 @@ mod contexts;
 mod dependency_groups;
 mod descriptor_package;
 mod descriptor_rules;
+mod graph_only_deltas;
 mod handlers;
 mod outcomes;
 mod prospective;

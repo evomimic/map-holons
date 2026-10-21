@@ -280,6 +280,7 @@ pub(crate) fn assess_holon(
     }
     for (name, target) in crate::schema_rules::authored_targets(subject)? {
         if !declared_names.contains(&name.to_string()) {
+            // Delivered checks assess declaredness per subject; none reads a combined graph-only bucket.
             finding(collector, CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() }, None,
                 &ValidationSubjectPath::Relationship { source_identity: subject.full_reference_id_string(), name: name.to_string(), target_identity: target.reference_id_string() },
                 Some(descriptor.reference_id_string()), format!("Populated relationship {name} must be declared by the source's effective descriptor."));

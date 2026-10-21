@@ -1,3 +1,6 @@
+#[path = "graph_only_deltas_tests.rs"]
+mod graph_only_deltas_tests;
+
 #[path = "required_anchor_tests.rs"]
 mod required_anchors;
 
