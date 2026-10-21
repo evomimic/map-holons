@@ -11,9 +11,9 @@ use pretty_assertions::assert_eq;
 fn all_fixtures_author_without_a_conductor() {
     abandon_staged_changes_fixture::simple_abandon_staged_changes_fixture().unwrap();
     bootstrap_operational_schema_fixture::bootstrap_operational_schema_fixture().unwrap();
-    commit_competition_fixture::commit_competition_retry_fixture().unwrap();
-    commit_competition_fixture::commit_graph_only_competition_fixture().unwrap();
-    commit_competition_fixture::commit_branch_across_transactions_fixture().unwrap();
+    commit_sibling_fixture::commit_version_siblings_fixture().unwrap();
+    commit_sibling_fixture::commit_no_op_and_graph_only_siblings_fixture().unwrap();
+    commit_sibling_fixture::commit_branch_across_transactions_fixture().unwrap();
     commit_disposition_fixture::commit_no_action_fixture().unwrap();
     commit_disposition_fixture::commit_mixed_dispositions_fixture().unwrap();
     commit_disposition_fixture::commit_same_key_dispositions_fixture().unwrap();

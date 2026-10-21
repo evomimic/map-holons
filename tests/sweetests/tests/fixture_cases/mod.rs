@@ -1,11 +1,11 @@
 pub mod abandon_staged_changes_fixture;
 pub mod attachment_defaults_fixture;
 pub mod bootstrap_operational_schema_fixture;
-pub mod commit_competition_fixture;
 pub mod commit_disposition_fixture;
 pub mod commit_incomplete_fixture;
 pub mod commit_lineage_fixture;
 pub mod commit_schema_fixture;
+pub mod commit_sibling_fixture;
 pub mod commit_strict_contract_fixture;
 pub mod commit_validation_fixture;
 pub mod delete_holon_fixture;

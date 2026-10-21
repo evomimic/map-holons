@@ -1,21 +1,21 @@
+//! Commit preserves distinct sibling versions and graph edits anchored to their saved source.
+
 use super::described_instances::add_described_instance;
-use core_types::CommitValidationViolationKind;
-use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
     DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedLineage, ExpectedPersistedGraph, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, PersistedSubject, TestCaseInit,
+    ExpectedLineage, ExpectedPersistedGraph, ExpectedPersistedRelationship, PersistedSubject,
+    TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 
-/// Two live updates of one saved source reject before persistence. Abandoning
-/// one contender lets the other commit in the same transaction.
-pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> {
+/// Distinct edits of one saved version publish distinct successors in one Commit.
+/// Sharing a source, lineage and key must not collapse either candidate or saved result.
+pub fn commit_version_siblings_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
-        "Commit competing replacements and retry",
-        "Competing updates each retain a finding; reconciliation accepts a retry",
+        "Commit version-producing siblings",
+        "Two candidates publish independent versions with the same exact predecessor",
     );
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
@@ -23,7 +23,7 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
-        "Book.CompetingCommit",
+        "Book.VersionSiblings",
         "Title",
         BOOK_DESCRIPTOR_KEY,
     )?;
@@ -36,88 +36,78 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
         None,
         MapInteger(1),
         None,
-        Some("Stage first replacement".into()),
+        Some("Stage first successor from A".into()),
     )?;
+    // A singular base-key lookup is ambiguous, while both candidates remain staged.
+    // Stage both before editing so the staging executor can compare their cloned content.
     let second = test_case.add_stage_new_version_step(
         &mut fixture_holons,
-        original,
+        original.clone(),
         None,
         MapInteger(2),
         Some(HolonErrorKind::DuplicateError),
-        Some("Stage identical second replacement".into()),
+        Some("Stage second successor from the same A".into()),
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
-    let competition = ExpectedValidationFinding {
-        kind: CommitValidationViolationKind::RuleViolation {
-            code: "CompetingStagedReplacements".into(),
-        },
-        rule_key: None,
-        subject: ExpectedValidationSubject::Holon,
-    };
-    test_case.add_verify_commit_rejection_step(
-        vec![
-            ExpectedRejectedHolon {
-                token: first.clone(),
-                validation_state: ValidationState::Invalid,
-                findings: vec![competition.clone()],
-            },
-            ExpectedRejectedHolon {
-                token: second.clone(),
-                validation_state: ValidationState::Invalid,
-                findings: vec![competition],
-            },
-        ],
-        MapInteger(2),
-        None,
-    )?;
-    test_case.add_abandon_staged_changes_step(&mut fixture_holons, second, None, None)?;
-    // Keep the rejected competitors identical. The surviving update becomes a new version
-    // only after reconciliation; an unchanged ForUpdate commits with NoAction.
-    let retry_title: PropertyMap =
-        [("Title".to_property_name(), "Reconciled title".to_base_value())].into();
     let first = test_case.add_with_properties_step(
         &mut fixture_holons,
         first,
-        retry_title,
+        [("Title".to_property_name(), "Sibling B title".to_base_value())].into(),
         None,
-        Some("Change the surviving replacement before retry".into()),
+        None,
     )?;
+    let second = test_case.add_with_properties_step(
+        &mut fixture_holons,
+        second,
+        [("Title".to_property_name(), "Sibling C title".to_base_value())].into(),
+        None,
+        None,
+    )?;
+    // Both candidates publish their own content. Their shared key belongs to one
+    // lineage, so maintaining its saved key associations must permit both writes.
     test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
-        vec![ExpectedCommitCandidate::new(first.clone(), ExpectedDisposition::NewVersion)],
+        vec![
+            ExpectedCommitCandidate::new(first.clone(), ExpectedDisposition::NewVersion),
+            ExpectedCommitCandidate::new(second.clone(), ExpectedDisposition::NewVersion),
+        ],
         vec![],
         None,
         None,
     )?;
     test_case.add_match_saved_content_step()?;
-    test_case.add_begin_transaction_step(None, None)?;
-    let unchanged = test_case.add_stage_new_version_step(
-        &mut fixture_holons,
-        first,
-        None,
-        MapInteger(1),
-        None,
-        Some("Reuse the corrected retry's saved-result token".into()),
-    )?;
-    test_case.add_commit_step_with_dispositions(
-        &mut fixture_holons,
-        ExpectedCommitStatus::Complete,
-        vec![ExpectedCommitCandidate::new(unchanged, ExpectedDisposition::NoAction)],
-        vec![],
-        None,
-        Some("Declare a fresh unchanged attempt after the corrected retry".into()),
+    let a = PersistedSubject::Token(original);
+    let b = PersistedSubject::Token(first);
+    let c = PersistedSubject::Token(second);
+    // Fresh reads require two distinct successors, each pointing to exactly A.
+    // Collapsing either result onto A or its sibling fails these exact collections.
+    test_case.add_verify_persisted_graph_step(
+        &fixture_holons,
+        ExpectedPersistedGraph {
+            enumerated: vec![a.clone(), PersistedSubject::Key("Book.VersionSiblings".into())],
+            lineage: vec![
+                ExpectedLineage {
+                    subject: a.clone(),
+                    predecessors: vec![],
+                    successors: vec![b.clone(), c.clone()],
+                },
+                ExpectedLineage { subject: b, predecessors: vec![a.clone()], successors: vec![] },
+                ExpectedLineage { subject: c, predecessors: vec![a], successors: vec![] },
+            ],
+            ..Default::default()
+        },
+        Some("Verify both siblings persist as distinct successors of A".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
 
-/// An unchanged update and a graph-only update still compete for one saved
-/// source; neither persistence classification weakens the identity rule.
-pub fn commit_graph_only_competition_fixture() -> Result<DancesTestCase, HolonError> {
+/// An unchanged candidate and a graph-only candidate share a saved definition,
+/// while Commit handles their outcomes separately and writes only the graph edit.
+pub fn commit_no_op_and_graph_only_siblings_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
-        "Commit graph-only competing replacement",
-        "An unchanged update and a relationship-only update both receive competition findings",
+        "Commit no-op and graph-only siblings",
+        "Both candidate results name the saved source and its graph edit creates no version",
     );
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
@@ -125,7 +115,7 @@ pub fn commit_graph_only_competition_fixture() -> Result<DancesTestCase, HolonEr
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
-        "Book.GraphOnlyCompetition",
+        "Book.GraphOnlySiblings",
         "Title",
         BOOK_DESCRIPTOR_KEY,
     )?;
@@ -148,9 +138,9 @@ pub fn commit_graph_only_competition_fixture() -> Result<DancesTestCase, HolonEr
         None,
         None,
     )?;
-    let second = test_case.add_stage_new_version_step(
+    let unchanged = test_case.add_stage_new_version_step(
         &mut fixture_holons,
-        original,
+        original.clone(),
         None,
         MapInteger(2),
         Some(HolonErrorKind::DuplicateError),
@@ -160,40 +150,61 @@ pub fn commit_graph_only_competition_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_holons,
         first,
         "ReferencesProperty".to_relationship_name(),
-        vec![property],
+        vec![property.clone()],
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
-    let competition = ExpectedValidationFinding {
-        kind: CommitValidationViolationKind::RuleViolation {
-            code: "CompetingStagedReplacements".into(),
-        },
-        rule_key: None,
-        subject: ExpectedValidationSubject::Holon,
-    };
-    test_case.add_verify_commit_rejection_step(
+    // NoAction binds its result directly to A without consuming the GraphOnly
+    // saved result. The graph write must also remain anchored to A.
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         vec![
-            ExpectedRejectedHolon {
-                token: graph_only,
-                validation_state: ValidationState::Invalid,
-                findings: vec![competition.clone()],
-            },
-            ExpectedRejectedHolon {
-                token: second,
-                validation_state: ValidationState::Invalid,
-                findings: vec![competition],
-            },
+            ExpectedCommitCandidate::new(unchanged.clone(), ExpectedDisposition::NoAction),
+            ExpectedCommitCandidate::new(graph_only.clone(), ExpectedDisposition::GraphOnly),
         ],
-        MapInteger(2),
+        vec![],
         None,
+        None,
+    )?;
+    test_case.add_match_saved_content_step()?;
+    let source_aliases = vec![
+        PersistedSubject::Token(original),
+        PersistedSubject::Token(unchanged),
+        PersistedSubject::Token(graph_only),
+    ];
+    // Resolve all three tokens through a fresh observer: each must see A's graph,
+    // and neither update may persist its staged predecessor edge onto A itself.
+    test_case.add_verify_persisted_graph_step(
+        &fixture_holons,
+        ExpectedPersistedGraph {
+            enumerated: source_aliases.clone(),
+            relationships: source_aliases
+                .iter()
+                .map(|source| ExpectedPersistedRelationship {
+                    source: source.clone(),
+                    relationship: "ReferencesProperty".to_relationship_name(),
+                    targets: vec![PersistedSubject::Token(property.clone())],
+                })
+                .collect(),
+            lineage: source_aliases
+                .into_iter()
+                .map(|subject| ExpectedLineage {
+                    subject,
+                    predecessors: vec![],
+                    successors: vec![],
+                })
+                .collect(),
+            ..Default::default()
+        },
+        Some("Verify all saved aliases see the graph edit without a new version".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
 
-/// A branch committed in a later transaction is distinct from two live
-/// replacements competing in one Commit attempt.
+/// Publishing branches in separate transactions preserves the exact source of each
+/// successor, just as publishing siblings together does.
 pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "Commit branches across transactions",
