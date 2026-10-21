@@ -22,6 +22,9 @@ struct FixtureStorage {
     holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
+    lineage_reads: std::sync::atomic::AtomicUsize,
+    keyed_lineages: HashMap<MapString, Vec<LocalId>>,
+    lineage_read_error: std::sync::Mutex<Option<HolonError>>,
     read_errors: HashMap<HolonId, HolonError>,
     reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
@@ -111,6 +114,18 @@ impl HolonServiceApi for FixtureStorage {
     ) -> Result<TransientReference, HolonError> {
         panic!("validator must not load")
     }
+    fn get_saved_lineage_roots_by_key_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        self.lineage_reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if let Some(error) = &*self.lineage_read_error.lock().unwrap() {
+            return Err(error.clone());
+        }
+        Ok(self.keyed_lineages.get(key).cloned().unwrap_or_default())
+    }
+
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -304,6 +319,22 @@ impl Fixture {
 }
 
 impl Fixture {
+    pub fn lineage_lookup_reads(&self) -> usize {
+        self.saved_storage
+            .as_ref()
+            .map_or(0, |storage| storage.lineage_reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    pub fn fail_lineage_lookup(&self, error: HolonError) {
+        *self.saved_storage.as_ref().unwrap().lineage_read_error.lock().unwrap() = Some(error);
+    }
+
+    /// Assigns record-derived roots to saved fixture versions, retaining each version's
+    /// key as historical association evidence for its lineage.
+    pub fn saved_snapshot_with_lineages(&self, roots: &[(&str, &str)]) -> Result<Self, HolonError> {
+        self.saved_snapshot_configured(&[], roots)
+    }
+
     pub fn backend_relationship_reads(&self) -> usize {
         self.saved_storage
             .as_ref()
@@ -332,6 +363,14 @@ impl Fixture {
         &self,
         failures: &[(&str, HolonError)],
     ) -> Result<Self, HolonError> {
+        self.saved_snapshot_configured(failures, &[])
+    }
+
+    fn saved_snapshot_configured(
+        &self,
+        failures: &[(&str, HolonError)],
+        roots: &[(&str, &str)],
+    ) -> Result<Self, HolonError> {
         use holons_core::core_shared_objects::holon::SavedHolon;
         let ids: BTreeMap<_, _> = self
             .nodes
@@ -343,9 +382,20 @@ impl Fixture {
         for (key, reference) in &self.nodes {
             let model = reference.holon_clone_model()?;
             let id = ids[key].clone();
+            let root = roots
+                .iter()
+                .find(|(version, _)| *version == key)
+                .map(|(_, root)| ids[*root].local_id().clone());
+            if let Some(key) = reference.key()? {
+                let lineage = root.clone().unwrap_or_else(|| id.local_id().clone());
+                let entries = storage.keyed_lineages.entry(key).or_default();
+                if !entries.contains(&lineage) {
+                    entries.push(lineage);
+                }
+            }
             storage.holons.insert(
                 id.clone(),
-                SavedHolon::new(id.local_id().clone(), model.properties, None, model.version),
+                SavedHolon::new(id.local_id().clone(), model.properties, root, model.version),
             );
             if let Some(relationships) = model.relationships {
                 for (name, members) in relationships.iter() {

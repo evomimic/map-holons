@@ -146,7 +146,8 @@ fn assess_commit_candidates_with_observer<'a>(
     }
     ensure_staged_ancestry_invariant(context, candidates)?;
     require_distinct_live_candidates(candidates)?;
-    let collector = ValidationCollector::default();
+    let mut collector = ValidationCollector::default();
+    crate::prospective::assess_required_anchor_updates(context, candidates, &mut collector)?;
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::ReadinessResolution));
     let roots = ReadinessContext::resolve(context).map_err(HolonError::from)?;
     construct_assessment_with_observer(context, candidates, &roots, collector, &mut observer)?

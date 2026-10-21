@@ -987,6 +987,21 @@ mod tests {
     }
 
     #[test]
+    fn saved_lineage_lookup_obeys_read_state_policy_and_service_default() {
+        let context = build_context();
+        let key = base_types::MapString("key".into());
+        assert!(matches!(
+            context.lookup().get_saved_lineage_roots_by_key(&key),
+            Err(HolonError::NotImplemented(_))
+        ));
+        context.transition_to_committed().unwrap();
+        assert!(matches!(
+            context.lookup().get_saved_lineage_roots_by_key(&key),
+            Err(HolonError::TransactionAlreadyCommitted { .. })
+        ));
+    }
+
+    #[test]
     fn external_mutation_rejected_after_transaction_committed() {
         let context = build_context();
         context.transition_to_committed().expect("open transaction should transition to committed");

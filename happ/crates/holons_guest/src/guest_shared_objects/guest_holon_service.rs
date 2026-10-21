@@ -187,17 +187,18 @@ impl GuestHolonService {
         context: &Arc<TransactionContext>,
         key: &MapString,
     ) -> Result<Vec<LocalId>, HolonError> {
-        let space = context.get_space_holon()?.ok_or_else(|| {
-            HolonError::InvalidState("saved-holon lookup requires a persisted HolonSpace".into())
-        })?;
+        let Some(space) = context.get_space_holon()? else {
+            if context.is_bootstrap_provisioning() {
+                return Ok(Vec::new());
+            }
+            return Err(HolonError::InvalidState(
+                "saved-holon lookup requires a persisted HolonSpace".into(),
+            ));
+        };
         let space_id = space.holon_id()?.local_id().clone();
         let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
         let canonical_key = CanonicalKey::new(key.0.clone())?;
         let links = expand_from_source_by_key(&space_id, &owns, KeyMatch::Exact(canonical_key))?;
-
-        if links.is_empty() {
-            return Err(HolonError::HolonNotFound(key.to_string()));
-        }
 
         let mut roots = HashSet::new();
         for link in links {
@@ -611,6 +612,14 @@ impl HolonServiceApi for GuestHolonService {
         expand_from_source_by_key(source_id, relationship_name, key_match)
     }
 
+    fn get_saved_lineage_roots_by_key_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        self.get_lineage_roots_by_key(context, key)
+    }
+
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -793,5 +802,37 @@ mod tests {
 
         assert_eq!(key, None);
         assert_eq!(properties, None);
+    }
+}
+
+#[cfg(test)]
+mod lineage_evidence_tests {
+    use super::*;
+    use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
+    use holons_core::ServiceRoutingPolicy;
+
+    #[test]
+    fn saved_key_evidence_allows_absent_space_only_during_bootstrap() -> Result<(), HolonError> {
+        let service = Arc::new(GuestHolonService::new());
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            service.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let key = MapString("unclaimed".into());
+        assert!(matches!(
+            context.lookup().get_saved_lineage_roots_by_key(&key),
+            Err(HolonError::InvalidState(_))
+        ));
+        context.enable_bootstrap_provisioning();
+        assert!(context.lookup().get_saved_lineage_roots_by_key(&key)?.is_empty());
+        // Version-selecting lookup retains its independent not-found contract.
+        assert!(matches!(
+            context.lookup().get_saved_holon_by_key(&key),
+            Err(HolonError::HolonNotFound(_))
+        ));
+        Ok(())
     }
 }

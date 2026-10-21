@@ -15,7 +15,35 @@ pub async fn execute_load_book_person_inverse_test_schema(test_state: &mut TestE
         panic!("failed to build Book/Person inverse ContentSet: {error:?}")
     });
 
+    let context = test_state.context();
+    let before: std::collections::HashSet<_> = context
+        .staged_references()
+        .unwrap()
+        .iter()
+        .map(|candidate| candidate.temporary_id())
+        .collect();
     execute_load_holons_client_expect_success(test_state, content_set).await;
+    // The domain package references saved Core anchors as targets. Declared
+    // sources remain domain creates; Commit supplies inverse memberships. A
+    // saved-source promotion would leave ancestry even after successful Commit.
+    let imported: Vec<_> = context
+        .staged_references()
+        .unwrap()
+        .into_iter()
+        .filter(|candidate| !before.contains(&candidate.temporary_id()))
+        .collect();
+    assert!(!imported.is_empty(), "the domain schema must stage real candidates");
+    for candidate in imported {
+        assert!(
+            candidate.versioned_source_id().unwrap().is_none(),
+            "domain schema import unexpectedly staged a saved write source: {:?}",
+            candidate.temporary_id()
+        );
+        assert!(
+            matches!(candidate.staged_state().unwrap(), StagedState::Committed(_)),
+            "domain schema import must complete through public Commit"
+        );
+    }
 }
 
 pub async fn execute_load_inverse_oriented_book_person_instances_expect_failure(

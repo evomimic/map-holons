@@ -1,3 +1,6 @@
+#[path = "required_anchor_tests.rs"]
+mod required_anchors;
+
 #[path = "constraint_declarations_tests.rs"]
 mod constraint_declarations;
 
