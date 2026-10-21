@@ -633,9 +633,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         for subject in &prepared {
             let id = DefinitionIdentity::for_reference(&subject.subject, context)?;
             if readiness.invalid.contains(&id)
-                && !readiness
-                    .diagnosed
-                    .contains(&crate::assessment_support::identity(&subject.subject))
+                && !readiness.diagnosed.contains(&subject.subject.full_reference_id_string())
             {
                 blocked(
                     &mut collector,
@@ -664,9 +662,9 @@ fn route_definition_findings(
     for subject in prepared {
         let identity = DefinitionIdentity::for_reference(&subject.subject, context)?;
         declaration_definitions
-            .insert(crate::assessment_support::identity(&subject.subject), identity.clone());
+            .insert(subject.subject.full_reference_id_string(), identity.clone());
         let definition = identity.definition_reference(context, &subject.subject);
-        declaration_definitions.insert(crate::assessment_support::identity(&definition), identity);
+        declaration_definitions.insert(definition.full_reference_id_string(), identity);
     }
     for finding in collector.take_findings_since(start) {
         let identity = crate::outcomes::subject_identity(&finding.subject)
@@ -675,9 +673,9 @@ fn route_definition_findings(
             invalid.insert(identity.clone());
             for index in &definition_candidates[identity] {
                 let mut routed = finding.clone();
-                routed.subject = finding.subject.with_holon_identity(
-                    crate::assessment_support::identity(&prepared[*index].subject),
-                );
+                routed.subject = finding
+                    .subject
+                    .with_holon_identity(prepared[*index].subject.full_reference_id_string());
                 collector.record(routed);
             }
         } else {
@@ -811,7 +809,7 @@ fn commitment_order(
             .entry(DefinitionIdentity::for_reference(&subject.subject, context)?)
             .or_default()
             .push(index);
-        candidate_names.insert(crate::assessment_support::identity(&subject.subject));
+        candidate_names.insert(subject.subject.full_reference_id_string());
         pending.push_back(subject.subject.clone());
     }
     for view in &workset.schemas {
@@ -819,14 +817,14 @@ fn commitment_order(
     }
     while let Some(subject) = pending.pop_front() {
         let id = DefinitionIdentity::for_reference(&subject, context)?;
-        names.insert(crate::assessment_support::identity(&subject), id.clone());
+        names.insert(subject.full_reference_id_string(), id.clone());
         labels.entry(id.clone()).or_insert_with(|| subject.reference_id_string());
         if dependencies.contains_key(&id) {
             continue;
         }
         let mut edges = Vec::new();
         let definition = id.definition_reference(context, &subject);
-        names.insert(crate::assessment_support::identity(&definition), id.clone());
+        names.insert(definition.full_reference_id_string(), id.clone());
         // These are commitment dependencies. Arbitrary instance relationship
         // endpoints are not readiness dependencies; their policies belong to C4.
         for edge in [

@@ -55,7 +55,7 @@ pub async fn execute_load_inverse_oriented_book_person_instances_expect_failure(
     assert_eq!(
         findings[0].subject,
         ValidationSubjectPath::Relationship {
-            source_identity: format!("TemporaryId={}", source.temporary_id().0),
+            source_identity: source.full_reference_id_string(),
             name: "AuthorOf".into(),
             target_identity: target.reference_id_string(),
         }

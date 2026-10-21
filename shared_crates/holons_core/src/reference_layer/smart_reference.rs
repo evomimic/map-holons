@@ -145,6 +145,11 @@ impl SmartReference {
     pub fn reference_id_string(&self) -> String {
         format!("HolonId={:?}", self.holon_id)
     }
+
+    /// Complete identity for associations; saved ids already render unabbreviated.
+    pub fn full_reference_id_string(&self) -> String {
+        self.reference_id_string()
+    }
 }
 
 impl fmt::Display for SmartReference {

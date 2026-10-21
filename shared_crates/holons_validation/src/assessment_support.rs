@@ -4,20 +4,9 @@ use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPat
 use holons_core::{HolonReference, ReadableHolon};
 use type_names::CoreRelationshipTypeName;
 
-/// Findings keep their existing string shape but carry complete temporary IDs for routing.
-/// Display abbreviations are suitable for messages, never for candidate associations.
-pub(crate) fn identity(subject: &HolonReference) -> String {
-    match subject {
-        HolonReference::Staged(reference) => format!("TemporaryId={}", reference.temporary_id().0),
-        HolonReference::Transient(reference) => {
-            format!("TemporaryId={}", reference.temporary_id().0)
-        }
-        HolonReference::Smart(_) => subject.reference_id_string(),
-    }
-}
-
+/// Finding paths carry complete identities so they route to exact candidates.
 pub(crate) fn path(subject: &HolonReference) -> ValidationSubjectPath {
-    ValidationSubjectPath::Holon { holon_identity: identity(subject) }
+    ValidationSubjectPath::Holon { holon_identity: subject.full_reference_id_string() }
 }
 
 pub(crate) fn blocked(

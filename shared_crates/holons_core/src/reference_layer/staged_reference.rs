@@ -441,6 +441,11 @@ impl StagedReference {
         format!("TemporaryId={}", self.id)
     }
 
+    /// Complete identity for associations; `reference_id_string` abbreviates for messages.
+    pub fn full_reference_id_string(&self) -> String {
+        format!("TemporaryId={}", self.id.0)
+    }
+
     /// Returns the current staged lifecycle state through a read-only accessor for diagnostics.
     pub fn staged_state(&self) -> Result<StagedState, HolonError> {
         let rc_holon = self.get_rc_holon()?;

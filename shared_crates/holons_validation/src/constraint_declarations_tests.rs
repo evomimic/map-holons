@@ -671,9 +671,7 @@ fn shared_invalid_constraint_findings_keep_their_subject_in_either_candidate_ord
         assert_eq!(configuration_findings.len(), 1);
         assert_eq!(
             configuration_findings[0].subject,
-            ValidationSubjectPath::Holon {
-                holon_identity: crate::assessment_support::identity(&constraint.clone().into())
-            }
+            ValidationSubjectPath::Holon { holon_identity: constraint.full_reference_id_string() }
         );
     }
     Ok(())

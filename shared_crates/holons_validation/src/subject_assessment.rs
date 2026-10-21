@@ -1,6 +1,6 @@
 //! Reader-aware traversal for the Commit gate. Rule evaluation stays in existing handlers.
 use crate::{
-    assessment_support::{blocked, identity, path},
+    assessment_support::{blocked, path},
     commitments::{required_key, ResolvedConstraint},
     contexts::{BindingDispatchRoute, SubjectLevel},
     handlers::{finding, native_rule_kind, rule_violation},
@@ -281,7 +281,7 @@ pub(crate) fn assess_holon(
     for (name, target) in crate::schema_rules::authored_targets(subject)? {
         if !declared_names.contains(&name.to_string()) {
             finding(collector, CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() }, None,
-                &ValidationSubjectPath::Relationship { source_identity: identity(subject), name: name.to_string(), target_identity: target.reference_id_string() },
+                &ValidationSubjectPath::Relationship { source_identity: subject.full_reference_id_string(), name: name.to_string(), target_identity: target.reference_id_string() },
                 Some(descriptor.reference_id_string()), format!("Populated relationship {name} must be declared by the source's effective descriptor."));
         }
     }
@@ -305,7 +305,7 @@ fn assess_property(
 ) -> Result<(), HolonError> {
     let value = subject.property_value(name)?;
     let path = ValidationSubjectPath::Property {
-        holon_identity: identity(subject),
+        holon_identity: subject.full_reference_id_string(),
         name: name.to_string(),
     };
     let bindings = prepare_bindings(
@@ -342,7 +342,7 @@ fn assess_property(
         };
         let descriptor = ValueDescriptor::from_holon(target.member.clone());
         let path = ValidationSubjectPath::Value {
-            holon_identity: identity(subject),
+            holon_identity: subject.full_reference_id_string(),
             property: name.to_string(),
         };
         assess_value(&value, &descriptor, &path, values, collector, packages)?;

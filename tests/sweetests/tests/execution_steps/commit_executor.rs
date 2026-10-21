@@ -583,7 +583,7 @@ fn assert_rejected_holons(
         let HolonReference::Staged(staged) = reference else {
             panic!("rejected token must remain staged")
         };
-        let finding_identity = format!("TemporaryId={}", staged.temporary_id().0);
+        let finding_identity = staged.full_reference_id_string();
         assert!(staged.is_live_validation_candidate().unwrap());
         assert_eq!(staged.validation_state().unwrap(), expected.validation_state);
         let findings = staged.validation_findings().unwrap();

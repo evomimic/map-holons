@@ -406,7 +406,7 @@ async fn verify_loader_rejects_non_declared_relationship_input(
         assert_eq!(
             findings[0].subject,
             ValidationSubjectPath::Relationship {
-                source_identity: format!("TemporaryId={}", source.temporary_id().0),
+                source_identity: source.full_reference_id_string(),
                 name: relationship_name.into(),
                 target_identity: target.reference_id_string(),
             }

@@ -98,6 +98,18 @@ pub fn commit_version_siblings_fixture() -> Result<DancesTestCase, HolonError> {
         },
         Some("Verify both siblings persist as distinct successors of A".into()),
     )?;
+    // The shared key still resolves through A's lineage, whose two heads make a
+    // singular saved lookup ambiguous rather than selecting either sibling.
+    test_case.add_begin_transaction_step(None, None)?;
+    let key = MapString("Book.VersionSiblings".into());
+    let stub = fixture_context.mutation().new_holon(Some(key.clone()))?;
+    test_case.add_lookup_saved_holon_by_key_step(
+        &mut fixture_holons,
+        stub,
+        key,
+        Some(HolonErrorKind::MultipleLineageHeads),
+        Some("Verify the shared key reports both sibling heads".into()),
+    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
@@ -154,8 +166,8 @@ pub fn commit_no_op_and_graph_only_siblings_fixture() -> Result<DancesTestCase, 
         None,
         None,
     )?;
-    // NoAction binds its result directly to A without consuming the GraphOnly
-    // saved result. The graph write must also remain anchored to A.
+    // NoAction contributes no SavedHolons member and binds its token to A directly,
+    // so A's single saved result belongs to the graph-only candidate.
     test_case.add_commit_step_with_dispositions(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,

@@ -376,7 +376,7 @@ fn bytes_binding_is_discovered_dispatched_and_rejects_a_mismatched_value_kind(
     assert_eq!(
         finding.subject,
         ValidationSubjectPath::Value {
-            holon_identity: crate::assessment_support::identity(&subject.clone().into()),
+            holon_identity: subject.full_reference_id_string(),
             property: "Title".into(),
         }
     );
@@ -877,7 +877,7 @@ fn malformed_member_contract_reports_findings_and_installs_outcomes() -> Result<
         ));
         assert!(report.unattached_findings()?.iter().any(|finding| finding.subject
             == ValidationSubjectPath::Holon {
-                holon_identity: crate::assessment_support::identity(&fixture.nodes["Contract"])
+                holon_identity: fixture.nodes["Contract"].full_reference_id_string()
             }
             && finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
     }
@@ -962,9 +962,7 @@ fn dispatch_c2_rule(
             fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
         ),
     };
-    let path = ValidationSubjectPath::Holon {
-        holon_identity: crate::assessment_support::identity(&subject.clone().into()),
-    };
+    let path = ValidationSubjectPath::Holon { holon_identity: subject.full_reference_id_string() };
     let mut collector = ValidationCollector::default();
     StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).unwrap()(
         ValidationInvocation::Descriptor { binding: &binding, path: &path, products },
