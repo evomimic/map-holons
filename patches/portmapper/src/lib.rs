@@ -8,8 +8,8 @@ use std::{
 };
 
 use current_mapping::CurrentMapping;
-use futures_lite::StreamExt;
 use n0_error::{e, stack_error};
+use n0_future::StreamExt;
 use netwatch::interfaces::HomeRouter;
 use tokio::sync::{mpsc, oneshot, watch};
 use tokio_util::task::AbortOnDropHandle;
@@ -128,20 +128,7 @@ pub struct Config {
 }
 
 impl Default for Config {
-    /// PATCHED FOR MAP: all port mapping protocols are DISABLED by default.
-    ///
-    /// Upstream enables UPnP, PCP and NAT-PMP here. `iroh`'s magicsock constructs its port
-    /// mapper as `portmapper::Client::with_metrics(Default::default(), ..)` with no way to
-    /// override the config, and calls `procure_mapping()` unconditionally — so every conductor
-    /// that binds an iroh endpoint emits SSDP multicast to 239.255.255.250:1900 and NAT-PMP/PCP
-    /// probes to the gateway, regardless of how the relay and bootstrap URLs are configured.
-    ///
-    /// Sweettests run a single in-process conductor that never peers, so that NAT discovery has
-    /// nothing to discover for. Flipping these three flags is the only lever available: see
-    /// `patches/README.md` for the full rationale and the removal criteria.
-    ///
-    /// With all three false, `Probe::from_output` builds no probing tasks and the mapping
-    /// selection in `Service::get_mapping` falls through every branch, so no packet is sent.
+    /// MAP sweettests disable gateway discovery by default; the protocol remains UDP.
     fn default() -> Self {
         Config {
             enable_upnp: false,
@@ -501,10 +488,10 @@ impl Service {
 
     /// Clears the current mapping and releases it.
     async fn invalidate_mapping(&mut self) {
-        if let Some(old_mapping) = self.current_mapping.update(None) {
-            if let Err(e) = old_mapping.release().await {
-                debug!("failed to release mapping {e}");
-            }
+        if let Some(old_mapping) = self.current_mapping.update(None)
+            && let Err(e) = old_mapping.release().await
+        {
+            debug!("failed to release mapping {e}");
         }
     }
 

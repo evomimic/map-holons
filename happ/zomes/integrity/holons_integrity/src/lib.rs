@@ -62,7 +62,7 @@ fn fixed_callback_result<T: std::fmt::Display>(result: Result<(), T>) -> Validat
 /// app-entry classification, and violation mapping cannot drift independently.
 fn validate_holon_node_update_arm(
     original_action_hash: &ActionHash,
-    update: &Update,
+    update: &UpdateData,
 ) -> ExternResult<ValidateCallbackResult> {
     let EntryType::App(new_entry_def) = &update.entry_type else {
         return Err(wasm_error!(WasmErrorInner::Guest(
@@ -85,19 +85,18 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
     #[allow(unreachable_patterns)]
     match op.flattened::<EntryTypes, LinkTypes>()? {
         // HolonNode envelope validation already succeeded in the raw-op guard above.
-        FlatOp::StoreEntry(store_entry) => match store_entry {
+        FlatOp::CreateEntry(store_entry) => match store_entry {
             OpEntry::CreateEntry { app_entry, .. } => match app_entry {
                 EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
             },
-            OpEntry::UpdateEntry { app_entry, original_action_hash, action, .. } => match app_entry
-            {
+            OpEntry::UpdateEntry { app_entry, action, .. } => match app_entry {
                 EntryTypes::HolonNode(_) => {
-                    validate_holon_node_update_arm(&original_action_hash, &action)
+                    validate_holon_node_update_arm(&action.original_action_address, &action)
                 }
             },
             _ => Ok(ValidateCallbackResult::Valid),
         },
-        FlatOp::RegisterUpdate(update_entry) => match update_entry {
+        FlatOp::Update(update_entry) => match update_entry {
             // This path is live: version-producing writes are native updates addressed at the
             // lineage-root Create. The lineage pointer is the update's own
             // `original_action_address`, not entry content — which is why the update target,
@@ -112,24 +111,26 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             },
             _ => Ok(ValidateCallbackResult::Valid),
         },
-        FlatOp::RegisterDelete(delete_entry) => match delete_entry {
+        FlatOp::Delete(delete_entry) => match delete_entry {
             OpDelete { action } => {
                 Ok(pvl_callback_result(validate_holon_node_delete_target(&action.deletes_address)?))
             }
         },
-        FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, .. } => {
-            match link_type {
-                LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
-                    &base_address,
-                    &target_address,
-                    &tag,
-                )?)),
-                LinkTypes::LocalHolonSpace => Ok(fixed_callback_result(
-                    validate_local_holon_space_create(&base_address, &target_address, &tag)?,
-                )),
+        FlatOp::Link(OpLink::CreateLink { link_type, action }) => match link_type {
+            LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
+                &action.base_address,
+                &action.target_address,
+                &action.tag,
+            )?)),
+            LinkTypes::LocalHolonSpace => {
+                Ok(fixed_callback_result(validate_local_holon_space_create(
+                    &action.base_address,
+                    &action.target_address,
+                    &action.tag,
+                )?))
             }
-        }
-        FlatOp::RegisterDeleteLink { link_type, original_action, .. } => match link_type {
+        },
+        FlatOp::Link(OpLink::DeleteLink { link_type, original_action, .. }) => match link_type {
             LinkTypes::SmartLink => {
                 Ok(pvl_callback_result(validate_smartlink_delete(&original_action)?))
             }
@@ -137,7 +138,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 Ok(fixed_callback_result(validate_local_holon_space_delete(&original_action)?))
             }
         },
-        FlatOp::StoreRecord(store_record) => match store_record {
+        FlatOp::CreateRecord(store_record) => match store_record {
             // HolonNode envelope validation already succeeded in the raw-op guard above.
             OpRecord::CreateEntry { app_entry, .. } => match app_entry {
                 EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
@@ -145,30 +146,31 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             // MAP emits a Create to begin a lineage and an update rooted at that Create for
             // every subsequent version, so both record arms are reachable. Envelope preparation
             // has already run.
-            OpRecord::UpdateEntry { original_action_hash, app_entry, action, .. } => {
-                match app_entry {
-                    EntryTypes::HolonNode(_) => {
-                        validate_holon_node_update_arm(&original_action_hash, &action)
-                    }
+            OpRecord::UpdateEntry { app_entry, action, .. } => match app_entry {
+                EntryTypes::HolonNode(_) => {
+                    validate_holon_node_update_arm(&action.original_action_address, &action)
                 }
-            }
+            },
             OpRecord::DeleteEntry { action, .. } => {
                 Ok(pvl_callback_result(validate_holon_node_delete_target(&action.deletes_address)?))
             }
-            OpRecord::CreateLink { base_address, target_address, tag, link_type, .. } => {
-                match link_type {
-                    LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
-                        &base_address,
-                        &target_address,
-                        &tag,
-                    )?)),
-                    LinkTypes::LocalHolonSpace => Ok(fixed_callback_result(
-                        validate_local_holon_space_create(&base_address, &target_address, &tag)?,
-                    )),
+            OpRecord::CreateLink { link_type, action } => match link_type {
+                LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
+                    &action.base_address,
+                    &action.target_address,
+                    &action.tag,
+                )?)),
+                LinkTypes::LocalHolonSpace => {
+                    Ok(fixed_callback_result(validate_local_holon_space_create(
+                        &action.base_address,
+                        &action.target_address,
+                        &action.tag,
+                    )?))
                 }
-            }
-            OpRecord::DeleteLink { original_action_hash, .. } => {
-                let create_link = match resolve_link_delete_target(original_action_hash)? {
+            },
+            OpRecord::DeleteLink { action } => {
+                let create_link = match resolve_link_delete_target(action.link_add_address.clone())?
+                {
                     Ok(create_link) => create_link,
                     Err(violation) => {
                         return Ok(ValidateCallbackResult::Invalid(violation.to_string()));
@@ -200,7 +202,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             OpRecord::InitZomesComplete { .. } => Ok(ValidateCallbackResult::Valid),
             _ => Ok(ValidateCallbackResult::Valid),
         },
-        FlatOp::RegisterAgentActivity(agent_activity) => match agent_activity {
+        FlatOp::AgentActivity(agent_activity) => match agent_activity {
             OpActivity::CreateAgent { agent, action } => {
                 Ok(fixed_callback_result(validate_create_agent(agent, &action)?))
             }

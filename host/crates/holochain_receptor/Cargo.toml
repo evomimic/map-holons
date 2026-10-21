@@ -15,9 +15,9 @@ futures-executor = "0.3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
 
 #holochain dependencies
-holochain_client = { version = "0.8" }
-holochain_types = "0.6"
-holochain_websocket = "0.6"
+holochain_client = { version = "0.9" }
+holochain_types = "0.7"
+holochain_websocket = "0.7"
 
 #map dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
@@ -32,4 +32,4 @@ base_types = { path = "../../../shared_crates/type_system/base_types" }
 holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
 
 [dev-dependencies]
-holochain_zome_types = "0.6"
+holochain_zome_types = "0.7"

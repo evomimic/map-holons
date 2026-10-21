@@ -73,7 +73,7 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     init_runtime_with_initiator(test_case, initiator).await
 }
 
-/// Retains the disposable conductor only for explicit database-index performance experiments.
+/// Retains the disposable conductor for explicit read-only link-query performance captures.
 /// Bootstrap and ordinary Commit execution use the same runtime initialization as other tests.
 pub async fn init_commit_performance_runtime(
     test_case: &mut DancesTestCase,

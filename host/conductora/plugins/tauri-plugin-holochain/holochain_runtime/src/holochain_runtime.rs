@@ -387,6 +387,7 @@ impl HolochainRuntime {
     /// so kitsune tasks will continue to run.
     pub async fn shutdown(&self) -> crate::Result<()> {
         self.conductor_handle
+            .clone()
             .shutdown()
             .await
             .map_err(|e| crate::Error::HolochainShutdownError(e.to_string()))?

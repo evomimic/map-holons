@@ -75,27 +75,8 @@ async fn separate_host_call_and_empty_query_costs() {
     eprintln!("[LINK-COST] guest comparison complete; {} observations", guest.len());
     let prefix = core_types::smartlink_relationship_prefix(&relationship).unwrap();
     let base = holochain::prelude::ActionHash::from_raw_39(source_id.local_id().0.clone());
-    let cache = backend.conductor.raw_handle().get_cache_db(backend.cell.cell_id()).await.unwrap();
-    let cache =
-        link_read_cost::measure(cache, "cache", base.clone(), prefix.clone(), samples).await;
-    eprintln!("[LINK-COST] cache control complete");
-    let dht = link_read_cost::measure(
-        backend.cell.dht_db().clone(),
-        "dht",
-        base.clone(),
-        prefix.clone(),
-        samples,
-    )
-    .await;
-    eprintln!("[LINK-COST] DHT control complete");
-    let authored = link_read_cost::measure(
-        backend.cell.authored_db().clone(),
-        "authored",
-        base,
-        prefix,
-        samples,
-    )
-    .await;
-    eprintln!("[LINK-COST] authored control complete");
-    std::fs::write(output,serde_json::to_vec_pretty(&json!({"guest_columns":["sample","operation","us"],"guest":guest,"databases":[cache,dht,authored],"notes":"Native controls use the same get_read_txn API and GetLinksQuery SQL on each store separately; they do not instrument the actual HDK invocation. Acquisition combines semaphore and connection-pool waiting. Timings include first-read sample 0, excluded from statistics."})).unwrap()).unwrap();
+    let store =
+        link_read_cost::measure(backend.cell.dht_store().as_read(), base, prefix, samples).await;
+    eprintln!("[LINK-COST] persisted-store control complete");
+    std::fs::write(output,serde_json::to_vec_pretty(&json!({"guest_columns":["sample","operation","us"],"guest":guest,"persisted_store":store,"notes":"Guest timings preserve the 0.6 experiment. The 0.7 native control measures the public DhtStore::get_links API, not the removed 0.6 authored/DHT/cache SQL phases; these native measurements are not directly comparable. Sample 0 is excluded from statistics."})).unwrap()).unwrap();
 }

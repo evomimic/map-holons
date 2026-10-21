@@ -258,9 +258,9 @@ pub(crate) fn decode_stored_holon_node(record: &Record) -> Result<StoredHolonNod
 fn version_metadata_from_record(record: &Record) -> Result<VersionMetadata, HolonError> {
     let version_id = local_id_from_action_hash(record.action_address().clone());
 
-    match record.action() {
-        Action::Create(_) => Ok(VersionMetadata::root(version_id)),
-        Action::Update(update) => Ok(VersionMetadata::derived(
+    match &record.action().data {
+        ActionData::Create(_) => Ok(VersionMetadata::root(version_id)),
+        ActionData::Update(update) => Ok(VersionMetadata::derived(
             version_id,
             LineageId(local_id_from_action_hash(update.original_action_address.clone())),
         )),

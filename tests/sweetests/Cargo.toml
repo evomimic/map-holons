@@ -15,18 +15,17 @@ derive-new = "0.7"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
 # Holochain sweettest stack (pin as you already do)
-holochain = { version = "0.6", default-features = false, features = [
+holochain = { version = "0.7", default-features = false, features = [
     "sweettest",
-    "wasmer_sys",
-    "transport-iroh"
+    "wasmer-sys-cranelift",
 ] }
-holochain_state = "0.6"
-holochain_sqlite = { version = "0.6", default-features = false }
+holochain_state = "0.7"
+holochain_data = { version = "0.7", default-features = false }
 # The preflight assertion downcasts Wasmer's source error to the exact guest error payload.
 # Holochain consumes this same crate/version transitively but does not re-export these types.
-holochain_wasmer_common = "0.0.102"
+holochain_wasmer_common = "0.0.103"
 # Direct extern inputs include Holochain `Path`; Holochain's native prelude does not re-export it.
-hdi = "0.7"
+hdi = "0.8"
 
 
 # Workaround: iroh-base-holochain (latest is 0.95.2) still hard-pins
@@ -37,7 +36,7 @@ hdi = "0.7"
 # Remove once iroh-base-holochain publishes a release that unpins ed25519-dalek.
 # (An `ed25519 = "=3.0.0-rc.0"` pin used to live here too; it is no longer needed —
 # resolution lands on ed25519 3.0.0-rc.4, which compiles fine against the -pre.1 dalek.)
-pkcs8 = "=0.11.0-rc.11"
+#pkcs8 = "0.11.0"
 
 
 pretty_assertions = "1.4.0"
@@ -51,9 +50,9 @@ url2 = "0.0.6"
 # RustCrypto RC pins: ed25519-dalek 3.0.0-pre.1 + curve25519-dalek 5.0.0-pre.1
 # require digest::crypto_common which was removed in digest 0.11.3 (stable).
 # Pin sha1/sha2 to their RC releases so the digest RC chain is selected.
-sha2 = "=0.11.0-rc.2"
-sha1 = "=0.11.0-rc.2"
-digest = "=0.11.0-rc.3"
+sha2 = "=0.11.1"
+sha1 = "=0.11.0"
+digest = "=0.11.3"
 # Guards against uuid v4 resolving rand → 0.10 → chacha20 0.10.0, which would
 # conflict with iroh-holochain's exact pin chacha20 =0.10.0-rc.2.
 # The companion `rand = "0.9"` pin was dropped on 2026-07-27: holochain 0.6.3
