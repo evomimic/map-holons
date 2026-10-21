@@ -29,7 +29,7 @@ holon_dance_builders = { path = "../shared_crates/holon_dance_builders" }
 pvl_validation = { path = "../shared_crates/pvl_validation" }
 json_schema_validation = { path = "../shared_crates/json_schema_validation" }
 
-holochain_client = "0.8"
+holochain_client = "0.9"
 tauri = { version = "2", features = ["macros"] }
 tauri-build = "2"
 tauri-plugin-fs = "2"
@@ -55,6 +55,3 @@ map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }
 dahn_selection = { path = "crates/dahn_selection" }
 session_receptor = { path = "crates/session_receptor" }
-
-[patch.crates-io]
-holochain_wasmer_host = { path = "patches/holochain_wasmer_host" }

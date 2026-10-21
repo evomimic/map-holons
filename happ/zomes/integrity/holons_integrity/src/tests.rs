@@ -28,7 +28,7 @@ mock! {
         fn must_get_agent_activity(
             &self,
             input: MustGetAgentActivityInput,
-        ) -> ExternResult<Vec<RegisterAgentActivity>>;
+        ) -> ExternResult<Vec<AgentActivity>>;
         fn dna_info(&self, input: ()) -> ExternResult<DnaInfo>;
         fn zome_info(&self, input: ()) -> ExternResult<ZomeInfo>;
         fn trace(&self, input: TraceMsg) -> ExternResult<()>;
@@ -49,27 +49,27 @@ mock! {
 
 #[derive(Clone, Copy, Debug)]
 enum UpdateOpForm {
-    StoreEntry,
-    RegisterUpdate,
-    StoreRecord,
+    CreateEntry,
+    Update,
+    CreateRecord,
 }
 
 #[derive(Clone, Copy, Debug)]
 enum DeleteOpForm {
-    RegisterDelete,
-    StoreRecord,
+    Delete,
+    CreateRecord,
 }
 
 #[derive(Clone, Copy, Debug)]
 enum CreateLinkOpForm {
-    RegisterCreateLink,
-    StoreRecord,
+    CreateLink,
+    CreateRecord,
 }
 
 #[derive(Clone, Copy, Debug)]
 enum DeleteLinkOpForm {
-    RegisterDeleteLink,
-    StoreRecord,
+    DeleteLink,
+    CreateRecord,
 }
 
 fn action_hash(seed: u8) -> ActionHash {
@@ -84,75 +84,84 @@ fn holon_entry_type() -> EntryType {
     ))
 }
 
-fn create_action() -> Create {
-    Create {
-        author: AgentPubKey::from_raw_36(vec![0; 36]),
-        timestamp: Timestamp::from_micros(1),
-        action_seq: 1,
-        prev_action: action_hash(1),
-        entry_type: holon_entry_type(),
-        entry_hash: EntryHash::from_raw_36(vec![2; 36]),
-        weight: EntryRateWeight::default(),
+fn create_action() -> TypedAction<CreateData> {
+    TypedAction {
+        header: ActionHeader {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(1),
+            action_seq: 1,
+            prev_action: Some(action_hash(1)),
+        },
+        data: CreateData {
+            entry_type: holon_entry_type(),
+            entry_hash: EntryHash::from_raw_36(vec![2; 36]),
+        },
     }
 }
 
-fn update_action() -> Update {
-    Update {
-        author: AgentPubKey::from_raw_36(vec![0; 36]),
-        timestamp: Timestamp::from_micros(2),
-        action_seq: 2,
-        prev_action: action_hash(3),
-        original_action_address: action_hash(4),
-        original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
-        entry_type: holon_entry_type(),
-        entry_hash: EntryHash::from_raw_36(vec![6; 36]),
-        weight: EntryRateWeight::default(),
+fn update_action() -> TypedAction<UpdateData> {
+    TypedAction {
+        header: ActionHeader {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(2),
+            action_seq: 2,
+            prev_action: Some(action_hash(3)),
+        },
+        data: UpdateData {
+            original_action_address: action_hash(4),
+            original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
+            entry_type: holon_entry_type(),
+            entry_hash: EntryHash::from_raw_36(vec![6; 36]),
+        },
     }
 }
 
-fn delete_action() -> Delete {
-    Delete {
-        author: AgentPubKey::from_raw_36(vec![0; 36]),
-        timestamp: Timestamp::from_micros(3),
-        action_seq: 3,
-        prev_action: action_hash(7),
-        deletes_address: action_hash(8),
-        deletes_entry_address: EntryHash::from_raw_36(vec![9; 36]),
-        weight: RateWeight::default(),
+fn delete_action() -> TypedAction<DeleteData> {
+    TypedAction {
+        header: ActionHeader {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(3),
+            action_seq: 3,
+            prev_action: Some(action_hash(7)),
+        },
+        data: DeleteData {
+            deletes_address: action_hash(8),
+            deletes_entry_address: EntryHash::from_raw_36(vec![9; 36]),
+        },
     }
 }
 
-fn signed_entry_creation_action(action: EntryCreationAction) -> SignedHashed<EntryCreationAction> {
+fn signed_entry_creation_action(action: Action) -> SignedActionHashed {
     SignedHashed::with_presigned(
         HoloHashed::with_pre_hashed(action, action_hash(10)),
         Signature([0; SIGNATURE_BYTES]),
     )
 }
 
-fn signed_update(action: Update) -> SignedHashed<Update> {
+fn signed_update(action: TypedAction<UpdateData>) -> SignedActionHashed {
     SignedHashed::with_presigned(
-        HoloHashed::with_pre_hashed(action, action_hash(11)),
+        HoloHashed::with_pre_hashed(action.into(), action_hash(11)),
         Signature([0; SIGNATURE_BYTES]),
     )
 }
 
-fn signed_delete(action: Delete) -> SignedHashed<Delete> {
+fn signed_delete(action: TypedAction<DeleteData>) -> SignedActionHashed {
     SignedHashed::with_presigned(
-        HoloHashed::with_pre_hashed(action, action_hash(12)),
+        HoloHashed::with_pre_hashed(action.into(), action_hash(12)),
         Signature([0; SIGNATURE_BYTES]),
     )
 }
 
-fn signed_create_link(action: CreateLink) -> SignedHashed<CreateLink> {
+fn signed_create_link(action: TypedAction<CreateLinkData>) -> SignedActionHashed {
     SignedHashed::with_presigned(
-        HoloHashed::with_pre_hashed(action, action_hash(14)),
+        HoloHashed::with_pre_hashed(action.into(), action_hash(14)),
         Signature([0; SIGNATURE_BYTES]),
     )
 }
 
-fn signed_delete_link(action: DeleteLink) -> SignedHashed<DeleteLink> {
+fn signed_delete_link(action: TypedAction<DeleteLinkData>) -> SignedActionHashed {
     SignedHashed::with_presigned(
-        HoloHashed::with_pre_hashed(action, action_hash(15)),
+        HoloHashed::with_pre_hashed(action.into(), action_hash(15)),
         Signature([0; SIGNATURE_BYTES]),
     )
 }
@@ -165,28 +174,33 @@ fn signed_action(action: Action) -> SignedActionHashed {
 }
 
 fn agent_validation_package() -> Action {
-    Action::AgentValidationPkg(AgentValidationPkg {
-        author: AgentPubKey::from_raw_36(vec![0; 36]),
-        timestamp: Timestamp::from_micros(0),
-        action_seq: 0,
-        prev_action: action_hash(30),
-        membrane_proof: None,
-    })
+    Action {
+        header: ActionHeader {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(0),
+            action_seq: 0,
+            prev_action: Some(action_hash(30)),
+        },
+        data: ActionData::AgentValidationPkg(AgentValidationPkgData { membrane_proof: None }),
+    }
 }
 
 fn create_agent_activity_op() -> Op {
     let agent = AgentPubKey::from_raw_36(vec![31; 36]);
-    let create = Create {
-        author: agent.clone(),
-        timestamp: Timestamp::from_micros(1),
-        action_seq: 1,
-        prev_action: action_hash(32),
-        entry_type: EntryType::AgentPubKey,
-        entry_hash: EntryHash::from(agent.clone()),
-        weight: EntryRateWeight::default(),
+    let create = TypedAction {
+        header: ActionHeader {
+            author: agent.clone(),
+            timestamp: Timestamp::from_micros(1),
+            action_seq: 1,
+            prev_action: Some(action_hash(32)),
+        },
+        data: CreateData {
+            entry_type: EntryType::AgentPubKey,
+            entry_hash: EntryHash::from(agent.clone()),
+        },
     };
-    Op::RegisterAgentActivity(RegisterAgentActivity {
-        action: signed_action(Action::Create(create)),
+    Op::AgentActivity(AgentActivity {
+        action: signed_action(create.into()),
         cached_entry: Some(Entry::Agent(agent)),
     })
 }
@@ -202,16 +216,15 @@ fn update_op(form: UpdateOpForm) -> Op {
     let entry = holon_entry();
 
     match form {
-        UpdateOpForm::StoreEntry => Op::StoreEntry(StoreEntry {
-            action: signed_entry_creation_action(EntryCreationAction::Update(action)),
+        UpdateOpForm::CreateEntry => Op::CreateEntry(CreateEntry {
+            action: signed_entry_creation_action(action.into()),
             entry,
         }),
-        UpdateOpForm::RegisterUpdate => Op::RegisterUpdate(RegisterUpdate {
-            update: signed_update(action),
-            new_entry: Some(entry),
-        }),
-        UpdateOpForm::StoreRecord => Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::Update(action)), Some(entry)),
+        UpdateOpForm::Update => {
+            Op::Update(Update { update: signed_update(action), new_entry: Some(entry) })
+        }
+        UpdateOpForm::CreateRecord => Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(action.into()), RecordEntry::Present(entry)),
         }),
     }
 }
@@ -220,27 +233,22 @@ fn delete_op(form: DeleteOpForm) -> Op {
     let action = delete_action();
 
     match form {
-        DeleteOpForm::RegisterDelete => {
-            Op::RegisterDelete(RegisterDelete { delete: signed_delete(action) })
-        }
-        DeleteOpForm::StoreRecord => Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::Delete(action)), None),
+        DeleteOpForm::Delete => Op::Delete(Delete { delete: signed_delete(action) }),
+        DeleteOpForm::CreateRecord => Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(action.into()), RecordEntry::NA),
         }),
     }
 }
 
-fn create_entry_op(store_record: bool) -> Op {
+fn create_entry_op(create_record: bool) -> Op {
     let action = create_action();
     let entry = holon_entry();
-    if store_record {
-        Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::Create(action)), Some(entry)),
+    if create_record {
+        Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(action.into()), RecordEntry::Present(entry)),
         })
     } else {
-        Op::StoreEntry(StoreEntry {
-            action: signed_entry_creation_action(EntryCreationAction::Create(action)),
-            entry,
-        })
+        Op::CreateEntry(CreateEntry { action: signed_entry_creation_action(action.into()), entry })
     }
 }
 
@@ -254,7 +262,7 @@ fn zome_info() -> ZomeInfo {
         ScopedZomeTypesSet {
             entries: ScopedZomeTypes(vec![(HOLON_ZOME_INDEX, vec![HOLON_ENTRY_DEF_INDEX])]),
             // LinkTypes::from_type performs scoped resolution during both op
-            // flattening and StoreRecord delete dispatch.
+            // flattening and CreateRecord delete dispatch.
             links: ScopedZomeTypes(vec![(
                 HOLON_ZOME_INDEX,
                 vec![LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE],
@@ -264,7 +272,8 @@ fn zome_info() -> ZomeInfo {
 }
 
 fn install_update_target(target_action: Action) {
-    let target_record = Record::new(signed_action(target_action), None);
+    let entry = RecordEntry::new(target_action.entry_type().map(EntryType::visibility), None);
+    let target_record = Record::new(signed_action(target_action), entry);
     let mut mock_hdi = MockHdi::new();
     mock_hdi
         .expect_must_get_valid_record()
@@ -293,14 +302,14 @@ fn install_delete_target(target_action: Action) {
 
 #[test]
 fn both_holon_node_create_forms_use_no_dependencies() {
-    for store_record in [false, true] {
+    for create_record in [false, true] {
         let mut mock = MockHdi::new();
         mock.expect_must_get_action().times(0);
         mock.expect_must_get_valid_record().times(0);
         mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
         set_hdi(mock);
 
-        assert_eq!(validate(create_entry_op(store_record)), Ok(ValidateCallbackResult::Valid));
+        assert_eq!(validate(create_entry_op(create_record)), Ok(ValidateCallbackResult::Valid));
     }
 }
 
@@ -320,9 +329,8 @@ fn create_agent_routes_through_exactly_one_action_dependency() {
 
 #[test]
 fn all_three_update_arms_route_to_the_root_addressed_lifecycle_rule() {
-    for form in [UpdateOpForm::StoreEntry, UpdateOpForm::RegisterUpdate, UpdateOpForm::StoreRecord]
-    {
-        install_update_target(Action::Update(update_action()));
+    for form in [UpdateOpForm::CreateEntry, UpdateOpForm::Update, UpdateOpForm::CreateRecord] {
+        install_update_target(update_action().into());
 
         assert_eq!(
             validate(update_op(form)),
@@ -334,9 +342,8 @@ fn all_three_update_arms_route_to_the_root_addressed_lifecycle_rule() {
 
 #[test]
 fn all_three_update_arms_accept_a_holon_node_create_root() {
-    for form in [UpdateOpForm::StoreEntry, UpdateOpForm::RegisterUpdate, UpdateOpForm::StoreRecord]
-    {
-        install_update_target(Action::Create(create_action()));
+    for form in [UpdateOpForm::CreateEntry, UpdateOpForm::Update, UpdateOpForm::CreateRecord] {
+        install_update_target(create_action().into());
 
         assert_eq!(
             validate(update_op(form)),
@@ -348,8 +355,8 @@ fn all_three_update_arms_accept_a_holon_node_create_root() {
 
 #[test]
 fn both_delete_arms_route_to_the_exact_version_lifecycle_rule() {
-    for form in [DeleteOpForm::RegisterDelete, DeleteOpForm::StoreRecord] {
-        install_delete_target(Action::Delete(delete_action()));
+    for form in [DeleteOpForm::Delete, DeleteOpForm::CreateRecord] {
+        install_delete_target(delete_action().into());
 
         assert_eq!(
             validate(delete_op(form)),
@@ -361,8 +368,8 @@ fn both_delete_arms_route_to_the_exact_version_lifecycle_rule() {
 
 #[test]
 fn both_delete_arms_accept_a_holon_node_create_version() {
-    for form in [DeleteOpForm::RegisterDelete, DeleteOpForm::StoreRecord] {
-        install_delete_target(Action::Create(create_action()));
+    for form in [DeleteOpForm::Delete, DeleteOpForm::CreateRecord] {
+        install_delete_target(create_action().into());
 
         assert_eq!(
             validate(delete_op(form)),
@@ -372,27 +379,29 @@ fn both_delete_arms_accept_a_holon_node_create_version() {
     }
 }
 
-fn oversized_store_record_update() -> Op {
+fn oversized_create_record_update() -> Op {
     let update = update_action();
-    let signed_action = signed_action(Action::Update(update));
+    let signed_action = signed_action(update.into());
     let entry = Entry::App(AppEntryBytes(SerializedBytes::from(UnsafeBytes::from(vec![
         0xc1;
         MAX_HOLON_NODE_BYTES
             + 1
     ]))));
 
-    Op::StoreRecord(StoreRecord { record: Record::new(signed_action, Some(entry)) })
+    Op::CreateRecord(CreateRecord {
+        record: Record::new(signed_action, RecordEntry::Present(entry)),
+    })
 }
 
 #[test]
-fn oversized_store_record_update_is_rejected_before_dependency_lookup() {
+fn oversized_create_record_update_is_rejected_before_dependency_lookup() {
     let mut mock_hdi = MockHdi::new();
     // Any dependency request would be an ordering regression: the raw envelope
     // guard must reject oversized bytes before lifecycle resolution begins.
     mock_hdi.expect_must_get_valid_record().times(0);
     set_hdi(mock_hdi);
 
-    match validate(oversized_store_record_update()) {
+    match validate(oversized_create_record_update()) {
         Ok(ValidateCallbackResult::Invalid(message)) => {
             assert_eq!(message, "MAP-PVL-1003: HolonNode exceeds 262144-byte limit");
         }
@@ -402,60 +411,68 @@ fn oversized_store_record_update_is_rejected_before_dependency_lookup() {
     }
 }
 
-fn create_link(link_type: LinkType, tag: LinkTag) -> CreateLink {
-    CreateLink {
-        author: AgentPubKey::from_raw_36(vec![0; 36]),
-        timestamp: Timestamp::from_micros(4),
-        action_seq: 4,
-        prev_action: action_hash(7),
-        base_address: action_hash(20).into(),
-        target_address: action_hash(21).into(),
-        zome_index: HOLON_ZOME_INDEX,
-        link_type,
-        tag,
-        weight: RateWeight::default(),
+fn create_link(link_type: LinkType, tag: LinkTag) -> TypedAction<CreateLinkData> {
+    TypedAction {
+        header: ActionHeader {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(4),
+            action_seq: 4,
+            prev_action: Some(action_hash(7)),
+        },
+        data: CreateLinkData {
+            base_address: action_hash(20).into(),
+            target_address: action_hash(21).into(),
+            zome_index: HOLON_ZOME_INDEX,
+            link_type,
+            tag,
+        },
     }
 }
 
-fn infrastructure_create_link(link_type: LinkType) -> CreateLink {
+fn infrastructure_create_link(link_type: LinkType) -> TypedAction<CreateLinkData> {
     assert_eq!(link_type, LOCAL_HOLON_SPACE_LINK_TYPE);
     let path = LOCAL_HOLON_SPACE_PATH;
     let mut create = create_link(link_type, LinkTag::new(Vec::new()));
-    create.base_address = Path::from(path).path_entry_hash().expect("path hashing is local").into();
+    create.data.base_address =
+        Path::from(path).path_entry_hash().expect("path hashing is local").into();
     create
 }
 
-fn create_link_op(form: CreateLinkOpForm, create: CreateLink) -> Op {
+fn create_link_op(form: CreateLinkOpForm, create: TypedAction<CreateLinkData>) -> Op {
     match form {
-        CreateLinkOpForm::RegisterCreateLink => {
-            Op::RegisterCreateLink(RegisterCreateLink { create_link: signed_create_link(create) })
+        CreateLinkOpForm::CreateLink => {
+            Op::CreateLink(CreateLink { create_link: signed_create_link(create) })
         }
-        CreateLinkOpForm::StoreRecord => Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::CreateLink(create)), None),
+        CreateLinkOpForm::CreateRecord => Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(create.into()), RecordEntry::NA),
         }),
     }
 }
 
-fn delete_link_op(form: DeleteLinkOpForm, create: CreateLink) -> Op {
+fn delete_link_op(form: DeleteLinkOpForm, create: TypedAction<CreateLinkData>) -> Op {
     match form {
-        DeleteLinkOpForm::RegisterDeleteLink => Op::RegisterDeleteLink(RegisterDeleteLink {
+        DeleteLinkOpForm::DeleteLink => Op::DeleteLink(DeleteLink {
             delete_link: signed_delete_link(delete_link()),
-            create_link: create,
+            create_link: create.into(),
         }),
-        DeleteLinkOpForm::StoreRecord => Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        DeleteLinkOpForm::CreateRecord => Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(delete_link().into()), RecordEntry::NA),
         }),
     }
 }
 
-fn delete_link() -> DeleteLink {
-    DeleteLink {
-        author: AgentPubKey::from_raw_36(vec![0; 36]),
-        timestamp: Timestamp::from_micros(5),
-        action_seq: 5,
-        prev_action: action_hash(22),
-        base_address: action_hash(20).into(),
-        link_add_address: action_hash(23),
+fn delete_link() -> TypedAction<DeleteLinkData> {
+    TypedAction {
+        header: ActionHeader {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(5),
+            action_seq: 5,
+            prev_action: Some(action_hash(22)),
+        },
+        data: DeleteLinkData {
+            base_address: action_hash(20).into(),
+            link_add_address: action_hash(23),
+        },
     }
 }
 
@@ -474,7 +491,7 @@ fn install_link_zome_info_without_dependencies() {
 }
 
 fn install_infrastructure_create_target(expected_record_dependencies: usize) {
-    let target = Record::new(signed_action(Action::Create(create_action())), None);
+    let target = Record::new(signed_action(create_action().into()), RecordEntry::NotStored);
     let mut mock = MockHdi::new();
     mock.expect_must_get_action().times(0);
     mock.expect_must_get_valid_record()
@@ -488,7 +505,7 @@ fn install_infrastructure_create_target(expected_record_dependencies: usize) {
 
 #[test]
 fn both_smartlink_create_forms_use_no_dependencies() {
-    for form in [CreateLinkOpForm::RegisterCreateLink, CreateLinkOpForm::StoreRecord] {
+    for form in [CreateLinkOpForm::CreateLink, CreateLinkOpForm::CreateRecord] {
         install_link_zome_info_without_dependencies();
         assert_eq!(
             validate(
@@ -502,7 +519,7 @@ fn both_smartlink_create_forms_use_no_dependencies() {
 
 #[test]
 fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
-    for form in [CreateLinkOpForm::RegisterCreateLink, CreateLinkOpForm::StoreRecord] {
+    for form in [CreateLinkOpForm::CreateLink, CreateLinkOpForm::CreateRecord] {
         for link_type in [LOCAL_HOLON_SPACE_LINK_TYPE] {
             install_infrastructure_create_target(1);
             assert_eq!(
@@ -515,7 +532,7 @@ fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
 }
 
 #[test]
-fn every_register_delete_link_form_uses_no_dependencies() {
+fn every_delete_link_form_uses_no_dependencies() {
     for link_type in [LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
         let mut mock = MockHdi::new();
         mock.expect_must_get_action().times(0);
@@ -524,7 +541,7 @@ fn every_register_delete_link_form_uses_no_dependencies() {
         set_hdi(mock);
 
         let result = validate(delete_link_op(
-            DeleteLinkOpForm::RegisterDeleteLink,
+            DeleteLinkOpForm::DeleteLink,
             if link_type == SMARTLINK_LINK_TYPE {
                 create_link(link_type, valid_smartlink_tag())
             } else {
@@ -532,19 +549,19 @@ fn every_register_delete_link_form_uses_no_dependencies() {
             },
         ));
         let expected = ValidateCallbackResult::Valid;
-        assert_eq!(result, Ok(expected), "RegisterDeleteLink did not dispatch type {link_type:?}");
+        assert_eq!(result, Ok(expected), "DeleteLink did not dispatch type {link_type:?}");
     }
 }
 
 #[test]
-fn every_store_record_delete_link_form_uses_one_action_dependency() {
+fn every_create_record_delete_link_form_uses_one_action_dependency() {
     for link_type in [LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
         let create = if link_type == SMARTLINK_LINK_TYPE {
             create_link(link_type, valid_smartlink_tag())
         } else {
             infrastructure_create_link(link_type)
         };
-        let resolved = signed_action(Action::CreateLink(create.clone()));
+        let resolved = signed_action((create.clone()).into());
         let mut mock = MockHdi::new();
         mock.expect_must_get_action()
             .withf(|input| input.0 == action_hash(23))
@@ -554,12 +571,12 @@ fn every_store_record_delete_link_form_uses_one_action_dependency() {
         mock.expect_zome_info().times(1).return_once(|_| Ok(zome_info()));
         set_hdi(mock);
 
-        let result = validate(delete_link_op(DeleteLinkOpForm::StoreRecord, create));
+        let result = validate(delete_link_op(DeleteLinkOpForm::CreateRecord, create));
         let expected = ValidateCallbackResult::Valid;
         assert_eq!(
             result,
             Ok(expected),
-            "StoreRecord DeleteLink did not dispatch type {link_type:?}"
+            "CreateRecord DeleteLink did not dispatch type {link_type:?}"
         );
     }
 }
@@ -569,11 +586,9 @@ fn both_smartlink_create_forms_return_the_same_deterministic_rejection() {
     let malformed = LinkTag::new(vec![0; 3]);
     let create = create_link(SMARTLINK_LINK_TYPE, malformed);
     let operations = [
-        Op::RegisterCreateLink(RegisterCreateLink {
-            create_link: signed_create_link(create.clone()),
-        }),
-        Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::CreateLink(create)), None),
+        Op::CreateLink(CreateLink { create_link: signed_create_link(create.clone()) }),
+        Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(create.into()), RecordEntry::NA),
         }),
     ];
 
@@ -589,54 +604,54 @@ fn both_smartlink_create_forms_return_the_same_deterministic_rejection() {
 }
 
 #[test]
-fn register_smartlink_delete_is_valid_without_dependency_lookup() {
+fn smartlink_delete_is_valid_without_dependency_lookup() {
     let create = create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag());
     let delete = delete_link();
     install_link_zome_info_without_dependencies();
 
     assert_eq!(
-        validate(Op::RegisterDeleteLink(RegisterDeleteLink {
+        validate(Op::DeleteLink(DeleteLink {
             delete_link: signed_delete_link(delete),
-            create_link: create,
+            create_link: create.into(),
         })),
         Ok(ValidateCallbackResult::Valid)
     );
 }
 
 #[test]
-fn store_record_smartlink_delete_resolves_once_and_dispatches() {
+fn create_record_smartlink_delete_resolves_once_and_dispatches() {
     let create = create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag());
     let mut mock = MockHdi::new();
     mock.expect_must_get_action()
         .withf(|input| input.0 == action_hash(23))
         .times(1)
-        .return_once(move |_| Ok(signed_action(Action::CreateLink(create))));
+        .return_once(move |_| Ok(signed_action(create.into())));
     mock.expect_must_get_valid_record().times(0);
     mock.expect_zome_info().times(1).return_once(|_| Ok(zome_info()));
     set_hdi(mock);
 
     assert_eq!(
-        validate(Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        validate(Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(delete_link().into()), RecordEntry::NA),
         })),
         Ok(ValidateCallbackResult::Valid)
     );
 }
 
 #[test]
-fn store_record_link_delete_rejects_a_non_create_target_with_map_pvl_2004() {
+fn create_record_link_delete_rejects_a_non_create_target_with_map_pvl_2004() {
     let original_delete = delete_link();
     let mut mock = MockHdi::new();
     mock.expect_must_get_action()
         .times(1)
-        .return_once(move |_| Ok(signed_action(Action::DeleteLink(original_delete))));
+        .return_once(move |_| Ok(signed_action(original_delete.into())));
     mock.expect_must_get_valid_record().times(0);
     mock.expect_zome_info().times(0);
     set_hdi(mock);
 
     assert_eq!(
-        validate(Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        validate(Op::CreateRecord(CreateRecord {
+            record: Record::new(signed_action(delete_link().into()), RecordEntry::NA),
         })),
         Ok(ValidateCallbackResult::Invalid("MAP-PVL-2004: link delete target is invalid".into()))
     );
@@ -663,7 +678,7 @@ fn dependency_failures_remain_outer_across_callback_adapter_routes() {
     update_mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
     set_hdi(update_mock);
     assert_dependency_failure_stays_outer(
-        update_op(UpdateOpForm::StoreRecord),
+        update_op(UpdateOpForm::CreateRecord),
         "update dependency unavailable",
     );
 
@@ -675,7 +690,7 @@ fn dependency_failures_remain_outer_across_callback_adapter_routes() {
     delete_mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
     set_hdi(delete_mock);
     assert_dependency_failure_stays_outer(
-        delete_op(DeleteOpForm::RegisterDelete),
+        delete_op(DeleteOpForm::Delete),
         "delete dependency unavailable",
     );
 
@@ -688,7 +703,7 @@ fn dependency_failures_remain_outer_across_callback_adapter_routes() {
     set_hdi(infrastructure_mock);
     assert_dependency_failure_stays_outer(
         create_link_op(
-            CreateLinkOpForm::RegisterCreateLink,
+            CreateLinkOpForm::CreateLink,
             infrastructure_create_link(LOCAL_HOLON_SPACE_LINK_TYPE),
         ),
         "infrastructure dependency unavailable",
@@ -703,7 +718,7 @@ fn dependency_failures_remain_outer_across_callback_adapter_routes() {
     set_hdi(link_delete_mock);
     assert_dependency_failure_stays_outer(
         delete_link_op(
-            DeleteLinkOpForm::StoreRecord,
+            DeleteLinkOpForm::CreateRecord,
             create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag()),
         ),
         "link delete dependency unavailable",

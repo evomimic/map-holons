@@ -1,0 +1,58 @@
+# cargo-nextest config for the root workspace; used by `npm run sweet:test:ci` (CI heavy tier).
+# Nextest prints each test's duration and terminates tests that hang, which plain `cargo test`
+# cannot do on stable Rust.
+
+[profile.default]
+# Sweettests share host resources (ports, conductors); run them one at a time, as `sweet:test` does.
+test-threads = 1
+# Mark a test SLOW after 2 minutes and terminate it after 5 periods (10 minutes).
+# First guesses; tune from real CI timings.
+slow-timeout = { period = "120s", terminate-after = 5 }
+
+# Each dance_tests test is a whole suite on one bootstrapped conductor (runtime_behavior_matrix
+# runs 33 scenarios). Both suites exceeded 30 minutes on CI (2026-10-19), so allow 90 minutes
+# while they run in their own non-required `dance` CI job to measure real durations; tighten to
+# about twice the measured suite time. Default-profile overrides also apply to the ci profiles.
+[[profile.default.overrides]]
+filter = "binary(dance_tests)"
+slow-timeout = { period = "120s", terminate-after = 45 }
+
+# Probe-conductor bootstrap tests that hit or neared 10 minutes on CI (2026-10-19: canonical
+# loader 745s, commit_conflict 515s, commit_incomplete TIMEOUT at the old 600s default). Allow
+# 20 minutes; tighten from measured times.
+[[profile.default.overrides]]
+filter = "binary(canonical_loader_tests) | binary(commit_conflict_tests) | binary(commit_incomplete_tests)"
+slow-timeout = { period = "120s", terminate-after = 10 }
+
+[profile.ci]
+# One hung or failing test must not hide the results of the rest.
+fail-fast = false
+# Repeat slow tests in the end-of-run summary.
+final-status-level = "slow"
+
+# CI sweettest groups, selected by MAP_NEXTEST_PROFILE=ci-<name> (see .github/workflows/ci.yml):
+# `ci-storage` and `ci-rest` are the required heavy shards; `ci-dance` is the separate,
+# non-required dance job. `ci-rest` is the complement of the other two, so a new test file
+# always runs somewhere; keep its exclusion list in step when moving binaries between groups.
+# Lib unit tests and fixture_authoring_tests are left out because they already run in the
+# light tier. Rebalance from the PASS [ ...s ] durations.
+
+[profile.ci-storage]
+inherits = "ci"
+default-filter = "binary(holon_storage_tests) | binary(pvl_validation_tests)"
+
+[profile.ci-dance]
+inherits = "ci"
+# TEMP (2026-10-20): both dance suites are skipped in CI, so this selects nothing and the `dance`
+# job is disabled. Each ran past 30 minutes on a hosted runner: one bootstrap plus scenarios
+# whose verification reads make one dance call per relationship read (e.g. pristine step 5 reads
+# ValidationBindings on all ~1,060 holons). Run them locally (`npm run sweet:dance`, or
+# `-E 'binary(dance_tests)'`); re-enable once they fit, see the sweettest optimisation notes.
+default-filter = "binary(dance_tests) & not test(=pristine_bootstrap_and_loader) & not test(=rstest_dance_test_suites::case_1_runtime_behavior_matrix)"
+
+[profile.ci-rest]
+inherits = "ci"
+# TEMP (2026-10-20): commit_incomplete is skipped in CI. It timed out at 600s and then at 1200s
+# under the probe override, well past comparable probe tests (516-746s), so it may hang rather
+# than just be slow. It still runs locally; remove the `test(=…)` exclusion to re-enable it.
+default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry))"

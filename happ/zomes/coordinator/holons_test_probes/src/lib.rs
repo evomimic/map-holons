@@ -52,9 +52,9 @@ pub fn commit_write_counts_for_test(_: ()) -> ExternResult<(u32, u32)> {
     let mut entries = 0;
     let mut links = 0;
     for record in records {
-        match record.action() {
-            Action::Create(_) | Action::Update(_) => entries += 1,
-            Action::CreateLink(_) => links += 1,
+        match &record.action().data {
+            ActionData::Create(_) | ActionData::Update(_) => entries += 1,
+            ActionData::CreateLink(_) => links += 1,
             _ => {}
         }
     }
@@ -200,7 +200,7 @@ pub fn infrastructure_author_update_target_for_test(
             "Infrastructure update-target probe target does not exist".into()
         ))
     })?;
-    if !matches!(record.action(), Action::Update(_)) {
+    if !matches!(&record.action().data, ActionData::Update(_)) {
         return Err(wasm_error!(WasmErrorInner::Guest(
             "Infrastructure update-target probe requires an Update target".into()
         )));

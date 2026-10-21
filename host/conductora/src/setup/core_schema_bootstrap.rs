@@ -270,7 +270,7 @@ fn bootstrap_content_set_from_directory(bundle_directory: &Path) -> anyhow::Resu
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    hex::encode(Sha256::digest(bytes))
 }
 
 #[cfg(test)]

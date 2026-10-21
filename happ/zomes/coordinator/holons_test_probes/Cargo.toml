@@ -8,7 +8,7 @@ crate-type = ["cdylib", "rlib"]
 name = "holons_test_probes"
 
 [dependencies]
-hdk = "0.6"
+hdk = "0.7"
 serde = { workspace = true }
 
 [dependencies.holons_guest_integrity]

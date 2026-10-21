@@ -55,13 +55,13 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
     let action_hash = action.hashed.hash.clone();
     let action_id = local_id_from_action_hash(action_hash.clone());
     let timestamp = PersistenceTimestamp(action.hashed.content.timestamp().0);
-    match action.hashed.content.clone() {
+    match action.hashed.content.clone().data {
         // SmartLink mutations are intentionally not signalled individually. Bulk commits can
         // contain thousands of links, and the initial notification foundation has no consumer
         // that can use a link action hash for targeted invalidation. A future batched
         // relationship-notification contract can reintroduce this at commit granularity.
-        Action::CreateLink(_) | Action::DeleteLink(_) => Ok(()),
-        Action::Create(_create) => {
+        ActionData::CreateLink(_) | ActionData::DeleteLink(_) => Ok(()),
+        ActionData::Create(_create) => {
             if let Ok(Some(EntryTypes::HolonNode(_))) = get_entry_for_action(&action_hash) {
                 // A freshly created holon's permanent identity is its own create hash.
                 emit_signal(Signal::HolonCreated {
@@ -72,7 +72,7 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
             }
             Ok(())
         }
-        Action::Update(update) => {
+        ActionData::Update(update) => {
             if let Ok(Some(EntryTypes::HolonNode(_))) = get_entry_for_action(&action_hash) {
                 // Every version is written as an update addressed at its lineage root, so the
                 // record this update supersedes *is* the lineage: affected_holon and
@@ -89,7 +89,7 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
             }
             Ok(())
         }
-        Action::Delete(delete) => {
+        ActionData::Delete(delete) => {
             // Lineage is read from the deleted record, not from its entry content. `None` here
             // means the delete did not target a holon node, so no holon signal is due.
             if let Ok(Some(version_metadata)) =

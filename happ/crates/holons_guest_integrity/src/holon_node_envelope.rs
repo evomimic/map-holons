@@ -58,12 +58,14 @@ pub fn prepare_holon_node_envelope(op: &Op) -> ExternResult<HolonNodeEnvelope> {
 /// checks can inspect the original stored representation.
 fn holon_node_entry_bytes(op: &Op) -> Option<&[u8]> {
     let (entry_type, entry) = match op {
-        Op::StoreEntry(store_entry) => (store_entry.action.hashed.entry_type(), &store_entry.entry),
-        Op::StoreRecord(store_record) => {
-            (store_record.record.action().entry_type()?, store_record.record.entry().as_option()?)
+        Op::CreateEntry(store_entry) => {
+            (store_entry.action.hashed.entry_type()?, &store_entry.entry)
         }
-        Op::RegisterUpdate(register_update) => {
-            (&register_update.update.hashed.entry_type, register_update.new_entry.as_ref()?)
+        Op::CreateRecord(create_record) => {
+            (create_record.record.action().entry_type()?, create_record.record.entry().as_option()?)
+        }
+        Op::Update(register_update) => {
+            (register_update.update.hashed.entry_type()?, register_update.new_entry.as_ref()?)
         }
         _ => return None,
     };
@@ -150,19 +152,19 @@ mod tests {
 
     #[derive(Clone, Copy, Debug)]
     enum HolonNodeOpForm {
-        StoreEntryCreate,
-        StoreEntryUpdate,
-        RegisterUpdate,
-        StoreRecordCreate,
-        StoreRecordUpdate,
+        CreateEntryCreate,
+        CreateEntryUpdate,
+        Update,
+        CreateRecordCreate,
+        CreateRecordUpdate,
     }
 
     const HOLON_NODE_OP_FORMS: [HolonNodeOpForm; 5] = [
-        HolonNodeOpForm::StoreEntryCreate,
-        HolonNodeOpForm::StoreEntryUpdate,
-        HolonNodeOpForm::RegisterUpdate,
-        HolonNodeOpForm::StoreRecordCreate,
-        HolonNodeOpForm::StoreRecordUpdate,
+        HolonNodeOpForm::CreateEntryCreate,
+        HolonNodeOpForm::CreateEntryUpdate,
+        HolonNodeOpForm::Update,
+        HolonNodeOpForm::CreateRecordCreate,
+        HolonNodeOpForm::CreateRecordUpdate,
     ];
 
     fn app_entry(raw: Vec<u8>) -> Entry {
@@ -177,44 +179,48 @@ mod tests {
         ))
     }
 
-    fn create_action() -> Create {
-        Create {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: ActionHash::from_raw_36(vec![1; 36]),
-            entry_type: app_entry_type(),
-            entry_hash: EntryHash::from_raw_36(vec![2; 36]),
-            weight: EntryRateWeight::default(),
+    fn create_action() -> TypedAction<CreateData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(ActionHash::from_raw_36(vec![1; 36])),
+            },
+            data: CreateData {
+                entry_type: app_entry_type(),
+                entry_hash: EntryHash::from_raw_36(vec![2; 36]),
+            },
         }
     }
 
-    fn update_action() -> Update {
-        Update {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(2),
-            action_seq: 2,
-            prev_action: ActionHash::from_raw_36(vec![3; 36]),
-            original_action_address: ActionHash::from_raw_36(vec![4; 36]),
-            original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
-            entry_type: app_entry_type(),
-            entry_hash: EntryHash::from_raw_36(vec![6; 36]),
-            weight: EntryRateWeight::default(),
+    fn update_action() -> TypedAction<UpdateData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(2),
+                action_seq: 2,
+                prev_action: Some(ActionHash::from_raw_36(vec![3; 36])),
+            },
+            data: UpdateData {
+                original_action_address: ActionHash::from_raw_36(vec![4; 36]),
+                original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
+                entry_type: app_entry_type(),
+                entry_hash: EntryHash::from_raw_36(vec![6; 36]),
+            },
         }
     }
 
-    fn signed_entry_creation_action(
-        action: EntryCreationAction,
-    ) -> SignedHashed<EntryCreationAction> {
+    fn signed_entry_creation_action(action: Action) -> SignedActionHashed {
         SignedHashed::with_presigned(
             HoloHashed::with_pre_hashed(action, ActionHash::from_raw_36(vec![7; 36])),
             Signature([0; SIGNATURE_BYTES]),
         )
     }
 
-    fn signed_update(update: Update) -> SignedHashed<Update> {
+    fn signed_update(update: TypedAction<UpdateData>) -> SignedActionHashed {
         SignedHashed::with_presigned(
-            HoloHashed::with_pre_hashed(update, ActionHash::from_raw_36(vec![8; 36])),
+            HoloHashed::with_pre_hashed(update.into(), ActionHash::from_raw_36(vec![8; 36])),
             Signature([0; SIGNATURE_BYTES]),
         )
     }
@@ -230,23 +236,29 @@ mod tests {
         let entry = app_entry(raw);
 
         match form {
-            HolonNodeOpForm::StoreEntryCreate => Op::StoreEntry(StoreEntry {
-                action: signed_entry_creation_action(EntryCreationAction::Create(create_action())),
+            HolonNodeOpForm::CreateEntryCreate => Op::CreateEntry(CreateEntry {
+                action: signed_entry_creation_action(create_action().into()),
                 entry,
             }),
-            HolonNodeOpForm::StoreEntryUpdate => Op::StoreEntry(StoreEntry {
-                action: signed_entry_creation_action(EntryCreationAction::Update(update_action())),
+            HolonNodeOpForm::CreateEntryUpdate => Op::CreateEntry(CreateEntry {
+                action: signed_entry_creation_action(update_action().into()),
                 entry,
             }),
-            HolonNodeOpForm::RegisterUpdate => Op::RegisterUpdate(RegisterUpdate {
+            HolonNodeOpForm::Update => Op::Update(Update {
                 update: signed_update(update_action()),
                 new_entry: Some(entry),
             }),
-            HolonNodeOpForm::StoreRecordCreate => Op::StoreRecord(StoreRecord {
-                record: Record::new(signed_action(Action::Create(create_action())), Some(entry)),
+            HolonNodeOpForm::CreateRecordCreate => Op::CreateRecord(CreateRecord {
+                record: Record::new(
+                    signed_action(create_action().into()),
+                    RecordEntry::Present(entry),
+                ),
             }),
-            HolonNodeOpForm::StoreRecordUpdate => Op::StoreRecord(StoreRecord {
-                record: Record::new(signed_action(Action::Update(update_action())), Some(entry)),
+            HolonNodeOpForm::CreateRecordUpdate => Op::CreateRecord(CreateRecord {
+                record: Record::new(
+                    signed_action(update_action().into()),
+                    RecordEntry::Present(entry),
+                ),
             }),
         }
     }
@@ -287,7 +299,7 @@ mod tests {
             let op = op_with_raw_entry(form, raw);
 
             // Raw-size rejection must occur before decoding or dependency resolution.
-            // This is especially important for StoreRecordUpdate, whose original-action
+            // This is especially important for CreateRecordUpdate, whose original-action
             // address is untrusted peer-authored input.
             assert_eq!(
                 prepare_holon_node_envelope(&op).unwrap(),
@@ -300,28 +312,31 @@ mod tests {
     #[test]
     fn non_holon_node_and_non_entry_ops_are_not_applicable() {
         let mut other_entry_create = create_action();
-        other_entry_create.entry_type = EntryType::App(AppEntryDef::new(
+        other_entry_create.data.entry_type = EntryType::App(AppEntryDef::new(
             EntryDefIndex(1),
             ZomeIndex(0),
             EntryVisibility::Public,
         ));
-        let other_entry_op = Op::StoreEntry(StoreEntry {
-            action: signed_entry_creation_action(EntryCreationAction::Create(other_entry_create)),
+        let other_entry_op = Op::CreateEntry(CreateEntry {
+            action: signed_entry_creation_action(other_entry_create.into()),
             entry: app_entry(vec![0xc1]),
         });
 
-        let delete = Delete {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(3),
-            action_seq: 3,
-            prev_action: ActionHash::from_raw_36(vec![10; 36]),
-            deletes_address: ActionHash::from_raw_36(vec![11; 36]),
-            deletes_entry_address: EntryHash::from_raw_36(vec![12; 36]),
-            weight: RateWeight::default(),
+        let delete = TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(3),
+                action_seq: 3,
+                prev_action: Some(ActionHash::from_raw_36(vec![10; 36])),
+            },
+            data: DeleteData {
+                deletes_address: ActionHash::from_raw_36(vec![11; 36]),
+                deletes_entry_address: EntryHash::from_raw_36(vec![12; 36]),
+            },
         };
-        let non_entry_op = Op::RegisterDelete(RegisterDelete {
+        let non_entry_op = Op::Delete(Delete {
             delete: SignedHashed::with_presigned(
-                HoloHashed::with_pre_hashed(delete, ActionHash::from_raw_36(vec![13; 36])),
+                HoloHashed::with_pre_hashed(delete.into(), ActionHash::from_raw_36(vec![13; 36])),
                 Signature([0; SIGNATURE_BYTES]),
             ),
         });

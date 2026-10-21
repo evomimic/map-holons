@@ -47,8 +47,9 @@ use holons_test::harness::prelude::{DanceTestStep, DancesTestCase};
 
 use holons_test::harness::helpers::init_test_runtime;
 
+use holons_core::core_shared_objects::transactions::TxId;
 use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
-use map_commands_runtime::ExecutionPolicy;
+use map_commands_runtime::{ExecutionPolicy, Runtime};
 
 use tracing::info;
 
@@ -62,11 +63,24 @@ pub struct DanceTestSuite {
 /// transaction and execution registry. Scenario fixtures remain declarative and
 /// self-contained; only the immutable Core Schema bootstrap is amortized.
 pub async fn run_dance_test_suite(test_suite: DanceTestSuite) {
+    let (runtime, initial_tx_id) = boot_dance_test_suite().await;
+    run_dance_test_suite_on(&runtime, initial_tx_id, test_suite).await;
+}
+
+/// Boots the fresh, Core Schema-bootstrapped runtime that a suite runs on.
+pub async fn boot_dance_test_suite() -> (Runtime, TxId) {
+    init_test_runtime(&mut DancesTestCase::default()).await
+}
+
+/// Executes a suite on a booted runtime; the first scenario reuses `initial_tx_id`.
+pub async fn run_dance_test_suite_on(
+    runtime: &Runtime,
+    initial_tx_id: TxId,
+    test_suite: DanceTestSuite,
+) {
     assert!(!test_suite.test_cases.is_empty(), "a Dance test suite needs at least one scenario");
     info!("Starting Dance test suite: {}", test_suite.name);
 
-    let mut bootstrap_case = DancesTestCase::default();
-    let (runtime, initial_tx_id) = init_test_runtime(&mut bootstrap_case).await;
     let mut book_person_schema_loaded = false;
     let mut query_test_schema_loaded = false;
 

@@ -1,5 +1,4 @@
 //! Descriptor attachment and the final loader pass over saved and staged contracts.
-mod execution_steps;
 mod fixture_cases;
 
 use fixture_cases::load_holons_internal_fixture::{
@@ -26,19 +25,7 @@ async fn begin(runtime: &Runtime) -> Arc<TransactionContext> {
     runtime.session().get_transaction(&tx_id).unwrap()
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn attachment_defaults_persist_through_public_commit() {
-    execution_steps::dance_test_runner::run_dance_test_suite(
-        execution_steps::dance_test_runner::DanceTestSuite {
-            name: "attachment_defaults",
-            test_cases: vec![
-                fixture_cases::attachment_defaults_fixture::attachment_defaults_fixture().unwrap(),
-            ],
-        },
-    )
-    .await;
-}
-
+// attachment_defaults_fixture runs in dance_tests' runtime_behavior_matrix suite.
 #[tokio::test(flavor = "multi_thread")]
 async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defaults() {
     let (runtime, initial_tx) = init_test_runtime(&mut DancesTestCase::default()).await;

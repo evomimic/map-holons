@@ -156,6 +156,8 @@ Use the narrowest relevant validation while iterating and broader checks before 
 | Shared/host/hApp compile behavior                       | `npm run check`                                                  |
 | Unit-level Rust/TS behavior                             | `npm run test:unit`                                              |
 | Holochain guest, dance, loader, or integration behavior | `npm run sweetest`                                               |
+| CI light tier (unit tests, no conductor)                | `npm run test:light`                                             |
+| CI heavy tier (sweetests under nextest, per-test times) | `npm run test:heavy`                                             |
 | TypeScript SDK                                          | package scripts under `host/map-sdk` or root `npm run test:unit` |
 | Web/UI behavior                                         | root web test/typecheck scripts                                  |
 
