@@ -110,6 +110,21 @@ class CaptureTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Expected three warm"):
                 measure.summarize([log], assessment="warm-probe")
 
+    def test_new_version_mode_requires_one_anchor_evidence_load(self):
+        marker = "[commit-preparation-operation] operation=saved_lineage_roots_by_key role=anchor-evidence elapsed_us=1700 invocations=1 backend_calls=51 link_queries=51\n"
+        content = complete_run().replace("[PERF-688]", marker + "[PERF-688]")
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(content)
+            result = measure.summarize([log], mode="new-version")
+            self.assertEqual(result["mode"], "new-version")
+            self.assertEqual(result["samples"][0]["metrics"]["commit-preparation-operation.saved_lineage_roots_by_key.anchor-evidence.backend_calls"], 51)
+            with self.assertRaisesRegex(ValueError, "Anchor evidence does not match create"):
+                measure.summarize([log])
+            log.write_text(complete_run())
+            with self.assertRaisesRegex(ValueError, "Anchor evidence does not match new-version"):
+                measure.summarize([log], mode="new-version")
+
     def test_partial_capture_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unfinished sample"):
             self.summarize([complete_run().rsplit("\n", 1)[0]])

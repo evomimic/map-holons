@@ -18,7 +18,7 @@ def output(*command):
     return subprocess.check_output(command, text=True).strip()
 
 
-def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard"):
+def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard", mode="create"):
     if not logs:
         raise ValueError("No captured run logs were found")
     samples = []
@@ -78,6 +78,11 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                     raise ValueError(f"Guest warm probe does not match {assessment} in {log}")
                 if assessment == "warm-probe" and sample["metrics"][warm_metric] != 3:
                     raise ValueError(f"Expected three warm assessments in {log}")
+                # Anchor lineage evidence is loaded once per assessment, and only for version-producing updates.
+                # Requiring it per mode confirms each sample exercised the path the mode is meant to measure.
+                anchor_metric = "commit-preparation-operation.saved_lineage_roots_by_key.anchor-evidence.invocations"
+                if sample["metrics"].get(anchor_metric, 0) != (1 if mode == "new-version" else 0):
+                    raise ValueError(f"Anchor evidence does not match {mode} mode in {log}")
                 costs = [value for key, value in sample["metrics"].items()
                          if key.startswith("commit-read-cost.Construction.") and key.endswith(".elapsed_us")]
                 if costs:
@@ -100,7 +105,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
         for metric in sorted({key for sample in selected for key in sample["metrics"]}):
             values = [sample["metrics"][metric] for sample in selected if metric in sample["metrics"]]
             summary[condition][metric] = {"n": len(values), "median": statistics.median(values), "min": min(values), "max": max(values), "stdev": statistics.stdev(values) if len(values) > 1 else None}
-    return {"variant": variant, "assessment": assessment, "samples": samples, "summary": summary}
+    return {"variant": variant, "assessment": assessment, "mode": mode, "samples": samples, "summary": summary}
 
 
 def main():
@@ -108,6 +113,7 @@ def main():
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--samples", type=int, default=6)
     parser.add_argument("--subjects", type=int, default=1)
+    parser.add_argument("--mode", choices=["create", "new-version"], default="create", help="create: new instances per Commit; new-version: one property-only successor of a saved non-root version per Commit")
     parser.add_argument("--variant", choices=["prefetch", "on-demand"], default="prefetch")
     parser.add_argument("--readiness-cases", action="store_true")
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")
@@ -117,12 +123,15 @@ def main():
     args = parser.parse_args()
     if args.runs < 1 or args.samples < 2 or args.subjects < 1:
         parser.error("--runs must be positive and --samples must be at least two")
+    if args.mode == "new-version" and (args.subjects != 1 or args.readiness_cases):
+        parser.error("--mode new-version measures one subject per Commit without readiness cases")
     if args.summarize_only:
-        result = summarize(sorted(args.output.glob("run-*.log")), args.samples, args.variant, args.assessment)
+        result = summarize(sorted(args.output.glob("run-*.log")), args.samples, args.variant, args.assessment, args.mode)
     else:
         args.output.mkdir(parents=True, exist_ok=False)
         env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
         env["MAP_COMMIT_PERF_INDEX_MODE"] = args.index_mode
+        env["MAP_COMMIT_PERF_MODE"] = args.mode
         paths = [Path("happ/workdir/map_holons.dna"), Path("happ/Cargo.lock"), Path("host/Cargo.lock"), Path("Cargo.lock"), Path("flake.lock")]
         paths += sorted(Path("generated/core-schema-bootstrap").rglob("*.json"))
         paths += [Path(path) for path in output("git", "ls-files", "--modified", "--others", "--exclude-standard").splitlines() if Path(path).is_file()]
@@ -135,8 +144,8 @@ def main():
             "platform": platform.platform(), "machine": platform.machine(), "cpu_count": os.cpu_count(),
             "devdocs_revision": output("git", "-C", "../map-dev-docs", "rev-parse", "HEAD"),
             "rustc": output("rustc", "--version"), "cargo": output("cargo", "--version"),
-            "runs": args.runs, "samples_per_run": args.samples, "subjects_per_commit": args.subjects, "variant": args.variant, "index_mode": args.index_mode, "assessment": args.assessment,
-            "environment": {key: env[key] for key in ["MAP_PROFILE", "RUST_LOG", "WASM_LOG", "MAP_COMMIT_PERF_SAMPLES", "MAP_COMMIT_PERF_SUBJECTS"]},
+            "runs": args.runs, "samples_per_run": args.samples, "subjects_per_commit": args.subjects, "mode": args.mode, "variant": args.variant, "index_mode": args.index_mode, "assessment": args.assessment,
+            "environment": {key: env[key] for key in ["MAP_PROFILE", "RUST_LOG", "WASM_LOG", "MAP_COMMIT_PERF_SAMPLES", "MAP_COMMIT_PERF_SUBJECTS", "MAP_COMMIT_PERF_MODE"]},
             "sha256": {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
         }
         (args.output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
@@ -156,7 +165,7 @@ def main():
                 print(f"Run failed; inspect {path}", file=sys.stderr)
                 return result.returncode
             logs.append(path)
-        result = summarize(logs, args.samples, args.variant, args.assessment)
+        result = summarize(logs, args.samples, args.variant, args.assessment, args.mode)
     (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
     for condition, metrics in result["summary"].items():
         value = metrics["commit-baseline.command_us"]

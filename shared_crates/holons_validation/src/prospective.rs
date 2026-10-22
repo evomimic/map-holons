@@ -2,7 +2,7 @@
 use crate::{
     assessment_support::{path, targets},
     handlers::finding,
-    ValidationCollector,
+    AssessmentEvent, ValidationCollector,
 };
 use base_types::MapString;
 use core_types::{CommitValidationViolationKind, HolonError, HolonId};
@@ -127,6 +127,7 @@ pub(crate) fn assess_required_anchor_updates(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
     collector: &mut ValidationCollector,
+    observer: &mut impl FnMut(AssessmentEvent),
 ) -> Result<(), HolonError> {
     let mut anchor_lineages: Option<HashMap<LineageIdentity, &'static str>> = None;
     for candidate in candidates {
@@ -153,7 +154,7 @@ pub(crate) fn assess_required_anchor_updates(
         } else {
             let lineages = match &mut anchor_lineages {
                 Some(lineages) => lineages,
-                None => anchor_lineages.insert(saved_anchor_lineages(context)?),
+                None => anchor_lineages.insert(saved_anchor_lineages(context, observer)?),
             };
             let lineage = LineageIdentity::for_reference(&source.clone().into(), context)?;
             lineages.get(&lineage).copied()
@@ -184,14 +185,33 @@ pub(crate) fn assess_required_anchor_updates(
 /// Loads historical lineage evidence with one key lookup per required anchor.
 /// The caller retains this map for one assessment and initializes it only when
 /// a version-producing candidate's saved source key does not identify an anchor.
+///
+/// Every version-producing Commit of a non-anchor holon pays this inventory-wide lookup, so the
+/// load is reported as one `anchor-evidence` preparation operation, distinct from key-uniqueness
+/// `key-evidence`. Profiled guest builds log its elapsed time and read counts; the new-version
+/// Commit performance measurement uses them to size this cost and evaluate batched lookups.
 fn saved_anchor_lineages(
     context: &Arc<TransactionContext>,
+    observer: &mut impl FnMut(AssessmentEvent),
 ) -> Result<HashMap<LineageIdentity, &'static str>, HolonError> {
-    let mut lineages = HashMap::new();
-    for &key in REQUIRED_ANCHOR_KEYS {
-        for root in context.lookup().get_saved_lineage_roots_by_key(&MapString(key.into()))? {
-            lineages.entry(LineageIdentity::Saved(HolonId::Local(root))).or_insert(key);
+    observer(AssessmentEvent::PreparationOperation {
+        operation: "saved_lineage_roots_by_key",
+        role: "anchor-evidence",
+        starting: true,
+    });
+    let lineages = (|| -> Result<_, HolonError> {
+        let mut lineages = HashMap::new();
+        for &key in REQUIRED_ANCHOR_KEYS {
+            for root in context.lookup().get_saved_lineage_roots_by_key(&MapString(key.into()))? {
+                lineages.entry(LineageIdentity::Saved(HolonId::Local(root))).or_insert(key);
+            }
         }
-    }
-    Ok(lineages)
+        Ok(lineages)
+    })();
+    observer(AssessmentEvent::PreparationOperation {
+        operation: "saved_lineage_roots_by_key",
+        role: "anchor-evidence",
+        starting: false,
+    });
+    lineages
 }

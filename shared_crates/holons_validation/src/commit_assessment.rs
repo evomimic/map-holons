@@ -148,7 +148,12 @@ fn assess_commit_candidates_with_observer<'a>(
     ensure_staged_ancestry_invariant(context, candidates)?;
     require_distinct_live_candidates(candidates)?;
     let mut collector = ValidationCollector::default();
-    crate::prospective::assess_required_anchor_updates(context, candidates, &mut collector)?;
+    crate::prospective::assess_required_anchor_updates(
+        context,
+        candidates,
+        &mut collector,
+        &mut observer,
+    )?;
     crate::graph_only_deltas::classify_graph_only_delta_overlaps(
         context,
         candidates,

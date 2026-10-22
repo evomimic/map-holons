@@ -171,7 +171,12 @@ fn previously_rekeyed_non_root_source_is_identified_by_saved_lineage() -> Result
         fixture.saved_snapshot_with_lineages(&[("RekeyedAnchorV2", "HolonType.TypeDescriptor")])?;
     let successor = fixture.stage_update_of_with("RekeyedAnchorV2", |_| Ok(()))?;
     let mut collector = ValidationCollector::default();
-    assess_required_anchor_updates(&fixture.context, &[successor.clone()], &mut collector)?;
+    assess_required_anchor_updates(
+        &fixture.context,
+        &[successor.clone()],
+        &mut collector,
+        &mut |_| {},
+    )?;
     let report = collector.into_report();
     assert_eq!(restricted(&report).len(), 1);
     assert_eq!(report.violations[0].subject, path(&successor.into()));
@@ -195,18 +200,36 @@ fn historical_anchor_evidence_is_loaded_once_and_only_when_needed() -> Result<()
     }
     let created = fixture.staged_subject("ordinary-create")?;
     let mut collector = ValidationCollector::default();
+    let mut evidence_events = Vec::new();
+    let mut observe = |event| {
+        if let crate::AssessmentEvent::PreparationOperation {
+            role: "anchor-evidence",
+            starting,
+            ..
+        } = event
+        {
+            evidence_events.push(starting);
+        }
+    };
     assess_required_anchor_updates(
         &fixture.context,
         &[no_op, graph_only, created],
         &mut collector,
+        &mut observe,
     )?;
     assert!(collector.violations().is_empty());
     assert_eq!(fixture.lineage_lookup_reads(), 0);
     let first = fixture.stage_update_of_with("OtherCoreDefinition", |_| Ok(()))?;
     let second = fixture.stage_update_of_with("OtherCoreDefinition", |_| Ok(()))?;
-    assess_required_anchor_updates(&fixture.context, &[first, second], &mut collector)?;
+    assess_required_anchor_updates(
+        &fixture.context,
+        &[first, second],
+        &mut collector,
+        &mut observe,
+    )?;
     assert!(collector.violations().is_empty(), "the bound does not cover every Core definition");
     assert_eq!(fixture.lineage_lookup_reads(), REQUIRED_ANCHOR_KEYS.len());
+    assert_eq!(evidence_events, [true, false], "one observed inventory load per assessment");
     Ok(())
 }
 
