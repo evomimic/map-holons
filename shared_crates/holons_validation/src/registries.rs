@@ -72,6 +72,7 @@ impl StaticRuleRegistry {
                 Some(descriptor_rules::inherited_constraint_non_relaxation)
             }
             RequiredPropertyPresence => Some(handlers::required_property_presence),
+            KeyUniqueness => Some(handlers::key_uniqueness),
             NoUndescribedProperties => Some(handlers::no_undescribed_properties),
             BaseValueKindMatchesString
             | BaseValueKindMatchesInteger

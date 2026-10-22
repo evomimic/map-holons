@@ -79,6 +79,7 @@ impl ReadinessContext {
 }
 
 struct SubjectPreparation {
+    key_claim: Option<crate::key_evidence::KeyClaim>,
     subject: HolonReference,
     prerequisites: StructuralPrerequisites,
     products: DescriptorRuleProducts,
@@ -248,6 +249,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
     observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SubjectPreparation));
+    let mut key_claims = crate::key_evidence::prepare_key_evidence(context, candidates, observer)?;
     let kinds = roots.kinds.clone();
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
@@ -337,6 +339,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             }
         }
         prepared.push(SubjectPreparation {
+            key_claim: key_claims.remove(&candidate.temporary_id()),
             subject,
             prerequisites,
             products,
@@ -715,6 +718,7 @@ fn assess_candidate(
                 &package.root,
                 &contract,
                 &subject.bindings,
+                subject.key_claim.as_ref(),
                 &roots.values,
                 &roots.universal,
                 collector,

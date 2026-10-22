@@ -69,6 +69,13 @@ impl BindingRoots {
         // particular assessment pass dispatches only one route.
         let definitions = [
             (
+                KeyUniqueness,
+                "HolonValidationRule.HolonType",
+                "HolonType.TypeDescriptor",
+                Holon,
+                Subject,
+            ),
+            (
                 RequiredPropertyPresence,
                 "PropertyValidationRule.HolonType",
                 "PropertyType.TypeDescriptor",

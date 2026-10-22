@@ -13,7 +13,7 @@ enum ValidationLevel.MapEnumValueType {
   type MetaEnumValueType.MetaValueType
   extends MapEnumValueType.EnumValueType
   header {
-    description: "Validator level at which a ValidationRule is evaluated."
+    description: "Identifies the semantic unit whose invariants are evaluated by a ValidationRule, independent of the scope of data, graph traversal, or contextual dependencies required to evaluate the rule."
     display_name: "Validation Level"
     display_plural: "Validation Levels"
     plural: "ValidationLevels"
@@ -667,6 +667,15 @@ instance ConcreteDescribingType.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONFORM-001"
   ValidationRuleDescription "A runtime holon must be described by a concrete descriptor that can describe instances."
+  rule_of "MAP Core Schema-v0.0.7"
+}
+
+instance KeyUniqueness.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DeterminismClass Contextual
+  SemanticAuthority "DS-KEY-006"
+  ValidationRuleDescription "Within the local HolonSpace, each complete effective key remains associated with at most one lineage, including historical committed keys. Creates and new versions are checked against saved associations and live Commit candidates. Same-lineage versions and siblings may share a key; abandoned candidates and uncommitted intermediate keys reserve nothing. Publishing a successor does not release, reassign, or permit reuse of an earlier key. Keyless, no-op, and graph-only subjects make no new key claim. This check uses locally visible evidence without selecting heads or providing global uniqueness coordination."
   rule_of "MAP Core Schema-v0.0.7"
 }
 

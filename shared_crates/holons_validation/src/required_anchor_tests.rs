@@ -15,7 +15,7 @@ fn restricted(report: &CommitValidationReport) -> Vec<&core_types::CommitValidat
 
 /// Completes descriptor conformance inputs so restriction findings are isolated
 /// from missing metadata declarations, describing types, or Schema ownership.
-fn described_anchor_fixture() -> Result<Fixture, HolonError> {
+pub(super) fn described_anchor_fixture() -> Result<Fixture, HolonError> {
     let mut fixture = readiness_fixture()?;
     for (name, value_type) in [
         ("TypeName", "StringValueType.ValueType"),
@@ -123,10 +123,27 @@ fn anchor_successors_and_rekeys_reject_without_masking_other_candidates() -> Res
             .violations
             .iter()
             .any(|finding| finding.subject == path(&independent.clone().into())));
-        assert_eq!(fixture.lineage_lookup_reads(), 0);
         // The profiled production entry and report-only entry share the restriction.
+        let reads_before = fixture.lineage_lookup_reads();
+        let mut key_evidence_reads = 0;
         let report =
-            validate_commit_candidates_with_profile(&fixture.context, &candidates, |_| {})?;
+            validate_commit_candidates_with_profile(&fixture.context, &candidates, |event| {
+                if matches!(
+                    event,
+                    crate::AssessmentEvent::PreparationOperation {
+                        role: "key-evidence",
+                        starting: true,
+                        ..
+                    }
+                ) {
+                    key_evidence_reads += 1;
+                }
+            })?;
+        assert_eq!(
+            fixture.lineage_lookup_reads() - reads_before,
+            key_evidence_reads,
+            "direct anchor recognition must add no inventory reads"
+        );
         assert_eq!(report, assessment.report);
         assert_eq!(
             consumer.validation_state()?,

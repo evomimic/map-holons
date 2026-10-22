@@ -516,7 +516,7 @@ pub fn commit(
     // Outcome tallies, kept beyond the Pass 1 scope so the commit response can be summarized at
     // every exit — including the incomplete early return, which is the case most worth seeing.
     let mut saved_ids: Vec<LocalId> = Vec::new();
-    let mut key_index_source_ids: HashSet<LocalId> = HashSet::new();
+    let mut key_index_source_ids = key_index_retry_sources(context, staged_references)?;
     let mut failed_count = 0_usize;
     let mut no_action_targets = NoActionTargetAnchors::default();
 
@@ -1055,6 +1055,28 @@ fn resolve_owns_index_space_id(
     ))
 }
 
+/// Retained creates and published versions may still need their keyed Owns entry.
+/// Graph-only commits reuse their source and never establish a key association.
+fn key_index_retry_sources(
+    context: &Arc<TransactionContext>,
+    references: &[StagedReference],
+) -> Result<HashSet<LocalId>, HolonError> {
+    let mut sources = HashSet::new();
+    for reference in references {
+        let rc = reference.get_holon_to_commit(context)?;
+        let holon =
+            rc.read().map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?;
+        if let Holon::Staged(staged) = &*holon {
+            if let StagedState::Committed(id) = staged.staged_state() {
+                if staged.versioned_source_id_ref() != Some(id) {
+                    sources.insert(id.clone());
+                }
+            }
+        }
+    }
+    Ok(sources)
+}
+
 /// Produces the deterministic occurrence identity of an additional keyed `Owns` index entry.
 ///
 /// The root's ordinary `Owns` materialization remains occurrence-free. Each distinct
@@ -1494,6 +1516,55 @@ fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKe
 mod tests {
     use super::*;
     use holons_core::core_shared_objects::holon::ValidationState;
+
+    #[test]
+    fn committed_graph_only_retry_requests_no_key_index_lookup() -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::{
+            space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+        };
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let mut references = Vec::new();
+        for (key, source, committed) in [
+            ("graph", Some(LocalId(vec![1])), LocalId(vec![1])),
+            ("version", Some(LocalId(vec![1])), LocalId(vec![2])),
+            ("root", None, LocalId(vec![3])),
+        ] {
+            let input = context.mutation().new_holon(Some(key.into()))?;
+            let reference = context.mutation().stage_new_holon(input)?;
+            let rc = reference.get_holon_to_commit(&context)?;
+            let mut holon = rc.write().unwrap();
+            let model = holon.holon_clone_model();
+            let mut staged = if let Some(source) = source {
+                StagedHolon::new_for_update_from_clone_model(model, source)?
+            } else {
+                StagedHolon::new_from_clone_model(model)?
+            };
+            if staged.versioned_source_id_ref() == Some(&committed) {
+                staged.note_relationship_mutation(false)?;
+                staged.prepare_touched_relationship_commit_scope()?;
+            } else if staged.versioned_source_id_ref().is_some() {
+                staged.note_property_mutation()?;
+                staged.prepare_full_relationship_commit_scope()?;
+            }
+            staged.to_committed(committed)?;
+            *holon = Holon::Staged(staged);
+            references.push(reference);
+        }
+        let before = crate::persistence_layer::smartlink::relationship_read_metrics();
+        assert!(key_index_retry_sources(&context, &references[..1])?.is_empty());
+        assert_eq!(
+            key_index_retry_sources(&context, &references)?,
+            HashSet::from([LocalId(vec![2]), LocalId(vec![3])])
+        );
+        assert_eq!(crate::persistence_layer::smartlink::relationship_read_metrics(), before);
+        Ok(())
+    }
 
     #[test]
     fn accepted_no_action_targets_resolve_without_changing_their_lifecycle(

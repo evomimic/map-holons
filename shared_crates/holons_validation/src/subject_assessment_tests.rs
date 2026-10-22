@@ -1,3 +1,6 @@
+#[path = "key_uniqueness_tests.rs"]
+mod key_uniqueness_tests;
+
 #[path = "graph_only_deltas_tests.rs"]
 mod graph_only_deltas_tests;
 
@@ -333,7 +336,7 @@ fn all_five_native_handlers_accept_and_reject_without_configured_evaluation(
         BaseValue::BytesValue(MapBytes(vec![1, 2])),
         BaseValue::EnumValue(MapEnumValue(MapString("member".into()))),
     ];
-    for (index, (rule, _, target)) in RULES[2..].iter().enumerate() {
+    for (index, (rule, _, target)) in RULES[3..].iter().enumerate() {
         let mut fixture = readiness_fixture()?;
         select_title_value_type(&mut fixture, target)?;
         let mut subject = fixture.staged_subject("native-value")?;
@@ -1646,7 +1649,7 @@ fn split_saved_schema_and_staged_binding_roots_are_compatible() -> Result<(), Ho
         CoreRelationshipTypeName::ValidationBindings,
     )
     .unwrap();
-    assert_eq!(contributions.len(), 1);
+    assert_eq!(contributions.len(), 2);
     assert!(matches!(&contributions[0].member, HolonReference::Smart(_)));
     assert!(matches!(&contributions[0].declared_on, HolonReference::Smart(_)));
     assert_eq!(contributions[0].member.key()?.unwrap().to_string(), rule_key);

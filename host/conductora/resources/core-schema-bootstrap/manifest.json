@@ -79,11 +79,11 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "8614a153984919db8cebbae8f8223ece7f782ca3d0523e26c39dd70c3d8e3087"
+      "sha256": "a82dffb428976bd2445588c85299880e501a80187b36c53d8c09afb7a4780f46"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "6a85514bcbe79c07e414340a6d86be745add6f2995449c5c0fbb7c564069cdc7"
+      "sha256": "a873797a5bd5ba1f1692c2d951e861762902b48e0453e02ac4704aea56ee1866"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -2886,6 +2886,10 @@
     {
       "key": "KeyRuleType.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "KeyUniqueness.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "LauncherDismissDuration.DesignToken",

@@ -23,7 +23,7 @@ struct FixtureStorage {
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
     lineage_reads: std::sync::atomic::AtomicUsize,
-    keyed_lineages: HashMap<MapString, Vec<LocalId>>,
+    keyed_lineages: std::sync::Mutex<HashMap<MapString, Vec<LocalId>>>,
     lineage_read_error: std::sync::Mutex<Option<HolonError>>,
     read_errors: HashMap<HolonId, HolonError>,
     reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
@@ -123,7 +123,7 @@ impl HolonServiceApi for FixtureStorage {
         if let Some(error) = &*self.lineage_read_error.lock().unwrap() {
             return Err(error.clone());
         }
-        Ok(self.keyed_lineages.get(key).cloned().unwrap_or_default())
+        Ok(self.keyed_lineages.lock().unwrap().get(key).cloned().unwrap_or_default())
     }
 
     fn get_saved_holon_by_key_internal(
@@ -153,7 +153,7 @@ pub(super) struct Fixture {
     saved_storage: Option<Arc<FixtureStorage>>,
 }
 
-pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 7] = {
+pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 8] = {
     use CoreValidationRuleName::*;
     [
         (
@@ -162,6 +162,7 @@ pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 7] = {
             "PropertyType.TypeDescriptor",
         ),
         (NoUndescribedProperties, "HolonValidationRule.HolonType", "HolonType.TypeDescriptor"),
+        (KeyUniqueness, "HolonValidationRule.HolonType", "HolonType.TypeDescriptor"),
         (BaseValueKindMatchesString, "StringValidationRule.HolonType", "StringValueType.ValueType"),
         (
             BaseValueKindMatchesInteger,
@@ -204,12 +205,15 @@ impl Fixture {
         ] {
             fixture.node(key)?;
         }
+        let mut binding_roots = std::collections::HashSet::new();
         for (rule, family, target) in RULES {
             fixture.node(rule.as_str())?;
             fixture.node(family)?;
             fixture.node(target)?;
             fixture.link(rule.as_str(), CoreRelationshipTypeName::DescribedBy, family)?;
-            fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
+            if binding_roots.insert(target) {
+                fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
+            }
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;
         }
         // Subject fixtures bind only subject rules. The binding inventory
@@ -335,6 +339,17 @@ impl Fixture {
         self.saved_snapshot_configured(&[], roots)
     }
 
+    /// Simulates published records whose keyed Owns maintenance has not completed.
+    pub fn remove_saved_key_association(&self, key: &str) {
+        self.saved_storage
+            .as_ref()
+            .unwrap()
+            .keyed_lineages
+            .lock()
+            .unwrap()
+            .remove(&MapString(key.into()));
+    }
+
     pub fn backend_relationship_reads(&self) -> usize {
         self.saved_storage
             .as_ref()
@@ -377,6 +392,11 @@ impl Fixture {
             .enumerate()
             .map(|(index, key)| (key.clone(), HolonId::Local(LocalId(vec![index as u8 + 1; 39]))))
             .collect();
+        let reference_ids: HashMap<_, _> = self
+            .nodes
+            .iter()
+            .map(|(key, reference)| (reference.clone(), ids[key].clone()))
+            .collect();
         let mut storage = FixtureStorage::default();
         for (key, reference) in &self.nodes {
             let model = reference.holon_clone_model()?;
@@ -387,10 +407,9 @@ impl Fixture {
                 .map(|(_, root)| ids[*root].local_id().clone());
             if let Some(key) = reference.key()? {
                 let lineage = root.clone().unwrap_or_else(|| id.local_id().clone());
-                let entries = storage.keyed_lineages.entry(key).or_default();
-                if !entries.contains(&lineage) {
-                    entries.push(lineage);
-                }
+                let entries = storage.keyed_lineages.get_mut().unwrap().entry(key).or_default();
+                // Preserve individual keyed associations so preparation must deduplicate lineages.
+                entries.push(lineage);
             }
             storage.holons.insert(
                 id.clone(),
@@ -403,7 +422,7 @@ impl Fixture {
                         .unwrap()
                         .get_members()
                         .iter()
-                        .map(|target| Ok(ids[&target.key()?.unwrap().to_string()].clone()))
+                        .map(|target| Ok(reference_ids[target].clone()))
                         .collect::<Result<Vec<_>, HolonError>>()?;
                     storage.relationships.insert((id.clone(), name), targets);
                 }
@@ -566,7 +585,7 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "TypeDescriptor",
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
-    for (_, _, key) in RULES[2..].iter() {
+    for (_, _, key) in RULES[3..].iter() {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
             .nodes

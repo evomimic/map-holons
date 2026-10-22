@@ -15,6 +15,8 @@ fn all_fixtures_author_without_a_conductor() {
     commit_sibling_fixture::commit_no_op_and_graph_only_siblings_fixture().unwrap();
     commit_graph_only_fixture::commit_disjoint_graph_additions_fixture().unwrap();
     commit_incomplete_fixture::graph_overlap_retry_fixture().unwrap();
+    commit_incomplete_fixture::key_index_retry_fixture().unwrap();
+    commit_key_uniqueness_fixture::commit_historical_key_uniqueness_fixture().unwrap();
     commit_graph_only_fixture::commit_identical_graph_additions_fixture().unwrap();
     commit_graph_only_fixture::commit_graph_overlap_rejection_fixture().unwrap();
     commit_graph_only_fixture::commit_graph_then_version_fixture().unwrap();

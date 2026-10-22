@@ -17,6 +17,32 @@ pub enum LineageIdentity {
     New(TemporaryId),
 }
 
+impl std::fmt::Display for LineageIdentity {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Saved(id) => write!(formatter, "{id}"),
+            Self::New(id) => write!(formatter, "staged {}", id.0),
+        }
+    }
+}
+
+impl Ord for LineageIdentity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+        match (self, other) {
+            (Self::Saved(a), Self::Saved(b)) => a.to_canonical_bytes().cmp(&b.to_canonical_bytes()),
+            (Self::New(a), Self::New(b)) => a.cmp(b),
+            (Self::Saved(_), Self::New(_)) => Ordering::Less,
+            (Self::New(_), Self::Saved(_)) => Ordering::Greater,
+        }
+    }
+}
+impl PartialOrd for LineageIdentity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl LineageIdentity {
     /// Reads saved lineage metadata through bound references; no key lookup or head
     /// selection participates. Mutable references must belong to the active transaction.

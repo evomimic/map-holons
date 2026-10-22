@@ -93,7 +93,9 @@ snapshots before changing lineage; never mutate the saved source's snapshot.
 
 Under Complete, NoAction's result token binds directly to its saved source without consuming a
 SavedHolons entry. Under Incomplete, NoAction's result token is None. NoAction and GraphOnly
-heads alias existing nodes, so several Saved heads may realize one node. `count_saved()` counts
+heads alias existing nodes, so several Saved heads may realize one node. Graph-only siblings of
+one source each contribute a SavedHolons entry for that source, matched in candidate order.
+`count_saved()` counts
 non-deleted OwnNode heads. Comparing aliases against the same saved node is safe only because
 graph-only mutations are non-definitional by construction. A SavedLookup source remains partial
 through Commit; it must never become a complete saved-content snapshot.

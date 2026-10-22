@@ -196,7 +196,8 @@ fn dispatch_subject(
         if prepared.route != BindingDispatchRoute::Subject {
             continue;
         }
-        collector.observations.dispatched_rule_keys.insert(required_key(&prepared.binding.rule)?);
+        let key = required_key(&prepared.binding.rule)?;
+        collector.observations.dispatched_rule_keys.insert(key);
         if (prepared.handler)(
             ValidationInvocation::Prepared { binding: &prepared.binding, path, subject },
             collector,
@@ -249,6 +250,7 @@ pub(crate) fn assess_holon(
     descriptor: &HolonReference,
     contributions: &ContractContributions,
     bindings: &[PreparedBinding],
+    key_claim: Option<&crate::key_evidence::KeyClaim>,
     values: &ValueValidationContext,
     universal: &UniversalDescriptorContract,
     collector: &mut ValidationCollector,
@@ -266,6 +268,7 @@ pub(crate) fn assess_holon(
     let subject_path = path(subject);
     let prepared = PreparedRuleSubject::Holon {
         undescribed_properties: subject.undescribed_property_names_in_contract(&names)?,
+        key_claim: key_claim.cloned(),
     };
     dispatch_subject(bindings, &prepared, &subject_path, collector)?;
     subject_constraints(descriptor, &subject_path, collector, packages)?;

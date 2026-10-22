@@ -69,6 +69,7 @@ fn expected_rule_keys() -> BTreeSet<String> {
     [
         "RequiredPropertyPresence",
         "NoUndescribedProperties",
+        "KeyUniqueness",
         "BaseValueKindMatchesString",
         "BaseValueKindMatchesInteger",
         "BaseValueKindMatchesBoolean",
@@ -178,5 +179,57 @@ fn cross_schema_dependency_rule_is_retained_as_unbound_vocabulary() -> Result<()
     assert!(
         authored_binding_inventory(&documents).contains("SchemaDependenciesAcyclic.ValidationRule")
     );
+    Ok(())
+}
+
+#[test]
+fn key_uniqueness_is_holon_contextual_and_key_inputs_are_definitional() -> Result<()> {
+    let documents = canonical_documents()?;
+    let holons: Vec<_> =
+        documents.iter().flat_map(|document| document["holons"].as_array().unwrap()).collect();
+    let rule = holons
+        .iter()
+        .find(|h| h["key"] == "KeyUniqueness.ValidationRule")
+        .context("key uniqueness rule")?;
+    assert_eq!(rule["properties"]["ValidationLevel"], "Holon");
+    assert_eq!(rule["properties"]["DeterminismClass"], "Contextual");
+    assert_eq!(rule["properties"]["SemanticAuthority"], "DS-KEY-006");
+    assert_eq!(rule["type"], "HolonValidationRule.HolonType");
+    assert!(rule["relationships"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["name"] == "RuleOf" && r["target"][0]["$ref"] == "MAP Core Schema-v0.0.7"));
+    let level = holons
+        .iter()
+        .find(|h| h["key"] == "ValidationLevel.MapEnumValueType")
+        .context("validation level")?;
+    assert_eq!(level["properties"]["Description"], "Identifies the semantic unit whose invariants are evaluated by a ValidationRule, independent of the scope of data, graph traversal, or contextual dependencies required to evaluate the rule.");
+    let root = holons
+        .iter()
+        .find(|h| h["key"] == "HolonType.TypeDescriptor")
+        .context("Holon binding root")?;
+    assert!(root["relationships"].as_array().unwrap().iter().any(|relationship| relationship
+        ["name"]
+        == "ValidationBindings"
+        && relationship["target"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|target| target["$ref"] == "KeyUniqueness.ValidationRule")));
+    for key in [
+        "(HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)",
+        "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)",
+        "(TypeDescriptor)-[Extends]->(TypeDescriptor)",
+        "(HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor)",
+        "(RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor)",
+        "(RelationshipType.TypeDescriptor)-[TargetType]->(HolonType.TypeDescriptor)",
+    ] {
+        let relationship = holons
+            .iter()
+            .find(|h| h["key"] == key)
+            .with_context(|| format!("key-producing relationship {key}"))?;
+        assert_eq!(relationship["properties"]["IsDefinitional"], true, "{key}");
+    }
     Ok(())
 }

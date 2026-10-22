@@ -109,6 +109,9 @@
               "$ref": "NoUndescribedProperties.ValidationRule"
             },
             {
+              "$ref": "KeyUniqueness.ValidationRule"
+            },
+            {
               "$ref": "DescribingCategoryCompatibility.ValidationRule"
             },
             {

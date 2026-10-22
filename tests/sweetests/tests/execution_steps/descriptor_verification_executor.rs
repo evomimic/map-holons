@@ -901,6 +901,7 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
     let expected_bindings = [
         ("PropertyType.TypeDescriptor", CoreValidationRuleName::RequiredPropertyPresence),
         ("HolonType.TypeDescriptor", CoreValidationRuleName::NoUndescribedProperties),
+        ("HolonType.TypeDescriptor", CoreValidationRuleName::KeyUniqueness),
         ("StringValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesString),
         ("IntegerValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesInteger),
         ("BooleanValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBoolean),

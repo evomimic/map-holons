@@ -97,8 +97,11 @@ pub fn commit_cross_schema_dependency_gap_fixture() -> Result<DancesTestCase, Ho
         None,
     )?;
 
-    // DS-SCHEMA-002 remains unbound until SchemaDependency restores local
-    // dependency coverage. Other descriptor checks continue through public Commit.
+    // DS-SCHEMA-002 is unbound until SchemaDependency restores holon-local
+    // dependency coverage, so the undeclared foreign property commits. Once it is
+    // re-bound, this Commit should be Rejected with a DS-SCHEMA-002 finding on the
+    // staged descriptor itself rather than a carrier finding on the unstaged Schema.
+    // Other descriptor checks continue through public Commit.
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
     test_case.add_match_saved_content_step()?;
 

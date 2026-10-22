@@ -35,6 +35,7 @@ abstract holon HolonType.TypeDescriptor {
   relationships {
     ValidationBindings -> [
       NoUndescribedProperties.ValidationRule,
+      KeyUniqueness.ValidationRule,
       DescribingCategoryCompatibility.ValidationRule,
       DescriptorMetaTypeCorrespondence.ValidationRule
     ]

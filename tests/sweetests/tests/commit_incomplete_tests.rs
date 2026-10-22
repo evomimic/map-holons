@@ -326,3 +326,97 @@ async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition() 
     )
     .await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
+    use core_types::OccurrenceId;
+    use sha2::{Digest, Sha256};
+    let scenario = fixture_cases::commit_incomplete_fixture::key_index_retry_fixture().unwrap();
+    let mut bootstrap = DancesTestCase::default();
+    let (runtime, tx_id, control) = init_probe_test_runtime(&mut bootstrap).await;
+    let case = &scenario.case;
+    let mut state = TestExecutionState::new(
+        runtime,
+        tx_id.clone(),
+        case.test_session_state.get_transient_holons().clone(),
+        case.test_session_state.fixture_head_index().clone(),
+    );
+    state.activate_transaction(tx_id).unwrap();
+    let mut loaded = false;
+    let mut query_loaded = false;
+    run_segment(
+        case,
+        case.steps[..scenario.first_attempt].to_vec(),
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    let root = saved_id(&state, &scenario.root);
+    let space =
+        state.context().get_space_holon().unwrap().unwrap().holon_id().unwrap().local_id().clone();
+    // The historical-key index uses a stable occurrence derived from the complete key.
+    // Occupy precisely that identity with a stale key so publication succeeds but indexing fails.
+    let mut hasher = Sha256::new();
+    hasher.update(b"map-holons:owns-key-index:v1\0");
+    hasher.update(scenario.key.as_bytes());
+    let digest = hasher.finalize();
+    let mut bytes = [0; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    let encoded = encode_smartlink_tag(&SmartLinkTagInput {
+        target_id: HolonId::Local(root.clone()),
+        relationship_name: CoreRelationshipTypeName::Owns.as_relationship_name(),
+        canonical_key: CanonicalKey::new("stale.key-index-retry").unwrap(),
+        occurrence_id: Some(OccurrenceId(bytes)),
+        relationship_property_values: PropertyMap::new(),
+        target_property_cache_candidates: Vec::new(),
+    })
+    .unwrap();
+    let planted = control.plant_stale_link(space.clone(), root.clone(), encoded).await;
+    run_segment(
+        case,
+        vec![case.steps[scenario.first_attempt].clone()],
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    assert!(!control
+        .live_links(space.clone(), CoreRelationshipTypeName::Owns.as_relationship_name())
+        .await
+        .iter()
+        .any(|link| link.canonical_key.as_str() == scenario.key));
+    assert_eq!(control.delete_link(planted).await, DeleteSmartLinkOutcome::Deleted);
+    let mut before = control
+        .live_links(space.clone(), CoreRelationshipTypeName::Owns.as_relationship_name())
+        .await;
+    run_segment(
+        case,
+        case.steps[scenario.first_attempt + 1..scenario.after_rejection].to_vec(),
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    before.sort_by_key(|row| row.smartlink_id.0 .0.clone());
+    let mut after = control
+        .live_links(space.clone(), CoreRelationshipTypeName::Owns.as_relationship_name())
+        .await;
+    after.sort_by_key(|row| row.smartlink_id.0 .0.clone());
+    assert_eq!(before, after, "rejected collision cannot repair or overwrite the index");
+    run_segment(
+        case,
+        case.steps[scenario.after_rejection..].to_vec(),
+        &mut state,
+        &mut loaded,
+        &mut query_loaded,
+    )
+    .await;
+    let rows =
+        control.live_links(space, CoreRelationshipTypeName::Owns.as_relationship_name()).await;
+    for key in ["Book.KeyIndexRetry.Old", scenario.key] {
+        let rows: Vec<_> = rows.iter().filter(|row| row.canonical_key.as_str() == key).collect();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].target_id, HolonId::Local(root.clone()));
+    }
+}
