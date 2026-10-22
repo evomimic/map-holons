@@ -1,23 +1,14 @@
+use super::described_instance_helpers::saved;
+use super::schema_authoring_helpers::{replace_target, stage_definition, stage_title};
 use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::{
     DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons,
+    ExpectedPersistedGraph, ExpectedPersistedRelationship, ExpectedRejectedHolon,
+    ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons, PersistedSubject,
     TestCaseInit, TestReference,
 };
-use std::sync::Arc;
-
-fn saved(
-    context: &Arc<TransactionContext>,
-    test_case: &mut DancesTestCase,
-    holons: &mut FixtureHolons,
-    key: &str,
-) -> Result<TestReference, HolonError> {
-    let key = MapString(key.into());
-    let stub = context.mutation().new_holon(Some(key.clone()))?;
-    test_case.add_lookup_saved_holon_by_key_step(holons, stub, key, None, None)
-}
 
 /// Declared cross-schema dependency coverage is temporarily unenforced. A foreign
 /// property reference commits, while inherited-member redeclaration still rejects.
@@ -217,6 +208,194 @@ pub fn commit_schema_cycle_fixture() -> Result<DancesTestCase, HolonError> {
         }],
         MapInteger(1),
         None,
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(test_case)
+}
+
+fn persisted_targets(
+    source: &TestReference,
+    relationship: &str,
+    targets: &[&TestReference],
+) -> ExpectedPersistedRelationship {
+    ExpectedPersistedRelationship {
+        source: PersistedSubject::Token(source.clone()),
+        relationship: relationship.to_relationship_name(),
+        targets: targets.iter().map(|target| PersistedSubject::Token((*target).clone())).collect(),
+    }
+}
+
+fn commit_versions(
+    case: &mut DancesTestCase,
+    holons: &mut FixtureHolons,
+    versions: &[&TestReference],
+) -> Result<(), HolonError> {
+    case.add_commit_step_with_dispositions(
+        holons,
+        ExpectedCommitStatus::Complete,
+        versions
+            .iter()
+            .map(|token| {
+                ExpectedCommitCandidate::new((*token).clone(), ExpectedDisposition::NewVersion)
+            })
+            .collect(),
+        vec![],
+        None,
+        None,
+    )
+}
+
+/// Inverses contain lineage roots once; ownership remains attached to exact member versions.
+pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, HolonError> {
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Schema successor membership history",
+        "Explicit membership populates a new Schema version without rewriting earlier owners",
+    );
+    let case = &mut test_case;
+    let holons = &mut fixture_holons;
+    case.add_begin_transaction_step(None, None)?;
+    let schema_type = saved(&fixture_context, case, holons, "Schema.HolonType")?;
+    let schema = stage_definition(
+        &fixture_context,
+        case,
+        holons,
+        "MembershipHistory.Schema",
+        [
+            ("SchemaName".to_property_name(), "MembershipHistory".to_base_value()),
+            ("Description".to_property_name(), "Private membership history".to_base_value()),
+        ]
+        .into(),
+        &[("DescribedBy", &schema_type)],
+    )?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
+    case.add_begin_transaction_step(None, None)?;
+    // An independent lookup token pins the saved owner while its authored head advances.
+    let schema_v1 = saved(&fixture_context, case, holons, "MembershipHistory.Schema")?;
+    let member = stage_title(
+        &fixture_context,
+        case,
+        holons,
+        "MembershipHistory.Title.PropertyType",
+        &schema_v1,
+    )?;
+    let rule_type = saved(&fixture_context, case, holons, "HolonValidationRule.HolonType")?;
+    // Membership alone does not activate an unbound rule's evaluator.
+    let rule = stage_definition(
+        &fixture_context,
+        case,
+        holons,
+        "MembershipHistory.Unbound.ValidationRule",
+        [
+            (
+                "DeterminismClass".to_property_name(),
+                MapEnumValue(MapString::from("Deterministic")).to_base_value(),
+            ),
+            ("SemanticAuthority".to_property_name(), "MembershipFixture".to_base_value()),
+            (
+                "ValidationLevel".to_property_name(),
+                MapEnumValue(MapString::from("Holon")).to_base_value(),
+            ),
+            (
+                "ValidationRuleDescription".to_property_name(),
+                "Unbound membership fixture".to_base_value(),
+            ),
+        ]
+        .into(),
+        &[("RuleOf", &schema_v1), ("DescribedBy", &rule_type)],
+    )?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
+    case.add_begin_transaction_step(None, None)?;
+    let member_v1 = saved(&fixture_context, case, holons, "MembershipHistory.Title.PropertyType")?;
+    let rule_v1 =
+        saved(&fixture_context, case, holons, "MembershipHistory.Unbound.ValidationRule")?;
+    let schema_v2 =
+        case.add_stage_new_version_step(holons, schema, None, MapInteger(1), None, None)?;
+    let schema_v2 = case.add_with_properties_step(
+        holons,
+        schema_v2,
+        [(
+            "Description".to_property_name(),
+            "Schema successor with explicit composition".to_base_value(),
+        )]
+        .into(),
+        None,
+        None,
+    )?;
+    commit_versions(case, holons, &[&schema_v2])?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        ExpectedPersistedGraph {
+            relationships: vec![
+                persisted_targets(&schema_v1, "Components", &[&member_v1]),
+                persisted_targets(&schema_v1, "Rules", &[&rule_v1]),
+                persisted_targets(&schema_v2, "Components", &[]),
+                persisted_targets(&schema_v2, "Rules", &[]),
+                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&rule_v1, "RuleOf", &[&schema_v1]),
+            ],
+            ..Default::default()
+        },
+        Some("Publishing a Schema successor inherits no inverse memberships".into()),
+    )?;
+
+    case.add_begin_transaction_step(None, None)?;
+    let member_v2 =
+        case.add_stage_new_version_step(holons, member, None, MapInteger(1), None, None)?;
+    let member_v2 = case.add_with_properties_step(
+        holons,
+        member_v2,
+        [("Description".to_property_name(), "Second member version, same owner".to_base_value())]
+            .into(),
+        None,
+        None,
+    )?;
+    commit_versions(case, holons, &[&member_v2])?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        ExpectedPersistedGraph {
+            relationships: vec![
+                persisted_targets(&schema_v1, "Components", &[&member_v1]),
+                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&member_v2, "ComponentOf", &[&schema_v1]),
+            ],
+            ..Default::default()
+        },
+        Some("Two member versions realize one Lineage-bound inverse membership".into()),
+    )?;
+
+    case.add_begin_transaction_step(None, None)?;
+    let member_v3 = case.add_stage_new_version_step(
+        holons,
+        member_v2.clone(),
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    let member_v3 = replace_target(case, holons, member_v3, "ComponentOf", &schema_v1, &schema_v2)?;
+    let rule_v2 = case.add_stage_new_version_step(holons, rule, None, MapInteger(1), None, None)?;
+    let rule_v2 = replace_target(case, holons, rule_v2, "RuleOf", &schema_v1, &schema_v2)?;
+    commit_versions(case, holons, &[&member_v3, &rule_v2])?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        ExpectedPersistedGraph {
+            relationships: vec![
+                persisted_targets(&schema_v1, "Components", &[&member_v1]),
+                persisted_targets(&schema_v1, "Rules", &[&rule_v1]),
+                persisted_targets(&schema_v2, "Components", &[&member_v1]),
+                persisted_targets(&schema_v2, "Rules", &[&rule_v1]),
+                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&member_v2, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&member_v3, "ComponentOf", &[&schema_v2]),
+                persisted_targets(&rule_v1, "RuleOf", &[&schema_v1]),
+                persisted_targets(&rule_v2, "RuleOf", &[&schema_v2]),
+            ],
+            ..Default::default()
+        },
+        Some(
+            "Explicit membership preserves both historical owners and root-targeted inverses"
+                .into(),
+        ),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)

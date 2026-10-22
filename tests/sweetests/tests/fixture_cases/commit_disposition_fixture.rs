@@ -3,7 +3,7 @@
 // Compiled into several test targets; each uses a subset of these fixtures.
 #![allow(dead_code)]
 
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{

@@ -5,7 +5,7 @@
 mod execution_steps;
 mod fixture_cases {
     pub mod commit_incomplete_fixture;
-    pub mod described_instances;
+    pub mod described_instance_helpers;
 }
 
 use core_types::{encode_smartlink_tag, CanonicalKey, DeleteSmartLinkOutcome, SmartLinkTagInput};

@@ -8,7 +8,7 @@ use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_DESCRIPTOR_KEY,
     STAGE_NEW_VERSION_BOOK_KEY, STAGE_NEW_VERSION_PERSON_1_KEY,

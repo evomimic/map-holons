@@ -5,7 +5,9 @@ mod execution_steps;
 #[allow(dead_code)]
 mod fixture_cases {
     pub mod commit_schema_fixture;
+    pub mod described_instance_helpers;
     pub mod load_holons_internal_fixture;
+    pub mod schema_authoring_helpers;
 }
 
 use core_types::CommitValidationViolationKind;

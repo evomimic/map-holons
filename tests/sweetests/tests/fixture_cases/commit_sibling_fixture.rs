@@ -1,12 +1,18 @@
 //! Commit preserves distinct sibling versions and graph edits anchored to their saved source.
 
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::{add_described_instance, saved};
+use super::schema_authoring_helpers::{
+    descriptor_properties, replace_target, stage_definition, stage_title,
+};
+use core_types::CommitValidationViolationKind;
+use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
-    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedLineage, ExpectedPersistedGraph, ExpectedPersistedRelationship, PersistedSubject,
-    TestCaseInit,
+    DancesTestCase, EdgeExpectation, ExpectedCommitCandidate, ExpectedCommitStatus,
+    ExpectedDisposition, ExpectedLineage, ExpectedPersistedEdge, ExpectedPersistedGraph,
+    ExpectedPersistedRelationship, ExpectedRejectedHolon, ExpectedValidationFinding,
+    ExpectedValidationSubject, PersistedSubject, TestCaseInit, TestReference,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -109,6 +115,163 @@ pub fn commit_version_siblings_fixture() -> Result<DancesTestCase, HolonError> {
         key,
         Some(HolonErrorKind::MultipleLineageHeads),
         Some("Verify the shared key reports both sibling heads".into()),
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(test_case)
+}
+
+fn reference_graph(
+    book_v1: &TestReference,
+    title_v1: &TestReference,
+    book_v2: &TestReference,
+    title_v2: &TestReference,
+) -> ExpectedPersistedGraph {
+    let edges = [
+        (book_v1, title_v1, EdgeExpectation::ExactlyOnce),
+        (book_v1, title_v2, EdgeExpectation::Absent),
+        (book_v2, title_v1, EdgeExpectation::Absent),
+        (book_v2, title_v2, EdgeExpectation::ExactlyOnce),
+    ]
+    .into_iter()
+    .map(|(book, title, expectation)| ExpectedPersistedEdge {
+        source: PersistedSubject::Token(book.clone()),
+        relationship: "InstanceProperties".to_relationship_name(),
+        inverse: None,
+        target: PersistedSubject::Token(title.clone()),
+        expectation,
+    })
+    .collect();
+    ExpectedPersistedGraph { edges, ..Default::default() }
+}
+
+fn rejected_title(title: &TestReference) -> ExpectedRejectedHolon {
+    ExpectedRejectedHolon {
+        token: title.clone(),
+        validation_state: ValidationState::Invalid,
+        findings: vec![ExpectedValidationFinding {
+            kind: CommitValidationViolationKind::RuleViolation { code: "DS-PROP-003".into() },
+            rule_key: Some("NoUndescribedProperties.ValidationRule".into()),
+            subject: ExpectedValidationSubject::Holon,
+        }],
+    }
+}
+
+/// A saved Book's contract stays exact while an explicitly referenced successor is a prerequisite.
+pub fn commit_book_title_exact_references_fixture() -> Result<DancesTestCase, HolonError> {
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Book v1 and Title v2 exact references",
+        "Invalid successors reject independently; explicit references publish only after correction",
+    );
+    let case = &mut test_case;
+    let holons = &mut fixture_holons;
+    case.add_load_book_person_inverse_test_schema_step(None)?;
+    case.add_begin_transaction_step(None, None)?;
+    let owner = saved(&fixture_context, case, holons, "BookAuthorInverseSchema")?;
+    let title_v1 =
+        stage_title(&fixture_context, case, holons, "ExactReferences.Title.PropertyType", &owner)?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
+    case.add_begin_transaction_step(None, None)?;
+    // Book's authored target is pinned independently of Title's advancing fixture head.
+    let pinned_title_v1 =
+        saved(&fixture_context, case, holons, "ExactReferences.Title.PropertyType")?;
+    let root = saved(&fixture_context, case, holons, "HolonType.TypeDescriptor")?;
+    let meta = saved(&fixture_context, case, holons, "MetaHolonType.MetaTypeDescriptor")?;
+    let mut properties = descriptor_properties("Book");
+    properties.insert("InstanceDeletionAllowed".to_property_name(), true.to_base_value());
+    let book_v1 = stage_definition(
+        &fixture_context,
+        case,
+        holons,
+        "ExactReferences.Book.HolonType",
+        properties,
+        &[
+            ("Extends", &root),
+            ("ComponentOf", &owner),
+            ("InstanceProperties", &pinned_title_v1),
+            ("DescribedBy", &meta),
+        ],
+    )?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
+    case.add_begin_transaction_step(None, None)?;
+    let pinned_book_v1 = saved(&fixture_context, case, holons, "ExactReferences.Book.HolonType")?;
+    let title_v2 =
+        case.add_stage_new_version_step(holons, title_v1, None, MapInteger(1), None, None)?;
+    let title_v2 = case.add_with_properties_step(
+        holons,
+        title_v2,
+        [
+            ("UndescribedFixtureProperty".to_property_name(), true.to_base_value()),
+            ("Description".to_property_name(), "Title successor".to_base_value()),
+        ]
+        .into(),
+        None,
+        None,
+    )?;
+    let unchanged_book = case.add_stage_new_version_step(
+        holons,
+        pinned_book_v1.clone(),
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Rejected, None, None)?;
+    case.add_verify_commit_rejection_step(
+        vec![rejected_title(&title_v2)],
+        MapInteger(1),
+        Some("Only Title v2 rejects; saved Book v1 remains a valid independent candidate".into()),
+    )?;
+
+    let book_v2 = case.add_stage_new_version_step(
+        holons,
+        book_v1.clone(),
+        None,
+        MapInteger(2),
+        Some(HolonErrorKind::DuplicateError),
+        None,
+    )?;
+    let book_v2 =
+        replace_target(case, holons, book_v2, "InstanceProperties", &pinned_title_v1, &title_v2)?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Rejected, None, None)?;
+    case.add_verify_commit_rejection_step(
+        vec![
+            rejected_title(&title_v2),
+            ExpectedRejectedHolon {
+                token: book_v2.clone(),
+                validation_state: ValidationState::Invalid,
+                findings: vec![ExpectedValidationFinding {
+                    kind: CommitValidationViolationKind::UnresolvedLocalDependency,
+                    rule_key: None,
+                    subject: ExpectedValidationSubject::Holon,
+                }],
+            },
+        ],
+        MapInteger(2),
+        Some("Book v2 explicitly depends on invalid Title v2; Book v1 does not".into()),
+    )?;
+    let title_v2 = case.add_remove_properties_step(
+        holons,
+        title_v2,
+        [("UndescribedFixtureProperty".to_property_name(), true.to_base_value())].into(),
+        None,
+        None,
+    )?;
+    case.add_commit_step_with_dispositions(
+        holons,
+        ExpectedCommitStatus::Complete,
+        vec![
+            ExpectedCommitCandidate::new(title_v2.clone(), ExpectedDisposition::NewVersion),
+            ExpectedCommitCandidate::new(unchanged_book, ExpectedDisposition::NoAction),
+            ExpectedCommitCandidate::new(book_v2.clone(), ExpectedDisposition::NewVersion),
+        ],
+        vec![],
+        None,
+        None,
+    )?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        reference_graph(&book_v1, &pinned_title_v1, &book_v2, &title_v2),
+        Some("Fresh reads preserve Book v1 to Title v1 and Book v2 to exact Title v2".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)

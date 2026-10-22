@@ -6,10 +6,10 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use tracing::{debug, info};
 
 /// Stages a new version of an existing holon via `TransactionAction::StageNewVersionFromId`,
-/// then verifies base-key and versioned-key lookups.
+/// then verifies exact staging ancestry and base-key and versioned-key lookups.
 ///
-/// Version lineage is established at commit time, not stage time, so this step
-/// intentionally does not assert a staged `Predecessor` relationship.
+/// The staged predecessor must name the exact saved source, including when that
+/// source already has a predecessor. Publication persists the recorded edge.
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     step_token: TestReference,
@@ -42,6 +42,28 @@ pub async fn execute_stage_new_version(
             );
 
             let response_ref = HolonReference::Staged(staged_ref.clone());
+            // Compare saved identities directly: same-key versions have different ancestry.
+            let predecessors = response_ref
+                .related_holons(CoreRelationshipTypeName::Predecessor)
+                .expect("staged Predecessor collection")
+                .read()
+                .unwrap()
+                .get_members()
+                .iter()
+                .map(|predecessor| {
+                    predecessor.holon_id().expect("staged predecessor must be a saved version")
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(
+                predecessors,
+                vec![original_holon_id.clone()],
+                "staging must record exactly the saved source, not its copied predecessor"
+            );
+            assert_eq!(
+                staged_ref.versioned_source_id().unwrap(),
+                Some(original_holon_id.local_id().clone()),
+                "staged ancestry must agree with the recorded version source"
+            );
             let execution_handle = ExecutionHandle::from(response_ref.clone());
             let execution_reference =
                 ExecutionReference::from_token_execution(&step_token, execution_handle.clone());

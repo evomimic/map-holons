@@ -104,6 +104,8 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_branch_across_transactions_fixture().unwrap(),
             commit_cross_schema_dependency_gap_fixture().unwrap(),
             commit_schema_cycle_fixture().unwrap(),
+            commit_schema_successor_membership_fixture().unwrap(),
+            commit_book_title_exact_references_fixture().unwrap(),
             commit_required_anchor_update_fixture().unwrap(),
             commit_strict_contract_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),

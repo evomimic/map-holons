@@ -31,6 +31,8 @@ fn all_fixtures_author_without_a_conductor() {
     commit_lineage_fixture::commit_non_root_lineage_fixture().unwrap();
     commit_schema_fixture::commit_cross_schema_dependency_gap_fixture().unwrap();
     commit_schema_fixture::commit_schema_cycle_fixture().unwrap();
+    commit_schema_fixture::commit_schema_successor_membership_fixture().unwrap();
+    commit_sibling_fixture::commit_book_title_exact_references_fixture().unwrap();
     commit_schema_fixture::commit_required_anchor_update_fixture().unwrap();
     commit_schema_fixture::loader_required_anchor_update_fixture().unwrap();
     commit_strict_contract_fixture::commit_strict_contract_fixture().unwrap();

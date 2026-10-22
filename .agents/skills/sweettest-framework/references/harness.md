@@ -86,7 +86,11 @@ matches results by saved identity, never by key. Disposition mismatches precede 
 snapshot failures. A property write can promote GraphOnly to NewVersion; a stale declaration
 must fail rather than silently change.
 
-Staging clears copied predecessor lineage. Expected persisted snapshots follow the declaration:
+Version staging replaces the copied `Predecessor` with the exact saved source, matching
+`versioned_source_id`, without touching that relationship or promoting the candidate merely
+for recording ancestry. The staging executor checks the single predecessor's saved identity
+directly, including when staging from a non-root version. Independent clones clear inherited
+predecessor lineage. Expected persisted snapshots follow the declaration:
 NewRoot has no inherited lineage; NewVersion has exactly the staging source as predecessor;
 NoAction and GraphOnly retain the source version's existing predecessor. Clone candidate
 snapshots before changing lineage; never mutate the saved source's snapshot.
