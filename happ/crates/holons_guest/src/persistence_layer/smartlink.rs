@@ -487,8 +487,8 @@ pub fn delete_smartlink(smartlink_id: &SmartLinkId) -> Result<DeleteSmartLinkOut
     else {
         return Ok(DeleteSmartLinkOutcome::AlreadyAbsent);
     };
-    let base_address = match record.action() {
-        Action::CreateLink(create_link) => create_link.base_address.clone(),
+    let base_address = match &record.action().data {
+        ActionData::CreateLink(create_link) => create_link.base_address.clone(),
         _ => {
             return Err(HolonError::InvalidParameter(format!(
                 "SmartLinkId {:?} does not reference a create-link action",

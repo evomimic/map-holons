@@ -117,21 +117,23 @@ def main():
     parser.add_argument("--variant", choices=["prefetch", "on-demand"], default="prefetch")
     parser.add_argument("--readiness-cases", action="store_true")
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")
-    parser.add_argument("--index-mode", choices=["none", "control", "base-hash"], default="none")
+    parser.add_argument("--link-profile", action="store_true", help="Capture read-only persisted link-query timings after Commit samples; replaces the retired --index-mode experiment")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--summarize-only", action="store_true")
     args = parser.parse_args()
     if args.runs < 1 or args.samples < 2 or args.subjects < 1:
         parser.error("--runs must be positive and --samples must be at least two")
-    if args.mode == "new-version" and (args.subjects != 1 or args.readiness_cases):
-        parser.error("--mode new-version measures one subject per Commit without readiness cases")
+    if args.mode == "new-version" and (args.subjects != 1 or args.readiness_cases or args.link_profile):
+        parser.error("--mode new-version measures one subject per Commit without readiness cases or link profiling")
     if args.summarize_only:
         result = summarize(sorted(args.output.glob("run-*.log")), args.samples, args.variant, args.assessment, args.mode)
     else:
-        args.output.mkdir(parents=True, exist_ok=False)
         env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
-        env["MAP_COMMIT_PERF_INDEX_MODE"] = args.index_mode
+        if "MAP_COMMIT_PERF_INDEX_MODE" in env or "MAP_COMMIT_PERF_INDEX_OUTPUT" in env:
+            parser.error("MAP_COMMIT_PERF_INDEX_* is retired; unset it and use --link-profile")
+        env.pop("MAP_COMMIT_PERF_LINK_OUTPUT", None)
         env["MAP_COMMIT_PERF_MODE"] = args.mode
+        args.output.mkdir(parents=True, exist_ok=False)
         paths = [Path("happ/workdir/map_holons.dna"), Path("happ/Cargo.lock"), Path("host/Cargo.lock"), Path("Cargo.lock"), Path("flake.lock")]
         paths += sorted(Path("generated/core-schema-bootstrap").rglob("*.json"))
         paths += [Path(path) for path in output("git", "ls-files", "--modified", "--others", "--exclude-standard").splitlines() if Path(path).is_file()]
@@ -144,7 +146,7 @@ def main():
             "platform": platform.platform(), "machine": platform.machine(), "cpu_count": os.cpu_count(),
             "devdocs_revision": output("git", "-C", "../map-dev-docs", "rev-parse", "HEAD"),
             "rustc": output("rustc", "--version"), "cargo": output("cargo", "--version"),
-            "runs": args.runs, "samples_per_run": args.samples, "subjects_per_commit": args.subjects, "mode": args.mode, "variant": args.variant, "index_mode": args.index_mode, "assessment": args.assessment,
+            "runs": args.runs, "samples_per_run": args.samples, "subjects_per_commit": args.subjects, "mode": args.mode, "variant": args.variant, "link_profile": args.link_profile, "assessment": args.assessment,
             "environment": {key: env[key] for key in ["MAP_PROFILE", "RUST_LOG", "WASM_LOG", "MAP_COMMIT_PERF_SAMPLES", "MAP_COMMIT_PERF_SUBJECTS", "MAP_COMMIT_PERF_MODE"]},
             "sha256": {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
         }
@@ -157,10 +159,10 @@ def main():
             run_env = dict(env)
             if args.readiness_cases:
                 run_env["MAP_COMMIT_READINESS_CASES_OUTPUT"] = str((args.output / f"run-{run + 1:02}-cases.json").resolve())
-            if args.index_mode != "none":
-                run_env["MAP_COMMIT_PERF_INDEX_OUTPUT"] = str((args.output / f"run-{run + 1:02}-index.json").resolve())
+            if args.link_profile:
+                run_env["MAP_COMMIT_PERF_LINK_OUTPUT"] = str((args.output / f"run-{run + 1:02}-links.json").resolve())
             with path.open("w") as log:
-                result = subprocess.run(["cargo", "test", "--manifest-path", "tests/sweetests/Cargo.toml", "--test", "commit_performance_tests", "--", "--nocapture", "--test-threads=1"], stdout=log, stderr=subprocess.STDOUT, env=run_env)
+                result = subprocess.run(["cargo", "test", "--manifest-path", "tests/sweetests/Cargo.toml", "--test", "commit_performance_tests", "measures_first_and_repeated_visualizer_usage_commits", "--", "--exact", "--ignored", "--nocapture", "--test-threads=1"], stdout=log, stderr=subprocess.STDOUT, env=run_env)
             if result.returncode:
                 print(f"Run failed; inspect {path}", file=sys.stderr)
                 return result.returncode

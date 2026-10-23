@@ -1,14 +1,16 @@
 use async_trait::async_trait;
 use base_types::MapString;
 use holochain::conductor::api::error::ConductorApiError;
-use holochain::conductor::CellError;
+use holochain::conductor::{CellError, ConductorHandle};
 use holochain::core::ribosome::error::RibosomeError;
 use holochain::prelude::AgentPubKey;
 use holochain::prelude::{
-    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, WasmHash, ZomeError, ZomeName,
+    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, DnaWasmHashed, WasmHash,
+    ZomeDef, ZomeError, ZomeName,
 };
 use holochain::sweettest::{
-    SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
+    DynSweetRendezvous, SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
+    SweetLocalRendezvous,
 };
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::session_state::SessionStateWire;
@@ -39,6 +41,31 @@ pub struct MockConductorConfig {
     pub conductor: SweetConductor,
     pub agent: AgentPubKey,
     pub cell: SweetCell,
+}
+
+impl MockConductorConfig {
+    /// Awaits conductor shutdown instead of leaving it to `SweetConductor::drop`, which only
+    /// spawns a detached shutdown task, and which never runs at all while the backend is leaked.
+    ///
+    /// Drop the `Runtime` and everything derived from it first. The backend can still be leaked
+    /// by a reference cycle: cached relationship collections hold `SmartReference`s, whose
+    /// `SpaceReadHandle` keeps the owning `HolonSpaceManager` (and so this backend) alive. In that
+    /// case the conductor is shut down through its shared handle and the backend is deliberately
+    /// leaked, so `SweetConductor::drop` can never attempt a second shutdown.
+    pub async fn shutdown(self: Arc<Self>) {
+        match Arc::try_unwrap(self) {
+            Ok(MockConductorConfig { mut conductor, .. }) => conductor.shutdown().await,
+            Err(shared) => {
+                let handle: ConductorHandle = (**shared.conductor).clone();
+                handle
+                    .shutdown()
+                    .await
+                    .expect("conductor shutdown task failed")
+                    .expect("conductor shutdown reported an error");
+                std::mem::forget(shared);
+            }
+        }
+    }
 }
 
 /// Implements envelope transport for the Sweetest mock conductor backend.
@@ -86,38 +113,39 @@ impl DanceEnvelopeTransport for MockConductorConfig {
     }
 }
 
-/// Builds the standard sweettest conductor config with every WAN endpoint redirected to an
-/// unroutable local address.
+/// Uses a live loopback rendezvous server while preserving standard gossip tuning.
 ///
-/// Sweettests run a single in-process conductor and never peer, so their network dependency is
-/// accidental rather than designed. `SweetConductorConfig::standard()` inherits
-/// `NetworkConfig::default()`, which hardcodes the public Holochain bootstrap/signal servers and
-/// the iroh canary relay — costing per-conductor `net_report` probe timeouts on startup and
-/// tripping local outbound firewalls. Pointing all three at `127.0.0.1:1` mirrors the host's
-/// dev-mode profile in `launch/config.rs` rather than inventing a second convention.
+/// Holochain waits for the relay to assign an address before publishing local agent info.
+/// An unreachable relay therefore prevents app installation even for a single-agent test.
+/// Sweettest enables plaintext relay support for this local test infrastructure.
 ///
-/// TLS schemes (`wss`/`https`) deliberately, not `ws`/`http`: nothing here sets
-/// `signalAllowPlainText` or `relayAllowPlainText`, and both transports reject a plaintext URL
-/// without the matching flag.
+/// Each conductor is an isolated single-agent node, so DHT publish and gossip have no peers.
+/// Left on, they re-scan every authored op (about 38k after the Core Schema bootstrap) every
+/// few seconds and contend with the test's own zome calls for the database.
 ///
-/// Only the URLs are touched. `advanced` is left as `standard()` built it — unlike the host's dev
-/// mode, it is not cleared, because `standard()` stores its `k2Gossip` interval tuning there and
-/// clearing it would silently revert those timings. `target_arc_factor` is likewise left alone:
-/// with no peers there is nothing to gossip with, so lowering it would change DHT arc behaviour
-/// without removing any traffic.
-fn local_only_config() -> SweetConductorConfig {
-    SweetConductorConfig::standard().tune_network_config(|network| {
-        network.bootstrap_url = url2::url2!("http://127.0.0.1:1");
-        network.signal_url = url2::url2!("wss://127.0.0.1:1");
-        network.relay_url = url2::url2!("https://127.0.0.1:1");
-    })
+/// Gossip is also what grows an agent's storage arc, so with it disabled the agent stays a
+/// non-authority and every read tries the network first. Setup therefore calls
+/// `declare_full_storage_arcs` after installing the app, as Holochain's own tests do.
+fn local_only_config(rendezvous: &DynSweetRendezvous) -> SweetConductorConfig {
+    SweetConductorConfig::standard()
+        .tune_network_config(|network| {
+            network.disable_publish = true;
+            network.disable_gossip = true;
+        })
+        .apply_rendezvous(rendezvous)
+}
+
+/// Keeps the local rendezvous alive with the conductor, including across probe restarts.
+async fn create_local_conductor() -> SweetConductor {
+    let rendezvous = SweetLocalRendezvous::new().await;
+    SweetConductor::from_config_rendezvous(local_only_config(&rendezvous), rendezvous).await
 }
 
 /// Initializes a new Holochain SweetConductor instance for use in integration tests.
 ///
 /// This helper function:
 /// - Loads the DNA bundle defined by `DNA_FILEPATH`.
-/// - Spawns a SweetConductor whose WAN endpoints are all pointed at unroutable local addresses
+/// - Spawns a SweetConductor whose bootstrap and relay endpoints use a live loopback server
 ///   (see [`local_only_config()`]).
 /// - Creates a single test agent and installs the DNA.
 /// - Extracts the initialized [`SweetCell`], [`AgentPubKey`], and [`SweetConductor`] into a
@@ -144,7 +172,7 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
 
-    let mut conductor = SweetConductor::from_config(local_only_config()).await;
+    let mut conductor = create_local_conductor().await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
     let app = conductor
         .setup_app_for_agent("app", holochain_agent.clone(), &[dna.clone()])
@@ -152,6 +180,7 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
         .unwrap();
 
     let cell = app.into_cells()[0].clone();
+    conductor.declare_full_storage_arcs(cell.dna_hash()).await;
     let agent_hash = holochain_agent.into_inner();
     let agent = AgentPubKey::from_raw_39(agent_hash);
 
@@ -222,7 +251,7 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     info!("Current working directory: {:?}", std::env::current_dir().unwrap());
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
-    let mut conductor = SweetConductor::from_config(local_only_config()).await;
+    let mut conductor = create_local_conductor().await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
     let app = conductor
         .setup_app_for_agent("probe-enabled-app", holochain_agent.clone(), &[dna])
@@ -250,10 +279,10 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     let probe_wasm_bytes = std::fs::read(PROBE_WASM_FILEPATH).unwrap_or_else(|error| {
         panic!("failed to read loose probe WASM at {PROBE_WASM_FILEPATH}: {error}")
     });
-    let probe_wasm = DnaWasm::from(probe_wasm_bytes);
-    let probe_wasm_hash = WasmHash::with_data(&probe_wasm).await;
+    let probe_wasm = DnaWasmHashed::from_content(DnaWasm::from(probe_wasm_bytes)).await;
+    let probe_wasm_hash = probe_wasm.hash.clone();
     let mut probe_definition = CoordinatorZomeDef::from_hash(probe_wasm_hash.clone());
-    // This dependency is enforced by DnaFile::update_coordinators and keeps the probe bound to
+    // This dependency is enforced by DnaDef::replace_coordinators and keeps the probe bound to
     // the production Integrity zome it is intended to exercise.
     probe_definition.set_dependency(INTEGRITY_ZOME);
 
@@ -266,12 +295,12 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
         .await
         .expect("the isolated conductor must accept the probe-only coordinator update");
 
-    // Holochain 0.6.3 mutates the cached DnaFile during an update but does not rebuild the
-    // RealRibosome's derived zome-dependency index. Reloading through SweetConductor's updated DNA
-    // cache makes the appended zome's enforced integrity dependency available to HDK host calls.
-    // This is also the upstream coordinator-update test's persistence path.
+    // Reload the persisted DNA definition and WASM so the assertions also verify that the
+    // appended coordinator and its integrity dependency survive a conductor restart.
     conductor.shutdown().await;
-    conductor.startup(true).await;
+    conductor.startup().await;
+    // The restart rejoins the agent with an empty storage arc; claim the full arc again.
+    conductor.declare_full_storage_arcs(&installed_dna_hash).await;
 
     let after = conductor
         .get_dna_def(&cell_id)
@@ -299,7 +328,7 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
         "coordinator augmentation must not change Integrity definitions"
     );
     assert_eq!(
-        DnaHash::with_data_sync(&after),
+        DnaHash::with_data_sync(&after.content),
         installed_dna_hash,
         "rehashing the effective updated DNA definition must preserve production DNA identity"
     );
@@ -355,9 +384,10 @@ fn coordinator_wasm_hash(dna_def: &DnaDef, name: &str) -> WasmHash {
         .iter()
         .find_map(|(candidate, definition)| (candidate == &zome_name).then_some(definition))
         .unwrap_or_else(|| panic!("coordinator {name} is absent from the active DNA definition"));
-    definition
-        .wasm_hash(&zome_name)
-        .unwrap_or_else(|error| panic!("coordinator {name} is not backed by WASM: {error}"))
+    match definition.as_any_zome_def() {
+        ZomeDef::Wasm(wasm) => wasm.wasm_hash.clone(),
+        ZomeDef::Inline(_) => panic!("coordinator {name} is not backed by WASM"),
+    }
 }
 
 fn valid_probe_holon_node() -> HolonNodeModel {
@@ -409,47 +439,26 @@ pub async fn create_test_dance_initiator() -> Arc<dyn DanceInitiator + Send + Sy
 mod tests {
     use super::*;
 
-    /// Pins the local-only intent at the config level, where it is deterministic. The suite-level
-    /// evidence (no WAN dialing, no NAT-discovery socket churn) is observational and cannot be
-    /// asserted from inside a test, so this guards the thing that produces it: an endpoint left
-    /// unassigned would silently inherit a public server from `NetworkConfig::default()`.
-    #[test]
-    fn every_wan_endpoint_is_local_only() {
-        let network = &local_only_config().network;
+    /// Both endpoints must resolve to the live loopback server, preserving standard tuning.
+    #[tokio::test]
+    async fn rendezvous_endpoints_are_local_and_preserve_gossip_tuning() {
+        let rendezvous = SweetLocalRendezvous::new().await;
+        let config = local_only_config(&rendezvous);
+        let network = &config.network;
 
-        for (field, url) in [
-            ("bootstrap_url", &network.bootstrap_url),
-            ("signal_url", &network.signal_url),
-            ("relay_url", &network.relay_url),
-        ] {
+        for (field, url) in
+            [("bootstrap_url", &network.bootstrap_url), ("relay_url", &network.relay_url)]
+        {
             assert_eq!(url.host_str(), Some("127.0.0.1"), "{field} is not local-only: {url}");
+            let port = url.port().expect("local rendezvous must allocate a port");
+            tokio::net::TcpStream::connect(("127.0.0.1", port))
+                .await
+                .expect("rendezvous endpoint must be listening");
         }
-    }
-
-    /// A plaintext scheme would be rejected by the transports' `validate_config` unless the
-    /// matching `*AllowPlainText` flag were set, which `local_only_config()` deliberately does
-    /// not set. See the doc comment there.
-    #[test]
-    fn signal_and_relay_use_tls_schemes() {
-        let network = &local_only_config().network;
-
-        assert_eq!(network.signal_url.scheme(), "wss");
-        assert_eq!(network.relay_url.scheme(), "https");
-    }
-
-    /// `standard()` stores its gossip interval tuning in `advanced`; clearing that field to
-    /// suppress WAN config would silently revert those timings for every sweettest.
-    #[test]
-    fn gossip_tuning_from_standard_config_survives() {
-        let advanced = local_only_config()
-            .network
-            .advanced
-            .clone()
-            .expect("standard() should have populated advanced with gossip tuning");
-
-        assert!(
-            advanced.get("k2Gossip").is_some(),
-            "k2Gossip tuning was dropped from advanced: {advanced}"
-        );
+        assert_eq!(network.bootstrap_url, url2::url2!("{}", rendezvous.bootstrap_addr()));
+        assert_eq!(network.relay_url, url2::url2!("{}", rendezvous.relay_addr()));
+        assert_eq!(network.advanced, SweetConductorConfig::standard().network.advanced);
+        assert!(network.disable_publish, "isolated conductors must not publish");
+        assert!(network.disable_gossip, "isolated conductors must not gossip");
     }
 }

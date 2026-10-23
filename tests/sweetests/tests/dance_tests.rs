@@ -20,10 +20,16 @@
 mod execution_steps;
 mod fixture_cases;
 
-use execution_steps::dance_test_runner::{run_dance_test_suite, DanceTestSuite};
+use execution_steps::dance_test_runner::{
+    boot_dance_test_suite, run_dance_test_suite, run_dance_test_suite_on, DanceTestSuite,
+};
 use fixture_cases::commit_graph_only_fixture::*;
 use fixture_cases::commit_key_uniqueness_fixture::*;
+use holons_core::ReadableHolon;
+use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
+use map_commands_runtime::{ExecutionPolicy, Runtime};
 use rstest::*;
+use std::collections::BTreeSet;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::attachment_defaults_fixture::*;
@@ -60,12 +66,83 @@ use fixture_cases::transaction_lifecycle_fixture::*;
 ///      set RUST_LOG to enable client-side (i.e., test code) tracing
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
+/// The `runtime_behavior_matrix` case is skipped in CI for now (`ci-dance` filter in
+/// `.config/nextest.toml`): one bootstrap plus 33 scenarios ran past 30 minutes on a hosted
+/// runner. It still runs locally.
 #[rstest]
-#[case::pristine_bootstrap_and_loader(pristine_bootstrap_and_loader_suite())]
 #[case::runtime_behavior_matrix(runtime_behavior_matrix_suite())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     run_dance_test_suite(suite).await;
+}
+
+/// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
+/// so it shares this suite's bootstrap instead of paying for its own.
+///
+/// Skipped in CI for now (`ci-dance` filter in `.config/nextest.toml`): it takes over 30 minutes
+/// on a hosted runner, about 2.5x local. Most of that is the whole-schema verification steps,
+/// which read relationships one dance call at a time; the ValidationBindings step reads every
+/// loaded holon (~1,060 reads).
+#[tokio::test(flavor = "multi_thread")]
+async fn pristine_bootstrap_and_loader() {
+    let (runtime, initial_tx_id) = boot_dance_test_suite().await;
+    assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(&runtime).await;
+    run_dance_test_suite_on(&runtime, initial_tx_id, pristine_bootstrap_and_loader_suite()).await;
+}
+
+/// Bootstrap schemas must be discoverable through ordinary Space navigation.
+async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(runtime: &Runtime) {
+    let result = runtime
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("failed to begin the schema availability transaction");
+    let MapResult::TransactionCreated { tx_id } = result else {
+        panic!("expected TransactionCreated, got {result:?}")
+    };
+    let context = runtime.session().get_transaction(&tx_id).unwrap();
+    let space = context.get_space_holon().unwrap().expect("bootstrap Space");
+
+    assert!(space.available_relationships().unwrap().iter().any(|relationship| {
+        relationship.descriptor.base_relationship_name().unwrap().to_string() == "AvailableSchemas"
+    }));
+    let schemas =
+        space.related_holons("AvailableSchemas").unwrap().read().unwrap().get_members().clone();
+    let expected = BTreeSet::from([
+        "MAP Commands Schema-v0.1.0",
+        "MAP Core Schema-v0.0.7",
+        "MAP DAHN Schema-v0.1.0",
+        "MAP Dance Schema-v0.1.0",
+        "MAP Dancer Schema-v0.1.0",
+        "MAP Design Tokens Schema-v0.1.0",
+        "MAP Meta Design System Schema-v0.1.0",
+        "MAP Query Dance Adapter Schema-v0.1.0",
+        "MAP Query Schema-v0.0.2",
+        "MAP Theme Schema-v0.1.0",
+        "MAP Validation Schema-v0.1.0",
+    ]);
+    let keys: BTreeSet<String> =
+        schemas.iter().map(|schema| schema.key().unwrap().unwrap().to_string()).collect();
+    assert_eq!(keys, expected.into_iter().map(str::to_owned).collect());
+    assert_eq!(schemas.len(), keys.len(), "schemas must not be duplicated");
+    for schema in schemas {
+        assert!(schema.available_relationships().unwrap().iter().any(|relationship| {
+            relationship.descriptor.base_relationship_name().unwrap().to_string()
+                == "AvailableInSpace"
+        }));
+        let spaces = schema
+            .related_holons("AvailableInSpace")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .clone();
+        assert_eq!(spaces.len(), 1);
+        assert_eq!(spaces[0].holon_id(), space.holon_id());
+    }
+    runtime.session().archive_transaction(&tx_id).unwrap();
 }
 
 fn pristine_bootstrap_and_loader_suite() -> DanceTestSuite {

@@ -99,15 +99,13 @@ All pull requests are automatically validated by our GitHub Actions CI workflows
 
 ### ✅ What the CI Checks Do
 
-- **Test** — Runs `npm test`, including backend integration tests (Sweetest)
+- **Light** — Runs the SDK wire-fixture and schema checks, then `npm run test:light` (all unit tests: shared crates, host, hApp, sweetest harness lib, web, SDK). No Holochain conductor.
+- **Heavy** — Runs `npm run test:heavy`: builds the hApp and probes, then runs the sweetests under `cargo-nextest`, which prints each test's duration and terminates tests that hang. Heavy runs as parallel shards; which test files each shard runs is defined by the `ci-<shard>` profiles in `.config/nextest.toml`. Then re-audits the packaged coordinator surfaces.
+- **Dance** — Runs the `dance_tests` suites (`ci-dance` profile) in their own job with a long time limit, because each suite takes longer than a heavy shard allows. Not required by the CI Pass Aggregator, and temporarily disabled: both suites, and `commit_incomplete_tests`, are skipped in CI because they exceed their time limits on hosted runners. Run `npm run sweetest` locally before merging behaviour changes.
 - **Format** — Runs `npm run fmt:check` inside `nix develop` to enforce Rust formatting across `host`, `happ`, and `tests/sweetests`
 - **CI Pass Aggregator** — Combines and reports status of all required checks
 
-> 📝 **Note:** Unit tests are currently excluded from CI due to compatibility issues with the GitHub Actions Ubuntu environment. Run them locally before submitting PRs.
-
-```bash
-npm run test:unit
-```
+Light and Heavy run in parallel, so unit test failures are reported without waiting for the sweetests. `npm test` still runs both tiers locally.
 
 ---
 
@@ -117,7 +115,7 @@ To avoid failed checks:
 
 - Run `npm run fmt` locally to format all Rust code covered by the repo-level formatting contract (`host`, `happ`, and `tests/sweetests`)
 - Run `npm run fmt:check` if you want the same formatting validation used in CI
-- Ensure integration tests pass with `npm run sweetest`
+- Ensure unit tests pass with `npm run test:light` and integration tests with `npm run sweetest`
 - Keep commits clean and scoped — large formatting-only changes should be separated
 
 ---

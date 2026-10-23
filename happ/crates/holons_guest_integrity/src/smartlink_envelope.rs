@@ -72,18 +72,18 @@ pub fn validate_smartlink_create(
 /// outer host error and therefore cannot become a permanent PVL rejection.
 pub fn resolve_link_delete_target(
     original_action_hash: ActionHash,
-) -> ExternResult<Result<CreateLink, PvlViolation>> {
+) -> ExternResult<Result<CreateLinkData, PvlViolation>> {
     let target_action = must_get_action(original_action_hash)?;
-    let target_kind = match target_action.action() {
-        Action::CreateLink(_) => LinkDeleteTargetKind::CreateLink,
-        Action::DeleteLink(_) => LinkDeleteTargetKind::DeleteLink,
+    let target_kind = match &target_action.action().data {
+        ActionData::CreateLink(_) => LinkDeleteTargetKind::CreateLink,
+        ActionData::DeleteLink(_) => LinkDeleteTargetKind::DeleteLink,
         _ => LinkDeleteTargetKind::Other,
     };
     if let Err(violation) = validate_link_delete_target(target_kind) {
         return Ok(Err(violation));
     }
 
-    let Action::CreateLink(create_link) = target_action.action() else {
+    let ActionData::CreateLink(create_link) = &target_action.action().data else {
         return Err(wasm_error!(WasmErrorInner::Guest(
             "link-delete target classification accepted a non-CreateLink action".into()
         )));
@@ -97,7 +97,7 @@ pub fn resolve_link_delete_target(
 /// Structural validity was established when the original create was accepted,
 /// so deletion neither resolves dependencies nor decodes the original tag.
 pub fn validate_smartlink_delete(
-    _original_action: &CreateLink,
+    _original_action: &CreateLinkData,
 ) -> ExternResult<Result<(), PvlViolation>> {
     Ok(Ok(()))
 }
@@ -147,7 +147,7 @@ mod tests {
             fn must_get_agent_activity(
                 &self,
                 input: MustGetAgentActivityInput,
-            ) -> ExternResult<Vec<RegisterAgentActivity>>;
+            ) -> ExternResult<Vec<AgentActivity>>;
             fn dna_info(&self, input: ()) -> ExternResult<DnaInfo>;
             fn zome_info(&self, input: ()) -> ExternResult<ZomeInfo>;
             fn trace(&self, input: TraceMsg) -> ExternResult<()>;
@@ -177,18 +177,21 @@ mod tests {
         )
     }
 
-    fn create_link() -> CreateLink {
-        CreateLink {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: action_hash(1),
-            base_address: action_hash(2).into(),
-            target_address: action_hash(3).into(),
-            zome_index: ZomeIndex(0),
-            link_type: LinkType(3),
-            tag: valid_tag(),
-            weight: RateWeight::default(),
+    fn create_link() -> TypedAction<CreateLinkData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(action_hash(1)),
+            },
+            data: CreateLinkData {
+                base_address: action_hash(2).into(),
+                target_address: action_hash(3).into(),
+                zome_index: ZomeIndex(0),
+                link_type: LinkType(3),
+                tag: valid_tag(),
+            },
         }
     }
 
@@ -278,11 +281,11 @@ mod tests {
         let mut mock = MockHdi::new();
         mock.expect_must_get_action()
             .times(1)
-            .return_once(move |_| Ok(signed_action(Action::CreateLink(returned))));
+            .return_once(move |_| Ok(signed_action(returned.into())));
         mock.expect_must_get_valid_record().times(0);
         set_hdi(mock);
 
-        assert_eq!(resolve_link_delete_target(action_hash(7)), Ok(Ok(expected)));
+        assert_eq!(resolve_link_delete_target(action_hash(7)), Ok(Ok(expected.data)));
     }
 
     #[test]
@@ -295,19 +298,23 @@ mod tests {
         set_hdi(failing);
         assert!(resolve_link_delete_target(action_hash(7)).is_err());
 
-        let delete = DeleteLink {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(2),
-            action_seq: 2,
-            prev_action: action_hash(4),
-            base_address: action_hash(5).into(),
-            link_add_address: action_hash(6),
+        let delete = TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(2),
+                action_seq: 2,
+                prev_action: Some(action_hash(4)),
+            },
+            data: DeleteLinkData {
+                base_address: action_hash(5).into(),
+                link_add_address: action_hash(6),
+            },
         };
         let mut invalid = MockHdi::new();
         invalid
             .expect_must_get_action()
             .times(1)
-            .return_once(move |_| Ok(signed_action(Action::DeleteLink(delete))));
+            .return_once(move |_| Ok(signed_action(delete.into())));
         invalid.expect_must_get_valid_record().times(0);
         set_hdi(invalid);
 

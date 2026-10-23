@@ -32,11 +32,14 @@ impl fmt::Display for AgentActivityRejection {
 /// validation instead of turning a temporarily missing predecessor into permanent invalidity.
 pub fn validate_create_agent(
     agent: AgentPubKey,
-    action: &Create,
+    action: &TypedAction<CreateData>,
 ) -> ExternResult<Result<(), AgentActivityRejection>> {
-    let previous_action = must_get_action(action.prev_action.clone())?;
-    let Action::AgentValidationPkg(AgentValidationPkg { membrane_proof, .. }) =
-        previous_action.action()
+    let prev_action = action.prev_action().ok_or_else(|| {
+        wasm_error!(WasmErrorInner::Guest("CreateAgent action has no predecessor".into()))
+    })?;
+    let previous_action = must_get_action(prev_action.clone())?;
+    let ActionData::AgentValidationPkg(AgentValidationPkgData { membrane_proof, .. }) =
+        &previous_action.action().data
     else {
         return Ok(Err(AgentActivityRejection::CreateAgentPredecessorMustBeAgentValidationPkg));
     };
@@ -78,7 +81,7 @@ mod tests {
             fn must_get_agent_activity(
                 &self,
                 input: MustGetAgentActivityInput,
-            ) -> ExternResult<Vec<RegisterAgentActivity>>;
+            ) -> ExternResult<Vec<AgentActivity>>;
             fn dna_info(&self, input: ()) -> ExternResult<DnaInfo>;
             fn zome_info(&self, input: ()) -> ExternResult<ZomeInfo>;
             fn trace(&self, input: TraceMsg) -> ExternResult<()>;
@@ -105,15 +108,18 @@ mod tests {
         AgentPubKey::from_raw_36(vec![seed; 36])
     }
 
-    fn create_agent() -> Create {
-        Create {
-            author: agent(1),
-            timestamp: Timestamp::from_micros(2),
-            action_seq: 2,
-            prev_action: action_hash(3),
-            entry_type: EntryType::AgentPubKey,
-            entry_hash: EntryHash::from_raw_36(vec![5; 36]),
-            weight: EntryRateWeight::default(),
+    fn create_agent() -> TypedAction<CreateData> {
+        TypedAction {
+            header: ActionHeader {
+                author: agent(1),
+                timestamp: Timestamp::from_micros(2),
+                action_seq: 2,
+                prev_action: Some(action_hash(3)),
+            },
+            data: CreateData {
+                entry_type: EntryType::AgentPubKey,
+                entry_hash: EntryHash::from_raw_36(vec![5; 36]),
+            },
         }
     }
 
@@ -134,30 +140,50 @@ mod tests {
 
     #[test]
     fn create_agent_accepts_an_agent_validation_package_predecessor() {
-        install_predecessor(Action::AgentValidationPkg(AgentValidationPkg {
-            author: agent(1),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: action_hash(2),
-            membrane_proof: None,
-        }));
+        install_predecessor(Action {
+            header: ActionHeader {
+                author: agent(1),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(action_hash(2)),
+            },
+            data: ActionData::AgentValidationPkg(AgentValidationPkgData { membrane_proof: None }),
+        });
 
         assert_eq!(validate_create_agent(agent(1), &create_agent()), Ok(Ok(())));
     }
 
     #[test]
     fn create_agent_rejects_another_predecessor_kind_deterministically() {
-        install_predecessor(Action::InitZomesComplete(InitZomesComplete {
-            author: agent(1),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: action_hash(2),
-        }));
+        install_predecessor(Action {
+            header: ActionHeader {
+                author: agent(1),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(action_hash(2)),
+            },
+            data: ActionData::InitZomesComplete(InitZomesCompleteData {}),
+        });
 
         assert_eq!(
             validate_create_agent(agent(1), &create_agent()),
             Ok(Err(AgentActivityRejection::CreateAgentPredecessorMustBeAgentValidationPkg))
         );
+    }
+
+    #[test]
+    fn absent_predecessor_hash_remains_an_outer_error_without_lookup() {
+        let mut action = create_agent();
+        action.header.prev_action = None;
+        let mut mock = MockHdi::new();
+        mock.expect_must_get_action().times(0);
+        mock.expect_must_get_valid_record().times(0);
+        set_hdi(mock);
+
+        let error = validate_create_agent(agent(1), &action)
+            .expect_err("a missing action header field must not become a policy rejection");
+
+        assert!(error.to_string().contains("CreateAgent action has no predecessor"));
     }
 
     #[test]

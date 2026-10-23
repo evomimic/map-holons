@@ -9,14 +9,14 @@ affect host builds, and vice versa.
 
 ---
 
-## `portmapper` (v0.12.0) — disable UPnP / PCP / NAT-PMP by default
+## `portmapper` (v0.19.3) — disable UPnP / PCP / NAT-PMP by default
 
 **Status: REQUIRED** for sweettests to run without emitting LAN NAT-discovery traffic.
 Upstream: MIT OR Apache-2.0, <https://github.com/n0-computer/net-tools>.
 
 ### Patched file
 
-`portmapper/src/lib.rs` — the `impl Default for Config` block. Three booleans, nothing else.
+`portmapper/src/lib.rs` — the `impl Default for Config` block. Three booleans and the accompanying default documentation; all other files match the published crate.
 
 ```rust
 // upstream                         // patched
@@ -34,32 +34,33 @@ dance_tests-79fb8c75f9795bec wants to connect to 239.255.255.250 on UDP port 190
 Code Signature: Not signed
 ```
 
-That is UPnP discovery. It comes from iroh's port mapper, and **no configuration on our side can
-turn it off**:
+That is UPnP discovery. The sweettest dependency chain is Holochain 0.7.1 →
+Kitsune 0.5.2 → iroh 1.3.0 → portmapper 0.19.3.
 
-1. `iroh-holochain-0.95.1/src/magicsock.rs:1803` builds the client as
-   `portmapper::Client::with_metrics(Default::default(), ..)` — the config is hardcoded to the
-   crate default, with no plumbing to override it.
-2. `portmapper-0.12.0/src/lib.rs:130-139` — that default enables all three protocols.
-3. `magicsock.rs:1292` calls `procure_mapping()` at the top of every direct-address update,
-   **before** the `if self.relay_map.is_empty() { return }` early-out on line 1299. So it fires
-   regardless of what `bootstrap_url` / `signal_url` / `relay_url` are set to.
+1. `iroh-1.3.0/src/portmapper.rs` creates `portmapper::Client::default()` when its
+   `PortmapperConfig` is enabled, which is the default.
+2. `portmapper-0.19.3/src/lib.rs` enables all three discovery protocols in `Config::default()`.
+3. `iroh-1.3.0/src/socket.rs` calls `procure_mapping()` during direct-address updates.
 
-A single in-process sweettest conductor never peers, so there is nothing for NAT traversal to
-traverse. The dependency is accidental, not designed.
+The single-agent sweettests do not need gateway port mapping. Their live loopback rendezvous
+server provides the relay address Holochain needs for local agent registration, but does not
+by itself disable gateway discovery.
 
-### Why the alternatives do not work
+### Why the patch remains necessary
 
-| Alternative | Result |
-|---|---|
-| Point every WAN endpoint at `127.0.0.1:1` | Done — see `mock_conductor.rs::local_only_config`. Removes WAN dialing and cuts socket churn ~26x, but does **not** stop SSDP: `procure_mapping()` runs before the relay-map check. |
-| Turn off a cargo feature | `portmapper` is a **non-optional** dependency of `iroh` (no `optional = true`), and none of iroh's features gate it. |
-| A config knob | `IrohTransportConfig` exposes only `relay_url`, `relay_allow_plain_text`, `max_frame_bytes`, `connect_timeout_s` and auth material. `NetworkConfig`'s `test-utils` flags (`disable_bootstrap` / `disable_publish` / `disable_gossip`) gate kitsune modules, not the transport. |
-| Drop the `transport-iroh` feature from sweettests | **Does not compile.** `kitsune2-0.4.1/src/lib.rs:49` — `error[E0063]: missing field 'transport' in initializer of 'kitsune2_api::Builder'`. Only one of the two transport cfgs initialises the field, there is no mem-transport feature, and `holochain_p2p/src/spawn/actor.rs:504` calls `kitsune2::default_builder()` internally with no injection hook. |
+Iroh now exposes both a `portmapper` Cargo feature and
+`endpoint::Builder::portmapper_config(PortmapperConfig::Disabled)`. However,
+`kitsune2_transport_iroh` 0.5.2 does not expose the latter through `IrohTransportConfig`,
+and the resolved sweettest graph enables iroh's portmapper feature. Adding a direct dependency
+with `default-features = false` cannot subtract features enabled by other dependencies.
+
+Using the runtime setting requires changes to the transport. Until that setting reaches the
+conductor configuration, this workspace-local patch preserves the test networking behavior
+without changing production host networking.
 
 ### Why disabling the flags is sufficient
 
-With all three false, no packet is sent — not merely fewer:
+With all three false, the default client starts no UPnP, PCP, or NAT-PMP probes or mappings:
 
 - `Probe::from_output` (lines 296 / 307 / 319) gates each probing task on
   `(enable_x && !x).then(..)`, so all three become `None`.
@@ -84,13 +85,22 @@ direct connections to fall back on the relay. Host dev mode needs a different me
 
 Remove this patch once **either** of the following is true:
 
-- `iroh` accepts a `portmapper::Config` (or an equivalent "disable port mapping" switch) through
-  its endpoint builder, and the version we depend on carries it; **or**
+- Kitsune exposes iroh's `PortmapperConfig::Disabled` through conductor configuration and
+  the sweettest harness selects it; **or**
 - `kitsune2` exposes a transport that does not bind a wildcard UDP socket, making the whole
   question moot for sweettests.
 
-When bumping `portmapper` past 0.12.0, **re-vendor from the new version rather than editing in
+When bumping `portmapper`, **re-vendor from the new version rather than editing in
 place**, then re-apply the three-boolean change. After any bump, confirm the patch is still wired:
 cargo must **not** warn `Patch 'portmapper ...' was not used in the crate graph`, and the
 `Cargo.lock` entry for `portmapper` must have **no `source = "registry+..."` line** (patched crates
 are listed with `dependencies` only).
+
+Verify resolution without updating other dependencies:
+
+```sh
+cargo tree --manifest-path tests/sweetests/Cargo.toml --locked --offline -i portmapper
+cargo tree --manifest-path host/Cargo.toml --locked --offline -i portmapper
+```
+
+The first must select `patches/portmapper`; the host must retain the registry crate.

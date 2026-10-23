@@ -95,11 +95,7 @@ pub async fn update_app(
                 if let Some(old_zome_def) =
                     old_dna_def.coordinator_zomes.iter().find(|(zome, _)| zome.eq(&zome_name))
                 {
-                    if !old_zome_def
-                        .1
-                        .wasm_hash(&zome_name)?
-                        .eq(&coordinator_zome.wasm_hash(&zome_name)?)
-                    {
+                    if old_zome_def.1.zome_hash() != coordinator_zome.zome_hash() {
                         log::info!("Updating coordinator zome {zome_name} for role {role_name}");
                         zomes.push(ZomeManifest {
                             name: zome_name.clone(),

@@ -15,7 +15,7 @@ use core_types::{
     CanonicalKey, HolonId, HolonWriteRequest, LineageId, PreparedSmartLink, PutSmartLinkOutcome,
     StoredHolonNode,
 };
-use holochain::prelude::{Action, ActionHash, Record};
+use holochain::prelude::{ActionData, ActionHash, Record};
 use holons_test::harness::helpers::{
     assert_commit_rejected_with_pvl, setup_probe_enabled_conductor, setup_test_conductor,
 };
@@ -212,14 +212,14 @@ async fn authored_actions_are_a_create_and_updates_rooted_at_it() {
     let root_hash =
         ActionHash::try_from_raw_39(root_id.0.clone()).expect("root id must be an action hash");
 
-    match raw_record(&backend, &root_id).await.action() {
-        Action::Create(_) => {}
+    match &raw_record(&backend, &root_id).await.action().data {
+        ActionData::Create(_) => {}
         other => panic!("PublishRoot must author a Create, got {:?}", other.action_type()),
     }
 
     for (label, version_id) in [("second", &second_id), ("third", &third_id)] {
-        match raw_record(&backend, version_id).await.action() {
-            Action::Update(update) => assert_eq!(
+        match &raw_record(&backend, version_id).await.action().data {
+            ActionData::Update(update) => assert_eq!(
                 update.original_action_address, root_hash,
                 "the {label} generation's Update must target the lineage-root Create"
             ),

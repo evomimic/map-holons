@@ -305,7 +305,7 @@ pub fn unzip_file(reader: std::fs::File, outpath: PathBuf) -> Result<(), FileSys
             None => continue,
         };
 
-        if (&*file.name()).ends_with('/') {
+        if file.name()?.ends_with('/') {
             fs::create_dir_all(&outpath)?;
         } else {
             if let Some(p) = outpath.parent() {

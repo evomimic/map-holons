@@ -10,6 +10,7 @@ use std::time::Instant;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread")]
+#[ignore = "explicit performance capture; run sweet:bootstrap-perf"]
 async fn measures_generated_core_schema_bootstrap() {
     let mut test_case = DancesTestCase::default();
     let started_at = Instant::now();

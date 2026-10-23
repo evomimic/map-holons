@@ -1,9 +1,12 @@
 """Verify measurement grouping and reject captures that would misstate a baseline."""
 
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("measure", Path(__file__).with_name("measure-commit-performance.py"))
 measure = importlib.util.module_from_spec(spec)
@@ -33,6 +36,42 @@ def complete_run():
 
 
 class CaptureTests(unittest.TestCase):
+    def test_link_profile_wires_separate_output_and_records_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "capture"
+            argv = ["measure", "--runs", "1", "--link-profile", "--output", str(destination)]
+
+            def capture(command, *, stdout, stderr, env):
+                self.assertIn("--exact", command)
+                self.assertIn("measures_first_and_repeated_visualizer_usage_commits", command)
+                self.assertNotIn("MAP_COMMIT_PERF_INDEX_MODE", env)
+                self.assertEqual(env["MAP_COMMIT_PERF_LINK_OUTPUT"], str((destination / "run-01-links.json").resolve()))
+                stdout.write(complete_run())
+                return SimpleNamespace(returncode=0)
+
+            with patch.object(measure.sys, "argv", argv), \
+                 patch.dict(measure.os.environ, {"MAP_COMMIT_PERF_LINK_OUTPUT": "stale.json"}, clear=True), \
+                 patch.object(measure, "output", return_value=""), \
+                 patch.object(measure.platform, "platform", return_value="test-platform"), \
+                 patch.object(measure.platform, "machine", return_value="test-machine"), \
+                 patch.object(measure.subprocess, "run", side_effect=capture), \
+                 patch("builtins.print"):
+                self.assertEqual(measure.main(), 0)
+            metadata = json.loads((destination / "metadata.json").read_text())
+            self.assertTrue(metadata["link_profile"])
+            self.assertNotIn("index_mode", metadata)
+
+    def test_retired_index_environment_is_rejected_before_creating_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "capture"
+            with patch.object(measure.sys, "argv", ["measure", "--output", str(destination)]), \
+                 patch.dict(measure.os.environ, {"MAP_COMMIT_PERF_INDEX_MODE": "base-hash"}, clear=True), \
+                 patch.object(measure.sys, "stderr"), \
+                 self.assertRaises(SystemExit) as error:
+                measure.main()
+            self.assertEqual(error.exception.code, 2)
+            self.assertFalse(destination.exists())
+
     def summarize(self, contents):
         with tempfile.TemporaryDirectory() as directory:
             logs = []

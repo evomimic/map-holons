@@ -91,7 +91,7 @@ mod tests {
             fn must_get_agent_activity(
                 &self,
                 input: MustGetAgentActivityInput,
-            ) -> ExternResult<Vec<RegisterAgentActivity>>;
+            ) -> ExternResult<Vec<AgentActivity>>;
             fn dna_info(&self, input: ()) -> ExternResult<DnaInfo>;
             fn zome_info(&self, input: ()) -> ExternResult<ZomeInfo>;
             fn trace(&self, input: TraceMsg) -> ExternResult<()>;
@@ -122,41 +122,47 @@ mod tests {
         app_entry_def(HOLON_ZOME_INDEX, HOLON_NODE_ENTRY_DEF_INDEX)
     }
 
-    fn create_action(entry_type: EntryType) -> Create {
-        Create {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(1),
-            action_seq: 1,
-            prev_action: action_hash(1),
-            entry_type,
-            entry_hash: EntryHash::from_raw_36(vec![2; 36]),
-            weight: EntryRateWeight::default(),
+    fn create_action(entry_type: EntryType) -> TypedAction<CreateData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(1),
+                action_seq: 1,
+                prev_action: Some(action_hash(1)),
+            },
+            data: CreateData { entry_type, entry_hash: EntryHash::from_raw_36(vec![2; 36]) },
         }
     }
 
-    fn update_action(entry_type: EntryType) -> Update {
-        Update {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(2),
-            action_seq: 2,
-            prev_action: action_hash(3),
-            original_action_address: action_hash(4),
-            original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
-            entry_type,
-            entry_hash: EntryHash::from_raw_36(vec![6; 36]),
-            weight: EntryRateWeight::default(),
+    fn update_action(entry_type: EntryType) -> TypedAction<UpdateData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(2),
+                action_seq: 2,
+                prev_action: Some(action_hash(3)),
+            },
+            data: UpdateData {
+                original_action_address: action_hash(4),
+                original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
+                entry_type,
+                entry_hash: EntryHash::from_raw_36(vec![6; 36]),
+            },
         }
     }
 
-    fn delete_action() -> Delete {
-        Delete {
-            author: AgentPubKey::from_raw_36(vec![0; 36]),
-            timestamp: Timestamp::from_micros(3),
-            action_seq: 3,
-            prev_action: action_hash(7),
-            deletes_address: action_hash(8),
-            deletes_entry_address: EntryHash::from_raw_36(vec![9; 36]),
-            weight: RateWeight::default(),
+    fn delete_action() -> TypedAction<DeleteData> {
+        TypedAction {
+            header: ActionHeader {
+                author: AgentPubKey::from_raw_36(vec![0; 36]),
+                timestamp: Timestamp::from_micros(3),
+                action_seq: 3,
+                prev_action: Some(action_hash(7)),
+            },
+            data: DeleteData {
+                deletes_address: action_hash(8),
+                deletes_entry_address: EntryHash::from_raw_36(vec![9; 36]),
+            },
         }
     }
 
@@ -168,7 +174,8 @@ mod tests {
     }
 
     fn record(action: Action) -> Record {
-        Record::new(signed_action(action), None)
+        let entry = RecordEntry::new(action.entry_type().map(EntryType::visibility), None);
+        Record::new(signed_action(action), entry)
     }
 
     fn zome_info_for(zome_index: ZomeIndex) -> ZomeInfo {
@@ -200,7 +207,7 @@ mod tests {
     #[test]
     fn update_accepts_a_holon_node_create_root() {
         let entry_def = holon_node_entry_def();
-        install_update_target(Action::Create(create_action(EntryType::App(entry_def.clone()))));
+        install_update_target(create_action(EntryType::App(entry_def.clone())).into());
 
         assert_eq!(validate_holon_node_update_target(&action_hash(20), &entry_def), Ok(Ok(())));
     }
@@ -208,7 +215,7 @@ mod tests {
     #[test]
     fn update_rejects_an_update_target_even_when_it_carries_a_holon_node() {
         let entry_def = holon_node_entry_def();
-        install_update_target(Action::Update(update_action(EntryType::App(entry_def.clone()))));
+        install_update_target(update_action(EntryType::App(entry_def.clone())).into());
 
         assert_eq!(
             validate_holon_node_update_target(&action_hash(20), &entry_def),
@@ -222,7 +229,7 @@ mod tests {
     #[test]
     fn update_rejects_other_action_kinds_before_entry_classification() {
         let entry_def = holon_node_entry_def();
-        install_update_target(Action::Delete(delete_action()));
+        install_update_target(delete_action().into());
 
         assert_eq!(
             validate_holon_node_update_target(&action_hash(20), &entry_def),
@@ -238,7 +245,7 @@ mod tests {
         let entry_def = holon_node_entry_def();
         let other_entry_def =
             app_entry_def(HOLON_ZOME_INDEX, EntryDefIndex(HOLON_NODE_ENTRY_DEF_INDEX.0 + 1));
-        install_update_target(Action::Create(create_action(EntryType::App(other_entry_def))));
+        install_update_target(create_action(EntryType::App(other_entry_def)).into());
 
         assert_eq!(
             validate_holon_node_update_target(&action_hash(20), &entry_def),
@@ -254,9 +261,7 @@ mod tests {
         let entry_def = holon_node_entry_def();
         let same_index_other_scope =
             app_entry_def(ZomeIndex(HOLON_ZOME_INDEX.0 + 1), HOLON_NODE_ENTRY_DEF_INDEX);
-        install_update_target(Action::Create(create_action(EntryType::App(
-            same_index_other_scope,
-        ))));
+        install_update_target(create_action(EntryType::App(same_index_other_scope)).into());
 
         assert_eq!(
             validate_holon_node_update_target(&action_hash(20), &entry_def),
@@ -270,8 +275,8 @@ mod tests {
     #[test]
     fn target_classification_distinguishes_non_app_and_absent_entries() {
         let non_app_target =
-            classify_target(&Action::Create(create_action(EntryType::AgentPubKey)), |_| false);
-        let absent_target = classify_target(&Action::Delete(delete_action()), |_| false);
+            classify_target(&create_action(EntryType::AgentPubKey).into(), |_| false);
+        let absent_target = classify_target(&delete_action().into(), |_| false);
 
         assert_eq!(non_app_target.entry_kind, TargetEntryKind::NonAppEntry);
         assert_eq!(absent_target.entry_kind, TargetEntryKind::Absent);
@@ -280,8 +285,8 @@ mod tests {
     #[test]
     fn delete_accepts_create_and_update_holon_node_versions() {
         for target_action in [
-            Action::Create(create_action(EntryType::App(holon_node_entry_def()))),
-            Action::Update(update_action(EntryType::App(holon_node_entry_def()))),
+            create_action(EntryType::App(holon_node_entry_def())).into(),
+            update_action(EntryType::App(holon_node_entry_def())).into(),
         ] {
             install_delete_target(target_action);
 
@@ -291,7 +296,7 @@ mod tests {
 
     #[test]
     fn delete_rejects_other_action_kinds() {
-        install_delete_target(Action::Delete(delete_action()));
+        install_delete_target(delete_action().into());
 
         assert_eq!(
             validate_holon_node_delete_target(&action_hash(21)),
@@ -306,9 +311,7 @@ mod tests {
     fn delete_rejects_an_entry_outside_the_scoped_holon_node_identity() {
         let same_index_other_scope =
             app_entry_def(ZomeIndex(HOLON_ZOME_INDEX.0 + 1), HOLON_NODE_ENTRY_DEF_INDEX);
-        install_delete_target(Action::Create(create_action(EntryType::App(
-            same_index_other_scope,
-        ))));
+        install_delete_target(create_action(EntryType::App(same_index_other_scope)).into());
 
         assert_eq!(
             validate_holon_node_delete_target(&action_hash(21)),
