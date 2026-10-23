@@ -106,6 +106,8 @@ path = "../../host/crates/map_commands_runtime"
 path = "../../shared_crates/holons_trust_channel"
 
 [dev-dependencies]
+anyhow = "1"
+holochain_client = { version = "0.9", features = ["lair_signing"] }
 rstest = "0.26.1"
 pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }

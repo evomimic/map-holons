@@ -32,5 +32,4 @@ lto = true              # Link-time optimization
 codegen-units = 1       # Slower compile, but better size
 
 [profile.dev]
-opt-level = 1           # Reasonable compromise for dev build time vs perf
-# You could also use "z" here if you're very size-conscious during dev
+opt-level = "z"         # Match the root/test and host development profiles

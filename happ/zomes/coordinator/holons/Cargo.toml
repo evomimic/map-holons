@@ -41,4 +41,5 @@ path = "../../../../shared_crates/type_system/integrity_core_types"
 path = "../../../crates/holons_guest"
 
 [features]
+holon-fetch-profiling = ["holons_guest/holon-fetch-profiling"]
 commit-performance-profiling = ["holons_guest/commit-performance-profiling"]

@@ -30,6 +30,8 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     };
     let dance_name = request.dance_name.clone();
     let is_load_holons = dance_name.0 == "load_holons";
+    let profile_fetch = cfg!(feature = "holon-fetch-profiling")
+        && matches!(dance_name.0.as_str(), "get_holon_by_id" | "query_relationships");
     let total_started_at = performance_timestamp_micros();
 
     if is_load_holons {
@@ -85,7 +87,14 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
 
     // ---- dispatch ----
     let dispatch_started_at = performance_timestamp_micros();
+    let read_cost_scope = crate::read_cost::Scope::assessment(profile_fetch);
+    let links_before =
+        profile_fetch.then(crate::persistence_layer::smartlink::relationship_read_metrics);
+    let nodes_before =
+        profile_fetch.then(crate::persistence_layer::holon_storage::exact_node_read_count);
     let response_runtime = dispatch_dance(&context, bound_request);
+    let read_costs = profile_fetch.then(crate::read_cost::snapshot);
+    drop(read_cost_scope);
     let dispatch_micros = elapsed_micros(dispatch_started_at);
 
     // ---- project runtime -> wire ----
@@ -97,6 +106,26 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let session_export_started_at = performance_timestamp_micros();
     let response_session = restore_session_state_from_context(&context);
     let session_export_micros = elapsed_micros(session_export_started_at);
+
+    if let Some(costs) = read_costs {
+        let links_after = crate::persistence_layer::smartlink::relationship_read_metrics();
+        let links_before = links_before.unwrap();
+        let nodes_after = crate::persistence_layer::holon_storage::exact_node_read_count();
+        let link_backend_us = costs[crate::read_cost::Component::LinkPrefix as usize]
+            + costs[crate::read_cost::Component::LinkSingleScan as usize]
+            + costs[crate::read_cost::Component::LinkBatchedPrefix as usize];
+        info!(
+            "[read-call-profile] dance={} validation_us={} hydration_us={} binding_us={} dispatch_us={} projection_us={} export_us={} total_us={} hdk_get_details_us={} node_decode_us={} hdk_get_links_us={} link_decode_us={} link_calls={} returned_links={} node_calls={}",
+            dance_name.0, validation_micros, hydration_micros, request_binding_micros, dispatch_micros,
+            response_projection_micros, session_export_micros,
+            elapsed_micros(total_started_at),
+            costs[crate::read_cost::Component::NodeBackend as usize],
+            costs[crate::read_cost::Component::NodeDecode as usize], link_backend_us,
+            costs[crate::read_cost::Component::LinkDecode as usize],
+            links_after.0 - links_before.0, links_after.2 - links_before.2,
+            nodes_after - nodes_before.unwrap(),
+        );
+    }
 
     if is_load_holons || dance_name.0 == "commit" {
         info!(

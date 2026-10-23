@@ -55,3 +55,8 @@ map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }
 dahn_selection = { path = "crates/dahn_selection" }
 session_receptor = { path = "crates/session_receptor" }
+
+# Match the optimized development profile used by the hApp and test workspaces.
+# Large bootstrap commits exercise native validation as well as guest WASM.
+[profile.dev]
+opt-level = "z"

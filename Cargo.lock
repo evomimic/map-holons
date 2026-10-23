@@ -3486,6 +3486,7 @@ dependencies = [
 name = "holons_test"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "base_types",
  "core_types",
@@ -3493,6 +3494,7 @@ dependencies = [
  "digest 0.11.3",
  "hdi",
  "holochain",
+ "holochain_client",
  "holochain_data",
  "holochain_state",
  "holochain_wasmer_common",
