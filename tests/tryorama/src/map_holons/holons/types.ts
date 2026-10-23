@@ -202,6 +202,11 @@ export type StagedHolon = {
     original_id?: string | null,
     versioned_source_id?: string | null,
     touched_relationship_names?: string[],
+    pending_relationship_deltas: Record<string, {
+        added: Array<{ Saved: { Local: number[] } | { External: { space_id: number[], local_id: number[] } } } | { Staged: string }>,
+        removed: Array<{ Saved: { Local: number[] } | { External: { space_id: number[], local_id: number[] } } } | { Staged: string }>,
+        repeated_occurrence: boolean,
+    }>,
     errors: unknown[]
 }
 

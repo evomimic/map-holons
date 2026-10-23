@@ -166,6 +166,16 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         Err(HolonError::NotImplemented("expand_smartlinks_from_source_by_key_internal".to_string()))
     }
 
+    /// Returns distinct local lineage roots associated with an exact saved key,
+    /// including historical keyed Owns entries. Does not select lineage heads.
+    fn get_saved_lineage_roots_by_key_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _key: &base_types::MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        Err(HolonError::NotImplemented("get_saved_lineage_roots_by_key_internal".into()))
+    }
+
     /// Resolves an exact key in the current space to its sole visible saved lineage head.
     fn get_saved_holon_by_key_internal(
         &self,

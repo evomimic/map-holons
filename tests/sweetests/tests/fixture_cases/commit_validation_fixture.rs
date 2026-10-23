@@ -1,4 +1,4 @@
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;

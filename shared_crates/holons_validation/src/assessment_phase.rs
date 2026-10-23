@@ -9,7 +9,6 @@ pub enum AssessmentPhase {
     SchemaWorksetPreparation,
     PackageDiscovery,
     PreparedProducts,
-    SchemaOwnershipPreparation,
     PackageValidation,
     InstanceValidation,
 }
@@ -25,7 +24,6 @@ pub struct PreparationMetrics {
     pub contract_consumers: usize,
     pub constraint_consumers: usize,
     pub binding_consumers: usize,
-    pub authored_surface_consumers: usize,
 }
 
 /// Clock-free observation; profiling cannot supply inputs or change validation policy.

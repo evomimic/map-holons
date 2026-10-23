@@ -81,7 +81,7 @@ fn classify_lineage<T: Clone>(
         let Some((name, candidate)) = candidates.iter().find(|(name, _)| *name == type_name) else {
             continue;
         };
-        if same_definition(&ancestor, &resolve_core_descriptor(context, &canonical_key(name).0)?) {
+        if same_definition(&ancestor, &resolve_core_descriptor(context, &canonical_key(name).0)?)? {
             return Ok(Some(candidate.clone()));
         }
     }

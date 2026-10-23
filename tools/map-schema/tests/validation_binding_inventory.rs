@@ -69,6 +69,7 @@ fn expected_rule_keys() -> BTreeSet<String> {
     [
         "RequiredPropertyPresence",
         "NoUndescribedProperties",
+        "KeyUniqueness",
         "BaseValueKindMatchesString",
         "BaseValueKindMatchesInteger",
         "BaseValueKindMatchesBoolean",
@@ -89,7 +90,6 @@ fn expected_rule_keys() -> BTreeSet<String> {
         "ContractMemberKindCompatibility",
         "InheritedValueConstraintNonRelaxation",
         "SchemaDependenciesAcyclic",
-        "CrossSchemaDependenciesDeclared",
     ]
     .into_iter()
     .map(|name| format!("{name}.ValidationRule"))
@@ -136,5 +136,100 @@ fn inventory_rejects_a_removed_canonical_validation_binding() -> Result<()> {
     let error =
         require_expected_bindings(&documents).expect_err("a dropped rule must fail inventory");
     assert!(error.to_string().contains(bytes_rule));
+    Ok(())
+}
+
+#[test]
+fn schema_membership_bindings_preserve_directional_version_ownership() -> Result<()> {
+    let documents = canonical_documents()?;
+    for (key, binding) in [
+        ("(Schema.HolonType)-[Components]->(TypeDescriptor)", "Lineage"),
+        ("(Schema.HolonType)-[Rules]->(Rule.HolonType)", "Lineage"),
+        ("(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)", "Version"),
+        ("(Rule.HolonType)-[RuleOf]->(Schema.HolonType)", "Version"),
+    ] {
+        let holon = documents
+            .iter()
+            .flat_map(|document| document["holons"].as_array().unwrap())
+            .find(|holon| holon["key"] == key)
+            .with_context(|| format!("missing relationship {key}"))?;
+        // Omitted TargetBinding retains the kernel's Version default.
+        assert_eq!(
+            holon["properties"]["TargetBinding"].as_str().unwrap_or("Version"),
+            binding,
+            "{key}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn cross_schema_dependency_rule_is_retained_as_unbound_vocabulary() -> Result<()> {
+    let documents = canonical_documents()?;
+    let key = "CrossSchemaDependenciesDeclared.ValidationRule";
+    let rule = documents
+        .iter()
+        .flat_map(|document| document["holons"].as_array().unwrap())
+        .find(|holon| holon["key"] == key)
+        .context("DS-SCHEMA-002 vocabulary must remain available")?;
+    assert_eq!(rule["properties"]["SemanticAuthority"], "DS-SCHEMA-002");
+    assert!(!authored_binding_inventory(&documents).contains(key));
+    // Declared cross-schema dependency coverage is temporarily unenforced until
+    // SchemaDependency supplies local restoration inputs; DS-SCHEMA-001 stays bound.
+    assert!(
+        authored_binding_inventory(&documents).contains("SchemaDependenciesAcyclic.ValidationRule")
+    );
+    Ok(())
+}
+
+#[test]
+fn key_uniqueness_is_holon_contextual_and_key_inputs_are_definitional() -> Result<()> {
+    let documents = canonical_documents()?;
+    let holons: Vec<_> =
+        documents.iter().flat_map(|document| document["holons"].as_array().unwrap()).collect();
+    let rule = holons
+        .iter()
+        .find(|h| h["key"] == "KeyUniqueness.ValidationRule")
+        .context("key uniqueness rule")?;
+    assert_eq!(rule["properties"]["ValidationLevel"], "Holon");
+    assert_eq!(rule["properties"]["DeterminismClass"], "Contextual");
+    assert_eq!(rule["properties"]["SemanticAuthority"], "DS-KEY-006");
+    assert_eq!(rule["type"], "HolonValidationRule.HolonType");
+    assert!(rule["relationships"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["name"] == "RuleOf" && r["target"][0]["$ref"] == "MAP Core Schema-v0.0.7"));
+    let level = holons
+        .iter()
+        .find(|h| h["key"] == "ValidationLevel.MapEnumValueType")
+        .context("validation level")?;
+    assert_eq!(level["properties"]["Description"], "Identifies the semantic unit whose invariants are evaluated by a ValidationRule, independent of the scope of data, graph traversal, or contextual dependencies required to evaluate the rule.");
+    let root = holons
+        .iter()
+        .find(|h| h["key"] == "HolonType.TypeDescriptor")
+        .context("Holon binding root")?;
+    assert!(root["relationships"].as_array().unwrap().iter().any(|relationship| relationship
+        ["name"]
+        == "ValidationBindings"
+        && relationship["target"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|target| target["$ref"] == "KeyUniqueness.ValidationRule")));
+    for key in [
+        "(HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)",
+        "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)",
+        "(TypeDescriptor)-[Extends]->(TypeDescriptor)",
+        "(HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor)",
+        "(RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor)",
+        "(RelationshipType.TypeDescriptor)-[TargetType]->(HolonType.TypeDescriptor)",
+    ] {
+        let relationship = holons
+            .iter()
+            .find(|h| h["key"] == key)
+            .with_context(|| format!("key-producing relationship {key}"))?;
+        assert_eq!(relationship["properties"]["IsDefinitional"], true, "{key}");
+    }
     Ok(())
 }

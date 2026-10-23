@@ -583,6 +583,7 @@ fn assert_rejected_holons(
         let HolonReference::Staged(staged) = reference else {
             panic!("rejected token must remain staged")
         };
+        let finding_identity = staged.full_reference_id_string();
         assert!(staged.is_live_validation_candidate().unwrap());
         assert_eq!(staged.validation_state().unwrap(), expected.validation_state);
         let findings = staged.validation_findings().unwrap();
@@ -592,20 +593,22 @@ fn assert_rejected_holons(
         for (actual, expected) in findings.iter().zip(expected.findings) {
             let subject = match expected.subject {
                 ExpectedValidationSubject::Holon => {
-                    ValidationSubjectPath::Holon { holon_identity: identity.clone() }
+                    ValidationSubjectPath::Holon { holon_identity: finding_identity.clone() }
                 }
-                ExpectedValidationSubject::Property(name) => {
-                    ValidationSubjectPath::Property { holon_identity: identity.clone(), name }
-                }
-                ExpectedValidationSubject::Value(property) => {
-                    ValidationSubjectPath::Value { holon_identity: identity.clone(), property }
-                }
+                ExpectedValidationSubject::Property(name) => ValidationSubjectPath::Property {
+                    holon_identity: finding_identity.clone(),
+                    name,
+                },
+                ExpectedValidationSubject::Value(property) => ValidationSubjectPath::Value {
+                    holon_identity: finding_identity.clone(),
+                    property,
+                },
                 ExpectedValidationSubject::Relationship { name, target } => {
                     let target = state
                         .resolve_execution_reference(&context, ResolveBy::Expected, &target)
                         .expect("relationship finding target remains resolvable");
                     ValidationSubjectPath::Relationship {
-                        source_identity: identity.clone(),
+                        source_identity: finding_identity.clone(),
                         name,
                         target_identity: target.reference_id_string(),
                     }

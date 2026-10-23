@@ -8,7 +8,7 @@ use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_DESCRIPTOR_KEY,
     STAGE_NEW_VERSION_BOOK_KEY, STAGE_NEW_VERSION_PERSON_1_KEY,
@@ -328,11 +328,9 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Stage a second version from the same original holon in order to verify that:
     // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
     // b. get_staged_holons_by_base_key correctly returns BOTH staged holons
-    // Staging competing versions is supported for lookup and reconciliation. Commit
-    // rejects two live replacements of one saved source in the same attempt. This
-    // fixture deliberately ends without committing them; a future Commit step must
-    // expect rejection or first reconcile and abandon the extra candidate. Branches
-    // created across separate Commits remain supported.
+    // Distinct candidates sharing a key or saved source remain independently
+    // commit-capable. This fixture stops at lookup behavior; the sibling Commit
+    // fixtures verify publication and exact persisted ancestry for shared sources.
 
     let _version_2_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,

@@ -81,6 +81,26 @@ impl SmartReference {
         self.holon_id.clone()
     }
 
+    /// Reads the lineage root from persisted record metadata, preserving external
+    /// space identity. A root record has no original ID and names itself.
+    pub fn lineage_root_id(&self) -> Result<HolonId, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!("Reading saved lineage metadata: {error}"))
+        })?;
+        holon.is_accessible(AccessType::Read)?;
+        let Some(root) = holon.original_id() else {
+            return Ok(self.holon_id());
+        };
+        Ok(match self.holon_id() {
+            HolonId::Local(_) => HolonId::Local(root),
+            HolonId::External(mut external) => {
+                external.local_id = root;
+                HolonId::External(external)
+            }
+        })
+    }
+
     /// Returns a borrowed view of the cached smart properties, if present.
     pub fn smart_property_values(&self) -> Option<&PropertyMap> {
         self.smart_property_values.as_ref()
@@ -124,6 +144,11 @@ impl SmartReference {
 
     pub fn reference_id_string(&self) -> String {
         format!("HolonId={:?}", self.holon_id)
+    }
+
+    /// Complete identity for associations; saved ids already render unabbreviated.
+    pub fn full_reference_id_string(&self) -> String {
+        self.reference_id_string()
     }
 }
 

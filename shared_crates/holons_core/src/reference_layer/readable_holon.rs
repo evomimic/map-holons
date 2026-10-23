@@ -245,8 +245,7 @@ pub trait ReadableHolon: ReadableHolonImpl {
     }
 
     /// Compares populated names against an already resolved effective contract.
-    /// Commit assessment supplies names from its prospective reader, so a saved
-    /// describer cannot silently replace the staged definition's contract.
+    /// Commit assessment supplies names from the exact referenced descriptor contract.
     fn undescribed_property_names_in_contract(
         &self,
         described: &HashSet<PropertyName>,

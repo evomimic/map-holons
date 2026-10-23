@@ -1,17 +1,14 @@
-//! Bounded Schema scheduling and separate prospective ownership collections.
+//! Bounded Schema scheduling and separate staged ownership collections.
 use crate::{
-    assessment_support::{path, recover, targets},
+    assessment_support::{path, targets},
     handlers::finding,
     ValidationCollector,
 };
-use core_types::{CommitValidationViolationKind, HolonError, HolonId};
+use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
-    descriptors::{
-        resolve_schema_ownership_with_reader, SchemaOwnershipKind, SchemaOwnershipResolution,
-    },
-    DescriptorReader, HolonReference, ProspectiveDescriptorReader, ProspectiveIdentity,
-    ProspectiveSelection, StagedReference,
+    descriptors::{resolve_schema_ownership, SchemaOwnershipKind, SchemaOwnershipResolution},
+    DefinitionIdentity, HolonReference,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -19,11 +16,12 @@ use std::{
 };
 use type_names::CoreRelationshipTypeName;
 
-/// The two membership namespaces are intentionally independent.
+/// Staged declaration subjects grouped by their exact Schema owner.
+/// Saved inverse membership is not a validation-subject discovery path.
 pub(crate) struct ProspectiveSchema {
     pub schema: HolonReference,
-    pub components: Vec<HolonReference>,
-    pub rules: Vec<HolonReference>,
+    pub staged_components: Vec<HolonReference>,
+    pub staged_rules: Vec<HolonReference>,
 }
 
 /// A staged commitment remains in the workset even if ownership cannot be resolved.
@@ -35,13 +33,11 @@ pub(crate) struct OwnedCandidate {
 /// Identity-indexed scope built before any commitment is assessed.
 pub(crate) struct SchemaWorkset {
     pub schemas: Vec<ProspectiveSchema>,
-    pub ownership: HashMap<ProspectiveIdentity, Vec<HolonReference>>,
 }
 
 impl SchemaWorkset {
     pub fn prepare(
         context: &Arc<TransactionContext>,
-        reader: &ProspectiveDescriptorReader,
         schema_type: &HolonReference,
         directly_staged: &[HolonReference],
         owned: &[OwnedCandidate],
@@ -49,53 +45,18 @@ impl SchemaWorkset {
     ) -> Result<Self, HolonError> {
         let mut schemas = Vec::new();
         let mut scheduled = HashSet::new();
-        let mut ownership = HashMap::new();
-        let mut staged_members = HashMap::<(ProspectiveIdentity, bool), Vec<HolonReference>>::new();
-        let mut changed = HashSet::new();
+        // Membership grouping is by exact owner definition, not candidate or ancestry.
+        let mut staged_members = HashMap::<(DefinitionIdentity, bool), Vec<HolonReference>>::new();
         for schema in directly_staged {
             schedule(context, schema, &mut scheduled, &mut schemas)?;
         }
         for candidate in owned {
-            let identity = ProspectiveIdentity::for_reference(&candidate.subject, context)?;
-            let contested =
-                matches!(reader.selection(&candidate.subject)?, ProspectiveSelection::Contested(_));
-            // Discover the old owner from saved content, never through replacement selection.
-            // Removing membership affects that Schema even if prospective ownership is invalid.
-            if let ProspectiveIdentity::Saved(source) = &identity {
-                let saved =
-                    HolonReference::smart_from_id(context.space_read_handle(), source.clone());
-                for owner in targets(&saved, ownership_edge(candidate.kind))? {
-                    schedule(context, &owner, &mut scheduled, &mut schemas)?;
-                }
+            // A successor adds its own membership; it does not remove its predecessor's.
+            for owner in targets(&candidate.subject, ownership_edge(candidate.kind))? {
+                schedule(context, &owner, &mut scheduled, &mut schemas)?;
             }
-            // Retain readable authored owner identities even when selecting one owner's
-            // describing content is blocked. Contention must not erase aggregate scheduling.
-            if let Some(selected) =
-                recover(reader.select(&candidate.subject), &candidate.subject, collector)?
-            {
-                for owner in targets(&selected, ownership_edge(candidate.kind))? {
-                    schedule(context, &owner, &mut scheduled, &mut schemas)?;
-                }
-            }
-            let Some(resolution) = recover(
-                resolve_schema_ownership_with_reader(
-                    &candidate.subject,
-                    candidate.kind,
-                    schema_type,
-                    reader,
-                ),
-                &candidate.subject,
-                collector,
-            )?
-            else {
-                if !contested {
-                    ownership.insert(identity, Vec::new());
-                }
-                continue;
-            };
-            if !contested {
-                changed.insert(identity.clone());
-            }
+            let resolution =
+                resolve_schema_ownership(&candidate.subject, candidate.kind, schema_type)?;
             let (owners, defect) = match resolution {
                 SchemaOwnershipResolution::OwnedBy(owner) => (vec![owner], None),
                 SchemaOwnershipResolution::Missing => {
@@ -127,83 +88,44 @@ impl SchemaWorkset {
                 );
             }
             for owner in &owners {
-                let owner_id = ProspectiveIdentity::for_reference(owner, context)?;
+                let owner_id = DefinitionIdentity::for_reference(owner, context)?;
                 schedule(context, owner, &mut scheduled, &mut schemas)?;
-                if !contested {
-                    staged_members
-                        .entry((owner_id, is_rule(candidate.kind)))
-                        .or_default()
-                        .push(candidate.subject.clone());
-                }
-            }
-            if !contested {
-                ownership.insert(identity, owners);
+                staged_members
+                    .entry((owner_id, is_rule(candidate.kind)))
+                    .or_default()
+                    .push(candidate.subject.clone());
             }
         }
         for view in &mut schemas {
-            let identity = ProspectiveIdentity::for_reference(&view.schema, context)?;
-            if matches!(reader.selection(&view.schema)?, ProspectiveSelection::Contested(_)) {
-                if let ProspectiveIdentity::Saved(source) = &identity {
-                    // The Schema's own staged candidates may be assessed individually, but
-                    // neither can supply its aggregate content in this Commit attempt.
-                    view.schema =
-                        HolonReference::smart_from_id(context.space_read_handle(), source.clone());
-                }
-            }
-            if let Some(selected) = recover(reader.select(&view.schema), &view.schema, collector)? {
-                view.schema = selected;
-            }
-            // Read persisted inverse membership from the saved source. A staged Schema clone
-            // intentionally omits materialized inverses and is not a complete membership view.
-            let saved = match &identity {
-                ProspectiveIdentity::Saved(id) => {
-                    Some(HolonReference::smart_from_id(context.space_read_handle(), id.clone()))
-                }
-                _ => None,
-            };
-            for (edge, rule, destination) in [
-                (CoreRelationshipTypeName::Components, false, &mut view.components),
-                (CoreRelationshipTypeName::Rules, true, &mut view.rules),
-            ] {
+            let identity = DefinitionIdentity::for_reference(&view.schema, context)?;
+            for (rule, destination) in
+                [(false, &mut view.staged_components), (true, &mut view.staged_rules)]
+            {
+                // Deduplicate exact member definitions within this owner.
                 let mut seen = HashSet::new();
-                if let Some(saved) = &saved {
-                    for member in targets(saved, edge)? {
-                        let member_id = ProspectiveIdentity::for_reference(&member, context)?;
-                        if changed.contains(&member_id) || !seen.insert(member_id) {
-                            continue;
-                        }
-                        match reader.select(&member) {
-                            Ok(selected) => destination.push(selected),
-                            Err(error) => {
-                                recover::<HolonReference>(Err(error), &view.schema, collector)?;
-                                // Keep the identity, without falling back to its saved contents.
-                                destination.push(member);
-                            }
-                        }
-                    }
-                }
                 for member in staged_members.remove(&(identity.clone(), rule)).unwrap_or_default() {
-                    if seen.insert(ProspectiveIdentity::for_reference(&member, context)?) {
+                    if seen.insert(DefinitionIdentity::for_reference(&member, context)?) {
                         destination.push(member);
                     }
                 }
             }
         }
-        Ok(Self { schemas, ownership })
+        Ok(Self { schemas })
     }
 }
 
 fn schedule(
     context: &Arc<TransactionContext>,
     schema: &HolonReference,
-    seen: &mut HashSet<ProspectiveIdentity>,
+    seen: &mut HashSet<DefinitionIdentity>,
     views: &mut Vec<ProspectiveSchema>,
 ) -> Result<(), HolonError> {
-    if seen.insert(ProspectiveIdentity::for_reference(schema, context)?) {
+    let identity = DefinitionIdentity::for_reference(schema, context)?;
+    if seen.insert(identity.clone()) {
         views.push(ProspectiveSchema {
-            schema: schema.clone(),
-            components: Vec::new(),
-            rules: Vec::new(),
+            schema: identity.definition_reference(context, schema),
+            staged_components: Vec::new(),
+            staged_rules: Vec::new(),
         });
     }
     Ok(())
@@ -216,14 +138,4 @@ pub(crate) fn ownership_edge(kind: SchemaOwnershipKind) -> CoreRelationshipTypeN
         SchemaOwnershipKind::Component => CoreRelationshipTypeName::ComponentOf,
         SchemaOwnershipKind::Rule => CoreRelationshipTypeName::RuleOf,
     }
-}
-
-/// Saved ancestry is explicit; creates sharing a key never acquire a saved baseline.
-pub(crate) fn saved_source(
-    context: &Arc<TransactionContext>,
-    candidate: &StagedReference,
-) -> Result<Option<HolonReference>, HolonError> {
-    Ok(candidate
-        .versioned_source_id()?
-        .map(|id| HolonReference::smart_from_id(context.space_read_handle(), HolonId::Local(id))))
 }

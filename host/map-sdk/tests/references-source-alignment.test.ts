@@ -26,6 +26,7 @@ describe('source-aligned holon wire guards', () => {
       version: 1, holon_state: 'Mutable', staged_state: 'ForCreate',
       validation_state: 'Invalid', property_map: {},
       staged_relationships: { map: {} }, original_id: null,
+      pending_relationship_deltas: {},
       relationship_commit_scope: 'Full',
       errors: [{ NotImplemented: 'persistence' }],
     };
@@ -65,6 +66,24 @@ describe('source-aligned holon wire guards', () => {
     expect(isStagedHolonWire({ ...staged, validation_findings: null })).toBe(false);
     expect(isStagedHolonWire({ ...staged, validation_findings: staged.errors })).toBe(false);
     expect(isStagedHolonWire({ ...staged, errors: [finding] })).toBe(false);
+  });
+
+  it('requires and validates pending graph deltas, including retained replay evidence', () => {
+    const staged = {
+      version: 1, holon_state: 'Immutable', staged_state: { Committed: [1] },
+      validation_state: 'Validated', property_map: {}, staged_relationships: { map: {} },
+      original_id: null, relationship_commit_scope: 'TouchedOnly', errors: [],
+    };
+    expect(isStagedHolonWire(staged)).toBe(false);
+    const delta = {
+      added: [{ Saved: { Local: [9] } }, { Saved: { External: { space_id: [2], local_id: [9] } } }, { Staged: 'candidate-id' }],
+      removed: [], repeated_occurrence: true,
+    };
+    expect(isStagedHolonWire({ ...staged, pending_relationship_deltas: { R: delta } })).toBe(true);
+    for (const invalid of [null, {}, { ...delta, added: [{}] }, { ...delta, removed: [{ Saved: [] }] },
+      { ...delta, repeated_occurrence: 'true' }, { ...delta, added: [{ Staged: 1 }] }]) {
+      expect(isStagedHolonWire({ ...staged, pending_relationship_deltas: { R: invalid } })).toBe(false);
+    }
   });
 
   it('accepts SavedState variants declared in Rust SavedState', () => {
@@ -120,6 +139,7 @@ describe('source-aligned holon wire guards', () => {
       original_id: [1, 1, 1],
       versioned_source_id: [2, 2, 2],
       touched_relationship_names: ['Properties'],
+      pending_relationship_deltas: {},
       relationship_commit_scope: 'TouchedOnly',
       errors: [],
     };

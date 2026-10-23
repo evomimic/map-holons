@@ -4,10 +4,11 @@ use core_types::{CommitValidationViolation, HolonError, LocalId, PropertyMap, Re
 use holons_core::core_shared_objects::holon::{
     HolonState, RelationshipCommitScope, StagedState, ValidationState,
 };
+use holons_core::core_shared_objects::pending_relationship_deltas::PendingDelta;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::StagedHolon;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -25,6 +26,7 @@ pub struct StagedHolonWire {
     versioned_source_id: Option<LocalId>,
     #[serde(default)]
     touched_relationship_names: BTreeSet<RelationshipName>,
+    pending_relationship_deltas: BTreeMap<RelationshipName, PendingDelta>,
     relationship_commit_scope: RelationshipCommitScope,
     errors: Vec<HolonError>,
 }
@@ -43,6 +45,7 @@ impl StagedHolonWire {
             self.original_id,
             self.versioned_source_id,
             self.touched_relationship_names,
+            self.pending_relationship_deltas,
             self.relationship_commit_scope,
             self.errors,
         ))
@@ -62,6 +65,7 @@ impl StagedHolonWire {
             self.original_id,
             self.versioned_source_id,
             self.touched_relationship_names,
+            self.pending_relationship_deltas,
             self.relationship_commit_scope,
             self.errors,
         ))
@@ -81,6 +85,7 @@ impl From<&StagedHolon> for StagedHolonWire {
             original_id: value.original_id_ref().cloned(),
             versioned_source_id: value.versioned_source_id_ref().cloned(),
             touched_relationship_names: value.touched_relationship_names().clone(),
+            pending_relationship_deltas: value.pending_relationship_deltas().clone(),
             relationship_commit_scope: value.relationship_commit_scope(),
             errors: value.errors().to_vec(),
         }
@@ -324,6 +329,146 @@ mod tests {
             assert_eq!(restored.relationship_commit_scope(), RelationshipCommitScope::TouchedOnly);
             assert_eq!(restored.touched_relationship_names(), staged.touched_relationship_names());
             assert_eq!(restored, staged);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn pending_deltas_survive_binding_rebinding_and_committed_replay() -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::pending_relationship_deltas::PendingRelationshipTarget;
+        use holons_core::{HolonReference, SmartReference};
+        let space = test_space();
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let destination = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let target: HolonReference = SmartReference::new_with_properties(
+            context.space_read_handle(),
+            core_types::HolonId::Local(LocalId(vec![9])),
+            PropertyMap::new(),
+        )
+        .into();
+        let id = PendingRelationshipTarget::for_reference(&target);
+        for committed in [false, true] {
+            let mut staged = graph_only_update_with_touched_collection()?;
+            let name = RelationshipName(MapString("Touched".into()));
+            staged.add_related_holons_with_keys(name.clone(), vec![(target.clone(), None)])?;
+            staged.add_related_holons_with_keys(name.clone(), vec![(target.clone(), None)])?;
+            staged.remove_related_holons_with_keys(&name, vec![(target.clone(), None)])?;
+            assert!(staged.pending_relationship_deltas()[&name].repeated_occurrence);
+            assert_eq!(
+                staged.pending_relationship_deltas()[&name].removed,
+                BTreeSet::from([id.clone()])
+            );
+            staged.prepare_touched_relationship_commit_scope()?;
+            if committed {
+                staged.to_committed(LocalId(vec![1, 2, 3]))?;
+            }
+            let json = serde_json::to_value(StagedHolonWire::from(&staged)).unwrap();
+            assert_eq!(
+                json["pending_relationship_deltas"]["Touched"]["removed"],
+                serde_json::json!([{ "Saved": { "Local": [9] } }])
+            );
+            let wire: StagedHolonWire = serde_json::from_value(json.clone()).unwrap();
+            for restored in [wire.clone().bind(&context)?, wire.rebind(&destination)?] {
+                assert_eq!(
+                    restored.pending_relationship_deltas(),
+                    staged.pending_relationship_deltas()
+                );
+                assert_eq!(restored, staged);
+            }
+            let mut missing = json;
+            missing.as_object_mut().unwrap().remove("pending_relationship_deltas");
+            assert!(
+                serde_json::from_value::<StagedHolonWire>(missing).is_err(),
+                "retry evidence must not silently disappear"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn staging_ancestry_survives_wire_and_retry_scope_without_becoming_touched(
+    ) -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::WritableRelationship;
+        use holons_core::{HolonReference, SmartReference, StagedRelationshipMap};
+        let space = test_space();
+        let source_context =
+            space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let destination_context =
+            space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let source_id = LocalId(vec![1, 2, 3]);
+        let predecessor = RelationshipName(MapString("Predecessor".into()));
+        let source = SmartReference::new_with_properties(
+            source_context.space_read_handle(),
+            core_types::HolonId::Local(source_id.clone()),
+            PropertyMap::from([(
+                core_types::PropertyName(MapString("Key".into())),
+                base_types::BaseValue::StringValue(MapString("source".into())),
+            )]),
+        );
+        for scope in [RelationshipCommitScope::Full, RelationshipCommitScope::TouchedOnly] {
+            for committed in [false, true] {
+                // Reconstruct the same untouched ancestry that the staging constructor records.
+                let mut relationships = StagedRelationshipMap::new_empty();
+                relationships.add_related_holons_with_keys(
+                    predecessor.clone(),
+                    vec![(source.clone().into(), None)],
+                )?;
+                let model = HolonCloneModel::new(
+                    MapInteger(2),
+                    None,
+                    PropertyMap::new(),
+                    Some(RelationshipMap::from(relationships)),
+                );
+                let mut staged =
+                    StagedHolon::new_for_update_from_clone_model(model, source_id.clone())?;
+                assert_eq!(staged.staged_state(), &StagedState::ForUpdate);
+                match scope {
+                    RelationshipCommitScope::Full => {
+                        staged.note_property_mutation()?;
+                        staged.prepare_full_relationship_commit_scope()?;
+                    }
+                    RelationshipCommitScope::TouchedOnly => {
+                        staged.add_related_holons(
+                            RelationshipName(MapString("Touched".into())),
+                            vec![],
+                        )?;
+                        staged.note_relationship_mutation(false)?;
+                        staged.prepare_touched_relationship_commit_scope()?;
+                    }
+                }
+                if committed {
+                    staged.to_committed(if scope == RelationshipCommitScope::Full {
+                        LocalId(vec![4])
+                    } else {
+                        source_id.clone()
+                    })?;
+                }
+                let wire: StagedHolonWire = serde_json::from_value(
+                    serde_json::to_value(StagedHolonWire::from(&staged)).unwrap(),
+                )
+                .unwrap();
+                for restored in
+                    [wire.clone().bind(&source_context)?, wire.rebind(&destination_context)?]
+                {
+                    assert_eq!(restored.relationship_commit_scope(), scope);
+                    assert_eq!(restored.staged_state(), staged.staged_state());
+                    assert!(!restored.touched_relationship_names().contains(&predecessor));
+                    let collection = restored.get_staged_relationship(&predecessor)?;
+                    let collection = collection.read().unwrap();
+                    let [HolonReference::Smart(actual)] = collection.get_members().as_slice()
+                    else {
+                        panic!("exact saved predecessor")
+                    };
+                    assert_eq!(actual.holon_id(), core_types::HolonId::Local(source_id.clone()));
+                    assert_eq!(
+                        restored
+                            .relationship_collections_for_commit()?
+                            .iter()
+                            .any(|(name, _)| name == &predecessor),
+                        scope == RelationshipCommitScope::Full
+                    );
+                }
+            }
         }
         Ok(())
     }

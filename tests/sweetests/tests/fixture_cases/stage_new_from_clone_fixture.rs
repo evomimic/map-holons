@@ -1,4 +1,4 @@
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;

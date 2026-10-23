@@ -20,6 +20,7 @@ use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeNa
 // accidentally crossing into production storage.
 #[derive(Debug, Default)]
 struct TestHolonService {
+    read_errors: HashMap<HolonId, HolonError>,
     saved_holons: HashMap<HolonId, SavedHolon>,
     saved_relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
 }
@@ -72,6 +73,9 @@ impl HolonServiceApi for TestHolonService {
         _context: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        if let Some(error) = self.read_errors.get(id) {
+            return Err(error.clone());
+        }
         self.saved_holons
             .get(id)
             .cloned()
@@ -170,12 +174,24 @@ pub(crate) fn build_context_with_saved_holons(
     holons: Vec<SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
 ) -> Arc<TransactionContext> {
+    build_context_with_read_errors(holons, relationships, HashMap::new())
+}
+
+/// Injects backend content failures without changing descriptor traversal semantics.
+pub(crate) fn build_context_with_read_errors(
+    holons: Vec<SavedHolon>,
+    relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+    read_errors: HashMap<HolonId, HolonError>,
+) -> Arc<TransactionContext> {
     let saved_holons = holons
         .into_iter()
         .map(|holon| (HolonId::Local(holon.get_local_id().unwrap()), holon))
         .collect();
-    let holon_service: Arc<dyn HolonServiceApi> =
-        Arc::new(TestHolonService { saved_holons, saved_relationships: relationships });
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService {
+        saved_holons,
+        saved_relationships: relationships,
+        read_errors,
+    });
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         holon_service,

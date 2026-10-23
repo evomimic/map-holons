@@ -1,6 +1,6 @@
 //! Saved content and exact persisted ancestry across successive Commit attempts.
 
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{

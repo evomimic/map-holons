@@ -386,8 +386,13 @@ fn nearest_anchor_wins_and_foreign_transaction_is_rejected() -> Result<(), Holon
     abstract_anchor.with_property_value(P::IsAbstractType, true)?;
     assert!(TypeHeader::new(&abstract_anchor.into()).is_abstract_type()?);
     let foreign = new_test_holon(&build_context(), "foreign")?;
-    let foreign_diagnosis =
-        ExtendsLineageDiagnosis::assess(&foreign.into(), &roots.type_descriptor)?;
+    assert!(matches!(
+        ExtendsLineageDiagnosis::assess(&foreign.clone().into(), &roots.type_descriptor),
+        Err(HolonError::CrossTransactionReference { .. })
+    ));
+    let foreign: HolonReference = foreign.into();
+    // Build a valid foreign lineage to exercise the roots' transaction check independently.
+    let foreign_diagnosis = ExtendsLineageDiagnosis::assess(&foreign, &foreign)?;
     assert!(matches!(
         roots.instance_type_kind(foreign_diagnosis.valid_lineage().unwrap()),
         Err(HolonError::CrossTransactionReference { .. })
@@ -459,7 +464,7 @@ fn staged_ownership_and_local_dependencies_need_no_materialized_inverses() -> Re
 }
 
 #[test]
-fn saved_lineage_recognizes_staged_replacement_root() -> Result<(), HolonError> {
+fn saved_lineage_recognizes_no_op_staged_root() -> Result<(), HolonError> {
     use crate::core_shared_objects::holon::SavedHolon;
     use base_types::{BaseValue, MapInteger, MapString};
     use core_types::{HolonId, LocalId, PropertyMap};
@@ -504,50 +509,22 @@ fn saved_lineage_recognizes_staged_replacement_root() -> Result<(), HolonError> 
         replacement.clone(),
         replacement.clone(),
     )?;
-    // Ordinary reads retain saved identity and do not substitute staged content.
-    assert!(!same_definition(&child, &replacement));
-    assert!(!equals_or_extends(&saved_root.clone().into(), &replacement)?);
-    assert!(matches!(
-        ExtendsLineageDiagnosis::assess(&child, &replacement)?.defects.as_slice(),
-        [ExtendsLineageDefect::WrongTermination { .. }]
-    ));
-    let HolonReference::Staged(staged) = &replacement else { panic!("staged replacement") };
-    let reader = ProspectiveDescriptorReader::new(&context, std::slice::from_ref(staged))?;
-    let roots = roots.with_reader(&reader);
-    let diagnosis =
-        ExtendsLineageDiagnosis::assess_with_reader(&child, &replacement, &reader).unwrap();
-    assert!(diagnosis.defects.is_empty(), "prospective lineage terminates at selected root");
-    assert!(roots.is_descriptor(diagnosis.valid_lineage().unwrap()).unwrap());
+    // A no-op staged handle represents the saved definition; recognizing it does not substitute content.
+    assert!(!same_definition(&child, &replacement)?);
+    assert!(equals_or_extends(&saved_root.clone().into(), &replacement)?);
+    assert!(ExtendsLineageDiagnosis::assess(&child, &replacement)?.defects.is_empty());
+    let diagnosis = ExtendsLineageDiagnosis::assess(&child, &replacement)?;
+    assert!(roots.is_descriptor(diagnosis.valid_lineage().unwrap())?);
+    let HolonReference::Staged(mut staged) = replacement else { panic!("staged update") };
+    staged.with_property_value(P::Description, "new definition")?;
+    let successor = staged.into();
+    assert!(!equals_or_extends(&child, &successor)?);
+    assert!(ExtendsLineageDiagnosis::assess(&child, &saved_root.into())?.defects.is_empty());
     Ok(())
 }
 
 #[test]
-fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_errors(
-) -> Result<(), HolonError> {
-    struct FailingReader {
-        target: HolonReference,
-        wrong_type: bool,
-    }
-    impl DescriptorReader for FailingReader {
-        type Error = HolonError;
-        fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-            if same_definition(reference, &self.target) {
-                return Err(if self.wrong_type {
-                    HolonError::UnexpectedValueType(
-                        "unreadable reference".into(),
-                        "reference".into(),
-                    )
-                } else {
-                    HolonError::EmptyField("unreadable reference".into())
-                });
-            }
-            Ok(reference.clone())
-        }
-        fn operational_error(error: &HolonError) -> Option<&HolonError> {
-            Some(error)
-        }
-    }
-
+fn kind_designation_diagnosis_retains_malformed_value_causes() -> Result<(), HolonError> {
     let context = build_context();
     let roots = kind_roots(&context)?;
     let mut subject = new_test_holon(&context, "missing-local-designation")?;
@@ -567,7 +544,7 @@ fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_er
             let Err(KindResolutionError::InvalidDesignation { descriptor, error }) = result else {
                 panic!("readable malformed designation must retain its cause");
             };
-            assert!(same_definition(&descriptor, &reference));
+            assert!(same_definition(&descriptor, &reference)?);
             assert!(match error {
                 HolonError::EmptyField(_) => !wrong_type,
                 HolonError::UnexpectedValueType(..) => wrong_type,
@@ -576,21 +553,6 @@ fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_er
         }
     }
 
-    subject.with_property_value(P::DefinesInstanceTypeKind, false)?;
-    for wrong_type in [false, true] {
-        let roots = roots
-            .clone()
-            .with_reader(FailingReader { target: roots.holon_type.clone(), wrong_type });
-        for result in [
-            roots.assess_instance_type_kind(lineage).map(|_| ()),
-            roots.assess_describing_lineages_compatible(&prerequisites).map(|_| ()),
-        ] {
-            assert!(
-                matches!(result, Err(KindResolutionError::Read(_))),
-                "an unreadable ancestor remains operational regardless of its error variant"
-            );
-        }
-    }
     Ok(())
 }
 
@@ -607,20 +569,17 @@ fn effective_constraint_contributions_preserve_parent_identity_and_provenance(
     child.add_related_holons(R::Constraints, vec![broader])?;
     let subject: HolonReference = child.into();
     let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &root)?;
-    let mut contributions = ConstraintContributions::resolve_with_reader(
-        diagnosis.valid_lineage().unwrap(),
-        &CurrentDescriptorReader,
-    )?;
+    let mut contributions = ConstraintContributions::resolve(diagnosis.valid_lineage().unwrap())?;
     assert_eq!(contributions.inherited.len(), 1);
     assert_eq!(contributions.effective.len(), 2);
-    assert!(contributions.missing_inherited().is_empty());
-    assert!(same_definition(&contributions.inherited[0].member, &inherited));
-    assert!(same_definition(&contributions.inherited[0].declared_on, &parent.into()));
+    assert!(contributions.missing_inherited()?.is_empty());
+    assert!(same_definition(&contributions.inherited[0].member, &inherited)?);
+    assert!(same_definition(&contributions.inherited[0].declared_on, &parent.into())?);
     // Explicit malformed product bypasses additive authoring: replacing provenance
     // is as invalid as removing the inherited identity entirely.
     contributions.effective[0].declared_on = subject;
-    assert_eq!(contributions.missing_inherited().len(), 1);
+    assert_eq!(contributions.missing_inherited()?.len(), 1);
     contributions.effective.clear();
-    assert_eq!(contributions.missing_inherited().len(), 1);
+    assert_eq!(contributions.missing_inherited()?.len(), 1);
     Ok(())
 }

@@ -31,6 +31,7 @@ inverse relationship (Schema.HolonType)-[Components]->(TypeDescriptor) {
   extends InverseRelationshipType.RelationshipType
   source Schema.HolonType
   target TypeDescriptor
+  TargetBinding Lineage
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }

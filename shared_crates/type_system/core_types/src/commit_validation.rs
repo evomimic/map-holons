@@ -39,6 +39,28 @@ pub enum ValidationSubjectPath {
     Transaction,
 }
 
+impl ValidationSubjectPath {
+    /// Copies the path for another holon, preserving the property/value/relationship location.
+    /// Transaction findings remain transaction-scoped.
+    pub fn with_holon_identity(&self, identity: String) -> Self {
+        match self {
+            Self::Holon { .. } => Self::Holon { holon_identity: identity },
+            Self::Property { name, .. } => {
+                Self::Property { holon_identity: identity, name: name.clone() }
+            }
+            Self::Value { property, .. } => {
+                Self::Value { holon_identity: identity, property: property.clone() }
+            }
+            Self::Relationship { name, target_identity, .. } => Self::Relationship {
+                source_identity: identity,
+                name: name.clone(),
+                target_identity: target_identity.clone(),
+            },
+            Self::Transaction => Self::Transaction,
+        }
+    }
+}
+
 /// Dependency-safe mirror of the Core schema's ValidationSeverity enum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationSeverity {

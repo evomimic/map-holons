@@ -1,5 +1,4 @@
 pub(crate) mod accessor_helpers;
-mod assessment_reader;
 pub mod command_descriptor;
 mod constraint_applicability;
 mod constraint_contributions;
@@ -42,25 +41,22 @@ pub mod value_descriptor_subtypes;
 
 pub use command_descriptor::CommandDescriptor;
 pub use constraint_applicability::{
-    applicable_descriptor_types, applicable_descriptor_types_with_reader, constraint_applies_to,
-    constraint_applies_to_lineage_with_reader, constraint_applies_to_with_reader,
+    applicable_descriptor_types, constraint_applies_to, constraint_applies_to_lineage,
 };
 pub use constraint_contributions::ConstraintContributions;
 pub use contract_contributions::ContractContributions;
-pub use core_descriptor_lookup::{resolve_core_descriptor, resolve_core_descriptor_with_reader};
+pub use core_descriptor_lookup::{resolve_assessment_anchor, resolve_core_descriptor};
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
-pub use definition_identity::same_definition;
+pub use definition_identity::{lineage_contains, same_definition};
 pub use descriptor::Descriptor;
 pub use effective_relationships::{effective_relationship_declaration, QualifiedRelationship};
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;
 pub use inheritance::{
-    ancestors, classify_relationship_direction, effective_relationship_targets,
-    effective_relationship_targets_with_reader, equals_or_extends, equals_or_extends_with_reader,
-    walk_extends_chain, walk_extends_chain_with_reader, EffectiveRelationshipMember, ExtendsIter,
-    RelationshipDirection,
+    ancestors, classify_relationship_direction, effective_relationship_targets, equals_or_extends,
+    walk_extends_chain, EffectiveRelationshipMember, ExtendsIter, RelationshipDirection,
 };
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;
@@ -73,14 +69,13 @@ pub use property_descriptor::{EffectiveValue, PropertyDescriptor};
 pub use relationship_descriptor::{EffectiveCardinality, RelationshipDescriptor, TargetBinding};
 pub use resolved_operator::{OperatorKind, ResolvedOperator};
 pub use schema_ownership::{
-    resolve_schema_ownership, resolve_schema_ownership_with_reader, schema_components,
-    schema_components_with_reader, schema_dependencies, schema_dependencies_with_reader,
-    schema_rules, schema_rules_with_reader, SchemaOwnershipKind, SchemaOwnershipResolution,
+    resolve_schema_ownership, schema_components, schema_dependencies, schema_rules,
+    SchemaOwnershipKind, SchemaOwnershipResolution,
 };
 pub use string_matching::CaseMatching;
 pub use structural_diagnosis::{
-    resolve_describing_type, resolve_describing_type_with_reader, DescribingTypeResolution,
-    ExtendsLineageDefect, ExtendsLineageDiagnosis, StructuralPrerequisites, ValidExtendsLineage,
+    resolve_describing_type, DescribingTypeResolution, ExtendsLineageDefect,
+    ExtendsLineageDiagnosis, StructuralPrerequisites, ValidExtendsLineage,
 };
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
@@ -93,12 +88,7 @@ pub use value_descriptor_subtypes::{
     EnumValueDescriptor, IntegerValueDescriptor, StringValueDescriptor, ValueArrayDescriptor,
 };
 
-pub use assessment_reader::{
-    AssessmentReadError, CurrentDescriptorReader, DescriptorReader, ProspectiveDescriptorReader,
-    ProspectiveSelection,
-};
-
 #[cfg(test)]
-mod prospective_tests;
+mod reference_semantics_tests;
 
-pub use accessor_helpers::effective_property_value_with_reader;
+pub use accessor_helpers::effective_property_value;

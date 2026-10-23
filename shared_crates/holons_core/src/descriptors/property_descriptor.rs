@@ -45,8 +45,78 @@ impl PropertyDescriptor {
 
     /// Resolves whether instances must provide this property, including inherited
     /// requiredness and the descriptor-defined Schema 2 default.
+    ///
+    /// An omitted value is supplied by `D(P)`'s effective `IsValueRequired`
+    /// member, never by a kernel Boolean default.
     pub fn is_required(&self) -> Result<bool, HolonError> {
-        self.effective_is_value_required()
+        use super::{
+            effective_property_value, effective_relationship_targets, resolve_describing_type,
+            DescribingTypeResolution,
+        };
+        for field in [CorePropertyTypeName::IsValueRequired, CorePropertyTypeName::IsRequired] {
+            if let Some(value) = effective_property_value(&self.holon, field)? {
+                return match value {
+                    BaseValue::BooleanValue(value) => Ok(value.0),
+                    other => {
+                        Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into())
+                            .into())
+                    }
+                };
+            }
+        }
+        let descriptor = match resolve_describing_type(&self.holon)? {
+            DescribingTypeResolution::Unique(descriptor) => descriptor,
+            DescribingTypeResolution::Missing => {
+                return Err(HolonError::MissingDescribedBy {
+                    holon: self.holon.reference_id_string(),
+                }
+                .into())
+            }
+            DescribingTypeResolution::Multiple(targets) => {
+                return Err(HolonError::MultipleDescribedBy {
+                    holon: self.holon.reference_id_string(),
+                    count: targets.len(),
+                }
+                .into())
+            }
+        };
+        let mut seen = HashSet::new();
+        let mut default_member = None;
+        let requested_name = CorePropertyTypeName::IsValueRequired.to_property_name();
+        for contribution in effective_relationship_targets(
+            &descriptor,
+            CoreRelationshipTypeName::InstanceProperties,
+        )? {
+            let declaration_name = PropertyName(accessor_helpers::require_string(
+                &contribution.member,
+                CorePropertyTypeName::TypeName,
+            )?);
+            let label = declaration_name.to_string();
+            if !seen.insert(label.clone()) {
+                return Err(HolonError::DuplicateInheritedDeclaration {
+                    kind: "property".into(),
+                    name: label,
+                    descriptor: accessor_helpers::descriptor_label(&descriptor),
+                }
+                .into());
+            }
+            if declaration_name == requested_name {
+                default_member = Some(contribution.member);
+            }
+        }
+        let default_member =
+            default_member.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+                kind: "property".into(),
+                name: requested_name.to_string(),
+                descriptor: accessor_helpers::descriptor_label(&descriptor),
+            })?;
+        match effective_property_value(&default_member, CorePropertyTypeName::DefaultValue)? {
+            Some(BaseValue::BooleanValue(value)) => Ok(value.0),
+            Some(other) => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into()).into())
+            }
+            None => Err(HolonError::EmptyField("IsValueRequired.DefaultValue".into()).into()),
+        }
     }
 
     /// Returns the value descriptor reached through the required `ValueType` relationship.
@@ -95,99 +165,13 @@ impl PropertyDescriptor {
         if target.property_value(&property_name)?.is_some() {
             return Ok(());
         }
-        if !self.effective_is_value_required()? {
+        if !self.is_required()? {
             return Ok(());
         }
         if let Some(default_value) = self.effective_default_value()? {
             target.with_property_value(property_name, default_value)?;
         }
         Ok(())
-    }
-
-    fn effective_is_value_required(&self) -> Result<bool, HolonError> {
-        self.is_required_with_reader(&super::CurrentDescriptorReader)
-    }
-
-    /// Resolves requiredness and its describing-contract default in one prospective view.
-    /// An omitted value is supplied by `D(P)`'s effective `IsValueRequired`
-    /// member, never by a kernel Boolean default.
-    pub fn is_required_with_reader<R: super::DescriptorReader>(
-        &self,
-        reader: &R,
-    ) -> Result<bool, R::Error> {
-        use super::{
-            effective_property_value_with_reader, effective_relationship_targets_with_reader,
-            resolve_describing_type_with_reader, DescribingTypeResolution,
-        };
-        for field in [CorePropertyTypeName::IsValueRequired, CorePropertyTypeName::IsRequired] {
-            if let Some(value) = effective_property_value_with_reader(&self.holon, field, reader)? {
-                return match value {
-                    BaseValue::BooleanValue(value) => Ok(value.0),
-                    other => {
-                        Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into())
-                            .into())
-                    }
-                };
-            }
-        }
-        let descriptor = match resolve_describing_type_with_reader(&self.holon, reader)? {
-            DescribingTypeResolution::Unique(descriptor) => descriptor,
-            DescribingTypeResolution::Missing => {
-                return Err(HolonError::MissingDescribedBy {
-                    holon: self.holon.reference_id_string(),
-                }
-                .into())
-            }
-            DescribingTypeResolution::Multiple(targets) => {
-                return Err(HolonError::MultipleDescribedBy {
-                    holon: self.holon.reference_id_string(),
-                    count: targets.len(),
-                }
-                .into())
-            }
-        };
-        let mut seen = HashSet::new();
-        let mut default_member = None;
-        let requested_name = CorePropertyTypeName::IsValueRequired.to_property_name();
-        for contribution in effective_relationship_targets_with_reader(
-            &descriptor,
-            CoreRelationshipTypeName::InstanceProperties,
-            reader,
-        )? {
-            let declaration_name = PropertyName(accessor_helpers::require_string(
-                &contribution.member,
-                CorePropertyTypeName::TypeName,
-            )?);
-            let label = declaration_name.to_string();
-            if !seen.insert(label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "property".into(),
-                    name: label,
-                    descriptor: accessor_helpers::descriptor_label(&descriptor),
-                }
-                .into());
-            }
-            if declaration_name == requested_name {
-                default_member = Some(contribution.member);
-            }
-        }
-        let default_member =
-            default_member.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
-                kind: "property".into(),
-                name: requested_name.to_string(),
-                descriptor: accessor_helpers::descriptor_label(&descriptor),
-            })?;
-        match effective_property_value_with_reader(
-            &default_member,
-            CorePropertyTypeName::DefaultValue,
-            reader,
-        )? {
-            Some(BaseValue::BooleanValue(value)) => Ok(value.0),
-            Some(other) => {
-                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into()).into())
-            }
-            None => Err(HolonError::EmptyField("IsValueRequired.DefaultValue".into()).into()),
-        }
     }
 
     fn effective_default_value(&self) -> Result<Option<BaseValue>, HolonError> {
@@ -1034,7 +1018,7 @@ mod tests {
 
         let descriptor = PropertyDescriptor::from_holon(optional_property.into());
 
-        assert!(!descriptor.effective_is_value_required()?);
+        assert!(!descriptor.is_required()?);
         Ok(())
     }
 
@@ -1063,11 +1047,6 @@ mod tests {
 
         assert!(matches!(
             descriptor.is_required(),
-            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
-                if kind == "property" && name == "IsValueRequired"
-        ));
-        assert!(matches!(
-            descriptor.is_required_with_reader(&super::super::CurrentDescriptorReader),
             Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
                 if kind == "property" && name == "IsValueRequired"
         ));
@@ -1105,7 +1084,7 @@ mod tests {
 
         let descriptor = PropertyDescriptor::from_holon(required_property.into());
 
-        assert!(descriptor.effective_is_value_required()?);
+        assert!(descriptor.is_required()?);
         Ok(())
     }
 }

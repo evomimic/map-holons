@@ -12,11 +12,14 @@ pub struct ValueValidationSubject<'a> {
     pub path: &'a ValidationSubjectPath,
 }
 
-/// Read-only inputs prepared through the Commit assessment's prospective reader.
+/// Read-only inputs prepared through the Commit assessment's bound references.
 /// Handlers consume these facts without navigating to containing subjects.
 pub enum PreparedRuleSubject {
     /// Populated names absent from the selected effective contract.
-    Holon { undescribed_properties: Vec<core_types::PropertyName> },
+    Holon {
+        undescribed_properties: Vec<core_types::PropertyName>,
+        key_claim: Option<crate::KeyClaim>,
+    },
     /// A missing property whose minimum and requiredness have already been resolved.
     Property { missing_required: bool, name: String, descriptor_identity: String },
     /// The selected value type's native representation and the populated value kind.

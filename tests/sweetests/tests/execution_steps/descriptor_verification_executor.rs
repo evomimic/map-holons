@@ -901,6 +901,7 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
     let expected_bindings = [
         ("PropertyType.TypeDescriptor", CoreValidationRuleName::RequiredPropertyPresence),
         ("HolonType.TypeDescriptor", CoreValidationRuleName::NoUndescribedProperties),
+        ("HolonType.TypeDescriptor", CoreValidationRuleName::KeyUniqueness),
         ("StringValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesString),
         ("IntegerValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesInteger),
         ("BooleanValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBoolean),
@@ -933,7 +934,6 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
             CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
         ),
         ("Schema.HolonType", CoreValidationRuleName::SchemaDependenciesAcyclic),
-        ("Schema.HolonType", CoreValidationRuleName::CrossSchemaDependenciesDeclared),
     ];
     let mut by_descriptor = std::collections::BTreeMap::<&str, Vec<&str>>::new();
     for (descriptor_key, rule_name) in expected_bindings {
@@ -949,6 +949,11 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
     assert_exact_related_keys(
         &find_holon_by_key(&holons, "TypeDescriptor"),
         "ValidationBindings",
+        &[],
+    );
+    assert_exact_related_keys(
+        &find_holon_by_key(&holons, "CrossSchemaDependenciesDeclared.ValidationRule"),
+        "ValidationBindingFor",
         &[],
     );
     let occurrence_count: usize = holons

@@ -561,8 +561,8 @@ impl FixtureHolons {
                     StagingSource::Version { source },
                     ExpectedDisposition::NoAction | ExpectedDisposition::GraphOnly,
                 ) => {
-                    // Staging drops copied lineage, but an alias reuses the source node
-                    // with its existing predecessor, including non-root versions.
+                    // Staged ancestry applies only to publication. An alias reuses the
+                    // source node's existing predecessor, including non-root versions.
                     snapshot.with_predecessor(
                         self.holons[source].head_snapshot.snapshot().predecessor()?,
                     )?;
@@ -958,6 +958,10 @@ mod tests {
         commit_roots(&mut fixtures);
         let a_head = fixtures.resolve_target_token_to_head(&a).unwrap();
         let b = stage_version(&mut fixtures, &a);
+        assert_eq!(
+            b.expected_reference().predecessor().unwrap(),
+            Some(a_head.expected_reference().into())
+        );
         let b_result = fixtures
             .commit(
                 ExpectedCommitStatus::Complete,
@@ -974,6 +978,10 @@ mod tests {
         );
         let b_predecessor = b_result.expected_reference().predecessor().unwrap();
         let c = stage_version(&mut fixtures, &b);
+        assert_eq!(
+            c.expected_reference().predecessor().unwrap(),
+            Some(b_result.expected_reference().into())
+        );
         let c_result = fixtures
             .commit(
                 ExpectedCommitStatus::Complete,
@@ -1017,7 +1025,10 @@ mod tests {
                 .unwrap();
             let predecessor = b_result.expected_reference().predecessor().unwrap();
             let update = stage_version(&mut fixtures, &b);
-            assert!(update.expected_reference().predecessor().unwrap().is_none());
+            assert_eq!(
+                update.expected_reference().predecessor().unwrap(),
+                Some(b_result.expected_reference().into())
+            );
             assert_eq!(b_result.expected_reference().predecessor().unwrap(), predecessor);
             let result = fixtures
                 .commit(

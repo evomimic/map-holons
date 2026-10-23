@@ -66,13 +66,13 @@ impl StaticRuleRegistry {
         use CoreValidationRuleName::*;
         match CoreValidationRuleName::from_key(&key.0)? {
             SchemaDependenciesAcyclic => Some(crate::schema_rules::schema_dependencies_acyclic),
-            CrossSchemaDependenciesDeclared => {
-                Some(crate::schema_rules::cross_schema_dependencies_declared)
-            }
+            // Vocabulary retained while declared dependency coverage is inactive.
+            CrossSchemaDependenciesDeclared => None,
             InheritedValueConstraintNonRelaxation => {
                 Some(descriptor_rules::inherited_constraint_non_relaxation)
             }
             RequiredPropertyPresence => Some(handlers::required_property_presence),
+            KeyUniqueness => Some(handlers::key_uniqueness),
             NoUndescribedProperties => Some(handlers::no_undescribed_properties),
             BaseValueKindMatchesString
             | BaseValueKindMatchesInteger

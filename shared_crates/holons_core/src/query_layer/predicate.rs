@@ -293,7 +293,7 @@ fn validate_literal_operand(
         });
     }
     check_authored_literal(&declared_type, &value)?;
-    if !same_definition(declared_type.holon(), required_type.holon()) {
+    if !same_definition(declared_type.holon(), required_type.holon())? {
         check_authored_literal(required_type, &value)?;
     }
     Ok(value)

@@ -8,7 +8,7 @@ use std::{
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use holons_core::core_shared_objects::{
-    space_manager::HolonSpaceManager, transactions::TransactionContext, Holon,
+    space_manager::HolonSpaceManager, transactions::TransactionContext, Holon, WritableRelationship,
 };
 use holons_core::{
     HolonCollection, HolonCollectionApi, HolonReference, HolonServiceApi, ReadableHolon,
@@ -22,6 +22,11 @@ struct FixtureStorage {
     holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
+    lineage_reads: std::sync::atomic::AtomicUsize,
+    keyed_lineages: std::sync::Mutex<HashMap<MapString, Vec<LocalId>>>,
+    lineage_read_error: std::sync::Mutex<Option<HolonError>>,
+    read_errors: HashMap<HolonId, HolonError>,
+    reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
     fn relationship_cache_policy(
@@ -69,6 +74,9 @@ impl HolonServiceApi for FixtureStorage {
         _: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        if let Some(error) = self.read_errors.get(id) {
+            return Err(error.clone());
+        }
         Ok(Holon::Saved(self.holons.get(id).expect("unexpected storage read").clone()))
     }
     fn fetch_related_holons_internal(
@@ -78,6 +86,7 @@ impl HolonServiceApi for FixtureStorage {
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
         self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        *self.reads_by_relationship.lock().unwrap().entry(name.clone()).or_default() += 1;
         assert!(self.holons.contains_key(source), "unexpected storage relationship read");
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
@@ -105,6 +114,18 @@ impl HolonServiceApi for FixtureStorage {
     ) -> Result<TransientReference, HolonError> {
         panic!("validator must not load")
     }
+    fn get_saved_lineage_roots_by_key_internal(
+        &self,
+        _: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        self.lineage_reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if let Some(error) = &*self.lineage_read_error.lock().unwrap() {
+            return Err(error.clone());
+        }
+        Ok(self.keyed_lineages.lock().unwrap().get(key).cloned().unwrap_or_default())
+    }
+
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -132,7 +153,7 @@ pub(super) struct Fixture {
     saved_storage: Option<Arc<FixtureStorage>>,
 }
 
-pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 7] = {
+pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 8] = {
     use CoreValidationRuleName::*;
     [
         (
@@ -141,6 +162,7 @@ pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 7] = {
             "PropertyType.TypeDescriptor",
         ),
         (NoUndescribedProperties, "HolonValidationRule.HolonType", "HolonType.TypeDescriptor"),
+        (KeyUniqueness, "HolonValidationRule.HolonType", "HolonType.TypeDescriptor"),
         (BaseValueKindMatchesString, "StringValidationRule.HolonType", "StringValueType.ValueType"),
         (
             BaseValueKindMatchesInteger,
@@ -183,12 +205,15 @@ impl Fixture {
         ] {
             fixture.node(key)?;
         }
+        let mut binding_roots = std::collections::HashSet::new();
         for (rule, family, target) in RULES {
             fixture.node(rule.as_str())?;
             fixture.node(family)?;
             fixture.node(target)?;
             fixture.link(rule.as_str(), CoreRelationshipTypeName::DescribedBy, family)?;
-            fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
+            if binding_roots.insert(target) {
+                fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
+            }
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;
         }
         // Subject fixtures bind only subject rules. The binding inventory
@@ -209,7 +234,6 @@ impl Fixture {
             CoreValidationRuleName::ContractMemberKindCompatibility,
             CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
             CoreValidationRuleName::SchemaDependenciesAcyclic,
-            CoreValidationRuleName::CrossSchemaDependenciesDeclared,
         ] {
             fixture.node(rule.as_str())?;
         }
@@ -299,15 +323,68 @@ impl Fixture {
 }
 
 impl Fixture {
+    pub fn lineage_lookup_reads(&self) -> usize {
+        self.saved_storage
+            .as_ref()
+            .map_or(0, |storage| storage.lineage_reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    pub fn fail_lineage_lookup(&self, error: HolonError) {
+        *self.saved_storage.as_ref().unwrap().lineage_read_error.lock().unwrap() = Some(error);
+    }
+
+    /// Assigns record-derived roots to saved fixture versions, retaining each version's
+    /// key as historical association evidence for its lineage.
+    pub fn saved_snapshot_with_lineages(&self, roots: &[(&str, &str)]) -> Result<Self, HolonError> {
+        self.saved_snapshot_configured(&[], roots)
+    }
+
+    /// Simulates published records whose keyed Owns maintenance has not completed.
+    pub fn remove_saved_key_association(&self, key: &str) {
+        self.saved_storage
+            .as_ref()
+            .unwrap()
+            .keyed_lineages
+            .lock()
+            .unwrap()
+            .remove(&MapString(key.into()));
+    }
+
     pub fn backend_relationship_reads(&self) -> usize {
         self.saved_storage
             .as_ref()
             .map_or(0, |storage| storage.reads.load(std::sync::atomic::Ordering::Relaxed))
     }
 
+    pub fn backend_reads_for(&self, edge: &CoreRelationshipTypeName) -> usize {
+        self.backend_reads_for_name(&edge.as_relationship_name())
+    }
+
+    pub fn backend_reads_for_name(&self, name: &RelationshipName) -> usize {
+        self.saved_storage.as_ref().map_or(0, |storage| {
+            *storage.reads_by_relationship.lock().unwrap().get(name).unwrap_or(&0)
+        })
+    }
+
     /// Saves the fixture graph as service snapshots and opens a fresh empty Nursery.
     /// All relationship endpoints are rebound as saved references on read.
     pub fn saved_snapshot(&self) -> Result<Self, HolonError> {
+        self.saved_snapshot_with_read_errors(&[])
+    }
+
+    /// Injects backend failures while preserving ordinary bound-reference traversal.
+    pub fn saved_snapshot_with_read_errors(
+        &self,
+        failures: &[(&str, HolonError)],
+    ) -> Result<Self, HolonError> {
+        self.saved_snapshot_configured(failures, &[])
+    }
+
+    fn saved_snapshot_configured(
+        &self,
+        failures: &[(&str, HolonError)],
+        roots: &[(&str, &str)],
+    ) -> Result<Self, HolonError> {
         use holons_core::core_shared_objects::holon::SavedHolon;
         let ids: BTreeMap<_, _> = self
             .nodes
@@ -315,13 +392,28 @@ impl Fixture {
             .enumerate()
             .map(|(index, key)| (key.clone(), HolonId::Local(LocalId(vec![index as u8 + 1; 39]))))
             .collect();
+        let reference_ids: HashMap<_, _> = self
+            .nodes
+            .iter()
+            .map(|(key, reference)| (reference.clone(), ids[key].clone()))
+            .collect();
         let mut storage = FixtureStorage::default();
         for (key, reference) in &self.nodes {
             let model = reference.holon_clone_model()?;
             let id = ids[key].clone();
+            let root = roots
+                .iter()
+                .find(|(version, _)| *version == key)
+                .map(|(_, root)| ids[*root].local_id().clone());
+            if let Some(key) = reference.key()? {
+                let lineage = root.clone().unwrap_or_else(|| id.local_id().clone());
+                let entries = storage.keyed_lineages.get_mut().unwrap().entry(key).or_default();
+                // Preserve individual keyed associations so preparation must deduplicate lineages.
+                entries.push(lineage);
+            }
             storage.holons.insert(
                 id.clone(),
-                SavedHolon::new(id.local_id().clone(), model.properties, None, model.version),
+                SavedHolon::new(id.local_id().clone(), model.properties, root, model.version),
             );
             if let Some(relationships) = model.relationships {
                 for (name, members) in relationships.iter() {
@@ -330,11 +422,14 @@ impl Fixture {
                         .unwrap()
                         .get_members()
                         .iter()
-                        .map(|target| Ok(ids[&target.key()?.unwrap().to_string()].clone()))
+                        .map(|target| Ok(reference_ids[target].clone()))
                         .collect::<Result<Vec<_>, HolonError>>()?;
                     storage.relationships.insert((id.clone(), name), targets);
                 }
             }
+        }
+        for (key, error) in failures {
+            storage.read_errors.insert(ids[*key].clone(), error.clone());
         }
         let storage = Arc::new(storage);
         let manager = Arc::new(HolonSpaceManager::new_with_managers(
@@ -352,17 +447,28 @@ impl Fixture {
     }
 
     /// Restores an update snapshot for a saved schema definition without requiring its
-    /// complete meta-contract. Tests can deliberately author malformed replacements.
-    pub fn replacement(&self, key: &str) -> Result<StagedReference, HolonError> {
-        self.replacement_with(key, |_| Ok(()))
+    /// complete meta-contract. Tests can deliberately author malformed successors.
+    pub fn stage_update_of(&self, key: &str) -> Result<StagedReference, HolonError> {
+        self.stage_update_snapshot(key, |_| Ok(()), false)
     }
 
-    pub fn replacement_with(
+    pub fn stage_update_of_with(
         &self,
         key: &str,
         edit: impl FnOnce(
             &mut holons_core::core_shared_objects::holon::HolonCloneModel,
         ) -> Result<(), HolonError>,
+    ) -> Result<StagedReference, HolonError> {
+        self.stage_update_snapshot(key, edit, true)
+    }
+
+    pub fn stage_update_snapshot(
+        &self,
+        key: &str,
+        edit: impl FnOnce(
+            &mut holons_core::core_shared_objects::holon::HolonCloneModel,
+        ) -> Result<(), HolonError>,
+        changed: bool,
     ) -> Result<StagedReference, HolonError> {
         use holons_core::core_shared_objects::holon::{HolonCloneModel, StagedHolon};
         let saved = &self.nodes[key];
@@ -378,14 +484,25 @@ impl Fixture {
                     .fetch_all_related_holons_internal(&self.context, &saved.holon_id()?)?,
             ),
         };
+        // Match staging's constructor-owned ancestry without marking it as an authored edit.
+        let mut relationships = model.relationships.as_ref().unwrap().clone_for_staged()?;
+        relationships.map.remove(&CoreRelationshipTypeName::Predecessor.as_relationship_name());
+        relationships.add_related_holons_with_keys(
+            CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+            vec![(saved.clone(), None)],
+        )?;
+        model.relationships = Some(holons_core::RelationshipMap::from(relationships));
         edit(&mut model)?;
         let transient = self.context.mutation().new_holon(Some(MapString(key.into())))?;
         let staged = self.context.mutation().stage_new_holon(transient)?;
-        *staged.get_holon_to_commit(&self.context)?.write().unwrap() =
-            Holon::Staged(StagedHolon::new_for_update_from_clone_model(
-                model,
-                saved.holon_id()?.local_id().clone(),
-            )?);
+        let mut holon = StagedHolon::new_for_update_from_clone_model(
+            model,
+            saved.holon_id()?.local_id().clone(),
+        )?;
+        if changed {
+            holon.note_property_mutation()?;
+        }
+        *staged.get_holon_to_commit(&self.context)?.write().unwrap() = Holon::Staged(holon);
         Ok(staged)
     }
 }
@@ -468,7 +585,7 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "TypeDescriptor",
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
-    for (_, _, key) in RULES[2..].iter() {
+    for (_, _, key) in RULES[3..].iter() {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
             .nodes
@@ -529,7 +646,6 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         CoreValidationRuleName::ContractMemberKindCompatibility,
         CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
         CoreValidationRuleName::SchemaDependenciesAcyclic,
-        CoreValidationRuleName::CrossSchemaDependenciesDeclared,
     ] {
         fixture.node(rule.as_str())?;
         fixture.link(

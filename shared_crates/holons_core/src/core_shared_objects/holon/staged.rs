@@ -1,5 +1,8 @@
+use crate::core_shared_objects::pending_relationship_deltas::{
+    PendingDelta, PendingRelationshipTarget,
+};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     sync::{Arc, RwLock},
 };
 
@@ -8,7 +11,8 @@ use crate::{
         holon::{AccessType, HolonCloneModel, HolonState, StagedState, ValidationState},
         ReadableHolonState, ReadableRelationship, WritableRelationship, WriteableHolonState,
     },
-    HolonCollection, HolonReference, RelationshipMap, StagedRelationshipMap,
+    HolonCollection, HolonCollectionApi, HolonReference, RelationshipMap, SmartReference,
+    StagedRelationshipMap,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -16,7 +20,7 @@ use core_types::{
     PropertyName, PropertyValue, RelationshipName,
 };
 use serde::{Deserialize, Serialize};
-use type_names::CorePropertyTypeName;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Pass-2 relationship persistence scope selected during Commit preparation.
 ///
@@ -50,6 +54,7 @@ pub struct StagedHolon {
     versioned_source_id: Option<LocalId>,
     // Relationship collections mutated during this staged transaction.
     touched_relationship_names: BTreeSet<RelationshipName>,
+    pending_relationship_deltas: BTreeMap<RelationshipName, PendingDelta>,
     // Pass-2 relationship persistence decision recorded by Pass 1 of the same commit dance.
     relationship_commit_scope: RelationshipCommitScope,
     errors: Vec<HolonError>, // Populated during the commit process
@@ -73,6 +78,7 @@ impl StagedHolon {
             original_id: None,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
+            pending_relationship_deltas: BTreeMap::new(),
             relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         }
@@ -92,6 +98,7 @@ impl StagedHolon {
             original_id: model.original_id,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
+            pending_relationship_deltas: BTreeMap::new(),
             relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         };
@@ -117,6 +124,7 @@ impl StagedHolon {
             original_id: model.original_id,
             versioned_source_id: Some(source_local_id),
             touched_relationship_names: BTreeSet::new(),
+            pending_relationship_deltas: BTreeMap::new(),
             relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         })
@@ -134,6 +142,7 @@ impl StagedHolon {
         original_id: Option<LocalId>,
         versioned_source_id: Option<LocalId>,
         touched_relationship_names: BTreeSet<RelationshipName>,
+        pending_relationship_deltas: BTreeMap<RelationshipName, PendingDelta>,
         relationship_commit_scope: RelationshipCommitScope,
         errors: Vec<HolonError>,
     ) -> Self {
@@ -148,9 +157,24 @@ impl StagedHolon {
             original_id,
             versioned_source_id,
             touched_relationship_names,
+            pending_relationship_deltas,
             relationship_commit_scope,
             errors,
         }
+    }
+
+    /// Records constructor-owned ancestry without classifying a mutation or touching persistence scope.
+    pub(crate) fn record_staging_predecessor(
+        &mut self,
+        source: SmartReference,
+    ) -> Result<(), HolonError> {
+        let mut collection = HolonCollection::new_staged();
+        collection.add_references_with_keys(vec![(source.into(), None)])?;
+        self.staged_relationships.map.insert(
+            CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+            Arc::new(RwLock::new(collection)),
+        );
+        Ok(())
     }
 
     fn staged_relationships_from_model(
@@ -292,6 +316,11 @@ impl StagedHolon {
         &self.touched_relationship_names
     }
 
+    /// Recorded changes survive promotion and interrupted relationship retries.
+    pub fn pending_relationship_deltas(&self) -> &BTreeMap<RelationshipName, PendingDelta> {
+        &self.pending_relationship_deltas
+    }
+
     pub fn errors(&self) -> &[HolonError] {
         &self.errors
     }
@@ -346,6 +375,79 @@ impl StagedHolon {
     /// Returns the recorded relationship persistence decision for wire projection.
     pub fn relationship_commit_scope(&self) -> RelationshipCommitScope {
         self.relationship_commit_scope
+    }
+
+    fn records_relationship_deltas(&self) -> bool {
+        matches!(
+            self.staged_state,
+            StagedState::ForUpdate
+                | StagedState::ForUpdateGraphOnly
+                | StagedState::ForUpdateNewVersion
+        )
+    }
+
+    fn target_occurrences(
+        &self,
+        name: &RelationshipName,
+        target: &PendingRelationshipTarget,
+    ) -> Result<usize, HolonError> {
+        let Some(collection) = self.staged_relationships.map.get(name) else { return Ok(0) };
+        let collection =
+            collection.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        Ok(collection
+            .get_members()
+            .iter()
+            .filter(|reference| PendingRelationshipTarget::for_reference(reference) == *target)
+            .count())
+    }
+
+    fn delta_after_additions<'a>(
+        &self,
+        name: &RelationshipName,
+        targets: impl Iterator<Item = &'a HolonReference>,
+    ) -> Result<PendingDelta, HolonError> {
+        let mut delta = self.pending_relationship_deltas.get(name).cloned().unwrap_or_default();
+        if self.records_relationship_deltas() {
+            let mut seen = BTreeSet::new();
+            for target in targets {
+                let id = PendingRelationshipTarget::for_reference(target);
+                let present = !seen.insert(id.clone()) || self.target_occurrences(name, &id)? > 0;
+                delta.record_add(id, present);
+            }
+        }
+        Ok(delta)
+    }
+
+    fn delta_after_removals<'a>(
+        &self,
+        name: &RelationshipName,
+        targets: impl Iterator<Item = &'a HolonReference>,
+    ) -> Result<PendingDelta, HolonError> {
+        let mut delta = self.pending_relationship_deltas.get(name).cloned().unwrap_or_default();
+        if self.records_relationship_deltas() {
+            let mut seen = BTreeSet::new();
+            for target in targets {
+                let id = PendingRelationshipTarget::for_reference(target);
+                if !seen.insert(id.clone()) {
+                    continue;
+                }
+                let occurrences = self.target_occurrences(name, &id)?;
+                if occurrences > 0 {
+                    // Removing all occurrences loses multiplicity that target sets cannot represent.
+                    delta.repeated_occurrence |= occurrences > 1;
+                    delta.record_remove(id);
+                }
+            }
+        }
+        Ok(delta)
+    }
+
+    fn retain_delta(&mut self, name: &RelationshipName, delta: PendingDelta) {
+        if delta.is_empty() {
+            self.pending_relationship_deltas.remove(name);
+        } else {
+            self.pending_relationship_deltas.insert(name.clone(), delta);
+        }
     }
 
     fn mark_relationship_touched(&mut self, relationship_name: &RelationshipName) {
@@ -583,7 +685,9 @@ impl WriteableHolonState for StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
 
+        let delta = self.delta_after_additions(&relationship_name, holons.iter())?;
         self.staged_relationships.add_related_holons(relationship_name.clone(), holons)?;
+        self.retain_delta(&relationship_name, delta);
         self.mark_relationship_touched(&relationship_name);
 
         Ok(self)
@@ -596,8 +700,11 @@ impl WriteableHolonState for StagedHolon {
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
+        let delta = self
+            .delta_after_additions(&relationship_name, entries.iter().map(|(target, _)| target))?;
         self.staged_relationships
             .add_related_holons_with_keys(relationship_name.clone(), entries)?;
+        self.retain_delta(&relationship_name, delta);
         self.mark_relationship_touched(&relationship_name);
         Ok(self)
     }
@@ -626,7 +733,9 @@ impl WriteableHolonState for StagedHolon {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
+        let delta = self.delta_after_removals(&relationship_name, holons.iter())?;
         self.staged_relationships.remove_related_holons(&relationship_name, holons)?;
+        self.retain_delta(&relationship_name, delta);
         self.mark_relationship_touched(&relationship_name);
 
         Ok(self)
@@ -639,7 +748,10 @@ impl WriteableHolonState for StagedHolon {
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
+        let delta =
+            self.delta_after_removals(relationship_name, entries.iter().map(|(target, _)| target))?;
         self.staged_relationships.remove_related_holons_with_keys(relationship_name, entries)?;
+        self.retain_delta(relationship_name, delta);
         self.mark_relationship_touched(relationship_name);
         Ok(self)
     }
@@ -746,6 +858,7 @@ mod tests {
             original_id: None,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
+            pending_relationship_deltas: BTreeMap::new(),
             relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         };
@@ -828,6 +941,7 @@ mod tests {
             original_id: None,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
+            pending_relationship_deltas: BTreeMap::new(),
             relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         };
@@ -919,6 +1033,7 @@ mod tests {
             None,
             Some(LocalId(vec![1, 2, 3])),
             BTreeSet::new(),
+            BTreeMap::new(),
             RelationshipCommitScope::Full,
             Vec::new(),
         );
@@ -964,6 +1079,7 @@ mod tests {
             None,
             Some(LocalId(vec![1, 2, 3])),
             BTreeSet::from([touched.clone()]),
+            BTreeMap::new(),
             RelationshipCommitScope::Full,
             Vec::new(),
         );

@@ -23,6 +23,8 @@ mod fixture_cases;
 use execution_steps::dance_test_runner::{
     boot_dance_test_suite, run_dance_test_suite, run_dance_test_suite_on, DanceTestSuite,
 };
+use fixture_cases::commit_graph_only_fixture::*;
+use fixture_cases::commit_key_uniqueness_fixture::*;
 use holons_core::ReadableHolon;
 use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
 use map_commands_runtime::{ExecutionPolicy, Runtime};
@@ -32,10 +34,10 @@ use std::collections::BTreeSet;
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::attachment_defaults_fixture::*;
 use fixture_cases::bootstrap_operational_schema_fixture::*;
-use fixture_cases::commit_competition_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
 use fixture_cases::commit_lineage_fixture::*;
 use fixture_cases::commit_schema_fixture::*;
+use fixture_cases::commit_sibling_fixture::*;
 use fixture_cases::commit_strict_contract_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
@@ -168,11 +170,20 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_same_key_dispositions_fixture().unwrap(),
             commit_sequential_lineage_fixture().unwrap(),
             commit_non_root_lineage_fixture().unwrap(),
-            commit_competition_retry_fixture().unwrap(),
-            commit_graph_only_competition_fixture().unwrap(),
+            commit_version_siblings_fixture().unwrap(),
+            commit_no_op_and_graph_only_siblings_fixture().unwrap(),
+            commit_disjoint_graph_additions_fixture().unwrap(),
+            commit_historical_key_uniqueness_fixture().unwrap(),
+            commit_identical_graph_additions_fixture().unwrap(),
+            commit_graph_overlap_rejection_fixture().unwrap(),
+            commit_graph_then_version_fixture().unwrap(),
+            commit_version_then_graph_fixture().unwrap(),
             commit_branch_across_transactions_fixture().unwrap(),
-            commit_unstaged_schema_finding_fixture().unwrap(),
+            commit_cross_schema_dependency_gap_fixture().unwrap(),
             commit_schema_cycle_fixture().unwrap(),
+            commit_schema_successor_membership_fixture().unwrap(),
+            commit_book_title_exact_references_fixture().unwrap(),
+            commit_required_anchor_update_fixture().unwrap(),
             commit_strict_contract_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),
             simple_add_remove_properties_fixture().unwrap(),
@@ -201,6 +212,21 @@ async fn book_value_presentation_acceptance() {
     run_dance_test_suite(DanceTestSuite {
         name: "book_value_presentation_acceptance",
         test_cases: vec![load_book_person_inverse_schema_fixture().unwrap()],
+    })
+    .await;
+}
+
+/// Focused staging ancestry and persisted lineage checks; also covered by runtime_behavior_matrix.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused ancestry check; runtime_behavior_matrix covers these fixtures"]
+async fn staging_ancestry_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "staging_ancestry_acceptance",
+        test_cases: vec![
+            stage_new_version_fixture().unwrap(),
+            commit_sequential_lineage_fixture().unwrap(),
+            commit_non_root_lineage_fixture().unwrap(),
+        ],
     })
     .await;
 }

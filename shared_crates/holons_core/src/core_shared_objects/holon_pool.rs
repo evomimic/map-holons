@@ -133,7 +133,7 @@ impl HolonPool {
     ///
     /// Assumptions:
     /// - Versioned keys are stored in `keyed_index` using the convention
-    ///   `"<base_key>__<version>_transient"`.
+    ///   `"<base_key>__<version>_<phase>"`, with phase `transient` or `staged`.
     /// - This helper is used when the caller expects **exactly one**
     ///   Holon for the given base key (across all versions).
     ///
@@ -157,7 +157,7 @@ impl HolonPool {
     /// A "base key" is the logical key stored in the Holon's `Key` property.
     /// Versioned keys in the pool are expected to follow the convention:
     ///
-    /// - `"<base_key>__<version>_transient"`
+    /// - `"<base_key>__<version>_<phase>"`, where phase is `transient` or `staged`.
     ///
     /// This function:
     /// - Includes an exact match for `base_key` if present.
@@ -166,9 +166,9 @@ impl HolonPool {
     /// Examples:
     /// - base `"Book"` matches:
     ///     - `"Book"`
-    ///     - `"Book__7_transient"`, `"Book__8_transient"`, ...
+    ///     - `"Book__7_transient"`, `"Book__8_staged"`, ...
     /// - base `"Book.Edition"` matches:
-    ///     - `"Book.Edition__12_transient"`, ...
+    ///     - `"Book.Edition__12_staged"`, ...
     /// - base `"Book"` does **not** match `"Book.Edition__..."`.
     pub fn get_ids_by_base_key(&self, key: &MapString) -> Result<Vec<&TemporaryId>, HolonError> {
         // Prefix that delimits the version section of the key.
@@ -185,7 +185,7 @@ impl HolonPool {
         }
 
         // 2) Collect all versioned entries for this base key:
-        //    keys in the form "<base_key>__<version>_transient".
+        //    keys in the form "<base_key>__<version>_<phase>".
         //
         // Because `keyed_index` is ordered, all such keys form a contiguous range
         // starting at `versioned_prefix`. We walk until the prefix no longer matches.
@@ -245,6 +245,15 @@ impl HolonPool {
 
         let id = create_temporary_id_from_key(&versioned_key);
 
+        // After resolving key collisions, an ID collision can only arise from
+        // index/map divergence (from_parts/import_pool) or a hash collision.
+        if self.holons.contains_key(&id) {
+            return Err(HolonError::DuplicateError(
+                "Holon pool candidate".into(),
+                format!("{id:?}"),
+            ));
+        }
+
         self.keyed_index.insert(versioned_key, id.clone());
         // Store new holon wrapped in Arc<RwLock>
         self.holons.insert(id.clone(), Arc::new(RwLock::new(holon)));
@@ -255,5 +264,78 @@ impl HolonPool {
     /// Returns the number of Holons in the pool.
     pub fn len(&self) -> usize {
         self.holons.len()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core_shared_objects::holon::StagedHolon;
+    use base_types::BaseValue;
+    use type_names::CorePropertyTypeName;
+
+    fn candidate(key: &str) -> Result<Holon, HolonError> {
+        let mut holon = StagedHolon::new_for_create();
+        holon.with_property_value(
+            CorePropertyTypeName::Key.as_property_name(),
+            BaseValue::StringValue(MapString(key.into())),
+        )?;
+        Ok(Holon::Staged(holon))
+    }
+
+    #[test]
+    fn repeated_id_preserves_existing_holon_and_key_index() -> Result<(), HolonError> {
+        // Cover a missing index entry both before and after key collision handling.
+        for collide_on_key in [false, true] {
+            let mut incoming = candidate("candidate")?;
+            let mut pool = HolonPool::new();
+            if collide_on_key {
+                pool.insert_holon(candidate("candidate")?)?;
+                incoming.increment_version()?;
+            }
+            let repeated_id = create_temporary_id_from_key(&incoming.versioned_key()?);
+            let existing = Arc::new(RwLock::new(candidate("retained")?));
+            let mut holons = pool.holons_by_id().clone();
+            holons.insert(repeated_id.clone(), existing.clone());
+            let keys_before = pool.keyed_index().clone();
+            // Pool reconstruction/import can expose map/index divergence. The
+            // incoming candidate must not overwrite an entry hidden from the index.
+            pool.import_pool(HolonPool::from_parts(holons, keys_before.clone()));
+            let ids_before: Vec<_> = pool.holons_by_id().keys().cloned().collect();
+
+            assert!(matches!(
+                pool.insert_holon(candidate("candidate")?),
+                Err(HolonError::DuplicateError(_, _))
+            ));
+            assert!(Arc::ptr_eq(&existing, &pool.get_holon_by_id(&repeated_id)?));
+            assert_eq!(pool.keyed_index(), &keys_before);
+            assert_eq!(pool.holons_by_id().keys().cloned().collect::<Vec<_>>(), ids_before);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn same_key_candidates_remain_distinct_and_enumerable() -> Result<(), HolonError> {
+        let mut pool = HolonPool::new();
+        let ids = (0..3)
+            .map(|_| pool.insert_holon(candidate("shared-key")?))
+            .collect::<Result<std::collections::BTreeSet<_>, HolonError>>()?;
+        assert_eq!(ids.len(), 3);
+        assert_eq!(pool.len(), 3);
+        assert_eq!(pool.get_all_holons().len(), 3);
+        assert_eq!(
+            pool.get_ids_by_base_key(&MapString("shared-key".into()))?
+                .into_iter()
+                .cloned()
+                .collect::<std::collections::BTreeSet<_>>(),
+            ids
+        );
+        for (key, id) in pool.keyed_index() {
+            assert!(Arc::ptr_eq(
+                &pool.get_holon_by_id(id)?,
+                &pool.get_holon_by_versioned_key(key).unwrap(),
+            ));
+        }
+        Ok(())
     }
 }

@@ -75,15 +75,15 @@
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "a0d2159c42231d80fe7f19af6c8f7c9250b092ca0ef41868e8c00048b0d6b977"
+      "sha256": "59ba6cc17ed76ea71d0c808d69e066e0ef9a5815c547c332cc80d37624e1a8dd"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "e666816f399b6278216c5bb4d7768bcc7f085654675371f03da5f941487d6b0b"
+      "sha256": "a82dffb428976bd2445588c85299880e501a80187b36c53d8c09afb7a4780f46"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "6a85514bcbe79c07e414340a6d86be745add6f2995449c5c0fbb7c564069cdc7"
+      "sha256": "a873797a5bd5ba1f1692c2d951e861762902b48e0453e02ac4704aea56ee1866"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -2886,6 +2886,10 @@
     {
       "key": "KeyRuleType.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "KeyUniqueness.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "LauncherDismissDuration.DesignToken",

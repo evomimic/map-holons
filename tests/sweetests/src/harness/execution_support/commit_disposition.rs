@@ -97,6 +97,9 @@ pub fn classify(observed: &ObservedCandidate) -> ObservedDisposition {
 /// Returns candidate indices in saved-result order, matching only committed identities.
 /// Keys and declarations never participate. Each result must have exactly one claimant,
 /// and duplicate result identities are rejected rather than recorded twice.
+/// The exception is graph-only siblings of one source: each records its own SavedHolons
+/// entry for the source identity, so the entries pair with claimants in candidate order
+/// and must match them in number.
 /// On success, replaces all `saved_holons_id` memberships with the matched identities,
 /// clearing unmatched candidates. A correspondence failure leaves observations unchanged.
 pub fn match_saved_holons(
@@ -104,7 +107,13 @@ pub fn match_saved_holons(
     saved_ids: &[LocalId],
 ) -> Result<Vec<usize>, String> {
     let mut matched = Vec::new();
+    let mut occurrences = HashMap::<&LocalId, usize>::new();
     for saved_id in saved_ids {
+        *occurrences.entry(saved_id).or_default() += 1;
+    }
+    let mut seen = HashMap::<&LocalId, usize>::new();
+    for saved_id in saved_ids {
+        let occurrence = seen.entry(saved_id).or_default();
         let claimants: Vec<_> = candidates
             .iter()
             .enumerate()
@@ -112,6 +121,11 @@ pub fn match_saved_holons(
                 matches!(&candidate.staged_state, StagedState::Committed(id) if id == saved_id)
             })
             .collect();
+        let graph_only_siblings = claimants.len() > 1
+            && claimants.len() == occurrences[saved_id]
+            && claimants
+                .iter()
+                .all(|(_, candidate)| candidate.versioned_source_id.as_ref() == Some(saved_id));
         match claimants.as_slice() {
             [(index, candidate)] => {
                 if matched.contains(index) {
@@ -121,6 +135,10 @@ pub fn match_saved_holons(
                     ));
                 }
                 matched.push(*index);
+            }
+            _ if graph_only_siblings => {
+                matched.push(claimants[*occurrence].0);
+                *occurrence += 1;
             }
             _ => {
                 let labels: Vec<_> = claimants
@@ -381,6 +399,33 @@ mod tests {
             assert!(report.contains(expected), "{report}");
         }
         assert!(report.contains(&format!("{:?}", id(1))));
+    }
+
+    #[test]
+    fn graph_only_siblings_share_their_source_identity_in_candidate_order() {
+        let mut candidates = vec![
+            candidate("first", Some(id(1)), StagedState::Committed(id(1)), None),
+            candidate("version", Some(id(1)), StagedState::Committed(id(2)), None),
+            candidate("second", Some(id(1)), StagedState::Committed(id(1)), None),
+        ];
+        let matches = match_saved_holons(&mut candidates, &[id(1), id(2), id(1)]).unwrap();
+        assert_eq!(matches, vec![0, 1, 2]);
+        assert_eq!(classify(&candidates[0]), ObservedDisposition::GraphOnly);
+        assert_eq!(classify(&candidates[1]), ObservedDisposition::NewVersion);
+        assert_eq!(classify(&candidates[2]), ObservedDisposition::GraphOnly);
+        // Each sibling must contribute its own entry.
+        let report = match_saved_holons(&mut candidates, &[id(1), id(2)]).unwrap_err();
+        assert!(report.contains("Ambiguous"), "{report}");
+    }
+
+    #[test]
+    fn shared_identity_requires_every_claimant_to_be_graph_only() {
+        let mut candidates = vec![
+            candidate("graph", Some(id(1)), StagedState::Committed(id(1)), None),
+            candidate("root", None, StagedState::Committed(id(1)), None),
+        ];
+        let report = match_saved_holons(&mut candidates, &[id(1), id(1)]).unwrap_err();
+        assert!(report.contains("Ambiguous"), "{report}");
     }
 
     #[test]

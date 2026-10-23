@@ -1010,9 +1010,11 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage new version".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        // Staging clears copied lineage; Commit declares the persisted successor lineage.
+        // Staging records the exact saved source; publication persists this ancestry.
         let mut new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
-        new_snapshot.with_predecessor(None)?;
+        new_snapshot.with_predecessor(Some(
+            fixture_holons.resolve_expected_relationship_target(&step_token)?,
+        ))?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
