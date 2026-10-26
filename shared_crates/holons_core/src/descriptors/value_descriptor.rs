@@ -977,6 +977,15 @@ mod tests {
         assert!(descriptor.apply_operator(&equals, &red, &red)?);
         assert!(!descriptor.apply_operator(&equals, &red, &blue)?);
 
+        // Execution compares tokens; only explicit validation checks membership.
+        let green = BaseValue::EnumValue(MapEnumValue(MapString("Green".to_string())));
+        assert!(descriptor.apply_operator(&equals, &green, &green)?);
+        assert!(!descriptor.apply_operator(&equals, &green, &red)?);
+        assert!(matches!(
+            descriptor.is_valid(&green),
+            Err(HolonError::EnumVariantNotInSchema { variant, .. }) if variant == "Green"
+        ));
+
         Ok(())
     }
 

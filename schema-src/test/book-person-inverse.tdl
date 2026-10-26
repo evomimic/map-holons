@@ -20,7 +20,7 @@ holon Book.HolonType {
     plural: "Books"
   }
   relationships {
-    InstanceProperties -> [Title.PropertyType, IsPublished.PropertyType, PageCount.PropertyType, PublicationStatus.PropertyType, CoverDigest.PropertyType, Subtitle.PropertyType]
+    InstanceProperties -> [Title.PropertyType, IsPublished.PropertyType, PageCount.PropertyType, PublicationStatus.PropertyType, CoverDigest.PropertyType, Subtitle.PropertyType, ContentDigest.PropertyType]
     InstanceRelationships -> [
       (Book.HolonType)-[AuthoredBy]->(Person.HolonType),
       (Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor)
@@ -182,6 +182,32 @@ property CoverDigest.PropertyType {
     display_name: "CoverDigest"
     display_plural: "CoverDigest"
     plural: "CoverDigestValues"
+  }
+}
+
+property ContentDigest.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ContentDigestValueType.MapBytesValueType
+  header {
+    description: "Optional ContentDigest whose bytes value type explicitly affords Equals."
+    display_name: "ContentDigest"
+    display_plural: "ContentDigest"
+    plural: "ContentDigestValues"
+  }
+}
+
+value ContentDigestValueType.MapBytesValueType {
+  type MetaBytesValueType.MetaValueType
+  extends MapBytesValueType.BytesValueType
+  header {
+    description: "Test bytes value type that explicitly affords Equals, which canonical MapBytesValueType does not."
+    display_name: "ContentDigestValueType"
+    display_plural: "ContentDigestValueTypes"
+    plural: "ContentDigestValueTypes"
+  }
+  relationships {
+    AffordsOperator -> EqualsOperator.OperatorType
   }
 }
 
