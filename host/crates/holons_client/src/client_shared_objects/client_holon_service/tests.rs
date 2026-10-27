@@ -16,6 +16,8 @@ struct CountingService {
     edges: RwLock<HashMap<(u8, String), Vec<u8>>>,
     calls: RwLock<HashMap<(u8, String), usize>>,
     bulk_calls: AtomicUsize,
+    policy_calls: AtomicUsize,
+    content_reads: AtomicUsize,
     inverse_cache_age: Option<i64>,
     now: AtomicU64,
 }
@@ -54,6 +56,8 @@ impl CountingService {
             edges: RwLock::new(edges),
             calls: RwLock::new(HashMap::new()),
             bulk_calls: AtomicUsize::new(0),
+            policy_calls: AtomicUsize::new(0),
+            content_reads: AtomicUsize::new(0),
             inverse_cache_age: None,
             now: AtomicU64::new(0),
         }
@@ -82,7 +86,8 @@ impl HolonServiceApi for CountingService {
         context: &Arc<TransactionContext>,
         source: &HolonId,
         name: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        self.policy_calls.fetch_add(1, Ordering::Relaxed);
         self.client.relationship_cache_policy(context, source, name)
     }
     fn fetch_holon_internal(
@@ -90,6 +95,7 @@ impl HolonServiceApi for CountingService {
         _: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        self.content_reads.fetch_add(1, Ordering::Relaxed);
         let number = id.local_id().0[0];
         let name = match number {
             3 => "DeclaredRelationshipType",
@@ -309,7 +315,7 @@ fn miss_fetches_before_classification_and_failed_classification_is_not_cached(
     assert!(matches!(result, Err(HolonError::InvalidState(_))));
     cache.related_holons(&context, service.as_ref(), &id, &name, || {
         assert_eq!(service.count("Frozen"), 2);
-        Ok(RelationshipCachePolicy::Reuse)
+        Ok(Some(RelationshipCachePolicy::Reuse))
     })?;
     Ok(())
 }
@@ -545,5 +551,71 @@ fn recursive_fallback_does_not_poison_later_inverse_resolution() -> Result<(), H
     source.related_holons("Incoming")?;
     source.related_holons("Incoming")?;
     assert_eq!(service.count("Incoming"), 2, "fallback must not retain a false Fresh policy");
+    Ok(())
+}
+
+#[test]
+fn resolved_inverse_policies_refresh_without_reentering_descriptor_resolution(
+) -> Result<(), HolonError> {
+    use core_api::RelationshipReadHint;
+    for age in [None, Some(30_000)] {
+        let mut service = CountingService::new(false);
+        service.inverse_cache_age = age;
+        let service = Arc::new(service);
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            service.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let source = CountingService::reference(&context, 1);
+        source.related_holons("Incoming")?;
+        let policy_calls = service.policy_calls.load(Ordering::Relaxed);
+        let content_reads = service.content_reads.load(Ordering::Relaxed);
+        let schema_calls = service.calls.read().unwrap().clone();
+        service.edges.write().unwrap().insert((1, "Incoming".into()), vec![11]);
+        service.now.store(30_000, Ordering::Relaxed);
+        let next_context =
+            space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let next = CountingService::reference(&next_context, 1);
+        let refreshed = next.related_holons("Incoming")?;
+        assert_eq!(
+            refreshed.read().unwrap().get_members(),
+            &vec![CountingService::reference(&next_context, 11)]
+        );
+        next.related_holons_with_hint("Incoming", RelationshipReadHint::RequireFresh)?;
+        assert_eq!(service.policy_calls.load(Ordering::Relaxed), policy_calls);
+        assert_eq!(service.content_reads.load(Ordering::Relaxed), content_reads);
+        for (key, count) in schema_calls {
+            if key != (1, "Incoming".into()) {
+                assert_eq!(service.calls.read().unwrap().get(&key), Some(&count));
+            }
+        }
+        assert_eq!(service.count("Incoming"), 3);
+    }
+    Ok(())
+}
+
+#[test]
+fn recursion_fallback_does_not_poison_later_inverse_policy_resolution() -> Result<(), HolonError> {
+    let mut service = CountingService::new(false);
+    service.inverse_cache_age = Some(30_000);
+    let service = Arc::new(service);
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let source = CountingService::reference(&context, 1);
+    {
+        let _guard = service.client.enter_relationship_semantics_resolution();
+        source.related_holons("Incoming")?;
+    }
+    let resolved = source.related_holons("Incoming")?;
+    assert!(Arc::ptr_eq(&resolved, &source.related_holons("Incoming")?));
+    assert_eq!(service.count("Incoming"), 2);
     Ok(())
 }

@@ -34,8 +34,8 @@ impl HolonServiceApi for FixtureStorage {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
-        Ok(holons_core::RelationshipCachePolicy::Reuse)
+    ) -> Result<Option<holons_core::RelationshipCachePolicy>, HolonError> {
+        Ok(Some(holons_core::RelationshipCachePolicy::Reuse))
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -76,8 +76,8 @@ pub struct ClientHolonService {
     cache_clock_origin: Instant,
     // Schema is fixed for this space-scoped service lifetime. A future release
     // pull must invalidate these resolutions independently of membership TTLs.
-    relationship_descriptors:
-        Arc<RwLock<HashMap<(HolonId, RelationshipName), ResolvedRelationshipPolicy>>>,
+    relationship_policies:
+        Arc<RwLock<HashMap<(HolonId, RelationshipName), RelationshipCachePolicy>>>,
 }
 
 // Retain saved identities, not bound handles back into the owning space.
@@ -137,7 +137,7 @@ impl ClientHolonService {
             dancer_package_catalog,
             relationship_semantics_resolution_depth: Arc::new(AtomicUsize::new(0)),
             cache_clock_origin: Instant::now(),
-            relationship_descriptors: Arc::new(RwLock::new(HashMap::new())),
+            relationship_policies: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -163,7 +163,7 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
         // Kernel structural edges bootstrap descriptor traversal without recursion.
         if [
             CoreRelationshipTypeName::DescribedBy,
@@ -173,27 +173,25 @@ impl HolonServiceApi for ClientHolonService {
         .iter()
         .any(|name| name.to_relationship_name() == *relationship_name)
         {
-            return Ok(RelationshipCachePolicy::Reuse);
+            return Ok(Some(RelationshipCachePolicy::Reuse));
         }
         let source =
             HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
         let source_type = match source.holon_descriptor() {
             Ok(descriptor) => descriptor,
-            Err(HolonError::MissingDescribedBy { .. }) => {
-                return Ok(RelationshipCachePolicy::Fresh)
-            }
+            Err(HolonError::MissingDescribedBy { .. }) => return Ok(None),
             Err(error) => return Err(error),
         };
         let key = (source_type.holon().holon_id()?, relationship_name.clone());
         let cached = self
-            .relationship_descriptors
+            .relationship_policies
             .read()
             .map_err(|e| HolonError::FailedToAcquireLock(format!("{e}")))?
             .get(&key)
             .cloned();
-        if let Some(resolved) = cached {
+        if let Some(policy) = cached {
             tracing::debug!(target: "map_profile", relationship_descriptor_cache = "hit");
-            return resolved.policy(context);
+            return Ok(Some(policy));
         }
         tracing::debug!(target: "map_profile", relationship_descriptor_cache = "miss");
 
@@ -213,14 +211,12 @@ impl HolonServiceApi for ClientHolonService {
             if self.resolving_relationship_semantics() {
                 // This conservative fallback is not a resolved policy; never retain it.
                 tracing::debug!(target: "map_profile", policy_reason = "recursive_inverse_resolution");
-                return Ok(RelationshipCachePolicy::Fresh);
+                return Ok(None);
             }
             let _resolution_guard = self.enter_relationship_semantics_resolution();
             let inverses = match source_type.effective_inverse_relationships() {
                 Ok(descriptors) => descriptors,
-                Err(HolonError::MissingDescribedBy { .. }) => {
-                    return Ok(RelationshipCachePolicy::Fresh)
-                }
+                Err(HolonError::MissingDescribedBy { .. }) => return Ok(None),
                 Err(error) => return Err(error),
             };
             for descriptor in inverses {
@@ -234,14 +230,14 @@ impl HolonServiceApi for ClientHolonService {
             }
         }
         let Some(resolved) = resolved else {
-            return Ok(RelationshipCachePolicy::Fresh);
+            return Ok(None);
         };
         let policy = resolved.policy(context)?;
-        self.relationship_descriptors
+        self.relationship_policies
             .write()
             .map_err(|e| HolonError::FailedToAcquireLock(format!("{e}")))?
-            .insert(key, resolved);
-        Ok(policy)
+            .insert(key, policy);
+        Ok(Some(policy))
     }
 
     fn commit_internal(

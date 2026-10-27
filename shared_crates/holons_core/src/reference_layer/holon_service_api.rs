@@ -33,8 +33,10 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         None
     }
 
-    /// Decides whether a fetched saved collection may be retained. Called only
-    /// after a fetch, with no cache lock held. Cache hits skip this decision.
+    /// Resolves a saved relationship's retention policy, independently of membership expiry.
+    /// `Some` is authoritative for the enclosing cache lifetime. `None` means
+    /// unresolved: fetch fresh for this read and retry policy resolution later.
+    /// Called after a fetch, with no cache lock held, only when no policy is retained.
     /// The default resolves declared policies. Request-local guests override it
     /// with unconditional reuse; clients also resolve inverse descriptor policies.
     fn relationship_cache_policy(
@@ -42,9 +44,8 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-    ) -> Result<crate::RelationshipCachePolicy, HolonError> {
-        Ok(declared_relationship_cache_policy(context, source_holon_id, relationship_name)?
-            .unwrap_or(crate::RelationshipCachePolicy::Fresh))
+    ) -> Result<Option<crate::RelationshipCachePolicy>, HolonError> {
+        declared_relationship_cache_policy(context, source_holon_id, relationship_name)
     }
 
     /// Constructs a retained schema graph. Clients delegate one typed Dance to

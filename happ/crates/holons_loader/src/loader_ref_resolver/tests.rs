@@ -28,8 +28,8 @@ impl HolonServiceApi for SavedSourceService {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
-        Ok(holons_core::RelationshipCachePolicy::Fresh)
+    ) -> Result<Option<holons_core::RelationshipCachePolicy>, HolonError> {
+        Ok(Some(holons_core::RelationshipCachePolicy::Fresh))
     }
 
     fn fetch_holon_internal(

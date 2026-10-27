@@ -435,10 +435,10 @@ impl HolonServiceApi for GuestHolonService {
         _context: &Arc<TransactionContext>,
         _source_holon_id: &HolonId,
         _relationship_name: &RelationshipName,
-    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+    ) -> Result<Option<holons_core::RelationshipCachePolicy>, HolonError> {
         // Each guest request owns a fresh cache. Reuse within that request
         // must not load descriptor graphs merely to decide retention.
-        Ok(holons_core::RelationshipCachePolicy::Reuse)
+        Ok(Some(holons_core::RelationshipCachePolicy::Reuse))
     }
 
     fn as_any(&self) -> &dyn Any {

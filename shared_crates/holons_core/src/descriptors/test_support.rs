@@ -90,7 +90,7 @@ impl HolonServiceApi for TestHolonService {
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
         if !self.saved_holons.contains_key(source_id) {
-            return unreachable_in_descriptor_tests();
+            return Err(HolonError::HolonNotFound(format!("test saved holon: {source_id:?}")));
         }
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) =

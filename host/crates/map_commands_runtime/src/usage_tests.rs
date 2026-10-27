@@ -78,8 +78,8 @@ impl HolonServiceApi for Store {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        Ok(RelationshipCachePolicy::Fresh)
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn visualizer_artifact_available_internal(
         &self,

@@ -49,8 +49,8 @@ impl HolonServiceApi for Graph {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        Ok(RelationshipCachePolicy::Fresh)
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn get_saved_holon_by_key_internal(
         &self,
