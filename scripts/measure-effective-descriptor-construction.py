@@ -79,7 +79,7 @@ def analyze(output):
                 item["construction_phases"][phase] = {metric: statistics.median(m[metric] for m in measurements)
                                                        for metric in ("elapsed_us", "link_queries", "returned_links")}
             summary.append(item)
-    report = dict(include_contributions=data.get("include_contributions", True), setup_ms=data["setup_us"] / 1000, notes=data["notes"], summary=summary, rows=rows)
+    report = dict(contribution_holons=data.get("include_contributions", False), setup_ms=data["setup_us"] / 1000, notes=data["notes"], summary=summary, rows=rows)
     (output / "analysis.json").write_text(json.dumps(report, indent=2) + "\n")
     for item in summary:
         print(f"{item['target']} {item['mode']}: host={item['host_ms']['median'] / 1000:.3f}s "
@@ -93,8 +93,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--samples", type=int, default=3)
-    parser.add_argument("--with-contributions", action="store_true", help="opt in to provenance Holon materialization")
-    parser.add_argument("--without-contributions", action="store_true", help="benchmark-only omission of provenance holons")
     parser.add_argument("--analyze-only", action="store_true", help="summarize an existing capture without running a conductor")
     args = parser.parse_args()
     output = args.output.resolve()
@@ -109,7 +107,7 @@ def main():
     if any(output.iterdir()):
         parser.error("use an empty output directory to preserve prior evidence")
     root = Path(__file__).resolve().parent.parent
-    metadata = dict(include_contributions=args.with_contributions, platform=platform.platform(), samples=args.samples,
+    metadata = dict(platform=platform.platform(), samples=args.samples,
                     revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
                     rust=subprocess.check_output(["rustc", "--version"], text=True).strip())
     lock = (root / "Cargo.lock").read_text()
@@ -122,9 +120,6 @@ def main():
     (output / "working-tree.patch").write_bytes(subprocess.check_output(["git", "diff", "HEAD"], cwd=root))
     environment = dict(os.environ, MAP_EFFECTIVE_DESCRIPTOR_PERF_OUTPUT=str(output / "capture.json"),
                        MAP_EFFECTIVE_DESCRIPTOR_PERF_SAMPLES=str(args.samples), RUST_LOG="warn", WASM_LOG="warn")
-    environment.pop("MAP_EFFECTIVE_DESCRIPTOR_PERF_INCLUDE_CONTRIBUTIONS", None)
-    if args.with_contributions:
-        environment["MAP_EFFECTIVE_DESCRIPTOR_PERF_INCLUDE_CONTRIBUTIONS"] = "1"
     feature = "holons/descriptor-performance-profiling"
     try:
         with (output / "profile-build.log").open("w") as log:

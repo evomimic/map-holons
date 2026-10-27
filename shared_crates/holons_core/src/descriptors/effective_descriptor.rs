@@ -10,7 +10,7 @@ use type_names::{
 use super::{accessor_helpers, *};
 use crate::core_shared_objects::holon::state::AccessType;
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
+use crate::{DefinitionIdentity, HolonReference, ReadableHolon};
 
 /// One immutable derived schema graph retained by the caller's transaction.
 /// Collections are read from relationships; the wrapper retains no resolution cache.
@@ -111,18 +111,20 @@ impl EffectiveDescriptor {
     /// Construction and ordinary projection reads never call this method.
     /// Uses only retained references and source occurrences, never the target lineage.
     pub fn validate_contributions(&self) -> Result<(), HolonError> {
+        let contributions = self.contributions()?;
+        // Construction leaves this collection empty. There is no claimed
+        // Holon-based occurrence sequence to compare with the direct products.
+        if contributions.is_empty() {
+            return Ok(());
+        }
         let context = self.holon.resolution_context()?;
-        let mut grouped =
-            std::collections::HashMap::<String, Vec<(i64, DefinitionIdentity)>>::new();
-        for record in self.contributions()? {
+        let mut grouped = std::collections::HashMap::<String, Vec<(i64, HolonReference)>>::new();
+        for record in contributions {
             record.validate_provenance()?;
             let name = record.collection()?.base_relationship_name()?.to_string();
-            grouped.entry(name).or_default().push((
-                record.position()?,
-                DefinitionIdentity::for_reference(&record.member()?.member, &context)?,
-            ));
+            grouped.entry(name).or_default().push((record.position()?, record.member()?.member));
         }
-        for (source, result, _, _, _) in collections() {
+        for (source, result, source_key, _, _) in collections() {
             let mut records =
                 grouped.remove(&source.to_relationship_name().to_string()).unwrap_or_default();
             records.sort_by_key(|(position, _)| *position);
@@ -140,7 +142,14 @@ impl EffectiveDescriptor {
             if records.is_empty() && direct.is_empty() {
                 continue;
             }
-            let expected = records.into_iter().map(|(_, member)| member).collect::<Vec<_>>();
+            let expected = normalized_effective_members(
+                &context,
+                &source_key,
+                records.into_iter().map(|(_, member)| member).collect(),
+            )?
+            .iter()
+            .map(|member| DefinitionIdentity::for_reference(member, &context))
+            .collect::<Result<Vec<_>, _>>()?;
             let mut actual_counts = std::collections::HashMap::new();
             let mut expected_counts = std::collections::HashMap::new();
             for member in &direct {
@@ -273,43 +282,32 @@ pub fn construct_effective_descriptor(
     context: &Arc<TransactionContext>,
     target: HolonReference,
 ) -> Result<EffectiveDescriptor, HolonError> {
-    construct_effective_descriptor_impl(context, target, false, |_, _| {})
+    construct_effective_descriptor_impl(context, target, |_, _| {})
 }
 
-/// Explicitly materializes contribution Holons for graph-oriented provenance consumers.
-pub fn construct_effective_descriptor_with_contributions(
-    context: &Arc<TransactionContext>,
-    target: HolonReference,
-) -> Result<EffectiveDescriptor, HolonError> {
-    construct_effective_descriptor_impl(context, target, true, |_, _| {})
-}
-
-/// Controlled profiling entry point; production always retains contribution provenance.
+/// Controlled profiling entry point for the reference-oriented projection.
 #[cfg(feature = "descriptor-performance-profiling")]
 pub fn profile_effective_descriptor_construction(
     context: &Arc<TransactionContext>,
     target: HolonReference,
-    include_contributions: bool,
     checkpoint: impl FnMut(&str, &str),
 ) -> Result<EffectiveDescriptor, HolonError> {
-    construct_effective_descriptor_impl(context, target, include_contributions, checkpoint)
+    construct_effective_descriptor_impl(context, target, checkpoint)
 }
 
 fn construct_effective_descriptor_impl(
     context: &Arc<TransactionContext>,
     target: HolonReference,
-    include_contributions: bool,
     mut checkpoint: impl FnMut(&str, &str),
 ) -> Result<EffectiveDescriptor, HolonError> {
     let computed = ComputedEffectiveSchema::resolve_with_checkpoint(&target, &mut checkpoint)?;
-    materialize_effective_schema(context, &computed, include_contributions, checkpoint)
+    materialize_effective_schema(context, &computed, checkpoint)
 }
 
 /// Materializes an already computed projection without traversing its lineage again.
 pub(super) fn materialize_effective_schema(
     context: &Arc<TransactionContext>,
     computed: &ComputedEffectiveSchema,
-    include_contributions: bool,
     mut checkpoint: impl FnMut(&str, &str),
 ) -> Result<EffectiveDescriptor, HolonError> {
     let target = computed.target.clone();
@@ -328,16 +326,6 @@ pub(super) fn materialize_effective_schema(
         context,
         &CoreHolonTypeName::EffectiveDescriptor.descriptor_key(&CoreHolonTypeName::HolonType).0,
     )?;
-    let contribution_type = if include_contributions {
-        Some(resolve_core_descriptor(
-            context,
-            &CoreHolonTypeName::EffectiveSchemaContribution
-                .descriptor_key(&CoreHolonTypeName::HolonType)
-                .0,
-        )?)
-    } else {
-        None
-    };
     let owner = context.get_space_holon()?;
     let mut result = context.mutation().new_holon(None)?;
     result.add_related_references(CoreRelationshipTypeName::DescribedBy, vec![result_type])?;
@@ -347,58 +335,50 @@ pub(super) fn materialize_effective_schema(
     result.add_related_references(CoreRelationshipTypeName::DescribedHolonType, vec![target])?;
     result.add_related_references(CoreRelationshipTypeName::NavigableRelationships, navigable)?;
     checkpoint("result_allocation", "");
-    let mut records = Vec::new();
     for collection in &computed.collections {
         let result_name = collection.result.clone();
         let source_key = &collection.source_key;
         let contributions = &collection.occurrences;
-        let values = contributions.iter().map(|entry| entry.member.clone()).collect();
+        let values = normalized_effective_members(
+            context,
+            source_key,
+            contributions.iter().map(|entry| entry.member.clone()).collect(),
+        )?;
         let result_label = result_name.as_relationship_name().to_string();
         result.add_related_references(result_name, values)?;
         checkpoint("product_population", &result_label);
-        if let Some(contribution_type) =
-            contribution_type.as_ref().filter(|_| !contributions.is_empty())
-        {
-            let source = resolve_core_descriptor(context, &source_key.0)?;
-            for (position, contribution) in contributions.iter().enumerate() {
-                let mut record = context.mutation().new_holon(None)?;
-                record.add_related_references(
-                    CoreRelationshipTypeName::DescribedBy,
-                    vec![contribution_type.clone()],
-                )?;
-                if let Some(space) = &owner {
-                    record.add_related_references(
-                        CoreRelationshipTypeName::OwnedBy,
-                        vec![space.clone()],
-                    )?;
-                }
-                record.with_property_value(
-                    CorePropertyTypeName::ContributionPosition,
-                    position as i64,
-                )?;
-                record.add_related_references(
-                    CoreRelationshipTypeName::ContributionCollection,
-                    vec![source.clone()],
-                )?;
-                record.add_related_references(
-                    CoreRelationshipTypeName::ContributionMember,
-                    vec![contribution.member.clone()],
-                )?;
-                record.add_related_references(
-                    CoreRelationshipTypeName::ContributionDeclaredOn,
-                    vec![contribution.declared_on.clone()],
-                )?;
-                record.mark_as_immutable()?;
-                records.push(record.into());
-            }
-        }
-        checkpoint("contribution_allocation", &result_label);
     }
-    result.add_related_references(CoreRelationshipTypeName::EffectiveContributions, records)?;
+    result.add_related_references(CoreRelationshipTypeName::EffectiveContributions, vec![])?;
     result.mark_as_immutable()?;
     let result = Ok(EffectiveDescriptor { holon: result.into() });
     checkpoint("finalize", "");
     result
+}
+
+/// Applies the authoritative collection's duplicate policy without losing the
+/// occurrence sequence used to construct provenance. Unordered products retain
+/// first-occurrence order for deterministic transport. Unique inputs need no
+/// additional schema reads.
+fn normalized_effective_members(
+    context: &Arc<TransactionContext>,
+    source_key: &MapString,
+    members: Vec<HolonReference>,
+) -> Result<Vec<HolonReference>, HolonError> {
+    let mut seen = std::collections::HashSet::new();
+    let mut unique = Vec::with_capacity(members.len());
+    for member in &members {
+        if seen.insert(DefinitionIdentity::for_reference(member, context)?) {
+            unique.push(member.clone());
+        }
+    }
+    if unique.len() == members.len()
+        || RelationshipDescriptor::from_holon(resolve_core_descriptor(context, &source_key.0)?)
+            .allows_duplicates()?
+    {
+        Ok(members)
+    } else {
+        Ok(unique)
+    }
 }
 
 // Descriptor Runtime owns result pairs; authoritative collections retain their package identities.
@@ -594,7 +574,7 @@ mod tests {
         let (context, parent, target) = fixture()?;
         let target_before = inheritance::lineage_edge_reads(&target);
         let parent_before = inheritance::lineage_edge_reads(&parent);
-        let result = construct_effective_descriptor_with_contributions(&context, target.clone())?;
+        let result = construct_effective_descriptor(&context, target.clone())?;
         assert!(result.holon().key()?.is_none());
         assert!(same_definition(result.described_holon_type()?.holon(), &target)?);
         assert!(result.instance_properties()?.is_empty());
@@ -606,16 +586,14 @@ mod tests {
         assert!(result.effective_validation_bindings()?.is_empty());
         assert!(result.effective_key_rule()?.is_keyless()?);
         let contributions = result.contributions()?;
-        assert_eq!(contributions.len(), 1);
-        assert_eq!(contributions[0].position()?, 0);
-        assert!(same_definition(&contributions[0].member()?.declared_on, &parent)?);
+        assert!(contributions.is_empty());
         assert_eq!(inheritance::lineage_edge_reads(&target) - target_before, 1);
         assert_eq!(inheritance::lineage_edge_reads(&parent) - parent_before, 1);
         let mut reference = result.holon().clone();
         assert!(reference.with_property_value("Corrupt", true).is_err());
         let collection = reference.related_holons("EffectiveContributions")?;
         assert!(collection.write().unwrap().add_references(vec![target.clone()]).is_err());
-        let second = construct_effective_descriptor_with_contributions(&context, target)?;
+        let second = construct_effective_descriptor(&context, target)?;
         assert!(!same_definition(result.holon(), second.holon())?);
         context.dispose()?;
         assert!(result.effective_key_rule().is_err());
@@ -623,11 +601,11 @@ mod tests {
     }
 
     #[test]
-    fn repeated_contributions_retain_distinct_records_and_positions() -> Result<(), HolonError> {
+    fn computed_provenance_preserves_repeated_occurrences_without_holons() -> Result<(), HolonError>
+    {
         let (context, mut parent, mut child) = fixture()?;
-        let constraint_type = resolve_core_descriptor(&context, "Constraint.HolonType")?;
         let mut constraint = new_test_holon(&context, "constraint")?;
-        constraint.with_descriptor(constraint_type)?;
+        constraint.with_descriptor(resolve_core_descriptor(&context, "Constraint.HolonType")?)?;
         let constraint: HolonReference = context.mutation().stage_new_holon(constraint)?.into();
         parent
             .add_related_holons(CoreRelationshipTypeName::Constraints, vec![constraint.clone()])?;
@@ -635,25 +613,67 @@ mod tests {
             CoreRelationshipTypeName::Constraints,
             vec![constraint.clone(), constraint.clone()],
         )?;
-        let direct = HolonDescriptor::from_holon(child.clone()).effective_constraints()?;
-        let result = construct_effective_descriptor_with_contributions(&context, child)?;
-        assert_eq!(result.effective_constraints()?.len(), direct.len());
-        let mut records = result
-            .contributions()?
-            .into_iter()
-            .filter(|record| {
-                record.collection().unwrap().base_relationship_name().unwrap().to_string()
-                    == "Constraints"
-            })
-            .collect::<Vec<_>>();
-        records.sort_by_key(|record| record.position().unwrap());
-        assert_eq!(records.len(), 3);
-        for (position, record) in records.iter().enumerate() {
-            assert_eq!(record.position()?, position as i64);
-            assert!(same_definition(&record.member()?.member, &constraint)?);
-            assert!(same_definition(&record.member()?.declared_on, &direct[position].declared_on)?);
+        let computed = ComputedEffectiveSchema::resolve(&child)?;
+        let occurrences = computed.contributions(CoreRelationshipTypeName::Constraints);
+        assert_eq!(occurrences.len(), 3);
+        for (index, occurrence) in occurrences.iter().enumerate() {
+            assert!(same_definition(&occurrence.member, &constraint)?);
+            assert!(same_definition(
+                &occurrence.declared_on,
+                if index == 0 { &parent } else { &child }
+            )?);
+            assert_eq!(occurrence.local_position, [0, 0, 1][index]);
         }
-        assert!(!same_definition(records[1].holon(), records[2].holon())?);
+        let before = context.lookup().transient_count()?;
+        let result = computed.materialize(&context)?;
+        assert_eq!(context.lookup().transient_count()? - before, 1);
+        assert_eq!(result.effective_constraints()?.len(), 3);
+        assert!(result.contributions()?.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_free_products_preserve_repeated_constraint_and_binding_provenance(
+    ) -> Result<(), HolonError> {
+        let (context, mut parent, mut child) = fixture()?;
+        for (source, category) in [
+            (CoreRelationshipTypeName::Constraints, "Constraint.HolonType"),
+            (CoreRelationshipTypeName::ValidationBindings, "ValidationRule.HolonType"),
+        ] {
+            let (_, _, key, _, _) = collections()
+                .into_iter()
+                .find(|(name, ..)| {
+                    name.clone().to_relationship_name() == source.clone().to_relationship_name()
+                })
+                .unwrap();
+            let mut source_descriptor = resolve_core_descriptor(&context, &key.0)?;
+            source_descriptor.with_property_value("AllowsDuplicates", false)?;
+            let mut member = new_test_holon(&context, &format!("{source:?}-member"))?;
+            member.with_descriptor(resolve_core_descriptor(&context, category)?)?;
+            let member: HolonReference = context.mutation().stage_new_holon(member)?.into();
+            parent.add_related_holons(source.clone(), vec![member.clone()])?;
+            child.add_related_holons(source, vec![member.clone(), member])?;
+        }
+        let computed = ComputedEffectiveSchema::resolve(&child)?;
+        let before = context.lookup().transient_count()?;
+        let result = computed.materialize(&context)?;
+        assert_eq!(context.lookup().transient_count()? - before, 1);
+        assert_eq!(result.effective_constraints()?.len(), 1);
+        assert_eq!(result.effective_validation_bindings()?.len(), 1);
+        assert!(result.contributions()?.is_empty());
+        for source in
+            [CoreRelationshipTypeName::Constraints, CoreRelationshipTypeName::ValidationBindings]
+        {
+            let occurrences = computed.contributions(source);
+            assert_eq!(occurrences.len(), 3);
+            for (index, occurrence) in occurrences.iter().enumerate() {
+                assert_eq!(occurrence.local_position, [0, 0, 1][index]);
+                assert!(same_definition(
+                    &occurrence.declared_on,
+                    if index == 0 { &parent } else { &child }
+                )?);
+            }
+        }
         Ok(())
     }
 
@@ -718,7 +738,8 @@ mod tests {
             vec![resolve_core_descriptor(&context, "NoneRule.KeyRuleType")?],
         )?;
         let direct = HolonDescriptor::from_holon(child.clone());
-        let result = construct_effective_descriptor_with_contributions(&context, child.clone())?;
+        let computed = ComputedEffectiveSchema::resolve(&child)?;
+        let result = computed.materialize(&context)?;
         result.validate_contributions()?;
         let ids = |references: Vec<HolonReference>| {
             references.into_iter().map(|r| r.full_reference_id_string()).collect::<Vec<_>>()
@@ -752,81 +773,18 @@ mod tests {
             direct.effective_key_rule()?.holon()
         )?);
         assert_eq!(result.navigable_relationships()?.len(), 1);
-        assert_eq!(result.contributions()?.len(), 7);
+        assert!(result.contributions()?.is_empty());
         let key_rule = result.effective_key_rule()?.holon().clone();
-        for record in result.contributions()? {
-            let contribution = record.member()?;
-            let collection = record.collection()?;
-            let source_name = collection.base_relationship_name()?.to_string();
-            let (_, _, key, _, _) = collections()
-                .into_iter()
-                .find(|(name, ..)| format!("{name:?}") == source_name)
-                .unwrap();
+        for (source, ..) in collections() {
+            let occurrences = computed.contributions(source);
+            assert_eq!(occurrences.len(), 1);
+            let occurrence = &occurrences[0];
             assert!(same_definition(
-                collection.holon(),
-                &resolve_core_descriptor(&context, &key.0)?
+                &occurrence.declared_on,
+                if same_definition(&occurrence.member, &key_rule)? { &child } else { &parent }
             )?);
-            if source_name == "AffordsDance" || source_name == "AffordsCommand" {
-                assert!(matches!(
-                    classify_relationship_direction(collection.holon())?,
-                    RelationshipDirection::Inverse
-                ));
-            }
-            assert_ne!(source_name, "NavigableRelationships");
-            assert!(same_definition(
-                &contribution.declared_on,
-                if same_definition(&contribution.member, &key_rule)? { &child } else { &parent }
-            )?);
-            assert_eq!(record.position()?, 0);
+            assert_eq!(occurrence.local_position, 0);
         }
-        Ok(())
-    }
-
-    #[test]
-    fn arbitrary_relationship_cannot_identify_a_contribution_collection() -> Result<(), HolonError>
-    {
-        let (context, _, _) = fixture()?;
-        let mut unrelated =
-            new_descriptor_holon(&context, "Unrelated.Relationship", "InstanceProperties", "")?;
-        unrelated.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![resolve_core_descriptor(&context, "RelationshipType.TypeDescriptor")?],
-        )?;
-        let mut record = context.mutation().new_holon(None)?;
-        record.with_descriptor(resolve_core_descriptor(
-            &context,
-            &CoreHolonTypeName::EffectiveSchemaContribution
-                .descriptor_key(&CoreHolonTypeName::HolonType)
-                .0,
-        )?)?;
-        record.add_related_holons("ContributionCollection", vec![unrelated.into()])?;
-        let record = EffectiveSchemaContribution::try_from_holon(record.into())?;
-        assert!(matches!(record.validate_provenance(), Err(HolonError::InvalidParameter(_))));
-        Ok(())
-    }
-
-    #[test]
-    fn contribution_origin_must_actually_supply_the_member() -> Result<(), HolonError> {
-        let (context, _, target) = fixture()?;
-        let result = construct_effective_descriptor_with_contributions(&context, target)?;
-        let original = result.contributions()?.remove(0);
-        let mut record = context.mutation().new_holon(None)?;
-        record.with_descriptor(resolve_core_descriptor(
-            &context,
-            &CoreHolonTypeName::EffectiveSchemaContribution
-                .descriptor_key(&CoreHolonTypeName::HolonType)
-                .0,
-        )?)?;
-        record.with_property_value("ContributionPosition", 0_i64)?;
-        record.add_related_holons(
-            "ContributionCollection",
-            vec![original.collection()?.holon().clone()],
-        )?;
-        record.add_related_holons("ContributionMember", vec![original.member()?.member])?;
-        let unrelated = new_test_holon(&context, "unrelated-origin")?;
-        record.add_related_holons("ContributionDeclaredOn", vec![unrelated.into()])?;
-        let record = EffectiveSchemaContribution::try_from_holon(record.into())?;
-        assert!(matches!(record.validate_provenance(), Err(HolonError::InvalidParameter(_))));
         Ok(())
     }
 
@@ -835,7 +793,7 @@ mod tests {
         let (context, _, child) = fixture()?;
         let HolonReference::Transient(child) = child else { unreachable!() };
         let child = context.mutation().stage_new_holon(child)?;
-        let result = construct_effective_descriptor_with_contributions(&context, child.into())?;
+        let result = construct_effective_descriptor(&context, child.into())?;
         assert!(result.navigable_relationships()?.is_empty());
         Ok(())
     }
@@ -846,21 +804,26 @@ mod tests {
         let (context, _, mut child) = fixture()?;
         let mut cycle = new_test_holon(&context, "cycle")?;
         cycle.add_related_holons(CoreRelationshipTypeName::Extends, vec![cycle.clone().into()])?;
-        assert!(construct_effective_descriptor_with_contributions(&context, cycle.into()).is_err());
+        assert!(construct_effective_descriptor(&context, cycle.into()).is_err());
         child.add_related_holons(
             CoreRelationshipTypeName::InstanceKeyRule,
-            vec![resolve_core_descriptor(&context, "NoneRule.KeyRuleType")?; 2],
+            vec![
+                resolve_core_descriptor(&context, "NoneRule.KeyRuleType")?,
+                canonical(&context, "OtherRule.KeyRuleType", "OtherRule")?,
+            ],
         )?;
-        let result = construct_effective_descriptor_with_contributions(&context, child)?;
+        let result = construct_effective_descriptor(&context, child)?;
         assert_eq!(
             targets(result.holon(), CoreRelationshipTypeName::EffectiveInstanceKeyRule)?.len(),
             2
         );
+        assert!(result.effective_key_rule().is_err());
         let root = resolve_core_descriptor(&context, "HolonType.TypeDescriptor")?;
-        let result = construct_effective_descriptor_with_contributions(&context, root)?;
+        let result = construct_effective_descriptor(&context, root)?;
         assert!(
             targets(result.holon(), CoreRelationshipTypeName::EffectiveInstanceKeyRule)?.is_empty()
         );
+        assert!(result.effective_key_rule().is_err());
         Ok(())
     }
 }

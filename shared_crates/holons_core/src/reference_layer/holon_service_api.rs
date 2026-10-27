@@ -54,7 +54,6 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         &self,
         _context: &Arc<TransactionContext>,
         _target: HolonReference,
-        _include_contributions: bool,
     ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
         Err(HolonError::NotImplemented("construct_effective_descriptor_internal".into()))
     }

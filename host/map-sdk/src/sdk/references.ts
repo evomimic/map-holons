@@ -130,10 +130,10 @@ export class HolonReference implements WritableHolon {
   }
 
   /** Constructs one schema snapshot retained in this reference's transaction. */
-  async effectiveDescriptor(options: import('./descriptors').EffectiveDescriptorOptions = {}): Promise<EffectiveDescriptorHandle> {
+  async effectiveDescriptor(): Promise<EffectiveDescriptorHandle> {
     const txId = txIdFor(this);
     const target = await internalHolon.readHolonDescriptor(txId, wireRefFor(this));
-    return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, target, options.includeContributions ?? false)));
+    return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, target)));
   }
 
   async holonDescriptor(): Promise<HolonDescriptorHandle> {
@@ -348,7 +348,7 @@ export async function readPropertyValueKind(reference: HolonReference): Promise<
 export function referenceBelongsTo(reference: HolonReference, txId: TxId): boolean { return txIdFor(reference) === txId; }
 
 /** Internal construction bridge for an authoritative HolonType handle. */
-export async function constructResolvedDescriptor(target: HolonReference, options: import('./descriptors').EffectiveDescriptorOptions = {}): Promise<EffectiveDescriptorHandle> {
+export async function constructResolvedDescriptor(target: HolonReference): Promise<EffectiveDescriptorHandle> {
   const txId = txIdFor(target);
-  return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, wireRefFor(target), options.includeContributions ?? false)));
+  return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, wireRefFor(target))));
 }

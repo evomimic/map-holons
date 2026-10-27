@@ -439,9 +439,9 @@ it('projects explicit disposal and captured-target verification through transact
 });
 
 
-it.each([false, true])('projects the explicit contribution materialization choice: %s', async include => {
+it('projects contribution-free effective descriptor construction', async () => {
   invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
   resetRequestIdCounter();
-  await constructEffectiveDescriptor(txId, transientReference, include);
-  expectTransactionRequest({ ConstructEffectiveDescriptor: { target: transientReference, include_contributions: include } });
+  await constructEffectiveDescriptor(txId, transientReference);
+  expectTransactionRequest({ ConstructEffectiveDescriptor: { target: transientReference } });
 });

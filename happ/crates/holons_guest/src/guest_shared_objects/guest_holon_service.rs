@@ -373,7 +373,6 @@ impl HolonServiceApi for GuestHolonService {
         &self,
         context: &Arc<TransactionContext>,
         target: HolonReference,
-        include_contributions: bool,
     ) -> Result<holons_core::descriptors::EffectiveDescriptor, HolonError> {
         let profile = cfg!(feature = "descriptor-performance-profiling");
         let before = if profile {
@@ -389,18 +388,14 @@ impl HolonServiceApi for GuestHolonService {
         #[cfg(feature = "descriptor-performance-profiling")]
         let construction_finished;
         #[cfg(not(feature = "descriptor-performance-profiling"))]
-        let result = if include_contributions {
-            holons_core::descriptors::effective_descriptor::construct_effective_descriptor_with_contributions(context, target)
-        } else {
-            holons_core::descriptors::construct_effective_descriptor(context, target)
-        };
+        let result = holons_core::descriptors::construct_effective_descriptor(context, target);
         #[cfg(feature = "descriptor-performance-profiling")]
         let result = {
             let mut previous_time = started;
             let mut previous_metrics = before;
             let mut details = Vec::new();
             let result = holons_core::descriptors::effective_descriptor::profile_effective_descriptor_construction(
-                context, target, include_contributions,
+                context, target,
                 |phase, collection| {
                     let now = sys_time().ok();
                     let metrics = crate::persistence_layer::smartlink::relationship_read_metrics();

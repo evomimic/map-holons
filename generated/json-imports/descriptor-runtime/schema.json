@@ -1655,42 +1655,6 @@
       ]
     },
     {
-      "key": "IncludeContributions.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor",
-      "properties": {
-        "TypeName": "IncludeContributions",
-        "TypeNamePlural": "IncludeContributions",
-        "DisplayName": "Include Contributions",
-        "Description": "Opt in to contribution Holon materialization; omission means false."
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "PropertyType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "ValueType",
-          "target": [
-            {
-              "$ref": "MapBooleanValueType.BooleanValueType"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "ConstructEffectiveDescriptorRequest.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
@@ -1721,14 +1685,6 @@
           "target": [
             {
               "$ref": "NoneRule.KeyRuleType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "IncludeContributions.PropertyType"
             }
           ]
         },
@@ -1794,7 +1750,7 @@
         "TypeNamePlural": "ConstructEffectiveDescriptorDances",
         "DisplayName": "Construct Effective Descriptor",
         "Description": "Resolve the complete schema of a HolonType once in the authoritative Space.",
-        "DanceDescription": "Constructs a lossless transaction-scoped resolved schema; contribution Holons are opt-in.",
+        "DanceDescription": "Constructs a transaction-scoped resolved schema without allocating contribution Holons.",
         "RequiredExecutionContext": "SpaceAuthoritative"
       },
       "relationships": [

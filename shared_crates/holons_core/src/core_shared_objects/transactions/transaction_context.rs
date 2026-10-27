@@ -565,20 +565,7 @@ impl TransactionContext {
         self: &Arc<Self>,
         target: HolonReference,
     ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
-        self.construct_effective_descriptor_with_options(target, false)
-    }
-
-    /// Optionally materializes provenance Holons; computation always retains occurrences.
-    pub fn construct_effective_descriptor_with_options(
-        self: &Arc<Self>,
-        target: HolonReference,
-        include_contributions: bool,
-    ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
-        self.get_holon_service().construct_effective_descriptor_internal(
-            self,
-            target,
-            include_contributions,
-        )
+        self.get_holon_service().construct_effective_descriptor_internal(self, target)
     }
 
     /// Initiates a dance request through the configured space-scoped initiator.

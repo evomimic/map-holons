@@ -113,7 +113,7 @@ export type TransactionActionWire =
   // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
-  | { ConstructEffectiveDescriptor: { target: HolonReferenceWire; include_contributions?: boolean } }
+  | { ConstructEffectiveDescriptor: { target: HolonReferenceWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
   | { ProjectVisualizerDiscovery: { snapshot: string } }
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
@@ -335,7 +335,7 @@ export function isTransactionActionWire(
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
-    (hasSingleKey(value, 'ConstructEffectiveDescriptor') && isRecord(value.ConstructEffectiveDescriptor) && isHolonReferenceWire(value.ConstructEffectiveDescriptor['target']) && (value.ConstructEffectiveDescriptor['include_contributions'] === undefined || typeof value.ConstructEffectiveDescriptor['include_contributions'] === 'boolean')) ||
+    (hasSingleKey(value, 'ConstructEffectiveDescriptor') && isRecord(value.ConstructEffectiveDescriptor) && isHolonReferenceWire(value.ConstructEffectiveDescriptor['target'])) ||
     (hasSingleKey(value, 'DanceV2') &&
       isRecord(value.DanceV2) &&
       isDanceV2InvocationWire(value.DanceV2['invocation'])) ||

@@ -74,8 +74,6 @@ async fn measure_effective_descriptor_construction() {
         .parse()
         .unwrap();
     assert!((2..=10).contains(&samples));
-    let include_contributions =
-        std::env::var("MAP_EFFECTIVE_DESCRIPTOR_PERF_INCLUDE_CONTRIBUTIONS").is_ok();
     let setup_started = Instant::now();
     let (runtime, initial_tx) = init_test_runtime(&mut DancesTestCase::default()).await;
     let initial = runtime.session().get_transaction(&initial_tx).unwrap();
@@ -112,10 +110,7 @@ async fn measure_effective_descriptor_construction() {
                     .execute_command(
                         MapCommand::Transaction(TransactionCommand {
                             context: context.clone(),
-                            action: TransactionAction::ConstructEffectiveDescriptor {
-                                target,
-                                include_contributions,
-                            },
+                            action: TransactionAction::ConstructEffectiveDescriptor { target },
                         }),
                         ExecutionPolicy::default(),
                     )
@@ -132,15 +127,11 @@ async fn measure_effective_descriptor_construction() {
                 assert_eq!(product_counts["EffectiveInstanceKeyRule"], 1);
                 assert_eq!(members(&reference, "DescribedHolonType").len(), 1);
                 let contributions = members(&reference, "EffectiveContributions").len();
-                if include_contributions {
-                    assert!(contributions > 0);
-                } else {
-                    assert_eq!(contributions, 0);
-                }
+                assert_eq!(contributions, 0);
                 let after_count = context.lookup().transient_count().unwrap();
                 let after_bytes = session_json_bytes(&context);
-                let graph_nodes = 1 + contributions;
-                // Result and records plus ordinary request/invocation/response allocations.
+                let graph_nodes = 1;
+                // One result plus ordinary request/invocation/response allocations.
                 assert_eq!(after_count - before_count, graph_nodes as i64 + 3);
                 if !fresh {
                     if let Some(previous) = previous_retained {
@@ -161,7 +152,7 @@ async fn measure_effective_descriptor_construction() {
         }
         dispose(&runtime, retained).await;
     }
-    let capture = json!({"include_contributions": include_contributions, "platform": {"os": std::env::consts::OS, "arch": std::env::consts::ARCH}, "setup_us": setup_us, "samples_per_target_and_mode": samples,
+    let capture = json!({"platform": {"os": std::env::consts::OS, "arch": std::env::consts::ARCH}, "setup_us": setup_us, "samples_per_target_and_mode": samples,
         "notes": ["Setup and graph inspection excluded from host construction interval.",
             "Native Runtime command path; TypeScript/Tauri IPC is not included.",
             "Fresh transaction is not cold storage: bootstrap and earlier calls warm shared caches.",

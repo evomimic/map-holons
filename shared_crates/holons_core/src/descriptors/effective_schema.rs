@@ -70,18 +70,12 @@ pub struct ComputedEffectiveSchema {
 }
 
 impl ComputedEffectiveSchema {
-    /// Materializes the graph only when required; provenance Holons are an explicit choice.
+    /// Materializes the result Holon; occurrence provenance stays in this computed projection.
     pub fn materialize(
         &self,
         context: &std::sync::Arc<crate::core_shared_objects::transactions::TransactionContext>,
-        include_contributions: bool,
     ) -> Result<super::EffectiveDescriptor, HolonError> {
-        super::effective_descriptor::materialize_effective_schema(
-            context,
-            self,
-            include_contributions,
-            |_, _| {},
-        )
+        super::effective_descriptor::materialize_effective_schema(context, self, |_, _| {})
     }
 
     /// Resolves L(T), never L(D(T)); supports invalid but structurally traversable schemas.
@@ -402,7 +396,7 @@ mod tests {
         let before = context.lookup().transient_count()?;
         let projection = ComputedEffectiveSchema::resolve(&child.into())?;
         assert_eq!(context.lookup().transient_count()?, before);
-        let result = projection.materialize(&context, false)?;
+        let result = projection.materialize(&context)?;
         assert_eq!(context.lookup().transient_count()?, before + 1);
         assert_eq!(result.instance_properties()?.len(), 1);
         assert!(result.contributions()?.is_empty());

@@ -501,6 +501,6 @@ export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequ
 }
 
 /** Constructs through the normal guest Dance and retains the graph in this transaction. */
-export function constructEffectiveDescriptor(txId: TxId, target: HolonReferenceWire, includeContributions = false): Promise<HolonReferenceWire> {
-  return runTransactionCommand(txId, { ConstructEffectiveDescriptor: { target, include_contributions: includeContributions } }, expectReference);
+export function constructEffectiveDescriptor(txId: TxId, target: HolonReferenceWire): Promise<HolonReferenceWire> {
+  return runTransactionCommand(txId, { ConstructEffectiveDescriptor: { target } }, expectReference);
 }

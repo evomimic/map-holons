@@ -111,7 +111,7 @@
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "8debeb2168b945049778e179ff43a7830687b5e8c3f8a5e241919d409b3e0793"
+      "sha256": "df3c55b40c24aa42ee472fb3cf4d4a4fd911597fd048410fcb7f02527cc6e746"
     },
     {
       "path": "imports/query/schema.json",
@@ -2917,10 +2917,6 @@
     },
     {
       "key": "ImplementationName.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor"
-    },
-    {
-      "key": "IncludeContributions.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {

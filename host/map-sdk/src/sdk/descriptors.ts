@@ -3,9 +3,6 @@ import { extractString } from './types';
 import { constructResolvedDescriptor, readInstanceProperties, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, readDescriptorIsOrdered, readDescriptorHasInstanceKey, type HolonReference } from './references';
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
-/** Contribution Holons are opt-in; effective products always retain declaration occurrences. */
-export interface EffectiveDescriptorOptions { readonly includeContributions?: boolean; }
-
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
 const holonDescriptorReferences = new WeakMap<HolonDescriptorHandle, HolonReference>();
 const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, HolonReference>();
@@ -13,7 +10,7 @@ const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, Holon
 /** Opaque SDK handle for a holon type descriptor. */
 export class HolonDescriptorHandle {
   /** Constructs a new resolved schema snapshot in this handle's retained transaction. */
-  effectiveDescriptor(options: EffectiveDescriptorOptions = {}): Promise<EffectiveDescriptorHandle> { return constructResolvedDescriptor(this.#reference, options); }
+  effectiveDescriptor(): Promise<EffectiveDescriptorHandle> { return constructResolvedDescriptor(this.#reference); }
 
   /** Whether the effective instance key rule defines keys, resolved by Rust. */
   hasInstanceKey(): Promise<boolean> { return readDescriptorHasInstanceKey(this.#reference); }

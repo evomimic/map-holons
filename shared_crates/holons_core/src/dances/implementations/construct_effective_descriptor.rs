@@ -11,7 +11,6 @@ use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeNa
 pub fn invocation(
     context: &Arc<TransactionContext>,
     target: HolonReference,
-    include_contributions: bool,
 ) -> Result<DanceInvocation, HolonError> {
     let space = context.get_space_holon()?.ok_or_else(|| {
         HolonError::InvalidParameter(
@@ -32,10 +31,6 @@ pub fn invocation(
     request.add_related_references(CoreRelationshipTypeName::DescribedBy, vec![request_type])?;
     request.add_related_references(CoreRelationshipTypeName::OwnedBy, vec![space.clone()])?;
     request.add_related_references(CoreRelationshipTypeName::RequestedHolonType, vec![target])?;
-    request.with_property_value(
-        type_names::CorePropertyTypeName::IncludeContributions,
-        include_contributions,
-    )?;
     let mut invocation = context.mutation().new_holon(None)?;
     invocation
         .add_related_references(CoreRelationshipTypeName::DescribedBy, vec![invocation_type])?;
@@ -88,19 +83,5 @@ pub fn invoke(
             "RequestedHolonType must have exactly one target".into(),
         ));
     };
-    let include_contributions = match request
-        .property_value(type_names::CorePropertyTypeName::IncludeContributions)?
-    {
-        None => false,
-        Some(base_types::BaseValue::BooleanValue(value)) => value.0,
-        _ => {
-            return Err(HolonError::InvalidParameter("IncludeContributions must be Boolean".into()))
-        }
-    };
-    Ok(Some(
-        context
-            .construct_effective_descriptor_with_options(target.clone(), include_contributions)?
-            .holon()
-            .clone(),
-    ))
+    Ok(Some(context.construct_effective_descriptor(target.clone())?.holon().clone()))
 }

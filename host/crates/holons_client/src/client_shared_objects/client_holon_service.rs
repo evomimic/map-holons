@@ -528,13 +528,10 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         context: &Arc<TransactionContext>,
         target: HolonReference,
-        include_contributions: bool,
     ) -> Result<holons_core::descriptors::EffectiveDescriptor, HolonError> {
         let invocation =
             holons_core::dances::implementations::construct_effective_descriptor::invocation(
-                context,
-                target,
-                include_contributions,
+                context, target,
             )?;
         let response =
             run_future_synchronously(async move { context.initiate_invocation(invocation).await })?;

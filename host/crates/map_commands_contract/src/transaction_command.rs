@@ -62,7 +62,7 @@ pub enum TransactionAction {
     DanceV2 { invocation: DanceInvocation },
 
     /// Constructs a retained schema graph through the canonical guest Dance.
-    ConstructEffectiveDescriptor { target: HolonReference, include_contributions: bool },
+    ConstructEffectiveDescriptor { target: HolonReference },
 
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
     SelectVisualizer { request: VisualizerSelectionRequest },

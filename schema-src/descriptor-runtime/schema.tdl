@@ -543,17 +543,6 @@ inverse relationship (DanceType.HolonType)-[DanceInEffectiveDescriptor]->(Effect
   }
 }
 
-property IncludeContributions.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value MapBooleanValueType.BooleanValueType
-  header {
-    description: "Opt in to contribution Holon materialization; omission means false."
-    display_name: "Include Contributions"
-    plural: "IncludeContributions"
-  }
-}
-
 holon ConstructEffectiveDescriptorRequest.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
@@ -564,7 +553,6 @@ holon ConstructEffectiveDescriptorRequest.HolonType {
     plural: "ConstructEffectiveDescriptorRequests"
   }
   relationships {
-    InstanceProperties -> IncludeContributions.PropertyType
     InstanceRelationships -> (ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)
   }
 }
@@ -587,7 +575,7 @@ holon ConstructEffectiveDescriptor.DanceType {
   type MetaDanceType.MetaHolonType
   extends DanceType.HolonType
   RequiredExecutionContext SpaceAuthoritative
-  DanceDescription "Constructs a lossless transaction-scoped resolved schema; contribution Holons are opt-in."
+  DanceDescription "Constructs a transaction-scoped resolved schema without allocating contribution Holons."
   relationships {
     RequestType -> ConstructEffectiveDescriptorRequest.HolonType
     Response -> ConstructEffectiveDescriptorResponse.DanceResponseType
