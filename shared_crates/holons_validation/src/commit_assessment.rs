@@ -6,7 +6,7 @@ use crate::{
     outcomes::PreparedAssessment,
     schema_rules::{self, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
-    subject_assessment::{self, PreparedBinding},
+    subject_assessment::{self, BindingRoleMemo, PreparedBinding},
     CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
     DescriptorRuleProducts, ValidationCollector, ValidationObservations, ValueValidationContext,
 };
@@ -34,7 +34,7 @@ impl ReadinessContext {
         context: &Arc<TransactionContext>,
     ) -> Result<Self, crate::AnchorResolutionError> {
         Ok(Self {
-            values: ValueValidationContext::resolve(context)?,
+            values: ValueValidationContext::new(context),
             universal: UniversalDescriptorContract::resolve(context)?,
         })
     }
@@ -193,6 +193,7 @@ pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     candidates: &'candidates [StagedReference],
     roots: &'a ReadinessContext,
     prepared: Vec<SubjectPreparation>,
+    binding_roles: BindingRoleMemo,
     workset: SchemaWorkset,
     packages: crate::descriptor_package::DescriptorPackages,
     collector: ValidationCollector,
@@ -328,7 +329,27 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &workset,
         observer,
     )?;
-    Ok(ConstructedAssessment { context, candidates, roots, prepared, workset, packages, collector })
+    let binding_roles = BindingRoleMemo::prepare(
+        context,
+        packages.binding_contributions(),
+        prepared.iter().filter_map(|subject| {
+            subject
+                .prerequisites
+                .governing_lineage
+                .as_ref()
+                .and_then(|diagnosis| diagnosis.valid_lineage())
+        }),
+    )?;
+    Ok(ConstructedAssessment {
+        context,
+        candidates,
+        roots,
+        prepared,
+        binding_roles,
+        workset,
+        packages,
+        collector,
+    })
 }
 
 impl<'candidates> ConstructedAssessment<'_, 'candidates> {
@@ -338,8 +359,16 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         mut observer: impl FnMut(crate::AssessmentEvent),
     ) -> Result<(PreparedAssessment<'candidates>, ValidationObservations), HolonError> {
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation));
-        let Self { context, candidates, roots, mut prepared, workset, mut packages, mut collector } =
-            self;
+        let Self {
+            context,
+            candidates,
+            roots,
+            mut prepared,
+            binding_roles,
+            workset,
+            mut packages,
+            mut collector,
+        } = self;
         let kinds = DescriptorKindSemantics::new(context);
         // Outcomes and scheduling retain every candidate, including saved-definition aliases.
         let prepared_index: HashMap<TemporaryId, usize> = prepared
@@ -481,6 +510,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     governing.subject(),
                     SubjectLevel::Holon,
                     &roots.values,
+                    &binding_roles,
                     &path(&subject.subject),
                     &mut collector,
                     &packages,
@@ -521,6 +551,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     &descriptor,
                     SubjectLevel::Holon,
                     &roots.values,
+                    &binding_roles,
                     &path(&view.schema),
                     &mut collector,
                     &packages,
@@ -555,6 +586,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     context,
                     subject,
                     roots,
+                    &binding_roles,
                     &packages,
                     &mut readiness,
                     &mut collector,
@@ -573,6 +605,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     context,
                     subject,
                     roots,
+                    &binding_roles,
                     &packages,
                     &mut readiness,
                     &mut collector,
@@ -642,6 +675,7 @@ fn assess_candidate(
     context: &Arc<TransactionContext>,
     subject: &SubjectPreparation,
     roots: &ReadinessContext,
+    binding_roles: &BindingRoleMemo,
     packages: &crate::descriptor_package::DescriptorPackages,
     readiness: &mut ReadinessPropagation,
     collector: &mut ValidationCollector,
@@ -670,6 +704,7 @@ fn assess_candidate(
                 &subject.bindings,
                 subject.key_claim.as_ref(),
                 &roots.values,
+                binding_roles,
                 &roots.universal,
                 collector,
                 packages,

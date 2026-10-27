@@ -27,15 +27,25 @@ struct FixtureStorage {
     keyed_lineages: std::sync::Mutex<HashMap<MapString, Vec<LocalId>>>,
     lineage_read_error: std::sync::Mutex<Option<HolonError>>,
     read_errors: HashMap<HolonId, HolonError>,
+    relationship_read_overrides:
+        std::sync::Mutex<HashMap<(HolonId, RelationshipName), Option<HolonError>>>,
     reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
     fn relationship_cache_policy(
         &self,
         _: &Arc<TransactionContext>,
-        _: &HolonId,
-        _: &RelationshipName,
+        source: &HolonId,
+        name: &RelationshipName,
     ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+        if self
+            .relationship_read_overrides
+            .lock()
+            .unwrap()
+            .contains_key(&(source.clone(), name.clone()))
+        {
+            return Ok(holons_core::RelationshipCachePolicy::Fresh);
+        }
         Ok(holons_core::RelationshipCachePolicy::Reuse)
     }
 
@@ -89,6 +99,11 @@ impl HolonServiceApi for FixtureStorage {
     ) -> Result<HolonCollection, HolonError> {
         self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         *self.reads_by_relationship.lock().unwrap().entry(name.clone()).or_default() += 1;
+        if let Some(Some(error)) =
+            self.relationship_read_overrides.lock().unwrap().get(&(source.clone(), name.clone()))
+        {
+            return Err(error.clone());
+        }
         assert!(self.holons.contains_key(source), "unexpected storage relationship read");
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
@@ -155,31 +170,17 @@ pub(super) struct Fixture {
     saved_storage: Option<Arc<FixtureStorage>>,
 }
 
-pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 8] = {
-    use CoreValidationRuleName::*;
-    [
-        (
-            RequiredPropertyPresence,
-            "PropertyValidationRule.HolonType",
-            "PropertyType.TypeDescriptor",
-        ),
-        (NoUndescribedProperties, "HolonValidationRule.HolonType", "HolonType.TypeDescriptor"),
-        (KeyUniqueness, "HolonValidationRule.HolonType", "HolonType.TypeDescriptor"),
-        (BaseValueKindMatchesString, "StringValidationRule.HolonType", "StringValueType.ValueType"),
-        (
-            BaseValueKindMatchesInteger,
-            "IntegerValidationRule.HolonType",
-            "IntegerValueType.ValueType",
-        ),
-        (
-            BaseValueKindMatchesBoolean,
-            "BooleanValidationRule.HolonType",
-            "BooleanValueType.ValueType",
-        ),
-        (BaseValueKindMatchesBytes, "BytesValidationRule.HolonType", "BytesValueType.ValueType"),
-        (BaseValueKindMatchesEnum, "EnumValueValidationRule.HolonType", "EnumValueType.ValueType"),
-    ]
-};
+pub(super) fn subject_rules(
+) -> impl Iterator<Item = (CoreValidationRuleName, &'static str, &'static str)> {
+    CoreValidationRuleName::all().filter_map(|name| {
+        let registration = crate::registries::registration(name);
+        matches!(
+            registration.implementation,
+            Some(crate::registries::RuleImplementation::Subject(_))
+        )
+        .then_some((name, registration.family.key(), registration.declaring.key()))
+    })
+}
 
 impl Fixture {
     /// Opens an empty schema snapshot for bootstrap precondition tests.
@@ -208,7 +209,7 @@ impl Fixture {
             fixture.node(key)?;
         }
         let mut binding_roots = std::collections::HashSet::new();
-        for (rule, family, target) in RULES {
+        for (rule, family, target) in subject_rules() {
             fixture.node(rule.as_str())?;
             fixture.node(family)?;
             fixture.node(target)?;
@@ -218,26 +219,17 @@ impl Fixture {
             }
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;
         }
-        // Subject fixtures bind only subject rules. The binding inventory
-        // still resolves all descriptor and Schema rule identities for placement checks.
-        for rule in [
-            CoreValidationRuleName::AtMostOneDirectParent,
-            CoreValidationRuleName::AcyclicExtendsLineage,
-            CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
-            CoreValidationRuleName::UniqueTypeDescriptorRoot,
-            CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
-            CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
-            CoreValidationRuleName::TypeDescriptorRootKindException,
-            CoreValidationRuleName::DescribingCategoryCompatibility,
-            CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
-            CoreValidationRuleName::NoInheritedMemberRedeclaration,
-            CoreValidationRuleName::UniqueSemanticMemberNames,
-            CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
-            CoreValidationRuleName::ContractMemberKindCompatibility,
-            CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-            CoreValidationRuleName::SchemaDependenciesAcyclic,
-        ] {
-            fixture.node(rule.as_str())?;
+        // Product rules are available to tests that explicitly bind them.
+        for rule in CoreValidationRuleName::all() {
+            if matches!(
+                crate::registries::registration(rule).implementation,
+                Some(
+                    crate::registries::RuleImplementation::DescriptorProduct
+                        | crate::registries::RuleImplementation::SchemaAggregate(_)
+                )
+            ) {
+                fixture.node(rule.as_str())?;
+            }
         }
         fixture.node("Schema.HolonType")?;
         fixture.link("Contract", CoreRelationshipTypeName::Extends, "HolonType.TypeDescriptor")?;
@@ -356,6 +348,24 @@ impl Fixture {
         self.saved_storage
             .as_ref()
             .map_or(0, |storage| storage.reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    /// Uses fresh reads for one saved edge, optionally injecting a backend failure.
+    pub fn control_saved_relationship_reads(
+        &self,
+        key: &str,
+        edge: CoreRelationshipTypeName,
+        error: Option<HolonError>,
+    ) -> Result<(), HolonError> {
+        let source = self.nodes[key].holon_id()?;
+        self.saved_storage
+            .as_ref()
+            .expect("saved fixture")
+            .relationship_read_overrides
+            .lock()
+            .unwrap()
+            .insert((source, edge.as_relationship_name()), error);
+        Ok(())
     }
 
     /// Counts backend node fetch attempts, including failed reads.
@@ -588,15 +598,17 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "TypeDescriptor",
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
-    for (_, _, key) in RULES[3..].iter() {
+    for (_, _, key) in subject_rules()
+        .filter(|(name, _, _)| crate::registries::registration(*name).native_kind.is_some())
+    {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
             .nodes
-            .get_mut(*key)
+            .get_mut(key)
             .unwrap()
             .remove_related_holons(CoreRelationshipTypeName::Extends, vec![type_descriptor])?;
         fixture.link(key, CoreRelationshipTypeName::Extends, "ValueType.TypeDescriptor")?;
-        fixture.nodes.get_mut(*key).unwrap().with_property_value("IsAbstractType", true)?;
+        fixture.nodes.get_mut(key).unwrap().with_property_value("IsAbstractType", true)?;
     }
     for key in [
         "Title.PropertyType",
@@ -633,29 +645,22 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         CoreRelationshipTypeName::TargetType,
         "HolonType.TypeDescriptor",
     )?;
-    for rule in [
-        CoreValidationRuleName::AtMostOneDirectParent,
-        CoreValidationRuleName::AcyclicExtendsLineage,
-        CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
-        CoreValidationRuleName::UniqueTypeDescriptorRoot,
-        CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
-        CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
-        CoreValidationRuleName::TypeDescriptorRootKindException,
-        CoreValidationRuleName::DescribingCategoryCompatibility,
-        CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
-        CoreValidationRuleName::NoInheritedMemberRedeclaration,
-        CoreValidationRuleName::UniqueSemanticMemberNames,
-        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
-        CoreValidationRuleName::ContractMemberKindCompatibility,
-        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-        CoreValidationRuleName::SchemaDependenciesAcyclic,
-    ] {
-        fixture.node(rule.as_str())?;
-        fixture.link(
-            rule.as_str(),
-            CoreRelationshipTypeName::DescribedBy,
-            "HolonValidationRule.HolonType",
-        )?;
+    for rule in CoreValidationRuleName::all() {
+        let registration = crate::registries::registration(rule);
+        if matches!(
+            registration.implementation,
+            Some(
+                crate::registries::RuleImplementation::DescriptorProduct
+                    | crate::registries::RuleImplementation::SchemaAggregate(_)
+            )
+        ) {
+            fixture.node(rule.as_str())?;
+            fixture.link(
+                rule.as_str(),
+                CoreRelationshipTypeName::DescribedBy,
+                registration.family.key(),
+            )?;
+        }
     }
     Ok(fixture)
 }

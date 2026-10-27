@@ -1,9 +1,9 @@
-//! Canonical identities of Core validation rules with registered handlers.
+//! Stable vocabulary of built-in Core validation rules.
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-/// Fixed Commit rule identities resolved through the canonical binding inventory.
+/// Built-in Commit rule vocabulary; keys select implementations, not definition versions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, EnumIter)]
 pub enum CoreValidationRuleName {
     /// DS-PROP-001: required effective properties must be present.
@@ -57,6 +57,11 @@ pub enum CoreValidationRuleName {
 }
 
 impl CoreValidationRuleName {
+    /// Enumerates the built-in vocabulary without maintaining another rule inventory.
+    pub fn all() -> impl Iterator<Item = Self> {
+        Self::iter()
+    }
+
     /// Recognizes an exact canonical key; unknown extension rules remain unclassified.
     /// This converts vocabulary only and does not establish runtime reference identity.
     pub fn from_key(key: &str) -> Option<Self> {

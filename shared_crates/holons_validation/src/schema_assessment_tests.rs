@@ -698,7 +698,7 @@ fn schema_dependency_cycles_do_not_read_saved_memberships() -> Result<(), HolonE
 fn stale_cross_schema_dependency_binding_fails_closed() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
-    assert!(StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).is_none());
+    assert!(crate::registries::registration(rule).implementation.is_none());
     fixture.link(
         "Schema.HolonType",
         CoreRelationshipTypeName::Extends,

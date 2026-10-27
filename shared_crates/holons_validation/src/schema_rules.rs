@@ -114,9 +114,8 @@ fn run(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
     rule: CoreValidationRuleName,
-    code: &str,
 ) -> Result<RuleOutcome, HolonError> {
-    let ValidationInvocation::Schema { binding, path, products } = invocation else {
+    let ValidationInvocation::Schema { binding, path, products, code } = invocation else {
         return Err(HolonError::InvalidParameter(
             "Schema rule requires prepared aggregate products".into(),
         ));
@@ -130,5 +129,5 @@ pub(crate) fn schema_dependencies_acyclic(
     i: ValidationInvocation<'_>,
     c: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::SchemaDependenciesAcyclic, "DS-SCHEMA-001")
+    run(i, c, CoreValidationRuleName::SchemaDependenciesAcyclic)
 }

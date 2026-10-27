@@ -321,6 +321,14 @@ impl DescriptorPackages {
         })
     }
 
+    /// Supplies reached binding contributions for construction-time role preparation.
+    pub fn binding_contributions(&self) -> impl Iterator<Item = &EffectiveRelationshipMember> {
+        self.definitions
+            .values()
+            .filter_map(|definition| definition.bindings.as_ref().ok())
+            .flatten()
+    }
+
     pub fn effective_bindings(
         &self,
         reference: &HolonReference,

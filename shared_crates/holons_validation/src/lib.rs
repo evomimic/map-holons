@@ -42,7 +42,7 @@ pub use descriptor_rules::DescriptorRuleProducts;
 pub use prospective::{resolve_validation_anchor, AnchorResolutionError};
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
-    StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,
+    StaticRuleHandler, ValidationInvocation, ValidationRuleKey,
 };
 pub use report::{CommitAssessment, CommitValidationReport};
 pub use schema_rules::SchemaRuleProducts;

@@ -22,7 +22,7 @@ use type_names::{
 
 use crate::commitments::required_key;
 use crate::handlers::{finding, rule_violation};
-use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector, ValidationInvocation};
+use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector};
 
 #[derive(Clone, Copy, Debug)]
 enum DiagnosticKind {
@@ -433,23 +433,19 @@ impl DescriptorRuleProducts {
         dispatched: &std::collections::HashSet<CoreValidationRuleName>,
         collector: &mut ValidationCollector,
     ) {
-        use CoreValidationRuleName::*;
-        for (rule, code) in [
-            (AtMostOneDirectParent, "DS-STRUCT-002"),
-            (AcyclicExtendsLineage, "DS-STRUCT-003"),
-            (ExtendsLineageTerminatesAtTypeDescriptor, "DS-STRUCT-004"),
-            (UniqueTypeDescriptorRoot, "DS-STRUCT-005"),
-            (DescribingCategoryCompatibility, "DS-KIND-004"),
-            (DescriptorMetaTypeCorrespondence, "DS-KIND-005"),
-        ] {
+        for rule in CoreValidationRuleName::all() {
+            let registration = crate::registries::registration(rule);
+            if !registration.prerequisite {
+                continue;
+            }
             if dispatched.contains(&rule) {
                 continue;
             }
             for diagnostic in self.diagnostics.get(&rule).into_iter().flatten() {
                 let kind = match diagnostic.kind {
-                    DiagnosticKind::Violation => {
-                        CommitValidationViolationKind::RuleViolation { code: code.into() }
-                    }
+                    DiagnosticKind::Violation => CommitValidationViolationKind::RuleViolation {
+                        code: registration.code.into(),
+                    },
                     DiagnosticKind::UnresolvedDependency => {
                         CommitValidationViolationKind::UnresolvedLocalDependency
                     }
@@ -466,7 +462,7 @@ impl DescriptorRuleProducts {
         }
     }
 
-    fn emit(
+    pub(crate) fn emit(
         &self,
         rule: CoreValidationRuleName,
         code: &str,
@@ -501,110 +497,4 @@ struct MemberNamespace<'a> {
     name: &'static str,
     expected_kind: CoreDefinitionRole,
     required_edges: &'a [(CoreRelationshipTypeName, Option<CoreDefinitionRole>)],
-}
-
-fn run(
-    invocation: ValidationInvocation<'_>,
-    collector: &mut ValidationCollector,
-    rule: CoreValidationRuleName,
-    code: &str,
-) -> Result<RuleOutcome, HolonError> {
-    let ValidationInvocation::Descriptor { binding, path, products } = invocation else {
-        return Err(HolonError::InvalidParameter(
-            "Descriptor rule requires prepared descriptor products".into(),
-        ));
-    };
-    products.emit(rule, code, binding, path, collector)
-}
-
-pub(crate) fn at_most_one_direct_parent(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::AtMostOneDirectParent, "DS-STRUCT-002")
-}
-pub(crate) fn acyclic_extends_lineage(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::AcyclicExtendsLineage, "DS-STRUCT-003")
-}
-pub(crate) fn extends_lineage_terminates_at_type_descriptor(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor, "DS-STRUCT-004")
-}
-pub(crate) fn unique_type_descriptor_root(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::UniqueTypeDescriptorRoot, "DS-STRUCT-005")
-}
-pub(crate) fn local_instance_kind_anchor_designation(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::LocalInstanceKindAnchorDesignation, "DS-KIND-001")
-}
-pub(crate) fn instance_kind_anchors_are_abstract(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::InstanceKindAnchorsAreAbstract, "DS-KIND-002")
-}
-pub(crate) fn type_descriptor_root_kind_exception(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::TypeDescriptorRootKindException, "DS-KIND-003")
-}
-pub(crate) fn describing_category_compatibility(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::DescribingCategoryCompatibility, "DS-KIND-004")
-}
-pub(crate) fn descriptor_meta_type_correspondence(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::DescriptorMetaTypeCorrespondence, "DS-KIND-005")
-}
-pub(crate) fn no_inherited_member_redeclaration(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001")
-}
-pub(crate) fn unique_semantic_member_names(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::UniqueSemanticMemberNames, "DS-CONTRACT-002")
-}
-pub(crate) fn well_formed_effective_member_definitions(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::WellFormedEffectiveMemberDefinitions, "DS-CONTRACT-003")
-}
-pub(crate) fn contract_member_kind_compatibility(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::ContractMemberKindCompatibility, "DS-CONTRACT-004")
-}
-
-/// Dispatches the prepared combined-set preservation result, without evaluating any constraint.
-pub(crate) fn inherited_constraint_non_relaxation(
-    invocation: ValidationInvocation<'_>,
-    collector: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(
-        invocation,
-        collector,
-        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-        "DS-CONSTRAINT-001",
-    )
 }

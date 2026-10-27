@@ -1,7 +1,11 @@
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
-use std::{collections::BTreeSet, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::PathBuf,
+};
 
 #[derive(Deserialize)]
 struct BootstrapSelection {
@@ -41,7 +45,12 @@ fn canonical_documents() -> Result<Vec<Value>> {
 
 /// Inheritance only spreads authored bindings, so their union is also the effective union.
 /// No validation runtime or descriptor traversal is needed to inventory the canonical corpus.
-fn authored_binding_inventory(documents: &[Value]) -> BTreeSet<String> {
+fn authored_binding_placements(documents: &[Value]) -> BTreeSet<(String, String, String)> {
+    let families: BTreeMap<_, _> = documents
+        .iter()
+        .flat_map(|document| document["holons"].as_array().expect("canonical holons"))
+        .filter_map(|holon| Some((holon["key"].as_str()?, holon["type"].as_str()?)))
+        .collect();
     let mut bindings = BTreeSet::new();
     for document in documents {
         for holon in document["holons"].as_array().expect("canonical import must contain holons") {
@@ -55,9 +64,12 @@ fn authored_binding_inventory(documents: &[Value]) -> BTreeSet<String> {
                     .map(Vec::as_slice)
                     .unwrap_or_else(|| std::slice::from_ref(&relationship["target"]));
                 for target in targets {
-                    bindings.insert(
-                        target["$ref"].as_str().expect("canonical binding must name a rule").into(),
-                    );
+                    let key = target["$ref"].as_str().expect("canonical binding must name a rule");
+                    bindings.insert((
+                        key.into(),
+                        families[key].into(),
+                        holon["key"].as_str().expect("canonical descriptor key").into(),
+                    ));
                 }
             }
         }
@@ -65,40 +77,141 @@ fn authored_binding_inventory(documents: &[Value]) -> BTreeSet<String> {
     bindings
 }
 
-fn expected_rule_keys() -> BTreeSet<String> {
+fn authored_binding_inventory(documents: &[Value]) -> BTreeSet<String> {
+    authored_binding_placements(documents).into_iter().map(|(key, _, _)| key).collect()
+}
+
+/// Hand-written Core expectations; never derive these from Rust registrations.
+fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
     [
-        "RequiredPropertyPresence",
-        "NoUndescribedProperties",
-        "KeyUniqueness",
-        "BaseValueKindMatchesString",
-        "BaseValueKindMatchesInteger",
-        "BaseValueKindMatchesBoolean",
-        "BaseValueKindMatchesBytes",
-        "BaseValueKindMatchesEnum",
-        "AtMostOneDirectParent",
-        "AcyclicExtendsLineage",
-        "ExtendsLineageTerminatesAtTypeDescriptor",
-        "UniqueTypeDescriptorRoot",
-        "LocalInstanceKindAnchorDesignation",
-        "InstanceKindAnchorsAreAbstract",
-        "TypeDescriptorRootKindException",
-        "DescribingCategoryCompatibility",
-        "DescriptorMetaTypeCorrespondence",
-        "NoInheritedMemberRedeclaration",
-        "UniqueSemanticMemberNames",
-        "WellFormedEffectiveMemberDefinitions",
-        "ContractMemberKindCompatibility",
-        "InheritedValueConstraintNonRelaxation",
-        "SchemaDependenciesAcyclic",
+        (
+            "RequiredPropertyPresence.ValidationRule",
+            "PropertyValidationRule.HolonType",
+            "PropertyType.TypeDescriptor",
+        ),
+        (
+            "NoUndescribedProperties.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "KeyUniqueness.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "BaseValueKindMatchesString.ValidationRule",
+            "StringValidationRule.HolonType",
+            "StringValueType.ValueType",
+        ),
+        (
+            "BaseValueKindMatchesInteger.ValidationRule",
+            "IntegerValidationRule.HolonType",
+            "IntegerValueType.ValueType",
+        ),
+        (
+            "BaseValueKindMatchesBoolean.ValidationRule",
+            "BooleanValidationRule.HolonType",
+            "BooleanValueType.ValueType",
+        ),
+        (
+            "BaseValueKindMatchesBytes.ValidationRule",
+            "BytesValidationRule.HolonType",
+            "BytesValueType.ValueType",
+        ),
+        (
+            "BaseValueKindMatchesEnum.ValidationRule",
+            "EnumValueValidationRule.HolonType",
+            "EnumValueType.ValueType",
+        ),
+        (
+            "AtMostOneDirectParent.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "AcyclicExtendsLineage.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "UniqueTypeDescriptorRoot.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "LocalInstanceKindAnchorDesignation.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "InstanceKindAnchorsAreAbstract.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "TypeDescriptorRootKindException.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "DescribingCategoryCompatibility.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "DescriptorMetaTypeCorrespondence.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "NoInheritedMemberRedeclaration.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "UniqueSemanticMemberNames.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "WellFormedEffectiveMemberDefinitions.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "ContractMemberKindCompatibility.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "InheritedValueConstraintNonRelaxation.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "SchemaDependenciesAcyclic.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "Schema.HolonType",
+        ),
     ]
     .into_iter()
-    .map(|name| format!("{name}.ValidationRule"))
+    .map(|(key, family, declaring)| (key.into(), family.into(), declaring.into()))
     .collect()
 }
 
+fn expected_rule_keys() -> BTreeSet<String> {
+    expected_rule_placements().into_iter().map(|(key, _, _)| key).collect()
+}
+
 fn require_expected_bindings(documents: &[Value]) -> Result<()> {
-    let actual = authored_binding_inventory(documents);
-    let expected = expected_rule_keys();
+    let actual = authored_binding_placements(documents);
+    let expected = expected_rule_placements();
     ensure!(
         actual == expected,
         "canonical ValidationBindings inventory differs: missing {:?}, unexpected {:?}",
@@ -109,7 +222,7 @@ fn require_expected_bindings(documents: &[Value]) -> Result<()> {
 }
 
 #[test]
-fn canonical_corpus_binds_exactly_the_expected_validation_rules() -> Result<()> {
+fn canonical_corpus_binds_expected_rules_with_expected_families_and_declarations() -> Result<()> {
     require_expected_bindings(&canonical_documents()?)
 }
 
@@ -230,6 +343,48 @@ fn key_uniqueness_is_holon_contextual_and_key_inputs_are_definitional() -> Resul
             .find(|h| h["key"] == key)
             .with_context(|| format!("key-producing relationship {key}"))?;
         assert_eq!(relationship["properties"]["IsDefinitional"], true, "{key}");
+    }
+    Ok(())
+}
+
+#[test]
+fn inventory_rejects_wrong_families_and_moved_bindings_even_when_rule_keys_match() -> Result<()> {
+    let key = "BaseValueKindMatchesBytes.ValidationRule";
+    for wrong_family in [true, false] {
+        let mut documents = canonical_documents()?;
+        if wrong_family {
+            let rule = documents
+                .iter_mut()
+                .flat_map(|document| document["holons"].as_array_mut().unwrap())
+                .find(|holon| holon["key"] == key)
+                .context("Bytes rule")?;
+            rule["type"] = Value::String("StringValidationRule.HolonType".into());
+        } else {
+            let bytes_type = documents
+                .iter_mut()
+                .flat_map(|document| document["holons"].as_array_mut().unwrap())
+                .find(|holon| holon["key"] == "BytesValueType.ValueType")
+                .context("Bytes type")?;
+            let relationships = bytes_type["relationships"].as_array_mut().unwrap();
+            let index = relationships
+                .iter()
+                .position(|relationship| {
+                    relationship["name"] == "ValidationBindings"
+                        && relationship["target"][0]["$ref"] == key
+                })
+                .context("Bytes binding")?;
+            let binding = relationships.remove(index);
+            let integer_type = documents
+                .iter_mut()
+                .flat_map(|document| document["holons"].as_array_mut().unwrap())
+                .find(|holon| holon["key"] == "IntegerValueType.ValueType")
+                .context("Integer type")?;
+            integer_type["relationships"].as_array_mut().unwrap().push(binding);
+        }
+        assert_eq!(authored_binding_inventory(&documents), expected_rule_keys());
+        let error = require_expected_bindings(&documents)
+            .expect_err("incorrect placement must fail inventory");
+        assert!(error.to_string().contains(key));
     }
     Ok(())
 }
