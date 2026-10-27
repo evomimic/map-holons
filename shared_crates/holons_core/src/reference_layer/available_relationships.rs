@@ -53,6 +53,35 @@ where
     Ok(relationships)
 }
 
+/// Uses the populated declared contract and inverse vocabulary without resolving inheritance.
+pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Sized>(
+    source: &T,
+    effective: &crate::descriptors::EffectiveDescriptor,
+) -> Result<Vec<QualifiedRelationship>, HolonError> {
+    if !crate::descriptors::same_definition(
+        source.holon_descriptor()?.holon(),
+        effective.described_holon_type()?.holon(),
+    )? {
+        return Err(HolonError::InvalidParameter(
+            "EffectiveDescriptor describes another HolonType".into(),
+        ));
+    }
+    let mut result = effective
+        .instance_relationships()?
+        .into_iter()
+        .map(|declared| QualifiedRelationship {
+            descriptor: RelationshipDescriptor::from_holon(declared.holon().clone()),
+            descriptor_direction: RelationshipDirection::Declared,
+        })
+        .collect::<Vec<_>>();
+    if source.is_committed_source_impl()? {
+        result.extend(effective.navigable_relationships()?.into_iter().filter(|relationship| {
+            relationship.descriptor_direction == RelationshipDirection::Inverse
+        }));
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

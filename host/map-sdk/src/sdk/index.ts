@@ -2,6 +2,8 @@ export { DescribedHolonCollection, HolonCollection } from './collection';
 export { CorePropertyName } from './core-names';
 export {
   HolonDescriptorHandle,
+  EffectiveDescriptorHandle,
+  EffectiveSchemaContributionHandle,
   PropertyDescriptorHandle,
   ValueDescriptorHandle,
   RelationshipDescriptorHandle,
@@ -63,3 +65,5 @@ export type { ParserDiagnostic } from './parser-diagnostics';
 
 export { CommittedHolonsReview } from './committed-review';
 export type { CommittedHolonEntry } from './committed-review';
+
+export type { EffectiveDescriptorOptions } from './descriptors';

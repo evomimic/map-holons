@@ -7,6 +7,17 @@ use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
+#[cfg(test)]
+thread_local! {
+    static LINEAGE_READS: std::cell::RefCell<std::collections::HashMap<String, usize>> = Default::default();
+}
+
+#[cfg(test)]
+pub(crate) fn lineage_edge_reads(reference: &HolonReference) -> usize {
+    LINEAGE_READS
+        .with(|reads| *reads.borrow().get(&reference.full_reference_id_string()).unwrap_or(&0))
+}
+
 /// Direction of a relationship type descriptor relative to its declared edge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RelationshipDirection {
@@ -64,6 +75,10 @@ pub(crate) fn inheritance_rule(relationship: &CoreRelationshipTypeName) -> Inher
 /// Cardinality is enforced here so all iterator-based callers inherit the same
 /// multiple-parent error semantics.
 pub(crate) fn extends_parent(holon: &HolonReference) -> Result<Option<HolonReference>, HolonError> {
+    #[cfg(test)]
+    LINEAGE_READS.with(|reads| {
+        *reads.borrow_mut().entry(holon.full_reference_id_string()).or_default() += 1
+    });
     let collection_arc = holon.related_holons(CoreRelationshipTypeName::Extends)?;
     let collection = collection_arc.read().map_err(lock_error)?;
     let members = collection.get_members();
@@ -172,17 +187,42 @@ pub fn effective_relationship_targets(
     match inheritance_rule(&relationship_name) {
         InheritanceRule::Local => local_relationship_members(start, relationship_name),
         InheritanceRule::Additive => {
-            let mut lineage = walk_extends_chain(start).collect::<Result<Vec<_>, _>>()?;
-            lineage.reverse();
-            let mut members = Vec::new();
-            for ancestor in lineage {
-                members.extend(local_relationship_members(&ancestor, relationship_name.clone())?);
-            }
-            Ok(members)
+            let lineage = ancestors(start)?;
+            relationship_targets_in_lineage(&lineage, relationship_name)
         }
         InheritanceRule::Override => {
             for ancestor in walk_extends_chain(start) {
                 let members = local_relationship_members(&ancestor?, relationship_name.clone())?;
+                if !members.is_empty() {
+                    return Ok(members);
+                }
+            }
+            Ok(Vec::new())
+        }
+    }
+}
+
+/// Resolves contributions using a complete, self-first lineage already checked by the caller.
+/// This shares the local occurrence reader with lazy individual descriptor accessors.
+pub(crate) fn relationship_targets_in_lineage(
+    lineage: &[HolonReference],
+    relationship_name: CoreRelationshipTypeName,
+) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
+    match inheritance_rule(&relationship_name) {
+        InheritanceRule::Local => match lineage.first() {
+            Some(target) => local_relationship_members(target, relationship_name),
+            None => Ok(Vec::new()),
+        },
+        InheritanceRule::Additive => {
+            let mut members = Vec::new();
+            for ancestor in lineage.iter().rev() {
+                members.extend(local_relationship_members(ancestor, relationship_name.clone())?);
+            }
+            Ok(members)
+        }
+        InheritanceRule::Override => {
+            for ancestor in lineage {
+                let members = local_relationship_members(ancestor, relationship_name.clone())?;
                 if !members.is_empty() {
                     return Ok(members);
                 }

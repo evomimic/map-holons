@@ -66,6 +66,9 @@ pub enum ReadableHolonActionWire {
     GetAvailableProperties,
 
     GetAvailableRelationships,
+    GetAvailableRelationshipsFromEffective {
+        descriptor: HolonReferenceWire,
+    },
     GetEffectiveCardinality,
     GetPropertyIsArray,
     /// Whether the target HolonType defines a non-keyless effective instance key rule.
@@ -117,15 +120,15 @@ impl HolonCommandWire {
 impl HolonActionWire {
     fn bind(self, context: &Arc<TransactionContext>) -> Result<HolonAction, HolonError> {
         match self {
-            HolonActionWire::Read(r) => Ok(HolonAction::Read(r.bind())),
+            HolonActionWire::Read(r) => Ok(HolonAction::Read(r.bind(context)?)),
             HolonActionWire::Write(w) => Ok(HolonAction::Write(w.bind(context)?)),
         }
     }
 }
 
 impl ReadableHolonActionWire {
-    fn bind(self) -> ReadableHolonAction {
-        match self {
+    fn bind(self, context: &Arc<TransactionContext>) -> Result<ReadableHolonAction, HolonError> {
+        Ok(match self {
             ReadableHolonActionWire::GetDescribedRelatedHolons { name } => {
                 ReadableHolonAction::GetDescribedRelatedHolons { name }
             }
@@ -170,10 +173,15 @@ impl ReadableHolonActionWire {
                 ReadableHolonAction::GetRelationshipIsOrdered
             }
             ReadableHolonActionWire::GetAvailableDances => ReadableHolonAction::GetAvailableDances,
+            ReadableHolonActionWire::GetAvailableRelationshipsFromEffective { descriptor } => {
+                ReadableHolonAction::GetAvailableRelationshipsFromEffective {
+                    descriptor: descriptor.bind(context)?,
+                }
+            }
             ReadableHolonActionWire::GetAvailableRelationships => {
                 ReadableHolonAction::GetAvailableRelationships
             }
-        }
+        })
     }
 }
 

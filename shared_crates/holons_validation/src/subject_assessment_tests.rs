@@ -2130,3 +2130,64 @@ fn downstream_extends_saved_definition_stays_ready_when_graph_only_alias_fails(
     }
     Ok(())
 }
+
+#[test]
+fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
+) -> Result<(), HolonError> {
+    use holons_core::descriptors::ComputedEffectiveSchema;
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    for endpoint in [CoreRelationshipTypeName::SourceType, CoreRelationshipTypeName::TargetType] {
+        fixture.link("DescribedBy.Relationship", endpoint, "HolonType.TypeDescriptor")?;
+    }
+    fixture.link("Contract", CoreRelationshipTypeName::InstanceProperties, "Title.PropertyType")?;
+    for (key, parent) in [
+        ("RelationshipType.TypeDescriptor", "TypeDescriptor"),
+        ("DanceType.HolonType", "HolonType.TypeDescriptor"),
+        ("CommandType.HolonType", "HolonType.TypeDescriptor"),
+        ("ProjectionRelationship", "RelationshipType.TypeDescriptor"),
+        ("ProjectionDance", "DanceType.HolonType"),
+        ("ProjectionCommand", "CommandType.HolonType"),
+    ] {
+        fixture.node(key)?.with_property_value(type_names::CorePropertyTypeName::TypeName, key)?;
+        fixture.link(key, CoreRelationshipTypeName::Extends, parent)?;
+    }
+    fixture.link("ProjectionRelationship", CoreRelationshipTypeName::SourceType, "Contract")?;
+    fixture.link("ProjectionRelationship", CoreRelationshipTypeName::TargetType, "Contract")?;
+    for (collection, member) in [
+        (CoreRelationshipTypeName::InstanceRelationships, "ProjectionRelationship"),
+        (CoreRelationshipTypeName::AffordsDance, "ProjectionDance"),
+        (CoreRelationshipTypeName::AffordsCommand, "ProjectionCommand"),
+    ] {
+        fixture.link("Contract", collection.clone(), member)?;
+        fixture.link("Contract", collection, member)?;
+    }
+    let subject = fixture.nodes["Contract"].clone();
+    let count = fixture.context.lookup().transient_count()?;
+    let projection = ComputedEffectiveSchema::resolve(&subject)?;
+    assert_eq!(count, fixture.context.lookup().transient_count()?);
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_effective_schema(
+        &projection,
+        &fixture.context,
+        &roots,
+        &crate::descriptor_rules::ContractKindRoots {
+            property: fixture.nodes["PropertyType.TypeDescriptor"].clone(),
+            relationship: fixture.nodes["DeclaredRelationshipType"].clone(),
+            value: fixture.nodes["StringValueType.ValueType"].clone(),
+        },
+    )?;
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::UniqueSemanticMemberNames,
+        &products,
+        &subject,
+    )?;
+    for namespace in ["property", "relationship", "dance", "command"] {
+        assert!(
+            findings.iter().any(|finding| finding.message.contains(namespace)),
+            "missing {namespace} conflict: {findings:?}"
+        );
+    }
+    Ok(())
+}

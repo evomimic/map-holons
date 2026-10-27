@@ -55,6 +55,26 @@ impl TransientReference {
         TransientReference::new(context_handle, id.clone())
     }
 
+    /// Assembles a derived transient collection without fetching target keys.
+    /// The resulting collection supports occurrence traversal; semantic name indexes
+    /// belong to the computed projection rather than the ordinary keyed index.
+    pub(crate) fn add_related_references(
+        &mut self,
+        name: impl type_names::ToRelationshipName,
+        references: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let context = self.context_handle.context();
+        for reference in &references {
+            crate::reference_layer::assert_reference_transaction_compatible(reference, &context)?;
+        }
+        let entries = references.into_iter().map(|reference| (reference, None)).collect();
+        let holon = self.get_rc_holon()?;
+        self.write_holon_guard(&holon, "add_related_references")?
+            .add_related_holons_with_keys(name.to_relationship_name(), entries)?;
+        Ok(())
+    }
+
     /// Clears the inherited lineage, so this holon begins one of its own when committed.
     ///
     /// Used when a clone is a genuinely new holon rather than a new version of the holon it was
@@ -110,6 +130,14 @@ impl TransientReference {
                 operation, e
             ))
         })
+    }
+
+    /// Seals this completed transient holon and its relationship collections.
+    pub fn mark_as_immutable(&self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let holon = self.get_rc_holon()?;
+        self.write_holon_guard(&holon, "mark_as_immutable")?.mark_as_immutable()?;
+        Ok(())
     }
 
     // ***** ACCESSORS *****

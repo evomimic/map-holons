@@ -1,4 +1,5 @@
 import { projectValidationFinding, type ValidationFinding } from './validation';
+import * as internalTransaction from '../internal/commands/transaction';
 import * as internalHolon from '../internal/commands/holon';
 import type {
   HolonReferenceWire,
@@ -10,6 +11,9 @@ import type {
 import { DescribedHolonCollection, HolonCollection } from './collection';
 import {
   createHolonDescriptorHandle,
+  createEffectiveDescriptorHandle,
+  unwrapEffectiveDescriptorHandle,
+  type EffectiveDescriptorHandle,
   createPropertyDescriptorHandle,
   createRelationshipDescriptorHandle,
   type AvailableRelationshipHandle,
@@ -125,6 +129,13 @@ export class HolonReference implements WritableHolon {
     return new DescribedHolonCollection(txIdFor(this), await internalHolon.readDescribedRelatedHolons(txIdFor(this), wireRefFor(this), name));
   }
 
+  /** Constructs one schema snapshot retained in this reference's transaction. */
+  async effectiveDescriptor(options: import('./descriptors').EffectiveDescriptorOptions = {}): Promise<EffectiveDescriptorHandle> {
+    const txId = txIdFor(this);
+    const target = await internalHolon.readHolonDescriptor(txId, wireRefFor(this));
+    return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, target, options.includeContributions ?? false)));
+  }
+
   async holonDescriptor(): Promise<HolonDescriptorHandle> {
     const txId = txIdFor(this);
     const wireRef = await internalHolon.readHolonDescriptor(txId, wireRefFor(this));
@@ -148,12 +159,11 @@ export class HolonReference implements WritableHolon {
     );
   }
 
-  async availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+  async availableRelationships(effective?: EffectiveDescriptorHandle): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
     const txId = txIdFor(this);
-    const relationships = await internalHolon.readAvailableRelationships(
-      txId,
-      wireRefFor(this),
-    );
+    const relationships = effective
+      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveDescriptorHandle(effective)))
+      : await internalHolon.readAvailableRelationships(txId, wireRefFor(this));
     return Object.freeze(
       relationships.map(({ descriptor, direction }) => ({
         descriptor: createRelationshipDescriptorHandle(
@@ -336,3 +346,9 @@ export async function readPropertyValueKind(reference: HolonReference): Promise<
 
 /** Internal context comparison; transaction routing remains hidden from clients. */
 export function referenceBelongsTo(reference: HolonReference, txId: TxId): boolean { return txIdFor(reference) === txId; }
+
+/** Internal construction bridge for an authoritative HolonType handle. */
+export async function constructResolvedDescriptor(target: HolonReference, options: import('./descriptors').EffectiveDescriptorOptions = {}): Promise<EffectiveDescriptorHandle> {
+  const txId = txIdFor(target);
+  return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, wireRefFor(target), options.includeContributions ?? false)));
+}

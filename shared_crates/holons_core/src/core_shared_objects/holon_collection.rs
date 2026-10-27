@@ -13,6 +13,7 @@ use core_types::HolonError;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {
+    Immutable, // sealed derived transient collection; never persisted
     Fetched,   // links have been fetched from the persistent store for this collection
     Transient, // this is the target of a transient relationship and no links should be created
     Staged,    // the links for this collection have not been persisted
@@ -23,6 +24,7 @@ pub enum CollectionState {
 impl fmt::Display for CollectionState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            CollectionState::Immutable => write!(f, "Immutable"),
             CollectionState::Fetched => write!(f, "Fetched"),
             CollectionState::Transient => write!(f, "Transient"),
             CollectionState::Staged => write!(f, "Staged"),
@@ -114,6 +116,10 @@ impl HolonCollection {
     /// If not, returns `NotAccessible` error
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.state {
+            CollectionState::Immutable => match access_type {
+                AccessType::Read | AccessType::Clone => Ok(()),
+                _ => Err(HolonError::NotAccessible(format!("{access_type:?}"), "Immutable".into())),
+            },
             CollectionState::Fetched => match access_type {
                 AccessType::Read | AccessType::Write | AccessType::Commit => Ok(()), // Write access to cached Holons are ok, Commit is a no op
                 AccessType::Abandon | AccessType::Clone => Err(HolonError::NotAccessible(
@@ -155,6 +161,13 @@ impl HolonCollection {
             },
         }
     }
+    /// Seals a derived collection without changing the lifecycle of its targets.
+    pub fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        self.state = CollectionState::Immutable;
+        Ok(())
+    }
+
     pub fn mark_as_staged(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
 

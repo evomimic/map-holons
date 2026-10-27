@@ -212,6 +212,14 @@ pub trait ReadableHolon: ReadableHolonImpl {
     /// | uncommitted `StagedReference`   | yes      | no      |
     /// | `TransientReference`            | yes      | no      |
     #[inline]
+    /// Filters a retained resolved schema using this instance's ordinary lifecycle policy.
+    fn available_relationships_from_effective(
+        &self,
+        descriptor: &crate::descriptors::EffectiveDescriptor,
+    ) -> Result<Vec<QualifiedRelationship>, HolonError> {
+        available_relationships::available_relationships_from_effective(self, descriptor)
+    }
+
     fn available_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
         available_relationships::available_relationships(self)
     }

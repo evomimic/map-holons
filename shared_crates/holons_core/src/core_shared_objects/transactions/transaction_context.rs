@@ -559,6 +559,28 @@ impl TransactionContext {
         }
     }
 
+    /// Resolves the complete effective schema through this context's service.
+    /// Population runs in the guest even when initiated by a host consumer.
+    pub fn construct_effective_descriptor(
+        self: &Arc<Self>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
+        self.construct_effective_descriptor_with_options(target, false)
+    }
+
+    /// Optionally materializes provenance Holons; computation always retains occurrences.
+    pub fn construct_effective_descriptor_with_options(
+        self: &Arc<Self>,
+        target: HolonReference,
+        include_contributions: bool,
+    ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
+        self.get_holon_service().construct_effective_descriptor_internal(
+            self,
+            target,
+            include_contributions,
+        )
+    }
+
     /// Initiates a dance request through the configured space-scoped initiator.
     pub async fn initiate_dance(
         self: &Arc<Self>,

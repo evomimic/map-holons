@@ -278,6 +278,111 @@ impl DescriptorRuleProducts {
         Ok(())
     }
 
+    /// Validates a lossless projection without constructing any transient result graph.
+    pub fn prepare_effective_schema(
+        &mut self,
+        projection: &holons_core::descriptors::ComputedEffectiveSchema,
+        context: &std::sync::Arc<
+            holons_core::core_shared_objects::transactions::TransactionContext,
+        >,
+        kind_roots: &DescriptorKindRoots,
+        contract_roots: &ContractKindRoots,
+    ) -> Result<(), HolonError> {
+        use holons_core::descriptors::{
+            equals_or_extends, resolve_core_descriptor, EffectiveVocabulary,
+        };
+        use type_names::CoreHolonTypeName;
+        use CoreValidationRuleName::*;
+        self.prepare_contract(&projection.contract_contributions(), kind_roots, contract_roots)?;
+        for (vocabulary, category, family) in [
+            (
+                EffectiveVocabulary::Dances,
+                CoreHolonTypeName::DanceType,
+                CoreHolonTypeName::HolonType,
+            ),
+            (
+                EffectiveVocabulary::Commands,
+                CoreHolonTypeName::CommandType,
+                CoreHolonTypeName::HolonType,
+            ),
+            (
+                EffectiveVocabulary::Relationships,
+                CoreHolonTypeName::RelationshipType,
+                CoreHolonTypeName::TypeDescriptor,
+            ),
+        ] {
+            if matches!(vocabulary, EffectiveVocabulary::Relationships)
+                && !projection.defines_holon_instances()?
+            {
+                continue;
+            }
+            let index = projection.name_index(vocabulary)?;
+            let mut named_entries = index.entries.iter().collect::<Vec<_>>();
+            named_entries.sort_by(|left, right| left.0.cmp(right.0));
+            for (name, occurrences) in &named_entries {
+                if occurrences.len() > 1 {
+                    let origins = occurrences
+                        .iter()
+                        .map(|entry| {
+                            format!(
+                                "{} at local position {}",
+                                entry.declared_on.reference_id_string(),
+                                entry.local_position
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    self.violation(
+                        UniqueSemanticMemberNames,
+                        format!(
+                            "Effective {} name {} has {} declaration occurrences: {}.",
+                            vocabulary.label(),
+                            name,
+                            occurrences.len(),
+                            origins
+                        ),
+                    );
+                }
+            }
+            for entry in &index.unnamed {
+                self.violation(WellFormedEffectiveMemberDefinitions, format!("Effective {} member {} at {} position {} requires a non-empty string TypeName.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string(), entry.local_position));
+            }
+            if matches!(vocabulary, EffectiveVocabulary::Relationships) {
+                // Declared members were checked by prepare_contract. Classify only
+                // additional index-discovered navigation candidates here.
+                for entry in named_entries
+                    .iter()
+                    .flat_map(|(_, entries)| entries.iter())
+                    .chain(index.unnamed.iter())
+                {
+                    if matches!(entry.source_collection, CoreRelationshipTypeName::SourceOf) {
+                        match holons_core::descriptors::classify_relationship_direction(&entry.member) {
+                            Ok(_) => {},
+                            Err(HolonError::WrongDescriptorKind { .. }) => self.violation(ContractMemberKindCompatibility, format!("Navigation candidate {} has no declared/inverse relationship category.", entry.member.reference_id_string())),
+                            Err(error) => return Err(error),
+                        }
+                    }
+                }
+                continue;
+            }
+            if !index.entries.is_empty() || !index.unnamed.is_empty() {
+                let anchor = resolve_core_descriptor(context, &category.descriptor_key(&family).0)?;
+                for entry in named_entries
+                    .iter()
+                    .flat_map(|(_, entries)| entries.iter())
+                    .chain(index.unnamed.iter())
+                {
+                    if !equals_or_extends(&entry.member, &anchor)? {
+                        self.violation(ContractMemberKindCompatibility, format!("Effective {} member {} declared on {} has an incompatible descriptor category.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string()));
+                    }
+                }
+            }
+        }
+        // Configured constraint and binding conformance remains owned by the
+        // existing declaration/readiness and ordinary subject validators.
+        Ok(())
+    }
+
     fn prepare_namespace(
         &mut self,
         contributions: &[holons_core::EffectiveRelationshipMember],
@@ -307,6 +412,10 @@ impl DescriptorRuleProducts {
                         declared_on.reference_id_string()
                     ));
                 }
+                self.violation(UniqueSemanticMemberNames, format!(
+                    "Effective {namespace} repeats member {} declared on {}; every declaration occurrence requires a unique semantic name.",
+                    member.reference_id_string(), declared_on.reference_id_string()
+                ));
                 continue;
             }
             prior_members.push((member.clone(), declared_on.clone()));

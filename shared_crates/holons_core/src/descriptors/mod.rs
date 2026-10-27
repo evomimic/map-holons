@@ -9,7 +9,15 @@ pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;
 mod definition_identity;
 pub mod descriptor;
+pub mod effective_descriptor;
+mod effective_schema;
+pub use effective_schema::{
+    ComputedEffectiveSchema, EffectiveContribution, EffectiveNameIndex, EffectiveVocabulary,
+};
 pub mod effective_relationships;
+pub use effective_descriptor::{
+    construct_effective_descriptor, EffectiveDescriptor, EffectiveSchemaContribution,
+};
 pub mod holon_descriptor;
 pub mod holon_space_descriptor;
 pub mod inheritance;

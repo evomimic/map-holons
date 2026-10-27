@@ -265,6 +265,12 @@ impl WriteableHolonState for TransientHolon {
     }
 
     fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
+        for collection in self.transient_relationships.map.values() {
+            collection
+                .write()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .mark_as_immutable()?;
+        }
         self.holon_state = HolonState::Immutable;
         Ok(())
     }

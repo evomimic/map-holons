@@ -7,6 +7,9 @@ edition = "2021"
 crate-type = ["rlib"]
 name = "holons_core"
 
+[features]
+descriptor-performance-profiling = []
+
 [dependencies]
 # only used by holons_core
 quick_cache = { version = "0.6.14", default-features = false }

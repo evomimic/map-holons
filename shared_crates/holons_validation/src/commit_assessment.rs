@@ -16,8 +16,8 @@ use holons_core::core_shared_objects::{holon::StagedState, Holon};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type, SchemaOwnershipKind},
-    ContractContributions, DefinitionIdentity, DescribingTypeResolution, DescriptorKindRoots,
-    HolonReference, StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
+    DefinitionIdentity, DescribingTypeResolution, DescriptorKindRoots, HolonReference,
+    StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -445,8 +445,8 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     );
                     continue;
                 }
-                let contributions = ContractContributions::resolve(&descriptor)?;
-                products.prepare_contract(&contributions, &kinds, &roots.contracts)?;
+                let projection = packages.effective_schema(&descriptor)?;
+                products.prepare_effective_schema(projection, context, &kinds, &roots.contracts)?;
                 if products.has_findings() {
                     invalid.insert(identity.clone());
                 }

@@ -61,6 +61,9 @@ pub enum TransactionAction {
     /// Executes the canonical new-world dance ingress within this transaction.
     DanceV2 { invocation: DanceInvocation },
 
+    /// Constructs a retained schema graph through the canonical guest Dance.
+    ConstructEffectiveDescriptor { target: HolonReference, include_contributions: bool },
+
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
     SelectVisualizer { request: VisualizerSelectionRequest },
     /// Project a retained authoritative result into this open presentation context.
@@ -241,7 +244,8 @@ impl TransactionAction {
             }
 
             // Mutations
-            TransactionAction::PrepareHolons { .. }
+            TransactionAction::ConstructEffectiveDescriptor { .. }
+            | TransactionAction::PrepareHolons { .. }
             | TransactionAction::NewHolon { .. }
             | TransactionAction::StageNewHolon { .. }
             | TransactionAction::StageNewFromClone { .. }
@@ -264,6 +268,9 @@ impl TransactionAction {
             TransactionAction::PrepareHolons { .. } => "prepare_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
+            TransactionAction::ConstructEffectiveDescriptor { .. } => {
+                "construct_effective_descriptor"
+            }
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::ProjectVisualizerDiscovery { .. } => "project_visualizer_discovery",

@@ -228,7 +228,6 @@ impl ReadableHolonImpl for SmartReference {
 
         Ok(borrowed_holon.into_node_model())
     }
-
     fn is_accessible_impl(&self, access_type: AccessType) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let holon = rc_holon.read().map_err(|e| {
@@ -332,7 +331,9 @@ impl ReadableHolonImpl for SmartReference {
         name: &RelationshipName,
         hint: crate::RelationshipReadHint,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        self.is_accessible(AccessType::Read)?;
+        if self.smart_property_values.is_none() {
+            self.is_accessible(AccessType::Read)?;
+        }
         self.space_read_handle.get_related_holons_with_hint(&self.holon_id, name, hint)
     }
 
@@ -340,7 +341,11 @@ impl ReadableHolonImpl for SmartReference {
         &self,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        self.is_accessible(AccessType::Read)?;
+        // SmartLink snapshots already carry a readable saved identity. A bare ID
+        // still needs the existing existence/access check before membership reads.
+        if self.smart_property_values.is_none() {
+            self.is_accessible(AccessType::Read)?;
+        }
         self.space_read_handle.get_related_holons(&self.holon_id, relationship_name)
     }
 

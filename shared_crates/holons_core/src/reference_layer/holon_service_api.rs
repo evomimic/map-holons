@@ -47,6 +47,17 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
             .unwrap_or(crate::RelationshipCachePolicy::Fresh))
     }
 
+    /// Constructs a retained schema graph. Clients delegate one typed Dance to
+    /// the guest; guests invoke the shared construction algorithm directly.
+    fn construct_effective_descriptor_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _target: HolonReference,
+        _include_contributions: bool,
+    ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
+        Err(HolonError::NotImplemented("construct_effective_descriptor_internal".into()))
+    }
+
     /// This function commits the staged holons to the persistent store
     fn commit_internal(
         &self,

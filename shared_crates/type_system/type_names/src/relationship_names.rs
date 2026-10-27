@@ -114,6 +114,34 @@ impl ToRelationshipName for &RelationshipName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
+    DescribedHolonType,
+    EffectiveDescriptorFor,
+    EffectiveInstanceProperties,
+    PropertyInEffectiveDescriptor,
+    EffectiveInstanceRelationships,
+    DeclarationInEffectiveDescriptor,
+    NavigableRelationships,
+    NavigableInEffectiveDescriptor,
+    EffectiveAffordsDance,
+    DanceInEffectiveDescriptor,
+    EffectiveAffordsCommand,
+    CommandInEffectiveDescriptor,
+    EffectiveValidationBindings,
+    ValidationRuleInEffectiveDescriptor,
+    EffectiveConstraints,
+    ConstraintInEffectiveDescriptor,
+    EffectiveInstanceKeyRule,
+    KeyRuleInEffectiveDescriptor,
+    EffectiveContributions,
+    ContributionOfEffectiveDescriptor,
+    ContributionCollection,
+    CollectionOfEffectiveContribution,
+    ContributionMember,
+    MemberOfEffectiveContribution,
+    ContributionDeclaredOn,
+    DeclarerOfEffectiveContribution,
+    RequestedHolonType,
+    RequestedByEffectiveDescriptorRequest,
     AffordingHolon,
     AffordsCommand,
     AffordsDance,
@@ -188,6 +216,11 @@ pub enum CoreRelationshipTypeName {
 }
 
 impl CoreRelationshipTypeName {
+    /// Canonical relationship descriptor key, retaining the declared endpoint identities.
+    pub fn descriptor_key(&self, source: &MapString, target: &MapString) -> MapString {
+        MapString(format!("({source})-[{}]->({target})", self.as_relationship_name()))
+    }
+
     /// Canonical relationship name in ClassCase (UpperCamel).
     pub fn as_relationship_name(&self) -> RelationshipName {
         let pascal = format!("{self:?}").to_case(Case::UpperCamel);
@@ -336,6 +369,20 @@ mod tests {
         assert_eq!(
             RelationshipName(MapString("RuleOf".to_string())),
             CoreRelationshipTypeName::RuleOf.as_relationship_name()
+        );
+    }
+
+    #[test]
+    fn descriptor_keys_preserve_inverse_collection_identity() {
+        use crate::CoreHolonTypeName as H;
+        assert_eq!(
+            CoreRelationshipTypeName::AffordsCommand.descriptor_key(
+                &H::HolonType.descriptor_key(&H::TypeDescriptor),
+                &H::CommandType.descriptor_key(&H::HolonType),
+            ),
+            MapString(
+                "(HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)".into()
+            )
         );
     }
 

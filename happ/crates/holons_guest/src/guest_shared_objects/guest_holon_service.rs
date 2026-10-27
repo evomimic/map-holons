@@ -369,6 +369,67 @@ fn smartlink_reference_properties(
 }
 
 impl HolonServiceApi for GuestHolonService {
+    fn construct_effective_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+        include_contributions: bool,
+    ) -> Result<holons_core::descriptors::EffectiveDescriptor, HolonError> {
+        let profile = cfg!(feature = "descriptor-performance-profiling");
+        let before = if profile {
+            crate::persistence_layer::smartlink::relationship_read_metrics()
+        } else {
+            (0, 0, 0)
+        };
+        let count_before =
+            if profile { context.lookup().transient_count().unwrap_or_default() } else { 0 };
+        let started = if profile { sys_time().ok() } else { None };
+        #[cfg(not(feature = "descriptor-performance-profiling"))]
+        let construction_finished = None;
+        #[cfg(feature = "descriptor-performance-profiling")]
+        let construction_finished;
+        #[cfg(not(feature = "descriptor-performance-profiling"))]
+        let result = if include_contributions {
+            holons_core::descriptors::effective_descriptor::construct_effective_descriptor_with_contributions(context, target)
+        } else {
+            holons_core::descriptors::construct_effective_descriptor(context, target)
+        };
+        #[cfg(feature = "descriptor-performance-profiling")]
+        let result = {
+            let mut previous_time = started;
+            let mut previous_metrics = before;
+            let mut details = Vec::new();
+            let result = holons_core::descriptors::effective_descriptor::profile_effective_descriptor_construction(
+                context, target, include_contributions,
+                |phase, collection| {
+                    let now = sys_time().ok();
+                    let metrics = crate::persistence_layer::smartlink::relationship_read_metrics();
+                    let elapsed = previous_time.zip(now).map(|(before, after)| after.as_micros().saturating_sub(before.as_micros())).unwrap_or_default();
+                    details.push((phase.to_owned(), collection.to_owned(), elapsed, metrics.0 - previous_metrics.0, metrics.1 - previous_metrics.1, metrics.2 - previous_metrics.2));
+                    previous_time = now;
+                    previous_metrics = metrics;
+                },
+            );
+            construction_finished = sys_time().ok();
+            // Emit after timing to avoid charging log transport to individual phases.
+            for (phase, collection, elapsed, calls, queries, links) in details {
+                warn!("[effective-descriptor-detail] phase={} collection={} elapsed_us={} link_host_calls={} link_queries={} returned_links={}", phase, collection, elapsed, calls, queries, links);
+            }
+            result
+        };
+        if let Some(started) = started {
+            let elapsed = construction_finished
+                .or_else(|| sys_time().ok())
+                .map(|now| now.as_micros().saturating_sub(started.as_micros()))
+                .unwrap_or_default();
+            let after = crate::persistence_layer::smartlink::relationship_read_metrics();
+            warn!("[effective-descriptor-profile] phase=core elapsed_us={} allocations={} link_host_calls={} link_queries={} returned_links={} success={}",
+                elapsed, context.lookup().transient_count().unwrap_or(count_before) - count_before,
+                after.0 - before.0, after.1 - before.1, after.2 - before.2, result.is_ok());
+        }
+        result
+    }
+
     fn relationship_cache_policy(
         &self,
         _context: &Arc<TransactionContext>,

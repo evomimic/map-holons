@@ -83,6 +83,101 @@ pub(crate) fn effective_declared_relationships(
     })
 }
 
+/// Discovers the canonical SourceType vocabulary from a resolved target lineage.
+/// Missing indexes on unsaved definitions are expected; actual graph errors propagate.
+pub(crate) fn navigable_occurrences_in_lineage(
+    lineage: &[HolonReference],
+    mut result: Vec<super::EffectiveContribution>,
+) -> Result<Vec<super::EffectiveContribution>, HolonError> {
+    let lineage_ids = lineage
+        .iter()
+        .map(|reference| {
+            crate::DefinitionIdentity::for_optional_context(
+                reference,
+                reference.transaction_context().as_ref(),
+            )
+        })
+        .collect::<Result<HashSet<_>, HolonError>>()?;
+    let mut applicability = std::collections::HashMap::new();
+    let mut applicable = Vec::new();
+    // Applicability is a projection operation, not descriptor validation. Resolve
+    // SourceType once per definition while preserving every selected occurrence.
+    for occurrence in result.drain(..) {
+        let identity = crate::DefinitionIdentity::for_optional_context(
+            &occurrence.member,
+            occurrence.member.transaction_context().as_ref(),
+        )?;
+        let applies = match applicability.get(&identity) {
+            Some(applies) => *applies,
+            None => {
+                let source = accessor_helpers::require_single_related(
+                    &occurrence.member,
+                    CoreRelationshipTypeName::SourceType,
+                )?;
+                let source_id = crate::DefinitionIdentity::for_optional_context(
+                    &source,
+                    source.transaction_context().as_ref(),
+                )?;
+                let applies = lineage_ids.contains(&source_id);
+                applicability.insert(identity, applies);
+                applies
+            }
+        };
+        if applies {
+            applicable.push(occurrence);
+        }
+    }
+    // Rediscovery through SourceOf is not another declaration occurrence.
+    let mut discovered = HashSet::new();
+    for member in &applicable {
+        discovered.insert(crate::DefinitionIdentity::for_optional_context(
+            &member.member,
+            member.member.transaction_context().as_ref(),
+        )?);
+    }
+    for ancestor in lineage {
+        let collection = ancestor.related_holons(CoreRelationshipTypeName::SourceOf)?;
+        let candidates =
+            collection.read().map_err(accessor_helpers::lock_error)?.get_members().clone();
+        for (local_position, candidate) in candidates.into_iter().enumerate() {
+            let identity = crate::DefinitionIdentity::for_optional_context(
+                &candidate,
+                candidate.transaction_context().as_ref(),
+            )?;
+            if discovered.contains(&identity) {
+                continue;
+            }
+            let applies = match applicability.get(&identity) {
+                Some(applies) => *applies,
+                None => {
+                    let source = accessor_helpers::require_single_related(
+                        &candidate,
+                        CoreRelationshipTypeName::SourceType,
+                    )?;
+                    let source_id = crate::DefinitionIdentity::for_optional_context(
+                        &source,
+                        source.transaction_context().as_ref(),
+                    )?;
+                    let applies = lineage_ids.contains(&source_id);
+                    applicability.insert(identity.clone(), applies);
+                    applies
+                }
+            };
+            if applies {
+                discovered.insert(identity);
+                applicable.push(super::EffectiveContribution {
+                    member: candidate,
+                    declared_on: ancestor.clone(),
+                    source_collection: CoreRelationshipTypeName::SourceOf,
+                    local_position,
+                });
+            }
+        }
+    }
+    let result = applicable;
+    Ok(result)
+}
+
 fn collect_declared_from_relationship_members(
     members: Vec<crate::descriptors::inheritance::EffectiveRelationshipMember>,
     subject_label: impl Fn() -> String,
@@ -430,6 +525,60 @@ mod tests {
                 ))
             })
             .collect()
+    }
+
+    #[test]
+    fn resolved_navigation_includes_source_index_only_declarations_and_deduplicates_paths(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut fixture = build_relationship_pair(
+            &context,
+            "resolved-navigation",
+            "AuthoredBy",
+            "Authors",
+            false,
+            false,
+        )?;
+        fixture.source_type.add_related_holons(
+            CoreRelationshipTypeName::SourceOf,
+            vec![(&fixture.declared).into()],
+        )?;
+        let source: HolonReference = (&fixture.source_type).into();
+        assert_eq!(navigable_occurrences_in_lineage(&[source.clone()], vec![])?.len(), 1);
+        let contribution = crate::descriptors::EffectiveContribution {
+            member: (&fixture.declared).into(),
+            declared_on: source.clone(),
+            source_collection: CoreRelationshipTypeName::InstanceRelationships,
+            local_position: 0,
+        };
+        assert_eq!(navigable_occurrences_in_lineage(&[source], vec![contribution])?.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn resolved_navigation_tolerates_missing_unsaved_indexes_and_keeps_available_ancestor_inverses(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let fixture = build_relationship_pair(
+            &context,
+            "resolved-staged",
+            "AuthoredBy",
+            "Authors",
+            false,
+            true,
+        )?;
+        let mut child = new_holon_type_descriptor(&context, "resolved-child", "Child")?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![(&fixture.target_type).into()],
+        )?;
+        let child: HolonReference = child.into();
+        let lineage = crate::descriptors::ancestors(&child)?;
+        let members = navigable_occurrences_in_lineage(&lineage, vec![])?;
+        assert_eq!(members.len(), 1);
+        assert!(crate::descriptors::same_definition(&members[0].member, &fixture.inverse.into())?);
+        assert!(navigable_occurrences_in_lineage(&[child], vec![])?.is_empty());
+        Ok(())
     }
 
     #[test]

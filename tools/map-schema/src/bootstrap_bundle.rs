@@ -330,6 +330,7 @@ mod tests {
                 "dance",
                 "dancer",
                 "commands",
+                "descriptor-runtime",
                 "query",
                 "query-dance",
                 "design-tokens",

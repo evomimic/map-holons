@@ -175,6 +175,17 @@ fn handle_read(
                 BTreeMap::new(),
             )))
         }
+        ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor } => {
+            let descriptor =
+                holons_core::descriptors::EffectiveDescriptor::try_from_holon(descriptor)?;
+            Ok(MapResult::QualifiedRelationships(
+                target
+                    .available_relationships_from_effective(&descriptor)?
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            ))
+        }
         ReadableHolonAction::GetAvailableRelationships => Ok(MapResult::QualifiedRelationships(
             target.available_relationships()?.into_iter().map(Into::into).collect(),
         )),

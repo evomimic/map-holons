@@ -30,7 +30,7 @@ thread_local! {
 }
 
 /// Request-thread counters: host calls, logical link queries, and returned links.
-/// Read only by controlled Commit profiling; no links/content are retained here.
+/// Read only by controlled guest profiling; no links/content are retained here.
 pub(crate) fn relationship_read_metrics() -> (u64, u64, u64) {
     READ_METRICS.with(std::cell::Cell::get)
 }

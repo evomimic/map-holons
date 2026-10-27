@@ -8,6 +8,7 @@ export type {
   ScalarValueKind,
   HolonCollection,
   HolonDescriptorHandle,
+  EffectiveDescriptorHandle,
   HolonId,
   MapString,
   HolonReference,

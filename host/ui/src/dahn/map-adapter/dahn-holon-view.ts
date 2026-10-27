@@ -1,5 +1,6 @@
 import type {
   AvailableRelationshipHandle,
+  EffectiveDescriptorHandle,
   BaseValue,
   HolonCollection,
   HolonDescriptorHandle,
@@ -18,7 +19,16 @@ import type { HolonViewAccess } from '../contracts/holon-view';
  * lifecycle or error taxonomy.
  */
 export class DahnHolonView implements HolonViewAccess {
+  private schemaSnapshot?: Promise<EffectiveDescriptorHandle>;
   constructor(private readonly reference: HolonReference) {}
+
+  /** One resolved result for this view's schema snapshot. Schema editors reconstruct after edits. */
+  private schema(): Promise<EffectiveDescriptorHandle> {
+    return this.schemaSnapshot ??= this.reference.effectiveDescriptor();
+  }
+
+  /** Explicitly starts a fresh schema snapshot after a contributing definition changes. */
+  reconstructSchema(): void { this.schemaSnapshot = undefined; }
 
   holonId(): Promise<HolonId> {
     return this.reference.holonId();
@@ -40,16 +50,16 @@ export class DahnHolonView implements HolonViewAccess {
     return this.reference.holonDescriptor();
   }
 
-  availableDances(): Promise<ReadonlyArray<HolonReference>> {
-    return this.reference.availableDances();
+  async availableDances(): Promise<ReadonlyArray<HolonReference>> {
+    return (await this.schema()).affordedDances();
   }
 
-  availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
-    return this.reference.availableProperties();
+  async availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
+    return (await this.schema()).instanceProperties();
   }
 
-  availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
-    return this.reference.availableRelationships();
+  async availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+    return this.reference.availableRelationships(await this.schema());
   }
 
   expandRelationship(name: RelationshipName): Promise<HolonCollection> {

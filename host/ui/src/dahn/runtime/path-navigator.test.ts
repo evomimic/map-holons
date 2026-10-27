@@ -43,6 +43,7 @@ function subject(name: string) {
     versionedKey: async () => name,
     propertyValue: vi.fn(async () => ({ StringValue: name })),
     holonDescriptor: async () => ({ hasInstanceKey: async () => false, displayName: async () => 'Example' }),
+    async effectiveDescriptor() { return { instanceProperties: () => this.availableProperties(), affordedDances: () => this.availableDances() }; },
     availableProperties: async () => [property],
     availableRelationships: async () => [relationship('Members'), relationship('Other'), relationship('First', 1), relationship('Second', 1), relationship('Third', 1)],
     availableDances: async () => [],

@@ -213,9 +213,19 @@ fn build_response_reference(
     response_descriptor: &DanceResponseDescriptor,
     body: Option<crate::reference_layer::HolonReference>,
 ) -> Result<DanceResponseReference, HolonError> {
-    let mut response =
-        context.mutation().new_holon(Some(MapString("dance-response".to_string())))?;
+    let keyless =
+        response_descriptor.header().type_name()?.0 == "ConstructEffectiveDescriptorResponse";
+    let mut response = context.mutation().new_holon(if keyless {
+        None
+    } else {
+        Some(MapString("dance-response".to_string()))
+    })?;
     response.with_descriptor(response_descriptor.holon().clone())?;
+    if keyless {
+        if let Some(space) = context.get_space_holon()? {
+            response.add_related_holons("OwnedBy", vec![space])?;
+        }
+    }
     if let Some(body_ref) = body {
         response_descriptor.attach_response_body(&mut response, body_ref)?;
     }

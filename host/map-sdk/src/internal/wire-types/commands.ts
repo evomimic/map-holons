@@ -113,6 +113,7 @@ export type TransactionActionWire =
   // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
+  | { ConstructEffectiveDescriptor: { target: HolonReferenceWire; include_contributions?: boolean } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
   | { ProjectVisualizerDiscovery: { snapshot: string } }
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
@@ -164,6 +165,7 @@ export type ReadableHolonActionWire =
   | 'GetHolonDescriptor'
   | 'GetAvailableProperties'
   | 'GetAvailableRelationships'
+  | { GetAvailableRelationshipsFromEffective: { descriptor: HolonReferenceWire } }
   | 'GetEffectiveCardinality'
   | 'GetPropertyIsArray'
   | 'GetHasInstanceKey'
@@ -276,6 +278,7 @@ export function isReadableHolonActionWire(
   return (
     (typeof value === 'string' &&
       READABLE_HOLON_UNIT_ACTIONS.has(value as ReadableHolonActionWire)) ||
+    (hasSingleKey(value, 'GetAvailableRelationshipsFromEffective') && isRecord(value.GetAvailableRelationshipsFromEffective) && isHolonReferenceWire(value.GetAvailableRelationshipsFromEffective['descriptor'])) ||
     (hasSingleKey(value, 'GetDescribedRelatedHolons') && isStringFieldObject(value.GetDescribedRelatedHolons, 'name')) ||
     (hasSingleKey(value, 'GetPropertyValue') &&
       isStringFieldObject(value.GetPropertyValue, 'name')) ||
@@ -332,6 +335,7 @@ export function isTransactionActionWire(
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
+    (hasSingleKey(value, 'ConstructEffectiveDescriptor') && isRecord(value.ConstructEffectiveDescriptor) && isHolonReferenceWire(value.ConstructEffectiveDescriptor['target']) && (value.ConstructEffectiveDescriptor['include_contributions'] === undefined || typeof value.ConstructEffectiveDescriptor['include_contributions'] === 'boolean')) ||
     (hasSingleKey(value, 'DanceV2') &&
       isRecord(value.DanceV2) &&
       isDanceV2InvocationWire(value.DanceV2['invocation'])) ||

@@ -528,6 +528,26 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
+    fn construct_effective_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+        include_contributions: bool,
+    ) -> Result<holons_core::descriptors::EffectiveDescriptor, HolonError> {
+        let invocation =
+            holons_core::dances::implementations::construct_effective_descriptor::invocation(
+                context,
+                target,
+                include_contributions,
+            )?;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })?;
+        let response = holons_core::dances::DanceResponseReference::new(response)?;
+        Ok(holons_core::descriptors::EffectiveDescriptor::from_constructed_holon(
+            response.require_response_body()?,
+        ))
+    }
+
     fn invoke_load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,

@@ -4,12 +4,17 @@ import type { HolonReference } from '../deps';
 import { DahnHolonView } from './dahn-holon-view';
 
 describe('DahnHolonView', () => {
-  it('provides a read-only view that delegates live reads to the public SDK handle', async () => {
+  it('shares one resolved schema snapshot while preserving live instance reads', async () => {
     const descriptor = {};
     const properties = [{}];
     const relationships = [{ descriptor: {}, direction: 'declared' as const }];
     const related = { members: [] };
+    const snapshot = {
+      instanceProperties: vi.fn().mockResolvedValue(properties),
+      affordedDances: vi.fn().mockResolvedValue([]),
+    };
     const reference = {
+      effectiveDescriptor: vi.fn().mockResolvedValue(snapshot),
       holonId: vi.fn().mockResolvedValue({ Local: [1] }),
       key: vi.fn().mockResolvedValue('alpha'),
       versionedKey: vi.fn().mockResolvedValue('alpha@1'),
@@ -33,7 +38,13 @@ describe('DahnHolonView', () => {
     expect(reference.key).toHaveBeenCalledOnce();
     expect(reference.propertyValue).toHaveBeenCalledWith('Title');
     expect(reference.holonDescriptor).toHaveBeenCalledOnce();
-    expect(reference.availableProperties).toHaveBeenCalledOnce();
+    expect(reference.availableProperties).not.toHaveBeenCalled();
+    expect(reference.effectiveDescriptor).toHaveBeenCalledOnce();
+    expect(snapshot.instanceProperties).toHaveBeenCalledOnce();
+    expect(reference.availableRelationships).toHaveBeenCalledWith(snapshot);
+    view.reconstructSchema();
+    await view.availableProperties();
+    expect(reference.effectiveDescriptor).toHaveBeenCalledTimes(2);
     expect(reference.availableRelationships).toHaveBeenCalledOnce();
     expect(reference.relatedHolons).toHaveBeenCalledWith('Contains');
     expect('withPropertyValue' in view).toBe(false);

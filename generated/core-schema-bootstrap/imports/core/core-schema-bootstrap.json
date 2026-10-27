@@ -36,6 +36,9 @@
               "$ref": "MAP Dancer Schema-v0.1.0"
             },
             {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            },
+            {
               "$ref": "MAP Design Tokens Schema-v0.1.0"
             },
             {

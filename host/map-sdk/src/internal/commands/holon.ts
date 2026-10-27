@@ -419,3 +419,8 @@ export function readPropertyValueKind(txId: TxId, target: HolonReferenceWire) {
 export function readValidationFindings(txId: TxId, target: HolonReferenceWire): Promise<CommitValidationViolationWire[]> {
   return runHolonCommand(txId, target, { Read: 'GetValidationFindings' }, expectValidationFindings);
 }
+
+/** Applies ordinary instance lifecycle policy to an already resolved schema. */
+export function readAvailableRelationshipsFromEffective(txId: TxId, target: HolonReferenceWire, descriptor: HolonReferenceWire): Promise<QualifiedRelationshipWire[]> {
+  return runHolonCommand(txId, target, { Read: { GetAvailableRelationshipsFromEffective: { descriptor } } }, expectQualifiedRelationships);
+}

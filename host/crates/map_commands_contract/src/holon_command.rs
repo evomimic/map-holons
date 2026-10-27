@@ -66,6 +66,9 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::GetRelationshipIsOrdered) => {
                 "get_relationship_is_ordered"
             }
+            HolonAction::Read(ReadableHolonAction::GetAvailableRelationshipsFromEffective {
+                ..
+            }) => "get_available_relationships_from_effective",
             HolonAction::Read(ReadableHolonAction::GetAvailableDances) => "get_available_dances",
             HolonAction::Read(ReadableHolonAction::GetDescribedRelatedHolons { .. }) => {
                 "get_described_related_holons"
@@ -123,6 +126,8 @@ pub enum ReadableHolonAction {
 
     /// `ReadableHolon::available_relationships()` → qualified descriptors.
     GetAvailableRelationships,
+    /// Instance availability filtered from a retained resolved schema.
+    GetAvailableRelationshipsFromEffective { descriptor: HolonReference },
 
     /// Inclusive bounds of the target relationship descriptor.
     GetEffectiveCardinality,

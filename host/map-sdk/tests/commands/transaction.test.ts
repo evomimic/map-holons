@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   commit,
+  constructEffectiveDescriptor,
   dispose,
   checkLoadTarget,
   dance,
@@ -435,4 +436,12 @@ it('projects explicit disposal and captured-target verification through transact
   invokeMapCommandMock.mockClear(); resetRequestIdCounter();
   await checkLoadTarget(txId, { Smart: smartWire });
   expectTransactionRequest({ CheckLoadTarget: { space: { Smart: smartWire } } });
+});
+
+
+it.each([false, true])('projects the explicit contribution materialization choice: %s', async include => {
+  invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
+  resetRequestIdCounter();
+  await constructEffectiveDescriptor(txId, transientReference, include);
+  expectTransactionRequest({ ConstructEffectiveDescriptor: { target: transientReference, include_contributions: include } });
 });
