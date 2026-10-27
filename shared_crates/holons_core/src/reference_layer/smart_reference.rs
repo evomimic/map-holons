@@ -101,6 +101,11 @@ impl SmartReference {
         })
     }
 
+    /// Reads the saved record key, bypassing occurrence-level smart properties.
+    pub(crate) fn record_key(&self) -> Result<Option<MapString>, HolonError> {
+        Self::new_from_id(self.space_read_handle.clone(), self.holon_id()).key()
+    }
+
     /// Returns a borrowed view of the cached smart properties, if present.
     pub fn smart_property_values(&self) -> Option<&PropertyMap> {
         self.smart_property_values.as_ref()

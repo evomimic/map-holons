@@ -8,30 +8,24 @@ use crate::{
     schema_view::{OwnedCandidate, SchemaWorkset},
     subject_assessment::{self, PreparedBinding},
     CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
-    ConstraintDeclarationRoots, ContractKindRoots, DescriptorRuleProducts, ValidationCollector,
-    ValidationObservations, ValueValidationContext,
+    DescriptorRuleProducts, ValidationCollector, ValidationObservations, ValueValidationContext,
 };
 use core_types::{CommitValidationViolationKind, HolonError, HolonId, TemporaryId};
 use holons_core::core_shared_objects::{holon::StagedState, Holon};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type, SchemaOwnershipKind},
-    ContractContributions, DefinitionIdentity, DescribingTypeResolution, DescriptorKindRoots,
+    ContractContributions, DefinitionIdentity, DescribingTypeResolution, DescriptorKindSemantics,
     HolonReference, StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
 };
-use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
+use type_names::{CoreDefinitionRole, CoreRelationshipTypeName, CoreValidationRuleName};
 
-/// Graph roots and rule anchors shared by one Commit assessment.
+/// Inputs for subject validation and abstract-descriptor minimum enforcement.
 pub(crate) struct ReadinessContext {
-    kinds: DescriptorKindRoots,
-    contracts: ContractKindRoots,
-    constraints: ConstraintDeclarationRoots,
-    schema: HolonReference,
-    rule: HolonReference,
     values: ValueValidationContext,
     universal: UniversalDescriptorContract,
 }
@@ -39,40 +33,8 @@ impl ReadinessContext {
     pub fn resolve(
         context: &Arc<TransactionContext>,
     ) -> Result<Self, crate::AnchorResolutionError> {
-        let resolve = |key| crate::resolve_validation_anchor(context, key);
-        let root = resolve("TypeDescriptor")?;
-        let kinds = DescriptorKindRoots::from_resolved(
-            context,
-            root.clone(),
-            resolve("HolonType.TypeDescriptor")?,
-            resolve("MetaTypeDescriptor.HolonType")?,
-            resolve("MetaHolonType.MetaTypeDescriptor")?,
-        )?;
-        let contracts = ContractKindRoots {
-            property: resolve("PropertyType.TypeDescriptor")?,
-            relationship: resolve("DeclaredRelationshipType.RelationshipType")?,
-            value: resolve("ValueType.TypeDescriptor")?,
-        };
-        let constraints = ConstraintDeclarationRoots {
-            type_descriptor: root,
-            constraint_type: resolve("ConstraintType.HolonType")?,
-            bounded: [
-                resolve("StringLengthConstraint.ConstraintType")?,
-                resolve("BytesLengthConstraint.ConstraintType")?,
-                resolve("NumericRangeConstraint.ConstraintType")?,
-                resolve("ItemCountConstraint.ConstraintType")?,
-            ],
-            cardinality: resolve("CardinalityConstraint.ConstraintType")?,
-            unique_items: resolve("UniqueItemsConstraint.ConstraintType")?,
-        };
-        let values = ValueValidationContext::resolve(context)?;
         Ok(Self {
-            kinds,
-            contracts,
-            constraints,
-            schema: resolve("Schema.HolonType")?,
-            rule: resolve("Rule.HolonType")?,
-            values,
+            values: ValueValidationContext::resolve(context)?,
             universal: UniversalDescriptorContract::resolve(context)?,
         })
     }
@@ -255,7 +217,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
 ) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SubjectPreparation));
     let mut key_claims = crate::key_evidence::prepare_key_evidence(context, candidates, observer)?;
-    let kinds = roots.kinds.clone();
+    let kinds = DescriptorKindSemantics::new(context);
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
     let mut schemas = Vec::new();
@@ -270,18 +232,14 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             products.clone()
         } else {
             let definition = identity.definition_reference(context, &subject);
-            let subject_lineage =
-                holons_core::ExtendsLineageDiagnosis::assess(&definition, &kinds.type_descriptor)?;
+            let subject_lineage = holons_core::ExtendsLineageDiagnosis::assess(&definition)?;
             let describing_type = resolve_describing_type(&definition)?;
             let governing_lineage =
                 if let DescribingTypeResolution::Unique(descriptor) = &describing_type {
                     if holons_core::same_definition(descriptor, &definition)? {
                         Some(subject_lineage.clone())
                     } else {
-                        Some(holons_core::ExtendsLineageDiagnosis::assess(
-                            descriptor,
-                            &kinds.type_descriptor,
-                        )?)
+                        Some(holons_core::ExtendsLineageDiagnosis::assess(descriptor)?)
                     }
                 } else {
                     None
@@ -289,7 +247,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             let prerequisites =
                 StructuralPrerequisites { describing_type, subject_lineage, governing_lineage };
             let mut products = DescriptorRuleProducts::default();
-            products.prepare_structure(&prerequisites, &kinds.type_descriptor);
+            products.prepare_structure(&prerequisites);
             products.prepare_kind(&prerequisites, &kinds)?;
             definition_products.insert(identity, (prerequisites.clone(), products.clone()));
             (prerequisites, products)
@@ -324,13 +282,11 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         let governing =
             prerequisites.governing_lineage.as_ref().and_then(|lineage| lineage.valid_lineage());
         let is_schema =
-            governing.map(|lineage| lineage.contains(&roots.schema)).transpose()?.unwrap_or(false);
+            governing.is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::Schema));
         let is_constraint = governing
-            .map(|lineage| lineage.contains(&roots.constraints.constraint_type))
-            .transpose()?
-            .unwrap_or(false);
+            .is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::ConstraintType));
         let is_rule =
-            governing.map(|lineage| lineage.contains(&roots.rule)).transpose()?.unwrap_or(false);
+            governing.is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::Rule));
         if is_schema {
             schemas.push(subject.clone());
         }
@@ -356,7 +312,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         });
     }
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SchemaWorksetPreparation));
-    let workset = SchemaWorkset::prepare(context, &roots.schema, &schemas, &owned, &mut collector)?;
+    let workset = SchemaWorkset::prepare(context, &schemas, &owned, &mut collector)?;
     let package_roots: Vec<_> = prepared
         .iter()
         .filter_map(|subject| match &subject.prerequisites.describing_type {
@@ -384,7 +340,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation));
         let Self { context, candidates, roots, mut prepared, workset, mut packages, mut collector } =
             self;
-        let kinds = roots.kinds.clone();
+        let kinds = DescriptorKindSemantics::new(context);
         // Outcomes and scheduling retain every candidate, including saved-definition aliases.
         let prepared_index: HashMap<TemporaryId, usize> = prepared
             .iter()
@@ -428,10 +384,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 }
                 let descriptor = identity.definition_reference(context, &descriptor);
                 let mut products = DescriptorRuleProducts::default();
-                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(
-                    &descriptor,
-                    &kinds.type_descriptor,
-                );
+                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(&descriptor);
                 let diagnosis = diagnosis?;
                 if diagnosis.valid_lineage().is_none() {
                     invalid.insert(identity);
@@ -446,7 +399,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     continue;
                 }
                 let contributions = ContractContributions::resolve(&descriptor)?;
-                products.prepare_contract(&contributions, &kinds, &roots.contracts)?;
+                products.prepare_contract(&contributions, &kinds)?;
                 if products.has_findings() {
                     invalid.insert(identity.clone());
                 }
@@ -465,13 +418,10 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         let mut declaration_members = HashSet::new();
         let declaration_start = collector.violations().len();
         for view in &workset.schemas {
-            let mut declarations = ConstraintDeclarationAssessment::new(&roots.constraints)?;
+            let mut declarations = ConstraintDeclarationAssessment::new();
             for descriptor in &view.staged_components {
                 declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
-                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(
-                    descriptor,
-                    &kinds.type_descriptor,
-                )?;
+                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(descriptor)?;
                 let Some(lineage) = diagnosis.valid_lineage() else {
                     continue;
                 };
@@ -487,16 +437,11 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
             for rule in &view.staged_rules {
                 declaration_members.insert(DefinitionIdentity::for_reference(rule, context)?);
-                assess_configured_rule(
-                    rule,
-                    &roots.constraints.constraint_type,
-                    &mut declarations,
-                    &mut collector,
-                )?;
+                assess_configured_rule(rule, &mut declarations, &mut collector)?;
             }
         }
         // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
-        let mut orphan_declarations = ConstraintDeclarationAssessment::new(&roots.constraints)?;
+        let mut orphan_declarations = ConstraintDeclarationAssessment::new();
         for subject in &mut prepared {
             if !declaration_members
                 .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)
@@ -738,12 +683,12 @@ fn assess_candidate(
 
 fn assess_configured_rule(
     rule: &HolonReference,
-    constraint_root: &HolonReference,
     declarations: &mut ConstraintDeclarationAssessment,
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
     if let DescribingTypeResolution::Unique(descriptor) = resolve_describing_type(rule)? {
-        if holons_core::descriptors::equals_or_extends(&descriptor, constraint_root)? {
+        if holons_core::descriptors::extends_role(&descriptor, CoreDefinitionRole::ConstraintType)?
+        {
             declarations.assess_constraint(rule, collector)?;
         }
     }

@@ -36,9 +36,9 @@ pub use commit_assessment::{
     validate_commit_candidates_with_profile,
 };
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
-pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};
+pub use constraint_declarations::ConstraintDeclarationAssessment;
 pub use contexts::ValueValidationContext;
-pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
+pub use descriptor_rules::DescriptorRuleProducts;
 pub use prospective::{resolve_validation_anchor, AnchorResolutionError};
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,

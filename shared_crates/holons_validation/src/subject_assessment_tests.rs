@@ -20,7 +20,7 @@ use holons_core::{Descriptor, HolonReference, ReadableHolon, ValueDescriptor, Wr
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
 use super::*;
-use fixture::{c2_kind_roots, readiness_fixture, Fixture, RULES};
+use fixture::{c2_kind_semantics, readiness_fixture, Fixture, RULES};
 
 /// Selects the Title member's value contract while retaining exactly one ValueType edge.
 fn select_title_value_type(fixture: &mut Fixture, key: &str) -> Result<(), HolonError> {
@@ -310,7 +310,7 @@ fn subject_gate_anchor_resolution_error_preserves_prior_outcome() -> Result<(), 
     candidate.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
     assert!(matches!(
         validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate)),
-        Err(HolonError::CommitFailure(message)) if message.contains("TypeDescriptor") && message.contains("bootstrap or upgrade")
+        Err(HolonError::CommitFailure(message)) if message.contains("KeyUniqueness.ValidationRule") && message.contains("bootstrap or upgrade")
     ));
     assert_eq!(candidate.validation_state()?, ValidationState::Validated);
     assert!(candidate.validation_findings()?.is_empty());
@@ -1011,10 +1011,9 @@ fn structural_handler_reports_multiple_parents_from_drained_kernel_diagnosis(
     fixture.node("OtherParent")?;
     fixture.link("Contract", CoreRelationshipTypeName::Extends, "OtherParent")?;
     let subject = fixture.nodes["Contract"].clone();
-    let prerequisites =
-        StructuralPrerequisites::assess(&subject, &fixture.nodes["TypeDescriptor"])?;
+    let prerequisites = StructuralPrerequisites::assess(&subject)?;
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_structure(&prerequisites, &fixture.nodes["TypeDescriptor"]);
+    products.prepare_structure(&prerequisites);
     let findings = dispatch_c2_rule(
         &mut fixture,
         CoreValidationRuleName::AtMostOneDirectParent,
@@ -1061,10 +1060,9 @@ fn structural_handlers_translate_cycle_termination_and_root_defects() -> Result<
             _ => unreachable!(),
         }
         let subject = fixture.nodes[subject_key].clone();
-        let prerequisites =
-            StructuralPrerequisites::assess(&subject, &fixture.nodes["TypeDescriptor"])?;
+        let prerequisites = StructuralPrerequisites::assess(&subject)?;
         let mut products = DescriptorRuleProducts::default();
-        products.prepare_structure(&prerequisites, &fixture.nodes["TypeDescriptor"]);
+        products.prepare_structure(&prerequisites);
         let findings = dispatch_c2_rule(&mut fixture, rule, &products, &subject)?;
         assert!(findings.iter().any(|finding| matches!(&finding.kind,
             CommitValidationViolationKind::RuleViolation { code: actual } if actual == code)));
@@ -1077,7 +1075,7 @@ fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Res
 {
     use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
-    let roots = c2_kind_roots(&mut fixture)?;
+    let roots = c2_kind_semantics(&mut fixture)?;
     fixture.node("Rootless")?;
     fixture.link(
         "Rootless",
@@ -1085,9 +1083,9 @@ fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Res
         "MetaHolonType.MetaTypeDescriptor",
     )?;
     let subject = fixture.nodes["Rootless"].clone();
-    let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
+    let prerequisites = StructuralPrerequisites::assess(&subject)?;
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_structure(&prerequisites, &roots.type_descriptor);
+    products.prepare_structure(&prerequisites);
     products.prepare_kind(&prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
@@ -1112,9 +1110,9 @@ fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Res
 fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<(), HolonError> {
     use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
-    let roots = c2_kind_roots(&mut fixture)?;
+    let roots = c2_kind_semantics(&mut fixture)?;
     let subject = fixture.nodes["Contract"].clone();
-    let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
+    let prerequisites = StructuralPrerequisites::assess(&subject)?;
     fixture
         .nodes
         .get_mut("Contract")
@@ -1159,11 +1157,11 @@ fn kind_handlers_reject_an_ordinary_holon_with_an_incompatible_describer() -> Re
 {
     use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
-    let roots = c2_kind_roots(&mut fixture)?;
+    let roots = c2_kind_semantics(&mut fixture)?;
     let mut subject = fixture.context.mutation().new_holon(Some("ordinary".into()))?;
     subject.with_descriptor(fixture.nodes["StringValueType.ValueType"].clone())?;
     let subject: HolonReference = subject.into();
-    let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
+    let prerequisites = StructuralPrerequisites::assess(&subject)?;
     let mut products = DescriptorRuleProducts::default();
     products.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
@@ -1184,14 +1182,14 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
 ) -> Result<(), HolonError> {
     use holons_core::StructuralPrerequisites;
     let mut fixture = Fixture::new()?;
-    let roots = c2_kind_roots(&mut fixture)?;
+    let roots = c2_kind_semantics(&mut fixture)?;
     let meta_holon = fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone();
     fixture
         .nodes
         .get_mut("MetaHolonType.MetaTypeDescriptor")
         .unwrap()
         .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![meta_holon.clone()])?;
-    let prerequisites = StructuralPrerequisites::assess(&meta_holon, &roots.type_descriptor)?;
+    let prerequisites = StructuralPrerequisites::assess(&meta_holon)?;
     let mut products = DescriptorRuleProducts::default();
     products.prepare_kind(&prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
@@ -1203,7 +1201,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
     .is_empty());
 
     let root = fixture.nodes["TypeDescriptor"].clone();
-    let root_prerequisites = StructuralPrerequisites::assess(&root, &root)?;
+    let root_prerequisites = StructuralPrerequisites::assess(&root)?;
     let mut root_products = DescriptorRuleProducts::default();
     root_products.prepare_kind(&root_prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
@@ -1239,7 +1237,7 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
 ) -> Result<(), HolonError> {
     use holons_core::ContractContributions;
     let mut fixture = Fixture::new()?;
-    let roots = c2_kind_roots(&mut fixture)?;
+    let roots = c2_kind_semantics(&mut fixture)?;
     fixture.node("Subtype")?;
     fixture.link("Subtype", CoreRelationshipTypeName::Extends, "Contract")?;
     fixture.link("Subtype", CoreRelationshipTypeName::InstanceProperties, "Title.PropertyType")?;
@@ -1289,13 +1287,8 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
     )?;
     let subject = fixture.nodes["Subtype"].clone();
     let contributions = ContractContributions::resolve(&subject)?;
-    let contract_roots = crate::descriptor_rules::ContractKindRoots {
-        property: fixture.nodes["PropertyType.TypeDescriptor"].clone(),
-        relationship: fixture.nodes["DeclaredRelationshipType"].clone(),
-        value: fixture.nodes["StringValueType.ValueType"].clone(),
-    };
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_contract(&contributions, &roots, &contract_roots)?;
+    products.prepare_contract(&contributions, &roots)?;
     for (rule, code) in [
         (CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001"),
         (CoreValidationRuleName::UniqueSemanticMemberNames, "DS-CONTRACT-002"),
@@ -1337,13 +1330,30 @@ fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> R
 {
     use holons_core::ContractContributions;
     let mut fixture = Fixture::new()?;
-    let roots = c2_kind_roots(&mut fixture)?;
+    let roots = c2_kind_semantics(&mut fixture)?;
     fixture
         .nodes
         .get_mut("StringValueType.ValueType")
         .unwrap()
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?
         .with_property_value(type_names::CorePropertyTypeName::IsAbstractType, true)?;
+    fixture.node("ValueType.TypeDescriptor")?;
+    fixture.link(
+        "ValueType.TypeDescriptor",
+        CoreRelationshipTypeName::Extends,
+        "TypeDescriptor",
+    )?;
+    let root = fixture.nodes["TypeDescriptor"].clone();
+    fixture
+        .nodes
+        .get_mut("StringValueType.ValueType")
+        .unwrap()
+        .remove_related_holons(CoreRelationshipTypeName::Extends, vec![root])?;
+    fixture.link(
+        "StringValueType.ValueType",
+        CoreRelationshipTypeName::Extends,
+        "ValueType.TypeDescriptor",
+    )?;
     for key in ["Title.PropertyType", "Key.PropertyType", "DescribedBy.Relationship"] {
         fixture.nodes.get_mut(key).unwrap().with_property_value(
             type_names::CorePropertyTypeName::DefinesInstanceTypeKind,
@@ -1430,15 +1440,7 @@ fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> R
     let subtype = fixture.nodes["Subtype"].clone();
     let contributions = ContractContributions::resolve(&subtype)?;
     let mut products = DescriptorRuleProducts::default();
-    products.prepare_contract(
-        &contributions,
-        &roots,
-        &crate::descriptor_rules::ContractKindRoots {
-            property: fixture.nodes["PropertyType.TypeDescriptor"].clone(),
-            relationship: fixture.nodes["DeclaredRelationshipType.RelationshipType"].clone(),
-            value: fixture.nodes["StringValueType.ValueType"].clone(),
-        },
-    )?;
+    products.prepare_contract(&contributions, &roots)?;
     assert!(!products.has_findings());
     for rule in [
         CoreValidationRuleName::NoInheritedMemberRedeclaration,
@@ -2128,5 +2130,62 @@ fn downstream_extends_saved_definition_stays_ready_when_graph_only_alias_fails(
         assert_eq!(child.validation_state()?, ValidationState::Validated);
         assert!(child.validation_findings()?.is_empty());
     }
+    Ok(())
+}
+
+#[test]
+fn type_descriptor_requires_the_independent_meta_holon_type_role() -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    let mut fixture = Fixture::new()?;
+    let kinds = c2_kind_semantics(&mut fixture)?;
+    let chosen = fixture.nodes["MetaTypeDescriptor.HolonType"].clone();
+    let mut root = fixture.nodes["TypeDescriptor"].clone();
+    root.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![chosen.clone()])?;
+    let prerequisites = StructuralPrerequisites::assess(&root)?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_kind(&prerequisites, &kinds)?;
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::DescribingCategoryCompatibility,
+        &products,
+        &root,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(matches!(&findings[0].kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "DS-KIND-004"));
+    root.remove_related_holons(CoreRelationshipTypeName::DescribedBy, vec![chosen])?;
+    root.add_related_holons(
+        CoreRelationshipTypeName::DescribedBy,
+        vec![fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone()],
+    )?;
+    let prerequisites = StructuralPrerequisites::assess(&root)?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_kind(&prerequisites, &kinds)?;
+    assert!(dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::DescribingCategoryCompatibility,
+        &products,
+        &root
+    )?
+    .is_empty());
+    Ok(())
+}
+
+#[test]
+fn ordinary_unparented_holon_has_no_termination_finding() -> Result<(), HolonError> {
+    let mut fixture = Fixture::new()?;
+    let ordinary: HolonReference =
+        fixture.context.mutation().new_holon(Some("ordinary".into()))?.into();
+    let prerequisites = holons_core::StructuralPrerequisites::assess(&ordinary)?;
+    assert!(prerequisites.subject_lineage.valid_lineage().is_some());
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_structure(&prerequisites);
+    assert!(dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
+        &products,
+        &ordinary
+    )?
+    .is_empty());
     Ok(())
 }

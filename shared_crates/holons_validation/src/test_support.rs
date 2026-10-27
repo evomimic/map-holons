@@ -22,6 +22,7 @@ struct FixtureStorage {
     holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
+    node_reads: std::sync::atomic::AtomicUsize,
     lineage_reads: std::sync::atomic::AtomicUsize,
     keyed_lineages: std::sync::Mutex<HashMap<MapString, Vec<LocalId>>>,
     lineage_read_error: std::sync::Mutex<Option<HolonError>>,
@@ -74,6 +75,7 @@ impl HolonServiceApi for FixtureStorage {
         _: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        self.node_reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if let Some(error) = self.read_errors.get(id) {
             return Err(error.clone());
         }
@@ -356,6 +358,13 @@ impl Fixture {
             .map_or(0, |storage| storage.reads.load(std::sync::atomic::Ordering::Relaxed))
     }
 
+    /// Counts backend node fetch attempts, including failed reads.
+    pub fn backend_node_reads(&self) -> usize {
+        self.saved_storage
+            .as_ref()
+            .map_or(0, |storage| storage.node_reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
     pub fn backend_reads_for(&self, edge: &CoreRelationshipTypeName) -> usize {
         self.backend_reads_for_name(&edge.as_relationship_name())
     }
@@ -507,9 +516,9 @@ impl Fixture {
     }
 }
 
-pub(super) fn c2_kind_roots(
+pub(super) fn c2_kind_semantics(
     fixture: &mut Fixture,
-) -> Result<holons_core::DescriptorKindRoots, HolonError> {
+) -> Result<holons_core::DescriptorKindSemantics, HolonError> {
     use type_names::CorePropertyTypeName;
     fixture.node("MetaHolonType.MetaTypeDescriptor")?;
     fixture.link(
@@ -541,19 +550,13 @@ pub(super) fn c2_kind_roots(
         .get_mut("HolonType.TypeDescriptor")
         .unwrap()
         .with_property_value(CorePropertyTypeName::IsAbstractType, true)?;
-    holons_core::DescriptorKindRoots::from_resolved(
-        &fixture.context,
-        fixture.nodes["TypeDescriptor"].clone(),
-        fixture.nodes["HolonType.TypeDescriptor"].clone(),
-        fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
-        fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone(),
-    )
+    Ok(holons_core::DescriptorKindSemantics::new(&fixture.context))
 }
 
 /// Complete the roots and member structure consumed by prospective Commit assessment.
 pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
     let mut fixture = Fixture::new()?;
-    c2_kind_roots(&mut fixture)?;
+    c2_kind_semantics(&mut fixture)?;
     for key in [
         "Schema.HolonType",
         "Rule.HolonType",

@@ -4,6 +4,7 @@ mod constraint_applicability;
 mod constraint_contributions;
 mod contract_contributions;
 mod core_descriptor_lookup;
+mod core_roles;
 pub mod dance_descriptor;
 pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;
@@ -46,6 +47,7 @@ pub use constraint_applicability::{
 pub use constraint_contributions::ConstraintContributions;
 pub use contract_contributions::ContractContributions;
 pub use core_descriptor_lookup::{resolve_assessment_anchor, resolve_core_descriptor};
+pub use core_roles::{extends_role, has_role};
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
@@ -61,7 +63,9 @@ pub use inheritance::{
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;
 pub use key_rule_descriptor::KeyRuleDescriptor;
-pub use kind_semantics::{DescribingCompatibility, DescriptorKindRoots, KindResolutionError};
+pub use kind_semantics::{
+    DescribingCompatibility, DescriptorKindSemantics, KindResolutionError, RequiredCategory,
+};
 pub use operand_specification::{OperandSpecification, OperandValueTypeRule};
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;

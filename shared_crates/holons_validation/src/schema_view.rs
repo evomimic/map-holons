@@ -38,7 +38,6 @@ pub(crate) struct SchemaWorkset {
 impl SchemaWorkset {
     pub fn prepare(
         context: &Arc<TransactionContext>,
-        schema_type: &HolonReference,
         directly_staged: &[HolonReference],
         owned: &[OwnedCandidate],
         collector: &mut ValidationCollector,
@@ -55,8 +54,7 @@ impl SchemaWorkset {
             for owner in targets(&candidate.subject, ownership_edge(candidate.kind))? {
                 schedule(context, &owner, &mut scheduled, &mut schemas)?;
             }
-            let resolution =
-                resolve_schema_ownership(&candidate.subject, candidate.kind, schema_type)?;
+            let resolution = resolve_schema_ownership(&candidate.subject, candidate.kind)?;
             let (owners, defect) = match resolution {
                 SchemaOwnershipResolution::OwnedBy(owner) => (vec![owner], None),
                 SchemaOwnershipResolution::Missing => {

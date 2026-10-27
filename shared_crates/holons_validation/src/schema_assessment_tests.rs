@@ -78,7 +78,6 @@ fn descriptor_only_staging_schedules_one_schema_and_keeps_memberships_separate(
     let mut collector = ValidationCollector::default();
     let workset = SchemaWorkset::prepare(
         &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
         &[],
         &[
             owned(&fixture, "Member", SchemaOwnershipKind::Component),
@@ -114,7 +113,6 @@ fn successors_establish_new_memberships_without_scheduling_previous_owners(
     let mut collector = ValidationCollector::default();
     let workset = SchemaWorkset::prepare(
         &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
         &[],
         &[
             OwnedCandidate { subject: member.clone().into(), kind: SchemaOwnershipKind::Component },
@@ -148,13 +146,8 @@ fn staged_schema_dependency_follows_exact_saved_targets_without_substitution(
     let fixture = fixture.saved_snapshot()?;
     let update = replace_edge(&fixture, "B", CoreRelationshipTypeName::DependsOn, "A")?;
     let mut collector = ValidationCollector::default();
-    let workset = SchemaWorkset::prepare(
-        &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
-        &[update.clone().into()],
-        &[],
-        &mut collector,
-    )?;
+    let workset =
+        SchemaWorkset::prepare(&fixture.context, &[update.clone().into()], &[], &mut collector)?;
     assert_eq!(workset.schemas.len(), 1);
     let cycles = dependency_cycles(&fixture.context, &workset.schemas)?;
     assert!(cycles[&DefinitionIdentity::for_reference(&update.into(), &fixture.context)?].is_none());
@@ -173,7 +166,6 @@ fn missing_multiple_and_invalid_owners_are_findings_in_both_namespaces() -> Resu
             let mut collector = ValidationCollector::default();
             let workset = SchemaWorkset::prepare(
                 &fixture.context,
-                &fixture.nodes["Schema.HolonType"],
                 &[],
                 &[owned(&fixture, "Member", kind)],
                 &mut collector,
@@ -240,7 +232,6 @@ fn operational_scope_failure_preserves_prior_installed_outcomes() -> Result<(), 
     let mut collector = ValidationCollector::default();
     assert!(SchemaWorkset::prepare(
         &fixture.context,
-        &fixture.nodes["Contract"],
         &[foreign.nodes["Contract"].clone()],
         &[],
         &mut collector
@@ -509,10 +500,16 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
         &roots,
         ValidationCollector::default(),
     )?;
-    let before = fixture.backend_relationship_reads();
+    let relationship_reads_before = fixture.backend_relationship_reads();
+    let node_reads_before = fixture.backend_node_reads();
     let report = constructed.assess(|_| {})?.0.into_report();
     assert!(report.is_accepted(), "{:?}", report);
-    assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
+    assert_eq!(
+        relationship_reads_before,
+        fixture.backend_relationship_reads(),
+        "schema query after construction"
+    );
+    assert_eq!(node_reads_before, fixture.backend_node_reads(), "node fetch after construction");
     Ok(())
 }
 
@@ -652,10 +649,16 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
         &roots,
         ValidationCollector::default(),
     )?;
-    let before = fixture.backend_relationship_reads();
+    let relationship_reads_before = fixture.backend_relationship_reads();
+    let node_reads_before = fixture.backend_node_reads();
     let report = constructed.assess(|_| {})?.0.into_report();
     assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
-    assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
+    assert_eq!(
+        relationship_reads_before,
+        fixture.backend_relationship_reads(),
+        "schema query after construction"
+    );
+    assert_eq!(node_reads_before, fixture.backend_node_reads(), "node fetch after construction");
     Ok(())
 }
 
@@ -674,7 +677,6 @@ fn schema_dependency_cycles_do_not_read_saved_memberships() -> Result<(), HolonE
     let mut collector = ValidationCollector::default();
     let workset = SchemaWorkset::prepare(
         &fixture.context,
-        &fixture.nodes["Schema.HolonType"],
         &[fixture.nodes["A"].clone()],
         &[],
         &mut collector,
