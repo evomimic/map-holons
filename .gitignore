@@ -65,4 +65,5 @@ docs/
 # RustRover plugin build artifacts
 /tools/tdl-rustrover-plugin/.gradle/
 /tools/tdl-rustrover-plugin/.intellijPlatform/
-/tools/tdl-rustrover-plugin/build/__pycache__/
+/tools/tdl-rustrover-plugin/build/
+__pycache__/
