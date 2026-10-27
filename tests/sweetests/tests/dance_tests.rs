@@ -47,6 +47,7 @@ use fixture_cases::load_book_person_inverse_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
 use fixture_cases::query_f1_filter_fixture::*;
+use fixture_cases::query_f2_equality_fixture::*;
 use fixture_cases::query_qry1_scaffold_fixture::*;
 use fixture_cases::query_qry2_seed_expand_fixture::*;
 use fixture_cases::query_qry4a_order_paginate_fixture::*;
@@ -201,6 +202,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             query_qry2_seed_expand_fixture().unwrap(),
             query_qry4a_order_paginate_fixture().unwrap(),
             query_f1_filter_fixture().unwrap(),
+            query_f2_equality_fixture().unwrap(),
         ],
     }
 }

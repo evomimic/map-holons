@@ -686,12 +686,13 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
     let instance_property_names = property_type_names(book_descriptor.instance_properties());
     assert_contains(&instance_property_names, "Key"); // inherited from HolonType.TypeDescriptor
     assert_contains(&instance_property_names, "Title");
-    assert_eq!(instance_property_names.len(), 7);
+    assert_eq!(instance_property_names.len(), 8);
     for (name, value_type) in [
         ("IsPublished", "MapBooleanValueType"),
         ("PageCount", "MapIntegerValueType"),
         ("PublicationStatus", "PublicationStatus"),
         ("CoverDigest", "MapBytesValueType"),
+        ("ContentDigest", "ContentDigestValueType"),
         ("Subtitle", "MapStringValueType"),
     ] {
         let property = book_descriptor
