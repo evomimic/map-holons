@@ -203,7 +203,7 @@ fn field_shaped_backend_errors_remain_kind_read_failures() -> Result<(), HolonEr
 }
 
 #[test]
-fn universal_contract_uses_saved_anchors_with_split_bootstrap_and_successors(
+fn universal_contract_uses_explicit_meta_type_with_split_bootstrap_and_successors(
 ) -> Result<(), HolonError> {
     // One root is saved and the meta-type is still a bootstrap create.
     let root_id = HolonId::Local(LocalId(vec![50; 39]));
@@ -222,21 +222,21 @@ fn universal_contract_uses_saved_anchors_with_split_bootstrap_and_successors(
         context.mutation().stage_new_holon(new_test_holon(&context, "universal-member")?)?;
     let mut meta = new_test_holon(&context, "MetaTypeDescriptor.HolonType")?;
     meta.add_related_holons(R::InstanceProperties, vec![member.clone().into()])?;
-    context.mutation().stage_new_holon(meta)?;
+    let meta = context.mutation().stage_new_holon(meta)?;
     let mut successor = stage_update_snapshot(
         &context,
         root_id.local_id().clone(),
         new_test_holon(&context, "TypeDescriptor")?,
     )?;
     successor.with_property_value("Description", "new root definition")?;
-    let contract = UniversalDescriptorContract::resolve(&context)?;
+    let contract = UniversalDescriptorContract::from_meta_type(&context, &meta.into())?;
     let mut descriptor = new_test_holon(&context, "abstract-descriptor")?;
     descriptor.with_property_value("IsAbstractType", true)?;
     descriptor.add_related_holons(R::Extends, vec![root])?;
     let descriptor = descriptor.into();
     let unrelated = new_test_holon(&context, "unrelated")?.into();
-    assert!(!contract.enforce_minimum(&descriptor, &unrelated)?);
-    assert!(contract.enforce_minimum(&descriptor, &member.into())?);
+    assert!(!contract.enforce_minimum(&descriptor, true, &unrelated)?);
+    assert!(contract.enforce_minimum(&descriptor, true, &member.into())?);
     assert!(matches!(
         resolve_assessment_anchor(&context, "TypeDescriptor")?,
         HolonReference::Smart(_)
@@ -279,13 +279,14 @@ fn universal_contract_does_not_adopt_successor_member_content() -> Result<(), Ho
     snapshot.add_related_holons(R::InstanceProperties, vec![successor_member.clone()])?;
     let mut successor = stage_update_snapshot(&context, ids[0].local_id().clone(), snapshot)?;
     successor.with_property_value("Description", "new contract")?;
-    let contract = UniversalDescriptorContract::resolve(&context)?;
+    let meta = HolonReference::smart_from_id(context.space_read_handle(), ids[0].clone());
+    let contract = UniversalDescriptorContract::from_meta_type(&context, &meta)?;
     let mut subject = new_test_holon(&context, "abstract")?;
     subject.with_property_value("IsAbstractType", true)?;
     subject.add_related_holons(R::Extends, vec![root.into()])?;
     let subject = subject.into();
     let saved_member = HolonReference::smart_from_id(context.space_read_handle(), ids[1].clone());
-    assert!(contract.enforce_minimum(&subject, &saved_member)?);
-    assert!(!contract.enforce_minimum(&subject, &successor_member)?);
+    assert!(contract.enforce_minimum(&subject, true, &saved_member)?);
+    assert!(!contract.enforce_minimum(&subject, true, &successor_member)?);
     Ok(())
 }

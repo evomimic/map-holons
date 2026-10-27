@@ -334,7 +334,7 @@ pub(crate) fn assess_holon(
     key_claim: Option<&crate::key_evidence::KeyClaim>,
     values: &ValueValidationContext,
     roles: &BindingRoleMemo,
-    universal: &UniversalDescriptorContract,
+    universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
@@ -387,7 +387,7 @@ fn assess_property(
     property: &PropertyDescriptor,
     values: &ValueValidationContext,
     roles: &BindingRoleMemo,
-    universal: &UniversalDescriptorContract,
+    universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
@@ -406,7 +406,12 @@ fn assess_property(
         packages,
     )?;
     let missing_required = value.is_none()
-        && universal.enforce_minimum(subject, property.holon())?
+        && match universal {
+            // Contracts are prepared only for diagnosed descriptor subjects.
+            Some(contract) => contract.enforce_minimum(subject, true, property.holon())?,
+            // Ordinary holons and descriptors without a meta-type role get no abstract exemption.
+            None => true,
+        }
         && property.is_required()?;
     let facts = PreparedRuleSubject::Property {
         missing_required,

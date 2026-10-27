@@ -4,7 +4,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AssessmentPhase {
     Construction,
-    ReadinessResolution,
     SubjectPreparation,
     SchemaWorksetPreparation,
     PackageDiscovery,

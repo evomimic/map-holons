@@ -492,12 +492,9 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
     let mut subject = fixture.staged_subject("prepared-instance")?;
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![subject];
-    let roots = crate::commit_assessment::ReadinessContext::resolve(&fixture.context)
-        .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
     let constructed = crate::commit_assessment::construct_assessment(
         &fixture.context,
         &candidates,
-        &roots,
         ValidationCollector::default(),
     )?;
     let relationship_reads_before = fixture.backend_relationship_reads();
@@ -539,7 +536,6 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         phases,
         vec![
             crate::AssessmentPhase::Construction,
-            crate::AssessmentPhase::ReadinessResolution,
             crate::AssessmentPhase::SubjectPreparation,
             crate::AssessmentPhase::SchemaWorksetPreparation,
             crate::AssessmentPhase::PackageDiscovery,
@@ -641,12 +637,9 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
     let mut subject = fixture.staged_subject("mixed-instance")?;
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![descriptor, subject];
-    let roots = crate::commit_assessment::ReadinessContext::resolve(&fixture.context)
-        .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
     let constructed = crate::commit_assessment::construct_assessment(
         &fixture.context,
         &candidates,
-        &roots,
         ValidationCollector::default(),
     )?;
     let relationship_reads_before = fixture.backend_relationship_reads();

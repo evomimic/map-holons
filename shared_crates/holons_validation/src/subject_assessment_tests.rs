@@ -321,17 +321,17 @@ fn terminal_candidate_is_refused_before_any_outcome_installation() -> Result<(),
 }
 
 #[test]
-fn universal_contract_resolution_error_preserves_prior_outcome() -> Result<(), HolonError> {
+fn absent_core_reports_the_encountered_missing_descriptor() -> Result<(), HolonError> {
     let fixture = Fixture::empty()?;
     let transient = fixture.context.mutation().new_holon(Some(MapString("subject".into())))?;
     let candidate = fixture.context.mutation().stage_new_holon(transient)?;
-    candidate.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
-    assert!(matches!(
-        validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate)),
-        Err(HolonError::HolonNotFound(message)) if message.contains("MetaTypeDescriptor.HolonType")
-    ));
-    assert_eq!(candidate.validation_state()?, ValidationState::Validated);
-    assert!(candidate.validation_findings()?.is_empty());
+    let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
+    assert!(report.violations.iter().any(|finding| {
+        finding.kind == CommitValidationViolationKind::NoDescriptor
+            && finding.message.contains("MissingDescribedBy")
+    }));
+    assert!(!report.is_accepted());
+    assert_eq!(candidate.validation_state()?, ValidationState::NoDescriptor);
     Ok(())
 }
 
@@ -2782,5 +2782,214 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
             Some(fixture.nodes["Contract"].reference_id_string())
         );
     }
+    Ok(())
+}
+
+#[test]
+fn universal_membership_uses_identity_even_when_category_members_have_the_same_name(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    declare_abstract_property(&mut fixture)?;
+    fixture
+        .node("UniversalTitle")?
+        .with_property_value("TypeName", "Title")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link(
+        "UniversalTitle",
+        CoreRelationshipTypeName::Extends,
+        "PropertyType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "UniversalTitle",
+        CoreRelationshipTypeName::ValueType,
+        "StringValueType.ValueType",
+    )?;
+    fixture.link(
+        "MetaTypeDescriptor.HolonType",
+        CoreRelationshipTypeName::InstanceProperties,
+        "UniversalTitle",
+    )?;
+    let subject = abstract_subject(&fixture)?;
+    let contract = holons_core::UniversalDescriptorContract::from_meta_type(
+        &fixture.context,
+        &fixture.nodes["MetaTypeDescriptor.HolonType"],
+    )?;
+    assert!(!contract.enforce_minimum(
+        &subject.clone().into(),
+        true,
+        &fixture.nodes["Title.PropertyType"]
+    )?);
+    assert!(contract.enforce_minimum(&subject.into(), true, &fixture.nodes["UniversalTitle"])?);
+    Ok(())
+}
+
+#[test]
+fn ordinary_holon_with_abstractness_still_requires_category_properties() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    declare_abstract_property(&mut fixture)?;
+    let input = fixture.context.mutation().new_holon(Some("ordinary-abstract".into()))?;
+    let mut subject = fixture.context.mutation().stage_new_holon(input)?;
+    subject.with_descriptor(fixture.nodes["AbstractMetaType"].clone())?;
+    subject
+        .with_property_value("IsAbstractType", true)?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+    assert!(report.violations.iter().any(|finding| {
+        matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001")
+            && matches!(&finding.subject, ValidationSubjectPath::Property { name, .. } if name == "Title")
+    }), "{report:?}");
+    Ok(())
+}
+
+#[test]
+fn abstract_descriptor_without_meta_type_role_enforces_missing_category_members(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    declare_abstract_property(&mut fixture)?;
+    let meta_parent = fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone();
+    fixture
+        .nodes
+        .get_mut("AbstractMetaType")
+        .unwrap()
+        .remove_related_holons(CoreRelationshipTypeName::Extends, vec![meta_parent])?;
+    fixture.link(
+        "AbstractMetaType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
+    let subject = abstract_subject(&fixture)?;
+    let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+    for expected in ["DS-KIND-005", "DS-PROP-001"] {
+        assert!(report.violations.iter().any(|finding| {
+            matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == expected)
+        }), "missing {expected}: {report:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn abstract_descriptor_universal_contract_needs_no_backend_reads_after_construction(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    declare_abstract_property(&mut fixture)?;
+    let fixture = fixture.saved_snapshot()?;
+    let candidates = vec![abstract_subject(&fixture)?];
+    let constructed = crate::commit_assessment::construct_assessment(
+        &fixture.context,
+        &candidates,
+        ValidationCollector::default(),
+    )?;
+    let relationship_reads = fixture.backend_relationship_reads();
+    let node_reads = fixture.backend_node_reads();
+    let report = constructed.assess(|_| {})?.0.into_report();
+    assert!(report.is_accepted(), "{report:?}");
+    assert_eq!(relationship_reads, fixture.backend_relationship_reads());
+    assert_eq!(node_reads, fixture.backend_node_reads());
+    Ok(())
+}
+
+#[test]
+fn encountered_required_definition_read_error_preserves_prior_outcomes() -> Result<(), HolonError> {
+    let error = HolonError::InvalidState("unreadable governing definition".into());
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let input = fixture.context.mutation().new_holon(Some("subject".into()))?;
+    let mut candidate = fixture.context.mutation().stage_new_holon(input)?;
+    candidate.add_related_holons(
+        CoreRelationshipTypeName::DescribedBy,
+        vec![fixture.nodes["Contract"].clone()],
+    )?;
+    candidate.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+    fixture.control_saved_relationship_reads(
+        "Contract",
+        CoreRelationshipTypeName::Extends,
+        Some(error.clone()),
+    )?;
+    assert_eq!(
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate)).err(),
+        Some(error)
+    );
+    assert_eq!(candidate.validation_state()?, ValidationState::Validated);
+    assert!(candidate.validation_findings()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn mixed_meta_type_definitions_keep_separate_universal_contracts() -> Result<(), HolonError> {
+    use holons_core::core_shared_objects::WritableRelationship;
+
+    let mut fixture = readiness_fixture()?;
+    declare_abstract_property(&mut fixture)?;
+    let mut fixture = fixture.saved_snapshot()?;
+    // The saved predecessor remains in the first governing lineage. Its successor
+    // inherits Title through an exact saved category reference. Both meta-type versions
+    // occur in the second governing lineage; the nearest role member must win.
+    let successor = fixture.stage_update_of_with("MetaTypeDescriptor.HolonType", |model| {
+        let mut relationships = model.relationships.as_ref().unwrap().clone_for_staged()?;
+        relationships.map.remove(&CoreRelationshipTypeName::Extends.as_relationship_name());
+        relationships.add_related_holons_with_keys(
+            CoreRelationshipTypeName::Extends.as_relationship_name(),
+            vec![(fixture.nodes["AbstractMetaType"].clone(), None)],
+        )?;
+        model.relationships = Some(holons_core::RelationshipMap::from(relationships));
+        Ok(())
+    })?;
+    fixture.nodes.insert("MetaTypeV2".into(), successor.into());
+    fixture.node("AbstractMetaV2")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("AbstractMetaV2", CoreRelationshipTypeName::Extends, "MetaTypeV2")?;
+    let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(&fixture.nodes["AbstractMetaV2"])?;
+    let lineage =
+        diagnosis.valid_lineage().expect("both exact meta-type versions form a valid lineage");
+    let selected = lineage
+        .member_with_role(type_names::CoreDefinitionRole::MetaTypeDescriptor)
+        .expect("governing lineage contains the meta-type role");
+    assert!(lineage.contains(&fixture.nodes["MetaTypeDescriptor.HolonType"])?);
+    assert!(holons_core::same_definition(selected, &fixture.nodes["MetaTypeV2"])?);
+    assert!(!holons_core::same_definition(
+        selected,
+        &fixture.nodes["MetaTypeDescriptor.HolonType"]
+    )?);
+    let first = abstract_subject(&fixture)?;
+    let mut second = abstract_subject(&fixture)?;
+    second.with_property_value("Key", "second-abstract-subject")?;
+    second.remove_related_holons(
+        CoreRelationshipTypeName::DescribedBy,
+        vec![fixture.nodes["AbstractMetaType"].clone()],
+    )?;
+    second.add_related_holons(
+        CoreRelationshipTypeName::DescribedBy,
+        vec![fixture.nodes["AbstractMetaV2"].clone()],
+    )?;
+    let first_identity = first.full_reference_id_string();
+    let second_identity = second.full_reference_id_string();
+    for candidates in [[first.clone(), second.clone()], [second.clone(), first.clone()]] {
+        let report = assess_commit_candidates(&fixture.context, &candidates)?.report;
+        let title_findings: Vec<_> = report.violations.iter().filter(|finding| {
+            matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001")
+                && matches!(&finding.subject, ValidationSubjectPath::Property { name, .. } if name == "Title")
+        }).collect();
+        assert_eq!(title_findings.len(), 1, "{report:?}");
+        assert!(matches!(&title_findings[0].subject,
+            ValidationSubjectPath::Property { holon_identity, .. } if holon_identity == &second_identity));
+        assert!(!report.violations.iter().any(|finding| {
+            matches!(&finding.subject, ValidationSubjectPath::Property { holon_identity, .. } if holon_identity == &first_identity)
+        }), "{report:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn encountered_missing_lineage_root_reports_its_prerequisite_finding() -> Result<(), HolonError> {
+    let mut fixture = Fixture::empty()?;
+    fixture.node("unrelated-terminal")?;
+    let mut input = fixture.context.mutation().new_holon(Some("rootless-subject".into()))?;
+    input.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![fixture.nodes["unrelated-terminal"].clone()],
+    )?;
+    let candidate = fixture.context.mutation().stage_new_holon(input)?;
+    let report = assess_commit_candidates(&fixture.context, &[candidate])?.report;
+    assert!(report.violations.iter().any(|finding| {
+        matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-STRUCT-004")
+    }), "{report:?}");
     Ok(())
 }

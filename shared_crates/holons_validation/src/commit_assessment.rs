@@ -24,20 +24,34 @@ use std::{
 };
 use type_names::{CoreDefinitionRole, CoreRelationshipTypeName, CoreValidationRuleName};
 
-/// Inputs for subject validation and abstract-descriptor minimum enforcement.
-pub(crate) struct ReadinessContext {
-    values: ValueValidationContext,
-    universal: UniversalDescriptorContract,
-}
-impl ReadinessContext {
-    pub fn resolve(
-        context: &Arc<TransactionContext>,
-    ) -> Result<Self, crate::AnchorResolutionError> {
-        Ok(Self {
-            values: ValueValidationContext::new(context),
-            universal: UniversalDescriptorContract::resolve(context)?,
-        })
+/// Shares universal contracts by exact meta-type identity within this assessment.
+/// Only diagnosed descriptor subjects can receive the abstract exemption.
+fn prepare_universal_contracts(
+    context: &Arc<TransactionContext>,
+    subjects: &mut [SubjectPreparation],
+) -> Result<(), HolonError> {
+    use std::collections::hash_map::Entry;
+
+    let mut contracts = HashMap::<DefinitionIdentity, Arc<UniversalDescriptorContract>>::new();
+    for subject in subjects.iter_mut().filter(|subject| subject.is_descriptor) {
+        let Some(meta_type) = subject
+            .prerequisites
+            .governing_lineage
+            .as_ref()
+            .and_then(|diagnosis| diagnosis.valid_lineage())
+            .and_then(|lineage| lineage.member_with_role(CoreDefinitionRole::MetaTypeDescriptor))
+        else {
+            continue;
+        };
+        let identity = DefinitionIdentity::for_reference(meta_type, context)?;
+        let contract = match contracts.entry(identity) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry
+                .insert(Arc::new(UniversalDescriptorContract::from_meta_type(context, meta_type)?)),
+        };
+        subject.universal_contract = Some(Arc::clone(contract));
     }
+    Ok(())
 }
 
 struct SubjectPreparation {
@@ -47,6 +61,7 @@ struct SubjectPreparation {
     products: DescriptorRuleProducts,
     bindings: Vec<PreparedBinding>,
     is_descriptor: bool,
+    universal_contract: Option<Arc<UniversalDescriptorContract>>,
     is_constraint: bool,
     is_rule: bool,
     is_schema: bool,
@@ -121,9 +136,7 @@ fn assess_commit_candidates_with_observer<'a>(
         candidates,
         &mut collector,
     )?;
-    observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::ReadinessResolution));
-    let roots = ReadinessContext::resolve(context).map_err(HolonError::from)?;
-    construct_assessment_with_observer(context, candidates, &roots, collector, &mut observer)?
+    construct_assessment_with_observer(context, candidates, collector, &mut observer)?
         .assess(&mut observer)
 }
 
@@ -191,7 +204,7 @@ fn finish_assessment<'a>(
 pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     context: &'a Arc<TransactionContext>,
     candidates: &'candidates [StagedReference],
-    roots: &'a ReadinessContext,
+    values: ValueValidationContext,
     prepared: Vec<SubjectPreparation>,
     binding_roles: BindingRoleMemo,
     workset: SchemaWorkset,
@@ -203,16 +216,14 @@ pub(crate) struct ConstructedAssessment<'a, 'candidates> {
 pub(crate) fn construct_assessment<'a, 'candidates>(
     context: &'a Arc<TransactionContext>,
     candidates: &'candidates [StagedReference],
-    roots: &'a ReadinessContext,
     collector: ValidationCollector,
 ) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
-    construct_assessment_with_observer(context, candidates, roots, collector, &mut |_| {})
+    construct_assessment_with_observer(context, candidates, collector, &mut |_| {})
 }
 
 fn construct_assessment_with_observer<'a, 'candidates>(
     context: &'a Arc<TransactionContext>,
     candidates: &'candidates [StagedReference],
-    roots: &'a ReadinessContext,
     mut collector: ValidationCollector,
     observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
@@ -307,6 +318,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             products,
             bindings: Vec::new(),
             is_descriptor,
+            universal_contract: None,
             is_constraint,
             is_rule,
             is_schema,
@@ -340,10 +352,11 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                 .and_then(|diagnosis| diagnosis.valid_lineage())
         }),
     )?;
+    prepare_universal_contracts(context, &mut prepared)?;
     Ok(ConstructedAssessment {
         context,
         candidates,
-        roots,
+        values: ValueValidationContext::new(context),
         prepared,
         binding_roles,
         workset,
@@ -362,7 +375,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         let Self {
             context,
             candidates,
-            roots,
+            values,
             mut prepared,
             binding_roles,
             workset,
@@ -509,7 +522,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 let result = subject_assessment::prepare_bindings(
                     governing.subject(),
                     SubjectLevel::Holon,
-                    &roots.values,
+                    &values,
                     &binding_roles,
                     &path(&subject.subject),
                     &mut collector,
@@ -550,7 +563,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 let result = subject_assessment::prepare_bindings(
                     &descriptor,
                     SubjectLevel::Holon,
-                    &roots.values,
+                    &values,
                     &binding_roles,
                     &path(&view.schema),
                     &mut collector,
@@ -585,7 +598,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 assess_candidate(
                     context,
                     subject,
-                    roots,
+                    &values,
                     &binding_roles,
                     &packages,
                     &mut readiness,
@@ -604,7 +617,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 assess_candidate(
                     context,
                     subject,
-                    roots,
+                    &values,
                     &binding_roles,
                     &packages,
                     &mut readiness,
@@ -674,7 +687,7 @@ fn route_definition_findings(
 fn assess_candidate(
     context: &Arc<TransactionContext>,
     subject: &SubjectPreparation,
-    roots: &ReadinessContext,
+    values: &ValueValidationContext,
     binding_roles: &BindingRoleMemo,
     packages: &crate::descriptor_package::DescriptorPackages,
     readiness: &mut ReadinessPropagation,
@@ -703,9 +716,9 @@ fn assess_candidate(
                 &contract,
                 &subject.bindings,
                 subject.key_claim.as_ref(),
-                &roots.values,
+                values,
                 binding_roles,
-                &roots.universal,
+                subject.universal_contract.as_deref(),
                 collector,
                 packages,
             );
