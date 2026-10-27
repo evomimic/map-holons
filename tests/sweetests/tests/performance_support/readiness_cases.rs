@@ -6,7 +6,7 @@ use map_commands_contract::{
 use map_commands_runtime::{ExecutionPolicy, Runtime};
 use serde_json::json;
 
-pub async fn run(runtime: &Runtime, output: &str) {
+pub async fn run(runtime: &Runtime, output: &str, mode: &str) {
     let mut results = Vec::new();
     for case in
         ["valid", "extra-property", "wrong-key-kind", "undeclared-relationship", "missing-key"]
@@ -22,11 +22,6 @@ pub async fn run(runtime: &Runtime, output: &str) {
             panic!("BeginTransaction must return a transaction")
         };
         let context = runtime.session().get_transaction(&tx_id).unwrap();
-        let descriptor: HolonReference = context
-            .lookup()
-            .get_saved_holon_by_key(&MapString::from("VisualizerUsage.HolonType"))
-            .unwrap()
-            .into();
         let visualizer: HolonReference = context
             .lookup()
             .get_saved_holon_by_key(&MapString::from(
@@ -34,11 +29,21 @@ pub async fn run(runtime: &Runtime, output: &str) {
             ))
             .unwrap()
             .into();
-        let mut holon =
-            context.mutation().new_holon(Some(format!("readiness-{case}").into())).unwrap();
-        holon.add_related_holons("DescribedBy", vec![descriptor]).unwrap();
-        holon.add_related_holons("UsesVisualizer", vec![visualizer.clone()]).unwrap();
-        let mut staged = context.mutation().stage_new_holon(holon).unwrap();
+        let mut staged = if mode == "visualizer-slot" {
+            super::creation_samples::stage_visualizer_slot(&context, &format!("readiness-{case}"))
+        } else {
+            assert_eq!(mode, "create");
+            let descriptor: HolonReference = context
+                .lookup()
+                .get_saved_holon_by_key(&MapString::from("VisualizerUsage.HolonType"))
+                .unwrap()
+                .into();
+            let mut holon =
+                context.mutation().new_holon(Some(format!("readiness-{case}").into())).unwrap();
+            holon.add_related_holons("DescribedBy", vec![descriptor]).unwrap();
+            holon.add_related_holons("UsesVisualizer", vec![visualizer.clone()]).unwrap();
+            context.mutation().stage_new_holon(holon).unwrap()
+        };
         match case {
             "extra-property" => {
                 staged.with_property_value("Unexpected", true).unwrap();
