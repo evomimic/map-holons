@@ -488,7 +488,7 @@ mod tests {
     use crate::descriptors::test_support::{
         build_key_rule_context, new_descriptor_holon, new_test_holon,
     };
-    use crate::HolonCollectionApi;
+    use crate::{HolonCollectionApi, WritableHolon};
 
     fn canonical(
         context: &Arc<TransactionContext>,
