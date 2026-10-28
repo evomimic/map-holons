@@ -127,7 +127,7 @@ def main():
     parser.add_argument("--samples", type=int, default=6)
     parser.add_argument("--subjects", type=int, default=1)
     parser.add_argument("--mode", choices=["create", "visualizer-slot", "descriptor", "new-version"], default="create", help="create: VisualizerUsage instances; visualizer-slot: VisualizerSlot instances; descriptor: one new HolonType descriptor and its affected saved Schema; new-version: one property-only successor of a saved non-root version")
-    parser.add_argument("--anchor-evidence-policy", choices=["per-new-version", "retired"], default="per-new-version", help="Expected evidence path in the guest artifact; saved in capture metadata")
+    parser.add_argument("--anchor-evidence-policy", choices=["per-new-version", "retired"], default="retired", help="Expected evidence path in the guest artifact; saved in capture metadata")
     parser.add_argument("--variant", choices=["prefetch", "on-demand"], default="prefetch")
     parser.add_argument("--readiness-cases", action="store_true")
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")

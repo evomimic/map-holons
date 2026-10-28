@@ -76,7 +76,8 @@ Re-summarization uses the capture's saved mode, sample count, assessment, varian
 and `anchor_evidence_policy`. The `per-new-version` policy expects one anchor
 evidence invocation per new-version sample and zero in creation modes. The
 `retired` policy expects zero in every mode. Select the policy matching the guest
-artifact with `--anchor-evidence-policy` when capturing.
+artifact with `--anchor-evidence-policy` when capturing. New captures default to
+`retired`; use `per-new-version` explicitly when capturing an older guest artifact.
 
 Older metadata without a policy uses `per-new-version`. Preserve archived metadata
 so its measurements remain interpretable after the implementation changes.

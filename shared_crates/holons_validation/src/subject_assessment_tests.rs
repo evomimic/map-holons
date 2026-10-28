@@ -4,8 +4,8 @@ mod key_uniqueness_tests;
 #[path = "graph_only_deltas_tests.rs"]
 mod graph_only_deltas_tests;
 
-#[path = "required_anchor_tests.rs"]
-mod required_anchors;
+#[path = "core_successor_tests.rs"]
+mod core_successors;
 
 #[path = "constraint_declarations_tests.rs"]
 mod constraint_declarations;
@@ -1691,29 +1691,6 @@ fn binding_family_and_constraint_type_follow_explicit_references() -> Result<(),
             !compatible
         );
     }
-    Ok(())
-}
-
-#[test]
-fn missing_new_validation_anchor_is_a_deliberate_schema_incompatibility() -> Result<(), HolonError>
-{
-    let mut fixture = Fixture::empty()?;
-    let key = "AtMostOneDirectParent.ValidationRule";
-    assert!(
-        matches!(resolve_validation_anchor(&fixture.context, key), Err(crate::AnchorResolutionError::SchemaIncompatible { missing_anchor }) if missing_anchor == key)
-    );
-    fixture.node(key)?;
-    assert!(holons_core::same_definition(
-        &resolve_validation_anchor(&fixture.context, key).unwrap(),
-        &fixture.nodes[key]
-    )?);
-    // Split bootstrap can find this anchor saved while later definitions are staged.
-    let mut saved = fixture.saved_snapshot()?;
-    saved.node("LaterDefinition")?;
-    assert!(holons_core::same_definition(
-        &resolve_validation_anchor(&saved.context, key).unwrap(),
-        &saved.nodes[key]
-    )?);
     Ok(())
 }
 

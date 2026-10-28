@@ -61,7 +61,7 @@ class CaptureTests(unittest.TestCase):
                 self.assertEqual(measure.main(), 0)
             metadata = json.loads((destination / "metadata.json").read_text())
             self.assertTrue(metadata["link_profile"])
-            self.assertEqual(metadata["anchor_evidence_policy"], "per-new-version")
+            self.assertEqual(metadata["anchor_evidence_policy"], "retired")
             self.assertEqual(metadata["package_substrate"], "DescriptorPackage")
             self.assertEqual(metadata["runtime_versions"], {"holochain": "Cargo.lock:holochain",
                                                             "hdk": "happ/Cargo.lock:hdk",

@@ -1,5 +1,5 @@
 use super::{test_support::*, *};
-use crate::core_shared_objects::{holon::SavedHolon, transactions::TransactionContext, Holon};
+use crate::core_shared_objects::{holon::SavedHolon, transactions::TransactionContext};
 use crate::{HolonReference, ReadableHolon, WritableHolon};
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, HolonId, LocalId, PropertyMap};
@@ -65,56 +65,6 @@ fn saved_lineage_ignores_staged_successor_but_explicit_reference_uses_it() -> Re
     let mut explicit = new_test_holon(&context, "explicit")?;
     explicit.add_related_holons(R::Extends, vec![update.clone()])?;
     assert_eq!(ancestors(&explicit.into())?[1], update);
-    Ok(())
-}
-
-#[test]
-fn anchor_lookup_collapses_equivalent_handles_and_ignores_successors() -> Result<(), HolonError> {
-    let (context, saved) = saved_fixture();
-    let source = saved[0].holon_id()?.local_id().clone();
-    let first = stage_update_snapshot(
-        &context,
-        source.clone(),
-        new_test_holon(&context, "TypeDescriptor")?,
-    )?;
-    let second = stage_update_snapshot(
-        &context,
-        source.clone(),
-        new_test_holon(&context, "TypeDescriptor")?,
-    )?;
-    {
-        let rc = second.get_holon_to_commit(&context)?;
-        let mut holon = rc.write().unwrap();
-        let Holon::Staged(holon) = &mut *holon else { panic!("staged snapshot") };
-        holon.note_relationship_mutation(false)?;
-    }
-    let mut successor =
-        stage_update_snapshot(&context, source, new_test_holon(&context, "TypeDescriptor")?)?;
-    successor.with_property_value("Description", "successor")?;
-    let resolved = resolve_assessment_anchor(&context, "TypeDescriptor")?;
-    assert!(matches!(resolved, HolonReference::Smart(_)));
-    assert_eq!(resolved, saved[0]);
-    first.abandon_staged_changes(&context)?;
-    second.abandon_staged_changes(&context)?;
-    assert_eq!(resolve_assessment_anchor(&context, "TypeDescriptor")?, saved[0]);
-    // General lookup outside assessment retains its existing staged-first behavior.
-    assert!(matches!(
-        resolve_core_descriptor(&context, "TypeDescriptor"),
-        Err(HolonError::DuplicateError(..))
-    ));
-    Ok(())
-}
-
-#[test]
-fn distinct_same_key_anchor_creates_are_ambiguous() -> Result<(), HolonError> {
-    let context = build_context();
-    for _ in 0..2 {
-        context.mutation().stage_new_holon(new_test_holon(&context, "anchor")?)?;
-    }
-    assert!(matches!(
-        resolve_assessment_anchor(&context, "anchor"),
-        Err(HolonError::DuplicateError(..))
-    ));
     Ok(())
 }
 
@@ -237,14 +187,6 @@ fn universal_contract_uses_explicit_meta_type_with_split_bootstrap_and_successor
     let unrelated = new_test_holon(&context, "unrelated")?.into();
     assert!(!contract.enforce_minimum(&descriptor, true, &unrelated)?);
     assert!(contract.enforce_minimum(&descriptor, true, &member.into())?);
-    assert!(matches!(
-        resolve_assessment_anchor(&context, "TypeDescriptor")?,
-        HolonReference::Smart(_)
-    ));
-    assert!(matches!(
-        resolve_assessment_anchor(&context, "MetaTypeDescriptor.HolonType")?,
-        HolonReference::Staged(_)
-    ));
     Ok(())
 }
 

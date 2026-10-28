@@ -143,6 +143,35 @@ fn dump_error_holons_from_response(
     output
 }
 
+/// Describe the loader's validation diagnostics, which cover staged findings and
+/// Commit findings without a staged subject, so count mismatches name their causes.
+fn dump_validation_diagnostics(
+    state: &mut TestExecutionState,
+    response_reference: &TransientReference,
+) -> String {
+    let members = match response_reference.related_holons("HasDiagnostic") {
+        Ok(collection) => match collection.read() {
+            Ok(guard) => guard.get_members().clone(),
+            Err(_) => return "<failed to read HasDiagnostic collection>".into(),
+        },
+        Err(error) => return format!("<failed to read HasDiagnostic: {error:?}>"),
+    };
+    if members.is_empty() {
+        return "<no HasDiagnostic entries>".into();
+    }
+    let mut output = String::from("\n===== Loader Diagnostics (HasDiagnostic) =====\n");
+    for (index, diagnostic) in members.iter().enumerate() {
+        output.push_str(&format!("  --- diagnostic #{} ---\n", index + 1));
+        for line in dump_property_content(state, diagnostic).lines() {
+            output.push_str("    ");
+            output.push_str(line);
+            output.push('\n');
+        }
+    }
+    output.push_str("===== end Loader Diagnostics =====\n");
+    output
+}
+
 /// Execute the internal `LoadHolons` step via `TransactionContext::load_holons_and_commit`,
 /// then assert each response property on the returned response holon.
 pub async fn execute_load_holons_internal(
@@ -197,7 +226,13 @@ pub async fn execute_load_holons_internal(
         read_integer_property(&response_reference, CorePropertyTypeName::ValidationViolationCount)
             .expect("typed ValidationViolationCount on every loader response");
     if let Some(expected) = expect_validation_violation_count {
-        assert_eq!(violations, expected.0, "ValidationViolationCount");
+        if violations != expected.0 {
+            panic!(
+                "ValidationViolationCount: expected {}, found {violations}{}",
+                expected.0,
+                dump_validation_diagnostics(test_state, &response_reference)
+            );
+        }
     }
     if expect_status == ExpectedLoadStatus::Rejected {
         assert_eq!(actual_committed, 0, "rejected loader must not persist holons");

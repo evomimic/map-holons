@@ -237,14 +237,14 @@ fn committed_nursery_claims_cover_a_missing_saved_key_index_entry() -> Result<()
 #[test]
 fn descriptor_key_failure_blocks_only_explicit_new_definition_consumers() -> Result<(), HolonError>
 {
-    let mut f = super::required_anchors::described_anchor_fixture()?;
+    let mut f = super::core_successors::described_core_fixture()?;
     for (name, parent) in [
         ("LocalString", "StringValueType.ValueType"),
         ("DependentProperty", "PropertyType.TypeDescriptor"),
     ] {
         f.node(name)?.with_property_value("DefinesInstanceTypeKind", false)?;
         f.link(name, CoreRelationshipTypeName::Extends, parent)?;
-        f.link(name, CoreRelationshipTypeName::ComponentOf, "AnchorOwner")?;
+        f.link(name, CoreRelationshipTypeName::ComponentOf, "CoreOwner")?;
         if name == "DependentProperty" {
             f.link(name, CoreRelationshipTypeName::ValueType, "LocalString")?;
         }

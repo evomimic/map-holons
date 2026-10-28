@@ -22,7 +22,6 @@ mod handlers;
 mod key_evidence;
 pub use key_evidence::{KeyClaim, KeyEvidence};
 mod outcomes;
-mod prospective;
 mod registries;
 mod report;
 mod schema_rules;
@@ -39,7 +38,6 @@ pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
 pub use constraint_declarations::ConstraintDeclarationAssessment;
 pub use contexts::ValueValidationContext;
 pub use descriptor_rules::DescriptorRuleProducts;
-pub use prospective::{resolve_validation_anchor, AnchorResolutionError};
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
     StaticRuleHandler, ValidationInvocation, ValidationRuleKey,

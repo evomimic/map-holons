@@ -33,8 +33,8 @@ fn all_fixtures_author_without_a_conductor() {
     commit_schema_fixture::commit_schema_cycle_fixture().unwrap();
     commit_schema_fixture::commit_schema_successor_membership_fixture().unwrap();
     commit_sibling_fixture::commit_book_title_exact_references_fixture().unwrap();
-    commit_schema_fixture::commit_required_anchor_update_fixture().unwrap();
-    commit_schema_fixture::loader_required_anchor_update_fixture().unwrap();
+    commit_schema_fixture::commit_core_successor_fixture().unwrap();
+    commit_schema_fixture::loader_core_successor_fixture().unwrap();
     commit_strict_contract_fixture::commit_strict_contract_fixture().unwrap();
     commit_validation_fixture::commit_validation_fixture().unwrap();
     attachment_defaults_fixture::attachment_defaults_fixture().unwrap();

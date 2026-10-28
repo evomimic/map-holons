@@ -46,7 +46,7 @@ pub use constraint_applicability::{
 };
 pub use constraint_contributions::ConstraintContributions;
 pub use contract_contributions::ContractContributions;
-pub use core_descriptor_lookup::{resolve_assessment_anchor, resolve_core_descriptor};
+pub use core_descriptor_lookup::resolve_core_descriptor;
 pub use core_roles::{extends_role, has_role};
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
