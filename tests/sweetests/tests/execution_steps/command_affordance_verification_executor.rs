@@ -12,8 +12,8 @@
 //! PR4a, and PR4b.
 
 use holons_core::descriptors::{
-    CommandDescriptor, Descriptor, HolonDescriptor, HolonSpaceDescriptor, RelationshipDescriptor,
-    TransactionDescriptor,
+    CommandDescriptor, Descriptor, EffectiveHolonDescriptor, HolonDescriptor, HolonSpaceDescriptor,
+    RelationshipDescriptor, TransactionDescriptor,
 };
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{HOLON_SPACE_TYPE_KEY, SCHEMA_TYPE_KEY, TRANSACTION_TYPE_KEY};
@@ -208,12 +208,17 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     let holon_type_descriptor =
         HolonDescriptor::from_holon(find_holon_by_key(&holons, "HolonType.TypeDescriptor"));
     assert_command_set_eq(
-        command_names(holon_type_descriptor.afforded_commands()),
+        command_names(
+            EffectiveHolonDescriptor::acquire(holon_type_descriptor.holon().clone())
+                .expect("prepared Holon schema")
+                .afforded_commands(),
+        ),
         HOLON_TYPE_AFFORDED_COMMANDS,
         "HolonType should afford exactly the PR4 holon-scoped commands",
     );
     assert_eq!(
-        holon_type_descriptor
+        EffectiveHolonDescriptor::acquire(holon_type_descriptor.holon().clone())
+            .expect("prepared Holon schema")
             .get_command_by_name(CoreCommandTypeName::GetKey)
             .expect("GetKey lookup")
             .command_name()
@@ -221,7 +226,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         CoreCommandTypeName::GetKey.as_command_name()
     );
     assert!(matches!(
-        holon_type_descriptor.get_command_by_name(MapString("NonexistentCommand".to_string())),
+        EffectiveHolonDescriptor::acquire(holon_type_descriptor.holon().clone()).expect("prepared Holon schema").get_command_by_name(MapString("NonexistentCommand".to_string())),
         Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
             if kind == "command" && name == "NonexistentCommand"
     ));
@@ -230,7 +235,11 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     let schema_type_descriptor =
         HolonDescriptor::from_holon(find_holon_by_key(&holons, SCHEMA_TYPE_KEY));
     assert_command_set_eq(
-        command_names(schema_type_descriptor.afforded_commands()),
+        command_names(
+            EffectiveHolonDescriptor::acquire(schema_type_descriptor.holon().clone())
+                .expect("prepared Holon schema")
+                .afforded_commands(),
+        ),
         HOLON_TYPE_AFFORDED_COMMANDS,
         "Schema.HolonType should inherit HolonType's command affordances",
     );
@@ -241,7 +250,11 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     let mut holon_space_commands: Vec<CoreCommandTypeName> = HOLON_TYPE_AFFORDED_COMMANDS.to_vec();
     holon_space_commands.push(CoreCommandTypeName::BeginTransaction);
     assert_command_set_eq(
-        command_names(holon_space_type_descriptor.afforded_commands()),
+        command_names(
+            EffectiveHolonDescriptor::acquire(holon_space_type_descriptor.holon().clone())
+                .expect("prepared Holon schema")
+                .afforded_commands(),
+        ),
         &holon_space_commands,
         "HolonSpace should afford BeginTransaction and inherit HolonType commands",
     );

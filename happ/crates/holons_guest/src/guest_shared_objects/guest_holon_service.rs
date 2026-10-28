@@ -369,11 +369,11 @@ fn smartlink_reference_properties(
 }
 
 impl HolonServiceApi for GuestHolonService {
-    fn construct_effective_descriptor_internal(
+    fn construct_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
         target: HolonReference,
-    ) -> Result<holons_core::descriptors::EffectiveDescriptor, HolonError> {
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
         let profile = cfg!(feature = "descriptor-performance-profiling");
         let before = if profile {
             crate::persistence_layer::smartlink::relationship_read_metrics()
@@ -388,13 +388,14 @@ impl HolonServiceApi for GuestHolonService {
         #[cfg(feature = "descriptor-performance-profiling")]
         let construction_finished;
         #[cfg(not(feature = "descriptor-performance-profiling"))]
-        let result = holons_core::descriptors::construct_effective_descriptor(context, target);
+        let result =
+            holons_core::descriptors::construct_effective_holon_descriptor(context, target);
         #[cfg(feature = "descriptor-performance-profiling")]
         let result = {
             let mut previous_time = started;
             let mut previous_metrics = before;
             let mut details = Vec::new();
-            let result = holons_core::descriptors::effective_descriptor::profile_effective_descriptor_construction(
+            let result = holons_core::descriptors::effective_holon_descriptor::profile_effective_holon_descriptor_construction(
                 context, target,
                 |phase, collection| {
                     let now = sys_time().ok();
@@ -762,7 +763,26 @@ impl GuestHolonService {
             };
         if status != "Complete" {
             let message = if status == "Rejected" {
-                "Core Schema bootstrap commit was rejected by semantic validation; inspect staged validation findings".to_string()
+                let mut findings = Vec::new();
+                for reference in staged_references {
+                    for finding in reference.validation_findings()? {
+                        findings.push(format!(
+                            "{}: {:?}",
+                            reference.key()?.map(|key| key.0).unwrap_or_default(),
+                            finding
+                        ));
+                        if findings.len() == 8 {
+                            break;
+                        }
+                    }
+                    if findings.len() == 8 {
+                        break;
+                    }
+                }
+                format!(
+                    "Core Schema bootstrap commit was rejected by semantic validation: {}",
+                    findings.join("; ")
+                )
             } else {
                 format!("Core Schema bootstrap commit did not complete (status: {status})")
             };

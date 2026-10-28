@@ -16,10 +16,10 @@ use super::{TransactionContext, TxId};
 /// later resolve its `TxId` to resume, mutate, commit, or otherwise coordinate
 /// that specific transaction. Public transactions are registered here.
 ///
-/// A **private** transaction is a stack-bounded execution frame. Its context
-/// is passed directly through a bounded operation and its `TxId` is only a
-/// correlation/diagnostic value, not a lookup capability. Private
-/// transactions are intentionally absent from this registry.
+/// A **private** transaction is either a bounded execution frame or a restricted
+/// Session-owned derived-state carrier. Its owner supplies its context directly;
+/// its `TxId` is not a public lookup capability. Private transactions are absent
+/// from this registry.
 ///
 /// The manager does not own either transaction's lifetime. The public registry
 /// stores only `Weak<TransactionContext>`; callers retain the owning `Arc`.
@@ -117,6 +117,15 @@ impl TransactionManager {
     ) -> Result<Arc<TransactionContext>, HolonError> {
         let tx_id = self.id_generator.next_id();
         Ok(TransactionContext::new(tx_id, space_manager, true))
+    }
+
+    /// Opens a restricted derived-state carrier. The Session owns its lifetime;
+    /// it is intentionally absent from the public transaction registry.
+    pub fn open_session_derived_transaction(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        self.open_private_restricted_cache_read_transaction(space_manager)
     }
 
     /// Opens the guest half of a private restricted cache-read transaction

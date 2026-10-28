@@ -23,7 +23,15 @@ impl TransientReferenceWire {
 
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<TransientReference, HolonError> {
-        let context_handle = TransactionContextHandle::bind(self.tx_id(), context)?;
+        let owner = if self.tx_id() != context.tx_id() {
+            context
+                .descriptor_registry()
+                .and_then(|registry| registry.reference_owner(self.tx_id(), &self.id))
+        } else {
+            None
+        };
+        let context_handle =
+            TransactionContextHandle::bind(self.tx_id(), owner.as_ref().unwrap_or(context))?;
         Ok(TransientReference::from_temporary_id(context_handle, &self.id))
     }
 

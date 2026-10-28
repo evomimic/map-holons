@@ -54,9 +54,9 @@ impl DanceImplementation {
         let implementation_name = self.implementation_name()?;
 
         if implementation_name
-            == CoreDanceImplementationName::ConstructEffectiveDescriptor.as_command_name().0
+            == CoreDanceImplementationName::ConstructEffectiveHolonDescriptor.as_command_name().0
         {
-            return implementations::construct_effective_descriptor::invoke(
+            return implementations::construct_effective_holon_descriptor::invoke(
                 context,
                 bound_invocation,
             )

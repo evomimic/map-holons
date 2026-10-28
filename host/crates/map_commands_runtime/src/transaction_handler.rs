@@ -56,9 +56,6 @@ pub async fn handle_transaction(
             // command result family.
             Ok(MapResult::DanceResponse(response))
         }
-        TransactionAction::ConstructEffectiveDescriptor { target } => Ok(MapResult::Reference(
-            context.construct_effective_descriptor(target)?.holon().clone(),
-        )),
         TransactionAction::DanceV2 { invocation } => {
             let is_load = invocation.dance_name()?.to_string() == "LoadHolons";
             let mut completion = if is_load {

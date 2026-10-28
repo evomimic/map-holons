@@ -35,6 +35,7 @@
 //! Breadcrumb segments are prepended while the recursion unwinds, so successful
 //! comparisons allocate no path segments.
 //!
+use crate::descriptors::Descriptor;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, RwLock};
 
@@ -291,7 +292,23 @@ fn definitional_relationships(
     match reference.holon_descriptor() {
         Ok(descriptor) => {
             let mut relationships = BTreeMap::new();
-            for descriptor in descriptor.instance_relationships()? {
+            // Comparison also runs inside Commit validation and schema assembly.
+            // Consume a prepared view when present without recursively constructing one.
+            let declared = match crate::descriptors::EffectiveHolonDescriptor::find_prepared(
+                descriptor.holon(),
+            )? {
+                Some(prepared) => prepared
+                    .instance_relationships()?
+                    .into_iter()
+                    .map(|member| {
+                        crate::descriptors::RelationshipDescriptor::from_holon(
+                            member.holon().clone(),
+                        )
+                    })
+                    .collect(),
+                None => descriptor.instance_relationships()?,
+            };
+            for descriptor in declared {
                 if descriptor.is_definitional()? {
                     let name = descriptor.base_relationship_name()?;
                     relationships.insert(

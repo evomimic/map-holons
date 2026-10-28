@@ -7,27 +7,28 @@ schema "MAP Descriptor Runtime Schema-v0.1.0" {
   }
 }
 
-holon EffectiveDescriptor.HolonType {
+holon EffectiveHolonDescriptor.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   instance_keyrule NoneRule.KeyRuleType
   header {
     description: "Transaction-scoped derived schema result."
-    display_name: "EffectiveDescriptor"
-    plural: "EffectiveDescriptors"
+    display_name: "EffectiveHolonDescriptor"
+    plural: "EffectiveHolonDescriptors"
   }
   relationships {
+    InstanceProperties -> PreparedSchema.PropertyType
     InstanceRelationships -> [
-      (EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor),
-      (EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor),
-      (EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType),
-      (EffectiveDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor),
-      (EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType),
-      (EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType),
-      (EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType),
-      (EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType),
-      (EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor),
-      (EffectiveDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)
+      (EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType),
+      (EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)
     ]
   }
 }
@@ -63,10 +64,10 @@ property ContributionPosition.PropertyType {
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target HolonType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
@@ -74,7 +75,7 @@ def relationship (EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonTyp
   deletion_semantic Block
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
-    HasInverse -> (HolonType.TypeDescriptor)-[EffectiveDescriptorFor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (HolonType.TypeDescriptor)-[EffectiveHolonDescriptorFor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship DescribedHolonType."
@@ -83,11 +84,11 @@ def relationship (EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonTyp
   }
 }
 
-inverse relationship (HolonType.TypeDescriptor)-[EffectiveDescriptorFor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (HolonType.TypeDescriptor)-[EffectiveHolonDescriptorFor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -98,15 +99,15 @@ inverse relationship (HolonType.TypeDescriptor)-[EffectiveDescriptorFor]->(Effec
   }
   header {
     description: "Inverse discovery for DescribedHolonType."
-    display_name: "EffectiveDescriptorFor"
-    plural: "EffectiveDescriptorFor"
+    display_name: "EffectiveHolonDescriptorFor"
+    plural: "EffectiveHolonDescriptorFor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target PropertyType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
@@ -114,7 +115,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (PropertyType.TypeDescriptor)-[PropertyInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (PropertyType.TypeDescriptor)-[PropertyInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveInstanceProperties."
@@ -123,11 +124,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->
   }
 }
 
-inverse relationship (PropertyType.TypeDescriptor)-[PropertyInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (PropertyType.TypeDescriptor)-[PropertyInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source PropertyType.TypeDescriptor
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -138,15 +139,15 @@ inverse relationship (PropertyType.TypeDescriptor)-[PropertyInEffectiveDescripto
   }
   header {
     description: "Inverse discovery for EffectiveInstanceProperties."
-    display_name: "PropertyInEffectiveDescriptor"
-    plural: "PropertyInEffectiveDescriptor"
+    display_name: "PropertyInEffectiveHolonDescriptor"
+    plural: "PropertyInEffectiveHolonDescriptor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target DeclaredRelationshipType.RelationshipType
   TargetBinding Version
   IsOrdered false
@@ -154,7 +155,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveInstanceRelationships."
@@ -163,11 +164,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships
   }
 }
 
-inverse relationship (DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source DeclaredRelationshipType.RelationshipType
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -178,15 +179,15 @@ inverse relationship (DeclaredRelationshipType.RelationshipType)-[DeclarationInE
   }
   header {
     description: "Inverse discovery for EffectiveInstanceRelationships."
-    display_name: "DeclarationInEffectiveDescriptor"
-    plural: "DeclarationInEffectiveDescriptor"
+    display_name: "DeclarationInEffectiveHolonDescriptor"
+    plural: "DeclarationInEffectiveHolonDescriptor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target RelationshipType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
@@ -194,7 +195,7 @@ def relationship (EffectiveDescriptor.HolonType)-[NavigableRelationships]->(Rela
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (RelationshipType.TypeDescriptor)-[NavigableInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship NavigableRelationships."
@@ -203,11 +204,11 @@ def relationship (EffectiveDescriptor.HolonType)-[NavigableRelationships]->(Rela
   }
 }
 
-inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source RelationshipType.TypeDescriptor
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -218,15 +219,15 @@ inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveDesc
   }
   header {
     description: "Inverse discovery for NavigableRelationships."
-    display_name: "NavigableInEffectiveDescriptor"
-    plural: "NavigableInEffectiveDescriptor"
+    display_name: "NavigableInEffectiveHolonDescriptor"
+    plural: "NavigableInEffectiveHolonDescriptor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target ValidationRule.HolonType
   TargetBinding Version
   IsOrdered false
@@ -234,7 +235,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (ValidationRule.HolonType)-[ValidationRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (ValidationRule.HolonType)-[ValidationRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveValidationBindings."
@@ -243,11 +244,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->
   }
 }
 
-inverse relationship (ValidationRule.HolonType)-[ValidationRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (ValidationRule.HolonType)-[ValidationRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source ValidationRule.HolonType
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -258,15 +259,15 @@ inverse relationship (ValidationRule.HolonType)-[ValidationRuleInEffectiveDescri
   }
   header {
     description: "Inverse discovery for EffectiveValidationBindings."
-    display_name: "ValidationRuleInEffectiveDescriptor"
-    plural: "ValidationRuleInEffectiveDescriptor"
+    display_name: "ValidationRuleInEffectiveHolonDescriptor"
+    plural: "ValidationRuleInEffectiveHolonDescriptor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target Constraint.HolonType
   TargetBinding Version
   IsOrdered false
@@ -274,7 +275,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constr
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (Constraint.HolonType)-[ConstraintInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (Constraint.HolonType)-[ConstraintInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveConstraints."
@@ -283,11 +284,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constr
   }
 }
 
-inverse relationship (Constraint.HolonType)-[ConstraintInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (Constraint.HolonType)-[ConstraintInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source Constraint.HolonType
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -298,15 +299,15 @@ inverse relationship (Constraint.HolonType)-[ConstraintInEffectiveDescriptor]->(
   }
   header {
     description: "Inverse discovery for EffectiveConstraints."
-    display_name: "ConstraintInEffectiveDescriptor"
-    plural: "ConstraintInEffectiveDescriptor"
+    display_name: "ConstraintInEffectiveHolonDescriptor"
+    plural: "ConstraintInEffectiveHolonDescriptor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target HolonType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
@@ -314,7 +315,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(Ho
   deletion_semantic Block
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
-    HasInverse -> (HolonType.TypeDescriptor)-[KeyRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (HolonType.TypeDescriptor)-[KeyRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveInstanceKeyRule."
@@ -323,11 +324,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(Ho
   }
 }
 
-inverse relationship (HolonType.TypeDescriptor)-[KeyRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (HolonType.TypeDescriptor)-[KeyRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -338,15 +339,15 @@ inverse relationship (HolonType.TypeDescriptor)-[KeyRuleInEffectiveDescriptor]->
   }
   header {
     description: "Inverse discovery for EffectiveInstanceKeyRule."
-    display_name: "KeyRuleInEffectiveDescriptor"
-    plural: "KeyRuleInEffectiveDescriptor"
+    display_name: "KeyRuleInEffectiveHolonDescriptor"
+    plural: "KeyRuleInEffectiveHolonDescriptor"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target EffectiveSchemaContribution.HolonType
   TargetBinding Version
   IsOrdered false
@@ -354,7 +355,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveContributions]->(Effe
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveContributions."
@@ -363,11 +364,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveContributions]->(Effe
   }
 }
 
-inverse relationship (EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source EffectiveSchemaContribution.HolonType
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -378,8 +379,8 @@ inverse relationship (EffectiveSchemaContribution.HolonType)-[ContributionOfEffe
   }
   header {
     description: "Inverse discovery for EffectiveContributions."
-    display_name: "ContributionOfEffectiveDescriptor"
-    plural: "ContributionOfEffectiveDescriptor"
+    display_name: "ContributionOfEffectiveHolonDescriptor"
+    plural: "ContributionOfEffectiveHolonDescriptor"
   }
 }
 
@@ -503,10 +504,10 @@ inverse relationship (HolonType.TypeDescriptor)-[DeclarerOfEffectiveContribution
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target DanceType.HolonType
   TargetBinding Version
   IsOrdered false
@@ -514,7 +515,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(Dance
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (DanceType.HolonType)-[DanceInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (DanceType.HolonType)-[DanceInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveAffordsDance."
@@ -523,11 +524,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(Dance
   }
 }
 
-inverse relationship (DanceType.HolonType)-[DanceInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (DanceType.HolonType)-[DanceInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -538,68 +539,68 @@ inverse relationship (DanceType.HolonType)-[DanceInEffectiveDescriptor]->(Effect
   }
   header {
     description: "Inverse discovery for EffectiveAffordsDance."
-    display_name: "DanceInEffectiveDescriptor"
-    plural: "DanceInEffectiveDescriptor"
+    display_name: "DanceInEffectiveHolonDescriptor"
+    plural: "DanceInEffectiveHolonDescriptor"
   }
 }
 
-holon ConstructEffectiveDescriptorRequest.HolonType {
+holon ConstructEffectiveHolonDescriptorRequest.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   instance_keyrule NoneRule.KeyRuleType
   header {
     description: "Request for the resolved schema of exactly one HolonType."
     display_name: "Construct Effective Descriptor Request"
-    plural: "ConstructEffectiveDescriptorRequests"
+    plural: "ConstructEffectiveHolonDescriptorRequests"
   }
   relationships {
-    InstanceRelationships -> (ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)
+    InstanceRelationships -> (ConstructEffectiveHolonDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)
   }
 }
 
-holon ConstructEffectiveDescriptorResponse.DanceResponseType {
+holon ConstructEffectiveHolonDescriptorResponse.DanceResponseType {
   type MetaDanceResponseType.MetaHolonType
   extends DanceResponseType.HolonType
   relationships {
-    ResponseBody -> EffectiveDescriptor.HolonType
+    ResponseBody -> EffectiveHolonDescriptor.HolonType
     InstanceRelationships -> (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)
   }
   header {
     description: "Response carrying a transient resolved schema graph."
     display_name: "Construct Effective Descriptor Response"
-    plural: "ConstructEffectiveDescriptorResponses"
+    plural: "ConstructEffectiveHolonDescriptorResponses"
   }
 }
 
-holon ConstructEffectiveDescriptor.DanceType {
+holon ConstructEffectiveHolonDescriptor.DanceType {
   type MetaDanceType.MetaHolonType
   extends DanceType.HolonType
   RequiredExecutionContext SpaceAuthoritative
   DanceDescription "Constructs a transaction-scoped resolved schema without allocating contribution Holons."
   relationships {
-    RequestType -> ConstructEffectiveDescriptorRequest.HolonType
-    Response -> ConstructEffectiveDescriptorResponse.DanceResponseType
+    RequestType -> ConstructEffectiveHolonDescriptorRequest.HolonType
+    Response -> ConstructEffectiveHolonDescriptorResponse.DanceResponseType
     DanceAffordedBy -> HolonSpace.HolonType
   }
   header {
     description: "Resolve the complete schema of a HolonType once in the authoritative Space."
     display_name: "Construct Effective Descriptor"
-    plural: "ConstructEffectiveDescriptorDances"
+    plural: "ConstructEffectiveHolonDescriptorDances"
   }
 }
 
-instance ConstructEffectiveDescriptor.DanceImplementation {
+instance ConstructEffectiveHolonDescriptor.DanceImplementation {
   type DanceImplementation.HolonType
-  ImplementationName "ConstructEffectiveDescriptor"
+  ImplementationName "ConstructEffectiveHolonDescriptor"
   relationships {
-    ForDance -> ConstructEffectiveDescriptor.DanceType
+    ForDance -> ConstructEffectiveHolonDescriptor.DanceType
   }
 }
 
-def relationship (ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor) {
+def relationship (ConstructEffectiveHolonDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source ConstructEffectiveDescriptorRequest.HolonType
+  source ConstructEffectiveHolonDescriptorRequest.HolonType
   target HolonType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
@@ -607,7 +608,7 @@ def relationship (ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolon
   deletion_semantic Block
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
-    HasInverse -> (HolonType.TypeDescriptor)-[RequestedByEffectiveDescriptorRequest]->(ConstructEffectiveDescriptorRequest.HolonType)
+    HasInverse -> (HolonType.TypeDescriptor)-[RequestedByEffectiveHolonDescriptorRequest]->(ConstructEffectiveHolonDescriptorRequest.HolonType)
   }
   header {
     description: "Derived schema result relationship RequestedHolonType."
@@ -616,11 +617,11 @@ def relationship (ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolon
   }
 }
 
-inverse relationship (HolonType.TypeDescriptor)-[RequestedByEffectiveDescriptorRequest]->(ConstructEffectiveDescriptorRequest.HolonType) {
+inverse relationship (HolonType.TypeDescriptor)-[RequestedByEffectiveHolonDescriptorRequest]->(ConstructEffectiveHolonDescriptorRequest.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
-  target ConstructEffectiveDescriptorRequest.HolonType
+  target ConstructEffectiveHolonDescriptorRequest.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -631,15 +632,15 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestedByEffectiveDescriptorR
   }
   header {
     description: "Inverse discovery for RequestedHolonType."
-    display_name: "RequestedByEffectiveDescriptorRequest"
-    plural: "RequestedByEffectiveDescriptorRequest"
+    display_name: "RequestedByEffectiveHolonDescriptorRequest"
+    plural: "RequestedByEffectiveHolonDescriptorRequest"
   }
 }
 
-def relationship (EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
-  source EffectiveDescriptor.HolonType
+  source EffectiveHolonDescriptor.HolonType
   target CommandType.HolonType
   TargetBinding Version
   IsOrdered false
@@ -647,7 +648,7 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(Com
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (CommandType.HolonType)-[CommandInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)
+    HasInverse -> (CommandType.HolonType)-[CommandInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
     description: "Derived schema result relationship EffectiveAffordsCommand."
@@ -656,11 +657,11 @@ def relationship (EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(Com
   }
 }
 
-inverse relationship (CommandType.HolonType)-[CommandInEffectiveDescriptor]->(EffectiveDescriptor.HolonType) {
+inverse relationship (CommandType.HolonType)-[CommandInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source CommandType.HolonType
-  target EffectiveDescriptor.HolonType
+  target EffectiveHolonDescriptor.HolonType
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
@@ -671,7 +672,66 @@ inverse relationship (CommandType.HolonType)-[CommandInEffectiveDescriptor]->(Ef
   }
   header {
     description: "Inverse discovery for EffectiveAffordsCommand."
-    display_name: "CommandInEffectiveDescriptor"
-    plural: "CommandInEffectiveDescriptor"
+    display_name: "CommandInEffectiveHolonDescriptor"
+    plural: "CommandInEffectiveHolonDescriptor"
+  }
+}
+
+property PreparedSchema.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired false
+  header {
+    description: "Compact prepared policy and declaring-origin metadata. Runtime input, never assessment outcomes."
+    display_name: "Prepared Schema"
+    plural: "Prepared Schemas"
+  }
+}
+
+holon EffectiveHolonDescriptorRegistry.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  instance_keyrule NoneRule.KeyRuleType
+  header {
+    description: "Agent-session selected saved HolonType projections."
+    display_name: "Effective Holon Descriptor Registry"
+    plural: "Effective Holon Descriptor Registries"
+  }
+  relationships {
+    InstanceRelationships -> (EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType)
+  }
+}
+
+def relationship (EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source EffectiveHolonDescriptorRegistry.HolonType
+  target EffectiveHolonDescriptor.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  header {
+    display_name: "Prepared Descriptors"
+    description: "Session-selected effective Holon descriptors, copied into Commit on demand."
+  }
+  relationships {
+    HasInverse -> (EffectiveHolonDescriptor.HolonType)-[DescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)
+  }
+}
+
+inverse relationship (EffectiveHolonDescriptor.HolonType)-[DescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source EffectiveHolonDescriptor.HolonType
+  target EffectiveHolonDescriptorRegistry.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  header {
+    display_name: "Descriptor Registry For"
+    description: "Registry selecting this prepared Holon descriptor."
   }
 }

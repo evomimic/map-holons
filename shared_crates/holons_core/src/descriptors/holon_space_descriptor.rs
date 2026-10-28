@@ -21,9 +21,14 @@ impl HolonSpaceDescriptor {
 
     /// Returns the transaction command-scope model declared for HolonSpace instances.
     pub fn transaction_model(&self) -> Result<TransactionDescriptor, HolonError> {
-        let relationship = HolonDescriptor::from_holon(self.holon.clone())
-            .get_relationship_by_name(CoreRelationshipTypeName::AffordsTransactionModel)?
-            .try_into_declared_relationship_descriptor()?;
+        // Command-scope binding precedes construction on bootstrap requests.
+        let relationship = match super::EffectiveHolonDescriptor::find_prepared(&self.holon)? {
+            Some(prepared) => prepared
+                .get_relationship_by_name(CoreRelationshipTypeName::AffordsTransactionModel)?,
+            None => HolonDescriptor::from_holon(self.holon.clone())
+                .get_relationship_by_name(CoreRelationshipTypeName::AffordsTransactionModel)?,
+        }
+        .try_into_declared_relationship_descriptor()?;
         let transaction_model = relationship.target_type()?;
         Ok(TransactionDescriptor::from_holon(transaction_model.holon().clone()))
     }

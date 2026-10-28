@@ -62,6 +62,13 @@ pub enum ReadableHolonActionWire {
     },
 
     GetHolonDescriptor,
+    GetEffectiveDescriptor,
+    GetEffectiveDescriptorForType,
+    GetReferenceIdentity,
+    GetEffectiveMember {
+        collection: RelationshipName,
+        name: base_types::MapString,
+    },
 
     GetAvailableProperties,
 
@@ -112,6 +119,20 @@ impl HolonCommandWire {
     /// `RuntimeSession.active_transactions` by the caller).
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<HolonCommand, HolonError> {
         let target = self.target.bind(context)?;
+        if let Some(registry) = context.descriptor_registry() {
+            if registry.owned_context(context.tx_id()).is_some() {
+                if let holons_core::HolonReference::Transient(reference) = &target {
+                    if registry
+                        .reference_owner(reference.tx_id(), &reference.temporary_id())
+                        .is_none()
+                    {
+                        return Err(HolonError::InvalidParameter(
+                            "Session ingress requires a published descriptor handle".into(),
+                        ));
+                    }
+                }
+            }
+        }
         let action = self.action.bind(context)?;
         Ok(HolonCommand { context: Arc::clone(context), target, action })
     }
@@ -159,6 +180,18 @@ impl ReadableHolonActionWire {
                         holons_core::RelationshipReadHint::SchemaDefault
                     },
                 }
+            }
+            ReadableHolonActionWire::GetReferenceIdentity => {
+                ReadableHolonAction::GetReferenceIdentity
+            }
+            ReadableHolonActionWire::GetEffectiveMember { collection, name } => {
+                ReadableHolonAction::GetEffectiveMember { collection, name }
+            }
+            ReadableHolonActionWire::GetEffectiveDescriptorForType => {
+                ReadableHolonAction::GetEffectiveDescriptorForType
+            }
+            ReadableHolonActionWire::GetEffectiveDescriptor => {
+                ReadableHolonAction::GetEffectiveDescriptor
             }
             ReadableHolonActionWire::GetHolonDescriptor => ReadableHolonAction::GetHolonDescriptor,
             ReadableHolonActionWire::GetAvailableProperties => {

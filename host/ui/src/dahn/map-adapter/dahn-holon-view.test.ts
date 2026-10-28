@@ -4,7 +4,7 @@ import type { HolonReference } from '../deps';
 import { DahnHolonView } from './dahn-holon-view';
 
 describe('DahnHolonView', () => {
-  it('shares one resolved schema snapshot while preserving live instance reads', async () => {
+  it('acquires schema through the Session for each consumer while preserving live instance reads', async () => {
     const descriptor = {};
     const properties = [{}];
     const relationships = [{ descriptor: {}, direction: 'declared' as const }];
@@ -39,12 +39,11 @@ describe('DahnHolonView', () => {
     expect(reference.propertyValue).toHaveBeenCalledWith('Title');
     expect(reference.holonDescriptor).toHaveBeenCalledOnce();
     expect(reference.availableProperties).not.toHaveBeenCalled();
-    expect(reference.effectiveDescriptor).toHaveBeenCalledOnce();
+    expect(reference.effectiveDescriptor).toHaveBeenCalledTimes(3);
     expect(snapshot.instanceProperties).toHaveBeenCalledOnce();
     expect(reference.availableRelationships).toHaveBeenCalledWith(snapshot);
-    view.reconstructSchema();
     await view.availableProperties();
-    expect(reference.effectiveDescriptor).toHaveBeenCalledTimes(2);
+    expect(reference.effectiveDescriptor).toHaveBeenCalledTimes(4);
     expect(reference.availableRelationships).toHaveBeenCalledOnce();
     expect(reference.relatedHolons).toHaveBeenCalledWith('Contains');
     expect('withPropertyValue' in view).toBe(false);

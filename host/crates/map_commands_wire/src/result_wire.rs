@@ -2,7 +2,7 @@ use base_types::BaseValue;
 use core_types::HolonId;
 use holons_boundary::{DanceResponseWire, HolonCollectionWire, HolonReferenceWire};
 use holons_core::core_shared_objects::transactions::TxId;
-use holons_core::descriptors::{Descriptor, RelationshipDirection};
+use holons_core::descriptors::Descriptor;
 use serde::{Deserialize, Serialize};
 
 use map_commands_contract::MapResult;
@@ -82,23 +82,6 @@ pub struct VisualizerSelectionWire {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct QualifiedRelationshipWire {
     pub descriptor: HolonReferenceWire,
-    pub direction: RelationshipDirectionWire,
-}
-
-/// Direction of a relationship descriptor relative to its declared edge.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum RelationshipDirectionWire {
-    Declared,
-    Inverse,
-}
-
-impl From<RelationshipDirection> for RelationshipDirectionWire {
-    fn from(direction: RelationshipDirection) -> Self {
-        match direction {
-            RelationshipDirection::Declared => Self::Declared,
-            RelationshipDirection::Inverse => Self::Inverse,
-        }
-    }
 }
 
 impl From<MapResult> for MapResultWire {
@@ -165,7 +148,6 @@ impl From<MapResult> for MapResultWire {
                         .iter()
                         .map(|relationship| QualifiedRelationshipWire {
                             descriptor: HolonReferenceWire::from(relationship.descriptor.holon()),
-                            direction: relationship.direction.into(),
                         })
                         .collect(),
                 )
@@ -185,7 +167,7 @@ impl From<MapResult> for MapResultWire {
 
 #[cfg(test)]
 mod tests {
-    use super::{QualifiedRelationshipWire, RelationshipDirectionWire};
+    use super::QualifiedRelationshipWire;
     use holons_boundary::{HolonReferenceWire, TransientReferenceWire};
     use serde_json::{from_str, to_string};
 
@@ -207,14 +189,13 @@ mod tests {
     }
 
     #[test]
-    fn qualified_relationship_wire_round_trips_direction_with_its_descriptor() {
+    fn outbound_relationship_wire_round_trips_its_descriptor_identity() {
         let relationship = QualifiedRelationshipWire {
             descriptor: HolonReferenceWire::Transient(TransientReferenceWire::new(
                 holons_core::core_shared_objects::transactions::TxId::from_str("7")
                     .expect("valid transaction id"),
                 core_types::TemporaryId(uuid::Uuid::nil()),
             )),
-            direction: RelationshipDirectionWire::Inverse,
         };
 
         let serialized = to_string(&relationship).expect("serialize qualified relationship");

@@ -25,12 +25,12 @@
       ]
     },
     {
-      "key": "EffectiveDescriptor.HolonType",
+      "key": "EffectiveHolonDescriptor.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "EffectiveDescriptor",
-        "TypeNamePlural": "EffectiveDescriptors",
-        "DisplayName": "EffectiveDescriptor",
+        "TypeName": "EffectiveHolonDescriptor",
+        "TypeNamePlural": "EffectiveHolonDescriptors",
+        "DisplayName": "EffectiveHolonDescriptor",
         "Description": "Transaction-scoped derived schema result."
       },
       "relationships": [
@@ -59,37 +59,45 @@
           ]
         },
         {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "PreparedSchema.PropertyType"
+            }
+          ]
+        },
+        {
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor)"
             },
             {
-              "$ref": "(EffectiveDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)"
             }
           ]
         }
@@ -191,7 +199,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "DescribedHolonType",
@@ -225,7 +233,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -241,7 +249,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(HolonType.TypeDescriptor)-[EffectiveDescriptorFor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(HolonType.TypeDescriptor)-[EffectiveHolonDescriptorFor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -256,12 +264,12 @@
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[EffectiveDescriptorFor]->(EffectiveDescriptor.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[EffectiveHolonDescriptorFor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "EffectiveDescriptorFor",
-        "TypeNamePlural": "EffectiveDescriptorFor",
-        "DisplayName": "EffectiveDescriptorFor",
+        "TypeName": "EffectiveHolonDescriptorFor",
+        "TypeNamePlural": "EffectiveHolonDescriptorFor",
+        "DisplayName": "EffectiveHolonDescriptorFor",
         "Description": "Inverse discovery for DescribedHolonType.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -298,7 +306,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -313,7 +321,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveInstanceProperties",
@@ -347,7 +355,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -363,7 +371,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(PropertyType.TypeDescriptor)-[PropertyInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(PropertyType.TypeDescriptor)-[PropertyInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -378,12 +386,12 @@
       ]
     },
     {
-      "key": "(PropertyType.TypeDescriptor)-[PropertyInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(PropertyType.TypeDescriptor)-[PropertyInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "PropertyInEffectiveDescriptor",
-        "TypeNamePlural": "PropertyInEffectiveDescriptor",
-        "DisplayName": "PropertyInEffectiveDescriptor",
+        "TypeName": "PropertyInEffectiveHolonDescriptor",
+        "TypeNamePlural": "PropertyInEffectiveHolonDescriptor",
+        "DisplayName": "PropertyInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveInstanceProperties.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -420,7 +428,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -435,7 +443,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveInstanceRelationships",
@@ -469,7 +477,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -485,7 +493,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -500,12 +508,12 @@
       ]
     },
     {
-      "key": "(DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "DeclarationInEffectiveDescriptor",
-        "TypeNamePlural": "DeclarationInEffectiveDescriptor",
-        "DisplayName": "DeclarationInEffectiveDescriptor",
+        "TypeName": "DeclarationInEffectiveHolonDescriptor",
+        "TypeNamePlural": "DeclarationInEffectiveHolonDescriptor",
+        "DisplayName": "DeclarationInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveInstanceRelationships.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -542,7 +550,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -557,7 +565,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "NavigableRelationships",
@@ -591,7 +599,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -607,7 +615,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -622,12 +630,12 @@
       ]
     },
     {
-      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "NavigableInEffectiveDescriptor",
-        "TypeNamePlural": "NavigableInEffectiveDescriptor",
-        "DisplayName": "NavigableInEffectiveDescriptor",
+        "TypeName": "NavigableInEffectiveHolonDescriptor",
+        "TypeNamePlural": "NavigableInEffectiveHolonDescriptor",
+        "DisplayName": "NavigableInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for NavigableRelationships.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -664,7 +672,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -679,7 +687,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveValidationBindings",
@@ -713,7 +721,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -729,7 +737,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(ValidationRule.HolonType)-[ValidationRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(ValidationRule.HolonType)-[ValidationRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -744,12 +752,12 @@
       ]
     },
     {
-      "key": "(ValidationRule.HolonType)-[ValidationRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(ValidationRule.HolonType)-[ValidationRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "ValidationRuleInEffectiveDescriptor",
-        "TypeNamePlural": "ValidationRuleInEffectiveDescriptor",
-        "DisplayName": "ValidationRuleInEffectiveDescriptor",
+        "TypeName": "ValidationRuleInEffectiveHolonDescriptor",
+        "TypeNamePlural": "ValidationRuleInEffectiveHolonDescriptor",
+        "DisplayName": "ValidationRuleInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveValidationBindings.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -786,7 +794,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -801,7 +809,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveConstraints",
@@ -835,7 +843,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -851,7 +859,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(Constraint.HolonType)-[ConstraintInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(Constraint.HolonType)-[ConstraintInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -866,12 +874,12 @@
       ]
     },
     {
-      "key": "(Constraint.HolonType)-[ConstraintInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(Constraint.HolonType)-[ConstraintInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "ConstraintInEffectiveDescriptor",
-        "TypeNamePlural": "ConstraintInEffectiveDescriptor",
-        "DisplayName": "ConstraintInEffectiveDescriptor",
+        "TypeName": "ConstraintInEffectiveHolonDescriptor",
+        "TypeNamePlural": "ConstraintInEffectiveHolonDescriptor",
+        "DisplayName": "ConstraintInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveConstraints.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -908,7 +916,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -923,7 +931,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveInstanceKeyRule",
@@ -957,7 +965,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -973,7 +981,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(HolonType.TypeDescriptor)-[KeyRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(HolonType.TypeDescriptor)-[KeyRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -988,12 +996,12 @@
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[KeyRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[KeyRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "KeyRuleInEffectiveDescriptor",
-        "TypeNamePlural": "KeyRuleInEffectiveDescriptor",
-        "DisplayName": "KeyRuleInEffectiveDescriptor",
+        "TypeName": "KeyRuleInEffectiveHolonDescriptor",
+        "TypeNamePlural": "KeyRuleInEffectiveHolonDescriptor",
+        "DisplayName": "KeyRuleInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveInstanceKeyRule.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -1030,7 +1038,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -1045,7 +1053,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveContributions",
@@ -1079,7 +1087,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -1095,7 +1103,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -1110,12 +1118,12 @@
       ]
     },
     {
-      "key": "(EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "ContributionOfEffectiveDescriptor",
-        "TypeNamePlural": "ContributionOfEffectiveDescriptor",
-        "DisplayName": "ContributionOfEffectiveDescriptor",
+        "TypeName": "ContributionOfEffectiveHolonDescriptor",
+        "TypeNamePlural": "ContributionOfEffectiveHolonDescriptor",
+        "DisplayName": "ContributionOfEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveContributions.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -1152,7 +1160,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -1533,7 +1541,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveAffordsDance",
@@ -1567,7 +1575,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -1583,7 +1591,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(DanceType.HolonType)-[DanceInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(DanceType.HolonType)-[DanceInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -1598,12 +1606,12 @@
       ]
     },
     {
-      "key": "(DanceType.HolonType)-[DanceInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(DanceType.HolonType)-[DanceInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "DanceInEffectiveDescriptor",
-        "TypeNamePlural": "DanceInEffectiveDescriptor",
-        "DisplayName": "DanceInEffectiveDescriptor",
+        "TypeName": "DanceInEffectiveHolonDescriptor",
+        "TypeNamePlural": "DanceInEffectiveHolonDescriptor",
+        "DisplayName": "DanceInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveAffordsDance.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -1640,7 +1648,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -1655,11 +1663,11 @@
       ]
     },
     {
-      "key": "ConstructEffectiveDescriptorRequest.HolonType",
+      "key": "ConstructEffectiveHolonDescriptorRequest.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "ConstructEffectiveDescriptorRequest",
-        "TypeNamePlural": "ConstructEffectiveDescriptorRequests",
+        "TypeName": "ConstructEffectiveHolonDescriptorRequest",
+        "TypeNamePlural": "ConstructEffectiveHolonDescriptorRequests",
         "DisplayName": "Construct Effective Descriptor Request",
         "Description": "Request for the resolved schema of exactly one HolonType."
       },
@@ -1692,18 +1700,18 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)"
+              "$ref": "(ConstructEffectiveHolonDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)"
             }
           ]
         }
       ]
     },
     {
-      "key": "ConstructEffectiveDescriptorResponse.DanceResponseType",
+      "key": "ConstructEffectiveHolonDescriptorResponse.DanceResponseType",
       "type": "MetaDanceResponseType.MetaHolonType",
       "properties": {
-        "TypeName": "ConstructEffectiveDescriptorResponse",
-        "TypeNamePlural": "ConstructEffectiveDescriptorResponses",
+        "TypeName": "ConstructEffectiveHolonDescriptorResponse",
+        "TypeNamePlural": "ConstructEffectiveHolonDescriptorResponses",
         "DisplayName": "Construct Effective Descriptor Response",
         "Description": "Response carrying a transient resolved schema graph."
       },
@@ -1736,18 +1744,18 @@
           "name": "ResponseBody",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         }
       ]
     },
     {
-      "key": "ConstructEffectiveDescriptor.DanceType",
+      "key": "ConstructEffectiveHolonDescriptor.DanceType",
       "type": "MetaDanceType.MetaHolonType",
       "properties": {
-        "TypeName": "ConstructEffectiveDescriptor",
-        "TypeNamePlural": "ConstructEffectiveDescriptorDances",
+        "TypeName": "ConstructEffectiveHolonDescriptor",
+        "TypeNamePlural": "ConstructEffectiveHolonDescriptorDances",
         "DisplayName": "Construct Effective Descriptor",
         "Description": "Resolve the complete schema of a HolonType once in the authoritative Space.",
         "DanceDescription": "Constructs a transaction-scoped resolved schema without allocating contribution Holons.",
@@ -1782,7 +1790,7 @@
           "name": "RequestType",
           "target": [
             {
-              "$ref": "ConstructEffectiveDescriptorRequest.HolonType"
+              "$ref": "ConstructEffectiveHolonDescriptorRequest.HolonType"
             }
           ]
         },
@@ -1790,31 +1798,31 @@
           "name": "Response",
           "target": [
             {
-              "$ref": "ConstructEffectiveDescriptorResponse.DanceResponseType"
+              "$ref": "ConstructEffectiveHolonDescriptorResponse.DanceResponseType"
             }
           ]
         }
       ]
     },
     {
-      "key": "ConstructEffectiveDescriptor.DanceImplementation",
+      "key": "ConstructEffectiveHolonDescriptor.DanceImplementation",
       "type": "DanceImplementation.HolonType",
       "properties": {
-        "ImplementationName": "ConstructEffectiveDescriptor"
+        "ImplementationName": "ConstructEffectiveHolonDescriptor"
       },
       "relationships": [
         {
           "name": "ForDance",
           "target": [
             {
-              "$ref": "ConstructEffectiveDescriptor.DanceType"
+              "$ref": "ConstructEffectiveHolonDescriptor.DanceType"
             }
           ]
         }
       ]
     },
     {
-      "key": "(ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)",
+      "key": "(ConstructEffectiveHolonDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "RequestedHolonType",
@@ -1848,7 +1856,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "ConstructEffectiveDescriptorRequest.HolonType"
+              "$ref": "ConstructEffectiveHolonDescriptorRequest.HolonType"
             }
           ]
         },
@@ -1864,7 +1872,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(HolonType.TypeDescriptor)-[RequestedByEffectiveDescriptorRequest]->(ConstructEffectiveDescriptorRequest.HolonType)"
+              "$ref": "(HolonType.TypeDescriptor)-[RequestedByEffectiveHolonDescriptorRequest]->(ConstructEffectiveHolonDescriptorRequest.HolonType)"
             }
           ]
         },
@@ -1879,12 +1887,12 @@
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[RequestedByEffectiveDescriptorRequest]->(ConstructEffectiveDescriptorRequest.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[RequestedByEffectiveHolonDescriptorRequest]->(ConstructEffectiveHolonDescriptorRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "RequestedByEffectiveDescriptorRequest",
-        "TypeNamePlural": "RequestedByEffectiveDescriptorRequest",
-        "DisplayName": "RequestedByEffectiveDescriptorRequest",
+        "TypeName": "RequestedByEffectiveHolonDescriptorRequest",
+        "TypeNamePlural": "RequestedByEffectiveHolonDescriptorRequest",
+        "DisplayName": "RequestedByEffectiveHolonDescriptorRequest",
         "Description": "Inverse discovery for RequestedHolonType.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -1921,7 +1929,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "ConstructEffectiveDescriptorRequest.HolonType"
+              "$ref": "ConstructEffectiveHolonDescriptorRequest.HolonType"
             }
           ]
         },
@@ -1936,7 +1944,7 @@
       ]
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "EffectiveAffordsCommand",
@@ -1970,7 +1978,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -1986,7 +1994,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(CommandType.HolonType)-[CommandInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)"
+              "$ref": "(CommandType.HolonType)-[CommandInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -2001,12 +2009,12 @@
       ]
     },
     {
-      "key": "(CommandType.HolonType)-[CommandInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(CommandType.HolonType)-[CommandInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "CommandInEffectiveDescriptor",
-        "TypeNamePlural": "CommandInEffectiveDescriptor",
-        "DisplayName": "CommandInEffectiveDescriptor",
+        "TypeName": "CommandInEffectiveHolonDescriptor",
+        "TypeNamePlural": "CommandInEffectiveHolonDescriptor",
+        "DisplayName": "CommandInEffectiveHolonDescriptor",
         "Description": "Inverse discovery for EffectiveAffordsCommand.",
         "IsDefinitional": true,
         "IsOrdered": false,
@@ -2043,7 +2051,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "EffectiveDescriptor.HolonType"
+              "$ref": "EffectiveHolonDescriptor.HolonType"
             }
           ]
         },
@@ -2052,6 +2060,190 @@
           "target": [
             {
               "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreparedSchema.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreparedSchema",
+        "TypeNamePlural": "Prepared Schemas",
+        "DisplayName": "Prepared Schema",
+        "Description": "Compact prepared policy and declaring-origin metadata. Runtime input, never assessment outcomes.",
+        "IsValueRequired": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EffectiveHolonDescriptorRegistry.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "EffectiveHolonDescriptorRegistry",
+        "TypeNamePlural": "Effective Holon Descriptor Registries",
+        "DisplayName": "Effective Holon Descriptor Registry",
+        "Description": "Agent-session selected saved HolonType projections."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "NoneRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreparedDescriptors",
+        "DisplayName": "Prepared Descriptors",
+        "Description": "Session-selected effective Holon descriptors, copied into Commit on demand.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptorRegistry.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[DescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(EffectiveHolonDescriptor.HolonType)-[DescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DescriptorRegistryFor",
+        "DisplayName": "Descriptor Registry For",
+        "Description": "Registry selecting this prepared Holon descriptor.",
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptorRegistry.HolonType"
             }
           ]
         }

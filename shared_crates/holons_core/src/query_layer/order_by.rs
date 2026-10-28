@@ -164,7 +164,9 @@ fn read_property_name(
     spec_descriptor: &HolonDescriptor,
 ) -> Result<PropertyName, HolonError> {
     let name = QueryPropertyTypeName::PropertyName;
-    let property = spec_descriptor.get_property_by_name(name.clone())?;
+    let property =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(spec_descriptor.holon().clone())?
+            .get_property_by_name(name.clone())?;
     match property.effective_value(spec)? {
         Some(EffectiveValue::Authored(BaseValue::StringValue(value)))
         | Some(EffectiveValue::Default(BaseValue::StringValue(value))) => Ok(PropertyName(value)),
@@ -187,7 +189,9 @@ fn read_variant(
     spec_descriptor: &HolonDescriptor,
     name: QueryPropertyTypeName,
 ) -> Result<String, HolonError> {
-    let property = spec_descriptor.get_property_by_name(name.clone())?;
+    let property =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(spec_descriptor.holon().clone())?
+            .get_property_by_name(name.clone())?;
     let value = match property.effective_value(spec)? {
         Some(EffectiveValue::Authored(value)) => value,
         Some(EffectiveValue::Default(BaseValue::StringValue(token))) => {
@@ -271,7 +275,9 @@ impl ResolvedKey {
     /// duplicate-declaration errors propagate unchanged. Needs no members, so
     /// an undeclared name or unsupported domain fails for empty input too.
     fn resolve(spec: SortSpec, element_type: &HolonDescriptor) -> Result<Self, HolonError> {
-        let property = element_type.get_property_by_name(spec.property_name.clone())?;
+        let property =
+            crate::descriptors::EffectiveHolonDescriptor::acquire(element_type.holon().clone())?
+                .get_property_by_name(spec.property_name.clone())?;
         Ok(Self {
             required: property.is_required()?,
             domain: KeyDomain::resolve(&property.value_type()?)?,

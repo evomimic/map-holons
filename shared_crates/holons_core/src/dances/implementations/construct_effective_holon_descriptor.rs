@@ -14,12 +14,12 @@ pub fn invocation(
 ) -> Result<DanceInvocation, HolonError> {
     let space = context.get_space_holon()?.ok_or_else(|| {
         HolonError::InvalidParameter(
-            "ConstructEffectiveDescriptor requires a persisted HolonSpace".into(),
+            "ConstructEffectiveHolonDescriptor requires a persisted HolonSpace".into(),
         )
     })?;
     let request_type = resolve_core_descriptor(
         context,
-        &CoreHolonTypeName::ConstructEffectiveDescriptorRequest
+        &CoreHolonTypeName::ConstructEffectiveHolonDescriptorRequest
             .descriptor_key(&CoreHolonTypeName::HolonType)
             .0,
     )?;
@@ -37,7 +37,7 @@ pub fn invocation(
     invocation.add_related_references(CoreRelationshipTypeName::OwnedBy, vec![space.clone()])?;
     invocation.with_property_value(
         CorePropertyTypeName::DanceName,
-        CoreHolonTypeName::ConstructEffectiveDescriptor.as_holon_name(),
+        CoreHolonTypeName::ConstructEffectiveHolonDescriptor.as_holon_name(),
     )?;
     invocation.add_related_references(CoreRelationshipTypeName::AffordingHolon, vec![space])?;
     invocation.add_related_references(CoreRelationshipTypeName::Request, vec![request.into()])?;
@@ -51,7 +51,7 @@ pub fn invoke(
 ) -> Result<Option<HolonReference>, HolonError> {
     if bound.required_execution_context() != RequiredExecutionContext::SpaceAuthoritative {
         return Err(HolonError::InvalidParameter(
-            "ConstructEffectiveDescriptor requires Space authority".into(),
+            "ConstructEffectiveHolonDescriptor requires Space authority".into(),
         ));
     }
     let space = context
@@ -70,7 +70,7 @@ pub fn invoke(
         .ok_or_else(|| HolonError::InvalidParameter("Missing construction request".into()))?;
     crate::descriptors::require_holon_type(
         request,
-        &CoreHolonTypeName::ConstructEffectiveDescriptorRequest.as_holon_name(),
+        &CoreHolonTypeName::ConstructEffectiveHolonDescriptorRequest.as_holon_name(),
     )?;
     let collection = request.related_holons(CoreRelationshipTypeName::RequestedHolonType)?;
     let members = collection
@@ -83,5 +83,5 @@ pub fn invoke(
             "RequestedHolonType must have exactly one target".into(),
         ));
     };
-    Ok(Some(context.construct_effective_descriptor(target.clone())?.holon().clone()))
+    Ok(Some(context.construct_effective_holon_descriptor(target.clone())?.holon().clone()))
 }

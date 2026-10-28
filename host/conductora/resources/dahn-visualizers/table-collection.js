@@ -176,7 +176,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const members = new Map();
         const columns = [];
         const properties = new Map();
-        for (const property of await collection.elementType.instanceProperties()) {
+        for (const property of await (await collection.elementType.effectiveDescriptor()).instanceProperties()) {
             if (await property.isArray()) continue;
             const id = await property.propertyName();
             properties.set(id, property);

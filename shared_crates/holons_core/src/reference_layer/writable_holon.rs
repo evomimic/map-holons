@@ -1,3 +1,4 @@
+use crate::descriptors::Descriptor;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::reference_layer::HolonReference;
 use crate::reference_layer::ReadableHolon;
@@ -38,14 +39,20 @@ pub trait WritableHolon: WritableHolonImpl {
     where
         Self: ReadableHolon,
     {
-        let properties =
-            match self.holon_descriptor().and_then(|descriptor| descriptor.instance_properties()) {
-                Ok(properties) => properties,
-                Err(HolonError::MissingDescribedBy { .. }) => {
-                    return Ok(());
-                }
-                Err(error) => return Err(error),
-            };
+        let properties = match self.holon_descriptor().and_then(|descriptor| {
+            // Default population also assembles the requests used to prepare schema.
+            // Reuse published products, but never recursively initiate construction.
+            match crate::descriptors::EffectiveHolonDescriptor::find_prepared(descriptor.holon())? {
+                Some(prepared) => prepared.instance_properties(),
+                None => descriptor.instance_properties(),
+            }
+        }) {
+            Ok(properties) => properties,
+            Err(HolonError::MissingDescribedBy { .. }) => {
+                return Ok(());
+            }
+            Err(error) => return Err(error),
+        };
         for property in properties {
             match property.populate_default_if_required_and_absent(self) {
                 Ok(()) | Err(HolonError::MissingDescribedBy { .. }) => {}

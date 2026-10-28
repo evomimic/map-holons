@@ -213,8 +213,8 @@ fn build_response_reference(
     response_descriptor: &DanceResponseDescriptor,
     body: Option<crate::reference_layer::HolonReference>,
 ) -> Result<DanceResponseReference, HolonError> {
-    let keyless =
-        response_descriptor.header().type_name()?.0 == "ConstructEffectiveDescriptorResponse";
+    let keyless = response_descriptor.header().type_name()?
+        == type_names::CoreHolonTypeName::ConstructEffectiveHolonDescriptorResponse.as_holon_name();
     let mut response = context.mutation().new_holon(if keyless {
         None
     } else {

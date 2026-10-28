@@ -5,7 +5,7 @@ use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::{
     descriptors::{
-        has_type, resolve_core_descriptor, same_definition, Descriptor, EffectiveDescriptor,
+        has_type, resolve_core_descriptor, same_definition, Descriptor, EffectiveHolonDescriptor,
         EffectiveSchemaContribution, ValueDescriptorKind,
     },
     DefinitionIdentity, HolonReference, ReadableHolon,
@@ -33,9 +33,9 @@ pub fn validate_effective_descriptor_dance_contract(
     let describing = subject.holon_descriptor()?;
     let kind = if same_definition(
         describing.holon(),
-        &resolve_core_descriptor(context, "EffectiveDescriptor.HolonType")?,
+        &resolve_core_descriptor(context, "EffectiveHolonDescriptor.HolonType")?,
     )? {
-        let result = EffectiveDescriptor::try_from_holon(subject.clone())?;
+        let result = EffectiveHolonDescriptor::try_from_holon(subject.clone())?;
         // Retain construction-specific category checks for precisely the products
         // whose descriptor endpoints the InstanceOf-only validator cannot express.
         result.instance_properties()?;
@@ -70,19 +70,20 @@ impl ConstructionSubject {
     fn deferred_target(self, name: &str) -> Option<(&'static str, &'static str)> {
         match (self, name) {
             (Self::Result, "EffectiveInstanceProperties") => {
-                Some(("EffectiveDescriptor.HolonType", "PropertyType.TypeDescriptor"))
+                Some(("EffectiveHolonDescriptor.HolonType", "PropertyType.TypeDescriptor"))
             }
-            (Self::Result, "EffectiveInstanceRelationships") => {
-                Some(("EffectiveDescriptor.HolonType", "DeclaredRelationshipType.RelationshipType"))
-            }
+            (Self::Result, "EffectiveInstanceRelationships") => Some((
+                "EffectiveHolonDescriptor.HolonType",
+                "DeclaredRelationshipType.RelationshipType",
+            )),
             (Self::Result, "NavigableRelationships") => {
-                Some(("EffectiveDescriptor.HolonType", "RelationshipType.TypeDescriptor"))
+                Some(("EffectiveHolonDescriptor.HolonType", "RelationshipType.TypeDescriptor"))
             }
             (Self::Result, "EffectiveAffordsDance") => {
-                Some(("EffectiveDescriptor.HolonType", "DanceType.HolonType"))
+                Some(("EffectiveHolonDescriptor.HolonType", "DanceType.HolonType"))
             }
             (Self::Result, "EffectiveAffordsCommand") => {
-                Some(("EffectiveDescriptor.HolonType", "CommandType.HolonType"))
+                Some(("EffectiveHolonDescriptor.HolonType", "CommandType.HolonType"))
             }
             (Self::Contribution, "ContributionCollection") => {
                 Some(("EffectiveSchemaContribution.HolonType", "RelationshipType.TypeDescriptor"))
@@ -106,16 +107,22 @@ fn validate_contract(
     if descriptor.header().is_abstract_type()? {
         return Err(invalid("Transient holon has an abstract describing type"));
     }
-    let keyless = descriptor.effective_key_rule()?.is_keyless()?;
+    let computed = holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?;
+    let keyless = computed.effective_key_rule()?.is_keyless()?;
     if keyless != subject.key()?.is_none() {
         return Err(invalid(
             "Transient key does not conform to the describing type's effective key rule",
         ));
     }
-    if !subject.undescribed_property_names()?.is_empty() {
+    let property_names = computed
+        .instance_properties()
+        .iter()
+        .map(|property| property.property_name())
+        .collect::<Result<HashSet<_>, _>>()?;
+    if !subject.undescribed_property_names_in_contract(&property_names)?.is_empty() {
         return Err(invalid("Transient holon has undeclared properties"));
     }
-    for property in descriptor.instance_properties()? {
+    for property in computed.instance_properties() {
         match subject.property_value(property.property_name()?)? {
             None if property.is_required()? => {
                 return Err(invalid("Missing required transient property"))
@@ -134,7 +141,7 @@ fn validate_contract(
         }
     }
     let mut names = HashSet::new();
-    for relationship in descriptor.effective_declared_relationships()? {
+    for relationship in computed.instance_relationships() {
         let name = relationship.base_relationship_name()?;
         names.insert(name.clone());
         let relationship = holons_core::descriptors::RelationshipDescriptor::from_holon(

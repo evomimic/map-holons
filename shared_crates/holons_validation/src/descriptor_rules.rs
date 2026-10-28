@@ -294,6 +294,27 @@ impl DescriptorRuleProducts {
         use type_names::CoreHolonTypeName;
         use CoreValidationRuleName::*;
         self.prepare_contract(&projection.contract_contributions(), kind_roots, contract_roots)?;
+        for source in [
+            CoreRelationshipTypeName::AffordsDance,
+            CoreRelationshipTypeName::AffordsCommand,
+            CoreRelationshipTypeName::Constraints,
+            CoreRelationshipTypeName::ValidationBindings,
+        ] {
+            let mut seen = Vec::<&HolonReference>::new();
+            for entry in projection.contributions(source.clone()) {
+                let mut repeated = false;
+                for prior in &seen {
+                    if same_definition(prior, &entry.member)? {
+                        repeated = true;
+                        break;
+                    }
+                }
+                if repeated {
+                    self.violation(NoInheritedMemberRedeclaration, format!("Repeated {source:?} member {} at {} local position {}; remove the later declaration.", entry.member.reference_id_string(), entry.declared_on.reference_id_string(), entry.local_position));
+                }
+                seen.push(&entry.member);
+            }
+        }
         for (vocabulary, category, family) in [
             (
                 EffectiveVocabulary::Dances,

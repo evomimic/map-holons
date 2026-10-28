@@ -163,7 +163,8 @@ fn execute_invocation_envelope(
         let mut reference = invocation.bind(&context)?;
         reference.with_property_value("InvocationSource", "TrustChannel")?;
         let invocation = DanceInvocation::new(reference)?;
-        constructing = invocation.dance_name()?.to_string() == "ConstructEffectiveDescriptor";
+        constructing = invocation.dance_name()?.to_string()
+            == type_names::CoreHolonTypeName::ConstructEffectiveHolonDescriptor.as_holon_name().0;
         if constructing {
             holons_validation::validate_transient_contract(
                 &context,

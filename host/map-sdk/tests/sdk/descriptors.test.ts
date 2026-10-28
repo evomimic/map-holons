@@ -39,7 +39,7 @@ it('reads optional relationship descriptions through the bound descriptor', asyn
 });
 
 it('reads resolved collections and contribution provenance from the retained graph', async () => {
-  const { createEffectiveDescriptorHandle } = await import('../../src/sdk/descriptors');
+  const { createEffectiveHolonDescriptorHandle } = await import('../../src/sdk/descriptors');
   const member = { propertyValue: vi.fn().mockResolvedValue({ StringValue: 'Title' }) };
   const origin = {};
   const collection = {};
@@ -52,7 +52,7 @@ it('reads resolved collections and contribution provenance from the retained gra
     EffectiveInstanceKeyRule: [member], EffectiveAffordsDance: [],
   };
   const reference = { relatedHolons: vi.fn(async (name: string) => ({ members: relationships[name] ?? [] })) };
-  const descriptor = createEffectiveDescriptorHandle(reference as unknown as HolonReference);
+  const descriptor = createEffectiveHolonDescriptorHandle(reference as unknown as HolonReference);
   const properties = await descriptor.instanceProperties();
   expect(Object.isFrozen(properties)).toBe(true);
   expect(await properties[0].propertyName()).toBe('Title');
@@ -69,35 +69,37 @@ it('reads resolved collections and contribution provenance from the retained gra
 });
 
 it('preserves requiredness and lifecycle errors on resolved results', async () => {
-  const { createEffectiveDescriptorHandle } = await import('../../src/sdk/descriptors');
+  const { createEffectiveHolonDescriptorHandle } = await import('../../src/sdk/descriptors');
   const relatedHolons = vi.fn().mockResolvedValue({ members: [] });
-  const descriptor = createEffectiveDescriptorHandle({ relatedHolons } as unknown as HolonReference);
+  const descriptor = createEffectiveHolonDescriptorHandle({ relatedHolons } as unknown as HolonReference);
   await expect(descriptor.effectiveKeyRule()).rejects.toThrow('exactly one');
   const disposed = new Error('transaction disposed');
   relatedHolons.mockRejectedValue(disposed);
   await expect(descriptor.instanceProperties()).rejects.toBe(disposed);
 });
 
-it('indexes each effective vocabulary once and preserves ambiguity without hiding other names', async () => {
-  const { createEffectiveDescriptorHandle } = await import('../../src/sdk/descriptors');
-  const member = (name: string) => ({ propertyValue: vi.fn().mockResolvedValue({ StringValue: name }) });
-  const repeated = member('Name');
-  const conflicting = member('Name');
-  const unique = member('Other');
-  const reference = { relatedHolons: vi.fn().mockResolvedValue({ members: [repeated, repeated, conflicting, unique] }) };
-  const descriptor = createEffectiveDescriptorHandle(reference as unknown as HolonReference);
-  await expect(descriptor.propertyNamed('Name')).rejects.toThrow('3 declaration occurrences');
-  const other = await descriptor.propertyNamed('Other');
-  expect(other).not.toBeNull();
-  expect(await other!.propertyName()).toBe('Other');
-  expect(await descriptor.propertyNamed('Missing')).toBeNull();
-  expect(reference.relatedHolons).toHaveBeenCalledTimes(1);
-  expect(conflicting.propertyValue).toHaveBeenCalledTimes(1);
+it('delegates named lookup to Rust without enumerating schema members in TypeScript', async () => {
+  const { createEffectiveHolonDescriptorHandle } = await import('../../src/sdk/descriptors');
+  const commands = await import('../../src/internal/commands/holon');
+  const { createHolonReference } = await import('../../src/sdk/references');
+  const wire = { Transient: { tx_id: 41, id: '00000000-0000-0000-0000-000000000001' } } as const;
+  const lookup = vi.spyOn(commands, 'readEffectiveMember').mockResolvedValue(null);
+  const descriptor = createEffectiveHolonDescriptorHandle(createHolonReference(41, wire));
+  await expect(descriptor.propertyNamed('Missing')).resolves.toBeNull();
+  expect(lookup).toHaveBeenCalledWith(41, wire, 'EffectiveInstanceProperties', 'Missing');
+  lookup.mockRestore();
 });
 
-it.each(['relationshipNamed', 'danceNamed', 'commandNamed'] as const)('rejects conflicting %s lookups', async method => {
-  const { createEffectiveDescriptorHandle } = await import('../../src/sdk/descriptors');
-  const member = { propertyValue: vi.fn().mockResolvedValue({ StringValue: 'Repeated' }) };
-  const descriptor = createEffectiveDescriptorHandle({ relatedHolons: vi.fn().mockResolvedValue({ members: [member, member] }) } as unknown as HolonReference);
-  await expect(descriptor[method]('Repeated')).rejects.toThrow('Ambiguous');
+it('routes retained descriptor reads through their actual owner after acquisition', async () => {
+  const commands = await import('../../src/internal/commands/holon');
+  const { createHolonReference } = await import('../../src/sdk/references');
+  const sourceWire = { Transient: { tx_id: 41, id: '00000000-0000-0000-0000-000000000001' } } as const;
+  const preparedWire = { Transient: { tx_id: 77, id: '00000000-0000-0000-0000-000000000002' } } as const;
+  const acquire = vi.spyOn(commands, 'readEffectiveDescriptor').mockResolvedValue(preparedWire);
+  const read = vi.spyOn(commands, 'readRelatedHolons').mockResolvedValue({ state: 'Fetched', members: [], keyed_index: {} });
+  const descriptor = await createHolonReference(41, sourceWire).effectiveDescriptor();
+  expect(acquire).toHaveBeenCalledWith(41, sourceWire);
+  await expect(descriptor.instanceProperties()).resolves.toEqual([]);
+  expect(read).toHaveBeenCalledWith(77, preparedWire, 'EffectiveInstanceProperties', undefined, false);
+  acquire.mockRestore(); read.mockRestore();
 });

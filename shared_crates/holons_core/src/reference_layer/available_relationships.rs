@@ -31,6 +31,15 @@ where
     T: ReadableHolonImpl + ?Sized,
 {
     let source_holon = source_ref.holon_reference_impl();
+    let descriptor = source_holon.holon_descriptor()?;
+    if let Some(prepared) =
+        crate::descriptors::EffectiveHolonDescriptor::find_prepared(descriptor.holon())?
+    {
+        return available_relationships_from_effective(source_ref, &prepared);
+    }
+    // This low-level enumeration also clones schema during bootstrap; it must
+    // remain usable before the preparation Dance itself is available.
+
     let mut relationships = effective_declared_relationships_for_holon(&source_holon)?
         .into_iter()
         .map(|declared| QualifiedRelationship {
@@ -56,14 +65,14 @@ where
 /// Uses the populated declared contract and inverse vocabulary without resolving inheritance.
 pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Sized>(
     source: &T,
-    effective: &crate::descriptors::EffectiveDescriptor,
+    effective: &crate::descriptors::EffectiveHolonDescriptor,
 ) -> Result<Vec<QualifiedRelationship>, HolonError> {
     if !crate::descriptors::same_definition(
         source.holon_descriptor()?.holon(),
         effective.described_holon_type()?.holon(),
     )? {
         return Err(HolonError::InvalidParameter(
-            "EffectiveDescriptor describes another HolonType".into(),
+            "EffectiveHolonDescriptor describes another HolonType".into(),
         ));
     }
     let mut result = effective
@@ -74,10 +83,32 @@ pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Siz
             descriptor_direction: RelationshipDirection::Declared,
         })
         .collect::<Vec<_>>();
+    let declared_ids: std::collections::HashSet<_> =
+        result.iter().map(|entry| entry.descriptor.holon().full_reference_id_string()).collect();
     if source.is_committed_source_impl()? {
-        result.extend(effective.navigable_relationships()?.into_iter().filter(|relationship| {
-            relationship.descriptor_direction == RelationshipDirection::Inverse
-        }));
+        let prepared = effective.prepared_schema()?;
+        result.extend(
+            effective
+                .navigable_relationships()?
+                .into_iter()
+                .filter(|relationship| {
+                    !declared_ids.contains(&relationship.holon().full_reference_id_string())
+                })
+                .map(|descriptor| {
+                    let updateable = prepared.relationships.iter().any(|entry| {
+                        entry.identity == descriptor.holon().full_reference_id_string()
+                            && entry.updateable
+                    });
+                    QualifiedRelationship {
+                        descriptor,
+                        descriptor_direction: if updateable {
+                            RelationshipDirection::Declared
+                        } else {
+                            RelationshipDirection::Inverse
+                        },
+                    }
+                }),
+        );
     }
     Ok(result)
 }
@@ -92,8 +123,8 @@ mod tests {
     };
     use crate::descriptors::RelationshipDirection;
     use crate::reference_layer::{
-        readable_impl::ReadableHolonImpl, HolonReference, ReadableHolon, SmartReference,
-        StagedReference, WritableHolon,
+        readable_impl::ReadableHolonImpl, HolonReference, SmartReference, StagedReference,
+        WritableHolon,
     };
     use core_types::{HolonError, HolonId, LocalId};
     use std::sync::Arc;
@@ -239,7 +270,7 @@ mod tests {
             vec![HolonReference::from(&fixture.target_type)],
         )?;
 
-        let names = qualified_names(&source.available_relationships()?)?;
+        let names = qualified_names(&available_relationships(&source)?)?;
 
         assert_eq!(names, vec![("MemberOf".to_string(), RelationshipDirection::Declared)]);
         Ok(())
@@ -252,7 +283,7 @@ mod tests {
         let mut staged_source = fixture.context.mutation().stage_new_holon(source)?;
         staged_source.with_descriptor(HolonReference::from(&fixture.target_type))?;
 
-        let names = qualified_names(&staged_source.available_relationships()?)?;
+        let names = qualified_names(&available_relationships(&staged_source)?)?;
 
         assert_eq!(names, vec![("MemberOf".to_string(), RelationshipDirection::Declared)]);
         Ok(())
@@ -266,7 +297,7 @@ mod tests {
         staged_source.with_descriptor(HolonReference::from(&fixture.target_type))?;
         mark_committed(&fixture.context, &staged_source)?;
 
-        let names = qualified_names(&staged_source.available_relationships()?)?;
+        let names = qualified_names(&available_relationships(&staged_source)?)?;
 
         assert!(names.contains(&("MemberOf".to_string(), RelationshipDirection::Declared)));
         assert!(names.contains(&("Authors".to_string(), RelationshipDirection::Inverse)));
@@ -328,7 +359,7 @@ mod tests {
             vec![type_descriptor.into()],
         )?;
 
-        let names = qualified_names(&relationship_descriptor.available_relationships()?)?;
+        let names = qualified_names(&available_relationships(&relationship_descriptor)?)?;
 
         assert!(!names.contains(&("SourceType".to_string(), RelationshipDirection::Declared)));
         assert!(names.is_empty());

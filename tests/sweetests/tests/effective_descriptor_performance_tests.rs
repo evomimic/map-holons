@@ -78,7 +78,8 @@ async fn measure_effective_descriptor_construction() {
     let (runtime, initial_tx) = init_test_runtime(&mut DancesTestCase::default()).await;
     let initial = runtime.session().get_transaction(&initial_tx).unwrap();
     let mut targets = Vec::new();
-    for key in ["HolonType.TypeDescriptor", "HolonSpace.HolonType", "EffectiveDescriptor.HolonType"]
+    for key in
+        ["HolonType.TypeDescriptor", "HolonSpace.HolonType", "EffectiveHolonDescriptor.HolonType"]
     {
         let reference: HolonReference =
             initial.lookup().get_saved_holon_by_key(&MapString(key.into())).unwrap().into();
@@ -106,18 +107,11 @@ async fn measure_effective_descriptor_construction() {
                     "[effective-descriptor-host] start target={key} mode={mode} sample={sample}"
                 );
                 let started = Instant::now();
-                let result = runtime
-                    .execute_command(
-                        MapCommand::Transaction(TransactionCommand {
-                            context: context.clone(),
-                            action: TransactionAction::ConstructEffectiveDescriptor { target },
-                        }),
-                        ExecutionPolicy::default(),
-                    )
-                    .await
-                    .unwrap();
+                let invocation = holons_core::dances::implementations::construct_effective_holon_descriptor::invocation(&context, target).unwrap();
+                let result = context.initiate_invocation(invocation).await.unwrap();
                 let construction_us = started.elapsed().as_micros() as u64;
-                let MapResult::Reference(reference) = result else { panic!("expected reference") };
+                let response = holons_core::dances::DanceResponseReference::new(result).unwrap();
+                let reference = response.require_response_body().unwrap();
                 assert!(reference.is_transient());
                 assert!(reference.key().unwrap().is_none());
                 let product_counts = PRODUCTS
@@ -154,7 +148,7 @@ async fn measure_effective_descriptor_construction() {
     }
     let capture = json!({"platform": {"os": std::env::consts::OS, "arch": std::env::consts::ARCH}, "setup_us": setup_us, "samples_per_target_and_mode": samples,
         "notes": ["Setup and graph inspection excluded from host construction interval.",
-            "Native Runtime command path; TypeScript/Tauri IPC is not included.",
+            "Explicit production construction Dance; registry acquisition and TypeScript/Tauri IPC are excluded.",
             "Fresh transaction is not cold storage: bootstrap and earlier calls warm shared caches.",
             "Guest request-local caches start afresh for each invocation; repeated calls can warm conductor/storage caches.",
             "Retained mode transports prior transient results. No hidden pool cleanup is performed.",

@@ -253,8 +253,22 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let schema = holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference)
-                .map(Arc::new);
+            // A schema-edit assessment must observe its candidate graph, including
+            // repeated declarations. Saved-only assessments can reuse the shipped snapshot.
+            let prepared = if workset.schemas.is_empty() {
+                holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
+                    context, &reference,
+                )?
+            } else {
+                None
+            };
+            let schema = match prepared {
+                Some(descriptor) => {
+                    holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
+                }
+                None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+            }
+            .map(Arc::new);
             // All name/navigation reads required by validation belong to preparation,
             // and the same cached projection is consumed during assessment.
             if let Ok(schema) = &schema {

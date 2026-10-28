@@ -105,9 +105,15 @@ async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(
     let context = runtime.session().get_transaction(&tx_id).unwrap();
     let space = context.get_space_holon().unwrap().expect("bootstrap Space");
 
-    assert!(space.available_relationships().unwrap().iter().any(|relationship| {
-        relationship.descriptor.base_relationship_name().unwrap().to_string() == "AvailableSchemas"
-    }));
+    assert!(space
+        .effective_descriptor()
+        .unwrap()
+        .available_relationships(&space)
+        .unwrap()
+        .iter()
+        .any(|relationship| {
+            relationship.base_relationship_name().unwrap().to_string() == "AvailableSchemas"
+        }));
     let schemas =
         space.related_holons("AvailableSchemas").unwrap().read().unwrap().get_members().clone();
     let expected = BTreeSet::from([
@@ -115,6 +121,7 @@ async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(
         "MAP Core Schema-v0.0.7",
         "MAP DAHN Schema-v0.1.0",
         "MAP Dance Schema-v0.1.0",
+        "MAP Descriptor Runtime Schema-v0.1.0",
         "MAP Dancer Schema-v0.1.0",
         "MAP Design Tokens Schema-v0.1.0",
         "MAP Meta Design System Schema-v0.1.0",
@@ -128,10 +135,15 @@ async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(
     assert_eq!(keys, expected.into_iter().map(str::to_owned).collect());
     assert_eq!(schemas.len(), keys.len(), "schemas must not be duplicated");
     for schema in schemas {
-        assert!(schema.available_relationships().unwrap().iter().any(|relationship| {
-            relationship.descriptor.base_relationship_name().unwrap().to_string()
-                == "AvailableInSpace"
-        }));
+        assert!(schema
+            .effective_descriptor()
+            .unwrap()
+            .available_relationships(&schema)
+            .unwrap()
+            .iter()
+            .any(|relationship| {
+                relationship.base_relationship_name().unwrap().to_string() == "AvailableInSpace"
+            }));
         let spaces = schema
             .related_holons("AvailableInSpace")
             .unwrap()

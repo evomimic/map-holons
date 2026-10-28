@@ -154,11 +154,6 @@ fn assess_commit_candidates_with_observer<'a>(
         &mut collector,
         &mut observer,
     )?;
-    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
-        context,
-        candidates,
-        &mut collector,
-    )?;
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::ReadinessResolution));
     let roots = ReadinessContext::resolve(context).map_err(HolonError::from)?;
     construct_assessment_with_observer(context, candidates, &roots, collector, &mut observer)?
@@ -371,6 +366,12 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &package_subjects,
         &workset,
         observer,
+    )?;
+    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
+        context,
+        candidates,
+        Some(&packages),
+        &mut collector,
     )?;
     Ok(ConstructedAssessment { context, candidates, roots, prepared, workset, packages, collector })
 }

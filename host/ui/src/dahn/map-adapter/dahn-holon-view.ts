@@ -1,6 +1,6 @@
 import type {
   AvailableRelationshipHandle,
-  EffectiveDescriptorHandle,
+  EffectiveHolonDescriptorHandle,
   BaseValue,
   HolonCollection,
   HolonDescriptorHandle,
@@ -19,16 +19,11 @@ import type { HolonViewAccess } from '../contracts/holon-view';
  * lifecycle or error taxonomy.
  */
 export class DahnHolonView implements HolonViewAccess {
-  private schemaSnapshot?: Promise<EffectiveDescriptorHandle>;
   constructor(private readonly reference: HolonReference) {}
 
-  /** One resolved result for this view's schema snapshot. Schema editors reconstruct after edits. */
-  private schema(): Promise<EffectiveDescriptorHandle> {
-    return this.schemaSnapshot ??= this.reference.effectiveDescriptor();
+  private schema(): Promise<EffectiveHolonDescriptorHandle> {
+    return this.reference.effectiveDescriptor();
   }
-
-  /** Explicitly starts a fresh schema snapshot after a contributing definition changes. */
-  reconstructSchema(): void { this.schemaSnapshot = undefined; }
 
   holonId(): Promise<HolonId> {
     return this.reference.holonId();

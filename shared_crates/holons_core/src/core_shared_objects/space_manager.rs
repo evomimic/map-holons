@@ -5,12 +5,14 @@ use crate::core_shared_objects::transactions::TransactionManager;
 use crate::core_shared_objects::{HolonCacheAccess, HolonCacheManager, ServiceRoutingPolicy};
 use crate::reference_layer::{HolonServiceApi, HolonSpaceBehavior};
 
-use std::sync::{Arc, RwLock};
+use super::descriptor_registry::EffectiveHolonDescriptorRegistry;
+use std::sync::{Arc, RwLock, Weak};
 
 use crate::dances::dance_initiator::DanceInitiator;
 use std::fmt::{Debug, Formatter};
 
 pub struct HolonSpaceManager {
+    descriptor_registry: RwLock<Weak<EffectiveHolonDescriptorRegistry>>,
     /// Manages cache access for retrieving both local and external holons efficiently.
     cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
 
@@ -60,12 +62,29 @@ impl HolonSpaceManager {
 
         // Step 4: Initialize and return the HolonSpaceManager with thread-safe fields
         Self {
+            descriptor_registry: RwLock::new(Weak::new()),
             cache_request_router,
             dance_initiator,
             holon_service,
             local_holon_space: RwLock::new(local_holon_space),
             transaction_manager,
         }
+    }
+
+    /// Attaches the agent session's derived-state capability without retaining its owner.
+    pub fn attach_descriptor_registry(&self, registry: &Arc<EffectiveHolonDescriptorRegistry>) {
+        let mut current =
+            self.descriptor_registry.write().expect("descriptor registry lock poisoned");
+        assert!(
+            current.upgrade().is_none(),
+            "A runtime space proxy may have only one active agent Session"
+        );
+        *current = Arc::downgrade(registry);
+    }
+
+    /// Returns the registry owned by the active agent session, if present.
+    pub fn descriptor_registry(&self) -> Option<Arc<EffectiveHolonDescriptorRegistry>> {
+        self.descriptor_registry.read().ok()?.upgrade()
     }
 
     /// Provides access to the per-space transaction manager.

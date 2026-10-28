@@ -237,6 +237,7 @@ pub(crate) fn effective_inverse_relationships(
 /// should use [`HolonDescriptor::effective_declared_relationships`] (or
 /// [`crate::reference_layer::ReadableHolon::available_relationships`] for a
 /// concrete source holon).
+#[cfg(test)]
 pub(crate) fn effective_relationships(
     endpoint: &HolonDescriptor,
 ) -> Result<Vec<QualifiedRelationship>, HolonError> {
@@ -272,7 +273,14 @@ pub fn effective_relationship_declaration(
     let requested_name = name.to_relationship_name();
     let requested = requested_name.to_string();
 
-    for descriptor in effective_declared_relationships_for_holon(source_holon)? {
+    let source_type = source_holon.holon_descriptor()?;
+    let declarations = match super::EffectiveHolonDescriptor::find_prepared(source_type.holon())? {
+        Some(prepared) => prepared.instance_relationships()?,
+        // Mutation classification participates in schema assembly and must not
+        // initiate the Dance whose own construction requires these operations.
+        None => effective_declared_relationships(&source_type)?,
+    };
+    for descriptor in declarations {
         if descriptor.base_relationship_name()? == requested_name {
             return Ok(RelationshipDescriptor::from_holon(descriptor.holon().clone()));
         }

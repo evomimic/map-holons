@@ -113,7 +113,6 @@ export type TransactionActionWire =
   // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
-  | { ConstructEffectiveDescriptor: { target: HolonReferenceWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
   | { ProjectVisualizerDiscovery: { snapshot: string } }
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
@@ -163,6 +162,10 @@ export type ReadableHolonActionWire =
   | 'GetKey'
   | 'GetVersionedKey'
   | 'GetHolonDescriptor'
+  | 'GetEffectiveDescriptor'
+  | 'GetEffectiveDescriptorForType'
+  | 'GetReferenceIdentity'
+  | { GetEffectiveMember: { collection: RelationshipName; name: string } }
   | 'GetAvailableProperties'
   | 'GetAvailableRelationships'
   | { GetAvailableRelationshipsFromEffective: { descriptor: HolonReferenceWire } }
@@ -215,6 +218,9 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetKey',
   'GetVersionedKey',
   'GetHolonDescriptor',
+  'GetEffectiveDescriptor',
+  'GetEffectiveDescriptorForType',
+  'GetReferenceIdentity',
   'GetAvailableProperties',
   'GetAvailableRelationships',
   'GetEffectiveCardinality',
@@ -278,6 +284,7 @@ export function isReadableHolonActionWire(
   return (
     (typeof value === 'string' &&
       READABLE_HOLON_UNIT_ACTIONS.has(value as ReadableHolonActionWire)) ||
+    (hasSingleKey(value, 'GetEffectiveMember') && isStringFieldObject(value.GetEffectiveMember, 'collection') && isStringFieldObject(value.GetEffectiveMember, 'name')) ||
     (hasSingleKey(value, 'GetAvailableRelationshipsFromEffective') && isRecord(value.GetAvailableRelationshipsFromEffective) && isHolonReferenceWire(value.GetAvailableRelationshipsFromEffective['descriptor'])) ||
     (hasSingleKey(value, 'GetDescribedRelatedHolons') && isStringFieldObject(value.GetDescribedRelatedHolons, 'name')) ||
     (hasSingleKey(value, 'GetPropertyValue') &&
@@ -335,7 +342,6 @@ export function isTransactionActionWire(
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
-    (hasSingleKey(value, 'ConstructEffectiveDescriptor') && isRecord(value.ConstructEffectiveDescriptor) && isHolonReferenceWire(value.ConstructEffectiveDescriptor['target'])) ||
     (hasSingleKey(value, 'DanceV2') &&
       isRecord(value.DanceV2) &&
       isDanceV2InvocationWire(value.DanceV2['invocation'])) ||

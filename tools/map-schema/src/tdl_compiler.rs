@@ -2280,18 +2280,18 @@ holon Example.HolonType {
                 .map(|target| target["$ref"].as_str().unwrap().to_owned()).collect()
         };
         assert_eq!(targets(find(runtime_key), "DependsOn"), vec!["MAP Core Schema-v0.0.7", "MAP Dance Schema-v0.1.0", "MAP Commands Schema-v0.1.0"]);
-        let contract = targets(find("EffectiveDescriptor.HolonType"), "InstanceRelationships");
+        let contract = targets(find("EffectiveHolonDescriptor.HolonType"), "InstanceRelationships");
         for name in ["EffectiveInstanceProperties", "EffectiveInstanceRelationships", "NavigableRelationships", "EffectiveAffordsDance", "EffectiveAffordsCommand", "EffectiveValidationBindings", "EffectiveConstraints", "EffectiveInstanceKeyRule"] {
             assert!(contract.iter().any(|key| key.contains(&format!("-[{name}]->"))), "missing {name}");
         }
         for holon in holons {
             assert!(targets(holon, "InstanceRelationshipFor").is_empty());
-            if holon["key"] != runtime_key && holon["key"] != "ConstructEffectiveDescriptor.DanceImplementation" {
+            if holon["key"] != runtime_key && holon["key"] != "ConstructEffectiveHolonDescriptor.DanceImplementation" {
                 assert_eq!(targets(holon, "ComponentOf"), vec![runtime_key]);
             }
         }
         for path in ["dance/schema.json", "commands/schema.json"] {
-            assert!(!fs::read_to_string(out_dir.join(path))?.contains("EffectiveDescriptor"));
+            assert!(!fs::read_to_string(out_dir.join(path))?.contains("EffectiveHolonDescriptor"));
         }
         assert!(!out_dir.join("core/effective-descriptor.json").exists());
         Ok(())

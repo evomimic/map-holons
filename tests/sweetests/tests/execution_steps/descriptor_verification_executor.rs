@@ -5,9 +5,10 @@ use super::persisted_read_support::{
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
-    CaseMatching, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor,
-    OperandValueTypeRule, OperatorCategory, OperatorDescriptor, OperatorKind, PropertyDescriptor,
-    RelationshipDescriptor, ValueArrayDescriptor, ValueDescriptor,
+    CaseMatching, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
+    EffectiveHolonDescriptor, HolonDescriptor, OperandValueTypeRule, OperatorCategory,
+    OperatorDescriptor, OperatorKind, PropertyDescriptor, RelationshipDescriptor,
+    ValueArrayDescriptor, ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
@@ -50,9 +51,14 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         MapString("HolonType".to_string())
     );
 
-    let instance_property_names = property_type_names(holon_type_descriptor.instance_properties());
+    let instance_property_names = property_type_names(
+        EffectiveHolonDescriptor::acquire(holon_type_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_properties(),
+    );
     assert_eq!(instance_property_names, vec!["Key".to_string()]);
-    assert!(!holon_type_descriptor
+    assert!(!EffectiveHolonDescriptor::acquire(holon_type_descriptor.holon().clone())
+        .expect("prepared Holon schema")
         .get_property_by_name(CorePropertyTypeName::Key)
         .expect("inherited Key descriptor")
         .is_required()
@@ -62,15 +68,22 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         HOLON_TYPE_KEY,
     );
 
-    let instance_relationship_names =
-        relationship_base_names(holon_type_descriptor.instance_relationships());
+    let instance_relationship_names = relationship_base_names(
+        EffectiveHolonDescriptor::acquire(holon_type_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_relationships(),
+    );
     assert_contains(&instance_relationship_names, "DescribedBy");
 
     let dance_type = find_holon_by_key(&holons, "DanceType.HolonType");
     let dance_type_descriptor = HolonDescriptor::from_holon(dance_type.clone());
     let dance_descriptor = DanceDescriptor::from_holon(dance_type.clone());
-    assert!(!property_type_names(dance_type_descriptor.instance_properties())
-        .contains(&"DanceName".to_string()));
+    assert!(!property_type_names(
+        EffectiveHolonDescriptor::acquire(dance_type_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_properties()
+    )
+    .contains(&"DanceName".to_string()));
     assert_eq!(
         dance_descriptor.dance_name().expect("DanceType dance_name"),
         DanceName(MapString("DanceType".to_string()))
@@ -168,7 +181,11 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "(DanceResponseType)-[ResponseBody]->(HolonType)",
     );
     assert_contains(
-        &relationship_base_names(dance_response_descriptor.instance_relationships()),
+        &relationship_base_names(
+            EffectiveHolonDescriptor::acquire(dance_response_descriptor.holon().clone())
+                .expect("prepared Holon schema")
+                .instance_relationships(),
+        ),
         "Diagnostics",
     );
 
@@ -194,17 +211,25 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
 
     let dance_invocation = find_holon_by_key(&holons, "DanceInvocation.HolonType");
     let dance_invocation_descriptor = HolonDescriptor::from_holon(dance_invocation.clone());
-    let invocation_property_names =
-        property_type_names(dance_invocation_descriptor.instance_properties());
+    let invocation_property_names = property_type_names(
+        EffectiveHolonDescriptor::acquire(dance_invocation_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_properties(),
+    );
     assert_contains(&invocation_property_names, "DanceName");
     assert_contains(&invocation_property_names, "InvocationSource");
-    let invocation_relationship_names =
-        relationship_base_names(dance_invocation_descriptor.instance_relationships());
+    let invocation_relationship_names = relationship_base_names(
+        EffectiveHolonDescriptor::acquire(dance_invocation_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_relationships(),
+    );
     assert_contains(&invocation_relationship_names, "AffordingHolon");
     assert_contains(&invocation_relationship_names, "Request");
-    let invocation_source_property = dance_invocation_descriptor
-        .get_property_by_name(PropertyName(MapString::from("InvocationSource")))
-        .expect("DanceInvocation.InvocationSource lookup");
+    let invocation_source_property =
+        EffectiveHolonDescriptor::acquire(dance_invocation_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .get_property_by_name(PropertyName(MapString::from("InvocationSource")))
+            .expect("DanceInvocation.InvocationSource lookup");
     assert_eq!(
         invocation_source_property
             .value_type()
@@ -217,8 +242,11 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
 
     let dance_diagnostic = find_holon_by_key(&holons, "DanceDiagnostic.HolonType");
     let dance_diagnostic_descriptor = HolonDescriptor::from_holon(dance_diagnostic);
-    let diagnostic_property_names =
-        property_type_names(dance_diagnostic_descriptor.instance_properties());
+    let diagnostic_property_names = property_type_names(
+        EffectiveHolonDescriptor::acquire(dance_diagnostic_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_properties(),
+    );
     assert_contains(&diagnostic_property_names, "DanceDiagnosticSeverity");
     assert_contains(&diagnostic_property_names, "DiagnosticCode");
     assert_contains(&diagnostic_property_names, "DiagnosticMessage");
@@ -348,14 +376,19 @@ async fn assert_loaded_schema_backed_dance_discovery(
 
     let child_descriptor = HolonDescriptor::from_holon(HolonReference::from(&child_owner));
     assert_eq!(
-        dance_type_names(child_descriptor.afforded_dances()),
+        dance_type_names(
+            EffectiveHolonDescriptor::acquire(child_descriptor.holon().clone())
+                .expect("prepared Holon schema")
+                .afforded_dances()
+        ),
         vec![
             DanceName(MapString("Query".to_string())),
             DanceName(MapString("Inspect".to_string())),
         ]
     );
     assert_eq!(
-        child_descriptor
+        EffectiveHolonDescriptor::acquire(child_descriptor.holon().clone())
+            .expect("prepared Holon schema")
             .get_dance_by_name("inspect")
             .expect("Inspect lookup")
             .dance_name()
@@ -363,7 +396,8 @@ async fn assert_loaded_schema_backed_dance_discovery(
         DanceName(MapString("Inspect".to_string()))
     );
 
-    let inherited_query = child_descriptor
+    let inherited_query = EffectiveHolonDescriptor::acquire(child_descriptor.holon().clone())
+        .expect("prepared Holon schema")
         .get_dance_by_name("query")
         .expect("Query lookup through inherited Affords");
     assert_eq!(
@@ -683,7 +717,11 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         MapString("Book".to_string())
     );
 
-    let instance_property_names = property_type_names(book_descriptor.instance_properties());
+    let instance_property_names = property_type_names(
+        EffectiveHolonDescriptor::acquire(book_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_properties(),
+    );
     assert_contains(&instance_property_names, "Key"); // inherited from HolonType.TypeDescriptor
     assert_contains(&instance_property_names, "Title");
     assert_eq!(instance_property_names.len(), 7);
@@ -694,7 +732,8 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         ("CoverDigest", "MapBytesValueType"),
         ("Subtitle", "MapStringValueType"),
     ] {
-        let property = book_descriptor
+        let property = EffectiveHolonDescriptor::acquire(book_descriptor.holon().clone())
+            .expect("prepared Holon schema")
             .get_property_by_name(PropertyName(MapString::from(name)))
             .expect("scalar descriptor lookup");
         assert!(!property.is_required().expect("optional scalar requiredness"));
@@ -709,12 +748,16 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         );
     }
 
-    let instance_relationship_names =
-        relationship_base_names(book_descriptor.instance_relationships());
+    let instance_relationship_names = relationship_base_names(
+        EffectiveHolonDescriptor::acquire(book_descriptor.holon().clone())
+            .expect("prepared Holon schema")
+            .instance_relationships(),
+    );
     assert_contains(&instance_relationship_names, "AuthoredBy");
     assert_contains(&instance_relationship_names, "ReferencesProperty");
 
-    let title = book_descriptor
+    let title = EffectiveHolonDescriptor::acquire(book_descriptor.holon().clone())
+        .expect("prepared Holon schema")
         .get_property_by_name(PropertyName(MapString::from("Title")))
         .expect("Title property lookup");
     assert!(title.is_required().expect("Title requiredness"));
@@ -728,7 +771,8 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         MapString("MapStringValueType".to_string())
     );
 
-    let authored_by = book_descriptor
+    let authored_by = EffectiveHolonDescriptor::acquire(book_descriptor.holon().clone())
+        .expect("prepared Holon schema")
         .get_relationship_by_name(RelationshipName(MapString::from("AuthoredBy")))
         .expect("AuthoredBy relationship lookup");
     assert_relationship_shape(
@@ -1095,7 +1139,7 @@ fn property_type_names(descriptors: Result<Vec<PropertyDescriptor>, HolonError>)
 }
 
 fn relationship_base_names(
-    descriptors: Result<Vec<RelationshipDescriptor>, HolonError>,
+    descriptors: Result<Vec<DeclaredRelationshipDescriptor>, HolonError>,
 ) -> Vec<String> {
     descriptors
         .expect("relationship descriptor list")
@@ -1323,7 +1367,12 @@ async fn verify_book_value_presentation(
     )
     .await;
     let mut fields = Vec::new();
-    for descriptor in book.available_properties().expect("descriptor discovery") {
+    for descriptor in book
+        .effective_descriptor()
+        .expect("prepared descriptor")
+        .instance_properties()
+        .expect("descriptor discovery")
+    {
         let name = descriptor.property_name().expect("property name");
         let property = select(
             state,

@@ -190,7 +190,9 @@ fn validate_comparison(
 
     // Selectors resolve on the declared type only, inherited declarations
     // included; a member subtype's own declarations are not selectable.
-    let property = element_type.get_property_by_name(property_name.clone())?;
+    let property =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(element_type.holon().clone())?
+            .get_property_by_name(property_name.clone())?;
     let required = property.is_required()?;
     let subject_type = property.value_type()?;
 

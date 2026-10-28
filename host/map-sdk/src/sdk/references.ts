@@ -11,9 +11,9 @@ import type {
 import { DescribedHolonCollection, HolonCollection } from './collection';
 import {
   createHolonDescriptorHandle,
-  createEffectiveDescriptorHandle,
-  unwrapEffectiveDescriptorHandle,
-  type EffectiveDescriptorHandle,
+  createEffectiveHolonDescriptorHandle,
+  unwrapEffectiveHolonDescriptorHandle,
+  type EffectiveHolonDescriptorHandle,
   createPropertyDescriptorHandle,
   createRelationshipDescriptorHandle,
   type AvailableRelationshipHandle,
@@ -129,11 +129,10 @@ export class HolonReference implements WritableHolon {
     return new DescribedHolonCollection(txIdFor(this), await internalHolon.readDescribedRelatedHolons(txIdFor(this), wireRefFor(this), name));
   }
 
-  /** Constructs one schema snapshot retained in this reference's transaction. */
-  async effectiveDescriptor(): Promise<EffectiveDescriptorHandle> {
+  /** Acquires the Session-selected effective Holon schema through Rust. */
+  async effectiveDescriptor(): Promise<EffectiveHolonDescriptorHandle> {
     const txId = txIdFor(this);
-    const target = await internalHolon.readHolonDescriptor(txId, wireRefFor(this));
-    return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, target)));
+    return createEffectiveHolonDescriptorHandle(bindPreparedDescriptor(txId, await internalHolon.readEffectiveDescriptor(txId, wireRefFor(this))));
   }
 
   async holonDescriptor(): Promise<HolonDescriptorHandle> {
@@ -159,17 +158,16 @@ export class HolonReference implements WritableHolon {
     );
   }
 
-  async availableRelationships(effective?: EffectiveDescriptorHandle): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+  async availableRelationships(effective?: EffectiveHolonDescriptorHandle): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
     const txId = txIdFor(this);
     const relationships = effective
-      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveDescriptorHandle(effective)))
+      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveHolonDescriptorHandle(effective)))
       : await internalHolon.readAvailableRelationships(txId, wireRefFor(this));
     return Object.freeze(
-      relationships.map(({ descriptor, direction }) => ({
+      relationships.map(({ descriptor }) => ({
         descriptor: createRelationshipDescriptorHandle(
           createHolonReference(txId, descriptor),
         ),
-        direction: direction === 'Declared' ? ('declared' as const) : ('inverse' as const),
       })),
     );
   }
@@ -347,8 +345,20 @@ export async function readPropertyValueKind(reference: HolonReference): Promise<
 /** Internal context comparison; transaction routing remains hidden from clients. */
 export function referenceBelongsTo(reference: HolonReference, txId: TxId): boolean { return txIdFor(reference) === txId; }
 
-/** Internal construction bridge for an authoritative HolonType handle. */
-export async function constructResolvedDescriptor(target: HolonReference): Promise<EffectiveDescriptorHandle> {
-  const txId = txIdFor(target);
-  return createEffectiveDescriptorHandle(createHolonReference(txId, await internalTransaction.constructEffectiveDescriptor(txId, wireRefFor(target))));
+/** Opaque reference identity remains a Rust concern. */
+export async function readReferenceIdentity(reference: HolonReference): Promise<string> {
+  return extractString(await internalHolon.readReferenceIdentity(txIdFor(reference), wireRefFor(reference)));
+}
+export async function readEffectiveMember(reference: HolonReference, collection: RelationshipName, name: string): Promise<HolonReference | null> {
+  const member = await internalHolon.readEffectiveMember(txIdFor(reference), wireRefFor(reference), collection, name);
+  return member === null ? null : createHolonReference(txIdFor(reference), member);
+}
+
+export async function acquireTypeDescriptor(reference: HolonReference): Promise<EffectiveHolonDescriptorHandle> {
+  return createEffectiveHolonDescriptorHandle(bindPreparedDescriptor(txIdFor(reference), await internalHolon.readEffectiveDescriptorForType(txIdFor(reference), wireRefFor(reference))));
+}
+
+/** A prepared handle routes through its actual owner even after the caller transaction ends. */
+function bindPreparedDescriptor(caller: TxId, wire: HolonReferenceWire): HolonReference {
+  return createHolonReference('Transient' in wire ? wire.Transient.tx_id : caller, wire);
 }

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   commit,
-  constructEffectiveDescriptor,
   dispose,
   checkLoadTarget,
   dance,
@@ -436,12 +435,4 @@ it('projects explicit disposal and captured-target verification through transact
   invokeMapCommandMock.mockClear(); resetRequestIdCounter();
   await checkLoadTarget(txId, { Smart: smartWire });
   expectTransactionRequest({ CheckLoadTarget: { space: { Smart: smartWire } } });
-});
-
-
-it('projects contribution-free effective descriptor construction', async () => {
-  invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
-  resetRequestIdCounter();
-  await constructEffectiveDescriptor(txId, transientReference);
-  expectTransactionRequest({ ConstructEffectiveDescriptor: { target: transientReference } });
 });

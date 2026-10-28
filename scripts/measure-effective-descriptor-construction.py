@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture isolated EffectiveDescriptor construction and validation costs inside Nix.
+"""Capture isolated EffectiveHolonDescriptor construction and validation costs inside Nix.
 
 Example: nix develop --command python3 scripts/measure-effective-descriptor-construction.py
          --output /tmp/effective-descriptor-costs --samples 3

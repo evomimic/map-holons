@@ -27,6 +27,11 @@ use std::sync::Arc;
 pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 
+    /// Changes only on explicit adoption of a new prepared policy view.
+    fn relationship_cache_generation(&self) -> u64 {
+        0
+    }
+
     /// Monotonic service-local milliseconds for bounded cache reuse. No clock
     /// means bounded entries cannot be retained. Guests need no OS clock.
     fn relationship_cache_time_millis(&self) -> Option<u64> {
@@ -41,21 +46,55 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// with unconditional reuse; clients also resolve inverse descriptor policies.
     fn relationship_cache_policy(
         &self,
-        context: &Arc<TransactionContext>,
-        source_holon_id: &HolonId,
-        relationship_name: &RelationshipName,
+        _context: &Arc<TransactionContext>,
+        _source_holon_id: &HolonId,
+        _relationship_name: &RelationshipName,
     ) -> Result<Option<crate::RelationshipCachePolicy>, HolonError> {
-        declared_relationship_cache_policy(context, source_holon_id, relationship_name)
+        Ok(None)
+    }
+
+    /// Prepares missing schema above the instance-cache policy seam. Guests need no preparation.
+    fn prepare_relationship_policy_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _source: &HolonId,
+        _name: &RelationshipName,
+    ) -> Result<(), HolonError> {
+        Ok(())
+    }
+
+    /// Acquires a prepared HolonType projection. Hosts coordinate session misses;
+    /// request-local guests use their already-shipped registry before constructing.
+    fn acquire_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        if let Some(descriptor) =
+            crate::descriptors::EffectiveHolonDescriptor::find_in_context(context, &target)?
+        {
+            return Ok(descriptor);
+        }
+        self.construct_effective_holon_descriptor_internal(context, target)
+    }
+
+    /// Explicit pull selects a new projection while previously returned handles remain immutable.
+    fn pull_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        self.construct_effective_holon_descriptor_internal(context, target)
     }
 
     /// Constructs a retained schema graph. Clients delegate one typed Dance to
     /// the guest; guests invoke the shared construction algorithm directly.
-    fn construct_effective_descriptor_internal(
+    fn construct_effective_holon_descriptor_internal(
         &self,
         _context: &Arc<TransactionContext>,
         _target: HolonReference,
-    ) -> Result<crate::descriptors::EffectiveDescriptor, HolonError> {
-        Err(HolonError::NotImplemented("construct_effective_descriptor_internal".into()))
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        Err(HolonError::NotImplemented("construct_effective_holon_descriptor_internal".into()))
     }
 
     /// This function commits the staged holons to the persistent store
@@ -222,49 +261,4 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     ) -> Result<HolonReference, HolonError> {
         Err(HolonError::NotImplemented("ensure_local_holon_space_internal".to_string()))
     }
-}
-
-/// Resolves cache eligibility from the saved source's declared relationship contract.
-///
-/// Clients use this resolver for Space-scoped retention. Request-local guests
-/// select unconditional reuse instead. `None` means the name is not declared
-/// (or the source is undescribed), leaving inverse policy lookup to the client.
-/// This traversal uses only the kernel structural edges handled below, so it
-/// is safe even while another relationship's policy is being resolved.
-pub fn declared_relationship_cache_policy(
-    context: &Arc<TransactionContext>,
-    source_holon_id: &HolonId,
-    relationship_name: &RelationshipName,
-) -> Result<Option<crate::RelationshipCachePolicy>, HolonError> {
-    use crate::descriptors::effective_relationship_declaration;
-    use crate::RelationshipCachePolicy;
-    use type_names::{CoreRelationshipTypeName, ToRelationshipName};
-
-    // These version-bound structural edges bootstrap descriptor traversal;
-    // classifying them through the same graph would recurse indefinitely.
-    if matches!(relationship_name,
-        name if name == &CoreRelationshipTypeName::DescribedBy.to_relationship_name()
-            || name == &CoreRelationshipTypeName::Extends.to_relationship_name()
-            || name == &CoreRelationshipTypeName::InstanceRelationships.to_relationship_name()
-    ) {
-        return Ok(Some(RelationshipCachePolicy::Reuse));
-    }
-    let source =
-        HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
-    let declared = match effective_relationship_declaration(&source, relationship_name.clone()) {
-        Ok(descriptor) => descriptor,
-        Err(
-            HolonError::MissingDescribedBy { .. }
-            | HolonError::DescriptorDeclarationNotFound { .. },
-        ) => return Ok(None),
-        Err(error) => return Err(error),
-    };
-    Ok(Some(if declared.is_definitional()? {
-        RelationshipCachePolicy::Reuse
-    } else {
-        match declared.membership_cache_max_age_millis()? {
-            0 => RelationshipCachePolicy::Fresh,
-            age => RelationshipCachePolicy::MaxAgeMillis(age),
-        }
-    }))
 }

@@ -119,7 +119,7 @@ pub enum CoreCommandTypeName {
 /// Canonical implementation names for core DanceV2 cutover dances.
 #[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
 pub enum CoreDanceImplementationName {
-    ConstructEffectiveDescriptor,
+    ConstructEffectiveHolonDescriptor,
     GetHolonById,
     DeleteHolon,
     Commit,

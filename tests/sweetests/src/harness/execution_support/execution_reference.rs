@@ -390,12 +390,16 @@ impl ExecutionReference {
         };
 
         let mut policies = HashMap::new();
-        for relationship_descriptor in descriptor.instance_relationships().map_err(|e| {
-            format!(
+        for relationship_descriptor in
+            holons_core::EffectiveHolonDescriptor::acquire(descriptor.holon().clone())
+                .and_then(|prepared| prepared.instance_relationships())
+                .map_err(|e| {
+                    format!(
                 "path: <root>\nreason: failed to resolve actual root instance relationships: {:?}",
                 e
             )
-        })? {
+                })?
+        {
             if relationship_descriptor.is_definitional().map_err(|e| {
                 format!("path: <root>\nreason: failed to read IsDefinitional: {:?}", e)
             })? {

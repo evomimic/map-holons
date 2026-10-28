@@ -70,6 +70,14 @@ impl Store {
     }
 }
 impl HolonServiceApi for Store {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::EffectiveHolonDescriptor, HolonError> {
+        crate::prepared_descriptor_fixture::construct(context, target)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

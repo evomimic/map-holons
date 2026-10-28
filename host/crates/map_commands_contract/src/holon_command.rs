@@ -52,6 +52,18 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::GetPropertyValue { .. }) => "get_property_value",
             HolonAction::Read(ReadableHolonAction::GetRelatedHolons { .. }) => "get_related_holons",
             HolonAction::Read(ReadableHolonAction::GetHolonDescriptor) => "get_holon_descriptor",
+            HolonAction::Read(ReadableHolonAction::GetReferenceIdentity) => {
+                "get_reference_identity"
+            }
+            HolonAction::Read(ReadableHolonAction::GetEffectiveMember { .. }) => {
+                "get_effective_member"
+            }
+            HolonAction::Read(ReadableHolonAction::GetEffectiveDescriptorForType) => {
+                "get_effective_descriptor_for_type"
+            }
+            HolonAction::Read(ReadableHolonAction::GetEffectiveDescriptor) => {
+                "get_effective_descriptor"
+            }
             HolonAction::Read(ReadableHolonAction::GetAvailableProperties) => {
                 "get_available_properties"
             }
@@ -113,13 +125,25 @@ pub enum ReadableHolonAction {
     GetVersionedKey,
 
     /// `ReadableHolon::property_value(name)` → `Option<PropertyValue>`
-    GetPropertyValue { name: PropertyName },
+    GetPropertyValue {
+        name: PropertyName,
+    },
 
     /// `ReadableHolon::related_holons(name)` → `HolonCollection`
-    GetRelatedHolons { name: RelationshipName, hint: holons_core::RelationshipReadHint },
+    GetRelatedHolons {
+        name: RelationshipName,
+        hint: holons_core::RelationshipReadHint,
+    },
 
     /// `ReadableHolon::holon_descriptor()` → descriptor reference.
     GetHolonDescriptor,
+    GetEffectiveDescriptor,
+    GetEffectiveDescriptorForType,
+    GetReferenceIdentity,
+    GetEffectiveMember {
+        collection: RelationshipName,
+        name: base_types::MapString,
+    },
 
     /// `ReadableHolon::available_properties()` → ordered descriptor collection.
     GetAvailableProperties,
@@ -127,7 +151,9 @@ pub enum ReadableHolonAction {
     /// `ReadableHolon::available_relationships()` → qualified descriptors.
     GetAvailableRelationships,
     /// Instance availability filtered from a retained resolved schema.
-    GetAvailableRelationshipsFromEffective { descriptor: HolonReference },
+    GetAvailableRelationshipsFromEffective {
+        descriptor: HolonReference,
+    },
 
     /// Inclusive bounds of the target relationship descriptor.
     GetEffectiveCardinality,
@@ -140,7 +166,9 @@ pub enum ReadableHolonAction {
     /// Effective afforded Dances of the target holon.
     GetAvailableDances,
     /// Collection membership together with its declared target type.
-    GetDescribedRelatedHolons { name: RelationshipName },
+    GetDescribedRelatedHolons {
+        name: RelationshipName,
+    },
     /// Effective properties of the target HolonType, not its metatype.
     GetInstanceProperties,
     /// Declared scalar representation of a property descriptor.

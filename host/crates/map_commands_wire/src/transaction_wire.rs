@@ -77,9 +77,6 @@ pub enum TransactionActionWire {
         invocation: DanceV2InvocationWire,
     },
 
-    ConstructEffectiveDescriptor {
-        target: HolonReferenceWire,
-    },
     SelectVisualizer(VisualizerSelectionRequestWire),
     ProjectVisualizerDiscovery {
         snapshot: MapString,
@@ -333,11 +330,6 @@ impl TransactionActionWire {
             }
             TransactionActionWire::Dance(request_wire) => {
                 Ok(TransactionAction::Dance(request_wire.bind(context)?))
-            }
-            TransactionActionWire::ConstructEffectiveDescriptor { target } => {
-                Ok(TransactionAction::ConstructEffectiveDescriptor {
-                    target: target.bind(context)?,
-                })
             }
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })

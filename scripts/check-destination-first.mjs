@@ -35,7 +35,7 @@ try {
       const assert = (value, message) => { if (!value) throw Error(message); };
       const fixture = window.fixture = { assert, samples: [], paths: [], destination: undefined, fail: false };
       const property = { propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false };
-      const collection = members => ({ length: members.length, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() });
+      const collection = members => ({ length: members.length, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() });
       const reference = label => ({ holonId: async () => ({ Local: label }), key: async () => label,
         holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: async () => ({ StringValue: label }),
         relatedHolons: async name => {

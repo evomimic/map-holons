@@ -111,7 +111,7 @@
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "df3c55b40c24aa42ee472fb3cf4d4a4fd911597fd048410fcb7f02527cc6e746"
+      "sha256": "fb7c0c8dbed6d17008ecf47f78f0d71eaa38f4db99c61c7ed8e295e48de58875"
     },
     {
       "path": "imports/query/schema.json",
@@ -168,7 +168,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(CommandType.HolonType)-[CommandInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(CommandType.HolonType)-[CommandInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -208,11 +208,11 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(Constraint.HolonType)-[ConstraintInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(Constraint.HolonType)-[ConstraintInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(ConstructEffectiveDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)",
+      "key": "(ConstructEffectiveHolonDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -256,7 +256,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(DanceType.HolonType)-[DanceInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(DanceType.HolonType)-[DanceInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -288,7 +288,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(DeclaredRelationshipType.RelationshipType)-[DeclarationInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -332,43 +332,51 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[DescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveConstraints]->(Constraint.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveContributions]->(EffectiveSchemaContribution.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceKeyRule]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -384,7 +392,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(EffectiveSchemaContribution.HolonType)-[ContributionOfEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -548,7 +556,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[EffectiveDescriptorFor]->(EffectiveDescriptor.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[EffectiveHolonDescriptorFor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -584,7 +592,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[KeyRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[KeyRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -620,7 +628,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[RequestedByEffectiveDescriptorRequest]->(ConstructEffectiveDescriptorRequest.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[RequestedByEffectiveHolonDescriptorRequest]->(ConstructEffectiveHolonDescriptorRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -852,7 +860,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(PropertyType.TypeDescriptor)-[PropertyInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(PropertyType.TypeDescriptor)-[PropertyInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -984,7 +992,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1120,7 +1128,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(ValidationRule.HolonType)-[ValidationRuleInEffectiveDescriptor]->(EffectiveDescriptor.HolonType)",
+      "key": "(ValidationRule.HolonType)-[ValidationRuleInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1756,19 +1764,19 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "ConstructEffectiveDescriptor.DanceImplementation",
+      "key": "ConstructEffectiveHolonDescriptor.DanceImplementation",
       "type": "DanceImplementation.HolonType"
     },
     {
-      "key": "ConstructEffectiveDescriptor.DanceType",
+      "key": "ConstructEffectiveHolonDescriptor.DanceType",
       "type": "MetaDanceType.MetaHolonType"
     },
     {
-      "key": "ConstructEffectiveDescriptorRequest.HolonType",
+      "key": "ConstructEffectiveHolonDescriptorRequest.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
-      "key": "ConstructEffectiveDescriptorResponse.DanceResponseType",
+      "key": "ConstructEffectiveHolonDescriptorResponse.DanceResponseType",
       "type": "MetaDanceResponseType.MetaHolonType"
     },
     {
@@ -2548,7 +2556,11 @@
       "type": "MetaStringValueType.MetaValueType"
     },
     {
-      "key": "EffectiveDescriptor.HolonType",
+      "key": "EffectiveHolonDescriptor.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "EffectiveHolonDescriptorRegistry.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
@@ -3642,6 +3654,10 @@
     {
       "key": "PathInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "PreparedSchema.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "PresentActions.VisualizerOperator",

@@ -24,9 +24,9 @@ async fn configured_inverse_policies_retain_committed_membership() {
             context.lookup().get_saved_holon_by_key(&MapString::from(key)).unwrap(),
         );
         let relationship =
-            source.holon_descriptor().unwrap().resolve_available_relationship(name).unwrap();
+            source.effective_descriptor().unwrap().get_relationship_by_name(name).unwrap();
         assert_eq!(
-            relationship.descriptor.membership_cache_max_age_millis().unwrap(),
+            relationship.membership_cache_max_age_millis().unwrap(),
             30_000,
             "{key}.{name} must bind its own configured policy"
         );

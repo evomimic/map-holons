@@ -13,7 +13,7 @@ use core_types::{HolonError, HolonId, RelationshipName};
 /// The service resolves eligibility once per cached relationship. Bounded reuse
 /// requires a service-provided monotonic clock; request-local guests reuse all
 /// membership without descriptor lookup or a clock.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RelationshipCachePolicy {
     /// Reuse for this cache lifetime, as selected by the owning service.
     Reuse,
@@ -42,6 +42,7 @@ struct CachedMembership {
 /// Only authoritative resolutions create entries; temporary fallbacks remain retryable.
 #[derive(Clone, Debug)]
 struct CachedRelationship {
+    generation: u64,
     policy: RelationshipCachePolicy,
     membership: Option<CachedMembership>,
 }
@@ -51,6 +52,7 @@ impl CachedRelationship {
         policy: RelationshipCachePolicy,
         collection: Arc<RwLock<HolonCollection>>,
         fetched_at: Option<u64>,
+        generation: u64,
     ) -> Self {
         let expiry = match policy {
             RelationshipCachePolicy::Reuse => Some(None),
@@ -60,6 +62,7 @@ impl CachedRelationship {
             _ => None,
         };
         Self {
+            generation,
             policy,
             membership: expiry
                 .map(|expires_at_millis| CachedMembership { collection, expires_at_millis }),
@@ -105,13 +108,17 @@ impl RelationshipCache {
         names: &[RelationshipName],
     ) -> Result<(), HolonError> {
         let now = service.relationship_cache_time_millis();
+        let generation = service.relationship_cache_generation();
         let mut missing = Vec::new();
         let mut policies = HashMap::new();
         {
             let cache =
                 self.cache.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
             for name in names {
-                let entry = cache.get(source).and_then(|entries| entries.get(name));
+                let entry = cache
+                    .get(source)
+                    .and_then(|entries| entries.get(name))
+                    .filter(|entry| entry.generation == generation);
                 if let Some(entry) = entry {
                     policies.insert(name.clone(), entry.policy);
                 }
@@ -143,7 +150,10 @@ impl RelationshipCache {
                 None => service.relationship_cache_policy(context, source, &name)?,
             };
             if let Some(policy) = policy {
-                prepared.push((name, CachedRelationship::new(policy, collection, fetched_at)));
+                prepared.push((
+                    name,
+                    CachedRelationship::new(policy, collection, fetched_at, generation),
+                ));
             }
         }
         let mut cache =
@@ -196,6 +206,7 @@ impl RelationshipCache {
         .entered();
         // Release the cache lock before classification: descriptor traversal
         // resolves its own relationship reads through this same cache.
+        let generation = holon_service.relationship_cache_generation();
         let cached = self
             .cache
             .read()
@@ -206,6 +217,7 @@ impl RelationshipCache {
             })?
             .get(source_holon_id)
             .and_then(|relationships| relationships.get(relationship_name))
+            .filter(|entry| entry.generation == generation)
             .cloned();
         let retained_policy = cached.as_ref().map(|entry| entry.policy);
         let mut miss_reason = "missing";
@@ -273,7 +285,12 @@ impl RelationshipCache {
                 .or_default()
                 .insert(
                     relationship_name.clone(),
-                    CachedRelationship::new(policy, Arc::clone(&fetched_arc), fetched_at),
+                    CachedRelationship::new(
+                        policy,
+                        Arc::clone(&fetched_arc),
+                        fetched_at,
+                        generation,
+                    ),
                 );
         }
         Ok(fetched_arc)

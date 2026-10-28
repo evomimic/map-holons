@@ -150,9 +150,8 @@ pub fn initialize_usage(
     subject_type: HolonReference,
 ) -> Result<StagedReference, HolonError> {
     let usage_type = visualizer
-        .holon_descriptor()?
-        .resolve_available_relationship("UsedByVisualizerUsage")?
-        .descriptor
+        .effective_descriptor()?
+        .get_relationship_by_name("UsedByVisualizerUsage")?
         .target_type()?
         .holon()
         .clone();

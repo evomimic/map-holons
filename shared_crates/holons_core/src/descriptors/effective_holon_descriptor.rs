@@ -1,4 +1,4 @@
-//! Transaction-scoped, reference-backed resolved schema and contribution provenance.
+//! Reference-backed effective Holon schema, prepared eagerly and owned by its runtime context.
 use std::sync::Arc;
 
 use base_types::{BaseValue, MapString};
@@ -10,15 +10,171 @@ use type_names::{
 use super::{accessor_helpers, *};
 use crate::core_shared_objects::holon::state::AccessType;
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::{DefinitionIdentity, HolonReference, ReadableHolon};
+use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
 
-/// One immutable derived schema graph retained by the caller's transaction.
+/// One immutable derived Holon schema graph retained by its owning Session or candidate context.
 /// Collections are read from relationships; the wrapper retains no resolution cache.
-pub struct EffectiveDescriptor {
+pub struct EffectiveHolonDescriptor {
     holon: HolonReference,
 }
 
-impl EffectiveDescriptor {
+impl EffectiveHolonDescriptor {
+    /// Acquires the schema of this exact HolonType, rather than its describing meta-type.
+    pub fn acquire(target: HolonReference) -> Result<Self, HolonError> {
+        let context = target.resolution_context()?;
+        context.get_holon_service().acquire_effective_holon_descriptor_internal(&context, target)
+    }
+
+    /// Explicitly pulls a new selected view; this wrapper continues to describe its original snapshot.
+    pub fn pull(&self) -> Result<Self, HolonError> {
+        let target = self.described_holon_type()?.holon().clone();
+        let context = self.holon.resolution_context()?;
+        context.get_holon_service().pull_effective_holon_descriptor_internal(&context, target)
+    }
+
+    /// Reads this instance's Commit-local prepared contract without initiating construction.
+    /// Persistence uses this after assessment, when all candidate decisions are already fixed.
+    pub fn find_for_instance(source: &HolonReference) -> Result<Option<Self>, HolonError> {
+        let context = source.resolution_context()?;
+        let descriptor = source.holon_descriptor()?;
+        Self::find_in_context(&context, descriptor.holon())
+    }
+
+    /// Reuses published products during structural assembly without starting construction.
+    pub(crate) fn find_prepared(target: &HolonReference) -> Result<Option<Self>, HolonError> {
+        let context = target.resolution_context()?;
+        if let Some(descriptor) = Self::find_in_context(&context, target)? {
+            return Ok(Some(descriptor));
+        }
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(registry) = context.descriptor_registry() {
+                return registry.get(&target.holon_id()?);
+            }
+        }
+        Ok(None)
+    }
+
+    /// Finds saved entries in a Commit-local snapshot without following Extends.
+    pub fn find_in_context(
+        context: &Arc<TransactionContext>,
+        target: &HolonReference,
+    ) -> Result<Option<Self>, HolonError> {
+        if !matches!(target, HolonReference::Smart(_)) {
+            return Ok(None);
+        }
+        let Some(root) = context.descriptor_registry_root()? else {
+            return Ok(None);
+        };
+        let members = root
+            .related_holons(CoreRelationshipTypeName::PreparedDescriptors)?
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+            .get_members()
+            .clone();
+        for member in members {
+            let descriptor = Self::from_constructed_holon(member);
+            if same_definition(descriptor.described_holon_type()?.holon(), target)? {
+                return Ok(Some(descriptor));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Filters the prepared outbound vocabulary by this instance's lifecycle state.
+    pub fn available_relationships(
+        &self,
+        source: &HolonReference,
+    ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+        Ok(crate::reference_layer::available_relationships::available_relationships_from_effective(
+            source, self,
+        )?
+        .into_iter()
+        .map(|entry| entry.descriptor)
+        .collect())
+    }
+
+    pub fn allows_property(
+        &self,
+        name: impl type_names::ToPropertyName,
+    ) -> Result<PropertyDescriptor, HolonError> {
+        self.get_property_by_name(name)
+    }
+    pub fn affords_dance(
+        &self,
+        name: impl type_names::ToDanceName,
+    ) -> Result<DanceDescriptor, HolonError> {
+        self.get_dance_by_name(name)
+    }
+    pub fn affords_command(
+        &self,
+        name: impl type_names::ToCommandName,
+    ) -> Result<CommandDescriptor, HolonError> {
+        self.get_command_by_name(name)
+    }
+
+    pub fn get_property_by_name(
+        &self,
+        name: impl type_names::ToPropertyName,
+    ) -> Result<PropertyDescriptor, HolonError> {
+        let name = name.to_property_name();
+        for descriptor in self.instance_properties()? {
+            if descriptor.property_name()? == name {
+                return Ok(descriptor);
+            }
+        }
+        Err(self.missing("property", name.to_string()))
+    }
+
+    pub fn get_relationship_by_name(
+        &self,
+        name: impl ToRelationshipName,
+    ) -> Result<RelationshipDescriptor, HolonError> {
+        let name = name.to_relationship_name();
+        for descriptor in self.navigable_relationships()? {
+            if descriptor.base_relationship_name()? == name {
+                return Ok(descriptor);
+            }
+        }
+        Err(self.missing("relationship", name.to_string()))
+    }
+
+    pub fn get_dance_by_name(
+        &self,
+        name: impl type_names::ToDanceName,
+    ) -> Result<DanceDescriptor, HolonError> {
+        let name = name.to_dance_name();
+        for descriptor in self.afforded_dances()? {
+            if descriptor.dance_name()? == name {
+                return Ok(descriptor);
+            }
+        }
+        Err(self.missing("dance", name.to_string()))
+    }
+
+    pub fn get_command_by_name(
+        &self,
+        name: impl type_names::ToCommandName,
+    ) -> Result<CommandDescriptor, HolonError> {
+        let name = name.to_command_name();
+        for descriptor in self.afforded_commands()? {
+            if descriptor.command_name()? == name {
+                return Ok(descriptor);
+            }
+        }
+        Err(self.missing("command", name.to_string()))
+    }
+
+    fn missing(&self, kind: &str, name: String) -> HolonError {
+        HolonError::DescriptorDeclarationNotFound {
+            kind: kind.into(),
+            name,
+            descriptor: self
+                .described_holon_type()
+                .map(|descriptor| accessor_helpers::descriptor_label(descriptor.holon()))
+                .unwrap_or_else(|_| self.holon.reference_id_string()),
+        }
+    }
+
     /// Wraps the successful result of the typed construction service without revalidation.
     /// Arbitrary references must use `try_from_holon` instead.
     pub fn from_constructed_holon(holon: HolonReference) -> Self {
@@ -27,7 +183,7 @@ impl EffectiveDescriptor {
 
     /// Narrows a readable transient result by its describing type.
     pub fn try_from_holon(holon: HolonReference) -> Result<Self, HolonError> {
-        require_transient_type(&holon, CoreHolonTypeName::EffectiveDescriptor)?;
+        require_transient_type(&holon, CoreHolonTypeName::EffectiveHolonDescriptor)?;
         Ok(Self { holon })
     }
 
@@ -64,17 +220,15 @@ impl EffectiveDescriptor {
     }
 
     /// Reads outbound declared and inverse schema vocabulary, independently of instances.
-    pub fn navigable_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
-        targets(&self.holon, CoreRelationshipTypeName::NavigableRelationships)?
+    pub fn navigable_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+        Ok(targets(&self.holon, CoreRelationshipTypeName::NavigableRelationships)?
             .into_iter()
-            .map(|target| {
-                let descriptor_direction = classify_relationship_direction(&target)?;
-                Ok(QualifiedRelationship {
-                    descriptor: RelationshipDescriptor::from_holon(target),
-                    descriptor_direction,
-                })
-            })
-            .collect()
+            .map(RelationshipDescriptor::from_holon)
+            .collect())
+    }
+
+    pub fn prepared_schema(&self) -> Result<PreparedSchema, HolonError> {
+        PreparedSchema::read(&self.holon)
     }
 
     /// Reads resolved Dance affordances from the completed graph.
@@ -124,7 +278,7 @@ impl EffectiveDescriptor {
             let name = record.collection()?.base_relationship_name()?.to_string();
             grouped.entry(name).or_default().push((record.position()?, record.member()?.member));
         }
-        for (source, result, source_key, _, _) in collections() {
+        for (source, result, _, _, _) in collections() {
             let mut records =
                 grouped.remove(&source.to_relationship_name().to_string()).unwrap_or_default();
             records.sort_by_key(|(position, _)| *position);
@@ -142,14 +296,10 @@ impl EffectiveDescriptor {
             if records.is_empty() && direct.is_empty() {
                 continue;
             }
-            let expected = normalized_effective_members(
-                &context,
-                &source_key,
-                records.into_iter().map(|(_, member)| member).collect(),
-            )?
-            .iter()
-            .map(|member| DefinitionIdentity::for_reference(member, &context))
-            .collect::<Result<Vec<_>, _>>()?;
+            let expected = records
+                .into_iter()
+                .map(|(_, member)| DefinitionIdentity::for_reference(&member, &context))
+                .collect::<Result<Vec<_>, _>>()?;
             let mut actual_counts = std::collections::HashMap::new();
             let mut expected_counts = std::collections::HashMap::new();
             for member in &direct {
@@ -278,28 +428,28 @@ impl EffectiveSchemaContribution {
 /// Constructs one coherent resolved schema using exactly one complete target-lineage walk.
 /// The caller must keep the contributing schema graph unchanged during construction and
 /// reconstruct after relevant edits. No instances or replacement definitions are consulted.
-pub fn construct_effective_descriptor(
+pub fn construct_effective_holon_descriptor(
     context: &Arc<TransactionContext>,
     target: HolonReference,
-) -> Result<EffectiveDescriptor, HolonError> {
-    construct_effective_descriptor_impl(context, target, |_, _| {})
+) -> Result<EffectiveHolonDescriptor, HolonError> {
+    construct_effective_holon_descriptor_impl(context, target, |_, _| {})
 }
 
 /// Controlled profiling entry point for the reference-oriented projection.
 #[cfg(feature = "descriptor-performance-profiling")]
-pub fn profile_effective_descriptor_construction(
+pub fn profile_effective_holon_descriptor_construction(
     context: &Arc<TransactionContext>,
     target: HolonReference,
     checkpoint: impl FnMut(&str, &str),
-) -> Result<EffectiveDescriptor, HolonError> {
-    construct_effective_descriptor_impl(context, target, checkpoint)
+) -> Result<EffectiveHolonDescriptor, HolonError> {
+    construct_effective_holon_descriptor_impl(context, target, checkpoint)
 }
 
-fn construct_effective_descriptor_impl(
+fn construct_effective_holon_descriptor_impl(
     context: &Arc<TransactionContext>,
     target: HolonReference,
     mut checkpoint: impl FnMut(&str, &str),
-) -> Result<EffectiveDescriptor, HolonError> {
+) -> Result<EffectiveHolonDescriptor, HolonError> {
     let computed = ComputedEffectiveSchema::resolve_with_checkpoint(&target, &mut checkpoint)?;
     materialize_effective_schema(context, &computed, checkpoint)
 }
@@ -309,7 +459,7 @@ pub(super) fn materialize_effective_schema(
     context: &Arc<TransactionContext>,
     computed: &ComputedEffectiveSchema,
     mut checkpoint: impl FnMut(&str, &str),
-) -> Result<EffectiveDescriptor, HolonError> {
+) -> Result<EffectiveHolonDescriptor, HolonError> {
     let target = computed.target.clone();
     if !computed.defines_holon_instances()? {
         return Err(HolonError::WrongDescriptorKind {
@@ -324,7 +474,9 @@ pub(super) fn materialize_effective_schema(
     checkpoint("navigation", "");
     let result_type = resolve_core_descriptor(
         context,
-        &CoreHolonTypeName::EffectiveDescriptor.descriptor_key(&CoreHolonTypeName::HolonType).0,
+        &CoreHolonTypeName::EffectiveHolonDescriptor
+            .descriptor_key(&CoreHolonTypeName::HolonType)
+            .0,
     )?;
     let owner = context.get_space_holon()?;
     let mut result = context.mutation().new_holon(None)?;
@@ -337,48 +489,25 @@ pub(super) fn materialize_effective_schema(
     checkpoint("result_allocation", "");
     for collection in &computed.collections {
         let result_name = collection.result.clone();
-        let source_key = &collection.source_key;
         let contributions = &collection.occurrences;
-        let values = normalized_effective_members(
-            context,
-            source_key,
-            contributions.iter().map(|entry| entry.member.clone()).collect(),
-        )?;
+        let values = contributions.iter().map(|entry| entry.member.clone()).collect();
         let result_label = result_name.as_relationship_name().to_string();
         result.add_related_references(result_name, values)?;
         checkpoint("product_population", &result_label);
     }
     result.add_related_references(CoreRelationshipTypeName::EffectiveContributions, vec![])?;
+    let prepared = PreparedSchema::compute(computed)?;
+    result.with_property_value(
+        CorePropertyTypeName::PreparedSchema,
+        MapString(
+            serde_json::to_string(&prepared)
+                .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
+        ),
+    )?;
     result.mark_as_immutable()?;
-    let result = Ok(EffectiveDescriptor { holon: result.into() });
+    let result = Ok(EffectiveHolonDescriptor { holon: result.into() });
     checkpoint("finalize", "");
     result
-}
-
-/// Applies the authoritative collection's duplicate policy without losing the
-/// occurrence sequence used to construct provenance. Unordered products retain
-/// first-occurrence order for deterministic transport. Unique inputs need no
-/// additional schema reads.
-fn normalized_effective_members(
-    context: &Arc<TransactionContext>,
-    source_key: &MapString,
-    members: Vec<HolonReference>,
-) -> Result<Vec<HolonReference>, HolonError> {
-    let mut seen = std::collections::HashSet::new();
-    let mut unique = Vec::with_capacity(members.len());
-    for member in &members {
-        if seen.insert(DefinitionIdentity::for_reference(member, context)?) {
-            unique.push(member.clone());
-        }
-    }
-    if unique.len() == members.len()
-        || RelationshipDescriptor::from_holon(resolve_core_descriptor(context, &source_key.0)?)
-            .allows_duplicates()?
-    {
-        Ok(members)
-    } else {
-        Ok(unique)
-    }
 }
 
 // Descriptor Runtime owns result pairs; authoritative collections retain their package identities.
@@ -509,8 +638,10 @@ mod tests {
         let root: HolonReference = context.mutation().stage_new_holon(root)?.into();
         canonical(
             &context,
-            &CoreHolonTypeName::EffectiveDescriptor.descriptor_key(&CoreHolonTypeName::HolonType).0,
-            "EffectiveDescriptor",
+            &CoreHolonTypeName::EffectiveHolonDescriptor
+                .descriptor_key(&CoreHolonTypeName::HolonType)
+                .0,
+            "EffectiveHolonDescriptor",
         )?;
         canonical(
             &context,
@@ -574,7 +705,7 @@ mod tests {
         let (context, parent, target) = fixture()?;
         let target_before = inheritance::lineage_edge_reads(&target);
         let parent_before = inheritance::lineage_edge_reads(&parent);
-        let result = construct_effective_descriptor(&context, target.clone())?;
+        let result = construct_effective_holon_descriptor(&context, target.clone())?;
         assert!(result.holon().key()?.is_none());
         assert!(same_definition(result.described_holon_type()?.holon(), &target)?);
         assert!(result.instance_properties()?.is_empty());
@@ -593,7 +724,7 @@ mod tests {
         assert!(reference.with_property_value("Corrupt", true).is_err());
         let collection = reference.related_holons("EffectiveContributions")?;
         assert!(collection.write().unwrap().add_references(vec![target.clone()]).is_err());
-        let second = construct_effective_descriptor(&context, target)?;
+        let second = construct_effective_holon_descriptor(&context, target)?;
         assert!(!same_definition(result.holon(), second.holon())?);
         context.dispose()?;
         assert!(result.effective_key_rule().is_err());
@@ -628,13 +759,14 @@ mod tests {
         let result = computed.materialize(&context)?;
         assert_eq!(context.lookup().transient_count()? - before, 1);
         assert_eq!(result.effective_constraints()?.len(), 3);
-        assert!(result.contributions()?.is_empty());
+        assert!(
+            targets(result.holon(), CoreRelationshipTypeName::EffectiveContributions)?.is_empty()
+        );
         Ok(())
     }
 
     #[test]
-    fn duplicate_free_products_preserve_repeated_constraint_and_binding_provenance(
-    ) -> Result<(), HolonError> {
+    fn products_preserve_repeated_constraint_and_binding_declarations() -> Result<(), HolonError> {
         let (context, mut parent, mut child) = fixture()?;
         for (source, category) in [
             (CoreRelationshipTypeName::Constraints, "Constraint.HolonType"),
@@ -658,9 +790,11 @@ mod tests {
         let before = context.lookup().transient_count()?;
         let result = computed.materialize(&context)?;
         assert_eq!(context.lookup().transient_count()? - before, 1);
-        assert_eq!(result.effective_constraints()?.len(), 1);
-        assert_eq!(result.effective_validation_bindings()?.len(), 1);
-        assert!(result.contributions()?.is_empty());
+        assert_eq!(result.effective_constraints()?.len(), 3);
+        assert_eq!(result.effective_validation_bindings()?.len(), 3);
+        assert!(
+            targets(result.holon(), CoreRelationshipTypeName::EffectiveContributions)?.is_empty()
+        );
         for source in
             [CoreRelationshipTypeName::Constraints, CoreRelationshipTypeName::ValidationBindings]
         {
@@ -718,6 +852,7 @@ mod tests {
             if contract {
                 member.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor])?;
                 if matches!(source_name, CoreRelationshipTypeName::InstanceRelationships) {
+                    member.with_property_value(CorePropertyTypeName::IsDefinitional, true)?;
                     member.add_related_holons(
                         CoreRelationshipTypeName::SourceType,
                         vec![parent.clone()],
@@ -740,7 +875,7 @@ mod tests {
         let direct = HolonDescriptor::from_holon(child.clone());
         let computed = ComputedEffectiveSchema::resolve(&child)?;
         let result = computed.materialize(&context)?;
-        result.validate_contributions()?;
+
         let ids = |references: Vec<HolonReference>| {
             references.into_iter().map(|r| r.full_reference_id_string()).collect::<Vec<_>>()
         };
@@ -773,7 +908,9 @@ mod tests {
             direct.effective_key_rule()?.holon()
         )?);
         assert_eq!(result.navigable_relationships()?.len(), 1);
-        assert!(result.contributions()?.is_empty());
+        assert!(
+            targets(result.holon(), CoreRelationshipTypeName::EffectiveContributions)?.is_empty()
+        );
         let key_rule = result.effective_key_rule()?.holon().clone();
         for (source, ..) in collections() {
             let occurrences = computed.contributions(source);
@@ -793,7 +930,7 @@ mod tests {
         let (context, _, child) = fixture()?;
         let HolonReference::Transient(child) = child else { unreachable!() };
         let child = context.mutation().stage_new_holon(child)?;
-        let result = construct_effective_descriptor(&context, child.into())?;
+        let result = construct_effective_holon_descriptor(&context, child.into())?;
         assert!(result.navigable_relationships()?.is_empty());
         Ok(())
     }
@@ -804,7 +941,7 @@ mod tests {
         let (context, _, mut child) = fixture()?;
         let mut cycle = new_test_holon(&context, "cycle")?;
         cycle.add_related_holons(CoreRelationshipTypeName::Extends, vec![cycle.clone().into()])?;
-        assert!(construct_effective_descriptor(&context, cycle.into()).is_err());
+        assert!(construct_effective_holon_descriptor(&context, cycle.into()).is_err());
         child.add_related_holons(
             CoreRelationshipTypeName::InstanceKeyRule,
             vec![
@@ -812,14 +949,14 @@ mod tests {
                 canonical(&context, "OtherRule.KeyRuleType", "OtherRule")?,
             ],
         )?;
-        let result = construct_effective_descriptor(&context, child)?;
+        let result = construct_effective_holon_descriptor(&context, child)?;
         assert_eq!(
             targets(result.holon(), CoreRelationshipTypeName::EffectiveInstanceKeyRule)?.len(),
             2
         );
         assert!(result.effective_key_rule().is_err());
         let root = resolve_core_descriptor(&context, "HolonType.TypeDescriptor")?;
-        let result = construct_effective_descriptor(&context, root)?;
+        let result = construct_effective_holon_descriptor(&context, root)?;
         assert!(
             targets(result.holon(), CoreRelationshipTypeName::EffectiveInstanceKeyRule)?.is_empty()
         );

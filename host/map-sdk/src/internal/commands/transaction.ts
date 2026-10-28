@@ -499,8 +499,3 @@ export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRe
 export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory', report: { session: string; occurrence_id: string; sequence: number }): Promise<void> {
   return runTransactionCommand(txId, { RecordVisualizerUse: { request, selected, usage, origin, report } }, expectNone);
 }
-
-/** Constructs through the normal guest Dance and retains the graph in this transaction. */
-export function constructEffectiveDescriptor(txId: TxId, target: HolonReferenceWire): Promise<HolonReferenceWire> {
-  return runTransactionCommand(txId, { ConstructEffectiveDescriptor: { target } }, expectReference);
-}
