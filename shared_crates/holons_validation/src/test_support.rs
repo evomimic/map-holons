@@ -23,6 +23,7 @@ struct FixtureStorage {
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
     node_reads: std::sync::atomic::AtomicUsize,
+    key_lookup_reads: std::sync::atomic::AtomicUsize,
     lineage_reads: std::sync::atomic::AtomicUsize,
     keyed_lineages: std::sync::Mutex<HashMap<MapString, Vec<LocalId>>>,
     lineage_read_error: std::sync::Mutex<Option<HolonError>>,
@@ -148,6 +149,7 @@ impl HolonServiceApi for FixtureStorage {
         context: &Arc<TransactionContext>,
         key: &MapString,
     ) -> Result<holons_core::SmartReference, HolonError> {
+        self.key_lookup_reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         use type_names::ToPropertyName;
         for (id, holon) in &self.holons {
             if holon.property_map().get(&"Key".to_property_name())
@@ -373,6 +375,13 @@ impl Fixture {
         self.saved_storage
             .as_ref()
             .map_or(0, |storage| storage.node_reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    /// Counts saved definition lookups by key, separately from lineage evidence reads.
+    pub fn saved_key_lookup_reads(&self) -> usize {
+        self.saved_storage.as_ref().map_or(0, |storage| {
+            storage.key_lookup_reads.load(std::sync::atomic::Ordering::Relaxed)
+        })
     }
 
     pub fn backend_reads_for(&self, edge: &CoreRelationshipTypeName) -> usize {

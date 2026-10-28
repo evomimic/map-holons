@@ -2970,3 +2970,31 @@ fn encountered_missing_lineage_root_reports_its_prerequisite_finding() -> Result
     }), "{report:?}");
     Ok(())
 }
+
+#[test]
+fn saved_assessment_uses_bound_definitions_without_keyed_anchor_lookup() -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let mut subject = fixture.staged_subject("bound-definition-consumer")?;
+    subject.with_property_value("Title", "complete")?;
+    let reads_before = fixture.saved_key_lookup_reads();
+    let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(report.is_accepted(), "{report:#?}");
+    assert_eq!(fixture.saved_key_lookup_reads(), reads_before);
+
+    // Removing anchor discovery must retain findings for encountered missing inputs.
+    subject.remove_property_value("Title")?;
+    let report = validate_commit_candidates(&fixture.context, &[subject])?;
+    assert!(
+        report.violations.iter().any(|finding| matches!(
+            &finding.kind,
+            CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001"
+        )),
+        "{report:#?}"
+    );
+    assert_eq!(fixture.saved_key_lookup_reads(), reads_before);
+
+    // Positive control after assessment proves the fixture counter observes keyed lookup.
+    fixture.context.lookup().get_saved_holon_by_key(&"Contract".into())?;
+    assert_eq!(fixture.saved_key_lookup_reads(), reads_before + 1);
+    Ok(())
+}
