@@ -46,8 +46,7 @@ struct PreparedDefinition {
     constraints_consumed: Cell<bool>,
     bindings_consumed: Cell<bool>,
     contract: Result<Arc<ContractContributions>, HolonError>,
-    constraints: Result<Vec<EffectiveRelationshipMember>, HolonError>,
-    bindings: Result<Vec<EffectiveRelationshipMember>, HolonError>,
+    schema: Result<Arc<holons_core::descriptors::ComputedEffectiveSchema>, HolonError>,
 }
 
 /// Diagnostic type label without fetching content solely for profiling.
@@ -254,7 +253,41 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let contract = ContractContributions::resolve(&reference).map(Arc::new);
+            // A schema-edit assessment must observe its candidate graph, including
+            // repeated declarations. Saved-only assessments can reuse the shipped snapshot.
+            let prepared = if workset.schemas.is_empty() {
+                holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
+                    context, &reference,
+                )?
+            } else {
+                None
+            };
+            let schema = match prepared {
+                Some(descriptor) => {
+                    holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
+                }
+                None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+            }
+            .map(Arc::new);
+            // All name/navigation reads required by validation belong to preparation,
+            // and the same cached projection is consumed during assessment.
+            if let Ok(schema) = &schema {
+                for vocabulary in [
+                    holons_core::descriptors::EffectiveVocabulary::Properties,
+                    holons_core::descriptors::EffectiveVocabulary::Dances,
+                    holons_core::descriptors::EffectiveVocabulary::Commands,
+                ] {
+                    let _ = schema.name_index(vocabulary); // Results, including errors, remain cached.
+                }
+                if schema.defines_holon_instances()? {
+                    let _ = schema
+                        .name_index(holons_core::descriptors::EffectiveVocabulary::Relationships);
+                }
+            }
+            let contract = schema
+                .as_ref()
+                .map(|schema| Arc::new(schema.contract_contributions()))
+                .map_err(Clone::clone);
             observer(crate::AssessmentEvent::PreparationOperation {
                 operation: "EffectiveContract",
                 role: "PreparedDefinition",
@@ -265,10 +298,6 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let constraints = holons_core::descriptors::effective_relationship_targets(
-                &reference,
-                R::Constraints,
-            );
             observer(crate::AssessmentEvent::PreparationOperation {
                 operation: "EffectiveConstraints",
                 role: "PreparedDefinition",
@@ -279,10 +308,6 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            let bindings = holons_core::descriptors::effective_relationship_targets(
-                &reference,
-                R::ValidationBindings,
-            );
             observer(crate::AssessmentEvent::PreparationOperation {
                 operation: "EffectiveBindings",
                 role: "PreparedDefinition",
@@ -294,8 +319,7 @@ impl DescriptorPackages {
                     constraints_consumed: Cell::new(false),
                     bindings_consumed: Cell::new(false),
                     contract,
-                    constraints,
-                    bindings,
+                    schema,
                 },
             );
         }
@@ -322,11 +346,23 @@ impl DescriptorPackages {
     }
 
     /// Supplies reached binding contributions for construction-time role preparation.
-    pub fn binding_contributions(&self) -> impl Iterator<Item = &EffectiveRelationshipMember> {
+    pub fn binding_contributions(&self) -> Vec<EffectiveRelationshipMember> {
         self.definitions
             .values()
-            .filter_map(|definition| definition.bindings.as_ref().ok())
-            .flatten()
+            .filter_map(|definition| definition.schema.as_ref().ok())
+            .flat_map(|schema| schema.contributions(R::ValidationBindings))
+            .map(|entry| EffectiveRelationshipMember {
+                member: entry.member.clone(),
+                declared_on: entry.declared_on.clone(),
+            })
+            .collect()
+    }
+
+    pub fn effective_schema(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<&holons_core::descriptors::ComputedEffectiveSchema, HolonError> {
+        self.prepared_definition(reference)?.schema.as_ref().map(Arc::as_ref).map_err(Clone::clone)
     }
 
     pub fn effective_bindings(
@@ -335,7 +371,17 @@ impl DescriptorPackages {
     ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
         let definition = self.prepared_definition(reference)?;
         definition.bindings_consumed.set(true);
-        definition.bindings.clone()
+        Ok(definition
+            .schema
+            .as_ref()
+            .map_err(Clone::clone)?
+            .contributions(R::ValidationBindings)
+            .iter()
+            .map(|entry| EffectiveRelationshipMember {
+                member: entry.member.clone(),
+                declared_on: entry.declared_on.clone(),
+            })
+            .collect())
     }
 
     pub fn effective_constraints(
@@ -344,7 +390,17 @@ impl DescriptorPackages {
     ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
         let definition = self.prepared_definition(reference)?;
         definition.constraints_consumed.set(true);
-        definition.constraints.clone()
+        Ok(definition
+            .schema
+            .as_ref()
+            .map_err(Clone::clone)?
+            .contributions(R::Constraints)
+            .iter()
+            .map(|entry| EffectiveRelationshipMember {
+                member: entry.member.clone(),
+                declared_on: entry.declared_on.clone(),
+            })
+            .collect())
     }
 
     fn prepared_definition(

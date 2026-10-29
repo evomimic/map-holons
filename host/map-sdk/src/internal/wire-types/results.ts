@@ -25,11 +25,8 @@ export function isDescribedHolonCollectionWire(value: unknown): value is Describ
   return isRecord(value) && isHolonCollectionWire(value['members']) && isHolonReferenceWire(value['element_type']);
 }
 
-export type RelationshipDirectionWire = 'Declared' | 'Inverse';
-
 export interface QualifiedRelationshipWire {
   descriptor: HolonReferenceWire;
-  direction: RelationshipDirectionWire;
 }
 
 export interface VisualizerSelectionWire {
@@ -49,8 +46,7 @@ function isQualifiedRelationshipWire(
 ): value is QualifiedRelationshipWire {
   return (
     isRecord(value) &&
-    isHolonReferenceWire(value['descriptor']) &&
-    (value['direction'] === 'Declared' || value['direction'] === 'Inverse')
+    isHolonReferenceWire(value['descriptor'])
   );
 }
 

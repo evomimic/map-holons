@@ -2,10 +2,7 @@ use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use super::HolonReference;
-use crate::descriptors::{
-    CommandDescriptor, DanceDescriptor, HolonDescriptor, PropertyDescriptor, QualifiedRelationship,
-};
-use crate::reference_layer::available_relationships;
+use crate::descriptors::HolonDescriptor;
 use crate::reference_layer::definitional_equivalence::{
     self, EquivalenceOutcome, EquivalenceResolver, NoOpResolver,
 };
@@ -18,7 +15,6 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue};
 use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 use type_names::ToPropertyName;
-use type_names::{ToCommandName, ToDanceName};
 
 // Façade: ergonomic + complete; default bodies delegate to *_impl.
 pub trait ReadableHolon: ReadableHolonImpl {
@@ -197,32 +193,6 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::related_holons_with_hint_impl(self, &name.to_relationship_name(), hint)
     }
 
-    /// Enumerates outbound relationships available from this source in its
-    /// current lifecycle state.
-    ///
-    /// Availability is a read-navigation concept: it filters the descriptor's
-    /// effective outbound relationship surface by source commit state. It does
-    /// not authorize an agent or determine whether a relationship occurrence
-    /// may be authored by a write operation.
-    ///
-    /// | Source reference state          | Declared | Inverse |
-    /// | ------------------------------- | -------- | ------- |
-    /// | `SmartReference`                | yes      | yes     |
-    /// | committed `StagedReference`     | yes      | yes     |
-    /// | uncommitted `StagedReference`   | yes      | no      |
-    /// | `TransientReference`            | yes      | no      |
-    #[inline]
-    fn available_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
-        available_relationships::available_relationships(self)
-    }
-
-    /// Enumerates the property descriptors available through this holon's
-    /// effective instance contract, whether or not values are populated.
-    #[inline]
-    fn available_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
-        self.holon_descriptor()?.instance_properties()
-    }
-
     /// Returns populated property names absent from this holon's effective contract.
     ///
     /// Resolves the complete descriptor contract even when no properties are populated,
@@ -237,7 +207,8 @@ pub trait ReadableHolon: ReadableHolonImpl {
     /// ```
     fn undescribed_property_names(&self) -> Result<Vec<PropertyName>, HolonError> {
         let described = self
-            .available_properties()?
+            .effective_descriptor()?
+            .instance_properties()?
             .into_iter()
             .map(|property| property.property_name())
             .collect::<Result<HashSet<_>, _>>()?;
@@ -253,27 +224,17 @@ pub trait ReadableHolon: ReadableHolonImpl {
         Ok(self.property_map_impl()?.into_keys().filter(|name| !described.contains(name)).collect())
     }
 
-    #[inline]
-    fn available_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
-        self.holon_descriptor()?.afforded_dances()
-    }
-
-    #[inline]
-    fn available_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
-        self.holon_descriptor()?.afforded_commands()
-    }
-
-    #[inline]
-    fn get_dance_by_name<T: ToDanceName>(&self, name: T) -> Result<DanceDescriptor, HolonError> {
-        self.holon_descriptor()?.get_dance_by_name(name)
-    }
-
-    #[inline]
-    fn get_command_by_name<T: ToCommandName>(
+    /// Acquires this instance's prepared Holon schema through the owning service.
+    fn effective_descriptor(
         &self,
-        name: T,
-    ) -> Result<CommandDescriptor, HolonError> {
-        self.holon_descriptor()?.get_command_by_name(name)
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        use crate::descriptors::Descriptor;
+        let source = self.holon_reference_impl();
+        let context = source.resolution_context()?;
+        context.get_holon_service().acquire_effective_holon_descriptor_internal(
+            &context,
+            self.holon_descriptor()?.holon().clone(),
+        )
     }
 
     fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {

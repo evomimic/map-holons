@@ -15,8 +15,8 @@ use holons_core::core_shared_objects::{holon::StagedState, Holon};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type, SchemaOwnershipKind},
-    ContractContributions, DefinitionIdentity, DescribingTypeResolution, DescriptorKindSemantics,
-    HolonReference, StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
+    DefinitionIdentity, DescribingTypeResolution, DescriptorKindSemantics, HolonReference,
+    StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -124,12 +124,7 @@ fn assess_commit_candidates_with_observer<'a>(
     }
     ensure_staged_ancestry_invariant(context, candidates)?;
     require_distinct_live_candidates(candidates)?;
-    let mut collector = ValidationCollector::default();
-    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
-        context,
-        candidates,
-        &mut collector,
-    )?;
+    let collector = ValidationCollector::default();
     construct_assessment_with_observer(context, candidates, collector, &mut observer)?
         .assess(&mut observer)
 }
@@ -335,9 +330,16 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &workset,
         observer,
     )?;
+    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
+        context,
+        candidates,
+        Some(&packages),
+        &mut collector,
+    )?;
+    let binding_contributions = packages.binding_contributions();
     let binding_roles = BindingRoleMemo::prepare(
         context,
-        packages.binding_contributions(),
+        &binding_contributions,
         prepared.iter().filter_map(|subject| {
             subject
                 .prerequisites
@@ -434,8 +436,8 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     );
                     continue;
                 }
-                let contributions = ContractContributions::resolve(&descriptor)?;
-                products.prepare_contract(&contributions, &kinds)?;
+                let projection = packages.effective_schema(&descriptor)?;
+                products.prepare_effective_schema(projection, &kinds)?;
                 if products.has_findings() {
                     invalid.insert(identity.clone());
                 }

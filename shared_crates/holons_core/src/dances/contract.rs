@@ -333,7 +333,8 @@ impl DanceInvocation {
                 descriptor: self.as_holon_reference().summarize().unwrap_or_default(),
             })?;
         let affording_holon_descriptor = affording_holon.holon_descriptor()?;
-        let dance_descriptor = affording_holon.get_dance_by_name(self.dance_name()?)?;
+        let dance_descriptor =
+            affording_holon.holon_descriptor()?.get_dance_by_name(self.dance_name()?)?;
         let required_execution_context = dance_descriptor.required_execution_context()?;
         let request_type = dance_descriptor.input_type()?;
 

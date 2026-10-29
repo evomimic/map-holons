@@ -1,6 +1,6 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
-import { readInstanceProperties, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, readDescriptorIsOrdered, readDescriptorHasInstanceKey, type HolonReference } from './references';
+import { acquireTypeDescriptor, readReferenceIdentity, readEffectiveMember, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, readDescriptorIsOrdered, readDescriptorHasInstanceKey, type HolonReference } from './references';
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
@@ -9,11 +9,8 @@ const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, Holon
 
 /** Opaque SDK handle for a holon type descriptor. */
 export class HolonDescriptorHandle {
-  /** Whether the effective instance key rule defines keys, resolved by Rust. */
-  hasInstanceKey(): Promise<boolean> { return readDescriptorHasInstanceKey(this.#reference); }
-
-  /** Effective instance properties, in runtime-provided order. */
-  instanceProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> { return readInstanceProperties(this.#reference); }
+  /** Acquires this exact HolonType's Session-selected projection in Rust. */
+  effectiveDescriptor(): Promise<EffectiveHolonDescriptorHandle> { return acquireTypeDescriptor(this.#reference); }
   #reference: HolonReference;
 
   constructor(
@@ -129,6 +126,9 @@ export class RelationshipDescriptorHandle {
     this.#reference = reference;
   }
 
+  /** Opaque exact descriptor identity for presentation state keys. */
+  identity(): Promise<string> { return readReferenceIdentity(this.#reference); }
+
   /** Whether related members have schema-significant order, resolved by Rust. */
   isOrdered(): Promise<boolean> {
     return readDescriptorIsOrdered(this.#reference);
@@ -158,12 +158,9 @@ export class RelationshipDescriptorHandle {
   }
 }
 
-export type RelationshipDirection = 'declared' | 'inverse';
-
 /** A lifecycle-valid relationship descriptor together with its direction. */
 export interface AvailableRelationshipHandle {
   readonly descriptor: RelationshipDescriptorHandle;
-  readonly direction: RelationshipDirection;
 }
 
 export function createHolonDescriptorHandle(
@@ -232,5 +229,95 @@ export type ScalarValueKind = 'StringValue' | 'BooleanValue' | 'IntegerValue' | 
 export function unwrapHolonDescriptorHandle(handle: HolonDescriptorHandle): HolonReference {
   const reference = holonDescriptorReferences.get(handle);
   if (!reference) throw new TypeError('Invalid HolonDescriptorHandle');
+  return reference;
+}
+
+const effectiveDescriptorReferences = new WeakMap<EffectiveHolonDescriptorHandle, HolonReference>();
+
+/** Read-only, reference-backed access to one transaction-scoped resolved schema snapshot. */
+export class EffectiveHolonDescriptorHandle {
+  private named(collection: RelationshipName, name: string): Promise<HolonReference | null> {
+    return readEffectiveMember(unwrapEffectiveHolonDescriptorHandle(this), collection, name);
+  }
+
+  /** Effective key policy is evaluated in Rust. */
+  hasInstanceKey(): Promise<boolean> { return readDescriptorHasInstanceKey(unwrapEffectiveHolonDescriptorHandle(this)); }
+
+  async propertyNamed(name: string): Promise<PropertyDescriptorHandle | null> {
+    const reference = await this.named('EffectiveInstanceProperties', name);
+    return reference === null ? null : createPropertyDescriptorHandle(reference);
+  }
+  async relationshipNamed(name: string): Promise<RelationshipDescriptorHandle | null> {
+    const reference = await this.named('NavigableRelationships', name);
+    return reference === null ? null : createRelationshipDescriptorHandle(reference);
+  }
+  danceNamed(name: string): Promise<HolonReference | null> { return this.named('EffectiveAffordsDance', name); }
+  commandNamed(name: string): Promise<HolonReference | null> { return this.named('EffectiveAffordsCommand', name); }
+
+  constructor(reference: HolonReference, token: typeof DESCRIPTOR_HANDLE_CONSTRUCTION) {
+    if (token !== DESCRIPTOR_HANDLE_CONSTRUCTION) throw new TypeError('EffectiveHolonDescriptorHandle cannot be constructed directly');
+    effectiveDescriptorReferences.set(this, reference);
+  }
+  private async members(name: RelationshipName): Promise<ReadonlyArray<HolonReference>> {
+    return Object.freeze([...(await unwrapEffectiveHolonDescriptorHandle(this).relatedHolons(name)).members]);
+  }
+  async describedHolonType(): Promise<HolonDescriptorHandle> {
+    const members = await this.members('DescribedHolonType');
+    if (members.length !== 1) throw new TypeError('Expected exactly one DescribedHolonType');
+    return createHolonDescriptorHandle(members[0]);
+  }
+  async instanceProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
+    return Object.freeze((await this.members('EffectiveInstanceProperties')).map(createPropertyDescriptorHandle));
+  }
+  async instanceRelationships(): Promise<ReadonlyArray<RelationshipDescriptorHandle>> {
+    return Object.freeze((await this.members('EffectiveInstanceRelationships')).map(createRelationshipDescriptorHandle));
+  }
+  async navigableRelationships(): Promise<ReadonlyArray<RelationshipDescriptorHandle>> {
+    return Object.freeze((await this.members('NavigableRelationships')).map(createRelationshipDescriptorHandle));
+  }
+  affordedDances(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveAffordsDance'); }
+  affordedCommands(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveAffordsCommand'); }
+  effectiveConstraints(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveConstraints'); }
+  effectiveValidationBindings(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveValidationBindings'); }
+  async effectiveKeyRule(): Promise<HolonReference> {
+    const members = await this.members('EffectiveInstanceKeyRule');
+    if (members.length !== 1) throw new TypeError('Expected exactly one EffectiveInstanceKeyRule');
+    return members[0];
+  }
+  async contributions(): Promise<ReadonlyArray<EffectiveSchemaContributionHandle>> {
+    return Object.freeze((await this.members('EffectiveContributions')).map(reference => new EffectiveSchemaContributionHandle(reference, DESCRIPTOR_HANDLE_CONSTRUCTION)));
+  }
+}
+
+/** A provenance record; collection, member and origin remain ordinary graph references. */
+export class EffectiveSchemaContributionHandle {
+  #reference: HolonReference;
+  constructor(reference: HolonReference, token: typeof DESCRIPTOR_HANDLE_CONSTRUCTION) {
+    if (token !== DESCRIPTOR_HANDLE_CONSTRUCTION) throw new TypeError('EffectiveSchemaContributionHandle cannot be constructed directly');
+    this.#reference = reference;
+  }
+  private async one(name: RelationshipName): Promise<HolonReference> {
+    const members = (await this.#reference.relatedHolons(name)).members;
+    if (members.length !== 1) throw new TypeError(`Expected exactly one ${name}`);
+    return members[0];
+  }
+  collection(): Promise<HolonReference> { return this.one('ContributionCollection'); }
+  member(): Promise<HolonReference> { return this.one('ContributionMember'); }
+  declaredOn(): Promise<HolonReference> { return this.one('ContributionDeclaredOn'); }
+  async position(): Promise<number> {
+    const value = await this.#reference.propertyValue('ContributionPosition');
+    if (!value || !('IntegerValue' in value) || !Number.isSafeInteger(value.IntegerValue) || value.IntegerValue < 0) throw new TypeError('Invalid ContributionPosition');
+    return value.IntegerValue;
+  }
+}
+
+export function createEffectiveHolonDescriptorHandle(reference: HolonReference): EffectiveHolonDescriptorHandle {
+  return new EffectiveHolonDescriptorHandle(reference, DESCRIPTOR_HANDLE_CONSTRUCTION);
+}
+
+/** Internal binding bridge; public consumers retain the read-only handle. */
+export function unwrapEffectiveHolonDescriptorHandle(handle: EffectiveHolonDescriptorHandle): HolonReference {
+  const reference = effectiveDescriptorReferences.get(handle);
+  if (!reference) throw new TypeError('Invalid EffectiveHolonDescriptorHandle');
   return reference;
 }

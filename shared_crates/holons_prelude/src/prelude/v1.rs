@@ -56,18 +56,18 @@ pub use holons_core::reference_layer::{
     SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
 pub use holons_core::{
-    ContractContributions, DefinitionIdentity, DescribingCompatibility, DescribingTypeResolution,
-    Descriptor, DescriptorKindSemantics, EffectiveRelationshipMember, ExtendsIter,
-    ExtendsLineageDefect, ExtendsLineageDiagnosis, HolonDescriptor, HolonSpaceDescriptor,
-    LineageIdentity, PropertyDescriptor, RelationshipDescriptor, RelationshipDirection,
-    RequiredCategory, SchemaOwnershipKind, SchemaOwnershipResolution, StructuralPrerequisites,
-    TransactionDescriptor, TypeHeader, UniversalDescriptorContract, ValidExtendsLineage,
-    ValueDescriptor, ValueDescriptorKind, ancestors, applicable_descriptor_types,
-    assert_reference_transaction_compatible, classify_relationship_direction,
-    constraint_applies_to, effective_relationship_declaration, effective_relationship_targets,
-    equals_or_extends, extends_role, has_role, resolve_core_descriptor, resolve_describing_type,
-    resolve_schema_ownership, schema_components, schema_dependencies, schema_rules,
-    walk_extends_chain,
+    ComputedEffectiveSchema, ContractContributions, DefinitionIdentity, DescribingCompatibility,
+    DescribingTypeResolution, Descriptor, DescriptorKindSemantics, EffectiveHolonDescriptor,
+    EffectiveRelationshipMember, ExtendsIter, ExtendsLineageDefect, ExtendsLineageDiagnosis,
+    HolonDescriptor, HolonSpaceDescriptor, LineageIdentity, PropertyDescriptor,
+    RelationshipDescriptor, RelationshipDirection, RequiredCategory, SchemaOwnershipKind,
+    SchemaOwnershipResolution, StructuralPrerequisites, TransactionDescriptor, TypeHeader,
+    UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind,
+    ancestors, applicable_descriptor_types, assert_reference_transaction_compatible,
+    classify_relationship_direction, constraint_applies_to, effective_relationship_declaration,
+    effective_relationship_targets, equals_or_extends, extends_role, has_role,
+    resolve_core_descriptor, resolve_describing_type, resolve_schema_ownership, schema_components,
+    schema_dependencies, schema_rules, walk_extends_chain,
 };
 
 pub use type_names::{

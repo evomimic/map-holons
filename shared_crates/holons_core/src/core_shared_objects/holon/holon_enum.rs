@@ -7,6 +7,7 @@ use core_types::{
 };
 use derive_new::new;
 
+use super::access_policy::check_saved_holon_access;
 use super::state::AccessType;
 use super::{SavedHolon, StagedHolon, TransientHolon};
 use crate::core_shared_objects::holon_behavior::{ReadableHolonState, WriteableHolonState};
@@ -181,9 +182,7 @@ impl WriteableHolonState for Holon {
                 h.add_related_holons(relationship_name, holons)?;
                 Ok(self)
             }
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => check_saved_holon_access(AccessType::Write).map(|()| self),
         }
     }
 
@@ -200,9 +199,7 @@ impl WriteableHolonState for Holon {
             Holon::Staged(h) => {
                 h.add_related_holons_with_keys(relationship_name, entries)?;
             }
-            Holon::Saved(_) => {
-                return Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => return check_saved_holon_access(AccessType::Write).map(|()| self),
         }
         Ok(self)
     }
@@ -211,9 +208,7 @@ impl WriteableHolonState for Holon {
         match self {
             Holon::Transient(h) => h.increment_version(),
             Holon::Staged(h) => h.increment_version(),
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => check_saved_holon_access(AccessType::Write),
         }
     }
 
@@ -235,9 +230,7 @@ impl WriteableHolonState for Holon {
                 h.remove_property_value(property)?;
                 Ok(self)
             }
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => check_saved_holon_access(AccessType::Write).map(|()| self),
         }
     }
 
@@ -255,9 +248,7 @@ impl WriteableHolonState for Holon {
                 h.remove_related_holons(relationship_name, holons)?;
                 Ok(self)
             }
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => check_saved_holon_access(AccessType::Write).map(|()| self),
         }
     }
 
@@ -274,9 +265,7 @@ impl WriteableHolonState for Holon {
             Holon::Staged(h) => {
                 h.remove_related_holons_with_keys(relationship_name, entries)?;
             }
-            Holon::Saved(_) => {
-                return Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => return check_saved_holon_access(AccessType::Write).map(|()| self),
         }
         Ok(self)
     }
@@ -285,9 +274,7 @@ impl WriteableHolonState for Holon {
         match self {
             Holon::Transient(h) => h.update_original_id(id),
             Holon::Staged(h) => h.update_original_id(id),
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => check_saved_holon_access(AccessType::Write),
         }
     }
 
@@ -305,9 +292,7 @@ impl WriteableHolonState for Holon {
                 h.with_property_value(property, value)?;
                 Ok(self)
             }
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Saved(_) => check_saved_holon_access(AccessType::Write).map(|()| self),
         }
     }
 }

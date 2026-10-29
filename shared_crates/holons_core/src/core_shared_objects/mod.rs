@@ -5,6 +5,7 @@ mod relationship;
 pub mod cache_access;
 pub mod cache_request_router;
 
+pub mod descriptor_registry;
 pub mod holon;
 pub mod holon_behavior;
 pub mod holon_cache;

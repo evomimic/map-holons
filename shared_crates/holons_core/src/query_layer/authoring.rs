@@ -56,10 +56,11 @@ pub fn new_comparison_predicate<P: ToPropertyName, O: ToOperatorName>(
     ordered_authored_operands: Vec<HolonReference>,
 ) -> Result<TransientReference, HolonError> {
     let property_name = property.to_property_name();
-    let operator = element_type
-        .get_property_by_name(property_name.clone())?
-        .value_type()?
-        .get_operator_by_name(operator)?;
+    let operator =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(element_type.holon().clone())?
+            .get_property_by_name(property_name.clone())?
+            .value_type()?
+            .get_operator_by_name(operator)?;
     for operand in &ordered_authored_operands {
         require_holon_type(operand, &QueryHolonTypeName::LiteralOperand.as_holon_name())?;
     }
@@ -127,7 +128,7 @@ mod tests {
     use crate::descriptors::accessor_helpers::{related_members, require_single_related};
     use crate::descriptors::test_support::build_context;
     use crate::query_layer::predicate::{filter, validate};
-    use crate::query_layer::predicate_test_support::{text, PredicateWorld};
+    use crate::query_layer::predicate_test_support::{bytes, text, token, PredicateWorld};
     use crate::reference_layer::ReadableHolon;
     use core_types::PropertyName;
     use type_names::{CoreOperatorTypeName, OperatorName};
@@ -190,6 +191,77 @@ mod tests {
         assert_eq!(
             filter(&[by_title.clone(), neither, by_subtitle.clone()], &predicate).unwrap(),
             vec![by_title, by_subtitle]
+        );
+    }
+
+    #[test]
+    fn constructed_equals_definitions_validate_and_execute() {
+        let world = world();
+        // An Equals literal can declare the selected property's own ValueType.
+        let status_type = book(&world)
+            .get_property_by_name(PropertyName(MapString("Status".to_string())))
+            .unwrap()
+            .value_type()
+            .unwrap();
+        let operand: HolonReference =
+            new_literal_operand(&world.context, &status_type, token("Draft")).unwrap().into();
+        let status: HolonReference = new_comparison_predicate(
+            &world.context,
+            &book(&world),
+            "Status",
+            CoreOperatorTypeName::EqualsOperator,
+            vec![operand.clone()],
+        )
+        .unwrap()
+        .into();
+        let title = new_comparison_predicate(
+            &world.context,
+            &book(&world),
+            "Title",
+            CoreOperatorTypeName::ContainsOperator,
+            vec![world.substring("atlas")],
+        )
+        .unwrap();
+        let any_of: HolonReference =
+            new_any_of(&world.context, vec![status.clone(), title.into()]).unwrap().into();
+        let snapshot = |holons: &[&HolonReference]| -> Vec<_> {
+            holons.iter().map(|holon| holon.into_model().unwrap()).collect()
+        };
+        let before = snapshot(&[&any_of, &status, &operand]);
+
+        let predicate = validate(&any_of, &book(&world)).unwrap();
+        let draft = world.member(
+            "draft",
+            &world.book,
+            &[("Title", text("Maps")), ("Status", token("Draft"))],
+        );
+        let atlas = world.member(
+            "atlas",
+            &world.book,
+            &[("Title", text("Atlas")), ("Status", token("Published"))],
+        );
+        let neither = world.member("neither", &world.book, &[("Title", text("Maps"))]);
+        assert_eq!(
+            filter(&[atlas.clone(), neither, draft.clone()], &predicate).unwrap(),
+            vec![atlas, draft]
+        );
+        assert_eq!(snapshot(&[&any_of, &status, &operand]), before, "definitions are unchanged");
+    }
+
+    #[test]
+    fn an_unafforded_equals_fails_construction() {
+        let world = world();
+        let error = new_comparison_predicate(
+            &world.context,
+            &book(&world),
+            "RawDigest",
+            CoreOperatorTypeName::EqualsOperator,
+            vec![world.literal(&world.raw_digest, bytes(&[1]))],
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { kind, .. } if kind == "operator"),
+            "unexpected error: {error:?}"
         );
     }
 

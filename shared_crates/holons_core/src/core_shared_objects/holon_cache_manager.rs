@@ -4,7 +4,7 @@ use tracing::{debug, info};
 
 use super::{holon_cache::HolonCache, Holon};
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::reference_layer::{HolonReference, HolonServiceApi, ReadableHolon};
+use crate::reference_layer::{HolonReference, HolonServiceApi};
 use crate::{HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
@@ -156,7 +156,9 @@ impl HolonCacheAccess for HolonCacheManager {
         let relationship_names = {
             let mut seen = HashSet::new();
             let mut names = Vec::new();
-            for relationship in source.available_relationships()? {
+            for relationship in
+                crate::reference_layer::available_relationships::available_relationships(&source)?
+            {
                 let name = relationship.descriptor.base_relationship_name()?;
                 if seen.insert(name.clone()) {
                     names.push(name);

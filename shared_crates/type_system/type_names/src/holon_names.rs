@@ -61,6 +61,17 @@ impl ToDanceName for &DanceName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreHolonTypeName {
+    EffectiveHolonDescriptor,
+    EffectiveHolonDescriptorRegistry,
+    EffectiveSchemaContribution,
+    ConstructEffectiveHolonDescriptor,
+    ConstructEffectiveHolonDescriptorRequest,
+    ConstructEffectiveHolonDescriptorResponse,
+    PropertyType,
+    RelationshipType,
+    Constraint,
+    ValidationRule,
+    KeyRuleType,
     CardinalityConstraint,
     Collection,
     CommandType,
@@ -86,6 +97,11 @@ pub enum CoreHolonTypeName {
 }
 
 impl CoreHolonTypeName {
+    /// Canonical type descriptor key with its explicit descriptor family.
+    pub fn descriptor_key(&self, family: &Self) -> MapString {
+        MapString(format!("{}.{}", self.as_holon_name(), family.as_holon_name()))
+    }
+
     pub fn as_holon_name(&self) -> MapString {
         let class_case = format!("{self:?}").to_case(Case::Pascal);
         MapString(class_case)
@@ -234,6 +250,19 @@ mod tests {
         assert_eq!(
             MapString("OrderBySpec.HolonType".to_string()),
             holon_type_descriptor_key(&QueryHolonTypeName::OrderBySpec.as_holon_name())
+        );
+    }
+
+    #[test]
+    fn descriptor_keys_preserve_explicit_families() {
+        assert_eq!(
+            CoreHolonTypeName::PropertyType.descriptor_key(&CoreHolonTypeName::TypeDescriptor),
+            MapString("PropertyType.TypeDescriptor".into())
+        );
+        assert_eq!(
+            CoreHolonTypeName::DeclaredRelationshipType
+                .descriptor_key(&CoreHolonTypeName::RelationshipType),
+            MapString("DeclaredRelationshipType.RelationshipType".into())
         );
     }
 

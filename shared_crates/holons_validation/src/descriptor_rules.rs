@@ -265,6 +265,112 @@ impl DescriptorRuleProducts {
         Ok(())
     }
 
+    /// Validates a lossless projection without constructing any transient result graph.
+    pub fn prepare_effective_schema(
+        &mut self,
+        projection: &holons_core::descriptors::ComputedEffectiveSchema,
+        kind_roots: &DescriptorKindSemantics,
+    ) -> Result<(), HolonError> {
+        use holons_core::descriptors::{extends_role, EffectiveVocabulary};
+        use CoreValidationRuleName::*;
+        self.prepare_contract(&projection.contract_contributions(), kind_roots)?;
+        for source in [
+            CoreRelationshipTypeName::AffordsDance,
+            CoreRelationshipTypeName::AffordsCommand,
+            CoreRelationshipTypeName::Constraints,
+            CoreRelationshipTypeName::ValidationBindings,
+        ] {
+            let mut seen = Vec::<&HolonReference>::new();
+            for entry in projection.contributions(source.clone()) {
+                let mut repeated = false;
+                for prior in &seen {
+                    if same_definition(prior, &entry.member)? {
+                        repeated = true;
+                        break;
+                    }
+                }
+                if repeated {
+                    self.violation(NoInheritedMemberRedeclaration, format!("Repeated {source:?} member {} at {} local position {}; remove the later declaration.", entry.member.reference_id_string(), entry.declared_on.reference_id_string(), entry.local_position));
+                }
+                seen.push(&entry.member);
+            }
+        }
+        for (vocabulary, role) in [
+            (EffectiveVocabulary::Dances, CoreDefinitionRole::DanceType),
+            (EffectiveVocabulary::Commands, CoreDefinitionRole::CommandType),
+            (EffectiveVocabulary::Relationships, CoreDefinitionRole::RelationshipType),
+        ] {
+            if matches!(vocabulary, EffectiveVocabulary::Relationships)
+                && !projection.defines_holon_instances()?
+            {
+                continue;
+            }
+            let index = projection.name_index(vocabulary)?;
+            let mut named_entries = index.entries.iter().collect::<Vec<_>>();
+            named_entries.sort_by(|left, right| left.0.cmp(right.0));
+            for (name, occurrences) in &named_entries {
+                if occurrences.len() > 1 {
+                    let origins = occurrences
+                        .iter()
+                        .map(|entry| {
+                            format!(
+                                "{} at local position {}",
+                                entry.declared_on.reference_id_string(),
+                                entry.local_position
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    self.violation(
+                        UniqueSemanticMemberNames,
+                        format!(
+                            "Effective {} name {} has {} declaration occurrences: {}.",
+                            vocabulary.label(),
+                            name,
+                            occurrences.len(),
+                            origins
+                        ),
+                    );
+                }
+            }
+            for entry in &index.unnamed {
+                self.violation(WellFormedEffectiveMemberDefinitions, format!("Effective {} member {} at {} position {} requires a non-empty string TypeName.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string(), entry.local_position));
+            }
+            if matches!(vocabulary, EffectiveVocabulary::Relationships) {
+                // Declared members were checked by prepare_contract. Classify only
+                // additional index-discovered navigation candidates here.
+                for entry in named_entries
+                    .iter()
+                    .flat_map(|(_, entries)| entries.iter())
+                    .chain(index.unnamed.iter())
+                {
+                    if matches!(entry.source_collection, CoreRelationshipTypeName::SourceOf) {
+                        match holons_core::descriptors::classify_relationship_direction(&entry.member) {
+                            Ok(_) => {},
+                            Err(HolonError::WrongDescriptorKind { .. }) => self.violation(ContractMemberKindCompatibility, format!("Navigation candidate {} has no declared/inverse relationship category.", entry.member.reference_id_string())),
+                            Err(error) => return Err(error),
+                        }
+                    }
+                }
+                continue;
+            }
+            if !index.entries.is_empty() || !index.unnamed.is_empty() {
+                for entry in named_entries
+                    .iter()
+                    .flat_map(|(_, entries)| entries.iter())
+                    .chain(index.unnamed.iter())
+                {
+                    if !extends_role(&entry.member, role)? {
+                        self.violation(ContractMemberKindCompatibility, format!("Effective {} member {} declared on {} has an incompatible descriptor category.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string()));
+                    }
+                }
+            }
+        }
+        // Configured constraint and binding conformance remains owned by the
+        // existing declaration/readiness and ordinary subject validators.
+        Ok(())
+    }
+
     fn prepare_namespace(
         &mut self,
         contributions: &[holons_core::EffectiveRelationshipMember],
@@ -294,6 +400,8 @@ impl DescriptorRuleProducts {
                         declared_on.reference_id_string()
                     ));
                 }
+                // Name collisions require distinct member definitions; this identity's
+                // inherited redeclaration was assessed above.
                 continue;
             }
             prior_members.push((member.clone(), declared_on.clone()));

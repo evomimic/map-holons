@@ -17,7 +17,9 @@ use holons_core::{
         transactions::TxId,
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
-    descriptors::{resolve_inverse_relationship_name, TargetBinding},
+    descriptors::{
+        resolve_inverse_relationship_name, ComputedEffectiveSchema, Descriptor, TargetBinding,
+    },
     reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
 };
@@ -208,6 +210,7 @@ struct RelationshipCommitSource {
     source_local_id: LocalId,
     source_key: Option<MapString>,
     source_reference: HolonReference,
+    schema: std::sync::OnceLock<Result<ComputedEffectiveSchema, HolonError>>,
 }
 
 /// Saved target anchors established by this invocation's accepted NoAction outcomes.
@@ -252,6 +255,7 @@ impl RelationshipCommitSource {
                 source_local_id: local_id,
                 source_key: staged_holon.key(),
                 source_reference: staged_reference.into(),
+                schema: std::sync::OnceLock::new(),
             }),
             _ => None,
         }
@@ -1246,9 +1250,20 @@ fn save_smartlinks_for_collection(
     let descriptor_started_at = performance_timestamp_micros();
     let (forward_binding, inverse_binding) =
         profile_descriptor_resolution("TargetBindings", &source.source_reference, &name, || {
-            let relationship_descriptor = source
-                .source_reference
-                .holon_descriptor()?
+            let schema = source
+                .schema
+                .get_or_init(|| {
+                    let descriptor = source.source_reference.holon_descriptor()?;
+                    match holons_core::descriptors::EffectiveHolonDescriptor::find_for_instance(
+                        &source.source_reference,
+                    )? {
+                        Some(prepared) => ComputedEffectiveSchema::from_prepared(&prepared),
+                        None => ComputedEffectiveSchema::resolve(descriptor.holon()),
+                    }
+                })
+                .as_ref()
+                .map_err(Clone::clone)?;
+            let relationship_descriptor = schema
                 .get_relationship_by_name(name.clone())?
                 .try_into_declared_relationship_descriptor()?;
             Ok((

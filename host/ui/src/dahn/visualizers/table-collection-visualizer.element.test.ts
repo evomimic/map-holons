@@ -202,7 +202,7 @@ it('retains actual handles, suppresses repeated Enter, and ignores late collecti
   const inspect = vi.fn(); element.setInspectHolonHandler(inspect);
   const member = { key: vi.fn(async () => 'same'), holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async () => ({ StringValue: 'same' })) };
   const properties = [{ isArray: async () => false, propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue' }];
-  const collection = { elementType: { hasInstanceKey: async () => false, instanceProperties: async () => properties }, [Symbol.iterator]: function* () { yield member; } };
+  const collection = { elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => properties }, [Symbol.iterator]: function* () { yield member; } };
   await element.setCollection(collection, 'Current'); document.body.append(element);
   const row = element.querySelector<HTMLTableRowElement>('tbody tr')!;
   row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -211,7 +211,7 @@ it('retains actual handles, suppresses repeated Enter, and ignores late collecti
   expect(member.key).toHaveBeenCalledTimes(1);
   expect(member.propertyValue).not.toHaveBeenCalled();
   let finish!: (value: typeof properties) => void;
-  const pending = element.setCollection({ ...collection, elementType: { hasInstanceKey: async () => false, instanceProperties: () => new Promise(resolve => { finish = resolve; }) } }, 'Obsolete');
+  const pending = element.setCollection({ ...collection, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: () => new Promise(resolve => { finish = resolve; }) } }, 'Obsolete');
   await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
   await element.setCollection(collection, 'Replacement');
   finish(properties); await pending;

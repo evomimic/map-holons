@@ -1,4 +1,4 @@
-use super::{effective_relationship_targets, EffectiveRelationshipMember};
+use super::{ancestors, inheritance::relationship_targets_in_lineage, EffectiveRelationshipMember};
 use crate::reference_layer::HolonReference;
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
@@ -13,13 +13,14 @@ pub struct ContractContributions {
 impl ContractContributions {
     /// Reads the contract defined by this descriptor, preserving contribution provenance.
     pub fn resolve(descriptor: &HolonReference) -> Result<Self, HolonError> {
+        let lineage = ancestors(descriptor)?;
         Ok(Self {
-            properties: effective_relationship_targets(
-                descriptor,
+            properties: relationship_targets_in_lineage(
+                &lineage,
                 CoreRelationshipTypeName::InstanceProperties,
             )?,
-            relationships: effective_relationship_targets(
-                descriptor,
+            relationships: relationship_targets_in_lineage(
+                &lineage,
                 CoreRelationshipTypeName::InstanceRelationships,
             )?,
         })

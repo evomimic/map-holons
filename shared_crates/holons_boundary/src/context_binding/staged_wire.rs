@@ -187,6 +187,53 @@ mod tests {
     }
 
     #[test]
+    fn sealed_keyless_graph_preserves_multiplicity_positions_and_allocation_after_pool_roundtrip(
+    ) -> Result<(), HolonError> {
+        use crate::session_state::SerializableHolonPool;
+        use base_types::BaseValue;
+        use holons_core::{HolonCollectionApi, HolonReference, ReadableHolon, WritableHolon};
+        let space = test_space();
+        let context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
+        let target: HolonReference = context.mutation().new_holon(Some("target".into()))?.into();
+        let mut result = context.mutation().new_holon(None)?;
+        result.add_related_holons("EffectiveConstraints", vec![target.clone(), target.clone()])?;
+        let mut records = Vec::new();
+        for position in 0..2_i64 {
+            let mut record = context.mutation().new_holon(None)?;
+            record.with_property_value("ContributionPosition", position)?;
+            record.add_related_holons("ContributionMember", vec![target.clone()])?;
+            record.mark_as_immutable()?;
+            records.push(record.into());
+        }
+        result.add_related_holons("EffectiveContributions", records.clone())?;
+        result.mark_as_immutable()?;
+        let pool = context.export_transient_holons()?;
+        let wire = SerializableHolonPool::from(&pool);
+        let bytes = serde_json::to_vec(&wire).unwrap();
+        let decoded: SerializableHolonPool = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(wire, decoded);
+        context.import_transient_holons(decoded.bind(&context)?)?;
+        let values = result.related_holons("EffectiveConstraints")?;
+        assert_eq!(values.read().unwrap().get_members(), &vec![target.clone(), target.clone()]);
+        assert!(values.write().unwrap().add_references(vec![target]).is_err());
+        let contributions = result.related_holons("EffectiveContributions")?;
+        let rebound = contributions.read().unwrap().get_members().clone();
+        assert_eq!(rebound, records);
+        for (position, record) in rebound.into_iter().enumerate() {
+            assert!(record.key()?.is_none());
+            assert_eq!(
+                record.property_value("ContributionPosition")?,
+                Some(BaseValue::IntegerValue(MapInteger(position as i64)))
+            );
+        }
+        assert!(result.with_property_value("Corrupt", true).is_err());
+        let later = context.mutation().new_holon(None)?;
+        assert_ne!(result.temporary_id(), later.temporary_id());
+        Ok(())
+    }
+
+    #[test]
     fn validation_findings_round_trip_and_default_when_absent() -> Result<(), HolonError> {
         use core_types::{
             CommitValidationViolationKind, ValidationSeverity, ValidationSubjectPath,

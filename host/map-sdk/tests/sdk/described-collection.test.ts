@@ -22,6 +22,8 @@ beforeEach(() => {
       if ('Read' in action) {
         const read = action.Read;
         if (typeof read === 'object' && 'GetDescribedRelatedHolons' in read) result = { DescribedCollection: { members: { state: 'Fetched', members: Array.from({ length: count }, () => memberWire), keyed_index: {} }, element_type: descriptorWire } };
+        if (read === 'GetEffectiveDescriptorForType') result = { Reference: descriptorWire };
+        if (typeof read === 'object' && 'GetRelatedHolons' in read && read.GetRelatedHolons.name === 'EffectiveInstanceProperties') result = { Collection: { state: 'Fetched', members: [descriptorWire], keyed_index: {} } };
         if (read === 'GetInstanceProperties') result = { Collection: { state: 'Fetched', members: [descriptorWire], keyed_index: {} } };
         if (read === 'GetPropertyValueKind') result = { Value: { StringValue: 'AnyBaseValue' } };
         if (typeof read === 'object' && 'GetPropertyValue' in read) result = { Value: { StringValue: read.GetPropertyValue.name === 'DisplayName' ? 'Default Value' : 'DefaultValue' } };
@@ -38,7 +40,7 @@ it.each([0, 1, 3])('carries %i members and their declared type through the actua
   const owner = createHolonReference(41, ownerWire);
   const collection = await owner.describedRelatedHolons('InverseName');
   expect(collection.length).toBe(size);
-  const [property] = await collection.elementType.instanceProperties();
+  const [property] = await (await collection.elementType.effectiveDescriptor()).instanceProperties();
   expect(await property.displayName()).toBe('Default Value');
   expect(await property.valueKind()).toBe('AnyBaseValue');
   if (size) expect(await collection.members[0].propertyValue('DefaultValue')).toEqual({ IntegerValue: 7 });

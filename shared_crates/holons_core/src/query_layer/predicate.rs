@@ -10,11 +10,11 @@
 //! - [`filter`] applies the resolved predicate to each occurrence, reading the
 //!   selected property through ordinary bound reference access.
 //!
-//! Supported forms are a `ComparisonPredicate` whose operator is Contains, and
-//! a flat `AnyOf` of such leaves. Every other predicate form, nested `AnyOf`,
-//! and comparison through any other operator fail with `NotImplemented`;
-//! nothing is ever answered with unfiltered members. Neither phase writes to
-//! the definitions.
+//! Supported forms are a `ComparisonPredicate` whose operator is Contains or
+//! Equals, and a flat `AnyOf` of such leaves. Every other predicate form,
+//! nested `AnyOf`, and comparison through any other operator fail with
+//! `NotImplemented`; nothing is ever answered with unfiltered members. Neither
+//! phase writes to the definitions.
 //!
 //! Authored literals are checked for declared-type compatibility, runtime
 //! representation, and the existing supported value checks (such as enum
@@ -190,14 +190,19 @@ fn validate_comparison(
 
     // Selectors resolve on the declared type only, inherited declarations
     // included; a member subtype's own declarations are not selectable.
-    let property = element_type.get_property_by_name(property_name.clone())?;
+    let property =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(element_type.holon().clone())?
+            .get_property_by_name(property_name.clone())?;
     let required = property.is_required()?;
     let subject_type = property.value_type()?;
 
     let operator = operator.resolve_for_subject(&subject_type)?;
     match operator.kind() {
         OperatorKind::Contains(_) => require_string_subject(&operator)?,
-        OperatorKind::Equals | OperatorKind::LessThan => {
+        // Equals' operand is the subject's own ValueType, so resolution
+        // already carries its whole contract.
+        OperatorKind::Equals => {}
+        OperatorKind::LessThan => {
             return Err(HolonError::NotImplemented(format!(
                 "comparison predicates through {}",
                 operator.operator().operator_name()?
@@ -331,7 +336,7 @@ mod tests {
     use super::*;
     use crate::descriptors::test_support::{build_context, new_holon_type_descriptor};
     use crate::query_layer::predicate_test_support::{
-        canonical_type, number, text, PredicateWorld,
+        bytes, canonical_type, flag, number, text, token, PredicateWorld,
     };
     use crate::reference_layer::WritableHolon;
     use type_names::QueryHolonTypeName as Q;
@@ -392,14 +397,15 @@ mod tests {
     }
 
     #[test]
-    fn equality_and_ordering_predicates_are_not_implemented() {
+    fn ordering_predicates_are_not_implemented() {
         let world = world();
-        for operator in [&world.equals, &world.less_than] {
-            let comparison =
-                world.comparison("Title", operator, vec![world.literal(&world.text, text("x"))]);
-            let error = validate(&comparison, &book(&world)).unwrap_err();
-            assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
-        }
+        let comparison = world.comparison(
+            "Title",
+            &world.less_than,
+            vec![world.literal(&world.text, text("x"))],
+        );
+        let error = validate(&comparison, &book(&world)).unwrap_err();
+        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
     }
 
     #[test]
@@ -714,6 +720,243 @@ mod tests {
         let error = validate(&world.any_of(vec![negation.into()]), &book(&world)).unwrap_err();
         assert!(
             matches!(&error, HolonError::NotImplemented(detail) if detail.contains("Not")),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    // ---- Equals -------------------------------------------------------------
+
+    #[test]
+    fn equals_is_case_sensitive_and_independent_of_contains_folding() {
+        let world = world();
+        let predicate =
+            validate(&world.equals("Title", &world.text, text("Straße")), &book(&world)).unwrap();
+        let members = [
+            world.member("exact", &world.book, &[("Title", text("Straße"))]),
+            world.member("folded", &world.book, &[("Title", text("STRASSE"))]),
+            world.member("lower", &world.book, &[("Title", text("straße"))]),
+        ];
+        assert_eq!(matches_of(&predicate, &members).unwrap(), vec![true, false, false]);
+    }
+
+    #[test]
+    fn equals_matches_each_afforded_scalar_domain() {
+        let world = world();
+        let cases = [
+            ("PageCount", &world.integer, number(3), number(4)),
+            ("IsPublished", &world.flag, flag(true), flag(false)),
+            ("Status", &world.status, token("Published"), token("Draft")),
+            ("Digest", &world.digest, bytes(&[1, 2]), bytes(&[2, 1])),
+        ];
+        for (property, value_type, wanted, other) in cases {
+            let predicate =
+                validate(&world.equals(property, value_type, wanted.clone()), &book(&world))
+                    .unwrap();
+            let members = [
+                world.member("match", &world.book, &[("Title", text("t")), (property, wanted)]),
+                world.member("miss", &world.book, &[("Title", text("t")), (property, other)]),
+            ];
+            assert_eq!(matches_of(&predicate, &members).unwrap(), vec![true, false], "{property}");
+        }
+    }
+
+    #[test]
+    fn equals_on_an_unafforded_bytes_type_is_unsupported() {
+        // Bytes equality executes, but only an explicit affordance admits it.
+        let world = world();
+        let comparison = world.equals("RawDigest", &world.raw_digest, bytes(&[1]));
+        let error = validate(&comparison, &book(&world)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::UnsupportedOperator { value_type, .. } if value_type == "RawDigest"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn an_inherited_equals_affordance_is_accepted() {
+        let world = world();
+        let predicate =
+            validate(&world.equals("Headline", &world.headline, text("News")), &book(&world))
+                .unwrap();
+        let member = world.member("a", &world.book, &[("Headline", text("News"))]);
+        assert!(predicate.matches(&member).unwrap());
+    }
+
+    #[test]
+    fn an_equals_literal_may_declare_a_subtype_of_the_subject_type() {
+        let world = world();
+        let predicate =
+            validate(&world.equals("Title", &world.headline, text("Atlas")), &book(&world))
+                .unwrap();
+        let member = world.member("a", &world.book, &[("Title", text("Atlas"))]);
+        assert!(predicate.matches(&member).unwrap());
+    }
+
+    #[test]
+    fn an_equals_literal_declared_outside_the_subject_type_is_incompatible() {
+        // MapStringValueType shares Text's representation but is broader than it.
+        let world = world();
+        for (value_type, value) in [(&world.map_string, text("Atlas")), (&world.integer, number(1))]
+        {
+            let error =
+                validate(&world.equals("Title", value_type, value), &book(&world)).unwrap_err();
+            assert!(
+                matches!(error, HolonError::IncompatibleLiteralType { .. }),
+                "unexpected error: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_undeclared_enum_literal_fails_validation() {
+        let world = world();
+        let error =
+            validate(&world.equals("Status", &world.status, token("Archived")), &book(&world))
+                .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::EnumVariantNotInSchema { variant, .. } if variant == "Archived"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn an_undeclared_stored_enum_token_is_unequal_not_an_error() {
+        // Stored values are never revalidated; only their representation matters.
+        let world = world();
+        let predicate =
+            validate(&world.equals("Status", &world.status, token("Draft")), &book(&world))
+                .unwrap();
+        let undeclared = world.member("a", &world.book, &[("Status", token("Archived"))]);
+        assert!(!predicate.matches(&undeclared).unwrap());
+
+        let not_an_enum = world.member("b", &world.book, &[("Status", number(3))]);
+        assert!(matches!(
+            predicate.matches(&not_an_enum),
+            Err(HolonError::ValueKindMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn equals_takes_exactly_one_operand() {
+        let world = world();
+        let literal = |value: &str| world.literal(&world.text, text(value));
+        for operands in [vec![], vec![literal("a"), literal("b")]] {
+            let found = operands.len();
+            let comparison = world.comparison("Title", &world.equals, operands);
+            let error = validate(&comparison, &book(&world)).unwrap_err();
+            assert!(
+                matches!(error, HolonError::OperandCountMismatch { expected: 1, found: f, .. } if f == found),
+                "unexpected error for {found} operands: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn equals_on_a_constrained_subject_fails_explicitly() {
+        // Unlike a Contains substring, an Equals literal must satisfy the
+        // subject's own ValueType, constraints included.
+        let world = world();
+        let comparison = world.equals("Identifier", &world.identifier, text("map-graph-7"));
+        let error = validate(&comparison, &book(&world)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::UnsupportedValueConstraint { constraint_type, .. }
+                if constraint_type == "StringPatternConstraint"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn a_constrained_canonical_string_fails_equals_on_its_subtypes() {
+        // Fail closed: Text inherits the canonical constraint, so no Equals
+        // literal on it passes until that constraint can be evaluated.
+        let world = PredicateWorld::with_constrained_map_string(build_context());
+        let error =
+            validate(&world.equals("Title", &world.text, text("x")), &book(&world)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::UnsupportedValueConstraint { constraint_type, .. }
+                if constraint_type == "StringLengthConstraint"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn equals_optional_absence_is_false_and_required_absence_fails() {
+        let world = world();
+        let untitled = world.member("untitled", &world.book, &[]);
+
+        let status =
+            validate(&world.equals("Status", &world.status, token("Draft")), &book(&world))
+                .unwrap();
+        assert!(!status.matches(&untitled).unwrap());
+
+        let title = validate(&world.equals("Title", &world.text, text("")), &book(&world)).unwrap();
+        assert!(matches!(
+            title.matches(&untitled),
+            Err(HolonError::EmptyField(name)) if name == "Title"
+        ));
+    }
+
+    #[test]
+    fn a_mixed_any_of_keeps_an_occurrence_matching_both_leaves_once() {
+        let world = world();
+        let predicate = validate(
+            &world.any_of(vec![
+                world.equals("Title", &world.text, text("Atlas")),
+                world.contains("Subtitle", "map"),
+            ]),
+            &book(&world),
+        )
+        .unwrap();
+        let both = world.member(
+            "both",
+            &world.book,
+            &[("Title", text("Atlas")), ("Subtitle", text("A map"))],
+        );
+        let equals_only = world.member("equals-only", &world.book, &[("Title", text("Atlas"))]);
+        let contains_only = world.member(
+            "contains-only",
+            &world.book,
+            &[("Title", text("Roads")), ("Subtitle", text("Maps"))],
+        );
+        let neither = world.member("neither", &world.book, &[("Title", text("atlas"))]);
+        assert_eq!(
+            filter(
+                &[both.clone(), equals_only.clone(), neither, contains_only.clone(), both.clone()],
+                &predicate
+            )
+            .unwrap(),
+            vec![both.clone(), equals_only, contains_only, both]
+        );
+    }
+
+    #[test]
+    fn a_true_equals_branch_does_not_hide_a_later_error() {
+        let world = world();
+        let predicate = validate(
+            &world.any_of(vec![
+                world.equals("PageCount", &world.integer, number(3)),
+                world.equals("Title", &world.text, text("x")),
+            ]),
+            &book(&world),
+        )
+        .unwrap();
+        let member = world.member("untitled", &world.book, &[("PageCount", number(3))]);
+        assert!(matches!(predicate.matches(&member), Err(HolonError::EmptyField(_))));
+    }
+
+    #[test]
+    fn an_equality_only_any_of_validates_every_branch() {
+        let world = world();
+        let error = validate(
+            &world.any_of(vec![
+                world.equals("Status", &world.status, token("Draft")),
+                world.equals("Status", &world.status, token("Archived")),
+            ]),
+            &book(&world),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(error, HolonError::EnumVariantNotInSchema { .. }),
             "unexpected error: {error:?}"
         );
     }

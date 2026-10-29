@@ -192,7 +192,7 @@ mod tests {
         OperatorFixture,
     };
     use crate::reference_layer::{HolonReference, WritableHolon};
-    use base_types::{MapBytes, MapInteger, MapString};
+    use base_types::{MapBytes, MapEnumValue, MapInteger, MapString};
     use std::sync::Arc;
     use type_names::{CoreOperatorTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
@@ -333,6 +333,51 @@ mod tests {
         assert!(matches!(
             world.resolve(&world.less_than, &bytes),
             Err(HolonError::UnsupportedOperator { .. })
+        ));
+    }
+
+    #[test]
+    fn enum_equals_invocation_reads_no_variant_declarations() {
+        let world = world();
+        let anchor: HolonReference = world
+            .context
+            .mutation()
+            .stage_new_holon(
+                new_kind_descriptor(&world.context, "EnumValueType", None, true).unwrap(),
+            )
+            .unwrap()
+            .into();
+        let variants: Vec<HolonReference> = ["Red", "Blue"]
+            .iter()
+            .map(|name| {
+                new_descriptor_holon(&world.context, name, name, "EnumVariant").unwrap().into()
+            })
+            .collect();
+        let mut color = new_kind_descriptor(&world.context, "Color", Some(&anchor), false).unwrap();
+        color.add_related_holons(CoreRelationshipTypeName::Variants, variants.clone()).unwrap();
+        color
+            .add_related_holons(
+                CoreRelationshipTypeName::AffordsOperator,
+                vec![world.equals.clone()],
+            )
+            .unwrap();
+        let subject = ValueDescriptor::from_holon(color.clone().into());
+        let equals = world.resolve(&world.equals, &subject).unwrap();
+
+        // Withdraw every declared variant after resolution. Explicit validation
+        // sees the change; invocation does not consult the declarations.
+        color.remove_related_holons(CoreRelationshipTypeName::Variants, variants).unwrap();
+        let token = |name: &str| BaseValue::EnumValue(MapEnumValue(MapString(name.to_string())));
+        assert!(matches!(
+            subject.is_valid(&token("Red")),
+            Err(HolonError::EnumVariantNotInSchema { .. })
+        ));
+        assert!(equals.invoke(&token("Red"), &[token("Red")]).unwrap());
+        assert!(!equals.invoke(&token("Red"), &[token("Blue")]).unwrap());
+        assert!(matches!(
+            equals.invoke(&string("Red"), &[token("Red")]),
+            Err(HolonError::ValueKindMismatch { expected, found, .. })
+                if expected == "Enum" && found == "String"
         ));
     }
 

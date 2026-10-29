@@ -62,10 +62,20 @@ pub enum ReadableHolonActionWire {
     },
 
     GetHolonDescriptor,
+    GetEffectiveDescriptor,
+    GetEffectiveDescriptorForType,
+    GetReferenceIdentity,
+    GetEffectiveMember {
+        collection: RelationshipName,
+        name: base_types::MapString,
+    },
 
     GetAvailableProperties,
 
     GetAvailableRelationships,
+    GetAvailableRelationshipsFromEffective {
+        descriptor: HolonReferenceWire,
+    },
     GetEffectiveCardinality,
     GetPropertyIsArray,
     /// Whether the target HolonType defines a non-keyless effective instance key rule.
@@ -109,6 +119,20 @@ impl HolonCommandWire {
     /// `RuntimeSession.active_transactions` by the caller).
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<HolonCommand, HolonError> {
         let target = self.target.bind(context)?;
+        if let Some(registry) = context.descriptor_registry() {
+            if registry.owned_context(context.tx_id()).is_some() {
+                if let holons_core::HolonReference::Transient(reference) = &target {
+                    if registry
+                        .reference_owner(reference.tx_id(), &reference.temporary_id())
+                        .is_none()
+                    {
+                        return Err(HolonError::InvalidParameter(
+                            "Session ingress requires a published descriptor handle".into(),
+                        ));
+                    }
+                }
+            }
+        }
         let action = self.action.bind(context)?;
         Ok(HolonCommand { context: Arc::clone(context), target, action })
     }
@@ -117,15 +141,15 @@ impl HolonCommandWire {
 impl HolonActionWire {
     fn bind(self, context: &Arc<TransactionContext>) -> Result<HolonAction, HolonError> {
         match self {
-            HolonActionWire::Read(r) => Ok(HolonAction::Read(r.bind())),
+            HolonActionWire::Read(r) => Ok(HolonAction::Read(r.bind(context)?)),
             HolonActionWire::Write(w) => Ok(HolonAction::Write(w.bind(context)?)),
         }
     }
 }
 
 impl ReadableHolonActionWire {
-    fn bind(self) -> ReadableHolonAction {
-        match self {
+    fn bind(self, context: &Arc<TransactionContext>) -> Result<ReadableHolonAction, HolonError> {
+        Ok(match self {
             ReadableHolonActionWire::GetDescribedRelatedHolons { name } => {
                 ReadableHolonAction::GetDescribedRelatedHolons { name }
             }
@@ -157,6 +181,18 @@ impl ReadableHolonActionWire {
                     },
                 }
             }
+            ReadableHolonActionWire::GetReferenceIdentity => {
+                ReadableHolonAction::GetReferenceIdentity
+            }
+            ReadableHolonActionWire::GetEffectiveMember { collection, name } => {
+                ReadableHolonAction::GetEffectiveMember { collection, name }
+            }
+            ReadableHolonActionWire::GetEffectiveDescriptorForType => {
+                ReadableHolonAction::GetEffectiveDescriptorForType
+            }
+            ReadableHolonActionWire::GetEffectiveDescriptor => {
+                ReadableHolonAction::GetEffectiveDescriptor
+            }
             ReadableHolonActionWire::GetHolonDescriptor => ReadableHolonAction::GetHolonDescriptor,
             ReadableHolonActionWire::GetAvailableProperties => {
                 ReadableHolonAction::GetAvailableProperties
@@ -170,10 +206,15 @@ impl ReadableHolonActionWire {
                 ReadableHolonAction::GetRelationshipIsOrdered
             }
             ReadableHolonActionWire::GetAvailableDances => ReadableHolonAction::GetAvailableDances,
+            ReadableHolonActionWire::GetAvailableRelationshipsFromEffective { descriptor } => {
+                ReadableHolonAction::GetAvailableRelationshipsFromEffective {
+                    descriptor: descriptor.bind(context)?,
+                }
+            }
             ReadableHolonActionWire::GetAvailableRelationships => {
                 ReadableHolonAction::GetAvailableRelationships
             }
-        }
+        })
     }
 }
 

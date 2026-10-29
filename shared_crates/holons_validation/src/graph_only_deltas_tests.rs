@@ -87,7 +87,7 @@ fn overlap(
 ) -> Result<Vec<core_types::CommitValidationViolation>, HolonError> {
     let mut collector = ValidationCollector::default();
     let bucket_reads = f.backend_reads_for_name(&"R".to_relationship_name());
-    classify_graph_only_delta_overlaps(&f.context, candidates, &mut collector)?;
+    classify_graph_only_delta_overlaps(&f.context, candidates, None, &mut collector)?;
     assert_eq!(
         f.backend_reads_for_name(&"R".to_relationship_name()),
         bucket_reads,

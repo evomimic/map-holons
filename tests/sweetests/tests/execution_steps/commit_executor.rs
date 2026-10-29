@@ -536,8 +536,47 @@ pub fn execute_verify_commit_rejection(
         response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
         Some(BaseValue::StringValue(MapString::from("Rejected")))
     );
+    let actual_violation_count =
+        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap();
+    if actual_violation_count != Some(BaseValue::IntegerValue(expected_violation_count.clone())) {
+        // Failure evidence must survive WARN-only test runs and precede count assertions.
+        println!(
+            "---- commit rejection count mismatch: expected {}, got {:?}; transaction {:?} ----",
+            expected_violation_count.0,
+            actual_violation_count,
+            state.active_tx_id(),
+        );
+        let rejected = response.related_holons(CoreRelationshipTypeName::RejectedHolons).unwrap();
+        let members = rejected.read().unwrap().get_members().to_vec();
+        for member in members {
+            println!("rejected {} key={:?}", member.reference_id_string(), member.key());
+            if let HolonReference::Staged(staged) = member {
+                println!("candidate findings: {:#?}", staged.validation_findings());
+            }
+        }
+        let carriers =
+            response.related_holons(CoreRelationshipTypeName::HasValidationFinding).unwrap();
+        let members = carriers.read().unwrap().get_members().to_vec();
+        for carrier in members {
+            println!("unattached finding {}:", carrier.reference_id_string());
+            for field in [
+                "ViolationKind",
+                "RuleCode",
+                "RuleIdentity",
+                "Severity",
+                "SubjectKind",
+                "HolonIdentity",
+                "MemberName",
+                "TargetIdentity",
+                "DescriptorIdentity",
+                "Message",
+            ] {
+                println!("  {field}: {:?}", carrier.property_value(field));
+            }
+        }
+    }
     assert_eq!(
-        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+        actual_violation_count,
         Some(BaseValue::IntegerValue(expected_violation_count.clone()))
     );
     let rejected = response.related_holons(CoreRelationshipTypeName::RejectedHolons).unwrap();

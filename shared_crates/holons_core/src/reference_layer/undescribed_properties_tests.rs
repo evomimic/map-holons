@@ -46,6 +46,14 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
         (5, properties(&[("Key", "title-property"), ("TypeName", "Title")])),
         (6, properties(&[("Key", "optional-property"), ("TypeName", "Optional")])),
         (7, properties(&[("Title", "Keyless example")])),
+        (8, properties(&[("Key", "HolonType.TypeDescriptor"), ("TypeName", "HolonType")])),
+        (
+            9,
+            properties(&[
+                ("Key", "EffectiveHolonDescriptor.HolonType"),
+                ("TypeName", "EffectiveHolonDescriptor"),
+            ]),
+        ),
     ]
     .into_iter()
     .map(|(value, properties)| {
@@ -53,6 +61,7 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
     })
     .collect();
     let relationships = HashMap::from([
+        ((id(3), CoreRelationshipTypeName::Extends.to_relationship_name()), vec![id(8)]),
         ((id(1), CoreRelationshipTypeName::DescribedBy.to_relationship_name()), vec![id(2)]),
         ((id(7), CoreRelationshipTypeName::DescribedBy.to_relationship_name()), vec![id(2)]),
         ((id(2), CoreRelationshipTypeName::Extends.to_relationship_name()), vec![id(3)]),

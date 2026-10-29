@@ -10,7 +10,7 @@ use holons_core::{
         transactions::TransactionContext,
         Holon,
     },
-    descriptors::TargetBinding,
+    descriptors::{Descriptor, TargetBinding},
     DefinitionIdentity, HolonReference, LineageIdentity, ReadableHolon, StagedReference,
 };
 use std::{
@@ -36,6 +36,7 @@ enum PersistedTarget {
 pub(crate) fn classify_graph_only_delta_overlaps(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
     for (_, (source, participants)) in collect_participants(context, candidates)? {
@@ -48,7 +49,8 @@ pub(crate) fn classify_graph_only_delta_overlaps(
             }
         }
         for (name, indices) in buckets {
-            if indices.len() > 1 && overlap_is_unsupported(context, &participants, &name, &indices)?
+            if indices.len() > 1
+                && overlap_is_unsupported(context, &participants, &name, &indices, packages)?
             {
                 let source_identity = HolonReference::smart_from_id(
                     context.space_read_handle(),
@@ -111,6 +113,7 @@ fn overlap_is_unsupported(
     participants: &[Participant],
     name: &RelationshipName,
     indices: &[usize],
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
 ) -> Result<bool, HolonError> {
     if indices.iter().any(|i| {
         let delta = &participants[*i].deltas[name];
@@ -120,7 +123,16 @@ fn overlap_is_unsupported(
     }
     // Resolve the same forward descriptor that Pass 2 uses. No target population is read.
     let subject: HolonReference = (&participants[indices[0]].reference).into();
-    let relationship = subject.holon_descriptor()?.get_relationship_by_name(name.clone());
+    let descriptor = subject.holon_descriptor()?;
+    let computed;
+    let schema = if let Some(packages) = packages {
+        packages.effective_schema(descriptor.holon())?
+    } else {
+        // Isolated delta tests have no enclosing assessment preparation.
+        computed = holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?;
+        &computed
+    };
+    let relationship = schema.get_relationship_by_name(name.clone());
     let relationship = match relationship {
         // Ungoverned assembly can bypass the mutation-time declaration check.
         // Keep this semantic defect available to ordinary subject assessment.

@@ -1257,6 +1257,41 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
 }
 
 #[test]
+fn inherited_member_identity_does_not_create_a_semantic_name_collision() -> Result<(), HolonError> {
+    use holons_core::ContractContributions;
+
+    for (collection, member) in [
+        (CoreRelationshipTypeName::InstanceProperties, "Title.PropertyType"),
+        (CoreRelationshipTypeName::InstanceRelationships, "DescribedBy.Relationship"),
+    ] {
+        let mut fixture = Fixture::new()?;
+        let roots = c2_kind_semantics(&mut fixture)?;
+        fixture.node("Subtype")?;
+        fixture.link("Subtype", CoreRelationshipTypeName::Extends, "Contract")?;
+        fixture.link("Subtype", collection, member)?;
+        let subject = fixture.nodes["Subtype"].clone();
+        let contributions = ContractContributions::resolve(&subject)?;
+        let mut products = DescriptorRuleProducts::default();
+        products.prepare_contract(&contributions, &roots)?;
+        let redeclarations = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::NoInheritedMemberRedeclaration,
+            &products,
+            &subject,
+        )?;
+        assert_eq!(redeclarations.len(), 1, "{member}: {redeclarations:#?}");
+        let name_collisions = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::UniqueSemanticMemberNames,
+            &products,
+            &subject,
+        )?;
+        assert!(name_collisions.is_empty(), "{member}: {name_collisions:#?}");
+    }
+    Ok(())
+}
+
+#[test]
 fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
 ) -> Result<(), HolonError> {
     use holons_core::ContractContributions;
@@ -1322,6 +1357,7 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
         let findings = dispatch_c2_rule(&mut fixture, rule, &products, &subject)?;
         assert!(findings.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code: actual } if actual == code)));
         if rule == CoreValidationRuleName::UniqueSemanticMemberNames {
+            assert_eq!(findings.len(), 1, "only the distinct Alias member collides: {findings:#?}");
             assert!(findings.iter().any(|finding| finding
                 .message
                 .contains(&fixture.nodes["Contract"].reference_id_string())
@@ -2343,7 +2379,7 @@ fn direct_descriptor_dispatch_preserves_binding_provenance_and_diagnostic_kinds(
     let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(governor)?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
-        packages.binding_contributions(),
+        &packages.binding_contributions(),
         diagnosis.valid_lineage(),
     )?;
     let mut collector = ValidationCollector::default();
@@ -2718,7 +2754,7 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
         let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(governor)?;
         let roles = crate::subject_assessment::BindingRoleMemo::prepare(
             &fixture.context,
-            packages.binding_contributions(),
+            &packages.binding_contributions(),
             diagnosis.valid_lineage(),
         )?;
         // Construction has its own schema traversal; this trap tests the dispatch ordering.
@@ -2996,5 +3032,73 @@ fn saved_assessment_uses_bound_definitions_without_keyed_anchor_lookup() -> Resu
     // Positive control after assessment proves the fixture counter observes keyed lookup.
     fixture.context.lookup().get_saved_holon_by_key(&"Contract".into())?;
     assert_eq!(fixture.saved_key_lookup_reads(), reads_before + 1);
+    Ok(())
+}
+
+#[test]
+fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
+) -> Result<(), HolonError> {
+    use holons_core::descriptors::ComputedEffectiveSchema;
+    let mut fixture = Fixture::new()?;
+    c2_kind_semantics(&mut fixture)?;
+    for endpoint in [CoreRelationshipTypeName::SourceType, CoreRelationshipTypeName::TargetType] {
+        fixture.link("DescribedBy.Relationship", endpoint, "HolonType.TypeDescriptor")?;
+    }
+    fixture.link("Contract", CoreRelationshipTypeName::InstanceProperties, "Title.PropertyType")?;
+    fixture.node("Alias.PropertyType")?.with_property_value("TypeName", "Title")?;
+    fixture.link(
+        "Alias.PropertyType",
+        CoreRelationshipTypeName::Extends,
+        "PropertyType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "Alias.PropertyType",
+        CoreRelationshipTypeName::ValueType,
+        "StringValueType.ValueType",
+    )?;
+    fixture.link("Contract", CoreRelationshipTypeName::InstanceProperties, "Alias.PropertyType")?;
+    for (key, parent) in [
+        ("RelationshipType.TypeDescriptor", "TypeDescriptor"),
+        ("DanceType.HolonType", "HolonType.TypeDescriptor"),
+        ("CommandType.HolonType", "HolonType.TypeDescriptor"),
+        ("ProjectionRelationship", "RelationshipType.TypeDescriptor"),
+        ("ProjectionDance", "DanceType.HolonType"),
+        ("ProjectionCommand", "CommandType.HolonType"),
+    ] {
+        fixture.node(key)?.with_property_value(type_names::CorePropertyTypeName::TypeName, key)?;
+        fixture.link(key, CoreRelationshipTypeName::Extends, parent)?;
+    }
+    fixture.link("ProjectionRelationship", CoreRelationshipTypeName::SourceType, "Contract")?;
+    fixture.link("ProjectionRelationship", CoreRelationshipTypeName::TargetType, "Contract")?;
+    for (collection, member) in [
+        (CoreRelationshipTypeName::InstanceRelationships, "ProjectionRelationship"),
+        (CoreRelationshipTypeName::AffordsDance, "ProjectionDance"),
+        (CoreRelationshipTypeName::AffordsCommand, "ProjectionCommand"),
+    ] {
+        fixture.link("Contract", collection.clone(), member)?;
+        fixture.link("Contract", collection, member)?;
+    }
+    let mut fixture = fixture.saved_snapshot()?;
+    let roots = holons_core::DescriptorKindSemantics::new(&fixture.context);
+    let keyed_reads = fixture.saved_key_lookup_reads();
+    let subject = fixture.nodes["Contract"].clone();
+    let count = fixture.context.lookup().transient_count()?;
+    let projection = ComputedEffectiveSchema::resolve(&subject)?;
+    assert_eq!(count, fixture.context.lookup().transient_count()?);
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_effective_schema(&projection, &roots)?;
+    assert_eq!(fixture.saved_key_lookup_reads(), keyed_reads);
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::UniqueSemanticMemberNames,
+        &products,
+        &subject,
+    )?;
+    for namespace in ["property", "relationship", "dance", "command"] {
+        assert!(
+            findings.iter().any(|finding| finding.message.contains(namespace)),
+            "missing {namespace} conflict: {findings:?}"
+        );
+    }
     Ok(())
 }

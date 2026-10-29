@@ -12,7 +12,7 @@ const action = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-
 const importer = (text: string) => import(`data:text/javascript;base64,${Buffer.from(text).toString('base64')}`);
 function fixture(role: string, count = 2) {
   const members = Array.from({ length: count }, (_, i) => ({ key: async () => `${role}-${i}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: async () => ({ StringValue: `${role}-${i}` }) }));
-  const collection = { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [{ propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false }] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  const collection = { length: count, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [{ propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false }] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
   const slot = { key: async () => role === 'diagnostics' ? 'LoadHolons.DiagnosticsSlot' : 'LoadHolons.CommittedHolonsSlot' };
   const parent = { key: async () => 'action', relatedHolons: vi.fn(async () => [slot]) };
   const value = { key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };

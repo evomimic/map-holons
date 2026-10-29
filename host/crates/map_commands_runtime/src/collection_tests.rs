@@ -45,6 +45,14 @@ impl Graph {
     }
 }
 impl HolonServiceApi for Graph {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::EffectiveHolonDescriptor, HolonError> {
+        crate::prepared_descriptor_fixture::construct(context, target)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -53,8 +61,8 @@ impl HolonServiceApi for Graph {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        Ok(RelationshipCachePolicy::Fresh)
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn get_saved_holon_by_key_internal(
         &self,
@@ -153,9 +161,18 @@ async fn read(
     id: u8,
     action: ReadableHolonAction,
 ) -> Result<MapResult, HolonError> {
+    let target = Graph::reference(context, id);
+    let target = if matches!(
+        action,
+        ReadableHolonAction::GetHasInstanceKey | ReadableHolonAction::GetInstanceProperties
+    ) {
+        crate::prepared_descriptor_fixture::construct(context, target)?.holon().clone()
+    } else {
+        target
+    };
     crate::holon_handler::handle_holon(HolonCommand {
         context: context.clone(),
-        target: Graph::reference(context, id),
+        target,
         action: HolonAction::Read(action),
     })
     .await

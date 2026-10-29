@@ -6,6 +6,7 @@ use holons_core::reference_layer::{HolonReference, ReadableHolon, WritableHolon}
 use holons_core::{CollectionState, HolonCollection};
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use type_names::{CoreRelationshipTypeName, ToRelationshipName};
 
 use map_commands_contract::{
     HolonAction, HolonCommand, MapResult, ReadableHolonAction, WritableHolonAction,
@@ -34,17 +35,19 @@ fn handle_read(
             }
         },
         ReadableHolonAction::GetDescribedRelatedHolons { name } => {
-            let relationship = target.holon_descriptor()?.resolve_available_relationship(&name)?;
-            let available = target.available_relationships()?.into_iter().any(|candidate| {
-                candidate.descriptor.holon().reference_id_string()
-                    == relationship.descriptor.holon().reference_id_string()
-            });
+            let descriptor = target.effective_descriptor()?;
+            let relationship = descriptor.get_relationship_by_name(&name)?;
+            let available =
+                descriptor.available_relationships(&target)?.into_iter().any(|candidate| {
+                    candidate.holon().reference_id_string()
+                        == relationship.holon().reference_id_string()
+                });
             if !available {
                 return Err(HolonError::InvalidState(
                     "Relationship is unavailable in this lifecycle state".into(),
                 ));
             }
-            let element_type = relationship.descriptor.target_type()?.holon().clone();
+            let element_type = relationship.target_type()?.holon().clone();
             let members = target
                 .related_holons_with_hint(name, holons_core::RelationshipReadHint::SchemaDefault)?
                 .read()
@@ -56,11 +59,12 @@ fn handle_read(
             }))
         }
         ReadableHolonAction::GetInstanceProperties => {
-            let members = holons_core::descriptors::HolonDescriptor::from_holon(target)
-                .instance_properties()?
-                .into_iter()
-                .map(|property| property.holon().clone())
-                .collect();
+            let members =
+                holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(target)
+                    .instance_properties()?
+                    .into_iter()
+                    .map(|property| property.holon().clone())
+                    .collect();
             Ok(MapResult::Collection(HolonCollection::from_parts(
                 CollectionState::Fetched,
                 members,
@@ -124,6 +128,59 @@ fn handle_read(
                 .clone();
             Ok(MapResult::Collection(collection))
         }
+        ReadableHolonAction::GetReferenceIdentity => {
+            Ok(MapResult::Value(BaseValue::StringValue(target.full_reference_id_string().into())))
+        }
+        ReadableHolonAction::GetEffectiveMember { collection, name } => {
+            let descriptor =
+                holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(target);
+            let member = match collection {
+                collection_name
+                    if collection_name
+                        == CoreRelationshipTypeName::EffectiveInstanceProperties
+                            .to_relationship_name() =>
+                {
+                    descriptor.get_property_by_name(name).map(|entry| entry.holon().clone())
+                }
+                collection_name
+                    if collection_name
+                        == CoreRelationshipTypeName::NavigableRelationships
+                            .to_relationship_name() =>
+                {
+                    descriptor.get_relationship_by_name(name).map(|entry| entry.holon().clone())
+                }
+                collection_name
+                    if collection_name
+                        == CoreRelationshipTypeName::EffectiveAffordsDance
+                            .to_relationship_name() =>
+                {
+                    descriptor.get_dance_by_name(name).map(|entry| entry.holon().clone())
+                }
+                collection_name
+                    if collection_name
+                        == CoreRelationshipTypeName::EffectiveAffordsCommand
+                            .to_relationship_name() =>
+                {
+                    descriptor.get_command_by_name(name).map(|entry| entry.holon().clone())
+                }
+                _ => {
+                    return Err(HolonError::InvalidParameter(
+                        "Unsupported effective member collection".into(),
+                    ))
+                }
+            };
+            match member {
+                Ok(member) => Ok(MapResult::Reference(member)),
+                Err(HolonError::DescriptorDeclarationNotFound { .. }) => Ok(MapResult::None),
+                Err(error) => Err(error),
+            }
+        }
+        ReadableHolonAction::GetEffectiveDescriptorForType => Ok(MapResult::Reference(
+            holons_core::descriptors::EffectiveHolonDescriptor::acquire(target)?.holon().clone(),
+        )),
+        ReadableHolonAction::GetEffectiveDescriptor => {
+            Ok(MapResult::Reference(target.effective_descriptor()?.holon().clone()))
+        }
         ReadableHolonAction::GetHolonDescriptor => {
             Ok(MapResult::Reference(target.holon_descriptor()?.holon().clone()))
         }
@@ -132,7 +189,7 @@ fn handle_read(
                 .effective_cardinality()?,
         )),
         ReadableHolonAction::GetHasInstanceKey => Ok(MapResult::Value(BaseValue::BooleanValue(
-            (!holons_core::descriptors::HolonDescriptor::from_holon(target)
+            (!holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(target)
                 .effective_key_rule()?
                 .is_keyless()?)
             .into(),
@@ -152,7 +209,7 @@ fn handle_read(
         ))),
         ReadableHolonAction::GetAvailableDances => {
             let members = target
-                .holon_descriptor()?
+                .effective_descriptor()?
                 .afforded_dances()?
                 .into_iter()
                 .map(|descriptor| descriptor.holon().clone())
@@ -165,7 +222,8 @@ fn handle_read(
         }
         ReadableHolonAction::GetAvailableProperties => {
             let members = target
-                .available_properties()?
+                .effective_descriptor()?
+                .instance_properties()?
                 .into_iter()
                 .map(|descriptor| descriptor.holon().clone())
                 .collect();
@@ -175,8 +233,20 @@ fn handle_read(
                 BTreeMap::new(),
             )))
         }
+        ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor } => {
+            let descriptor =
+                holons_core::descriptors::EffectiveHolonDescriptor::try_from_holon(descriptor)?;
+            Ok(MapResult::QualifiedRelationships(
+                descriptor.available_relationships(&target)?.into_iter().map(Into::into).collect(),
+            ))
+        }
         ReadableHolonAction::GetAvailableRelationships => Ok(MapResult::QualifiedRelationships(
-            target.available_relationships()?.into_iter().map(Into::into).collect(),
+            target
+                .effective_descriptor()?
+                .available_relationships(&target)?
+                .into_iter()
+                .map(Into::into)
+                .collect(),
         )),
     }
 }

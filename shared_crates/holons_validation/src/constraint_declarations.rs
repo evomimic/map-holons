@@ -8,9 +8,9 @@ use base_types::BaseValue;
 use core_types::{CommitValidationViolationKind, HolonError, PropertyName};
 use holons_core::{
     descriptors::{
-        constraint_applies_to, constraint_applies_to_lineage, effective_relationship_targets,
-        resolve_describing_type, same_definition, ConstraintContributions,
-        DescribingTypeResolution, ExtendsLineageDiagnosis, ValidExtendsLineage,
+        constraint_applies_to, constraint_applies_to_lineage, resolve_describing_type,
+        same_definition, ConstraintContributions, DescribingTypeResolution,
+        ExtendsLineageDiagnosis, ValidExtendsLineage,
     },
     HolonReference, ReadableHolon,
 };
@@ -191,7 +191,7 @@ impl ConstraintDeclarationAssessment {
                         constraint: &constraint,
                         constraint_type: &constraint_type,
                     };
-                    let membership_valid = configuration.check_membership(collector)?;
+                    let membership_valid = configuration.check_membership(collector, lineage)?;
                     let family_valid = self.check_family(lineage, &configuration, collector)?;
                     checked.valid = membership_valid && family_valid;
                 } else {
@@ -278,11 +278,13 @@ impl Configuration<'_> {
         );
     }
 
-    fn check_membership(&self, collector: &mut ValidationCollector) -> Result<bool, HolonError> {
+    fn check_membership(
+        &self,
+        collector: &mut ValidationCollector,
+        lineage: ValidExtendsLineage<'_>,
+    ) -> Result<bool, HolonError> {
         let mut names = HashSet::new();
-        for contribution in
-            effective_relationship_targets(self.constraint_type, R::InstanceProperties)?
-        {
+        for contribution in lineage.relationship_targets(R::InstanceProperties)? {
             match contribution.member.property_value(P::TypeName)? {
                 Some(BaseValue::StringValue(name)) if !name.0.is_empty() => {
                     names.insert(PropertyName(name));

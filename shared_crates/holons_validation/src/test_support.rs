@@ -38,16 +38,16 @@ impl HolonServiceApi for FixtureStorage {
         _: &Arc<TransactionContext>,
         source: &HolonId,
         name: &RelationshipName,
-    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+    ) -> Result<Option<holons_core::RelationshipCachePolicy>, HolonError> {
         if self
             .relationship_read_overrides
             .lock()
             .unwrap()
             .contains_key(&(source.clone(), name.clone()))
         {
-            return Ok(holons_core::RelationshipCachePolicy::Fresh);
+            return Ok(Some(holons_core::RelationshipCachePolicy::Fresh));
         }
-        Ok(holons_core::RelationshipCachePolicy::Reuse)
+        Ok(Some(holons_core::RelationshipCachePolicy::Reuse))
     }
 
     fn as_any(&self) -> &dyn Any {

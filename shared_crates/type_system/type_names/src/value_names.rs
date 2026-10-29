@@ -15,6 +15,7 @@ pub enum CoreValueTypeName {
     IntegerValueType,
     InvocationSource,
     RequiredExecutionContext,
+    MapBooleanValueType,
     MapBytesValueType,
     MapEnumValueType,
     MapIntegerValueType,
@@ -57,6 +58,10 @@ mod tests {
         assert_eq!(
             MapString("IntegerValueType".to_string()),
             CoreValueTypeName::IntegerValueType.as_value_name()
+        );
+        assert_eq!(
+            MapString("MapBooleanValueType".to_string()),
+            CoreValueTypeName::MapBooleanValueType.as_value_name()
         );
         assert_eq!(
             MapString("MapBytesValueType".to_string()),

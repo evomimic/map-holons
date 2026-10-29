@@ -15,6 +15,12 @@ pub enum CoreDefinitionRole {
     PropertyType,
     /// The `DeclaredRelationshipType.RelationshipType` role.
     DeclaredRelationshipType,
+    /// The `RelationshipType.TypeDescriptor` role.
+    RelationshipType,
+    /// The `DanceType.HolonType` role.
+    DanceType,
+    /// The `CommandType.HolonType` role.
+    CommandType,
     /// The `ValueType.TypeDescriptor` role.
     ValueType,
     /// The `StringValueType.ValueType` role.
@@ -71,6 +77,9 @@ impl CoreDefinitionRole {
             Self::MetaHolonType => "MetaHolonType.MetaTypeDescriptor",
             Self::PropertyType => "PropertyType.TypeDescriptor",
             Self::DeclaredRelationshipType => "DeclaredRelationshipType.RelationshipType",
+            Self::RelationshipType => "RelationshipType.TypeDescriptor",
+            Self::DanceType => "DanceType.HolonType",
+            Self::CommandType => "CommandType.HolonType",
             Self::ValueType => "ValueType.TypeDescriptor",
             Self::StringValueType => "StringValueType.ValueType",
             Self::IntegerValueType => "IntegerValueType.ValueType",

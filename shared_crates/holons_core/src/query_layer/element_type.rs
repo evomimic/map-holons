@@ -12,8 +12,8 @@ use core_types::{HolonError, RelationshipName};
 use type_names::CoreRelationshipTypeName;
 
 use crate::descriptors::accessor_helpers::require_single_related;
-use crate::descriptors::HolonDescriptor;
-use crate::reference_layer::HolonReference;
+use crate::descriptors::{Descriptor, HolonDescriptor};
+use crate::reference_layer::{HolonReference, ReadableHolon};
 
 /// The declared element type of `collection`: its single `ElementType` target.
 ///
@@ -36,5 +36,17 @@ pub(crate) fn expansion_target_type(
     element_type: &HolonDescriptor,
     relationship_name: &RelationshipName,
 ) -> Result<HolonDescriptor, HolonError> {
-    element_type.resolve_available_relationship(relationship_name.clone())?.descriptor.target_type()
+    let prepared =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(element_type.holon().clone())?;
+    match prepared.get_relationship_by_name(relationship_name.clone()) {
+        Err(HolonError::DescriptorDeclarationNotFound { .. })
+            if element_type.holon().holon_id().is_err() =>
+        {
+            Err(HolonError::UnsupportedStagedTraversal {
+                relationship: relationship_name.to_string(),
+                descriptor: element_type.holon().reference_id_string(),
+            })
+        }
+        result => result?.target_type(),
+    }
 }

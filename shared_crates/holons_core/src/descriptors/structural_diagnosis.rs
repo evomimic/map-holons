@@ -105,6 +105,15 @@ impl<'a> ValidExtendsLineage<'a> {
         Ok(false)
     }
 
+    /// Reads candidate occurrences against this already diagnosed lineage.
+    /// Structural validation uses this primitive without initiating descriptor construction.
+    pub fn relationship_targets(
+        &self,
+        relationship: type_names::CoreRelationshipTypeName,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        super::inheritance::relationship_targets_in_lineage(self.members, relationship)
+    }
+
     /// Tests exact definition membership without re-reading the anchor for each member.
     pub fn contains(&self, anchor: &HolonReference) -> Result<bool, HolonError> {
         lineage_contains(self.members, anchor)

@@ -236,6 +236,20 @@ impl HolonPool {
 
     /// Inserts a new Holon into the pool.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
+        if matches!(&holon, Holon::Transient(_)) && holon.key().is_none() {
+            // Allocation identity is pool-local bookkeeping, never a semantic Key.
+            // Start beyond current membership and probe so imported pools remain safe.
+            let mut candidate = self.holons.len() as u128;
+            loop {
+                let id =
+                    TemporaryId(uuid::Uuid::from_u128((0x7472616e7369656e_u128 << 64) | candidate));
+                if !self.holons.contains_key(&id) {
+                    self.holons.insert(id.clone(), Arc::new(RwLock::new(holon)));
+                    return Ok(id);
+                }
+                candidate += 1;
+            }
+        }
         let mut versioned_key = holon.versioned_key()?;
 
         while self.keyed_index.get(&versioned_key).is_some() {
