@@ -15,7 +15,7 @@ export interface NodeCollectionViewState {
 }
 async function affordanceKey(affordance: CollectionAffordance): Promise<string> {
   if (affordance.kind !== 'relationship') throw new Error('Only relationship collection state can be transferred.');
-  return `${affordance.relationship.direction}:${await affordance.relationship.descriptor.relationshipName()}`;
+  return affordance.relationship.descriptor.identity();
 }
 
 export type CollectionState = 'unresolved' | 'checking' | 'empty' | 'loading' | 'loaded-empty' | 'loaded' | 'error';

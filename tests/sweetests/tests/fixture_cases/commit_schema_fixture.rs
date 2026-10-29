@@ -1,31 +1,21 @@
+use super::described_instance_helpers::saved;
+use super::schema_authoring_helpers::{replace_target, stage_definition, stage_title};
 use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::{
-    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitCarrierFinding, ExpectedCommitStatus,
-    ExpectedDisposition, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, FixtureHolons, TestCaseInit, TestReference,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedPersistedGraph, ExpectedPersistedRelationship, ExpectedRejectedHolon,
+    ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons, PersistedSubject,
+    TestCaseInit, TestReference,
 };
-use std::sync::Arc;
 
-fn saved(
-    context: &Arc<TransactionContext>,
-    test_case: &mut DancesTestCase,
-    holons: &mut FixtureHolons,
-    key: &str,
-) -> Result<TestReference, HolonError> {
-    let key = MapString(key.into());
-    let stub = context.mutation().new_holon(Some(key.clone()))?;
-    test_case.add_lookup_saved_holon_by_key_step(holons, stub, key, None, None)
-}
-
-/// Staging only a descriptor assesses its saved owning Schema. The foreign
-/// property target requires a direct dependency, so the Schema finding travels
-/// through the response carrier. Correcting the descriptor permits a retry.
-pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonError> {
+/// Declared cross-schema dependency coverage is temporarily unenforced. A foreign
+/// property reference commits, while inherited-member redeclaration still rejects.
+pub fn commit_cross_schema_dependency_gap_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
-        "Unstaged Schema Commit finding",
-        "A staged descriptor exposes a saved Schema dependency finding and accepts correction",
+        "Cross-schema dependency coverage gap",
+        "A cross-schema reference commits while inherited-member redeclaration still rejects",
     );
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
@@ -41,7 +31,6 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         saved(&fixture_context, &mut test_case, &mut fixture_holons, "BookAuthorInverseSchema")?;
     let foreign =
         saved(&fixture_context, &mut test_case, &mut fixture_holons, "ThemeName.PropertyType")?;
-    let local = saved(&fixture_context, &mut test_case, &mut fixture_holons, "Title.PropertyType")?;
 
     let key = MapString("Book.SchemaReadiness.HolonType".into());
     let source = fixture_context.mutation().new_holon(Some(key.clone()))?;
@@ -86,7 +75,7 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         &mut fixture_holons,
         descriptor,
         CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
-        vec![foreign.clone()],
+        vec![foreign],
         None,
         None,
     )?;
@@ -99,44 +88,15 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         None,
     )?;
 
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
-    test_case.add_verify_commit_carrier_finding_step(
-        ExpectedCommitCarrierFinding {
-            schema_key: "BookAuthorInverseSchema".into(),
-            rule_code: "DS-SCHEMA-002".into(),
-            rule_key: "CrossSchemaDependenciesDeclared.ValidationRule".into(),
-            expected_rejected_holons: vec![ExpectedRejectedHolon {
-                token: descriptor.clone(),
-                validation_state: ValidationState::Invalid,
-                findings: vec![ExpectedValidationFinding {
-                    kind: CommitValidationViolationKind::UnresolvedLocalDependency,
-                    rule_key: None,
-                    subject: ExpectedValidationSubject::Holon,
-                }],
-            }],
-        },
-        None,
-    )?;
-    let descriptor = test_case.add_remove_related_holons_step(
-        &mut fixture_holons,
-        descriptor,
-        CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
-        vec![foreign],
-        None,
-        None,
-    )?;
-    let descriptor = test_case.add_add_related_holons_step(
-        &mut fixture_holons,
-        descriptor,
-        CoreRelationshipTypeName::InstanceProperties.as_relationship_name(),
-        vec![local],
-        None,
-        None,
-    )?;
+    // DS-SCHEMA-002 is unbound until SchemaDependency restores holon-local
+    // dependency coverage, so the undeclared foreign property commits. Once it is
+    // re-bound, this Commit should be Rejected with a DS-SCHEMA-002 finding on the
+    // staged descriptor itself rather than a carrier finding on the unstaged Schema.
+    // Other descriptor checks continue through public Commit.
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
     test_case.add_match_saved_content_step()?;
 
-    // The accepted descriptor now defines a valid additive property. A later
+    // The accepted descriptor defines an additive foreign property. A later
     // version may add members, but reusing an inherited identity is a defect.
     test_case.add_begin_transaction_step(None, None)?;
     let inherited_key =
@@ -248,6 +208,322 @@ pub fn commit_schema_cycle_fixture() -> Result<DancesTestCase, HolonError> {
         }],
         MapInteger(1),
         None,
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(test_case)
+}
+
+fn persisted_targets(
+    source: &TestReference,
+    relationship: &str,
+    targets: &[&TestReference],
+) -> ExpectedPersistedRelationship {
+    ExpectedPersistedRelationship {
+        source: PersistedSubject::Token(source.clone()),
+        relationship: relationship.to_relationship_name(),
+        targets: targets.iter().map(|target| PersistedSubject::Token((*target).clone())).collect(),
+    }
+}
+
+fn commit_versions(
+    case: &mut DancesTestCase,
+    holons: &mut FixtureHolons,
+    versions: &[&TestReference],
+) -> Result<(), HolonError> {
+    case.add_commit_step_with_dispositions(
+        holons,
+        ExpectedCommitStatus::Complete,
+        versions
+            .iter()
+            .map(|token| {
+                ExpectedCommitCandidate::new((*token).clone(), ExpectedDisposition::NewVersion)
+            })
+            .collect(),
+        vec![],
+        None,
+        None,
+    )
+}
+
+/// Inverses contain lineage roots once; ownership remains attached to exact member versions.
+pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, HolonError> {
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Schema successor membership history",
+        "Explicit membership populates a new Schema version without rewriting earlier owners",
+    );
+    let case = &mut test_case;
+    let holons = &mut fixture_holons;
+    case.add_begin_transaction_step(None, None)?;
+    let schema_type = saved(&fixture_context, case, holons, "Schema.HolonType")?;
+    let schema = stage_definition(
+        &fixture_context,
+        case,
+        holons,
+        "MembershipHistory.Schema",
+        [
+            ("SchemaName".to_property_name(), "MembershipHistory".to_base_value()),
+            ("Description".to_property_name(), "Private membership history".to_base_value()),
+        ]
+        .into(),
+        &[("DescribedBy", &schema_type)],
+    )?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
+    case.add_begin_transaction_step(None, None)?;
+    // An independent lookup token pins the saved owner while its authored head advances.
+    let schema_v1 = saved(&fixture_context, case, holons, "MembershipHistory.Schema")?;
+    let member = stage_title(
+        &fixture_context,
+        case,
+        holons,
+        "MembershipHistory.Title.PropertyType",
+        &schema_v1,
+    )?;
+    let rule_type = saved(&fixture_context, case, holons, "HolonValidationRule.HolonType")?;
+    // Membership alone does not activate an unbound rule's evaluator.
+    let rule = stage_definition(
+        &fixture_context,
+        case,
+        holons,
+        "MembershipHistory.Unbound.ValidationRule",
+        [
+            (
+                "DeterminismClass".to_property_name(),
+                MapEnumValue(MapString::from("Deterministic")).to_base_value(),
+            ),
+            ("SemanticAuthority".to_property_name(), "MembershipFixture".to_base_value()),
+            (
+                "ValidationLevel".to_property_name(),
+                MapEnumValue(MapString::from("Holon")).to_base_value(),
+            ),
+            (
+                "ValidationRuleDescription".to_property_name(),
+                "Unbound membership fixture".to_base_value(),
+            ),
+        ]
+        .into(),
+        &[("RuleOf", &schema_v1), ("DescribedBy", &rule_type)],
+    )?;
+    case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
+    case.add_begin_transaction_step(None, None)?;
+    let member_v1 = saved(&fixture_context, case, holons, "MembershipHistory.Title.PropertyType")?;
+    let rule_v1 =
+        saved(&fixture_context, case, holons, "MembershipHistory.Unbound.ValidationRule")?;
+    let schema_v2 =
+        case.add_stage_new_version_step(holons, schema, None, MapInteger(1), None, None)?;
+    let schema_v2 = case.add_with_properties_step(
+        holons,
+        schema_v2,
+        [(
+            "Description".to_property_name(),
+            "Schema successor with explicit composition".to_base_value(),
+        )]
+        .into(),
+        None,
+        None,
+    )?;
+    commit_versions(case, holons, &[&schema_v2])?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        ExpectedPersistedGraph {
+            relationships: vec![
+                persisted_targets(&schema_v1, "Components", &[&member_v1]),
+                persisted_targets(&schema_v1, "Rules", &[&rule_v1]),
+                persisted_targets(&schema_v2, "Components", &[]),
+                persisted_targets(&schema_v2, "Rules", &[]),
+                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&rule_v1, "RuleOf", &[&schema_v1]),
+            ],
+            ..Default::default()
+        },
+        Some("Publishing a Schema successor inherits no inverse memberships".into()),
+    )?;
+
+    case.add_begin_transaction_step(None, None)?;
+    let member_v2 =
+        case.add_stage_new_version_step(holons, member, None, MapInteger(1), None, None)?;
+    let member_v2 = case.add_with_properties_step(
+        holons,
+        member_v2,
+        [("Description".to_property_name(), "Second member version, same owner".to_base_value())]
+            .into(),
+        None,
+        None,
+    )?;
+    commit_versions(case, holons, &[&member_v2])?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        ExpectedPersistedGraph {
+            relationships: vec![
+                persisted_targets(&schema_v1, "Components", &[&member_v1]),
+                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&member_v2, "ComponentOf", &[&schema_v1]),
+            ],
+            ..Default::default()
+        },
+        Some("Two member versions realize one Lineage-bound inverse membership".into()),
+    )?;
+
+    case.add_begin_transaction_step(None, None)?;
+    let member_v3 = case.add_stage_new_version_step(
+        holons,
+        member_v2.clone(),
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    let member_v3 = replace_target(case, holons, member_v3, "ComponentOf", &schema_v1, &schema_v2)?;
+    let rule_v2 = case.add_stage_new_version_step(holons, rule, None, MapInteger(1), None, None)?;
+    let rule_v2 = replace_target(case, holons, rule_v2, "RuleOf", &schema_v1, &schema_v2)?;
+    commit_versions(case, holons, &[&member_v3, &rule_v2])?;
+    case.add_verify_persisted_graph_step(
+        holons,
+        ExpectedPersistedGraph {
+            relationships: vec![
+                persisted_targets(&schema_v1, "Components", &[&member_v1]),
+                persisted_targets(&schema_v1, "Rules", &[&rule_v1]),
+                persisted_targets(&schema_v2, "Components", &[&member_v1]),
+                persisted_targets(&schema_v2, "Rules", &[&rule_v1]),
+                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&member_v2, "ComponentOf", &[&schema_v1]),
+                persisted_targets(&member_v3, "ComponentOf", &[&schema_v2]),
+                persisted_targets(&rule_v1, "RuleOf", &[&schema_v1]),
+                persisted_targets(&rule_v2, "RuleOf", &[&schema_v2]),
+            ],
+            ..Default::default()
+        },
+        Some(
+            "Explicit membership preserves both historical owners and root-targeted inverses"
+                .into(),
+        ),
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(test_case)
+}
+
+/// Required Core definitions remain readable, but publishing their successors is
+/// temporarily unsupported. Rejection preserves the source and all other candidates.
+pub fn commit_required_anchor_update_fixture() -> Result<DancesTestCase, HolonError> {
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Required Core anchor update",
+        "No-op staging passes; rekeying an anchor successor rejects before any write",
+    );
+    test_case.add_begin_transaction_step(None, None)?;
+    let anchor =
+        saved(&fixture_context, &mut test_case, &mut fixture_holons, "HolonType.TypeDescriptor")?;
+    let unchanged = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        anchor,
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(unchanged.clone(), ExpectedDisposition::NoAction)],
+        vec![],
+        None,
+        None,
+    )?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let successor = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        unchanged,
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    let successor = test_case.add_with_properties_step(
+        &mut fixture_holons,
+        successor,
+        [("Key".to_property_name(), "Rekeyed.RequiredCoreAnchor".to_base_value())].into(),
+        None,
+        None,
+    )?;
+    // A second, independent error must still be reported by the common assessment.
+    let key = MapString("Undescribed.AnchorRestriction.Control".into());
+    let source = fixture_context.mutation().new_holon(Some(key.clone()))?;
+    let control = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        source,
+        PropertyMap::new(),
+        Some(key),
+        None,
+        None,
+    )?;
+    let control = test_case.add_stage_holon_step(&mut fixture_holons, control, None, None)?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
+    test_case.add_verify_commit_rejection_step(
+        vec![
+            ExpectedRejectedHolon {
+                token: successor,
+                validation_state: ValidationState::Invalid,
+                findings: vec![ExpectedValidationFinding {
+                    kind: CommitValidationViolationKind::RuleViolation {
+                        code: "UnsupportedRequiredAnchorUpdate".into(),
+                    },
+                    rule_key: None,
+                    subject: ExpectedValidationSubject::Holon,
+                }],
+            },
+            ExpectedRejectedHolon {
+                token: control,
+                validation_state: ValidationState::NoDescriptor,
+                findings: vec![ExpectedValidationFinding {
+                    kind: CommitValidationViolationKind::NoDescriptor,
+                    rule_key: None,
+                    subject: ExpectedValidationSubject::Holon,
+                }],
+            },
+        ],
+        MapInteger(2),
+        None,
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(test_case)
+}
+
+/// Loader references may name a saved write source. A real definitional edit
+/// must reach the same anchor restriction as an ordinary staged successor.
+pub fn loader_required_anchor_update_fixture() -> Result<DancesTestCase, HolonError> {
+    use super::load_holons_internal_fixture::{
+        add_loader_relationship_reference, make_load_set_from_bundles, BundleWithFilename,
+    };
+    use holons_test::ExpectedLoadStatus;
+    let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
+        "Loader required anchor update",
+        "Loader promotion of a saved Core write source rejects before persistence",
+    );
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let mut carrier = fixture_context.mutation().new_holon(Some("AnchorEdit.Carrier".into()))?;
+    add_loader_relationship_reference(
+        &fixture_context,
+        &mut carrier,
+        "InstanceProperties",
+        "HolonType.TypeDescriptor",
+        &["Title.PropertyType"],
+    )?;
+    let mut bundle = fixture_context.mutation().new_holon(Some("AnchorEdit.Bundle".into()))?;
+    bundle.add_related_holons(CoreRelationshipTypeName::BundleMembers, vec![carrier.into()])?;
+    let load_set = make_load_set_from_bundles(
+        &fixture_context,
+        "AnchorEdit.LoadSet",
+        vec![BundleWithFilename::new(bundle, "anchor-edit.json")],
+    )?;
+    test_case.add_load_holons_internal_step(
+        load_set,
+        MapInteger(1),
+        MapInteger(0),
+        MapInteger(1),
+        MapInteger(0),
+        MapInteger(1),
+        MapInteger(1),
+        ExpectedLoadStatus::Rejected,
+        Some(MapInteger(2)),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)

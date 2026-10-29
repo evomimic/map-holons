@@ -2,6 +2,8 @@ export { DescribedHolonCollection, HolonCollection } from './collection';
 export { CorePropertyName } from './core-names';
 export {
   HolonDescriptorHandle,
+  EffectiveHolonDescriptorHandle,
+  EffectiveSchemaContributionHandle,
   PropertyDescriptorHandle,
   ValueDescriptorHandle,
   RelationshipDescriptorHandle,
@@ -10,7 +12,6 @@ export type {
   ScalarValueKind,
   EffectiveCardinality,
   AvailableRelationshipHandle,
-  RelationshipDirection,
 } from './descriptors';
 export { MapClient } from './client';
 export {

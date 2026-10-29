@@ -23,3 +23,6 @@ mod usage_transactions;
 
 #[cfg(test)]
 mod usage_tests;
+
+#[cfg(test)]
+mod prepared_descriptor_fixture;

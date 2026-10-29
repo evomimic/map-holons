@@ -39,7 +39,7 @@ use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::descriptors::{Descriptor, RelationshipDescriptor, RelationshipDirection};
+use holons_core::descriptors::Descriptor;
 use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
@@ -53,10 +53,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, RwLock,
-};
+use std::sync::{atomic::Ordering, Arc, RwLock};
 use std::time::Instant;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
@@ -71,61 +68,137 @@ use crate::dahn::{DahnMaterializer, DancerPackageCatalog};
 pub struct ClientHolonService {
     dahn_materializer: DahnMaterializer,
     dancer_package_catalog: DancerPackageCatalog,
-    // Clones share the recursion guard for inverse cache-policy discovery.
-    relationship_semantics_resolution_depth: Arc<AtomicUsize>,
+    source_types: Arc<RwLock<HashMap<HolonId, HolonId>>>,
+    prepared_generation: Arc<std::sync::atomic::AtomicU64>,
     cache_clock_origin: Instant,
+    descriptor_flights: Arc<(
+        std::sync::Mutex<
+            std::collections::HashSet<holons_core::core_shared_objects::transactions::TxId>,
+        >,
+        std::sync::Condvar,
+    )>,
     // Schema is fixed for this space-scoped service lifetime. A future release
     // pull must invalidate these resolutions independently of membership TTLs.
-    relationship_descriptors:
-        Arc<RwLock<HashMap<(HolonId, RelationshipName), ResolvedRelationshipPolicy>>>,
+    relationship_policies:
+        Arc<RwLock<HashMap<(HolonId, RelationshipName), RelationshipCachePolicy>>>,
 }
 
-// Retain saved identities, not bound handles back into the owning space.
-#[derive(Debug, Clone)]
-struct ResolvedRelationshipPolicy {
-    descriptor_id: HolonId,
-    direction: RelationshipDirection,
-}
+thread_local! { static PREPARATION_DEPTH: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+struct RelationshipSemanticsResolutionGuard;
 
-impl ResolvedRelationshipPolicy {
-    fn policy(
-        &self,
-        context: &Arc<TransactionContext>,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        let descriptor = RelationshipDescriptor::from_holon(HolonReference::smart_from_id(
-            context.space_read_handle(),
-            self.descriptor_id.clone(),
-        ));
-        if self.direction == RelationshipDirection::Declared && descriptor.is_definitional()? {
-            return Ok(RelationshipCachePolicy::Reuse);
-        }
-        Ok(match descriptor.membership_cache_max_age_millis()? {
-            0 => RelationshipCachePolicy::Fresh,
-            age => RelationshipCachePolicy::MaxAgeMillis(age),
-        })
-    }
-}
-
-struct RelationshipSemanticsResolutionGuard<'a> {
-    depth: &'a AtomicUsize,
-}
-
-impl Drop for RelationshipSemanticsResolutionGuard<'_> {
+impl Drop for RelationshipSemanticsResolutionGuard {
     fn drop(&mut self) {
-        self.depth.fetch_sub(1, Ordering::Release);
+        PREPARATION_DEPTH.with(|depth| depth.set(depth.get() - 1));
     }
+}
+
+fn foundational_relationship(name: &RelationshipName) -> bool {
+    [
+        CoreRelationshipTypeName::DescribedBy,
+        CoreRelationshipTypeName::Extends,
+        CoreRelationshipTypeName::InstanceRelationships,
+    ]
+    .iter()
+    .any(|entry| entry.to_relationship_name() == *name)
+}
+
+fn preparation_relationship(name: &RelationshipName) -> bool {
+    [
+        CoreRelationshipTypeName::DescribedBy,
+        CoreRelationshipTypeName::Extends,
+        CoreRelationshipTypeName::InstanceRelationships,
+        CoreRelationshipTypeName::InstanceProperties,
+        CoreRelationshipTypeName::AffordsDance,
+        CoreRelationshipTypeName::AffordsCommand,
+        CoreRelationshipTypeName::Constraints,
+        CoreRelationshipTypeName::ValidationBindings,
+        CoreRelationshipTypeName::InstanceKeyRule,
+        CoreRelationshipTypeName::SourceOf,
+        CoreRelationshipTypeName::SourceType,
+        CoreRelationshipTypeName::TargetType,
+        CoreRelationshipTypeName::HasInverse,
+        CoreRelationshipTypeName::InverseOf,
+    ]
+    .iter()
+    .any(|entry| entry.to_relationship_name() == *name)
 }
 
 impl ClientHolonService {
-    fn resolving_relationship_semantics(&self) -> bool {
-        self.relationship_semantics_resolution_depth.load(Ordering::Acquire) > 0
+    fn acquire_descriptor(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+        pull: bool,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        if !matches!(target, HolonReference::Smart(_)) {
+            return self.construct_effective_holon_descriptor_internal(context, target);
+        }
+        let Some(registry) = context.descriptor_registry() else {
+            return self.construct_effective_holon_descriptor_internal(context, target);
+        };
+        let target_id = target.holon_id()?;
+        let owner = registry.context()?;
+        let (flights, ready) = &*self.descriptor_flights;
+        // Coordinate the carrier as well as the key: pool transport replaces the
+        // entire carrier, so independent misses must not send it concurrently.
+        let mut active =
+            flights.lock().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        loop {
+            if !pull {
+                if let Some(descriptor) = registry.get(&target_id)? {
+                    return Ok(descriptor);
+                }
+            }
+            if active.insert(owner.tx_id()) {
+                break;
+            }
+            active =
+                ready.wait(active).map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        }
+        drop(active);
+        let result = (|| {
+            let _preparation = self.enter_relationship_semantics_resolution();
+            let descriptor = self.construct_effective_holon_descriptor_internal(&owner, target)?;
+            self.install_prepared_policies(&descriptor)?;
+            registry.publish(target_id, &descriptor)?;
+            if pull {
+                self.prepared_generation.fetch_add(1, Ordering::AcqRel);
+            }
+            Ok(descriptor)
+        })();
+        let cleanup = registry.prune_envelopes();
+        flights
+            .lock()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .remove(&owner.tx_id());
+        ready.notify_all();
+        result.and_then(|descriptor| cleanup.map(|_| descriptor))
     }
 
-    fn enter_relationship_semantics_resolution(&self) -> RelationshipSemanticsResolutionGuard<'_> {
-        self.relationship_semantics_resolution_depth.fetch_add(1, Ordering::AcqRel);
-        RelationshipSemanticsResolutionGuard {
-            depth: &self.relationship_semantics_resolution_depth,
+    fn install_prepared_policies(
+        &self,
+        descriptor: &holons_core::descriptors::EffectiveHolonDescriptor,
+    ) -> Result<(), HolonError> {
+        let type_id = descriptor.described_holon_type()?.holon().holon_id()?;
+        let prepared = descriptor.prepared_schema()?;
+        let mut policies = self
+            .relationship_policies
+            .write()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        policies.retain(|(existing_type, _), _| existing_type != &type_id);
+        for entry in prepared.relationships {
+            policies.insert((type_id.clone(), entry.name), entry.policy);
         }
+        Ok(())
+    }
+
+    fn resolving_relationship_semantics(&self) -> bool {
+        PREPARATION_DEPTH.with(|depth| depth.get() > 0)
+    }
+
+    fn enter_relationship_semantics_resolution(&self) -> RelationshipSemanticsResolutionGuard {
+        PREPARATION_DEPTH.with(|depth| depth.set(depth.get() + 1));
+        RelationshipSemanticsResolutionGuard
     }
 
     pub fn new(
@@ -135,9 +208,11 @@ impl ClientHolonService {
         Self {
             dahn_materializer,
             dancer_package_catalog,
-            relationship_semantics_resolution_depth: Arc::new(AtomicUsize::new(0)),
+            source_types: Default::default(),
+            prepared_generation: Default::default(),
             cache_clock_origin: Instant::now(),
-            relationship_descriptors: Arc::new(RwLock::new(HashMap::new())),
+            descriptor_flights: Default::default(),
+            relationship_policies: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -154,6 +229,10 @@ impl HolonServiceApi for ClientHolonService {
         self
     }
 
+    fn relationship_cache_generation(&self) -> u64 {
+        self.prepared_generation.load(Ordering::Acquire)
+    }
+
     fn relationship_cache_time_millis(&self) -> Option<u64> {
         u64::try_from(self.cache_clock_origin.elapsed().as_millis()).ok()
     }
@@ -163,85 +242,67 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
         // Kernel structural edges bootstrap descriptor traversal without recursion.
-        if [
-            CoreRelationshipTypeName::DescribedBy,
-            CoreRelationshipTypeName::Extends,
-            CoreRelationshipTypeName::InstanceRelationships,
-        ]
-        .iter()
-        .any(|name| name.to_relationship_name() == *relationship_name)
-        {
-            return Ok(RelationshipCachePolicy::Reuse);
+        if foundational_relationship(relationship_name) {
+            return Ok(Some(RelationshipCachePolicy::Reuse));
         }
-        let source =
-            HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
+        let source_type = self
+            .source_types
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get(source_holon_id)
+            .cloned();
+        let Some(source_type) = source_type else {
+            return Ok(None);
+        };
+        Ok(self
+            .relationship_policies
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get(&(source_type, relationship_name.clone()))
+            .copied())
+    }
+
+    fn prepare_relationship_policy_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source_id: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<(), HolonError> {
+        if foundational_relationship(name) || self.resolving_relationship_semantics() {
+            return Ok(());
+        }
+        let Some(registry) = context.descriptor_registry() else {
+            return Ok(());
+        };
+        // Before the first prepared result, these reads may be assembling the
+        // descriptor-construction infrastructure itself. Once it is available,
+        // structural collections need their ordinary final cache policies too.
+        if preparation_relationship(name) && registry.is_empty()? {
+            return Ok(());
+        }
+        if self
+            .source_types
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .contains_key(source_id)
+        {
+            return Ok(());
+        }
+        let _guard = self.enter_relationship_semantics_resolution();
+        let source = HolonReference::smart_from_id(context.space_read_handle(), source_id.clone());
         let source_type = match source.holon_descriptor() {
             Ok(descriptor) => descriptor,
-            Err(HolonError::MissingDescribedBy { .. }) => {
-                return Ok(RelationshipCachePolicy::Fresh)
-            }
+            Err(HolonError::MissingDescribedBy { .. }) => return Ok(()),
             Err(error) => return Err(error),
         };
-        let key = (source_type.holon().holon_id()?, relationship_name.clone());
-        let cached = self
-            .relationship_descriptors
-            .read()
-            .map_err(|e| HolonError::FailedToAcquireLock(format!("{e}")))?
-            .get(&key)
-            .cloned();
-        if let Some(resolved) = cached {
-            tracing::debug!(target: "map_profile", relationship_descriptor_cache = "hit");
-            return resolved.policy(context);
-        }
-        tracing::debug!(target: "map_profile", relationship_descriptor_cache = "miss");
-
-        // Keep declared definitional reuse available during inverse discovery.
-        // No cache lock may be held while traversing the descriptor graph.
-        let mut resolved = None;
-        for descriptor in source_type.effective_declared_relationships()? {
-            if descriptor.base_relationship_name()? == *relationship_name {
-                resolved = Some(ResolvedRelationshipPolicy {
-                    descriptor_id: descriptor.holon().holon_id()?,
-                    direction: RelationshipDirection::Declared,
-                });
-                break;
-            }
-        }
-        if resolved.is_none() {
-            if self.resolving_relationship_semantics() {
-                // This conservative fallback is not a resolved policy; never retain it.
-                tracing::debug!(target: "map_profile", policy_reason = "recursive_inverse_resolution");
-                return Ok(RelationshipCachePolicy::Fresh);
-            }
-            let _resolution_guard = self.enter_relationship_semantics_resolution();
-            let inverses = match source_type.effective_inverse_relationships() {
-                Ok(descriptors) => descriptors,
-                Err(HolonError::MissingDescribedBy { .. }) => {
-                    return Ok(RelationshipCachePolicy::Fresh)
-                }
-                Err(error) => return Err(error),
-            };
-            for descriptor in inverses {
-                if descriptor.base_relationship_name()? == *relationship_name {
-                    resolved = Some(ResolvedRelationshipPolicy {
-                        descriptor_id: descriptor.holon().holon_id()?,
-                        direction: RelationshipDirection::Inverse,
-                    });
-                    break;
-                }
-            }
-        }
-        let Some(resolved) = resolved else {
-            return Ok(RelationshipCachePolicy::Fresh);
-        };
-        let policy = resolved.policy(context)?;
-        self.relationship_descriptors
+        self.acquire_effective_holon_descriptor_internal(context, source_type.holon().clone())?;
+        self.source_types
             .write()
-            .map_err(|e| HolonError::FailedToAcquireLock(format!("{e}")))?
-            .insert(key, resolved);
-        Ok(policy)
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .insert(source_id.clone(), source_type.holon().holon_id()?);
+        Ok(())
     }
 
     fn commit_internal(
@@ -250,7 +311,12 @@ impl HolonServiceApi for ClientHolonService {
         _staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
         // Build commit dance request
-        let request = holon_dance_builders::build_commit_dance_request()?;
+        let mut request = holon_dance_builders::build_commit_dance_request()?;
+        if let Some(registry) = context.descriptor_registry() {
+            if let Some(root) = registry.snapshot_into(context)? {
+                request.body = holons_core::dances::RequestBody::TransientReference(root);
+            }
+        }
 
         // Run the dance (sync → async → sync)
         let response =
@@ -565,6 +631,39 @@ impl HolonServiceApi for ClientHolonService {
                 other
             ))),
         }
+    }
+
+    fn acquire_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        self.acquire_descriptor(context, target, false)
+    }
+
+    fn pull_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        self.acquire_descriptor(context, target, true)
+    }
+
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        let invocation =
+            holons_core::dances::implementations::construct_effective_holon_descriptor::invocation(
+                context, target,
+            )?;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })?;
+        let response = holons_core::dances::DanceResponseReference::new(response)?;
+        Ok(holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(
+            response.require_response_body()?,
+        ))
     }
 
     fn invoke_load_holons_internal(

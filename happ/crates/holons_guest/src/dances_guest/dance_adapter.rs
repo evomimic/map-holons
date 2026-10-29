@@ -136,6 +136,10 @@ fn execute_invocation_envelope(
 ) -> DanceResponseEnvelope {
     use holons_core::dances::{execute_dance_v2_locally, DanceInvocation};
     use holons_core::WritableHolon;
+    let profile = cfg!(feature = "descriptor-performance-profiling");
+    let timestamp = || if profile { performance_timestamp_micros() } else { None };
+    let elapsed = |start| if profile { elapsed_micros(start) } else { 0 };
+    let total_started = timestamp();
     let context = session
         .as_ref()
         .ok_or_else(|| HolonError::InvalidParameter("Missing SessionStateWire".into()))
@@ -149,18 +153,44 @@ fn execute_invocation_envelope(
             }
         }
     };
+    let hydration_us = elapsed(total_started);
+    let request_started = timestamp();
+    let mut constructing = false;
+    let mut request_us = 0;
+    let mut execute_us = 0;
+    let mut output_us = 0;
     let result = (|| {
         let mut reference = invocation.bind(&context)?;
         reference.with_property_value("InvocationSource", "TrustChannel")?;
         let invocation = DanceInvocation::new(reference)?;
+        constructing = invocation.dance_name()?.to_string()
+            == type_names::CoreHolonTypeName::ConstructEffectiveHolonDescriptor.as_holon_name().0;
+        if constructing {
+            holons_validation::validate_transient_contract(
+                &context,
+                &invocation.require_request()?,
+            )?;
+        }
+        request_us = elapsed(request_started);
+        let execute_started = timestamp();
         let response = execute_dance_v2_locally(&context, invocation)?;
+        execute_us = elapsed(execute_started);
+        let output_started = timestamp();
+        // Construction enforces its invariants while assembling the derived graph.
+        // Exhaustive output conformance belongs in tests, not this performance path.
         let reference: holons_core::HolonReference = response.into();
-        Ok(HolonReferenceWire::from(&reference))
+        let projected = HolonReferenceWire::from(&reference);
+        output_us = elapsed(output_started);
+        Ok(projected)
     })();
-    DanceResponseEnvelope {
-        response: DanceEnvelopeResponse::Reference { result },
-        session: restore_session_state_from_context(&context),
+    let export_started = timestamp();
+    let session = restore_session_state_from_context(&context);
+    if profile && constructing {
+        let export_us = elapsed(export_started);
+        warn!("[effective-descriptor-profile] phase=envelope hydration_us={} request_validation_us={} execute_us={} response_projection_us={} export_us={} total_us={} success={}",
+            hydration_us, request_us, execute_us, output_us, export_us, elapsed(total_started), result.is_ok());
     }
+    DanceResponseEnvelope { response: DanceEnvelopeResponse::Reference { result }, session }
 }
 
 fn performance_timestamp_micros() -> Option<i64> {

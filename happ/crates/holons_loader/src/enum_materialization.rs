@@ -84,7 +84,8 @@ impl EnumMaterializer {
             Err(HolonError::MissingDescribedBy { .. }) => return Ok(()),
             Err(error) => return Err(error),
         };
-        for property in descriptor.instance_properties()? {
+        for property in ComputedEffectiveSchema::resolve(descriptor.holon())?.instance_properties()
+        {
             let name = property.property_name()?;
             if let Some(BaseValue::StringValue(token)) = holon.property_value(&name)? {
                 if self.is_enum(&property)? {

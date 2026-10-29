@@ -536,8 +536,47 @@ pub fn execute_verify_commit_rejection(
         response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
         Some(BaseValue::StringValue(MapString::from("Rejected")))
     );
+    let actual_violation_count =
+        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap();
+    if actual_violation_count != Some(BaseValue::IntegerValue(expected_violation_count.clone())) {
+        // Failure evidence must survive WARN-only test runs and precede count assertions.
+        println!(
+            "---- commit rejection count mismatch: expected {}, got {:?}; transaction {:?} ----",
+            expected_violation_count.0,
+            actual_violation_count,
+            state.active_tx_id(),
+        );
+        let rejected = response.related_holons(CoreRelationshipTypeName::RejectedHolons).unwrap();
+        let members = rejected.read().unwrap().get_members().to_vec();
+        for member in members {
+            println!("rejected {} key={:?}", member.reference_id_string(), member.key());
+            if let HolonReference::Staged(staged) = member {
+                println!("candidate findings: {:#?}", staged.validation_findings());
+            }
+        }
+        let carriers =
+            response.related_holons(CoreRelationshipTypeName::HasValidationFinding).unwrap();
+        let members = carriers.read().unwrap().get_members().to_vec();
+        for carrier in members {
+            println!("unattached finding {}:", carrier.reference_id_string());
+            for field in [
+                "ViolationKind",
+                "RuleCode",
+                "RuleIdentity",
+                "Severity",
+                "SubjectKind",
+                "HolonIdentity",
+                "MemberName",
+                "TargetIdentity",
+                "DescriptorIdentity",
+                "Message",
+            ] {
+                println!("  {field}: {:?}", carrier.property_value(field));
+            }
+        }
+    }
     assert_eq!(
-        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+        actual_violation_count,
         Some(BaseValue::IntegerValue(expected_violation_count.clone()))
     );
     let rejected = response.related_holons(CoreRelationshipTypeName::RejectedHolons).unwrap();
@@ -583,6 +622,7 @@ fn assert_rejected_holons(
         let HolonReference::Staged(staged) = reference else {
             panic!("rejected token must remain staged")
         };
+        let finding_identity = staged.full_reference_id_string();
         assert!(staged.is_live_validation_candidate().unwrap());
         assert_eq!(staged.validation_state().unwrap(), expected.validation_state);
         let findings = staged.validation_findings().unwrap();
@@ -592,20 +632,22 @@ fn assert_rejected_holons(
         for (actual, expected) in findings.iter().zip(expected.findings) {
             let subject = match expected.subject {
                 ExpectedValidationSubject::Holon => {
-                    ValidationSubjectPath::Holon { holon_identity: identity.clone() }
+                    ValidationSubjectPath::Holon { holon_identity: finding_identity.clone() }
                 }
-                ExpectedValidationSubject::Property(name) => {
-                    ValidationSubjectPath::Property { holon_identity: identity.clone(), name }
-                }
-                ExpectedValidationSubject::Value(property) => {
-                    ValidationSubjectPath::Value { holon_identity: identity.clone(), property }
-                }
+                ExpectedValidationSubject::Property(name) => ValidationSubjectPath::Property {
+                    holon_identity: finding_identity.clone(),
+                    name,
+                },
+                ExpectedValidationSubject::Value(property) => ValidationSubjectPath::Value {
+                    holon_identity: finding_identity.clone(),
+                    property,
+                },
                 ExpectedValidationSubject::Relationship { name, target } => {
                     let target = state
                         .resolve_execution_reference(&context, ResolveBy::Expected, &target)
                         .expect("relationship finding target remains resolvable");
                     ValidationSubjectPath::Relationship {
-                        source_identity: identity.clone(),
+                        source_identity: finding_identity.clone(),
                         name,
                         target_identity: target.reference_id_string(),
                     }

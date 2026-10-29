@@ -387,7 +387,7 @@ impl StagedReference {
         self.id.clone()
     }
 
-    /// Returns the persisted version explicitly staged for replacement, if any.
+    /// Returns this candidate's exact saved source, if any.
     /// Creates have no source identity, even when they share a key with a saved holon.
     pub fn versioned_source_id(&self) -> Result<Option<LocalId>, HolonError> {
         let rc_holon = self.get_rc_holon()?;
@@ -398,6 +398,24 @@ impl StagedReference {
         })?;
         match &*holon {
             Holon::Staged(staged) => Ok(staged.versioned_source_id_ref().cloned()),
+            _ => {
+                Err(HolonError::InvalidType("StagedReference should point to a StagedHolon".into()))
+            }
+        }
+    }
+
+    /// Snapshots lifecycle state and exact saved source under one lock for identity resolution.
+    pub(crate) fn staged_state_and_source(
+        &self,
+    ) -> Result<(StagedState, Option<LocalId>), HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!("Reading staged identity metadata: {error}"))
+        })?;
+        match &*holon {
+            Holon::Staged(staged) => {
+                Ok((staged.get_staged_state(), staged.versioned_source_id_ref().cloned()))
+            }
             _ => {
                 Err(HolonError::InvalidType("StagedReference should point to a StagedHolon".into()))
             }
@@ -421,6 +439,11 @@ impl StagedReference {
 
     pub fn reference_id_string(&self) -> String {
         format!("TemporaryId={}", self.id)
+    }
+
+    /// Complete identity for associations; `reference_id_string` abbreviates for messages.
+    pub fn full_reference_id_string(&self) -> String {
+        format!("TemporaryId={}", self.id.0)
     }
 
     /// Returns the current staged lifecycle state through a read-only accessor for diagnostics.
@@ -1222,6 +1245,7 @@ mod tests {
             original.original_id_ref().cloned(),
             original.versioned_source_id_ref().cloned(),
             original.touched_relationship_names().clone(),
+            original.pending_relationship_deltas().clone(),
             original.relationship_commit_scope(),
             vec![HolonError::NotImplemented("persistence failure".into())],
         );
@@ -1561,6 +1585,53 @@ mod tests {
         key: &str,
     ) -> Result<StagedReference, HolonError> {
         context.mutation().stage_new_holon(new_test_holon(context, key)?)
+    }
+
+    #[test]
+    fn predecessor_edits_keep_existing_mutation_classification() -> Result<(), HolonError> {
+        for generic in [false, true] {
+            let context = build_context_with_saved_holons(
+                vec![crate::core_shared_objects::holon::SavedHolon::new(
+                    LocalId(vec![1, 2, 3]),
+                    PropertyMap::new(),
+                    None,
+                    base_types::MapInteger(1),
+                )],
+                std::collections::HashMap::new(),
+            );
+            let (descriptor, _) =
+                staged_relationship_descriptor(&context, "Predecessor", Some(true))?;
+            let mut candidate = staged_update_source(&context, descriptor)?;
+            let source = crate::SmartReference::new_from_id(
+                context.space_read_handle(),
+                HolonId::Local(LocalId(vec![1, 2, 3])),
+            );
+            {
+                let handle = candidate.get_rc_holon()?;
+                let mut holon = handle.write().unwrap();
+                let Holon::Staged(staged) = &mut *holon else { panic!("staged candidate") };
+                staged.record_staging_predecessor(source.clone())?;
+            }
+            assert_eq!(candidate.staged_state()?, StagedState::ForUpdate);
+            assert_eq!(candidate.predecessor()?, Some(source.clone().into()));
+            if generic {
+                candidate.remove_related_holons(
+                    CoreRelationshipTypeName::Predecessor,
+                    vec![source.into()],
+                )?;
+                assert_eq!(candidate.staged_state()?, StagedState::ForUpdateNewVersion);
+            } else {
+                candidate.with_predecessor(None)?;
+                assert_eq!(candidate.staged_state()?, StagedState::ForUpdate);
+            }
+            let holon = candidate.get_rc_holon()?;
+            let holon = holon.read().unwrap();
+            let Holon::Staged(staged) = &*holon else { panic!("staged candidate") };
+            assert!(staged
+                .touched_relationship_names()
+                .contains(&CoreRelationshipTypeName::Predecessor.as_relationship_name()));
+        }
+        Ok(())
     }
 
     #[test]
@@ -2017,6 +2088,13 @@ mod tests {
 
         assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 1);
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
+        let rc = staged_source.get_holon_to_commit(&context)?;
+        let holon = rc.read().unwrap();
+        let Holon::Staged(staged) = &*holon else { panic!("staged") };
+        assert!(
+            staged.pending_relationship_deltas().is_empty(),
+            "hydration and duplicate filtering must not record an addition"
+        );
         Ok(())
     }
 
@@ -2133,6 +2211,13 @@ mod tests {
 
         assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 2);
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdateNewVersion)?);
+        let rc = staged_source.get_holon_to_commit(&context)?;
+        let holon = rc.read().unwrap();
+        let Holon::Staged(staged) = &*holon else { panic!("staged") };
+        assert!(
+            staged.pending_relationship_deltas()[&"AuthoredBy".to_relationship_name()]
+                .repeated_occurrence
+        );
         Ok(())
     }
 

@@ -5662,6 +5662,7 @@ dependencies = [
  "session_receptor",
  "tokio",
  "tracing",
+ "type_names",
 ]
 
 [[package]]

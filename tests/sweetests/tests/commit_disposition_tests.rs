@@ -3,7 +3,7 @@
 mod execution_steps;
 mod fixture_cases {
     pub mod commit_disposition_fixture;
-    pub mod described_instances;
+    pub mod described_instance_helpers;
 }
 
 use execution_steps::dance_test_runner::{run_dance_test_suite, DanceTestSuite};

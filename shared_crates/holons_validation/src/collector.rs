@@ -43,6 +43,11 @@ impl ValidationCollector {
         &self.violations
     }
 
+    /// Extracts one completed preparation scope for routing shared definition findings.
+    pub(crate) fn take_findings_since(&mut self, start: usize) -> Vec<CommitValidationViolation> {
+        self.violations.split_off(start)
+    }
+
     /// Consumes completed findings and observations without copying coverage evidence.
     pub(crate) fn into_parts(self) -> (CommitValidationReport, ValidationObservations) {
         (CommitValidationReport::from_candidate(self.violations), self.observations)

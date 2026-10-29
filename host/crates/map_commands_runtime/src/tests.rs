@@ -35,6 +35,14 @@ fn unreachable_in_handler_tests<T>() -> Result<T, HolonError> {
 }
 
 impl HolonServiceApi for TestHolonService {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::EffectiveHolonDescriptor, HolonError> {
+        crate::prepared_descriptor_fixture::construct(context, target)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -1734,4 +1742,35 @@ fn malformed_usage_is_an_error_not_an_absent_match() {
         )
         .unwrap();
     assert!(dahn_selection::usage::find_usage(&visualizer, &subject_type, &slot).is_err());
+}
+
+#[tokio::test]
+async fn session_descriptor_context_allows_reads_without_becoming_an_authoring_transaction() {
+    let runtime = build_test_runtime();
+    let owner = runtime.session().descriptor_registry().context().unwrap();
+    let target: HolonReference =
+        owner.mutation().new_holon(Some("prepared-result".into())).unwrap().into();
+    let routed = runtime.session().get_transaction(&owner.tx_id()).unwrap();
+    assert!(Arc::ptr_eq(&owner, &routed));
+    let before = owner.lookup().transient_count().unwrap();
+    let read = MapCommand::Holon(HolonCommand {
+        context: routed.clone(),
+        target: target.clone(),
+        action: HolonAction::Read(ReadableHolonAction::GetKey),
+    });
+    assert!(runtime.execute_command(read, ExecutionPolicy::default()).await.is_ok());
+    let clone = MapCommand::Holon(HolonCommand {
+        context: routed.clone(),
+        target,
+        action: HolonAction::Read(ReadableHolonAction::CloneHolon),
+    });
+    let commit = MapCommand::Transaction(TransactionCommand {
+        context: routed,
+        action: TransactionAction::Commit,
+    });
+    for command in [clone, commit] {
+        assert!(matches!(runtime.execute_command(command, ExecutionPolicy::default()).await,
+            Err(HolonError::InvalidParameter(message)) if message.contains("only Holon reads")));
+    }
+    assert_eq!(owner.lookup().transient_count().unwrap(), before);
 }

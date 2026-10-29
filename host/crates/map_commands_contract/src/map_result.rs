@@ -11,21 +11,23 @@ use std::fmt;
 /// A relationship descriptor together with its effective traversal direction.
 pub struct QualifiedRelationshipResult {
     pub descriptor: RelationshipDescriptor,
-    pub direction: holons_core::descriptors::RelationshipDirection,
 }
 
 impl fmt::Debug for QualifiedRelationshipResult {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("QualifiedRelationshipResult")
-            .field("direction", &self.direction)
-            .finish_non_exhaustive()
+        formatter.debug_struct("QualifiedRelationshipResult").finish_non_exhaustive()
     }
 }
 
 impl From<QualifiedRelationship> for QualifiedRelationshipResult {
     fn from(relationship: QualifiedRelationship) -> Self {
-        Self { descriptor: relationship.descriptor, direction: relationship.descriptor_direction }
+        Self { descriptor: relationship.descriptor }
+    }
+}
+
+impl From<RelationshipDescriptor> for QualifiedRelationshipResult {
+    fn from(descriptor: RelationshipDescriptor) -> Self {
+        Self { descriptor }
     }
 }
 

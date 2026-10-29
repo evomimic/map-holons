@@ -187,17 +187,18 @@ impl GuestHolonService {
         context: &Arc<TransactionContext>,
         key: &MapString,
     ) -> Result<Vec<LocalId>, HolonError> {
-        let space = context.get_space_holon()?.ok_or_else(|| {
-            HolonError::InvalidState("saved-holon lookup requires a persisted HolonSpace".into())
-        })?;
+        let Some(space) = context.get_space_holon()? else {
+            if context.is_bootstrap_provisioning() {
+                return Ok(Vec::new());
+            }
+            return Err(HolonError::InvalidState(
+                "saved-holon lookup requires a persisted HolonSpace".into(),
+            ));
+        };
         let space_id = space.holon_id()?.local_id().clone();
         let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
         let canonical_key = CanonicalKey::new(key.0.clone())?;
         let links = expand_from_source_by_key(&space_id, &owns, KeyMatch::Exact(canonical_key))?;
-
-        if links.is_empty() {
-            return Err(HolonError::HolonNotFound(key.to_string()));
-        }
 
         let mut roots = HashSet::new();
         for link in links {
@@ -368,15 +369,72 @@ fn smartlink_reference_properties(
 }
 
 impl HolonServiceApi for GuestHolonService {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        let profile = cfg!(feature = "descriptor-performance-profiling");
+        let before = if profile {
+            crate::persistence_layer::smartlink::relationship_read_metrics()
+        } else {
+            (0, 0, 0)
+        };
+        let count_before =
+            if profile { context.lookup().transient_count().unwrap_or_default() } else { 0 };
+        let started = if profile { sys_time().ok() } else { None };
+        #[cfg(not(feature = "descriptor-performance-profiling"))]
+        let construction_finished = None;
+        #[cfg(feature = "descriptor-performance-profiling")]
+        let construction_finished;
+        #[cfg(not(feature = "descriptor-performance-profiling"))]
+        let result =
+            holons_core::descriptors::construct_effective_holon_descriptor(context, target);
+        #[cfg(feature = "descriptor-performance-profiling")]
+        let result = {
+            let mut previous_time = started;
+            let mut previous_metrics = before;
+            let mut details = Vec::new();
+            let result = holons_core::descriptors::effective_holon_descriptor::profile_effective_holon_descriptor_construction(
+                context, target,
+                |phase, collection| {
+                    let now = sys_time().ok();
+                    let metrics = crate::persistence_layer::smartlink::relationship_read_metrics();
+                    let elapsed = previous_time.zip(now).map(|(before, after)| after.as_micros().saturating_sub(before.as_micros())).unwrap_or_default();
+                    details.push((phase.to_owned(), collection.to_owned(), elapsed, metrics.0 - previous_metrics.0, metrics.1 - previous_metrics.1, metrics.2 - previous_metrics.2));
+                    previous_time = now;
+                    previous_metrics = metrics;
+                },
+            );
+            construction_finished = sys_time().ok();
+            // Emit after timing to avoid charging log transport to individual phases.
+            for (phase, collection, elapsed, calls, queries, links) in details {
+                warn!("[effective-descriptor-detail] phase={} collection={} elapsed_us={} link_host_calls={} link_queries={} returned_links={}", phase, collection, elapsed, calls, queries, links);
+            }
+            result
+        };
+        if let Some(started) = started {
+            let elapsed = construction_finished
+                .or_else(|| sys_time().ok())
+                .map(|now| now.as_micros().saturating_sub(started.as_micros()))
+                .unwrap_or_default();
+            let after = crate::persistence_layer::smartlink::relationship_read_metrics();
+            warn!("[effective-descriptor-profile] phase=core elapsed_us={} allocations={} link_host_calls={} link_queries={} returned_links={} success={}",
+                elapsed, context.lookup().transient_count().unwrap_or(count_before) - count_before,
+                after.0 - before.0, after.1 - before.1, after.2 - before.2, result.is_ok());
+        }
+        result
+    }
+
     fn relationship_cache_policy(
         &self,
         _context: &Arc<TransactionContext>,
         _source_holon_id: &HolonId,
         _relationship_name: &RelationshipName,
-    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+    ) -> Result<Option<holons_core::RelationshipCachePolicy>, HolonError> {
         // Each guest request owns a fresh cache. Reuse within that request
         // must not load descriptor graphs merely to decide retention.
-        Ok(holons_core::RelationshipCachePolicy::Reuse)
+        Ok(Some(holons_core::RelationshipCachePolicy::Reuse))
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -611,6 +669,14 @@ impl HolonServiceApi for GuestHolonService {
         expand_from_source_by_key(source_id, relationship_name, key_match)
     }
 
+    fn get_saved_lineage_roots_by_key_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        self.get_lineage_roots_by_key(context, key)
+    }
+
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -818,5 +884,37 @@ mod tests {
 
         assert_eq!(key, None);
         assert_eq!(properties, None);
+    }
+}
+
+#[cfg(test)]
+mod lineage_evidence_tests {
+    use super::*;
+    use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
+    use holons_core::ServiceRoutingPolicy;
+
+    #[test]
+    fn saved_key_evidence_allows_absent_space_only_during_bootstrap() -> Result<(), HolonError> {
+        let service = Arc::new(GuestHolonService::new());
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            service.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let key = MapString("unclaimed".into());
+        assert!(matches!(
+            context.lookup().get_saved_lineage_roots_by_key(&key),
+            Err(HolonError::InvalidState(_))
+        ));
+        context.enable_bootstrap_provisioning();
+        assert!(context.lookup().get_saved_lineage_roots_by_key(&key)?.is_empty());
+        // Version-selecting lookup retains its independent not-found contract.
+        assert!(matches!(
+            context.lookup().get_saved_holon_by_key(&key),
+            Err(HolonError::HolonNotFound(_))
+        ));
+        Ok(())
     }
 }

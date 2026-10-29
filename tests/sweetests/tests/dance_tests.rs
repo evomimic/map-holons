@@ -23,6 +23,8 @@ mod fixture_cases;
 use execution_steps::dance_test_runner::{
     boot_dance_test_suite, run_dance_test_suite, run_dance_test_suite_on, DanceTestSuite,
 };
+use fixture_cases::commit_graph_only_fixture::*;
+use fixture_cases::commit_key_uniqueness_fixture::*;
 use holons_core::ReadableHolon;
 use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
 use map_commands_runtime::{ExecutionPolicy, Runtime};
@@ -32,10 +34,10 @@ use std::collections::BTreeSet;
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::attachment_defaults_fixture::*;
 use fixture_cases::bootstrap_operational_schema_fixture::*;
-use fixture_cases::commit_competition_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
 use fixture_cases::commit_lineage_fixture::*;
 use fixture_cases::commit_schema_fixture::*;
+use fixture_cases::commit_sibling_fixture::*;
 use fixture_cases::commit_strict_contract_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
@@ -45,6 +47,7 @@ use fixture_cases::load_book_person_inverse_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
 use fixture_cases::query_f1_filter_fixture::*;
+use fixture_cases::query_f2_equality_fixture::*;
 use fixture_cases::query_qry1_scaffold_fixture::*;
 use fixture_cases::query_qry2_seed_expand_fixture::*;
 use fixture_cases::query_qry4a_order_paginate_fixture::*;
@@ -72,6 +75,17 @@ use fixture_cases::transaction_lifecycle_fixture::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     run_dance_test_suite(suite).await;
+}
+
+/// Isolates inherited-member rejection from preceding runtime-matrix scenarios.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused schema rejection diagnosis; covered by runtime_behavior_matrix"]
+async fn cross_schema_dependency_gap_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "cross_schema_dependency_gap",
+        test_cases: vec![commit_cross_schema_dependency_gap_fixture().unwrap()],
+    })
+    .await;
 }
 
 /// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
@@ -103,9 +117,15 @@ async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(
     let context = runtime.session().get_transaction(&tx_id).unwrap();
     let space = context.get_space_holon().unwrap().expect("bootstrap Space");
 
-    assert!(space.available_relationships().unwrap().iter().any(|relationship| {
-        relationship.descriptor.base_relationship_name().unwrap().to_string() == "AvailableSchemas"
-    }));
+    assert!(space
+        .effective_descriptor()
+        .unwrap()
+        .available_relationships(&space)
+        .unwrap()
+        .iter()
+        .any(|relationship| {
+            relationship.base_relationship_name().unwrap().to_string() == "AvailableSchemas"
+        }));
     let schemas =
         space.related_holons("AvailableSchemas").unwrap().read().unwrap().get_members().clone();
     let expected = BTreeSet::from([
@@ -113,6 +133,7 @@ async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(
         "MAP Core Schema-v0.0.7",
         "MAP DAHN Schema-v0.1.0",
         "MAP Dance Schema-v0.1.0",
+        "MAP Descriptor Runtime Schema-v0.1.0",
         "MAP Dancer Schema-v0.1.0",
         "MAP Design Tokens Schema-v0.1.0",
         "MAP Meta Design System Schema-v0.1.0",
@@ -126,10 +147,15 @@ async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(
     assert_eq!(keys, expected.into_iter().map(str::to_owned).collect());
     assert_eq!(schemas.len(), keys.len(), "schemas must not be duplicated");
     for schema in schemas {
-        assert!(schema.available_relationships().unwrap().iter().any(|relationship| {
-            relationship.descriptor.base_relationship_name().unwrap().to_string()
-                == "AvailableInSpace"
-        }));
+        assert!(schema
+            .effective_descriptor()
+            .unwrap()
+            .available_relationships(&schema)
+            .unwrap()
+            .iter()
+            .any(|relationship| {
+                relationship.base_relationship_name().unwrap().to_string() == "AvailableInSpace"
+            }));
         let spaces = schema
             .related_holons("AvailableInSpace")
             .unwrap()
@@ -168,11 +194,20 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_same_key_dispositions_fixture().unwrap(),
             commit_sequential_lineage_fixture().unwrap(),
             commit_non_root_lineage_fixture().unwrap(),
-            commit_competition_retry_fixture().unwrap(),
-            commit_graph_only_competition_fixture().unwrap(),
+            commit_version_siblings_fixture().unwrap(),
+            commit_no_op_and_graph_only_siblings_fixture().unwrap(),
+            commit_disjoint_graph_additions_fixture().unwrap(),
+            commit_historical_key_uniqueness_fixture().unwrap(),
+            commit_identical_graph_additions_fixture().unwrap(),
+            commit_graph_overlap_rejection_fixture().unwrap(),
+            commit_graph_then_version_fixture().unwrap(),
+            commit_version_then_graph_fixture().unwrap(),
             commit_branch_across_transactions_fixture().unwrap(),
-            commit_unstaged_schema_finding_fixture().unwrap(),
+            commit_cross_schema_dependency_gap_fixture().unwrap(),
             commit_schema_cycle_fixture().unwrap(),
+            commit_schema_successor_membership_fixture().unwrap(),
+            commit_book_title_exact_references_fixture().unwrap(),
+            commit_required_anchor_update_fixture().unwrap(),
             commit_strict_contract_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),
             simple_add_remove_properties_fixture().unwrap(),
@@ -190,6 +225,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             query_qry2_seed_expand_fixture().unwrap(),
             query_qry4a_order_paginate_fixture().unwrap(),
             query_f1_filter_fixture().unwrap(),
+            query_f2_equality_fixture().unwrap(),
         ],
     }
 }
@@ -201,6 +237,21 @@ async fn book_value_presentation_acceptance() {
     run_dance_test_suite(DanceTestSuite {
         name: "book_value_presentation_acceptance",
         test_cases: vec![load_book_person_inverse_schema_fixture().unwrap()],
+    })
+    .await;
+}
+
+/// Focused staging ancestry and persisted lineage checks; also covered by runtime_behavior_matrix.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused ancestry check; runtime_behavior_matrix covers these fixtures"]
+async fn staging_ancestry_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "staging_ancestry_acceptance",
+        test_cases: vec![
+            stage_new_version_fixture().unwrap(),
+            commit_sequential_lineage_fixture().unwrap(),
+            commit_non_root_lineage_fixture().unwrap(),
+        ],
     })
     .await;
 }

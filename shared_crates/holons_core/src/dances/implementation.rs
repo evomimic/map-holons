@@ -53,6 +53,16 @@ impl DanceImplementation {
     ) -> Result<DanceImplementationResult, HolonError> {
         let implementation_name = self.implementation_name()?;
 
+        if implementation_name
+            == CoreDanceImplementationName::ConstructEffectiveHolonDescriptor.as_command_name().0
+        {
+            return implementations::construct_effective_holon_descriptor::invoke(
+                context,
+                bound_invocation,
+            )
+            .map(DanceImplementationResult::Body);
+        }
+
         if implementation_name == CoreDanceImplementationName::LoadHolons.as_command_name().0 {
             return implementations::load_holons::invoke(context, bound_invocation)
                 .map(DanceImplementationResult::Response);

@@ -14,8 +14,8 @@ import type {
 /**
  * Read-only DAHN view over one bound MAP holon reference.
  *
- * All operations are live reads through the public SDK; this interface neither
- * caches MAP state nor exposes mutation methods.
+ * Instance reads use the public SDK. Property, relationship and action consumers
+ * share one retained resolved schema snapshot per view; schema edits require reconstruction.
  */
 export interface HolonViewAccess {
   holonId(): Promise<HolonId>;

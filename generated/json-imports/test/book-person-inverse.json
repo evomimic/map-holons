@@ -72,6 +72,9 @@
             },
             {
               "$ref": "Subtitle.PropertyType"
+            },
+            {
+              "$ref": "ContentDigest.PropertyType"
             }
           ]
         },
@@ -576,6 +579,80 @@
           "target": [
             {
               "$ref": "MapBytesValueType.BytesValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ContentDigest.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ContentDigest",
+        "TypeNamePlural": "ContentDigestValues",
+        "DisplayName": "ContentDigest",
+        "DisplayNamePlural": "ContentDigest",
+        "Description": "Optional ContentDigest whose bytes value type explicitly affords Equals."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ContentDigestValueType.MapBytesValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ContentDigestValueType.MapBytesValueType",
+      "type": "MetaBytesValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ContentDigestValueType",
+        "TypeNamePlural": "ContentDigestValueTypes",
+        "DisplayName": "ContentDigestValueType",
+        "DisplayNamePlural": "ContentDigestValueTypes",
+        "Description": "Test bytes value type that explicitly affords Equals, which canonical MapBytesValueType does not."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapBytesValueType.BytesValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "AffordsOperator",
+          "target": [
+            {
+              "$ref": "EqualsOperator.OperatorType"
             }
           ]
         }

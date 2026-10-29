@@ -1,4 +1,4 @@
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::PERSON_DESCRIPTOR_KEY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};

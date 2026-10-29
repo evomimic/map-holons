@@ -235,6 +235,7 @@ impl HolonStagingBehavior for Nursery {
     }
 
     /// Stage an existing holon for possible version-producing or graph-only mutation.
+    /// Records the exact saved source as untouched ancestry, persisted only if a new version is published.
     fn stage_new_version(
         &self,
         current_version: SmartReference,
@@ -265,15 +266,9 @@ impl HolonStagingBehavior for Nursery {
             staged_holon.note_property_mutation()?;
         }
 
+        staged_holon.record_staging_predecessor(current_version)?;
         let new_id = self.stage_holon(staged_holon)?;
-        let mut staged_reference = self.to_validated_staged_reference(&new_id)?;
-
-        // A new version's lineage is established at commit time. Drop any
-        // predecessor edge cloned from the source version so old lineage cannot
-        // be replayed onto the staged successor.
-        staged_reference.with_predecessor(None)?;
-
-        Ok(staged_reference)
+        self.to_validated_staged_reference(&new_id)
     }
 }
 
@@ -664,7 +659,8 @@ mod tests {
     }
 
     #[test]
-    fn two_updates_from_one_source_share_identity() -> Result<(), HolonError> {
+    fn update_siblings_keep_candidate_ids_and_classify_definition_identity(
+    ) -> Result<(), HolonError> {
         let source_id = LocalId(vec![1, 2, 3]);
         let original_id = LocalId(vec![4, 5, 6]);
         let key = MapString("same-key".into());
@@ -687,14 +683,51 @@ mod tests {
         assert_ne!(first.temporary_id(), second.temporary_id());
         assert!(first.is_live_validation_candidate()?);
         assert!(second.is_live_validation_candidate()?);
-        let identity = crate::ProspectiveIdentity::for_reference(&saved.into(), &context)?;
-        assert_ne!(identity, crate::ProspectiveIdentity::Saved(HolonId::Local(original_id)));
-        for update in [first, second] {
+        let identity = crate::DefinitionIdentity::for_reference(&saved.clone().into(), &context)?;
+        assert_ne!(identity, crate::DefinitionIdentity::Saved(HolonId::Local(original_id)));
+        for update in [&first, &second] {
             assert_eq!(update.versioned_source_id()?, Some(source_id.clone()));
             assert_eq!(
-                crate::ProspectiveIdentity::for_reference(&update.into(), &context)?,
+                crate::DefinitionIdentity::for_reference(&update.into(), &context)?,
                 identity
             );
+            assert!(crate::same_definition(&saved.clone().into(), &update.into())?);
+        }
+
+        // Graph-only classification retains the source definition, without
+        // collapsing the separate staged candidates in the nursery.
+        {
+            let rc = second.get_holon_to_commit(&context)?;
+            let mut holon = rc.write().unwrap();
+            let Holon::Staged(holon) = &mut *holon else { panic!("staged update") };
+            holon.note_relationship_mutation(false)?;
+        }
+        assert_eq!(second.staged_state()?, StagedState::ForUpdateGraphOnly);
+        assert_eq!(
+            crate::DefinitionIdentity::for_reference(&second.clone().into(), &context)?,
+            identity,
+        );
+        assert!(crate::same_definition(&first.clone().into(), &second.clone().into())?);
+
+        let candidate_ids = [first.temporary_id(), second.temporary_id()];
+        for mut update in [first.clone(), second.clone()] {
+            update.with_property_value(CorePropertyTypeName::Description, "changed")?;
+            assert_eq!(update.staged_state()?, StagedState::ForUpdateNewVersion);
+            assert_eq!(
+                crate::DefinitionIdentity::for_reference(&update.clone().into(), &context)?,
+                crate::DefinitionIdentity::Staged(update.temporary_id()),
+            );
+            assert!(!crate::same_definition(&saved.clone().into(), &update.into())?);
+        }
+        assert_ne!(
+            crate::DefinitionIdentity::for_reference(&first.clone().into(), &context)?,
+            crate::DefinitionIdentity::for_reference(&second.clone().into(), &context)?,
+        );
+        assert_eq!(candidate_ids, [first.temporary_id(), second.temporary_id()]);
+        let enumerated = context.lookup().get_staged_holons_by_base_key(&key)?;
+        assert_eq!(enumerated.len(), 2);
+        for id in &candidate_ids {
+            assert!(enumerated.iter().any(|candidate| &candidate.temporary_id() == id));
         }
 
         // A matching base key does not establish replacement ancestry.
@@ -702,15 +735,118 @@ mod tests {
         let create = context.mutation().stage_new_holon(transient)?;
         assert_eq!(create.versioned_source_id()?, None);
         let create_identity =
-            crate::ProspectiveIdentity::for_reference(&create.clone().into(), &context)?;
-        assert_eq!(create_identity, crate::ProspectiveIdentity::Staged(create.temporary_id()));
+            crate::DefinitionIdentity::for_reference(&create.clone().into(), &context)?;
+        assert_eq!(create_identity, crate::DefinitionIdentity::Staged(create.temporary_id()));
         assert_ne!(create_identity, identity);
         Ok(())
     }
 
     #[test]
-    fn stage_new_version_enters_update_lifecycle_without_predecessor_edge() -> Result<(), HolonError>
-    {
+    fn constructors_determine_lineage_independently_of_keys() -> Result<(), HolonError> {
+        for root in [None, Some(LocalId(vec![4, 5, 6]))] {
+            let source_id = LocalId(vec![1, 2, 3]);
+            let key = MapString("shared-key".into());
+            let source = SavedHolon::new(
+                source_id.clone(),
+                PropertyMap::from([(
+                    CorePropertyTypeName::Key.as_property_name(),
+                    BaseValue::StringValue(key.clone()),
+                )]),
+                root.clone(),
+                MapInteger(2),
+            );
+            let context = stage_version_test_context(source_id.clone(), source, None, true);
+            let saved = SmartReference::new_from_id(
+                context.space_read_handle(),
+                HolonId::Local(source_id.clone()),
+            );
+            let lineage = crate::LineageIdentity::Saved(HolonId::Local(root.unwrap_or(source_id)));
+            assert_eq!(
+                crate::LineageIdentity::for_reference(&saved.clone().into(), &context)?,
+                lineage
+            );
+
+            let mut update = context.mutation().stage_new_version(saved.clone())?;
+            assert_eq!(
+                crate::LineageIdentity::for_reference(&update.clone().into(), &context)?,
+                lineage
+            );
+            update.with_property_value(CorePropertyTypeName::Key, "new-key")?;
+            assert_eq!(update.staged_state()?, StagedState::ForUpdateNewVersion);
+            assert_eq!(crate::LineageIdentity::for_reference(&update.into(), &context)?, lineage);
+
+            let create = context
+                .mutation()
+                .stage_new_holon(context.mutation().new_holon(Some(key.clone()))?)?;
+            let clone = context.mutation().stage_new_from_clone(saved.into(), key)?;
+            for candidate in [&create, &clone] {
+                assert_eq!(candidate.staged_state()?, StagedState::ForCreate);
+                assert_eq!(
+                    crate::LineageIdentity::for_reference(&candidate.into(), &context)?,
+                    crate::LineageIdentity::New(candidate.temporary_id())
+                );
+            }
+            assert_ne!(
+                crate::LineageIdentity::for_reference(&create.into(), &context)?,
+                crate::LineageIdentity::for_reference(&clone.into(), &context)?
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn saved_lineage_identity_retains_external_space() -> Result<(), HolonError> {
+        use core_types::{ExternalId, OutboundProxyId};
+
+        for original_id in [None, Some(LocalId(vec![7; 39]))] {
+            let source_id = LocalId(vec![1; 39]);
+            let service = Arc::new(StageVersionTestService {
+                source_id: source_id.clone(),
+                source_holon: SavedHolon::new(
+                    source_id.clone(),
+                    PropertyMap::new(),
+                    original_id.clone(),
+                    MapInteger(2),
+                ),
+                source_predecessor_id: None,
+                described: false,
+            });
+            let manager = Arc::new(HolonSpaceManager::new_with_managers(
+                None,
+                service,
+                None,
+                ServiceRoutingPolicy::Combined,
+            ));
+            let context =
+                manager.get_transaction_manager().open_public_transaction(manager.clone())?;
+            let mut identities = std::collections::HashSet::new();
+            for space in [2, 3] {
+                let space_id = OutboundProxyId(LocalId(vec![space; 39]));
+                let reference = HolonReference::smart_from_id(
+                    context.space_read_handle(),
+                    HolonId::External(ExternalId {
+                        space_id: space_id.clone(),
+                        local_id: source_id.clone(),
+                    }),
+                );
+                let identity = crate::LineageIdentity::for_reference(&reference, &context)?;
+                assert_eq!(
+                    identity,
+                    crate::LineageIdentity::Saved(HolonId::External(ExternalId {
+                        space_id,
+                        local_id: original_id.clone().unwrap_or_else(|| source_id.clone()),
+                    }))
+                );
+                identities.insert(identity);
+            }
+            assert_eq!(identities.len(), 2);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn stage_new_version_records_exact_non_root_source_without_touching_ancestry(
+    ) -> Result<(), HolonError> {
         let source_id = LocalId(vec![1, 2, 3]);
         let original_title = BaseValue::StringValue(MapString("Original Title".to_string()));
         let mut properties = PropertyMap::new();
@@ -720,7 +856,12 @@ mod tests {
             BaseValue::StringValue(MapString("book-one".to_string())),
         );
         properties.insert(title.clone(), original_title.clone());
-        let source_holon = SavedHolon::new(source_id.clone(), properties, None, MapInteger(3));
+        let source_holon = SavedHolon::new(
+            source_id.clone(),
+            properties,
+            Some(LocalId(vec![9, 8, 7])),
+            MapInteger(3),
+        );
         let context = stage_version_test_context(
             source_id.clone(),
             source_holon,
@@ -736,11 +877,14 @@ mod tests {
 
         assert_eq!(staged_reference.versioned_source_id()?, Some(source_id.clone()));
         assert_eq!(
-            crate::ProspectiveIdentity::for_reference(&staged_reference.clone().into(), &context)?,
-            crate::ProspectiveIdentity::Saved(HolonId::Local(source_id.clone())),
+            crate::DefinitionIdentity::for_reference(&staged_reference.clone().into(), &context)?,
+            crate::DefinitionIdentity::Saved(HolonId::Local(source_id.clone())),
         );
         assert!(staged_reference.is_in_state(&context, StagedState::ForUpdate)?);
-        assert!(staged_reference.predecessor()?.is_none());
+        assert_eq!(
+            staged_reference.predecessor()?.unwrap().holon_id()?,
+            HolonId::Local(source_id.clone())
+        );
 
         let staged_holon = staged_reference.get_holon_to_commit(&context)?;
         let staged_holon = staged_holon.read().map_err(|e| {
@@ -754,7 +898,8 @@ mod tests {
         };
 
         assert_eq!(staged_holon.versioned_source_id_ref(), Some(&source_id));
-        assert_eq!(staged_holon.original_id_ref(), None);
+        assert!(staged_holon.touched_relationship_names().is_empty());
+        assert_eq!(staged_holon.original_id_ref(), Some(&LocalId(vec![9, 8, 7])));
         assert_eq!(staged_holon.version(), &MapInteger(3));
         assert_eq!(staged_holon.property_value(&title)?, Some(original_title));
 

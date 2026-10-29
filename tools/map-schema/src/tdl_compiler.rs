@@ -2213,7 +2213,7 @@ holon Example.HolonType {
     #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 23);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 24);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2235,8 +2235,8 @@ holon Example.HolonType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 23);
-        assert_eq!(compilation.files.len(), 23);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 24);
+        assert_eq!(compilation.files.len(), 24);
         assert!(compilation
             .files
             .iter()
@@ -2251,8 +2251,8 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 23);
-        assert_eq!(compiled_files.len(), 23);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 24);
+        assert_eq!(compiled_files.len(), 24);
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
@@ -2262,6 +2262,38 @@ holon Example.HolonType {
         assert!(root_json.contains(r#""meta""#));
         assert!(root_json.contains(r#""load_with""#));
 
+        Ok(())
+    }
+
+    #[test]
+    fn descriptor_runtime_owns_its_complete_contract_without_inverse_authoring() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+        let document: Value = serde_json::from_str(&fs::read_to_string(out_dir.join("descriptor-runtime/schema.json"))?)?;
+        let holons = document["holons"].as_array().context("Descriptor Runtime holons")?;
+        let runtime_key = "MAP Descriptor Runtime Schema-v0.1.0";
+        let find = |key: &str| holons.iter().find(|holon| holon["key"] == key).unwrap();
+        let targets = |holon: &Value, name: &str| -> Vec<String> {
+            holon["relationships"].as_array().unwrap().iter()
+                .filter(|relationship| relationship["name"] == name)
+                .flat_map(|relationship| relationship["target"].as_array().unwrap())
+                .map(|target| target["$ref"].as_str().unwrap().to_owned()).collect()
+        };
+        assert_eq!(targets(find(runtime_key), "DependsOn"), vec!["MAP Core Schema-v0.0.7", "MAP Dance Schema-v0.1.0", "MAP Commands Schema-v0.1.0"]);
+        let contract = targets(find("EffectiveHolonDescriptor.HolonType"), "InstanceRelationships");
+        for name in ["EffectiveInstanceProperties", "EffectiveInstanceRelationships", "NavigableRelationships", "EffectiveAffordsDance", "EffectiveAffordsCommand", "EffectiveValidationBindings", "EffectiveConstraints", "EffectiveInstanceKeyRule"] {
+            assert!(contract.iter().any(|key| key.contains(&format!("-[{name}]->"))), "missing {name}");
+        }
+        for holon in holons {
+            assert!(targets(holon, "InstanceRelationshipFor").is_empty());
+            if holon["key"] != runtime_key && holon["key"] != "ConstructEffectiveHolonDescriptor.DanceImplementation" {
+                assert_eq!(targets(holon, "ComponentOf"), vec![runtime_key]);
+            }
+        }
+        for path in ["dance/schema.json", "commands/schema.json"] {
+            assert!(!fs::read_to_string(out_dir.join(path))?.contains("EffectiveHolonDescriptor"));
+        }
+        assert!(!out_dir.join("core/effective-descriptor.json").exists());
         Ok(())
     }
 

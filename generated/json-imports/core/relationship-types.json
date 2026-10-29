@@ -85,7 +85,8 @@
         "DisplayName": "Components",
         "DisplayNamePlural": "Components Relationships",
         "Description": "Inverse of ComponentOf, from a schema to its type descriptors.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
       },
       "relationships": [
         {

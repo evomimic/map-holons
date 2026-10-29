@@ -25,7 +25,7 @@ class NavigationElement extends HTMLElement {
     });
   }
 }
-const reference = (name: string) => ({ propertyValue: async () => ({ StringValue: name }), key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), relatedHolons: async () => [], testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
+const reference = (name: string) => ({ propertyValue: async () => ({ StringValue: name }), key: vi.fn(async () => name), versionedKey: vi.fn(async () => name), relatedHolons: async () => [], testIdentity: name, equals: (other: unknown) => (other as { testIdentity: string }).testIdentity === name, effectiveDescriptor: async () => ({ instanceProperties: async () => [], affordedDances: async () => [] }), availableProperties: async () => [], availableRelationships: async () => [], availableDances: async () => [] }) as unknown as HolonReference;
 let binding: SpaceNavigatorBinding;
 let experience: SpaceNavigatorExperience;
 let roots: Array<{ element: HTMLElement; collectionActivation: { dispose: ReturnType<typeof vi.fn> }; singularRelationships: [] }>;

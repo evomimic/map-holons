@@ -5,23 +5,24 @@
 use std::collections::HashSet;
 
 use base_types::BaseValue;
-use core_types::{CommitValidationViolationKind, PropertyName, ValidationSubjectPath};
+use core_types::{CommitValidationViolationKind, HolonError, PropertyName};
 use holons_core::{
     descriptors::{
-        constraint_applies_to_lineage_with_reader, constraint_applies_to_with_reader,
-        effective_relationship_targets_with_reader, resolve_describing_type_with_reader,
+        constraint_applies_to, constraint_applies_to_lineage, resolve_describing_type,
         same_definition, ConstraintContributions, DescribingTypeResolution,
         ExtendsLineageDiagnosis, ValidExtendsLineage,
     },
-    DescriptorReader, HolonReference, ReadableHolon,
+    HolonReference, ReadableHolon,
 };
 use type_names::{
     CorePropertyTypeName as P, CoreRelationshipTypeName as R, CoreValidationRuleName,
 };
 
-use crate::{handlers::finding, DescriptorRuleProducts, ValidationCollector};
+use crate::{
+    assessment_support::path, handlers::finding, DescriptorRuleProducts, ValidationCollector,
+};
 
-/// Canonical identities resolved by orchestration, using its prospective reader.
+/// Canonical identities resolved by orchestration, using assessment anchor resolution.
 /// Roots are resolved for the Commit assessment scope.
 pub struct ConstraintDeclarationRoots {
     /// Designated TypeDescriptor root used for structural diagnosis.
@@ -55,32 +56,28 @@ struct CheckedConstraint {
 /// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it
 /// neither evaluates attached constraints nor replaces the shared subject validators.
-pub struct ConstraintDeclarationAssessment<'a, Reader: DescriptorReader> {
+pub struct ConstraintDeclarationAssessment {
     roots: ConstraintDeclarationRoots,
-    reader: &'a Reader,
     checked: Vec<CheckedConstraint>,
 }
 
-impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
+impl ConstraintDeclarationAssessment {
     /// Creates an empty Schema-scoped declaration workset over an unchanged input snapshot.
-    pub fn new(
-        roots: &ConstraintDeclarationRoots,
-        reader: &'a Reader,
-    ) -> Result<Self, Reader::Error> {
+    pub fn new(roots: &ConstraintDeclarationRoots) -> Result<Self, HolonError> {
         // Select fixed roots once, before any findings or memo entries are produced.
         let roots = ConstraintDeclarationRoots {
-            type_descriptor: reader.select(&roots.type_descriptor)?,
-            constraint_type: reader.select(&roots.constraint_type)?,
+            type_descriptor: roots.type_descriptor.clone(),
+            constraint_type: roots.constraint_type.clone(),
             bounded: [
-                reader.select(&roots.bounded[0])?,
-                reader.select(&roots.bounded[1])?,
-                reader.select(&roots.bounded[2])?,
-                reader.select(&roots.bounded[3])?,
+                (&roots.bounded[0]).clone(),
+                (&roots.bounded[1]).clone(),
+                (&roots.bounded[2]).clone(),
+                (&roots.bounded[3]).clone(),
             ],
-            cardinality: reader.select(&roots.cardinality)?,
-            unique_items: reader.select(&roots.unique_items)?,
+            cardinality: roots.cardinality.clone(),
+            unique_items: roots.unique_items.clone(),
         };
-        Ok(Self { roots, reader, checked: Vec::new() })
+        Ok(Self { roots, checked: Vec::new() })
     }
 
     /// Checks a configured holon once, including owned constraints with no attachments.
@@ -89,7 +86,7 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         &mut self,
         constraint: &HolonReference,
         collector: &mut ValidationCollector,
-    ) -> Result<bool, Reader::Error> {
+    ) -> Result<bool, HolonError> {
         Ok(self.check_constraint(constraint, collector)?.valid)
     }
 
@@ -99,8 +96,8 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         lineage: ValidExtendsLineage<'_>,
         products: &mut DescriptorRuleProducts,
         collector: &mut ValidationCollector,
-    ) -> Result<bool, Reader::Error> {
-        let contributions = ConstraintContributions::resolve_with_reader(lineage, self.reader)?;
+    ) -> Result<bool, HolonError> {
+        let contributions = ConstraintContributions::resolve(lineage)?;
         self.assess_contributions(lineage, &contributions, products, collector)
     }
 
@@ -112,18 +109,14 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         contributions: &ConstraintContributions,
         products: &mut DescriptorRuleProducts,
         collector: &mut ValidationCollector,
-    ) -> Result<bool, Reader::Error> {
-        let subject = self.reader.select(lineage.subject())?;
+    ) -> Result<bool, HolonError> {
+        let subject = (lineage.subject()).clone();
         let mut valid = true;
         for attachment in &contributions.effective {
             collector.observations.constraint_attachment_count += 1;
             let checked = self.check_constraint(&attachment.member, collector)?;
             if let Some(constraint_type) = &checked.constraint_type {
-                if !constraint_applies_to_lineage_with_reader(
-                    constraint_type,
-                    lineage,
-                    self.reader,
-                )? {
+                if !constraint_applies_to_lineage(constraint_type, lineage)? {
                     fixed_violation(collector, &subject, "DS-CONSTRAINT-002", format!(
                         "Constraint {} of type {} contributed by {} is not applicable to descriptor {} through ApplicableToDescriptorTypes and Extends.",
                         checked.constraint.reference_id_string(), constraint_type.reference_id_string(),
@@ -146,7 +139,7 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
             }
         }
         if let Some(parent) = &contributions.parent {
-            for inherited in contributions.missing_inherited() {
+            for inherited in contributions.missing_inherited()? {
                 // Even an obligation removed by malformed effective-state construction must
                 // be inspected; otherwise loss could suppress its own preservation check.
                 let checked = self.check_constraint(&inherited.member, collector)?;
@@ -159,7 +152,7 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
                     valid = false;
                     continue;
                 };
-                if constraint_applies_to_with_reader(constraint_type, parent, self.reader)? {
+                if constraint_applies_to(constraint_type, parent)? {
                     products.violation(rule, format!(
                         "Descriptor {} loses inherited constraint {} from parent {} with original contribution on {}; retain the obligation and its provenance in the combined effective set.",
                         subject.reference_id_string(), inherited.member.reference_id_string(),
@@ -175,15 +168,15 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         &mut self,
         constraint: &HolonReference,
         collector: &mut ValidationCollector,
-    ) -> Result<CheckedConstraint, Reader::Error> {
-        let constraint = self.reader.select(constraint)?;
-        if let Some(checked) =
-            self.checked.iter().find(|checked| same_definition(&checked.constraint, &constraint))
-        {
-            return Ok(checked.clone());
+    ) -> Result<CheckedConstraint, HolonError> {
+        let constraint = constraint.clone();
+        for checked in &self.checked {
+            if same_definition(&checked.constraint, &constraint)? {
+                return Ok(checked.clone());
+            }
         }
         collector.observations.constraint_declaration_count += 1;
-        let resolution = resolve_describing_type_with_reader(&constraint, self.reader)?;
+        let resolution = resolve_describing_type(&constraint)?;
         let constraint_type = match resolution {
             DescribingTypeResolution::Unique(descriptor) => Some(descriptor),
             DescribingTypeResolution::Missing => {
@@ -216,22 +209,18 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         let mut checked =
             CheckedConstraint { constraint: constraint.clone(), constraint_type, valid: false };
         if let Some(constraint_type) = checked.constraint_type.clone() {
-            let diagnosis = ExtendsLineageDiagnosis::assess_with_reader(
-                &constraint_type,
-                &self.roots.type_descriptor,
-                self.reader,
-            )?;
+            let diagnosis =
+                ExtendsLineageDiagnosis::assess(&constraint_type, &self.roots.type_descriptor)?;
             if let Some(lineage) = diagnosis.valid_lineage() {
                 let root = &self.roots.constraint_type;
-                if lineage.members().iter().any(|member| same_definition(member, root))
+                if lineage.contains(root)?
                     && matches!(constraint_type.property_value(P::IsAbstractType)?, Some(BaseValue::BooleanValue(value)) if !value.0)
                 {
                     let configuration = Configuration {
                         constraint: &constraint,
                         constraint_type: &constraint_type,
                     };
-                    let membership_valid =
-                        configuration.check_membership(self.reader, collector)?;
+                    let membership_valid = configuration.check_membership(collector, lineage)?;
                     let family_valid = self.check_family(lineage, &configuration, collector)?;
                     checked.valid = membership_valid && family_valid;
                 } else {
@@ -256,21 +245,21 @@ impl<'a, Reader: DescriptorReader> ConstraintDeclarationAssessment<'a, Reader> {
         lineage: ValidExtendsLineage<'_>,
         configuration: &Configuration<'_>,
         collector: &mut ValidationCollector,
-    ) -> Result<bool, Reader::Error> {
+    ) -> Result<bool, HolonError> {
         let mut valid = true;
         // Family checks are identity-based and also apply to extension-owned subtypes.
         for root in &self.roots.bounded {
-            if lineage.members().iter().any(|member| same_definition(member, root)) {
+            if lineage.contains(root)? {
                 valid &= configuration.check_bounds(false, collector)?;
                 break;
             }
         }
         let cardinality = &self.roots.cardinality;
-        if lineage.members().iter().any(|member| same_definition(member, cardinality)) {
+        if lineage.contains(cardinality)? {
             valid &= configuration.check_bounds(true, collector)?;
         }
         let unique = &self.roots.unique_items;
-        if lineage.members().iter().any(|member| same_definition(member, unique)) {
+        if lineage.contains(unique)? {
             // No Boolean parameter controls this commitment. Undeclared parameters,
             // including any enable/disable field, are rejected by membership checking.
             for field in [P::Minimum, P::Maximum, P::MinimumIsInclusive, P::MaximumIsInclusive] {
@@ -315,17 +304,13 @@ impl Configuration<'_> {
         );
     }
 
-    fn check_membership<Reader: DescriptorReader>(
+    fn check_membership(
         &self,
-        reader: &Reader,
         collector: &mut ValidationCollector,
-    ) -> Result<bool, Reader::Error> {
+        lineage: ValidExtendsLineage<'_>,
+    ) -> Result<bool, HolonError> {
         let mut names = HashSet::new();
-        for contribution in effective_relationship_targets_with_reader(
-            self.constraint_type,
-            R::InstanceProperties,
-            reader,
-        )? {
+        for contribution in lineage.relationship_targets(R::InstanceProperties)? {
             match contribution.member.property_value(P::TypeName)? {
                 Some(BaseValue::StringValue(name)) if !name.0.is_empty() => {
                     names.insert(PropertyName(name));
@@ -466,10 +451,6 @@ impl Configuration<'_> {
         }
         Ok(valid)
     }
-}
-
-fn path(subject: &HolonReference) -> ValidationSubjectPath {
-    ValidationSubjectPath::Holon { holon_identity: subject.reference_id_string() }
 }
 
 fn fixed_violation(

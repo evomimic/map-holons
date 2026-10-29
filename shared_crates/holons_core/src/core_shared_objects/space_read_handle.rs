@@ -46,6 +46,11 @@ impl SpaceReadHandle {
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.with_cache_context(|context| {
+            context.get_holon_service().prepare_relationship_policy_internal(
+                &context,
+                source_holon_id,
+                relationship_name,
+            )?;
             context
                 .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
                 .get_related_holons(&context, source_holon_id, relationship_name)
@@ -59,6 +64,9 @@ impl SpaceReadHandle {
         hint: crate::RelationshipReadHint,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.with_cache_context(|context| {
+            context
+                .get_holon_service()
+                .prepare_relationship_policy_internal(&context, source, name)?;
             context
                 .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
                 .get_related_holons_with_hint(&context, source, name, hint)
@@ -82,6 +90,11 @@ impl SpaceReadHandle {
         names: &[RelationshipName],
     ) -> Result<(), HolonError> {
         self.with_cache_context(|context| {
+            for name in names {
+                context
+                    .get_holon_service()
+                    .prepare_relationship_policy_internal(&context, source, name)?;
+            }
             context
                 .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
                 .prepare_relationships(&context, source, names)

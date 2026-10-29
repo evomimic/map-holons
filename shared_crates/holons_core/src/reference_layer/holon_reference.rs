@@ -247,6 +247,16 @@ impl HolonReference {
             HolonReference::Smart(reference) => reference.reference_id_string(),
         }
     }
+
+    /// Complete identity for associating findings and outcomes with exact references.
+    /// `reference_id_string` abbreviates temporary ids, so distinct candidates can collide.
+    pub fn full_reference_id_string(&self) -> String {
+        match self {
+            HolonReference::Transient(reference) => reference.full_reference_id_string(),
+            HolonReference::Staged(reference) => reference.full_reference_id_string(),
+            HolonReference::Smart(reference) => reference.full_reference_id_string(),
+        }
+    }
 }
 
 impl From<StagedReference> for HolonReference {

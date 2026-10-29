@@ -1,6 +1,6 @@
 //! Reader-aware traversal for the Commit gate. Rule evaluation stays in existing handlers.
 use crate::{
-    assessment_support::{blocked, path, recover},
+    assessment_support::{blocked, path},
     commitments::{required_key, ResolvedConstraint},
     contexts::{BindingDispatchRoute, SubjectLevel},
     handlers::{finding, native_rule_kind, rule_violation},
@@ -12,12 +12,9 @@ use core_types::{
     BaseValue, CommitValidationViolationKind, HolonError, PropertyName, ValidationSubjectPath,
 };
 use holons_core::{
-    descriptors::{
-        effective_relationship_targets_with_reader, resolve_describing_type_with_reader,
-    },
-    AssessmentReadError, ContractContributions, DescribingTypeResolution, Descriptor,
-    DescriptorReader, HolonDescriptor, HolonReference, PropertyDescriptor,
-    ProspectiveDescriptorReader, ReadableHolon, UniversalDescriptorContract, ValueDescriptor,
+    descriptors::{effective_relationship_targets, resolve_describing_type},
+    ContractContributions, DescribingTypeResolution, Descriptor, HolonDescriptor, HolonReference,
+    PropertyDescriptor, ReadableHolon, UniversalDescriptorContract, ValueDescriptor,
     ValueDescriptorKind,
 };
 use std::collections::HashSet;
@@ -33,27 +30,25 @@ pub(crate) fn prepare_bindings(
     descriptor: &HolonReference,
     level: SubjectLevel,
     context: &ValueValidationContext,
-    reader: &ProspectiveDescriptorReader,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<Vec<PreparedBinding>, AssessmentReadError> {
+) -> Result<Vec<PreparedBinding>, HolonError> {
     let mut result = Vec::new();
-    let contributions = packages.effective_bindings(descriptor, reader)?;
+    let contributions = packages.effective_bindings(descriptor)?;
     for contribution in contributions {
         let binding = ResolvedValidationBinding::from(contribution);
         let key = ValidationRuleKey(required_key(&binding.rule)?);
         collector.observations.discovered_rule_keys.insert(key.0.clone());
-        let family = resolve_describing_type_with_reader(&binding.rule, reader)?;
+        let family = resolve_describing_type(&binding.rule)?;
         let compatible = match family {
-            DescribingTypeResolution::Unique(family) => compatible_binding_with_reader(
+            DescribingTypeResolution::Unique(family) => compatible_binding(
                 &binding,
                 &HolonDescriptor::from_holon(family),
                 &key,
                 descriptor,
                 level,
                 context,
-                reader,
             )?,
             _ => false,
         };
@@ -86,29 +81,22 @@ pub(crate) fn prepare_bindings(
 }
 
 /// Checks binding placement and rule-family lineage in the selected descriptor view.
-pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
+pub(crate) fn compatible_binding(
     binding: &ResolvedValidationBinding,
     family: &HolonDescriptor,
     key: &ValidationRuleKey,
     governing: &HolonReference,
     level: SubjectLevel,
     context: &ValueValidationContext,
-    reader: &R,
-) -> Result<bool, R::Error> {
-    use holons_core::descriptors::equals_or_extends_with_reader;
+) -> Result<bool, HolonError> {
+    use holons_core::descriptors::equals_or_extends;
     let roots = &context.bindings;
     if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
         // A familiar key on another reference cannot impersonate a canonical rule.
-        if !holons_core::same_definition(
-            &reader.select(&binding.rule)?,
-            &reader.select(&root.rule)?,
-        ) || root.level != level
-            || !equals_or_extends_with_reader(family.holon(), &root.family, reader)?
-            || !equals_or_extends_with_reader(
-                binding.declaring_descriptor.holon(),
-                &root.descriptor_family,
-                reader,
-            )?
+        if !holons_core::same_definition(&binding.rule, &root.rule)?
+            || root.level != level
+            || !equals_or_extends(family.holon(), &root.family)?
+            || !equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
         {
             return Ok(false);
         }
@@ -117,8 +105,7 @@ pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
                 governing,
                 &context.context,
             )?;
-            return Ok(ValueDescriptor::from_holon(reader.select(governing)?)
-                .value_kind_with_reader(reader)?
+            return Ok(ValueDescriptor::from_holon(governing.clone()).value_kind()?
                 == ValueDescriptorKind::BaseValue(expected));
         }
         return Ok(true);
@@ -128,14 +115,10 @@ pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
     let mut matched_family = false;
     let mut admitted = false;
     for root in &roots.entries {
-        if equals_or_extends_with_reader(family.holon(), &root.family, reader)? {
+        if equals_or_extends(family.holon(), &root.family)? {
             matched_family = true;
             if root.level == level
-                && equals_or_extends_with_reader(
-                    binding.declaring_descriptor.holon(),
-                    &root.descriptor_family,
-                    reader,
-                )?
+                && equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
             {
                 admitted = true;
             }
@@ -213,7 +196,8 @@ fn dispatch_subject(
         if prepared.route != BindingDispatchRoute::Subject {
             continue;
         }
-        collector.observations.dispatched_rule_keys.insert(required_key(&prepared.binding.rule)?);
+        let key = required_key(&prepared.binding.rule)?;
+        collector.observations.dispatched_rule_keys.insert(key);
         if (prepared.handler)(
             ValidationInvocation::Prepared { binding: &prepared.binding, path, subject },
             collector,
@@ -230,14 +214,13 @@ fn dispatch_subject(
 fn subject_constraints(
     descriptor: &HolonReference,
     path: &ValidationSubjectPath,
-    reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<(), AssessmentReadError> {
-    let contributions = packages.effective_constraints(descriptor, reader)?;
+) -> Result<(), HolonError> {
+    let contributions = packages.effective_constraints(descriptor)?;
     for contribution in contributions {
         collector.observations.effective_constraint_count += 1;
-        let constraint = ResolvedConstraint::with_reader(contribution, reader)?;
+        let constraint = ResolvedConstraint::resolve(contribution)?;
         let key = ConstraintTypeKey(required_key(constraint.constraint_type.holon())?);
         if StaticConstraintRegistry::lookup(&key).is_none() {
             finding(
@@ -267,12 +250,12 @@ pub(crate) fn assess_holon(
     descriptor: &HolonReference,
     contributions: &ContractContributions,
     bindings: &[PreparedBinding],
+    key_claim: Option<&crate::key_evidence::KeyClaim>,
     values: &ValueValidationContext,
     universal: &UniversalDescriptorContract,
-    reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<(), AssessmentReadError> {
+) -> Result<(), HolonError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();
     for member in &contributions.properties {
@@ -285,9 +268,10 @@ pub(crate) fn assess_holon(
     let subject_path = path(subject);
     let prepared = PreparedRuleSubject::Holon {
         undescribed_properties: subject.undescribed_property_names_in_contract(&names)?,
+        key_claim: key_claim.cloned(),
     };
     dispatch_subject(bindings, &prepared, &subject_path, collector)?;
-    subject_constraints(descriptor, &subject_path, reader, collector, packages)?;
+    subject_constraints(descriptor, &subject_path, collector, packages)?;
     let mut declared_names = HashSet::new();
     for member in &contributions.relationships {
         match member.member.property_value(CorePropertyTypeName::TypeName)? {
@@ -297,19 +281,19 @@ pub(crate) fn assess_holon(
             _ => return Err(HolonError::EmptyField("TypeName".into()).into()),
         }
     }
-    for (name, target) in crate::schema_rules::authored_targets(subject, reader)? {
+    for (name, target) in crate::schema_rules::authored_targets(subject)? {
         if !declared_names.contains(&name.to_string()) {
+            // Delivered checks assess declaredness per subject; none reads a combined graph-only bucket.
             finding(collector, CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() }, None,
-                &ValidationSubjectPath::Relationship { source_identity: subject.reference_id_string(), name: name.to_string(), target_identity: target.reference_id_string() },
+                &ValidationSubjectPath::Relationship { source_identity: subject.full_reference_id_string(), name: name.to_string(), target_identity: target.reference_id_string() },
                 Some(descriptor.reference_id_string()), format!("Populated relationship {name} must be declared by the source's effective descriptor."));
         }
     }
     for (name, property) in properties {
-        let result = assess_property(
-            subject, &name, &property, values, universal, reader, collector, packages,
-        );
-        // A contested member does not suppress independent property checks.
-        recover(result, subject, collector)?;
+        let result =
+            assess_property(subject, &name, &property, values, universal, collector, packages);
+        // Each property consumes its exact prepared definition.
+        result?;
     }
     Ok(())
 }
@@ -320,40 +304,35 @@ fn assess_property(
     property: &PropertyDescriptor,
     values: &ValueValidationContext,
     universal: &UniversalDescriptorContract,
-    reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<(), AssessmentReadError> {
+) -> Result<(), HolonError> {
     let value = subject.property_value(name)?;
     let path = ValidationSubjectPath::Property {
-        holon_identity: subject.reference_id_string(),
+        holon_identity: subject.full_reference_id_string(),
         name: name.to_string(),
     };
     let bindings = prepare_bindings(
         property.holon(),
         SubjectLevel::Property,
         values,
-        reader,
         &path,
         collector,
         packages,
     )?;
     let missing_required = value.is_none()
-        && universal.enforce_minimum_with_reader(subject, property.holon(), reader)?
-        && property.is_required_with_reader(reader)?;
+        && universal.enforce_minimum(subject, property.holon())?
+        && property.is_required()?;
     let facts = PreparedRuleSubject::Property {
         missing_required,
         name: name.to_string(),
         descriptor_identity: property.holon().reference_id_string(),
     };
     dispatch_subject(&bindings, &facts, &path, collector)?;
-    subject_constraints(property.holon(), &path, reader, collector, packages)?;
+    subject_constraints(property.holon(), &path, collector, packages)?;
     if let Some(value) = value {
-        let targets = effective_relationship_targets_with_reader(
-            property.holon(),
-            CoreRelationshipTypeName::ValueType,
-            reader,
-        )?;
+        let targets =
+            effective_relationship_targets(property.holon(), CoreRelationshipTypeName::ValueType)?;
         let [target] = targets.as_slice() else {
             blocked(
                 collector,
@@ -365,12 +344,12 @@ fn assess_property(
             );
             return Ok(());
         };
-        let descriptor = ValueDescriptor::from_holon(reader.select(&target.member)?);
+        let descriptor = ValueDescriptor::from_holon(target.member.clone());
         let path = ValidationSubjectPath::Value {
-            holon_identity: subject.reference_id_string(),
+            holon_identity: subject.full_reference_id_string(),
             property: name.to_string(),
         };
-        assess_value(&value, &descriptor, &path, values, reader, collector, packages)?;
+        assess_value(&value, &descriptor, &path, values, collector, packages)?;
     }
     Ok(())
 }
@@ -380,26 +359,24 @@ fn assess_value(
     descriptor: &ValueDescriptor,
     path: &ValidationSubjectPath,
     values: &ValueValidationContext,
-    reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<(), AssessmentReadError> {
+) -> Result<(), HolonError> {
     let bindings = prepare_bindings(
         descriptor.holon(),
         SubjectLevel::Value,
         values,
-        reader,
         path,
         collector,
         packages,
     )?;
-    subject_constraints(descriptor.holon(), path, reader, collector, packages)?;
+    subject_constraints(descriptor.holon(), path, collector, packages)?;
     holons_core::reference_layer::assert_reference_transaction_compatible(
         descriptor.holon(),
         &values.context,
     )?;
     let facts = PreparedRuleSubject::Value {
-        expected: descriptor.value_kind_with_reader(reader)?,
+        expected: descriptor.value_kind()?,
         actual: value.kind(),
         descriptor_identity: descriptor.holon().reference_id_string(),
     };

@@ -1,7 +1,4 @@
-use super::{
-    effective_relationship_targets_with_reader, CurrentDescriptorReader, DescriptorReader,
-    EffectiveRelationshipMember,
-};
+use super::{ancestors, inheritance::relationship_targets_in_lineage, EffectiveRelationshipMember};
 use crate::reference_layer::HolonReference;
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
@@ -14,26 +11,17 @@ pub struct ContractContributions {
     pub relationships: Vec<EffectiveRelationshipMember>,
 }
 impl ContractContributions {
-    /// Reads the contract defined by this descriptor, not its governing contract.
+    /// Reads the contract defined by this descriptor, preserving contribution provenance.
     pub fn resolve(descriptor: &HolonReference) -> Result<Self, HolonError> {
-        Self::resolve_with_reader(descriptor, &CurrentDescriptorReader)
-    }
-
-    /// Preserves contribution provenance while selecting each prospective definition.
-    pub fn resolve_with_reader<R: DescriptorReader>(
-        descriptor: &HolonReference,
-        reader: &R,
-    ) -> Result<Self, R::Error> {
+        let lineage = ancestors(descriptor)?;
         Ok(Self {
-            properties: effective_relationship_targets_with_reader(
-                descriptor,
+            properties: relationship_targets_in_lineage(
+                &lineage,
                 CoreRelationshipTypeName::InstanceProperties,
-                reader,
             )?,
-            relationships: effective_relationship_targets_with_reader(
-                descriptor,
+            relationships: relationship_targets_in_lineage(
+                &lineage,
                 CoreRelationshipTypeName::InstanceRelationships,
-                reader,
             )?,
         })
     }

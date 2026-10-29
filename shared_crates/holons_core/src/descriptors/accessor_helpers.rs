@@ -14,21 +14,12 @@ use type_names::{
 /// This reads `L(descriptor)`, not the `L(D(H))` contract selecting instance members.
 /// Absence permits inheritance; a populated value (including false) overrides ancestors.
 /// Read and lineage failures remain errors rather than being mistaken for absence.
-pub(crate) fn effective_property_value<T: ToPropertyName>(
+pub fn effective_property_value<T: ToPropertyName>(
     descriptor: &HolonReference,
     property_name: T,
 ) -> Result<Option<BaseValue>, HolonError> {
-    effective_property_value_with_reader(descriptor, property_name, &super::CurrentDescriptorReader)
-}
-
-/// Uses the same inheritance policy while selecting prospective descriptor content.
-pub fn effective_property_value_with_reader<T: ToPropertyName, R: super::DescriptorReader>(
-    descriptor: &HolonReference,
-    property_name: T,
-    reader: &R,
-) -> Result<Option<BaseValue>, R::Error> {
     let name = property_name.to_property_name();
-    for ancestor in super::walk_extends_chain_with_reader(descriptor, reader) {
+    for ancestor in super::walk_extends_chain(descriptor) {
         if let Some(value) = ancestor?.property_value(&name)? {
             return Ok(Some(value));
         }

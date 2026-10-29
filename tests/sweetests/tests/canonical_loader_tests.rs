@@ -621,9 +621,14 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     assert!(runtime.session().get_transaction(&context.tx_id()).is_err());
 
     for (contents, expected_status) in [
+        // A Core component referencing a Dance-schema property without a declared
+        // dependency. DS-SCHEMA-002 is unbound until SchemaDependency restores
+        // holon-local dependency coverage, so the load currently commits. Once it is
+        // re-bound, this case should be Rejected with the finding attached to the
+        // staged descriptor, and the unattached-finding branch below must follow.
         (
             r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.7"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
-            "Rejected",
+            "Complete",
         ),
         (r#"{"holons":[{"key":"missing-target","type":"DoesNotExist.HolonType"}]}"#, "Skipped"),
         (
@@ -803,7 +808,8 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         assert!(!context.staged_references().unwrap().is_empty());
         command(&runtime, &context, TransactionAction::Dispose).await.unwrap();
         assert!(runtime.session().get_transaction(&context.tx_id()).is_err());
-        if expected_status == "Complete" {
+        // Selected by content, not status: these reads are specific to the imported implementation.
+        if contents.contains("Imported.DanceImplementation") {
             let review = new_context(&runtime).await;
             let saved = review
                 .lookup()

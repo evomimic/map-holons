@@ -151,7 +151,7 @@ use `Option<HolonErrorKind>` and descriptions use `Option<String>`.
 | Create and stage | `add_new_holon_step`, `add_stage_holon_step` | Return chainable tokens |
 | Mutate content | `add_with_properties_step`, `add_remove_properties_step` | Return tokens for the updated head |
 | Edit relationships | `add_add_related_holons_step`, `add_remove_related_holons_step` | Follow target heads; return updated source tokens |
-| Stage updates or clones | `add_stage_new_version_step`, `add_stage_new_from_clone_step` | Clear copied predecessor; Commit establishes persisted lineage |
+| Stage updates or clones | `add_stage_new_version_step`, `add_stage_new_from_clone_step` | Version staging records the exact saved predecessor; independent clones clear inherited lineage |
 | Commit creates | `add_commit_step` | Create-only convenience; saved-version provenance fails at authoring time and requires explicit dispositions |
 | Commit updates and retries | `add_commit_step_with_dispositions` | Declare the prepared live workset and retained relationship-retry participants |
 | Check saved content | `add_match_saved_content_step` | Properties and definitional content; skips partial lookup stubs |
@@ -220,7 +220,7 @@ an unrelated fixture:
 
 | Fixture | Use it for |
 |---|---|
-| `transaction_lifecycle_fixture.rs`, `described_instances.rs` | The shortest happy path: schema-backed staging, a Complete Commit, and saved-content comparison |
+| `transaction_lifecycle_fixture.rs`, `described_instance_helpers.rs` | The shortest happy path: schema-backed staging, a Complete Commit, and saved-content comparison |
 | `stage_new_version_fixture.rs`, `stage_new_from_clone_fixture.rs` | Update/clone staging and existing anchoring checks |
 | `commit_disposition_fixture.rs` | Explicit dispositions, zero-save updates, same-key identities, negative diagnostics |
 | `commit_lineage_fixture.rs` | Sequential lineage, non-root updates, graph replay, independent clones |

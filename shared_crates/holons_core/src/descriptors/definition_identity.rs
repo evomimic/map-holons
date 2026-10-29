@@ -1,27 +1,36 @@
-use crate::reference_layer::{HolonReference, ProspectiveIdentity};
+use core_types::HolonError;
 
-/// Compares reference identity in the current view, without reads or replacement ancestry.
-/// Prospective callers select both references through their reader before comparison.
-pub fn same_definition(left: &HolonReference, right: &HolonReference) -> bool {
-    left == right
+use crate::reference_layer::{DefinitionIdentity, HolonReference};
+
+/// Compares exact definition identities, including saved definitions represented by
+/// no-op or graph-only handles. Keys and version-producing ancestry do not establish
+/// equality. Mutable references must belong to the same transaction.
+pub fn same_definition(left: &HolonReference, right: &HolonReference) -> Result<bool, HolonError> {
+    let context = left.transaction_context().or_else(|| right.transaction_context());
+    Ok(DefinitionIdentity::for_optional_context(left, context.as_ref())?
+        == DefinitionIdentity::for_optional_context(right, context.as_ref())?)
 }
 
-pub(crate) fn lineage_contains(lineage: &[HolonReference], anchor: &HolonReference) -> bool {
-    lineage.iter().any(|member| same_definition(member, anchor))
-}
-
-/// Full typed identity for traversal cycle detection (diagnostic strings may be lossy).
-/// Staged and transient identities omit the transaction ID. `ExtendsIter` does not
-/// assert transaction compatibility, so equal temporary IDs across transactions
-/// could be mistaken for a cycle; callers must keep lineage traversal in one transaction.
-pub(crate) fn definition_identity(reference: &HolonReference) -> ProspectiveIdentity {
-    // Preserve phase identity outside assessment. A prospective walk has already
-    // selected replacements, so repeated definitions have the same selected handle.
-    match reference {
-        HolonReference::Smart(saved) => ProspectiveIdentity::Saved(saved.holon_id()),
-        HolonReference::Staged(staged) => ProspectiveIdentity::Staged(staged.temporary_id()),
-        HolonReference::Transient(transient) => {
-            ProspectiveIdentity::Transient(transient.temporary_id())
+/// Searches bound references for an exact definition, resolving the anchor identity
+/// once and stopping at the first match. Empty inputs perform no identity reads.
+/// Mutable references examined by the search must belong to the same transaction.
+pub fn lineage_contains<'a>(
+    lineage: impl IntoIterator<Item = &'a HolonReference>,
+    anchor: &HolonReference,
+) -> Result<bool, HolonError> {
+    let mut members = lineage.into_iter();
+    let Some(first) = members.next() else {
+        return Ok(false);
+    };
+    let mut context = anchor.transaction_context().or_else(|| first.transaction_context());
+    let anchor_identity = DefinitionIdentity::for_optional_context(anchor, context.as_ref())?;
+    for member in std::iter::once(first).chain(members) {
+        if context.is_none() {
+            context = member.transaction_context();
+        }
+        if DefinitionIdentity::for_optional_context(member, context.as_ref())? == anchor_identity {
+            return Ok(true);
         }
     }
+    Ok(false)
 }

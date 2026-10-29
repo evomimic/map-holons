@@ -5,6 +5,7 @@ mod relationship;
 pub mod cache_access;
 pub mod cache_request_router;
 
+pub mod descriptor_registry;
 pub mod holon;
 pub mod holon_behavior;
 pub mod holon_cache;
@@ -12,6 +13,7 @@ pub mod holon_pool;
 pub mod nursery;
 pub mod nursery_access;
 pub mod nursery_access_internal;
+pub mod pending_relationship_deltas;
 pub mod read_observations;
 pub mod relationship_behavior;
 pub mod relationship_cache;

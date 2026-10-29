@@ -323,8 +323,10 @@ pub fn select_collection_visualizer(
     parent: HolonReference,
     slot: HolonReference,
 ) -> Result<VisualizerSelection, HolonError> {
-    let _ = holons_core::descriptors::HolonDescriptor::from_holon(collection.element_type.clone())
-        .instance_properties()?;
+    let _ = holons_core::descriptors::EffectiveHolonDescriptor::acquire(
+        collection.element_type.clone(),
+    )?
+    .instance_properties()?;
     let slots = holons_core::dahn::composition_slots(&parent)?;
     if !slots.iter().any(|candidate| candidate.reference_id_string() == slot.reference_id_string())
     {

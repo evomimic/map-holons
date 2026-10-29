@@ -4,3 +4,5 @@ pub mod delete_holon;
 pub mod load_holons;
 pub mod materialize_visualizer;
 pub mod resolve_visualizer_usage;
+
+pub mod construct_effective_holon_descriptor;

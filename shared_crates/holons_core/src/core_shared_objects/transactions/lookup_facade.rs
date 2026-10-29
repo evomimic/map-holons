@@ -2,7 +2,7 @@ use super::transaction_context::TransactionOperation;
 use super::{HolonServiceApi, HolonStagingBehavior, TransactionContext, TransientHolonBehavior};
 use crate::{HolonCollection, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
-use core_types::HolonError;
+use core_types::{HolonError, LocalId};
 use std::sync::Arc;
 
 /// Semantic facade for transaction-scoped lookup operations.
@@ -18,6 +18,16 @@ impl LookupFacade {
     pub fn get_all_holons(&self) -> Result<HolonCollection, HolonError> {
         self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.holon_service.get_all_holons_internal(&self.context)
+    }
+
+    /// Returns distinct saved local lineage roots associated with the exact key.
+    /// Historical associations are retained; no lineage head is selected.
+    pub fn get_saved_lineage_roots_by_key(
+        &self,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
+        self.holon_service.get_saved_lineage_roots_by_key_internal(&self.context, key)
     }
 
     /// Resolves an exact key in the current persisted holon space to its sole visible head.

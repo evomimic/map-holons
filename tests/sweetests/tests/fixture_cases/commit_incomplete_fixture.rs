@@ -3,7 +3,7 @@
 // Compiled into several test targets; each uses a subset of the fixture metadata.
 #![allow(dead_code)]
 
-use super::described_instances::add_described_instance;
+use super::described_instance_helpers::add_described_instance;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
@@ -238,4 +238,270 @@ fn add_incomplete_attempts(
         end_step: test_case.steps.len(),
         unchanged,
     })
+}
+
+/// A retained graph-only replay rejects a conflicting live edit, then composes an addition.
+pub struct GraphOverlapRetryScenario {
+    pub case: DancesTestCase,
+    pub source: TestReference,
+    pub added: TestReference,
+    pub first_attempt: usize,
+    pub after_rejection: usize,
+}
+
+pub fn graph_overlap_retry_fixture() -> Result<GraphOverlapRetryScenario, HolonError> {
+    use core_types::CommitValidationViolationKind;
+    use holons_core::core_shared_objects::holon::ValidationState;
+    use holons_test::{
+        ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject,
+    };
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Graph-only overlapping retry",
+        "Outstanding replay participates before writes and composes compatible live additions",
+    );
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let mut source = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        "Book.GraphOverlapRetry",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
+    )?;
+    let mut targets = Vec::new();
+    for key in ["Name.PropertyType", "Title.PropertyType", "Key.PropertyType"] {
+        let key = MapString(key.into());
+        let stub = fixture_context.mutation().new_holon(Some(key.clone()))?;
+        targets.push(test_case.add_lookup_saved_holon_by_key_step(
+            &mut fixture_holons,
+            stub,
+            key,
+            None,
+            None,
+        )?);
+    }
+    source = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        source,
+        "ReferencesProperty".to_relationship_name(),
+        vec![targets[0].clone()],
+        None,
+        None,
+    )?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    let source = fixture_holons.resolve_target_token_to_head(&source)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let a = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        source.clone(),
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    let a = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        a,
+        "ReferencesProperty".to_relationship_name(),
+        vec![targets[1].clone()],
+        None,
+        None,
+    )?;
+    let first_attempt = test_case.steps.len();
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Incomplete,
+        vec![ExpectedCommitCandidate::new(a.clone(), ExpectedDisposition::GraphOnly)
+            .with_expected_new_errors(vec![HolonErrorKind::CommitFailure])],
+        vec![],
+        None,
+        None,
+    )?;
+    let a = fixture_holons.resolve_target_token_to_head(&a)?;
+    // An Incomplete attempt retains the source transaction and its committed replay.
+    let b = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        source.clone(),
+        None,
+        MapInteger(2),
+        Some(HolonErrorKind::DuplicateError),
+        None,
+    )?;
+    let b = test_case.add_remove_related_holons_step(
+        &mut fixture_holons,
+        b,
+        "ReferencesProperty".to_relationship_name(),
+        vec![targets[0].clone()],
+        None,
+        None,
+    )?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
+    test_case.add_verify_commit_rejection_step(
+        vec![ExpectedRejectedHolon {
+            token: b.clone(),
+            validation_state: ValidationState::Invalid,
+            findings: vec![ExpectedValidationFinding {
+                kind: CommitValidationViolationKind::RuleViolation {
+                    code: "UnsupportedGraphOnlyCombination".into(),
+                },
+                rule_key: None,
+                subject: ExpectedValidationSubject::Holon,
+            }],
+        }],
+        MapInteger(1),
+        None,
+    )?;
+    test_case.add_verify_persisted_graph_step(
+        &fixture_holons,
+        ExpectedPersistedGraph {
+            relationships: vec![ExpectedPersistedRelationship {
+                source: PersistedSubject::Token(source.clone()),
+                relationship: "ReferencesProperty".to_relationship_name(),
+                targets: vec![PersistedSubject::Token(targets[0].clone())],
+            }],
+            ..Default::default()
+        },
+        Some("Rejection must prevent outstanding replay writes too".into()),
+    )?;
+    let after_rejection = test_case.steps.len();
+    let c = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        source.clone(),
+        None,
+        MapInteger(3),
+        Some(HolonErrorKind::DuplicateError),
+        None,
+    )?;
+    let c = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        c,
+        "ReferencesProperty".to_relationship_name(),
+        vec![targets[2].clone()],
+        None,
+        None,
+    )?;
+    test_case.add_abandon_staged_changes_step(&mut fixture_holons, b, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(c, ExpectedDisposition::GraphOnly)],
+        vec![ExpectedRetryParticipant::new(a)],
+        None,
+        None,
+    )?;
+    test_case.add_verify_persisted_graph_step(
+        &fixture_holons,
+        ExpectedPersistedGraph {
+            relationships: vec![ExpectedPersistedRelationship {
+                source: PersistedSubject::Token(source.clone()),
+                relationship: "ReferencesProperty".to_relationship_name(),
+                targets: targets.iter().cloned().map(PersistedSubject::Token).collect(),
+            }],
+            ..Default::default()
+        },
+        Some("Fresh observer sees replayed and newly added targets".into()),
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(GraphOverlapRetryScenario {
+        case: test_case,
+        source,
+        added: targets[1].clone(),
+        first_attempt,
+        after_rejection,
+    })
+}
+
+/// A rekey publishes its node but fails its historical keyed Owns entry.
+pub struct KeyIndexRetryScenario {
+    pub case: DancesTestCase,
+    pub root: TestReference,
+    pub first_attempt: usize,
+    pub after_rejection: usize,
+    pub key: &'static str,
+}
+
+pub fn key_index_retry_fixture() -> Result<KeyIndexRetryScenario, HolonError> {
+    use core_types::CommitValidationViolationKind;
+    use holons_core::core_shared_objects::holon::ValidationState;
+    use holons_test::{
+        ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject,
+    };
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Historical key-index retry", "A published rekey reserves its key before index repair; retry restores the keyed Owns entry",
+    );
+    let key = "Book.KeyIndexRetry.New";
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let root = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        "Book.KeyIndexRetry.Old",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
+    )?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    let root = fixture_holons.resolve_target_token_to_head(&root)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let update = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        root.clone(),
+        None,
+        MapInteger(1),
+        None,
+        None,
+    )?;
+    let update = test_case.add_with_properties_step(
+        &mut fixture_holons,
+        update,
+        [("Key".to_property_name(), key.to_base_value())].into(),
+        None,
+        None,
+    )?;
+    let first_attempt = test_case.steps.len();
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Incomplete,
+        vec![ExpectedCommitCandidate::new(update.clone(), ExpectedDisposition::NewVersion)
+            .with_expected_new_errors(vec![HolonErrorKind::CommitFailure])],
+        vec![],
+        None,
+        None,
+    )?;
+    let published = fixture_holons.resolve_target_token_to_head(&update)?;
+    let collision = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        key,
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
+    )?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
+    test_case.add_verify_commit_rejection_step(
+        vec![ExpectedRejectedHolon {
+            token: collision.clone(),
+            validation_state: ValidationState::Invalid,
+            findings: vec![ExpectedValidationFinding {
+                kind: CommitValidationViolationKind::RuleViolation { code: "DS-KEY-006".into() },
+                rule_key: Some("KeyUniqueness.ValidationRule".into()),
+                subject: ExpectedValidationSubject::Holon,
+            }],
+        }],
+        MapInteger(1),
+        None,
+    )?;
+    let after_rejection = test_case.steps.len();
+    test_case.add_abandon_staged_changes_step(&mut fixture_holons, collision, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![],
+        vec![ExpectedRetryParticipant::new(published)],
+        None,
+        None,
+    )?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(KeyIndexRetryScenario { case: test_case, root, first_attempt, after_rejection, key })
 }

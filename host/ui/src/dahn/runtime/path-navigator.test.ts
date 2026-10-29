@@ -36,7 +36,7 @@ const visualizers = { node: selected('holon-inspector'), propertyMap: selected('
 const selectFixture = async (request: any) => ({ selected: visualizers[request.requestedKind as keyof typeof visualizers] });
 artifacts['alternative-node'] = artifacts['holon-inspector'].replace('this.dataset.visualizerId = "holon-inspector";', 'this.dataset.visualizerId = "alternative-node"; this.dataset.alternateNode = "true";');
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
-const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
+const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', identity: async () => name, relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
 function subject(name: string) {
   return {
     holonId: async () => ({ Local: [...name].map(char => char.charCodeAt(0)) }),
@@ -46,6 +46,7 @@ function subject(name: string) {
     versionedKey: async () => name,
     propertyValue: vi.fn(async () => ({ StringValue: name })),
     holonDescriptor: async () => ({ hasInstanceKey: async () => false, displayName: async () => 'Example' }),
+    async effectiveDescriptor() { return { instanceProperties: () => this.availableProperties(), affordedDances: () => this.availableDances() }; },
     availableProperties: async () => [property],
     availableRelationships: async () => [relationship('Members'), relationship('Other'), relationship('First', 1), relationship('Second', 1), relationship('Third', 1)],
     availableDances: async () => [],
@@ -54,7 +55,7 @@ function subject(name: string) {
   };
 }
 function collection(members: ReturnType<typeof subject>[]) {
-  return { length: members.length, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  return { length: members.length, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 function deferred<T>() {
   let resolve!: (value: T) => void;

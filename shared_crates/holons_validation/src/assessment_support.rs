@@ -1,11 +1,12 @@
-//! Shared mechanics for an immutable prospective assessment, never a persistence plan.
+//! Shared mechanics for an immutable Commit assessment, never a persistence plan.
 use crate::{handlers::finding, ValidationCollector};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
-use holons_core::{AssessmentReadError, HolonReference, ReadableHolon};
+use holons_core::{HolonReference, ReadableHolon};
 use type_names::CoreRelationshipTypeName;
 
+/// Finding paths carry complete identities so they route to exact candidates.
 pub(crate) fn path(subject: &HolonReference) -> ValidationSubjectPath {
-    ValidationSubjectPath::Holon { holon_identity: subject.reference_id_string() }
+    ValidationSubjectPath::Holon { holon_identity: subject.full_reference_id_string() }
 }
 
 pub(crate) fn blocked(
@@ -23,49 +24,7 @@ pub(crate) fn blocked(
     );
 }
 
-/// Only content contention is recoverable here. An unreadable graph invalidates the entire pass.
-pub(crate) fn recover<T>(
-    result: Result<T, AssessmentReadError>,
-    subject: &HolonReference,
-    collector: &mut ValidationCollector,
-) -> Result<Option<T>, HolonError> {
-    recover_at(result, &path(subject), collector)
-}
-
-/// Shared anchor failures have no primary holon; the transaction carrier owns them.
-pub(crate) fn recover_transaction<T>(
-    result: Result<T, AssessmentReadError>,
-    collector: &mut ValidationCollector,
-) -> Result<Option<T>, HolonError> {
-    recover_at(result, &ValidationSubjectPath::Transaction, collector)
-}
-
-fn recover_at<T>(
-    result: Result<T, AssessmentReadError>,
-    subject: &ValidationSubjectPath,
-    collector: &mut ValidationCollector,
-) -> Result<Option<T>, HolonError> {
-    match result {
-        Ok(value) => Ok(Some(value)),
-        Err(error @ AssessmentReadError::Contested { .. }) => {
-            finding(
-                collector,
-                CommitValidationViolationKind::UnresolvedLocalDependency,
-                None,
-                subject,
-                None,
-                error.to_string(),
-            );
-            Ok(None)
-        }
-        Err(AssessmentReadError::Operational(error)) => Err(error),
-        Err(error @ AssessmentReadError::SchemaIncompatible { .. }) => {
-            Err(HolonError::CommitFailure(error.to_string()))
-        }
-    }
-}
-
-/// Snapshot local references before selection, preserving contested identities for diagnostics.
+/// Snapshot bound references before traversing their targets.
 pub(crate) fn targets(
     subject: &HolonReference,
     edge: CoreRelationshipTypeName,

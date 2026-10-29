@@ -5,6 +5,8 @@ use holons_prelude::prelude::*;
 use holons_test::{init_commit_performance_runtime, init_test_runtime, DancesTestCase};
 #[path = "performance_support/link_queries.rs"]
 mod link_queries;
+#[path = "performance_support/new_version_samples.rs"]
+mod new_version_samples;
 #[path = "performance_support/readiness_cases.rs"]
 mod readiness_cases;
 use map_commands_contract::{
@@ -43,6 +45,13 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
         .map(|value| value.parse::<usize>().expect("subject count must be a positive integer"))
         .unwrap_or(1);
     assert!(subjects > 0);
+    let mode = std::env::var("MAP_COMMIT_PERF_MODE").unwrap_or_else(|_| "create".into());
+    if mode == "new-version" {
+        assert_eq!(subjects, 1, "new-version samples publish one successor per Commit");
+        new_version_samples::run(&runtime, samples).await;
+        return;
+    }
+    assert_eq!(mode, "create");
     for sample in 0..samples {
         let MapResult::TransactionCreated { tx_id } = runtime
             .execute_command(

@@ -35,8 +35,8 @@ pub struct TransientHolon {
     transient_relationships: TransientRelationshipMap, // Tracks ephemeral relationships
     /// The lineage inherited from the holon this was cloned from, if any. An unsaved holon
     /// belongs to no lineage of its own, so this is clone provenance and has no effect on what
-    /// is persisted. Not an immediate predecessor: that relationship is only established at
-    /// commit, as a `Predecessor` SmartLink.
+    /// is persisted. The immediate predecessor is recorded when an update is staged and
+    /// persisted as a `Predecessor` SmartLink only when Commit publishes a new version.
     original_id: Option<LocalId>,
 }
 
@@ -265,6 +265,12 @@ impl WriteableHolonState for TransientHolon {
     }
 
     fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
+        for collection in self.transient_relationships.map.values() {
+            collection
+                .write()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .mark_as_immutable()?;
+        }
         self.holon_state = HolonState::Immutable;
         Ok(())
     }

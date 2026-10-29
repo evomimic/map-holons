@@ -29,7 +29,7 @@ impl<'a> PreparedAssessment<'a> {
         let indices: HashMap<_, _> = candidates
             .iter()
             .enumerate()
-            .map(|(index, candidate)| (candidate.reference_id_string(), index))
+            .map(|(index, candidate)| (candidate.full_reference_id_string(), index))
             .collect();
         let mut groups = vec![Vec::new(); candidates.len()];
         let mut assessment = Self::default();

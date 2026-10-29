@@ -45,8 +45,11 @@ use core_types::HolonError;
 ///
 pub fn commit_dance(
     context: &Arc<TransactionContext>,
-    _request: DanceRequest,
+    request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
+    if let RequestBody::TransientReference(root) = request.body {
+        context.set_descriptor_registry_root(&root)?;
+    }
     info!("----- Entered commit_dance");
     let commit_response = context.commit()?;
     Ok(ResponseBody::HolonReference(commit_response.into()))

@@ -1,24 +1,26 @@
 pub mod abandon_staged_changes_fixture;
 pub mod attachment_defaults_fixture;
 pub mod bootstrap_operational_schema_fixture;
-pub mod commit_competition_fixture;
 pub mod commit_disposition_fixture;
 pub mod commit_incomplete_fixture;
 pub mod commit_lineage_fixture;
 pub mod commit_schema_fixture;
+pub mod commit_sibling_fixture;
 pub mod commit_strict_contract_fixture;
 pub mod commit_validation_fixture;
 pub mod delete_holon_fixture;
-pub mod described_instances;
+pub mod described_instance_helpers;
 pub mod ergonomic_add_remove_properties_fixture;
 pub mod ergonomic_add_remove_related_holons_fixture;
 pub mod load_book_person_inverse_schema_fixture;
 pub mod load_holons_internal_fixture;
 pub mod load_inverse_oriented_book_person_instances_fixture;
 pub mod query_f1_filter_fixture;
+pub mod query_f2_equality_fixture;
 pub mod query_qry1_scaffold_fixture;
 pub mod query_qry2_seed_expand_fixture;
 pub mod query_qry4a_order_paginate_fixture;
+pub mod schema_authoring_helpers;
 pub mod setup_book_and_authors_fixture;
 pub mod simple_add_remove_properties_fixture;
 pub mod simple_add_remove_related_holons_fixture;
@@ -29,3 +31,7 @@ pub mod stage_new_version_fixture;
 pub mod transaction_lifecycle_fixture;
 
 pub use setup_book_and_authors_fixture::*;
+
+pub mod commit_graph_only_fixture;
+
+pub mod commit_key_uniqueness_fixture;

@@ -748,7 +748,8 @@ impl LoaderRefResolver {
     // Writing + dedupe + worklist
     // ─────────────────────────────────────────────────────────────────────
 
-    /// Ensures a writable staged source (promote saved → staged if policy allows).
+    /// Reuses a staged write source or promotes a saved write source by staging its successor.
+    /// Callers supply declared sources; relationship targets are never write sources.
     fn resolve_staged_write_source(
         context: &Arc<TransactionContext>,
         write_source_endpoint: &HolonReference,

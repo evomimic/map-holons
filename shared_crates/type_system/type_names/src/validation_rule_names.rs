@@ -10,6 +10,8 @@ pub enum CoreValidationRuleName {
     RequiredPropertyPresence,
     /// DS-PROP-003: populated properties must belong to the effective contract.
     NoUndescribedProperties,
+    /// DS-KEY-006: complete local keys remain associated with one lineage.
+    KeyUniqueness,
     /// String values use the native string representation.
     BaseValueKindMatchesString,
     /// Integer values use the native integer representation.
@@ -73,6 +75,7 @@ impl CoreValidationRuleName {
                 "InheritedValueConstraintNonRelaxation.ValidationRule"
             }
             Self::RequiredPropertyPresence => "RequiredPropertyPresence.ValidationRule",
+            Self::KeyUniqueness => "KeyUniqueness.ValidationRule",
             Self::NoUndescribedProperties => "NoUndescribedProperties.ValidationRule",
             Self::BaseValueKindMatchesString => "BaseValueKindMatchesString.ValidationRule",
             Self::BaseValueKindMatchesInteger => "BaseValueKindMatchesInteger.ValidationRule",
@@ -141,6 +144,7 @@ mod tests {
         for (rule, expected) in [
             (RequiredPropertyPresence, "RequiredPropertyPresence.ValidationRule"),
             (NoUndescribedProperties, "NoUndescribedProperties.ValidationRule"),
+            (KeyUniqueness, "KeyUniqueness.ValidationRule"),
             (BaseValueKindMatchesString, "BaseValueKindMatchesString.ValidationRule"),
             (BaseValueKindMatchesInteger, "BaseValueKindMatchesInteger.ValidationRule"),
             (BaseValueKindMatchesBoolean, "BaseValueKindMatchesBoolean.ValidationRule"),

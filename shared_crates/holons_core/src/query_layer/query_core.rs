@@ -3247,7 +3247,7 @@ mod tests {
 
     // ---- QRY-F1 predicate filtering ------------------------------------------
 
-    use crate::query_layer::predicate_test_support::PredicateWorld;
+    use crate::query_layer::predicate_test_support::{token, PredicateWorld};
 
     /// A predicate world sharing the execution fixture's transaction.
     fn predicate_world(fixture: &Fixture) -> PredicateWorld {
@@ -3437,6 +3437,123 @@ mod tests {
             .add_related_holons(
                 QueryRelationshipTypeName::ExpansionPredicate,
                 vec![world.contains("Title", "x")],
+            )
+            .unwrap();
+        let (instance, result) = run_typed(&fixture, &expand, &fixture.saved(BOOK), &[]);
+        assert!(
+            matches!(&result, Err(HolonError::DescriptorDeclarationNotFound { name, descriptor, .. })
+                if name == "Title" && descriptor.contains("Person")),
+            "unexpected result: {result:?}"
+        );
+        assert_failed_without_result(&instance);
+    }
+
+    // ---- QRY-F2 equality through the predicate path ----------------------------
+
+    #[test]
+    fn an_equals_filter_keeps_order_duplicates_and_the_declared_type() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let draft = world.member("draft", &world.book, &[("Status", token("Draft"))]);
+        let published = world.member("published", &world.book, &[("Status", token("Published"))]);
+        let filter =
+            filter_of(&fixture, "filter", world.equals("Status", &world.status, token("Draft")));
+        let definition = filter.into_model().unwrap();
+
+        let (instance, result) =
+            run_typed(&fixture, &filter, &world.book, &[draft.clone(), published, draft.clone()]);
+        let result = result.expect("an Equals Filter executes");
+        assert_eq!(result_members(&result), vec![draft.clone(), draft]);
+        assert_eq!(element_type_of(result.as_holon_reference()), world.book);
+        assert_step(&step_records(&instance)[0], ExecutionStatus::Complete, true);
+        assert_eq!(filter.into_model().unwrap(), definition, "the definition is unchanged");
+    }
+
+    #[test]
+    fn an_invalid_equals_literal_fails_even_for_empty_input() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let filter =
+            filter_of(&fixture, "filter", world.equals("Status", &world.status, token("Archived")));
+        let (instance, result) = run_typed(&fixture, &filter, &world.book, &[]);
+        assert!(
+            matches!(result, Err(HolonError::EnumVariantNotInSchema { .. })),
+            "the authored literal is validated before any member is read"
+        );
+        assert_failed_without_result(&instance);
+    }
+
+    #[test]
+    fn an_equals_filter_composes_with_distinct_in_either_order() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let a = world.member("a", &world.book, &[("Title", text("t")), ("PageCount", number(3))]);
+        let b = world.member("b", &world.book, &[("Title", text("t")), ("PageCount", number(4))]);
+        let input = [a.clone(), b.clone(), a.clone(), b];
+        let three = || world.equals("PageCount", &world.integer, number(3));
+
+        let mut filter_first = filter_of(&fixture, "filter", three());
+        chain(&mut filter_first, &fixture.described_as("distinct", Q::Distinct));
+        let (_, result) = run_typed(&fixture, &filter_first, &world.book, &input);
+        assert_eq!(result_members(&result.unwrap()), vec![a.clone()]);
+
+        let mut distinct_first = fixture.described_as("distinct-2", Q::Distinct);
+        chain(&mut distinct_first, &filter_of(&fixture, "filter-2", three()));
+        let (_, result) = run_typed(&fixture, &distinct_first, &world.book, &input);
+        assert_eq!(result_members(&result.unwrap()), vec![a]);
+    }
+
+    #[test]
+    fn a_failing_equals_filter_leaves_its_predecessor_complete() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        // The stored Status is not an enum, which execution still rejects.
+        let member = world.member("a", &world.book, &[("Title", text("t")), ("Status", number(1))]);
+        let mut distinct = fixture.described_as("distinct", Q::Distinct);
+        chain(
+            &mut distinct,
+            &filter_of(&fixture, "filter", world.equals("Status", &world.status, token("Draft"))),
+        );
+
+        let (instance, result) = run_typed(&fixture, &distinct, &world.book, &[member]);
+        assert!(matches!(result, Err(HolonError::ValueKindMismatch { .. })));
+        let records = step_records(&instance);
+        assert_step(&records[0], ExecutionStatus::Complete, true);
+        assert_step(&records[1], ExecutionStatus::Failed, false);
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn equals_attachments_are_validated_against_their_declared_types() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+
+        // Seeds declare the root type, which declares no Title.
+        let mut seed = fixture.described_as("seed", Q::SeedHolons);
+        seed.add_related_holons(
+            QueryRelationshipTypeName::SeedPredicate,
+            vec![world.equals("Title", &world.text, text("x"))],
+        )
+        .unwrap();
+        let execution = fixture
+            .query_with_root(&seed)
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+        assert!(matches!(
+            execution.run(),
+            Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "Title"
+        ));
+        assert_failed_without_result(&instance);
+
+        // AuthoredBy targets Person, which declares no Title.
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        expand
+            .add_related_holons(
+                QueryRelationshipTypeName::ExpansionPredicate,
+                vec![world.equals("Title", &world.text, text("x"))],
             )
             .unwrap();
         let (instance, result) = run_typed(&fixture, &expand, &fixture.saved(BOOK), &[]);

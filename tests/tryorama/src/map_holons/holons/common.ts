@@ -14,6 +14,7 @@ export function createHolon(props: PropertyMap): Holon {
             staged_relationships: {},
             original_id: undefined,
             touched_relationship_names: [],
+            pending_relationship_deltas: {},
             errors: []
         }
     }

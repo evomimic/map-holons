@@ -15,11 +15,13 @@ use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
         transactions::TxId,
-        Holon, HolonCollection, ReadableHolonState, StagedHolon, WriteableHolonState,
+        Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
-    descriptors::{resolve_inverse_relationship_name, TargetBinding},
+    descriptors::{
+        resolve_inverse_relationship_name, ComputedEffectiveSchema, Descriptor, TargetBinding,
+    },
     reference_layer::ReadableHolon,
-    HolonReference, SmartReference, StagedReference, WritableHolon,
+    HolonReference, StagedReference, WritableHolon,
 };
 
 use base_types::MapString;
@@ -208,6 +210,7 @@ struct RelationshipCommitSource {
     source_local_id: LocalId,
     source_key: Option<MapString>,
     source_reference: HolonReference,
+    schema: std::sync::OnceLock<Result<ComputedEffectiveSchema, HolonError>>,
 }
 
 /// Saved target anchors established by this invocation's accepted NoAction outcomes.
@@ -252,6 +255,7 @@ impl RelationshipCommitSource {
                 source_local_id: local_id,
                 source_key: staged_holon.key(),
                 source_reference: staged_reference.into(),
+                schema: std::sync::OnceLock::new(),
             }),
             _ => None,
         }
@@ -420,10 +424,10 @@ pub fn commit(
                 }
             }
             holons_validation::AssessmentEvent::Preparation(metrics) => {
-                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={} authored_surface_consumers={}",
+                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={}",
                     metrics.package_roots, metrics.subjects, metrics.affected_schemas,
                     metrics.distinct_content, metrics.identity_role_visits, metrics.contract_consumers,
-                    metrics.constraint_consumers, metrics.binding_consumers, metrics.authored_surface_consumers);
+                    metrics.constraint_consumers, metrics.binding_consumers);
             }
             holons_validation::AssessmentEvent::PreparationEdge {
                 role,
@@ -516,7 +520,7 @@ pub fn commit(
     // Outcome tallies, kept beyond the Pass 1 scope so the commit response can be summarized at
     // every exit — including the incomplete early return, which is the case most worth seeing.
     let mut saved_ids: Vec<LocalId> = Vec::new();
-    let mut key_index_source_ids: HashSet<LocalId> = HashSet::new();
+    let mut key_index_source_ids = key_index_retry_sources(context, staged_references)?;
     let mut failed_count = 0_usize;
     let mut no_action_targets = NoActionTargetAnchors::default();
 
@@ -918,7 +922,7 @@ fn commit_holon(
                 staged_holon.prepare_full_relationship_commit_scope()?;
                 // Storage decides how a version is written: it resolves the lineage this
                 // predecessor belongs to and roots the new version there. Immediate-predecessor
-                // ordering is not carried by the node — it is staged below as a SmartLink.
+                // ordering is not carried by the node; Pass 2 writes the assessed Predecessor edge.
                 let persist_started_at = performance_timestamp_micros();
                 let stored = persist_holon(HolonWriteRequest::PublishVersion {
                     holon_node: staged_holon.into_node_model(),
@@ -941,8 +945,6 @@ fn commit_holon(
                 );
 
                 let new_local_id = stored.version_metadata.version_id;
-
-                stage_predecessor_relationship(staged_holon, context, predecessor_id)?;
 
                 staged_holon.to_committed(new_local_id)?;
                 Ok(CommitOutcome::Saved { establishes_key_index_entry: true })
@@ -968,22 +970,6 @@ fn commit_holon(
             holon_write
         )))
     }
-}
-
-fn stage_predecessor_relationship(
-    staged_holon: &mut StagedHolon,
-    context: &Arc<TransactionContext>,
-    predecessor_id: LocalId,
-) -> Result<(), HolonError> {
-    let predecessor_reference =
-        SmartReference::new_from_id(context.space_read_handle(), HolonId::Local(predecessor_id));
-
-    staged_holon.add_related_holons_with_keys(
-        CoreRelationshipTypeName::Predecessor.as_relationship_name(),
-        vec![(predecessor_reference.into(), None)],
-    )?;
-
-    Ok(())
 }
 
 /// Persists one declared relationship collection and its resolved inverse.
@@ -1071,6 +1057,28 @@ fn resolve_owns_index_space_id(
     Err(HolonError::InvalidState(
         "keyed Owns index maintenance requires a persisted HolonSpace".to_string(),
     ))
+}
+
+/// Retained creates and published versions may still need their keyed Owns entry.
+/// Graph-only commits reuse their source and never establish a key association.
+fn key_index_retry_sources(
+    context: &Arc<TransactionContext>,
+    references: &[StagedReference],
+) -> Result<HashSet<LocalId>, HolonError> {
+    let mut sources = HashSet::new();
+    for reference in references {
+        let rc = reference.get_holon_to_commit(context)?;
+        let holon =
+            rc.read().map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?;
+        if let Holon::Staged(staged) = &*holon {
+            if let StagedState::Committed(id) = staged.staged_state() {
+                if staged.versioned_source_id_ref() != Some(id) {
+                    sources.insert(id.clone());
+                }
+            }
+        }
+    }
+    Ok(sources)
 }
 
 /// Produces the deterministic occurrence identity of an additional keyed `Owns` index entry.
@@ -1242,9 +1250,20 @@ fn save_smartlinks_for_collection(
     let descriptor_started_at = performance_timestamp_micros();
     let (forward_binding, inverse_binding) =
         profile_descriptor_resolution("TargetBindings", &source.source_reference, &name, || {
-            let relationship_descriptor = source
-                .source_reference
-                .holon_descriptor()?
+            let schema = source
+                .schema
+                .get_or_init(|| {
+                    let descriptor = source.source_reference.holon_descriptor()?;
+                    match holons_core::descriptors::EffectiveHolonDescriptor::find_for_instance(
+                        &source.source_reference,
+                    )? {
+                        Some(prepared) => ComputedEffectiveSchema::from_prepared(&prepared),
+                        None => ComputedEffectiveSchema::resolve(descriptor.holon()),
+                    }
+                })
+                .as_ref()
+                .map_err(Clone::clone)?;
+            let relationship_descriptor = schema
                 .get_relationship_by_name(name.clone())?
                 .try_into_declared_relationship_descriptor()?;
             Ok((
@@ -1512,6 +1531,55 @@ fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKe
 mod tests {
     use super::*;
     use holons_core::core_shared_objects::holon::ValidationState;
+
+    #[test]
+    fn committed_graph_only_retry_requests_no_key_index_lookup() -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::{
+            space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+        };
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let mut references = Vec::new();
+        for (key, source, committed) in [
+            ("graph", Some(LocalId(vec![1])), LocalId(vec![1])),
+            ("version", Some(LocalId(vec![1])), LocalId(vec![2])),
+            ("root", None, LocalId(vec![3])),
+        ] {
+            let input = context.mutation().new_holon(Some(key.into()))?;
+            let reference = context.mutation().stage_new_holon(input)?;
+            let rc = reference.get_holon_to_commit(&context)?;
+            let mut holon = rc.write().unwrap();
+            let model = holon.holon_clone_model();
+            let mut staged = if let Some(source) = source {
+                StagedHolon::new_for_update_from_clone_model(model, source)?
+            } else {
+                StagedHolon::new_from_clone_model(model)?
+            };
+            if staged.versioned_source_id_ref() == Some(&committed) {
+                staged.note_relationship_mutation(false)?;
+                staged.prepare_touched_relationship_commit_scope()?;
+            } else if staged.versioned_source_id_ref().is_some() {
+                staged.note_property_mutation()?;
+                staged.prepare_full_relationship_commit_scope()?;
+            }
+            staged.to_committed(committed)?;
+            *holon = Holon::Staged(staged);
+            references.push(reference);
+        }
+        let before = crate::persistence_layer::smartlink::relationship_read_metrics();
+        assert!(key_index_retry_sources(&context, &references[..1])?.is_empty());
+        assert_eq!(
+            key_index_retry_sources(&context, &references)?,
+            HashSet::from([LocalId(vec![2]), LocalId(vec![3])])
+        );
+        assert_eq!(crate::persistence_layer::smartlink::relationship_read_metrics(), before);
+        Ok(())
+    }
 
     #[test]
     fn accepted_no_action_targets_resolve_without_changing_their_lifecycle(

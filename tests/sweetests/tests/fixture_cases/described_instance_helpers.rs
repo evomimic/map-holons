@@ -13,10 +13,7 @@ pub fn add_described_instance(
     property: &str,
     descriptor_key: &str,
 ) -> Result<TestReference, HolonError> {
-    let descriptor_key = MapString(descriptor_key.into());
-    let stub = context.mutation().new_holon(Some(descriptor_key.clone()))?;
-    let descriptor =
-        test_case.add_lookup_saved_holon_by_key_step(holons, stub, descriptor_key, None, None)?;
+    let descriptor = saved(context, test_case, holons, descriptor_key)?;
     let key = MapString(key.into());
     let source = context.mutation().new_holon(Some(key.clone()))?;
     let mut properties = PropertyMap::new();
@@ -31,4 +28,16 @@ pub fn add_described_instance(
         None,
         None,
     )
+}
+
+/// Resolves a saved definition by key without copying its content into fixture snapshots.
+pub(super) fn saved(
+    context: &Arc<TransactionContext>,
+    case: &mut DancesTestCase,
+    holons: &mut FixtureHolons,
+    key: &str,
+) -> Result<TestReference, HolonError> {
+    let key = MapString(key.into());
+    let stub = context.mutation().new_holon(Some(key.clone()))?;
+    case.add_lookup_saved_holon_by_key_step(holons, stub, key, None, None)
 }

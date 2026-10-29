@@ -6,12 +6,14 @@ use holons_core::core_shared_objects::{
     transactions::TransactionContext,
 };
 use holons_core::{
-    HolonCollection, HolonCollectionApi, HolonReference, HolonServiceApi, ReadableHolon,
-    RelationshipCachePolicy, RelationshipMap, ServiceRoutingPolicy, SmartReference,
-    StagedReference, TransientReference,
+    ComputedEffectiveSchema, Descriptor, EffectiveHolonDescriptor, HolonCollection,
+    HolonCollectionApi, HolonReference, HolonServiceApi, ReadableHolon, RelationshipCachePolicy,
+    RelationshipMap, ServiceRoutingPolicy, SmartReference, StagedReference, TransientReference,
+    WritableHolon,
 };
 use map_commands_contract::{VisualizerKind, VisualizerOwner, VisualizerSelectionRequest};
 use std::{any::Any, collections::HashMap, sync::Arc};
+use type_names::CoreRelationshipTypeName;
 
 /// A persisted graph fixture accessed through the real bound reference layer.
 #[derive(Debug, Default)]
@@ -45,6 +47,28 @@ impl Graph {
     }
 }
 impl HolonServiceApi for Graph {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<EffectiveHolonDescriptor, HolonError> {
+        // Collection selection consumes the prepared property product. Keep this
+        // service double independent of the full runtime schema used by guest tests.
+        let computed = ComputedEffectiveSchema::resolve(&target)?;
+        let mut result = context.mutation().new_holon(None)?;
+        result.add_related_holons(CoreRelationshipTypeName::DescribedHolonType, vec![target])?;
+        result.add_related_holons(
+            CoreRelationshipTypeName::EffectiveInstanceProperties,
+            computed
+                .instance_properties()
+                .into_iter()
+                .map(|property| property.holon().clone())
+                .collect(),
+        )?;
+        result.mark_as_immutable()?;
+        Ok(EffectiveHolonDescriptor::from_constructed_holon(result.into()))
+    }
+
     fn visualizer_artifact_available_internal(
         &self,
         _: &Arc<TransactionContext>,
@@ -60,8 +84,8 @@ impl HolonServiceApi for Graph {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        Ok(RelationshipCachePolicy::Fresh)
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn get_saved_holon_by_key_internal(
         &self,

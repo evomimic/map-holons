@@ -57,7 +57,7 @@ const PERSON_TO_BOOK_RELATIONSHIP: &str = "AuthorOf";
 /// - `Filter -> Distinct` and `Distinct -> Filter`;
 /// - `Expand(AuthorOf) -> Filter(AnyOf) -> OrderBy(Title) -> Limit(1)` from
 ///   [Ada, Bob]: [Roads];
-/// - failures: an Equals predicate (`NotImplemented`), the same after a
+/// - failures: a LessThan predicate (`NotImplemented`), the same after a
 ///   completed `Distinct`, nested `AnyOf` (`NotImplemented`), a selector the
 ///   declared type lacks on empty input, a SeedPredicate selecting Title on
 ///   the root type, an integer-typed literal (`IncompatibleLiteralType`), and a
@@ -147,14 +147,8 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Begin transaction for QRY-F1 transient query execution".to_string()),
     )?;
-    let lookup = |test_case: &mut DancesTestCase, fixture_holons: &mut FixtureHolons, key: &str| {
-        lookup_by_key(test_case, &fixture_context, fixture_holons, key)
-    };
-    let query_key = |name: QueryHolonTypeName| holon_type_descriptor_key(&name.as_holon_name()).0;
-    let operator_key =
-        |name: CoreOperatorTypeName| operator_type_descriptor_key(&name.as_operator_name().0).0;
     let saved = |test_case: &mut DancesTestCase, fixture_holons: &mut FixtureHolons, key| {
-        lookup(test_case, fixture_holons, key)
+        lookup_by_key(test_case, &fixture_context, fixture_holons, key)
     };
     let strasse = saved(&mut test_case, &mut fixture_holons, BOOK_STRASSE_KEY)?;
     let atlas = saved(&mut test_case, &mut fixture_holons, BOOK_ATLAS_KEY)?;
@@ -164,98 +158,10 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
     let ada = saved(&mut test_case, &mut fixture_holons, PERSON_ADA_KEY)?;
     let bob = saved(&mut test_case, &mut fixture_holons, PERSON_BOB_KEY)?;
 
-    let types = PredicateTypes {
-        filter: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::Filter),
-        )?,
-        comparison: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::ComparisonPredicate),
-        )?,
-        any_of: lookup(&mut test_case, &mut fixture_holons, &query_key(QueryHolonTypeName::AnyOf))?,
-        literal: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::LiteralOperand),
-        )?,
-        seed: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::SeedHolons),
-        )?,
-        contains: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &operator_key(CoreOperatorTypeName::ContainsOperator),
-        )?,
-        equals: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &operator_key(CoreOperatorTypeName::EqualsOperator),
-        )?,
-        map_string: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &value_type_descriptor_key(
-                &CoreValueTypeName::MapStringValueType.as_value_name(),
-                &CoreValueTypeName::StringValueType,
-            )
-            .0,
-        )?,
-        map_integer: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &value_type_descriptor_key(
-                &CoreValueTypeName::MapIntegerValueType.as_value_name(),
-                &CoreValueTypeName::IntegerValueType,
-            )
-            .0,
-        )?,
-    };
-    let mut authoring = TransientAuthoring {
-        query_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::Query),
-        )?,
-        expand_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::Expand),
-        )?,
-        skip_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::Skip),
-        )?,
-        limit_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::Limit),
-        )?,
-        order_by_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::OrderBy),
-        )?,
-        spec_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::OrderBySpec),
-        )?,
-        distinct_type: lookup(
-            &mut test_case,
-            &mut fixture_holons,
-            &query_key(QueryHolonTypeName::Distinct),
-        )?,
-        test_case: &mut test_case,
-        fixture_context: &fixture_context,
-        fixture_holons: &mut fixture_holons,
-    };
-    let mut author = PredicateAuthoring { authoring: &mut authoring, types: &types };
+    let types = PredicateTypes::look_up(&mut test_case, &fixture_context, &mut fixture_holons)?;
+    let mut authoring = query_authoring(&mut test_case, &fixture_context, &mut fixture_holons)?;
+    let mut author =
+        PredicateAuthoring { authoring: &mut authoring, types: &types, prefix: "QryF1" };
 
     // Filter leaves and flat AnyOf.
     let strasse_title = author.contains("Strasse", "Title", "STRASSE")?;
@@ -313,18 +219,19 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
     let mixed_query = author.query("Mixed", mixed_expand)?;
 
     // Failures.
-    let equals_operand = author.literal(
-        "Equals",
+    let less_than_operand = author.literal(
+        "LessThan",
         &types.map_string,
         MapString("Roads".to_string()).to_base_value(),
     )?;
-    let equals_title = author.comparison("Equals", "Title", &types.equals, vec![equals_operand])?;
-    let equals_filter = author.filter("Equals", equals_title.clone())?;
-    let equals_query = author.query("Equals", equals_filter)?;
-    let late_equals = author.filter("LateEquals", equals_title)?;
-    let late_distinct = author.authoring.distinct("Distinct.QryF1LateEquals")?;
-    let late_distinct = author.authoring.next(late_distinct, late_equals)?;
-    let late_equals_query = author.query("LateEquals", late_distinct)?;
+    let less_than_title =
+        author.comparison("LessThan", "Title", &types.less_than, vec![less_than_operand])?;
+    let less_than_filter = author.filter("LessThan", less_than_title.clone())?;
+    let less_than_query = author.query("LessThan", less_than_filter)?;
+    let late_less_than = author.filter("LateLessThan", less_than_title)?;
+    let late_distinct = author.authoring.distinct("Distinct.QryF1LateLessThan")?;
+    let late_distinct = author.authoring.next(late_distinct, late_less_than)?;
+    let late_less_than_query = author.query("LateLessThan", late_distinct)?;
 
     let nested_leaf = author.contains("NestedLeaf", "Title", "x")?;
     let inner = author.any_of("Inner", vec![nested_leaf])?;
@@ -424,16 +331,16 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
 
         for (query, input, kind, what) in [
             (
-                &equals_query,
+                &less_than_query,
                 books(&[&roads]),
                 HolonErrorKind::NotImplemented,
-                "an Equals predicate",
+                "a LessThan predicate",
             ),
             (
-                &late_equals_query,
+                &late_less_than_query,
                 books(&[&roads]),
                 HolonErrorKind::NotImplemented,
-                "an Equals predicate after a completed Distinct",
+                "a LessThan predicate after a completed Distinct",
             ),
             (&nested_query, books(&[&roads]), HolonErrorKind::NotImplemented, "a nested AnyOf"),
             (
@@ -476,27 +383,100 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
     Ok(test_case)
 }
 
+/// Looks up the Query descriptors [`TransientAuthoring`] describes holons with.
+pub(super) fn query_authoring<'a>(
+    test_case: &'a mut DancesTestCase,
+    fixture_context: &'a std::sync::Arc<TransactionContext>,
+    fixture_holons: &'a mut FixtureHolons,
+) -> Result<TransientAuthoring<'a>, HolonError> {
+    let mut lookup = |name: QueryHolonTypeName| {
+        lookup_by_key(
+            test_case,
+            fixture_context,
+            fixture_holons,
+            &holon_type_descriptor_key(&name.as_holon_name()).0,
+        )
+    };
+    let query_type = lookup(QueryHolonTypeName::Query)?;
+    let expand_type = lookup(QueryHolonTypeName::Expand)?;
+    let skip_type = lookup(QueryHolonTypeName::Skip)?;
+    let limit_type = lookup(QueryHolonTypeName::Limit)?;
+    let order_by_type = lookup(QueryHolonTypeName::OrderBy)?;
+    let spec_type = lookup(QueryHolonTypeName::OrderBySpec)?;
+    let distinct_type = lookup(QueryHolonTypeName::Distinct)?;
+    Ok(TransientAuthoring {
+        test_case,
+        fixture_context,
+        fixture_holons,
+        query_type,
+        expand_type,
+        skip_type,
+        limit_type,
+        order_by_type,
+        spec_type,
+        distinct_type,
+    })
+}
+
 /// Canonical descriptors the predicate builders describe holons with.
-struct PredicateTypes {
-    filter: TestReference,
-    comparison: TestReference,
-    any_of: TestReference,
-    literal: TestReference,
-    seed: TestReference,
-    contains: TestReference,
-    equals: TestReference,
-    map_string: TestReference,
-    map_integer: TestReference,
+pub(super) struct PredicateTypes {
+    pub(super) filter: TestReference,
+    pub(super) comparison: TestReference,
+    pub(super) any_of: TestReference,
+    pub(super) literal: TestReference,
+    pub(super) seed: TestReference,
+    pub(super) contains: TestReference,
+    pub(super) equals: TestReference,
+    pub(super) less_than: TestReference,
+    pub(super) map_string: TestReference,
+    pub(super) map_integer: TestReference,
+}
+
+impl PredicateTypes {
+    pub(super) fn look_up(
+        test_case: &mut DancesTestCase,
+        fixture_context: &std::sync::Arc<TransactionContext>,
+        fixture_holons: &mut FixtureHolons,
+    ) -> Result<Self, HolonError> {
+        let mut lookup = |key: &str| lookup_by_key(test_case, fixture_context, fixture_holons, key);
+        let query = |name: QueryHolonTypeName| holon_type_descriptor_key(&name.as_holon_name()).0;
+        let operator =
+            |name: CoreOperatorTypeName| operator_type_descriptor_key(&name.as_operator_name().0).0;
+        let value = |name: CoreValueTypeName, family: CoreValueTypeName| {
+            value_type_descriptor_key(&name.as_value_name(), &family).0
+        };
+        Ok(Self {
+            filter: lookup(&query(QueryHolonTypeName::Filter))?,
+            comparison: lookup(&query(QueryHolonTypeName::ComparisonPredicate))?,
+            any_of: lookup(&query(QueryHolonTypeName::AnyOf))?,
+            literal: lookup(&query(QueryHolonTypeName::LiteralOperand))?,
+            seed: lookup(&query(QueryHolonTypeName::SeedHolons))?,
+            contains: lookup(&operator(CoreOperatorTypeName::ContainsOperator))?,
+            equals: lookup(&operator(CoreOperatorTypeName::EqualsOperator))?,
+            less_than: lookup(&operator(CoreOperatorTypeName::LessThanOperator))?,
+            map_string: lookup(&value(
+                CoreValueTypeName::MapStringValueType,
+                CoreValueTypeName::StringValueType,
+            ))?,
+            map_integer: lookup(&value(
+                CoreValueTypeName::MapIntegerValueType,
+                CoreValueTypeName::IntegerValueType,
+            ))?,
+        })
+    }
 }
 
 /// Authors transient predicate-bearing definitions on top of [`TransientAuthoring`].
-struct PredicateAuthoring<'a, 'b> {
-    authoring: &'a mut TransientAuthoring<'b>,
-    types: &'a PredicateTypes,
+/// Every definition key carries `prefix`, so fixtures sharing a transaction
+/// history never collide.
+pub(super) struct PredicateAuthoring<'a, 'b> {
+    pub(super) authoring: &'a mut TransientAuthoring<'b>,
+    pub(super) types: &'a PredicateTypes,
+    pub(super) prefix: &'static str,
 }
 
 impl PredicateAuthoring<'_, '_> {
-    fn relate(
+    pub(super) fn relate(
         &mut self,
         source: TestReference,
         relationship: QueryRelationshipTypeName,
@@ -506,11 +486,15 @@ impl PredicateAuthoring<'_, '_> {
         self.authoring.relate_all(source, &name, targets, format!("Relate --{name}--> targets"))
     }
 
-    fn query(&mut self, label: &str, root: TestReference) -> Result<TestReference, HolonError> {
-        self.authoring.query(&format!("Query.QryF1{label}"), root)
+    pub(super) fn query(
+        &mut self,
+        label: &str,
+        root: TestReference,
+    ) -> Result<TestReference, HolonError> {
+        self.authoring.query(&format!("Query.{}{label}", self.prefix), root)
     }
 
-    fn literal(
+    pub(super) fn literal(
         &mut self,
         label: &str,
         value_type: &TestReference,
@@ -519,7 +503,7 @@ impl PredicateAuthoring<'_, '_> {
         let mut properties = PropertyMap::new();
         properties.insert(QueryPropertyTypeName::OperandValue.as_property_name(), value);
         let literal = self.authoring.described(
-            &format!("LiteralOperand.QryF1{label}"),
+            &format!("LiteralOperand.{}{label}", self.prefix),
             properties,
             self.types.literal.clone(),
         )?;
@@ -527,11 +511,11 @@ impl PredicateAuthoring<'_, '_> {
             literal,
             &CoreRelationshipTypeName::ValueType.as_relationship_name().to_string(),
             value_type.clone(),
-            format!("LiteralOperand.QryF1{label} --ValueType--> its declared type"),
+            format!("LiteralOperand.{}{label} --ValueType--> its declared type", self.prefix),
         )
     }
 
-    fn comparison(
+    pub(super) fn comparison(
         &mut self,
         label: &str,
         property: &str,
@@ -543,7 +527,7 @@ impl PredicateAuthoring<'_, '_> {
             property,
         );
         let predicate = self.authoring.described(
-            &format!("ComparisonPredicate.QryF1{label}"),
+            &format!("ComparisonPredicate.{}{label}", self.prefix),
             properties,
             self.types.comparison.clone(),
         )?;
@@ -553,7 +537,7 @@ impl PredicateAuthoring<'_, '_> {
     }
 
     /// A Contains leaf whose substring is declared as `MapStringValueType`.
-    fn contains(
+    pub(super) fn contains(
         &mut self,
         label: &str,
         property: &str,
@@ -566,39 +550,53 @@ impl PredicateAuthoring<'_, '_> {
         self.comparison(label, property, &contains, vec![operand])
     }
 
-    fn any_of(
+    /// An Equals leaf whose literal is declared as `value_type`, which must be
+    /// the selected property's ValueType or a subtype of it.
+    pub(super) fn equals(
+        &mut self,
+        label: &str,
+        property: &str,
+        value_type: &TestReference,
+        value: BaseValue,
+    ) -> Result<TestReference, HolonError> {
+        let operand = self.literal(label, value_type, value)?;
+        let equals = self.types.equals.clone();
+        self.comparison(label, property, &equals, vec![operand])
+    }
+
+    pub(super) fn any_of(
         &mut self,
         label: &str,
         predicates: Vec<TestReference>,
     ) -> Result<TestReference, HolonError> {
         let any_of = self.authoring.described(
-            &format!("AnyOf.QryF1{label}"),
+            &format!("AnyOf.{}{label}", self.prefix),
             PropertyMap::new(),
             self.types.any_of.clone(),
         )?;
         self.relate(any_of, QueryRelationshipTypeName::Predicates, predicates)
     }
 
-    fn filter(
+    pub(super) fn filter(
         &mut self,
         label: &str,
         predicate: TestReference,
     ) -> Result<TestReference, HolonError> {
         let filter = self.authoring.described(
-            &format!("Filter.QryF1{label}"),
+            &format!("Filter.{}{label}", self.prefix),
             PropertyMap::new(),
             self.types.filter.clone(),
         )?;
         self.relate(filter, QueryRelationshipTypeName::Predicate, vec![predicate])
     }
 
-    fn seed(
+    pub(super) fn seed(
         &mut self,
         label: &str,
         predicate: Option<TestReference>,
     ) -> Result<TestReference, HolonError> {
         let seed = self.authoring.described(
-            &format!("SeedHolons.QryF1{label}"),
+            &format!("SeedHolons.{}{label}", self.prefix),
             PropertyMap::new(),
             self.types.seed.clone(),
         )?;

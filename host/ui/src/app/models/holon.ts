@@ -7,6 +7,7 @@ import {
   MapString,
   MapInteger,
   LocalId,
+  HolonId,
   TemporaryId,
   PropertyMap,
   PropertyName,
@@ -82,6 +83,11 @@ export interface StagedHolon {
   original_id?: LocalId | null;
   versioned_source_id?: LocalId | null;
   touched_relationship_names?: RelationshipName[];
+  pending_relationship_deltas: Record<string, {
+    added: Array<{ Saved: HolonId } | { Staged: TemporaryId }>;
+    removed: Array<{ Saved: HolonId } | { Staged: TemporaryId }>;
+    repeated_occurrence: boolean;
+  }>;
   relationship_commit_scope: "Full" | "TouchedOnly";
   errors: HolonError[];
 }
@@ -248,6 +254,7 @@ export class StagedHolonFactory {
       original_id: null,
       versioned_source_id: null,
       touched_relationship_names: [],
+      pending_relationship_deltas: {},
       relationship_commit_scope: "Full",
       errors: []
     };
@@ -268,6 +275,7 @@ export class StagedHolonFactory {
       original_id: originalId,
       versioned_source_id: originalId,
       touched_relationship_names: [],
+      pending_relationship_deltas: {},
       relationship_commit_scope: "Full",
       errors: []
     };

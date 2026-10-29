@@ -22,10 +22,10 @@ const wait = async () => { for (let i = 0; i < 40; i++) await Promise.resolve();
 const property = (name: string, kind = 'StringValue', array = false) => ({ propertyName: async () => name, displayName: async () => `${name} heading`, valueKind: async () => kind, isArray: async () => array });
 function collection(count: number) {
   const members = Array.from({ length: count }, (_, index) => ({ key: async () => `row-${index}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
-  return { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  return { length: count, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 const valueContext = { theme: { reference: {} } } as never;
-const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
+const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, identity: async () => name, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture(populated = false) {
   const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
   const valueSlot = { key: async () => 'TableCollection.ValueSlot', propertyValue: async () => ({ StringValue: 'value' }) };
@@ -210,7 +210,7 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
   // their own InstanceProperties are empty. Their members are still real holons.
   const keys = name === 'InstanceProperties' ? ['TypeName.PropertyType', 'DisplayName.PropertyType'] : ['InstanceProperties', 'InstanceRelationships'];
   const members = keys.map(key => ({ holonDescriptor: async () => ({ hasInstanceKey: async () => false }), key: vi.fn(async () => key), versionedKey: vi.fn(async () => `${key}@1`), propertyValue: vi.fn() }));
-  const described = { length: members.length, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  const described = { length: members.length, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
   const updates: CollectionUpdate[] = [];
   f.activation.activate(tab(name), 'collection', update => updates.push(update));
@@ -227,7 +227,7 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
 
 it.each([1])('renders the identity-only projection for %i members, including an unkeyed holon', async count => {
   const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => false }), key: vi.fn(async () => null), versionedKey: vi.fn(async () => 'unkeyed-reference@1') };
-  const described = { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
+  const described = { length: count, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
   const updates: CollectionUpdate[] = [];
   f.activation.activate(tab('Descriptors'), 'collection', update => updates.push(update));
@@ -277,7 +277,7 @@ it('restores independent tab sorts after fresh projection and keeps sorted activ
 it('uses the element type key rule and actual keys for default ordering', async () => {
   const f = fixture();
   const members = ['b', 'a'].map(key => ({ key: async () => key, propertyValue: async () => ({ StringValue: 'unrelated label' }) }));
-  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { hasInstanceKey: async () => true, instanceProperties: async () => [property('Name')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => true, instanceProperties: async () => [property('Name')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
   const publish = vi.fn(); f.activation.activate(tab('Keyed'), 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
   const table = publish.mock.lastCall![0].content as HTMLElement;
@@ -305,7 +305,7 @@ it('defaults a broad Owns collection to actual member keys when concrete types a
     holonDescriptor: async () => ({ hasInstanceKey: async () => true }),
     propertyValue: async () => ({ StringValue: key }),
   }));
-  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Key')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property('Key')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
   const publish = vi.fn(); f.activation.activate(tab('Owns'), 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
   const table = publish.mock.lastCall![0].content as HTMLElement;
@@ -320,7 +320,7 @@ it('renders InstanceRelationships when its classification anchor has no instance
     holonDescriptor: async () => ({ hasInstanceKey: async () => true }),
     propertyValue: vi.fn(),
   }));
-  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: {
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { effectiveDescriptor: async function () { return this; },
     hasInstanceKey: async () => { throw Object.assign(new Error('No effective key rule'), { code: 'DOMAIN_ERROR', variant: 'NoEffectiveKeyRule' }); },
     instanceProperties: async () => [],
   }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
@@ -339,7 +339,7 @@ it('reads 57 existing keys without inspecting key rules or member descriptors', 
     holonDescriptor: forbidden,
     propertyValue: vi.fn(async () => ({ StringValue: 'Token' })),
   }));
-  f.owner.describedRelatedHolons.mockResolvedValue({ length: 57, elementType: {
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 57, elementType: { effectiveDescriptor: async function () { return this; },
     hasInstanceKey: forbidden, instanceProperties: async () => [property('Name')],
   }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
   const publish = vi.fn(); f.activation.activate(tab('Defines Design Token'), 'collection', publish);

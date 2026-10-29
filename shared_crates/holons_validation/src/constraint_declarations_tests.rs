@@ -1,7 +1,8 @@
 use super::*;
+use holons_core::HolonCollectionApi;
 use holons_core::{
     descriptors::{same_definition, ConstraintContributions},
-    CurrentDescriptorReader, DescriptorReader, ExtendsLineageDiagnosis, ReadableHolon,
+    ExtendsLineageDiagnosis, ReadableHolon,
 };
 
 const BOUNDED: [&str; 4] = [
@@ -145,8 +146,7 @@ fn bounded_configuration_boundaries_are_declarations_without_evaluators() -> Res
                 }
             }
             let roots = roots(&fixture);
-            let mut assessment =
-                ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+            let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
             let mut collector = ValidationCollector::default();
             assert_eq!(
                 assessment.assess_constraint(&constraint, &mut collector)?,
@@ -223,8 +223,7 @@ fn cardinality_and_presence_only_uniqueness_have_distinct_configuration_contract
         }
         let roots = roots(&fixture);
         let mut collector = ValidationCollector::default();
-        let mut assessment =
-            ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+        let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
         assert_eq!(
             assessment.assess_constraint(&constraint, &mut collector)?,
             accepted,
@@ -260,7 +259,7 @@ fn broader_local_constraints_preserve_inherited_obligations_and_check_reusable_r
     fixture.link("Child", CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
     fixture.link("Child", CoreRelationshipTypeName::Constraints, "Broader")?;
     let roots = roots(&fixture);
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
     let mut products = DescriptorRuleProducts::default();
     let mut collector = ValidationCollector::default();
     let mut attachment_count = 0;
@@ -268,10 +267,7 @@ fn broader_local_constraints_preserve_inherited_obligations_and_check_reusable_r
         let diagnosis =
             ExtendsLineageDiagnosis::assess(&fixture.nodes[key], &roots.type_descriptor)?;
         let lineage = diagnosis.valid_lineage().unwrap();
-        attachment_count +=
-            ConstraintContributions::resolve_with_reader(lineage, &CurrentDescriptorReader)?
-                .effective
-                .len();
+        attachment_count += ConstraintContributions::resolve(lineage)?.effective.len();
         assert!(assessment.assess_descriptor(lineage, &mut products, &mut collector)?);
     }
     assert_eq!(collector.observations().constraint_attachment_count, attachment_count);
@@ -306,8 +302,7 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
         let roots = roots(&fixture);
         let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &roots.type_descriptor)?;
         let lineage = diagnosis.valid_lineage().unwrap();
-        let mut contributions =
-            ConstraintContributions::resolve_with_reader(lineage, &CurrentDescriptorReader)?;
+        let mut contributions = ConstraintContributions::resolve(lineage)?;
         // Deliberately bypass the kernel's additive construction. Normal authoring
         // cannot express removal or provenance replacement of inherited obligations.
         if remove {
@@ -317,8 +312,7 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
         }
         let mut products = DescriptorRuleProducts::default();
         let mut collector = ValidationCollector::default();
-        let mut assessment =
-            ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+        let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
         assert!(!assessment.assess_contributions(
             lineage,
             &contributions,
@@ -352,7 +346,7 @@ fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
     )?;
     let roots = roots(&fixture);
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?
+    assert!(ConstraintDeclarationAssessment::new(&roots)?
         .assess_constraint(&constraint, &mut collector)?);
     assert_eq!(collector.observations().effective_constraint_count, 0);
     assert!(collector.into_report().is_accepted());
@@ -419,7 +413,7 @@ fn extension_owned_constraint_and_dependency_owned_reuse_do_not_change_ownership
     )?;
     let mut collector = ValidationCollector::default();
     let mut products = DescriptorRuleProducts::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
     assert!(assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut products,
@@ -431,7 +425,7 @@ fn extension_owned_constraint_and_dependency_owned_reuse_do_not_change_ownership
     let owners = fixture.nodes["ReusableRule"].related_holons(CoreRelationshipTypeName::RuleOf)?;
     let owners = owners.read().unwrap();
     assert_eq!(owners.get_members().len(), 1);
-    assert!(same_definition(&owners.get_members()[0], &fixture.nodes["CoreSchema"]));
+    assert!(same_definition(&owners.get_members()[0], &fixture.nodes["CoreSchema"])?);
     Ok(())
 }
 
@@ -450,7 +444,7 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
     let subject = fixture.nodes["IntegerValueType.ValueType"].clone();
     let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &roots.type_descriptor)?;
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
     assert!(!assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut DescriptorRuleProducts::default(),
@@ -477,19 +471,17 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
         "IntegerValueType.ValueType",
     )?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?
-        .assess_descriptor(
-            diagnosis.valid_lineage().unwrap(),
-            &mut DescriptorRuleProducts::default(),
-            &mut collector
-        )?);
+    assert!(ConstraintDeclarationAssessment::new(&roots)?.assess_descriptor(
+        diagnosis.valid_lineage().unwrap(),
+        &mut DescriptorRuleProducts::default(),
+        &mut collector
+    )?);
     assert!(collector.into_report().is_accepted());
     Ok(())
 }
 
 #[test]
-fn malformed_describing_selections_are_findings_but_reader_failures_stay_operational(
-) -> Result<(), HolonError> {
+fn malformed_describing_selections_are_findings() -> Result<(), HolonError> {
     let mut fixture = fixture()?;
     let missing = fixture.node("Missing")?;
     let mut multiple = fixture.node("Multiple")?;
@@ -502,7 +494,7 @@ fn malformed_describing_selections_are_findings_but_reader_failures_stay_operati
     let wrong = configured(&mut fixture, "Wrong", "StringValueType.ValueType")?;
     let roots = roots(&fixture);
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
     for constraint in [&missing, &multiple, &wrong] {
         assert!(!assessment.assess_constraint(constraint, &mut collector)?);
     }
@@ -521,63 +513,30 @@ fn malformed_describing_selections_are_findings_but_reader_failures_stay_operati
         .iter()
         .any(|finding| finding.message.contains("MultipleDescribedBy")));
 
-    struct Unreadable {
-        subject: Option<HolonReference>,
-    }
-    impl DescriptorReader for Unreadable {
-        type Error = HolonError;
-        fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-            if self.subject.as_ref().is_none_or(|subject| same_definition(subject, reference)) {
-                return Err(HolonError::EmptyField("reader failed".into()));
-            }
-            Ok(reference.clone())
-        }
-        fn operational_error(error: &HolonError) -> Option<&HolonError> {
-            Some(error)
-        }
-    }
-    let collector = ValidationCollector::default();
-    assert!(matches!(
-        ConstraintDeclarationAssessment::new(&roots, &Unreadable { subject: None }),
-        Err(HolonError::EmptyField(_))
-    ));
-    assert_eq!(collector.observations().constraint_declaration_count, 0);
-    let reader = Unreadable { subject: Some(missing.clone()) };
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &reader)?;
-    let mut collector = ValidationCollector::default();
-    assert!(matches!(
-        assessment.assess_constraint(&missing, &mut collector),
-        Err(HolonError::EmptyField(_))
-    ));
-    assert_eq!(collector.observations().constraint_declaration_count, 0);
     Ok(())
 }
 
 #[test]
-fn prospective_declaration_reads_replacement_configuration_and_deduplicates_saved_references(
-) -> Result<(), HolonError> {
-    use holons_core::descriptors::ProspectiveDescriptorReader;
+fn declaration_reads_exact_configuration_and_deduplicates_each_definition() -> Result<(), HolonError>
+{
     let mut fixture = fixture()?;
     let mut constraint = configured(&mut fixture, "Configured", CARDINALITY)?;
     constraint.with_property_value("Minimum", 0_i64)?;
     let fixture = fixture.saved_snapshot()?;
-    let mut replacement = fixture.replacement("Configured")?;
+    let mut replacement = fixture.stage_update_of("Configured")?;
     replacement.with_property_value("Minimum", -1_i64)?;
-    let reader = ProspectiveDescriptorReader::new(&fixture.context, &[replacement.clone()])?;
     let roots = roots(&fixture);
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &reader).unwrap();
-    assert!(!assessment.assess_constraint(&fixture.nodes["Configured"], &mut collector).unwrap());
+    let mut assessment = ConstraintDeclarationAssessment::new(&roots).unwrap();
+    assert!(assessment.assess_constraint(&fixture.nodes["Configured"], &mut collector).unwrap());
     assert!(!assessment.assess_constraint(&replacement.into(), &mut collector).unwrap());
-    assert_eq!(collector.observations().constraint_declaration_count, 1);
+    assert_eq!(collector.observations().constraint_declaration_count, 2);
     assert_eq!(collector.into_report().violation_count(), 1);
     Ok(())
 }
 
 #[test]
-fn prospective_parameter_membership_uses_the_replacement_constraint_type() -> Result<(), HolonError>
-{
-    use holons_core::descriptors::ProspectiveDescriptorReader;
+fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), HolonError> {
     let mut fixture = fixture()?;
     fixture.node("Extension.ConstraintType")?;
     fixture.link(
@@ -615,20 +574,26 @@ fn prospective_parameter_membership_uses_the_replacement_constraint_type() -> Re
     let fixture = fixture.saved_snapshot()?;
     let roots = roots(&fixture);
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?
+    assert!(!ConstraintDeclarationAssessment::new(&roots)?
         .assess_constraint(&fixture.nodes["Configured"], &mut collector)?);
 
-    let mut replacement = fixture.replacement("Extension.ConstraintType")?;
+    let mut replacement = fixture.stage_update_of("Extension.ConstraintType")?;
     replacement.add_related_holons(
         CoreRelationshipTypeName::InstanceProperties,
         vec![fixture.nodes["Limit.ConfigurationProperty"].clone()],
     )?;
-    let reader = ProspectiveDescriptorReader::new(&fixture.context, &[replacement])?;
+    let configured = fixture.stage_update_of_with("Configured", |model| {
+        let mut members = holons_core::HolonCollection::new_transient();
+        members.add_references(vec![replacement.into()])?;
+        model.relationships.as_mut().unwrap().insert(
+            CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+            std::sync::Arc::new(std::sync::RwLock::new(members)),
+        );
+        Ok(())
+    })?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(&roots, &reader)
-        .unwrap()
-        .assess_constraint(&fixture.nodes["Configured"], &mut collector)
-        .unwrap());
+    assert!(ConstraintDeclarationAssessment::new(&roots)?
+        .assess_constraint(&configured.into(), &mut collector)?);
     assert!(collector.into_report().is_accepted());
     Ok(())
 }
@@ -647,7 +612,7 @@ fn bound_diagnostics_distinguish_negative_integers_from_wrong_value_kinds() -> R
             .with_property_value("MinimumIsInclusive", true)?;
         let roots = roots(&fixture);
         let mut collector = ValidationCollector::default();
-        assert!(!ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?
+        assert!(!ConstraintDeclarationAssessment::new(&roots)?
             .assess_constraint(&constraint, &mut collector)?);
         let report = collector.into_report();
         assert_eq!(report.violation_count(), 1);
@@ -669,61 +634,11 @@ fn malformed_inclusivity_does_not_invent_an_equal_endpoint_interval_failure(
         .with_property_value("MaximumIsInclusive", true)?;
     let roots = roots(&fixture);
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?
+    assert!(!ConstraintDeclarationAssessment::new(&roots)?
         .assess_constraint(&constraint, &mut collector)?);
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 1);
     assert!(report.violations[0].message.contains("MinimumIsInclusive must be Boolean"));
-    Ok(())
-}
-
-#[test]
-fn fixed_family_roots_are_selected_once_for_the_declaration_scope() -> Result<(), HolonError> {
-    use std::cell::RefCell;
-    struct CountingReader {
-        family_roots: Vec<HolonReference>,
-        selections: RefCell<[usize; 6]>,
-    }
-    impl DescriptorReader for CountingReader {
-        type Error = HolonError;
-        fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
-            if let Some(index) =
-                self.family_roots.iter().position(|root| same_definition(root, reference))
-            {
-                self.selections.borrow_mut()[index] += 1;
-            }
-            Ok(reference.clone())
-        }
-        fn operational_error(error: &HolonError) -> Option<&HolonError> {
-            Some(error)
-        }
-    }
-    let mut fixture = fixture()?;
-    fixture.node("Extension.ConstraintType")?;
-    fixture.link(
-        "Extension.ConstraintType",
-        CoreRelationshipTypeName::Extends,
-        "ConstraintType.HolonType",
-    )?;
-    let first = configured(&mut fixture, "First", "Extension.ConstraintType")?;
-    let second = configured(&mut fixture, "Second", "Extension.ConstraintType")?;
-    let roots = roots(&fixture);
-    let reader = CountingReader {
-        family_roots: roots
-            .bounded
-            .iter()
-            .chain([&roots.cardinality, &roots.unique_items])
-            .cloned()
-            .collect(),
-        selections: RefCell::new([0; 6]),
-    };
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots, &reader)?;
-    let mut collector = ValidationCollector::default();
-    for constraint in [&first, &second, &first] {
-        assert!(assessment.assess_constraint(constraint, &mut collector)?);
-    }
-    assert_eq!(*reader.selections.borrow(), [1; 6]);
-    assert_eq!(collector.observations().constraint_declaration_count, 2);
     Ok(())
 }
 
@@ -739,8 +654,7 @@ fn shared_invalid_constraint_findings_keep_their_subject_in_either_candidate_ord
             fixture.link(key, CoreRelationshipTypeName::Constraints, "SharedInvalid")?;
         }
         let roots = roots(&fixture);
-        let mut assessment =
-            ConstraintDeclarationAssessment::new(&roots, &CurrentDescriptorReader)?;
+        let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
         let mut collector = ValidationCollector::default();
         for key in order {
             let diagnosis =
@@ -757,8 +671,101 @@ fn shared_invalid_constraint_findings_keep_their_subject_in_either_candidate_ord
         assert_eq!(configuration_findings.len(), 1);
         assert_eq!(
             configuration_findings[0].subject,
-            ValidationSubjectPath::Holon { holon_identity: constraint.reference_id_string() }
+            ValidationSubjectPath::Holon { holon_identity: constraint.full_reference_id_string() }
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn declaration_backend_errors_remain_operational_through_plain_references() -> Result<(), HolonError>
+{
+    let mut fixture = fixture()?;
+    let mut constraint = configured(&mut fixture, "Unreadable", CARDINALITY)?;
+    constraint.with_property_value("Minimum", 0_i64)?;
+    let fixture = fixture.saved_snapshot_with_read_errors(&[(
+        "Unreadable",
+        HolonError::EmptyField("injected backend failure".into()),
+    )])?;
+    let mut assessment = ConstraintDeclarationAssessment::new(&roots(&fixture))?;
+    let mut collector = ValidationCollector::default();
+    assert!(
+        matches!(assessment.assess_constraint(&fixture.nodes["Unreadable"], &mut collector), Err(HolonError::EmptyField(message)) if message == "injected backend failure")
+    );
+    assert!(collector.into_report().is_accepted());
+    Ok(())
+}
+
+#[test]
+fn shared_constraint_declaration_findings_reach_every_saved_definition_candidate(
+) -> Result<(), HolonError> {
+    let mut fixture = fixture_with_commit_roots()?;
+    let mut constraint = configured(&mut fixture, "SharedInvalid", CARDINALITY)?;
+    constraint.with_property_value("Minimum", -1_i64)?;
+    let fixture = fixture.saved_snapshot()?;
+    let first = fixture.stage_update_of("SharedInvalid")?;
+    let second = fixture.stage_update_of("SharedInvalid")?;
+    {
+        let handle = second.get_holon_to_commit(&fixture.context)?;
+        let mut holon = handle.write().unwrap();
+        let Holon::Staged(staged) = &mut *holon else { unreachable!() };
+        staged.note_relationship_mutation(false)?;
+    }
+    for candidates in [[first.clone(), second.clone()], [second.clone(), first.clone()]] {
+        assert!(!validate_commit_candidates(&fixture.context, &candidates)?.is_accepted());
+        for candidate in &candidates {
+            assert!(candidate.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-CONSTRAINT-003")));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn staged_schema_member_keeps_declaration_checks_without_scanning_saved_members(
+) -> Result<(), HolonError> {
+    let mut fixture = fixture_with_commit_roots()?;
+    for key in ["SavedOwner", "SavedMemberV1", "SavedMemberV3", "SavedRule"] {
+        fixture.node(key)?;
+    }
+    fixture.link("SavedOwner", CoreRelationshipTypeName::Components, "SavedMemberV1")?;
+    fixture.link("SavedOwner", CoreRelationshipTypeName::Rules, "SavedRule")?;
+    fixture.link("SavedMemberV3", CoreRelationshipTypeName::Predecessor, "SavedMemberV1")?;
+    fixture.link("SavedOwner", CoreRelationshipTypeName::DescribedBy, "Schema.HolonType")?;
+    let fixture = fixture.saved_snapshot_with_read_errors(&[
+        ("SavedMemberV1", HolonError::InvalidState("unstaged membership is not a subject".into())),
+        ("SavedMemberV3", HolonError::InvalidState("membership does not select a head".into())),
+        ("SavedRule", HolonError::InvalidState("unstaged rule is not a subject".into())),
+    ])?;
+    // A staged component schedules its exact saved owner. That must not expand
+    // declaration assessment to the owner's saved Components or Rules.
+    let mut descriptor = fixture.context.mutation().stage_new_holon(
+        fixture.context.mutation().new_holon(Some(MapString("NewDescriptor".into())))?,
+    )?;
+    descriptor.with_property_value("DefinesInstanceTypeKind", false)?;
+    descriptor.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![fixture.nodes["StringValueType.ValueType"].clone()],
+    )?;
+    descriptor.add_related_holons(
+        CoreRelationshipTypeName::ComponentOf,
+        vec![fixture.nodes["SavedOwner"].clone()],
+    )?;
+    let mut invalid = fixture.context.mutation().stage_new_holon(
+        fixture.context.mutation().new_holon(Some(MapString("InvalidConstraint".into())))?,
+    )?;
+    invalid.with_property_value("Minimum", -1_i64)?;
+    invalid.with_descriptor(fixture.nodes[CARDINALITY].clone())?;
+    descriptor
+        .add_related_holons(CoreRelationshipTypeName::Constraints, vec![invalid.clone().into()])?;
+    descriptor.with_descriptor(fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone())?;
+    let assessment = assess_commit_candidates(&fixture.context, &[descriptor])?;
+    assert!(assessment.report.violations.iter().any(
+        |finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code }
+            if code == "DS-CONSTRAINT-003")
+            && finding.subject == crate::assessment_support::path(&invalid.clone().into())
+    ));
+    for edge in [CoreRelationshipTypeName::Components, CoreRelationshipTypeName::Rules] {
+        assert_eq!(fixture.backend_reads_for(&edge), 0, "unexpected {edge:?} scan");
     }
     Ok(())
 }

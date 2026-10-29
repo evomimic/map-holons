@@ -24,7 +24,7 @@ function fixture(identityOnly = false) {
   document.body.append(element);
   const key = descriptor('Key'), count = descriptor('Count', 'IntegerValue');
   const members = ['A', 'B'].map((name, index) => ({ key: async () => name, propertyValue: async () => index ? null : { IntegerValue: 3 } }));
-  const collection = { length: 2, elementType: { instanceProperties: async () => identityOnly ? [] : [key, count] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as unknown as DescribedHolonCollection;
+  const collection = { length: 2, elementType: { effectiveDescriptor: async function () { return this; }, instanceProperties: async () => identityOnly ? [] : [key, count] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as unknown as DescribedHolonCollection;
   const reference = (name: string) => ({ key: async () => name, propertyValue: async () => ({ StringValue: name }) }) as HolonReference;
   const table = reference('Table'), slot = reference('Table.ValueSlot'), text = reference('Text Value'), integer = reference('Integer Value');
   const transaction = { selectValueVisualizer: vi.fn(async property => ({ selected: property === count ? integer : text })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => key) } as unknown as MapTransaction;

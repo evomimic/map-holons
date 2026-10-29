@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createRelationshipDescriptorHandle, createHolonDescriptorHandle } from '../../src/sdk/descriptors';
+import { createRelationshipDescriptorHandle, createEffectiveHolonDescriptorHandle } from '../../src/sdk/descriptors';
 import { createHolonReference } from '../../src/sdk/references';
 import { isMapCommandWire } from '../../src/internal/wire-types/commands';
 import type { MapIpcRequest } from '../../src/internal/wire-types';
@@ -34,7 +34,7 @@ it.each([true, false])('reads hasInstanceKey=%s through the bound HolonType desc
     expect(request.command).toEqual({ Holon: { tx_id: 41, target, action: { Read: 'GetHasInstanceKey' } } });
     return { request_id: request.request_id, result: { Ok: { Value: { BooleanValue: keyed } } } };
   });
-  expect(await createHolonDescriptorHandle(createHolonReference(41, target)).hasInstanceKey()).toBe(keyed);
+  expect(await createEffectiveHolonDescriptorHandle(createHolonReference(41, target)).hasInstanceKey()).toBe(keyed);
 });
 
 it('preserves a missing key rule as a domain error rather than a malformed response', async () => {
@@ -42,7 +42,7 @@ it('preserves a missing key rule as a domain error rather than a malformed respo
     request_id: request.request_id,
     result: { Err: { NoEffectiveKeyRule: { descriptor: 'DeclaredRelationshipType.RelationshipType' } } },
   }));
-  const descriptor = createHolonDescriptorHandle(createHolonReference(41, target));
+  const descriptor = createEffectiveHolonDescriptorHandle(createHolonReference(41, target));
   await expect(descriptor.hasInstanceKey()).rejects.toMatchObject({
     code: 'DOMAIN_ERROR', variant: 'NoEffectiveKeyRule',
     payload: { descriptor: 'DeclaredRelationshipType.RelationshipType' },
@@ -54,11 +54,11 @@ it.each([
   { WrongDescriptorKind: { expected: 'KeyRuleType', found: 'Other' } },
 ])('still rejects malformed descriptor error payloads', async error => {
   invoke.mockImplementation(async (_command, { request }: { request: MapIpcRequest }) => ({ request_id: request.request_id, result: { Err: error } }));
-  await expect(createHolonDescriptorHandle(createHolonReference(41, target)).hasInstanceKey()).rejects.toMatchObject({ code: 'MALFORMED_RESPONSE' });
+  await expect(createEffectiveHolonDescriptorHandle(createHolonReference(41, target)).hasInstanceKey()).rejects.toMatchObject({ code: 'MALFORMED_RESPONSE' });
 });
 
 it('preserves a wrong-kind descriptor diagnostic', async () => {
   const payload = { expected: 'KeyRuleType', found: 'Other', descriptor: 'Example' };
   invoke.mockImplementation(async (_command, { request }: { request: MapIpcRequest }) => ({ request_id: request.request_id, result: { Err: { WrongDescriptorKind: payload } } }));
-  await expect(createHolonDescriptorHandle(createHolonReference(41, target)).hasInstanceKey()).rejects.toMatchObject({ code: 'DOMAIN_ERROR', variant: 'WrongDescriptorKind', payload });
+  await expect(createEffectiveHolonDescriptorHandle(createHolonReference(41, target)).hasInstanceKey()).rejects.toMatchObject({ code: 'DOMAIN_ERROR', variant: 'WrongDescriptorKind', payload });
 });

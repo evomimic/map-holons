@@ -1,11 +1,22 @@
-use super::definition_identity::definition_identity;
-use super::{CurrentDescriptorReader, DescriptorReader};
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
+
+use crate::core_shared_objects::transactions::TransactionContext;
 
 use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
+
+#[cfg(test)]
+thread_local! {
+    static LINEAGE_READS: std::cell::RefCell<std::collections::HashMap<String, usize>> = Default::default();
+}
+
+#[cfg(test)]
+pub(crate) fn lineage_edge_reads(reference: &HolonReference) -> usize {
+    LINEAGE_READS
+        .with(|reads| *reads.borrow().get(&reference.full_reference_id_string()).unwrap_or(&0))
+}
 
 /// Direction of a relationship type descriptor relative to its declared edge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -64,6 +75,10 @@ pub(crate) fn inheritance_rule(relationship: &CoreRelationshipTypeName) -> Inher
 /// Cardinality is enforced here so all iterator-based callers inherit the same
 /// multiple-parent error semantics.
 pub(crate) fn extends_parent(holon: &HolonReference) -> Result<Option<HolonReference>, HolonError> {
+    #[cfg(test)]
+    LINEAGE_READS.with(|reads| {
+        *reads.borrow_mut().entry(holon.full_reference_id_string()).or_default() += 1
+    });
     let collection_arc = holon.related_holons(CoreRelationshipTypeName::Extends)?;
     let collection = collection_arc.read().map_err(lock_error)?;
     let members = collection.get_members();
@@ -103,7 +118,7 @@ pub fn equals_or_extends(
     anchor: &HolonReference,
 ) -> Result<bool, HolonError> {
     for ancestor in walk_extends_chain(candidate) {
-        if super::same_definition(&ancestor?, anchor) {
+        if super::same_definition(&ancestor?, anchor)? {
             return Ok(true);
         }
     }
@@ -169,35 +184,15 @@ pub fn effective_relationship_targets(
     start: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
 ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
-    effective_relationship_targets_with_reader(start, relationship_name, &CurrentDescriptorReader)
-}
-
-/// Resolves effective members using assessment-local content selection at every edge.
-pub fn effective_relationship_targets_with_reader<R: DescriptorReader>(
-    start: &HolonReference,
-    relationship_name: CoreRelationshipTypeName,
-    reader: &R,
-) -> Result<Vec<EffectiveRelationshipMember>, R::Error> {
     match inheritance_rule(&relationship_name) {
-        InheritanceRule::Local => local_relationship_members(start, relationship_name, reader),
+        InheritanceRule::Local => local_relationship_members(start, relationship_name),
         InheritanceRule::Additive => {
-            let mut lineage =
-                walk_extends_chain_with_reader(start, reader).collect::<Result<Vec<_>, _>>()?;
-            lineage.reverse();
-            let mut members = Vec::new();
-            for ancestor in lineage {
-                members.extend(local_relationship_members(
-                    &ancestor,
-                    relationship_name.clone(),
-                    reader,
-                )?);
-            }
-            Ok(members)
+            let lineage = ancestors(start)?;
+            relationship_targets_in_lineage(&lineage, relationship_name)
         }
         InheritanceRule::Override => {
-            for ancestor in walk_extends_chain_with_reader(start, reader) {
-                let members =
-                    local_relationship_members(&ancestor?, relationship_name.clone(), reader)?;
+            for ancestor in walk_extends_chain(start) {
+                let members = local_relationship_members(&ancestor?, relationship_name.clone())?;
                 if !members.is_empty() {
                     return Ok(members);
                 }
@@ -207,12 +202,40 @@ pub fn effective_relationship_targets_with_reader<R: DescriptorReader>(
     }
 }
 
-fn local_relationship_members<R: DescriptorReader>(
+/// Resolves contributions using a complete, self-first lineage already checked by the caller.
+/// This shares the local occurrence reader with lazy individual descriptor accessors.
+pub(crate) fn relationship_targets_in_lineage(
+    lineage: &[HolonReference],
+    relationship_name: CoreRelationshipTypeName,
+) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
+    match inheritance_rule(&relationship_name) {
+        InheritanceRule::Local => match lineage.first() {
+            Some(target) => local_relationship_members(target, relationship_name),
+            None => Ok(Vec::new()),
+        },
+        InheritanceRule::Additive => {
+            let mut members = Vec::new();
+            for ancestor in lineage.iter().rev() {
+                members.extend(local_relationship_members(ancestor, relationship_name.clone())?);
+            }
+            Ok(members)
+        }
+        InheritanceRule::Override => {
+            for ancestor in lineage {
+                let members = local_relationship_members(ancestor, relationship_name.clone())?;
+                if !members.is_empty() {
+                    return Ok(members);
+                }
+            }
+            Ok(Vec::new())
+        }
+    }
+}
+
+fn local_relationship_members(
     descriptor: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
-    reader: &R,
-) -> Result<Vec<EffectiveRelationshipMember>, R::Error> {
-    let descriptor = reader.select(descriptor)?;
+) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
     let collection_arc = descriptor.related_holons(relationship_name)?;
     let collection = collection_arc.read().map_err(lock_error)?;
     collection
@@ -220,11 +243,11 @@ fn local_relationship_members<R: DescriptorReader>(
         .iter()
         .map(|member| {
             Ok(EffectiveRelationshipMember {
-                member: reader.select(member)?,
+                member: member.clone(),
                 declared_on: descriptor.clone(),
             })
         })
-        .collect::<Result<_, R::Error>>()
+        .collect::<Result<_, HolonError>>()
 }
 
 /// Lazy iterator over a descriptor's `Extends` lineage.
@@ -235,23 +258,18 @@ fn local_relationship_members<R: DescriptorReader>(
 ///   next step
 /// - `visited` tracks already-yielded descriptors for cycle detection
 /// - `finished` marks terminal exhaustion after either the root or an error
-pub struct ExtendsIter<R: DescriptorReader = CurrentDescriptorReader> {
-    reader: R,
+pub struct ExtendsIter {
+    context: Option<Arc<TransactionContext>>,
     next: Option<HolonReference>,
-    pending_error: Option<R::Error>,
-    visited: HashSet<crate::ProspectiveIdentity>,
+    pending_error: Option<HolonError>,
+    visited: HashSet<crate::DefinitionIdentity>,
     finished: bool,
 }
 
 impl ExtendsIter {
     fn new(start: &HolonReference) -> Self {
-        Self::with_reader(start, CurrentDescriptorReader)
-    }
-}
-impl<R: DescriptorReader> ExtendsIter<R> {
-    fn with_reader(start: &HolonReference, reader: R) -> Self {
         Self {
-            reader,
+            context: start.transaction_context(),
             next: Some(start.clone()),
             pending_error: None,
             visited: HashSet::new(),
@@ -260,8 +278,8 @@ impl<R: DescriptorReader> ExtendsIter<R> {
     }
 }
 
-impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
-    type Item = Result<HolonReference, R::Error>;
+impl Iterator for ExtendsIter {
+    type Item = Result<HolonReference, HolonError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Terminal state: once the chain is exhausted or an error has been
@@ -277,14 +295,19 @@ impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
             return Some(Err(error));
         }
 
-        let current = match self.reader.select(&self.next.take()?) {
-            Ok(current) => current,
+        let current = self.next.take()?;
+        if self.context.is_none() {
+            self.context = current.transaction_context();
+        }
+        let identity =
+            crate::DefinitionIdentity::for_optional_context(&current, self.context.as_ref());
+        let identity = match identity {
+            Ok(identity) => identity,
             Err(error) => {
                 self.finished = true;
-                return Some(Err(error));
+                return Some(Err(error.into()));
             }
         };
-        let identity = definition_identity(&current);
         if !self.visited.insert(identity) {
             self.finished = true;
             return Some(Err(
@@ -302,30 +325,6 @@ impl<R: DescriptorReader> Iterator for ExtendsIter<R> {
 
         Some(Ok(current))
     }
-}
-
-/// Uses the same lineage algorithm with explicit assessment content selection.
-pub fn walk_extends_chain_with_reader<'a, R: DescriptorReader>(
-    start: &HolonReference,
-    reader: &'a R,
-) -> ExtendsIter<&'a R> {
-    ExtendsIter::with_reader(start, reader)
-}
-
-/// Prospective lineage membership; every visited definition supplies selected content.
-pub fn equals_or_extends_with_reader<R: DescriptorReader>(
-    candidate: &HolonReference,
-    anchor: &HolonReference,
-    reader: &R,
-) -> Result<bool, R::Error> {
-    // Selecting the anchor prevents a contested definition from passing by identity alone.
-    let anchor = reader.select(anchor)?;
-    for ancestor in walk_extends_chain_with_reader(candidate, reader) {
-        if super::same_definition(&ancestor?, &anchor) {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 #[cfg(test)]

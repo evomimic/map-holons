@@ -8,6 +8,7 @@ use tracing::trace;
 use type_names::relationship_names::CoreRelationshipTypeName;
 use type_names::CorePropertyTypeName;
 
+use crate::core_shared_objects::holon::access_policy::check_saved_holon_access;
 use crate::core_shared_objects::space_read_handle::SpaceReadHandle;
 use crate::descriptors::effective_relationships::effective_declared_relationships_for_holon;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -66,11 +67,13 @@ impl SmartReference {
     pub fn retain_content(
         &self,
     ) -> Result<crate::core_shared_objects::holon_cache::SavedHolonRetention, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         self.space_read_handle.retain_holon(&self.holon_id)
     }
 
     /// Prepares explicit saved membership demand using this reference's bound cache.
     pub fn prepare_relationships(&self, names: &[RelationshipName]) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Read)?;
         self.space_read_handle.prepare_relationships(&self.holon_id, names)
     }
 
@@ -79,6 +82,26 @@ impl SmartReference {
     /// Returns the persistent holon id for this smart reference.
     pub fn holon_id(&self) -> HolonId {
         self.holon_id.clone()
+    }
+
+    /// Reads the lineage root from persisted record metadata, preserving external
+    /// space identity. A root record has no original ID and names itself.
+    pub fn lineage_root_id(&self) -> Result<HolonId, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!("Reading saved lineage metadata: {error}"))
+        })?;
+        holon.is_accessible(AccessType::Read)?;
+        let Some(root) = holon.original_id() else {
+            return Ok(self.holon_id());
+        };
+        Ok(match self.holon_id() {
+            HolonId::Local(_) => HolonId::Local(root),
+            HolonId::External(mut external) => {
+                external.local_id = root;
+                HolonId::External(external)
+            }
+        })
     }
 
     /// Returns a borrowed view of the cached smart properties, if present.
@@ -98,6 +121,7 @@ impl SmartReference {
     ///
     /// Prefer `holon_id()` for new code.
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         Ok(self.holon_id())
     }
 
@@ -111,6 +135,7 @@ impl SmartReference {
     // *************** UTILITY METHODS ***************
 
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         let rc_holon = self.space_read_handle.get_rc_holon(&self.holon_id)?;
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
@@ -124,6 +149,11 @@ impl SmartReference {
 
     pub fn reference_id_string(&self) -> String {
         format!("HolonId={:?}", self.holon_id)
+    }
+
+    /// Complete identity for associations; saved ids already render unabbreviated.
+    pub fn full_reference_id_string(&self) -> String {
+        self.reference_id_string()
     }
 }
 
@@ -188,6 +218,7 @@ impl ReadableHolonImpl for SmartReference {
     }
 
     fn holon_id_impl(&self) -> Result<HolonId, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         Ok(self.holon_id.clone())
     }
 
@@ -203,18 +234,8 @@ impl ReadableHolonImpl for SmartReference {
 
         Ok(borrowed_holon.into_node_model())
     }
-
     fn is_accessible_impl(&self, access_type: AccessType) -> Result<(), HolonError> {
-        let rc_holon = self.get_rc_holon()?;
-        let holon = rc_holon.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on holon for is_accessible_impl: {}",
-                e
-            ))
-        })?;
-        holon.is_accessible(access_type)?;
-
-        Ok(())
+        check_saved_holon_access(access_type)
     }
 
     fn is_committed_source_impl(&self) -> Result<bool, HolonError> {
@@ -277,6 +298,7 @@ impl ReadableHolonImpl for SmartReference {
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         // Check if the property value is available in smart_property_values
         if let Some(smart_map) = &self.smart_property_values {
             if let Some(value) = smart_map.get(property_name) {
@@ -285,8 +307,6 @@ impl ReadableHolonImpl for SmartReference {
         }
 
         trace!("unable to get value for {:?} property from smart_property_values. Fetching rc_holon from HolonsCache", property_name);
-
-        self.is_accessible(AccessType::Read)?;
 
         // Get rc_holon from HolonCacheManager
         let holon = self.get_rc_holon()?;

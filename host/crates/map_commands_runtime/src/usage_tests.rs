@@ -77,6 +77,14 @@ impl Store {
     }
 }
 impl HolonServiceApi for Store {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::EffectiveHolonDescriptor, HolonError> {
+        crate::prepared_descriptor_fixture::construct(context, target)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -85,8 +93,8 @@ impl HolonServiceApi for Store {
         _: &Arc<TransactionContext>,
         _: &HolonId,
         _: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        Ok(RelationshipCachePolicy::Fresh)
+    ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn visualizer_artifact_available_internal(
         &self,

@@ -80,7 +80,7 @@ pub(crate) fn no_undescribed_properties(
         ValidationInvocation::Prepared {
             binding,
             path,
-            subject: crate::PreparedRuleSubject::Holon { undescribed_properties },
+            subject: crate::PreparedRuleSubject::Holon { undescribed_properties, .. },
         } => (binding, path, undescribed_properties.clone()),
         _ => return Err(wrong_invocation("holon")),
     };
@@ -88,6 +88,36 @@ pub(crate) fn no_undescribed_properties(
         rule_violation(collector, binding, path, "DS-PROP-003", format!(
             "Property {name} is populated but is not described; remove it or declare it in the effective property contract."
         ))?;
+    }
+    Ok(RuleOutcome::Continue)
+}
+
+/// Contextual uniqueness consumes bounded prepared evidence, without selecting heads
+/// or validating supporting saved holons. A same-key continuation has no exemption.
+pub(crate) fn key_uniqueness(
+    invocation: ValidationInvocation<'_>,
+    collector: &mut ValidationCollector,
+) -> Result<RuleOutcome, HolonError> {
+    let (binding, path, key_claim) = match invocation {
+        ValidationInvocation::Prepared {
+            binding,
+            path,
+            subject: crate::PreparedRuleSubject::Holon { key_claim, .. },
+        } => (binding, path, key_claim),
+        _ => return Err(wrong_invocation("holon")),
+    };
+    if let Some(claim) = key_claim {
+        let conflicts = claim.evidence.conflicting_lineages(&claim.lineage);
+        if !conflicts.is_empty() {
+            let conflicts =
+                conflicts.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+            let message = format!(
+                "Key {} for lineage {} conflicts with saved or live claims from \
+                 different lineages: {conflicts}. Committed historical key associations are retained.",
+                claim.evidence.key, claim.lineage,
+            );
+            rule_violation(collector, binding, path, "DS-KEY-006", message)?;
+        }
     }
     Ok(RuleOutcome::Continue)
 }
@@ -140,6 +170,7 @@ pub(crate) fn native_rule_kind(name: CoreValidationRuleName) -> Option<core_type
         BaseValueKindMatchesEnum => Some(BaseValueKind::Enum),
         RequiredPropertyPresence
         | NoUndescribedProperties
+        | KeyUniqueness
         | AtMostOneDirectParent
         | AcyclicExtendsLineage
         | ExtendsLineageTerminatesAtTypeDescriptor

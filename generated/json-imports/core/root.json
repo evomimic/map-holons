@@ -109,6 +109,9 @@
               "$ref": "NoUndescribedProperties.ValidationRule"
             },
             {
+              "$ref": "KeyUniqueness.ValidationRule"
+            },
+            {
               "$ref": "DescribingCategoryCompatibility.ValidationRule"
             },
             {
@@ -668,9 +671,6 @@
           "target": [
             {
               "$ref": "SchemaDependenciesAcyclic.ValidationRule"
-            },
-            {
-              "$ref": "CrossSchemaDependenciesDeclared.ValidationRule"
             }
           ]
         }
@@ -1393,7 +1393,8 @@
         "DisplayName": "Rules",
         "DisplayNamePlural": "Rules Relationships",
         "Description": "Materialized inverse of RuleOf from an origin schema to its rules.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
       },
       "relationships": [
         {

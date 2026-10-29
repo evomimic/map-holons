@@ -71,6 +71,7 @@ export type HolonReferenceWire =
 // ===========================================
 
 export type CollectionState =
+  | 'Immutable'
   | 'Fetched'
   | 'Transient'
   | 'Staged'
@@ -184,6 +185,14 @@ export interface TransientHolonWire {
   original_id: LocalId | null;
 }
 
+/** Identity-only mutation summaries; repeated occurrences make these conservative. */
+export type PendingRelationshipTarget = { Saved: HolonId } | { Staged: TemporaryId };
+export interface PendingDelta {
+  added: PendingRelationshipTarget[];
+  removed: PendingRelationshipTarget[];
+  repeated_occurrence: boolean;
+}
+
 export interface StagedHolonWire {
   version: MapInteger;
   holon_state: HolonState;
@@ -195,6 +204,7 @@ export interface StagedHolonWire {
   original_id: LocalId | null;
   versioned_source_id?: LocalId | null;
   touched_relationship_names?: RelationshipName[];
+  pending_relationship_deltas: Record<string, PendingDelta>;
   relationship_commit_scope: RelationshipCommitScope;
   errors: HolonErrorWire[];
 }
@@ -549,6 +559,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const COLLECTION_STATES = new Set<CollectionState>([
+  'Immutable',
   'Fetched',
   'Transient',
   'Staged',
@@ -1258,6 +1269,16 @@ export function isTransientHolonWire(value: unknown): value is TransientHolonWir
   );
 }
 
+export function isPendingRelationshipTarget(value: unknown): value is PendingRelationshipTarget {
+  return isTaggedValue(value, 'Saved', isHolonId) || isTaggedValue(value, 'Staged', isString);
+}
+
+export function isPendingDelta(value: unknown): value is PendingDelta {
+  return isRecord(value) && Array.isArray(value['added']) && value['added'].every(isPendingRelationshipTarget) &&
+    Array.isArray(value['removed']) && value['removed'].every(isPendingRelationshipTarget) &&
+    typeof value['repeated_occurrence'] === 'boolean';
+}
+
 export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
   return (
     isRecord(value) &&
@@ -1276,6 +1297,8 @@ export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
     (value['touched_relationship_names'] === undefined ||
       (Array.isArray(value['touched_relationship_names']) &&
         value['touched_relationship_names'].every(isString))) &&
+    isRecord(value['pending_relationship_deltas']) &&
+    Object.values(value['pending_relationship_deltas']).every(isPendingDelta) &&
     (value['relationship_commit_scope'] === 'Full' ||
       value['relationship_commit_scope'] === 'TouchedOnly') &&
     Array.isArray(value['errors']) &&
