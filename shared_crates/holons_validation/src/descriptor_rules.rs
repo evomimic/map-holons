@@ -11,15 +11,18 @@ use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
     descriptors::{
         effective_relationship_targets, same_definition, ContractContributions,
-        DescriptorKindRoots, ExtendsLineageDefect, KindResolutionError, StructuralPrerequisites,
+        DescriptorKindSemantics, ExtendsLineageDefect, KindResolutionError,
+        StructuralPrerequisites,
     },
     Descriptor, HolonReference, ReadableHolon,
 };
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName};
+use type_names::{
+    CoreDefinitionRole, CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName,
+};
 
 use crate::commitments::required_key;
 use crate::handlers::{finding, rule_violation};
-use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector, ValidationInvocation};
+use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector};
 
 #[derive(Clone, Copy, Debug)]
 enum DiagnosticKind {
@@ -31,18 +34,6 @@ enum DiagnosticKind {
 struct PreparedDiagnostic {
     kind: DiagnosticKind,
     message: String,
-}
-
-/// Family roots required by DS-CONTRACT-004. The roots are resolved once by the
-/// assessment and retain their exact definition identities.
-#[derive(Clone, Debug)]
-pub struct ContractKindRoots {
-    /// Designated `PropertyType.TypeDescriptor` root.
-    pub property: HolonReference,
-    /// Designated `DeclaredRelationshipType.RelationshipType` root.
-    pub relationship: HolonReference,
-    /// Designated `ValueType.TypeDescriptor` root.
-    pub value: HolonReference,
 }
 
 /// Findings prepared from kernel products, keyed by their canonical rule identity.
@@ -73,11 +64,7 @@ impl DescriptorRuleProducts {
     /// A rootless non-root holon is not a descriptor by kernel classification;
     /// incompatible meta-type selection is handled separately by DS-KIND-005.
     /// Governing-descriptor diagnosis is assessed separately by the prerequisite pass.
-    pub fn prepare_structure(
-        &mut self,
-        prerequisites: &StructuralPrerequisites,
-        root: &HolonReference,
-    ) {
+    pub fn prepare_structure(&mut self, prerequisites: &StructuralPrerequisites) {
         use CoreValidationRuleName::*;
         let lineage = &prerequisites.subject_lineage;
         for defect in &lineage.defects {
@@ -99,16 +86,16 @@ impl DescriptorRuleProducts {
                 ExtendsLineageDefect::WrongTermination { terminal } => self.violation(
                     ExtendsLineageTerminatesAtTypeDescriptor,
                     format!(
-                        "Parented Extends lineage terminates at {} instead of TypeDescriptor {}; connect it to the designated root.",
+                        "Parented Extends lineage terminates at {} instead of {}; connect it to the TypeDescriptor role.",
                         terminal.reference_id_string(),
-                        root.reference_id_string()
+                        CoreDefinitionRole::TypeDescriptor.key()
                     ),
                 ),
                 ExtendsLineageDefect::RootHasParent => self.violation(
                     UniqueTypeDescriptorRoot,
                     format!(
-                        "Designated TypeDescriptor root {} has an Extends parent; remove that edge.",
-                        root.reference_id_string()
+                        "The {} role has an Extends parent; remove that edge.",
+                        CoreDefinitionRole::TypeDescriptor.key()
                     ),
                 ),
             }
@@ -121,7 +108,7 @@ impl DescriptorRuleProducts {
     pub fn prepare_kind(
         &mut self,
         prerequisites: &StructuralPrerequisites,
-        roots: &DescriptorKindRoots,
+        roots: &DescriptorKindSemantics,
     ) -> Result<(), HolonError> {
         use CoreValidationRuleName::*;
         let Some(subject_lineage) = prerequisites.subject_lineage.valid_lineage() else {
@@ -184,13 +171,14 @@ impl DescriptorRuleProducts {
                     Err(KindResolutionError::Read(error)) => return Err(error),
                 };
                 if let Some(kind) = kind {
-                    let is_root = same_definition(&subject, &roots.type_descriptor.clone())?;
+                    let is_root =
+                        subject_lineage.subject_has_role(CoreDefinitionRole::TypeDescriptor);
                     if (is_root && kind.is_some()) || (!is_root && kind.is_none()) {
                         self.violation(TypeDescriptorRootKindException, format!(
                             "Descriptor {} has instance kind {:?}; only TypeDescriptor {} may have none.",
                             subject.reference_id_string(),
                             kind.as_ref().map(|kind| kind.reference_id_string()),
-                            roots.type_descriptor.reference_id_string()
+                            CoreDefinitionRole::TypeDescriptor.key()
                         ));
                     }
                 }
@@ -248,17 +236,16 @@ impl DescriptorRuleProducts {
     pub fn prepare_contract(
         &mut self,
         contributions: &ContractContributions,
-        kind_roots: &DescriptorKindRoots,
-        contract_roots: &ContractKindRoots,
+        kind_roots: &DescriptorKindSemantics,
     ) -> Result<(), HolonError> {
         self.prepare_namespace(
             &contributions.properties,
             &MemberNamespace {
                 name: "property",
-                expected_kind: &contract_roots.property,
+                expected_kind: CoreDefinitionRole::PropertyType,
                 required_edges: &[(
                     CoreRelationshipTypeName::ValueType,
-                    Some(&contract_roots.value),
+                    Some(CoreDefinitionRole::ValueType),
                 )],
             },
             kind_roots,
@@ -267,7 +254,7 @@ impl DescriptorRuleProducts {
             &contributions.relationships,
             &MemberNamespace {
                 name: "relationship",
-                expected_kind: &contract_roots.relationship,
+                expected_kind: CoreDefinitionRole::DeclaredRelationshipType,
                 required_edges: &[
                     (CoreRelationshipTypeName::SourceType, None),
                     (CoreRelationshipTypeName::TargetType, None),
@@ -282,18 +269,11 @@ impl DescriptorRuleProducts {
     pub fn prepare_effective_schema(
         &mut self,
         projection: &holons_core::descriptors::ComputedEffectiveSchema,
-        context: &std::sync::Arc<
-            holons_core::core_shared_objects::transactions::TransactionContext,
-        >,
-        kind_roots: &DescriptorKindRoots,
-        contract_roots: &ContractKindRoots,
+        kind_roots: &DescriptorKindSemantics,
     ) -> Result<(), HolonError> {
-        use holons_core::descriptors::{
-            equals_or_extends, resolve_core_descriptor, EffectiveVocabulary,
-        };
-        use type_names::CoreHolonTypeName;
+        use holons_core::descriptors::{extends_role, EffectiveVocabulary};
         use CoreValidationRuleName::*;
-        self.prepare_contract(&projection.contract_contributions(), kind_roots, contract_roots)?;
+        self.prepare_contract(&projection.contract_contributions(), kind_roots)?;
         for source in [
             CoreRelationshipTypeName::AffordsDance,
             CoreRelationshipTypeName::AffordsCommand,
@@ -315,22 +295,10 @@ impl DescriptorRuleProducts {
                 seen.push(&entry.member);
             }
         }
-        for (vocabulary, category, family) in [
-            (
-                EffectiveVocabulary::Dances,
-                CoreHolonTypeName::DanceType,
-                CoreHolonTypeName::HolonType,
-            ),
-            (
-                EffectiveVocabulary::Commands,
-                CoreHolonTypeName::CommandType,
-                CoreHolonTypeName::HolonType,
-            ),
-            (
-                EffectiveVocabulary::Relationships,
-                CoreHolonTypeName::RelationshipType,
-                CoreHolonTypeName::TypeDescriptor,
-            ),
+        for (vocabulary, role) in [
+            (EffectiveVocabulary::Dances, CoreDefinitionRole::DanceType),
+            (EffectiveVocabulary::Commands, CoreDefinitionRole::CommandType),
+            (EffectiveVocabulary::Relationships, CoreDefinitionRole::RelationshipType),
         ] {
             if matches!(vocabulary, EffectiveVocabulary::Relationships)
                 && !projection.defines_holon_instances()?
@@ -387,13 +355,12 @@ impl DescriptorRuleProducts {
                 continue;
             }
             if !index.entries.is_empty() || !index.unnamed.is_empty() {
-                let anchor = resolve_core_descriptor(context, &category.descriptor_key(&family).0)?;
                 for entry in named_entries
                     .iter()
                     .flat_map(|(_, entries)| entries.iter())
                     .chain(index.unnamed.iter())
                 {
-                    if !equals_or_extends(&entry.member, &anchor)? {
+                    if !extends_role(&entry.member, role)? {
                         self.violation(ContractMemberKindCompatibility, format!("Effective {} member {} declared on {} has an incompatible descriptor category.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string()));
                     }
                 }
@@ -408,7 +375,7 @@ impl DescriptorRuleProducts {
         &mut self,
         contributions: &[holons_core::EffectiveRelationshipMember],
         definition: &MemberNamespace<'_>,
-        kind_roots: &DescriptorKindRoots,
+        kind_roots: &DescriptorKindSemantics,
     ) -> Result<(), HolonError> {
         use CoreValidationRuleName::*;
         let namespace = definition.name;
@@ -468,7 +435,7 @@ impl DescriptorRuleProducts {
                 if let (Some(expected), [target]) = (target_kind, targets.as_slice()) {
                     self.check_member_kind(
                         target,
-                        expected,
+                        *expected,
                         &format!("{namespace} {} target", edge.as_relationship_name()),
                         kind_roots,
                     )?;
@@ -506,12 +473,12 @@ impl DescriptorRuleProducts {
     fn check_member_kind(
         &mut self,
         member: &HolonReference,
-        expected: &HolonReference,
+        expected: CoreDefinitionRole,
         role: &str,
-        roots: &DescriptorKindRoots,
+        roots: &DescriptorKindSemantics,
     ) -> Result<(), HolonError> {
         use holons_core::ExtendsLineageDiagnosis;
-        let diagnosis = ExtendsLineageDiagnosis::assess(member, &roots.type_descriptor)?;
+        let diagnosis = ExtendsLineageDiagnosis::assess(member)?;
         let Some(lineage) = diagnosis.valid_lineage() else {
             self.unresolved(
                 CoreValidationRuleName::ContractMemberKindCompatibility,
@@ -536,22 +503,10 @@ impl DescriptorRuleProducts {
             }
             Err(KindResolutionError::Read(error)) => return Err(error),
         };
-        let expected = expected.clone();
         let compatible = match kind {
             Some(kind) => {
-                // The resolved anchor comes from this already drained lineage.
-                // Its suffix is exactly the anchor's ancestry; re-reading it would
-                // repeat the same graph walk for every member sharing that anchor.
-                let mut reached_kind = false;
-                let mut matches_expected = false;
-                for ancestor in lineage.members() {
-                    reached_kind |= same_definition(ancestor, &kind)?;
-                    if reached_kind && same_definition(ancestor, &expected)? {
-                        matches_expected = true;
-                        break;
-                    }
-                }
-                matches_expected
+                // The anchor's suffix is already diagnosed; classify it without another walk.
+                lineage.contains_role_from(&kind, expected)?
             }
             None => false,
         };
@@ -561,7 +516,7 @@ impl DescriptorRuleProducts {
                 format!(
                     "{role} {} must have an InstanceTypeKind equal to or specializing {}.",
                     member.reference_id_string(),
-                    expected.reference_id_string()
+                    expected.key()
                 ),
             );
         }
@@ -586,23 +541,19 @@ impl DescriptorRuleProducts {
         dispatched: &std::collections::HashSet<CoreValidationRuleName>,
         collector: &mut ValidationCollector,
     ) {
-        use CoreValidationRuleName::*;
-        for (rule, code) in [
-            (AtMostOneDirectParent, "DS-STRUCT-002"),
-            (AcyclicExtendsLineage, "DS-STRUCT-003"),
-            (ExtendsLineageTerminatesAtTypeDescriptor, "DS-STRUCT-004"),
-            (UniqueTypeDescriptorRoot, "DS-STRUCT-005"),
-            (DescribingCategoryCompatibility, "DS-KIND-004"),
-            (DescriptorMetaTypeCorrespondence, "DS-KIND-005"),
-        ] {
+        for rule in CoreValidationRuleName::all() {
+            let registration = crate::registries::registration(rule);
+            if !registration.prerequisite {
+                continue;
+            }
             if dispatched.contains(&rule) {
                 continue;
             }
             for diagnostic in self.diagnostics.get(&rule).into_iter().flatten() {
                 let kind = match diagnostic.kind {
-                    DiagnosticKind::Violation => {
-                        CommitValidationViolationKind::RuleViolation { code: code.into() }
-                    }
+                    DiagnosticKind::Violation => CommitValidationViolationKind::RuleViolation {
+                        code: registration.code.into(),
+                    },
                     DiagnosticKind::UnresolvedDependency => {
                         CommitValidationViolationKind::UnresolvedLocalDependency
                     }
@@ -619,7 +570,7 @@ impl DescriptorRuleProducts {
         }
     }
 
-    fn emit(
+    pub(crate) fn emit(
         &self,
         rule: CoreValidationRuleName,
         code: &str,
@@ -652,112 +603,6 @@ impl DescriptorRuleProducts {
 /// Endpoint compatibility is deliberately absent: it belongs to C4.
 struct MemberNamespace<'a> {
     name: &'static str,
-    expected_kind: &'a HolonReference,
-    required_edges: &'a [(CoreRelationshipTypeName, Option<&'a HolonReference>)],
-}
-
-fn run(
-    invocation: ValidationInvocation<'_>,
-    collector: &mut ValidationCollector,
-    rule: CoreValidationRuleName,
-    code: &str,
-) -> Result<RuleOutcome, HolonError> {
-    let ValidationInvocation::Descriptor { binding, path, products } = invocation else {
-        return Err(HolonError::InvalidParameter(
-            "Descriptor rule requires prepared descriptor products".into(),
-        ));
-    };
-    products.emit(rule, code, binding, path, collector)
-}
-
-pub(crate) fn at_most_one_direct_parent(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::AtMostOneDirectParent, "DS-STRUCT-002")
-}
-pub(crate) fn acyclic_extends_lineage(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::AcyclicExtendsLineage, "DS-STRUCT-003")
-}
-pub(crate) fn extends_lineage_terminates_at_type_descriptor(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor, "DS-STRUCT-004")
-}
-pub(crate) fn unique_type_descriptor_root(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::UniqueTypeDescriptorRoot, "DS-STRUCT-005")
-}
-pub(crate) fn local_instance_kind_anchor_designation(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::LocalInstanceKindAnchorDesignation, "DS-KIND-001")
-}
-pub(crate) fn instance_kind_anchors_are_abstract(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::InstanceKindAnchorsAreAbstract, "DS-KIND-002")
-}
-pub(crate) fn type_descriptor_root_kind_exception(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::TypeDescriptorRootKindException, "DS-KIND-003")
-}
-pub(crate) fn describing_category_compatibility(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::DescribingCategoryCompatibility, "DS-KIND-004")
-}
-pub(crate) fn descriptor_meta_type_correspondence(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::DescriptorMetaTypeCorrespondence, "DS-KIND-005")
-}
-pub(crate) fn no_inherited_member_redeclaration(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001")
-}
-pub(crate) fn unique_semantic_member_names(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::UniqueSemanticMemberNames, "DS-CONTRACT-002")
-}
-pub(crate) fn well_formed_effective_member_definitions(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::WellFormedEffectiveMemberDefinitions, "DS-CONTRACT-003")
-}
-pub(crate) fn contract_member_kind_compatibility(
-    i: ValidationInvocation<'_>,
-    c: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(i, c, CoreValidationRuleName::ContractMemberKindCompatibility, "DS-CONTRACT-004")
-}
-
-/// Dispatches the prepared combined-set preservation result, without evaluating any constraint.
-pub(crate) fn inherited_constraint_non_relaxation(
-    invocation: ValidationInvocation<'_>,
-    collector: &mut ValidationCollector,
-) -> Result<RuleOutcome, HolonError> {
-    run(
-        invocation,
-        collector,
-        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-        "DS-CONSTRAINT-001",
-    )
+    expected_kind: CoreDefinitionRole,
+    required_edges: &'a [(CoreRelationshipTypeName, Option<CoreDefinitionRole>)],
 }

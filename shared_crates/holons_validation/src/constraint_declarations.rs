@@ -15,28 +15,13 @@ use holons_core::{
     HolonReference, ReadableHolon,
 };
 use type_names::{
-    CorePropertyTypeName as P, CoreRelationshipTypeName as R, CoreValidationRuleName,
+    CoreDefinitionRole, CorePropertyTypeName as P, CoreRelationshipTypeName as R,
+    CoreValidationRuleName,
 };
 
 use crate::{
     assessment_support::path, handlers::finding, DescriptorRuleProducts, ValidationCollector,
 };
-
-/// Canonical identities resolved by orchestration, using assessment anchor resolution.
-/// Roots are resolved for the Commit assessment scope.
-pub struct ConstraintDeclarationRoots {
-    /// Designated TypeDescriptor root used for structural diagnosis.
-    pub type_descriptor: HolonReference,
-    /// ConstraintType.HolonType; extension constraint types must specialize it.
-    pub constraint_type: HolonReference,
-    /// StringLengthConstraint, BytesLengthConstraint, NumericRangeConstraint,
-    /// and ItemCountConstraint, in any order. All share the normalized bound contract.
-    pub bounded: [HolonReference; 4],
-    /// CardinalityConstraint.ConstraintType, with inclusive integer endpoints.
-    pub cardinality: HolonReference,
-    /// UniqueItemsConstraint.ConstraintType, with no enable/disable parameter.
-    pub unique_items: HolonReference,
-}
 
 #[derive(Clone)]
 struct CheckedConstraint {
@@ -56,28 +41,15 @@ struct CheckedConstraint {
 /// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it
 /// neither evaluates attached constraints nor replaces the shared subject validators.
+#[derive(Default)]
 pub struct ConstraintDeclarationAssessment {
-    roots: ConstraintDeclarationRoots,
     checked: Vec<CheckedConstraint>,
 }
 
 impl ConstraintDeclarationAssessment {
     /// Creates an empty Schema-scoped declaration workset over an unchanged input snapshot.
-    pub fn new(roots: &ConstraintDeclarationRoots) -> Result<Self, HolonError> {
-        // Select fixed roots once, before any findings or memo entries are produced.
-        let roots = ConstraintDeclarationRoots {
-            type_descriptor: roots.type_descriptor.clone(),
-            constraint_type: roots.constraint_type.clone(),
-            bounded: [
-                (&roots.bounded[0]).clone(),
-                (&roots.bounded[1]).clone(),
-                (&roots.bounded[2]).clone(),
-                (&roots.bounded[3]).clone(),
-            ],
-            cardinality: roots.cardinality.clone(),
-            unique_items: roots.unique_items.clone(),
-        };
-        Ok(Self { roots, checked: Vec::new() })
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Checks a configured holon once, including owned constraints with no attachments.
@@ -209,11 +181,10 @@ impl ConstraintDeclarationAssessment {
         let mut checked =
             CheckedConstraint { constraint: constraint.clone(), constraint_type, valid: false };
         if let Some(constraint_type) = checked.constraint_type.clone() {
-            let diagnosis =
-                ExtendsLineageDiagnosis::assess(&constraint_type, &self.roots.type_descriptor)?;
+            let diagnosis = ExtendsLineageDiagnosis::assess(&constraint_type)?;
             if let Some(lineage) = diagnosis.valid_lineage() {
-                let root = &self.roots.constraint_type;
-                if lineage.contains(root)?
+                let root = CoreDefinitionRole::ConstraintType;
+                if lineage.contains_role(root)
                     && matches!(constraint_type.property_value(P::IsAbstractType)?, Some(BaseValue::BooleanValue(value)) if !value.0)
                 {
                     let configuration = Configuration {
@@ -226,7 +197,7 @@ impl ConstraintDeclarationAssessment {
                 } else {
                     fixed_violation(collector, &constraint, "DS-CONSTRAINT-003", format!(
                         "Constraint {} must select a concrete ConstraintType; describing type {} must specialize {} and have IsAbstractType false.",
-                        constraint.reference_id_string(), constraint_type.reference_id_string(), root.reference_id_string()));
+                        constraint.reference_id_string(), constraint_type.reference_id_string(), root.key()));
                     checked.constraint_type = None;
                 }
             } else {
@@ -247,19 +218,22 @@ impl ConstraintDeclarationAssessment {
         collector: &mut ValidationCollector,
     ) -> Result<bool, HolonError> {
         let mut valid = true;
-        // Family checks are identity-based and also apply to extension-owned subtypes.
-        for root in &self.roots.bounded {
-            if lineage.contains(root)? {
+        // Family roles also apply to extension-owned subtypes.
+        for root in [
+            CoreDefinitionRole::StringLengthConstraint,
+            CoreDefinitionRole::BytesLengthConstraint,
+            CoreDefinitionRole::NumericRangeConstraint,
+            CoreDefinitionRole::ItemCountConstraint,
+        ] {
+            if lineage.contains_role(root) {
                 valid &= configuration.check_bounds(false, collector)?;
                 break;
             }
         }
-        let cardinality = &self.roots.cardinality;
-        if lineage.contains(cardinality)? {
+        if lineage.contains_role(CoreDefinitionRole::CardinalityConstraint) {
             valid &= configuration.check_bounds(true, collector)?;
         }
-        let unique = &self.roots.unique_items;
-        if lineage.contains(unique)? {
+        if lineage.contains_role(CoreDefinitionRole::UniqueItemsConstraint) {
             // No Boolean parameter controls this commitment. Undeclared parameters,
             // including any enable/disable field, are rejected by membership checking.
             for field in [P::Minimum, P::Maximum, P::MinimumIsInclusive, P::MaximumIsInclusive] {

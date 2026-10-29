@@ -1,7 +1,6 @@
 //! Graph-derived descriptor categories; no category-name table or recursive validation.
 use super::{
-    definition_identity::same_definition, resolve_assessment_anchor, resolve_describing_type,
-    DescribingTypeResolution, StructuralPrerequisites, ValidExtendsLineage,
+    resolve_describing_type, DescribingTypeResolution, StructuralPrerequisites, ValidExtendsLineage,
 };
 use crate::{
     core_shared_objects::transactions::TransactionContext,
@@ -10,7 +9,7 @@ use crate::{
 use base_types::BaseValue;
 use core_types::HolonError;
 use std::sync::Arc;
-use type_names::CorePropertyTypeName;
+use type_names::{CoreDefinitionRole, CorePropertyTypeName};
 
 /// Separates a readable, invalid local designation from an inability to read the graph.
 #[derive(Debug)]
@@ -44,48 +43,25 @@ pub struct DescribingCompatibility {
     pub meta_type_corresponds: bool,
 }
 
-/// Canonical identities shared across one assessment, resolved once at its boundary.
+/// Category required independently of the subject's chosen describer.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RequiredCategory {
+    /// A kind anchor's actual direct describer.
+    Exact(HolonReference),
+    /// A fixed Core role in the governing lineage.
+    Role(CoreDefinitionRole),
+}
+
+/// Graph-derived kind semantics guarded by one transaction context, without resolved roots.
 #[derive(Clone, Debug)]
-pub struct DescriptorKindRoots {
-    pub type_descriptor: HolonReference,
-    pub holon_type: HolonReference,
-    pub meta_type: HolonReference,
-    pub meta_holon_type: HolonReference,
+pub struct DescriptorKindSemantics {
     context: Arc<TransactionContext>,
 }
 
-impl DescriptorKindRoots {
-    /// Resolves assessment anchors through staged-first transaction lookup.
-    /// This uses assessment anchor semantics rather than general Core lookup.
-    pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        Self::from_resolved(
-            context,
-            resolve_assessment_anchor(context, "TypeDescriptor")?,
-            resolve_assessment_anchor(context, "HolonType.TypeDescriptor")?,
-            resolve_assessment_anchor(context, "MetaTypeDescriptor.HolonType")?,
-            resolve_assessment_anchor(context, "MetaHolonType.MetaTypeDescriptor")?,
-        )
-    }
-
-    /// Uses already resolved identities, including split saved/staged bootstrap.
-    /// The caller must supply the designated Core roots, not name-based substitutes.
-    pub fn from_resolved(
-        context: &Arc<TransactionContext>,
-        type_descriptor: HolonReference,
-        holon_type: HolonReference,
-        meta_type: HolonReference,
-        meta_holon_type: HolonReference,
-    ) -> Result<Self, HolonError> {
-        for root in [&type_descriptor, &holon_type, &meta_type, &meta_holon_type] {
-            assert_reference_transaction_compatible(root, context)?;
-        }
-        Ok(Self {
-            type_descriptor,
-            holon_type,
-            meta_type,
-            meta_holon_type,
-            context: Arc::clone(context),
-        })
+impl DescriptorKindSemantics {
+    /// Establishes the transaction guard without resolving Core definitions.
+    pub fn new(context: &Arc<TransactionContext>) -> Self {
+        Self { context: Arc::clone(context) }
     }
 
     fn check_lineage(&self, lineage: ValidExtendsLineage<'_>) -> Result<(), HolonError> {
@@ -95,10 +71,10 @@ impl DescriptorKindRoots {
         Ok(())
     }
 
-    /// Classifies by the designated root's identity, never names or authored flags.
+    /// Classifies by the TypeDescriptor role in the diagnosed lineage.
     pub fn is_descriptor(&self, lineage: ValidExtendsLineage<'_>) -> Result<bool, HolonError> {
         self.check_lineage(lineage)?;
-        lineage.contains(&self.type_descriptor)
+        Ok(lineage.contains_role(CoreDefinitionRole::TypeDescriptor))
     }
 
     /// Returns the nearest locally designated anchor in an already diagnosed lineage.
@@ -123,7 +99,7 @@ impl DescriptorKindRoots {
         &self,
         lineage: ValidExtendsLineage<'_>,
     ) -> Result<Option<HolonReference>, KindResolutionError> {
-        if !lineage.contains(&self.type_descriptor)? {
+        if !lineage.contains_role(CoreDefinitionRole::TypeDescriptor) {
             return Ok(None);
         }
         for descriptor in lineage.members() {
@@ -150,10 +126,10 @@ impl DescriptorKindRoots {
         Ok(None)
     }
 
-    /// Meta-types specialize the designated meta-type root.
+    /// Meta-types have the MetaTypeDescriptor role in their diagnosed lineage.
     pub fn is_meta_type(&self, lineage: ValidExtendsLineage<'_>) -> Result<bool, HolonError> {
         self.check_lineage(lineage)?;
-        lineage.contains(&self.meta_type)
+        Ok(lineage.contains_role(CoreDefinitionRole::MetaTypeDescriptor))
     }
 
     /// Uses the kind anchor's direct describer, with the normative root exception.
@@ -161,7 +137,7 @@ impl DescriptorKindRoots {
     pub fn required_describing_category(
         &self,
         lineage: ValidExtendsLineage<'_>,
-    ) -> Result<Option<HolonReference>, HolonError> {
+    ) -> Result<Option<RequiredCategory>, HolonError> {
         self.check_lineage(lineage)?;
         self.category_in_lineage(lineage).map_err(KindResolutionError::into_read_error)
     }
@@ -169,20 +145,22 @@ impl DescriptorKindRoots {
     fn category_in_lineage(
         &self,
         lineage: ValidExtendsLineage<'_>,
-    ) -> Result<Option<HolonReference>, KindResolutionError> {
-        if same_definition(lineage.subject(), &self.type_descriptor)? {
-            return Ok(Some(self.meta_holon_type.clone()));
+    ) -> Result<Option<RequiredCategory>, KindResolutionError> {
+        if lineage.subject_has_role(CoreDefinitionRole::TypeDescriptor) {
+            return Ok(Some(RequiredCategory::Role(CoreDefinitionRole::MetaHolonType)));
         }
         match self.kind_in_lineage(lineage)? {
             Some(anchor) => {
                 match resolve_describing_type(&anchor).map_err(KindResolutionError::Read)? {
-                    DescribingTypeResolution::Unique(category) => Ok(Some(category)),
+                    DescribingTypeResolution::Unique(category) => {
+                        Ok(Some(RequiredCategory::Exact(category)))
+                    }
                     DescribingTypeResolution::Missing | DescribingTypeResolution::Multiple(_) => {
                         Ok(None)
                     }
                 }
             }
-            None => Ok(Some(self.holon_type.clone())),
+            None => Ok(Some(RequiredCategory::Role(CoreDefinitionRole::HolonType))),
         }
     }
 
@@ -210,10 +188,13 @@ impl DescriptorKindRoots {
         Ok(Some(DescribingCompatibility {
             category_matches: category
                 .as_ref()
-                .map(|category| governing.contains(category))
+                .map(|category| match category {
+                    RequiredCategory::Exact(reference) => governing.contains(reference),
+                    RequiredCategory::Role(role) => Ok(governing.contains_role(*role)),
+                })
                 .transpose()?,
-            meta_type_corresponds: subject.contains(&self.type_descriptor)?
-                == governing.contains(&self.meta_type)?,
+            meta_type_corresponds: subject.contains_role(CoreDefinitionRole::TypeDescriptor)
+                == governing.contains_role(CoreDefinitionRole::MetaTypeDescriptor),
         }))
     }
 }

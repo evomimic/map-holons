@@ -27,53 +27,6 @@ pub fn resolve_core_descriptor(
     }
 }
 
-/// Resolves an assessment anchor without substituting version-producing successors.
-/// Equivalent no-op and graph-only handles name one saved definition; their pending
-/// snapshots do not supply immutable anchor content. Distinct definitions remain ambiguous.
-pub fn resolve_assessment_anchor(
-    context: &Arc<TransactionContext>,
-    key: &str,
-) -> Result<HolonReference, HolonError> {
-    use crate::core_shared_objects::holon::StagedState;
-    use crate::DefinitionIdentity;
-
-    let key = MapString(key.to_owned());
-    let staged = match context.lookup().get_staged_holons_by_base_key(&key) {
-        Ok(staged) => staged,
-        Err(HolonError::HolonNotFound(_)) => Vec::new(),
-        Err(error) => return Err(error),
-    };
-    let mut resolved = None;
-    for candidate in staged {
-        let (state, source) = candidate.staged_state_and_source()?;
-        if !matches!(
-            state,
-            StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateGraphOnly
-        ) {
-            continue;
-        }
-        let identity =
-            DefinitionIdentity::from_staged_state(state, source, candidate.temporary_id())?;
-        match &resolved {
-            Some((previous, _)) if previous != &identity => {
-                return Err(HolonError::DuplicateError(
-                    "Core descriptor key".into(),
-                    key.to_string(),
-                ));
-            }
-            Some(_) => {}
-            None => {
-                let canonical = identity.definition_reference(context, &candidate.into());
-                resolved = Some((identity, canonical));
-            }
-        }
-    }
-    match resolved {
-        Some((_, reference)) => Ok(reference),
-        None => Ok(context.lookup().get_saved_holon_by_key(&key)?.into()),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

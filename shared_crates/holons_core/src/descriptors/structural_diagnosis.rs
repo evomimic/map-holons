@@ -1,12 +1,14 @@
 //! Classification-independent structural products. No validation dispatch occurs here.
 use super::{
     accessor_helpers::lock_error,
+    core_roles::record_key,
     definition_identity::{lineage_contains, same_definition},
     walk_extends_chain,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
+use base_types::MapString;
 use core_types::HolonError;
-use type_names::CoreRelationshipTypeName;
+use type_names::{CoreDefinitionRole, CoreRelationshipTypeName};
 
 /// Direct describing targets, retaining malformed readable state for diagnostics.
 #[derive(Clone, Debug)]
@@ -51,6 +53,8 @@ pub enum ExtendsLineageDefect {
 #[derive(Clone, Debug)]
 pub struct ExtendsLineageDiagnosis {
     pub lineage: Vec<HolonReference>,
+    /// Record keys aligned with the diagnosed lineage, read once during diagnosis.
+    pub(crate) member_keys: Vec<Option<MapString>>,
     pub defects: Vec<ExtendsLineageDefect>,
 }
 
@@ -59,12 +63,46 @@ pub struct ExtendsLineageDiagnosis {
 #[derive(Clone, Copy, Debug)]
 pub struct ValidExtendsLineage<'a> {
     members: &'a [HolonReference],
+    member_keys: &'a [Option<MapString>],
 }
 
-impl ValidExtendsLineage<'_> {
+impl<'a> ValidExtendsLineage<'a> {
+    /// Tests the subject's own diagnosed record key without reading the graph again.
+    pub fn subject_has_role(&self, role: CoreDefinitionRole) -> bool {
+        self.member_keys[0].as_ref().is_some_and(|key| key.0 == role.key())
+    }
+
+    /// Recognizes a Core role without reading the graph again.
+    pub fn contains_role(&self, role: CoreDefinitionRole) -> bool {
+        self.member_with_role(role).is_some()
+    }
+
+    /// Returns the actual reached definition carrying a Core role, in self-first order.
+    pub fn member_with_role(&self, role: CoreDefinitionRole) -> Option<&'a HolonReference> {
+        self.members.iter().zip(self.member_keys).find_map(|(member, key)| {
+            key.as_ref().is_some_and(|key| key.0 == role.key()).then_some(member)
+        })
+    }
+
     /// Returns members in self-first order.
     pub fn members(&self) -> &[HolonReference] {
         self.members
+    }
+
+    /// Recognizes a role at or above an exact member of this diagnosed lineage.
+    pub fn contains_role_from(
+        &self,
+        start: &HolonReference,
+        role: CoreDefinitionRole,
+    ) -> Result<bool, HolonError> {
+        let mut reached_start = false;
+        for (member, key) in self.members.iter().zip(self.member_keys) {
+            reached_start |= same_definition(member, start)?;
+            if reached_start && key.as_ref().is_some_and(|key| key.0 == role.key()) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     /// Reads candidate occurrences against this already diagnosed lineage.
@@ -89,13 +127,16 @@ impl ValidExtendsLineage<'_> {
 
 impl ExtendsLineageDiagnosis {
     /// Applies to any holon, without requiring descriptor classification.
-    /// The designated root is supplied by the assessment's resolved identities.
-    pub fn assess(subject: &HolonReference, root: &HolonReference) -> Result<Self, HolonError> {
+    pub fn assess(subject: &HolonReference) -> Result<Self, HolonError> {
         let mut lineage = Vec::new();
+        let mut member_keys = Vec::new();
         let mut defects = Vec::new();
         for step in walk_extends_chain(subject) {
             match step {
-                Ok(holon) => lineage.push(holon),
+                Ok(holon) => {
+                    member_keys.push(record_key(&holon)?);
+                    lineage.push(holon);
+                }
                 Err(error) => match &error {
                     HolonError::MultipleExtends { count, .. } => {
                         defects.push(ExtendsLineageDefect::MultipleParents {
@@ -118,22 +159,35 @@ impl ExtendsLineageDiagnosis {
         }
         let completed = defects.is_empty();
         // A root reached before a defect must still satisfy its own local invariant.
-        if lineage_contains(&lineage, root)?
-            && !local_targets(root, CoreRelationshipTypeName::Extends)?.is_empty()
-        {
-            defects.push(ExtendsLineageDefect::RootHasParent);
+        for (member, key) in lineage.iter().zip(&member_keys) {
+            if key.as_ref().is_some_and(|key| key.0 == CoreDefinitionRole::TypeDescriptor.key())
+                && !local_targets(member, CoreRelationshipTypeName::Extends)?.is_empty()
+            {
+                defects.push(ExtendsLineageDefect::RootHasParent);
+                break;
+            }
         }
-        if completed && lineage.len() > 1 && !same_definition(lineage.last().unwrap(), root)? {
+        if completed
+            && lineage.len() > 1
+            && !member_keys
+                .last()
+                .unwrap()
+                .as_ref()
+                .is_some_and(|key| key.0 == CoreDefinitionRole::TypeDescriptor.key())
+        {
             defects.push(ExtendsLineageDefect::WrongTermination {
                 terminal: lineage.last().unwrap().clone(),
             });
         }
-        Ok(Self { lineage, defects })
+        Ok(Self { lineage, member_keys, defects })
     }
 
     /// Exposes the lineage to kind checks only when diagnosis found no defect.
     pub fn valid_lineage(&self) -> Option<ValidExtendsLineage<'_>> {
-        self.defects.is_empty().then_some(ValidExtendsLineage { members: &self.lineage })
+        self.defects.is_empty().then_some(ValidExtendsLineage {
+            members: &self.lineage,
+            member_keys: &self.member_keys,
+        })
     }
 }
 
@@ -148,9 +202,9 @@ pub struct StructuralPrerequisites {
 impl StructuralPrerequisites {
     /// Diagnoses the subject and its unique direct describer without classifying either.
     /// Self-description reuses the subject diagnosis instead of recursively validating.
-    pub fn assess(subject: &HolonReference, root: &HolonReference) -> Result<Self, HolonError> {
+    pub fn assess(subject: &HolonReference) -> Result<Self, HolonError> {
         let describing_type = resolve_describing_type(subject)?;
-        let subject_lineage = ExtendsLineageDiagnosis::assess(subject, root)?;
+        let subject_lineage = ExtendsLineageDiagnosis::assess(subject)?;
         let governing_lineage = match &describing_type {
             DescribingTypeResolution::Unique(descriptor)
                 if same_definition(descriptor, &subject_lineage.lineage[0])? =>
@@ -158,7 +212,7 @@ impl StructuralPrerequisites {
                 Some(subject_lineage.clone())
             }
             DescribingTypeResolution::Unique(descriptor) => {
-                Some(ExtendsLineageDiagnosis::assess(descriptor, root)?)
+                Some(ExtendsLineageDiagnosis::assess(descriptor)?)
             }
             _ => None,
         };

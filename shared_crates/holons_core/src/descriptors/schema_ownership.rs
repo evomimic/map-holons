@@ -1,9 +1,8 @@
-use super::definition_identity::lineage_contains;
 use super::structural_diagnosis::local_targets;
-use super::{resolve_describing_type, walk_extends_chain, DescribingTypeResolution};
+use super::{has_role, resolve_describing_type, walk_extends_chain, DescribingTypeResolution};
 use crate::reference_layer::HolonReference;
 use core_types::HolonError;
-use type_names::CoreRelationshipTypeName;
+use type_names::{CoreDefinitionRole, CoreRelationshipTypeName};
 
 /// Authored ownership namespaces must remain separate when reading relationships.
 #[derive(Clone, Copy, Debug)]
@@ -30,13 +29,12 @@ pub enum SchemaOwnershipResolution {
     OwnedBy(HolonReference),
 }
 
-/// Resolves local ownership; the caller supplies the designated Schema type identity.
+/// Resolves local ownership, recognizing Schema on the owner's describing lineage.
 /// Missing/ambiguous describing targets are semantic defects. Unreadable targets
 /// remain operational errors; readable lineage defects retain their owner identity.
 pub fn resolve_schema_ownership(
     subject: &HolonReference,
     kind: SchemaOwnershipKind,
-    schema_type: &HolonReference,
 ) -> Result<SchemaOwnershipResolution, HolonError> {
     let targets = local_targets(subject, kind.relationship())?;
     let owner = match targets.as_slice() {
@@ -47,10 +45,14 @@ pub fn resolve_schema_ownership(
     let describing = resolve_describing_type(&owner)?;
     if let DescribingTypeResolution::Unique(descriptor) = &describing {
         match walk_extends_chain(descriptor).collect::<Result<Vec<_>, _>>() {
-            Ok(lineage) if lineage_contains(&lineage, schema_type)? => {
-                return Ok(SchemaOwnershipResolution::OwnedBy(owner))
+            Ok(lineage) => {
+                for member in &lineage {
+                    if has_role(member, CoreDefinitionRole::Schema)? {
+                        return Ok(SchemaOwnershipResolution::OwnedBy(owner));
+                    }
+                }
+                return Ok(SchemaOwnershipResolution::InvalidOwner { owner, describing });
             }
-            Ok(_) => return Ok(SchemaOwnershipResolution::InvalidOwner { owner, describing }),
             Err(error) => match &error {
                 defect
                 @ (HolonError::MultipleExtends { .. } | HolonError::CyclicExtends { .. }) => {
