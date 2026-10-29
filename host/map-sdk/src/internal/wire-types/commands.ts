@@ -162,8 +162,13 @@ export type ReadableHolonActionWire =
   | 'GetKey'
   | 'GetVersionedKey'
   | 'GetHolonDescriptor'
+  | 'GetEffectiveDescriptor'
+  | 'GetEffectiveDescriptorForType'
+  | 'GetReferenceIdentity'
+  | { GetEffectiveMember: { collection: RelationshipName; name: string } }
   | 'GetAvailableProperties'
   | 'GetAvailableRelationships'
+  | { GetAvailableRelationshipsFromEffective: { descriptor: HolonReferenceWire } }
   | 'GetEffectiveCardinality'
   | 'GetPropertyIsArray'
   | 'GetHasInstanceKey'
@@ -213,6 +218,9 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetKey',
   'GetVersionedKey',
   'GetHolonDescriptor',
+  'GetEffectiveDescriptor',
+  'GetEffectiveDescriptorForType',
+  'GetReferenceIdentity',
   'GetAvailableProperties',
   'GetAvailableRelationships',
   'GetEffectiveCardinality',
@@ -276,6 +284,8 @@ export function isReadableHolonActionWire(
   return (
     (typeof value === 'string' &&
       READABLE_HOLON_UNIT_ACTIONS.has(value as ReadableHolonActionWire)) ||
+    (hasSingleKey(value, 'GetEffectiveMember') && isStringFieldObject(value.GetEffectiveMember, 'collection') && isStringFieldObject(value.GetEffectiveMember, 'name')) ||
+    (hasSingleKey(value, 'GetAvailableRelationshipsFromEffective') && isRecord(value.GetAvailableRelationshipsFromEffective) && isHolonReferenceWire(value.GetAvailableRelationshipsFromEffective['descriptor'])) ||
     (hasSingleKey(value, 'GetDescribedRelatedHolons') && isStringFieldObject(value.GetDescribedRelatedHolons, 'name')) ||
     (hasSingleKey(value, 'GetPropertyValue') &&
       isStringFieldObject(value.GetPropertyValue, 'name')) ||

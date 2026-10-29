@@ -13,6 +13,7 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
+use super::access_policy::check_saved_holon_access;
 use super::state::{AccessType, HolonState, SavedState, ValidationState};
 
 /// Represents a Holon that has been persisted in the DHT.
@@ -69,6 +70,7 @@ impl SavedHolon {
 
     /// Retrieves the `LocalId`.
     pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         Ok(self.saved_id.clone())
     }
 
@@ -123,6 +125,7 @@ impl ReadableHolonState for SavedHolon {
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         Ok(self.property_map.get(property_name).cloned())
     }
 
@@ -147,6 +150,7 @@ impl ReadableHolonState for SavedHolon {
     /// # Errors
     /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn versioned_key(&self) -> Result<MapString, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         let key = self
             .key()
             .ok_or(HolonError::InvalidParameter("SavedHolon must have a key".to_string()))?;
@@ -164,12 +168,7 @@ impl ReadableHolonState for SavedHolon {
 
     /// Enforces access control rules for `SavedHolon`.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
-        match access_type {
-            AccessType::Read | AccessType::Clone => Ok(()), // Always accessible for reading/cloning
-            AccessType::Write | AccessType::Commit | AccessType::Abandon => {
-                Err(HolonError::NotAccessible(format!("{:?}", access_type), "Saved".to_string()))
-            }
-        }
+        check_saved_holon_access(access_type)
     }
 
     fn summarize(&self) -> String {
@@ -190,5 +189,47 @@ impl ReadableHolonState for SavedHolon {
             "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
             key, local_id, self.holon_state, self.validation_state
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn standard_access_and_property_reads_ignore_saved_and_validation_status(
+    ) -> Result<(), HolonError> {
+        let property = PropertyName("Name".into());
+        let value = BaseValue::StringValue("inspectable".into());
+        for saved_state in [SavedState::Fetched, SavedState::Deleted] {
+            for validation_state in [
+                ValidationState::NoDescriptor,
+                ValidationState::ValidationRequired,
+                ValidationState::Validated,
+                ValidationState::Invalid,
+            ] {
+                let mut holon = SavedHolon::new(
+                    LocalId(vec![1; 39]),
+                    PropertyMap::from([(property.clone(), value.clone())]),
+                    None,
+                    MapInteger(1),
+                );
+                holon.saved_state = saved_state.clone();
+                holon.validation_state = validation_state;
+                for access in [AccessType::Read, AccessType::Clone] {
+                    holon.is_accessible(access)?;
+                }
+                assert_eq!(holon.property_value(&property)?, Some(value.clone()));
+                for access in [AccessType::Write, AccessType::Commit, AccessType::Abandon] {
+                    let expected = access.to_string();
+                    assert!(matches!(
+                        holon.is_accessible(access),
+                        Err(HolonError::NotAccessible(operation, state))
+                            if operation == expected && state == "Saved"
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 }

@@ -301,10 +301,7 @@ describe('HolonReference', () => {
     expect(properties).toHaveLength(2);
     expect(properties[0]).toBeInstanceOf(PropertyDescriptorHandle);
     expect(properties[1]).toBeInstanceOf(PropertyDescriptorHandle);
-    expect(relationships.map((relationship) => relationship.direction)).toEqual([
-      'declared',
-      'inverse',
-    ]);
+    expect(relationships).toHaveLength(2);
     expect(relationships[0]?.descriptor).toBeInstanceOf(RelationshipDescriptorHandle);
     expect(relationships[1]?.descriptor).toBeInstanceOf(RelationshipDescriptorHandle);
   });

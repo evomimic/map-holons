@@ -1,23 +1,25 @@
+#[cfg(test)]
+use crate::descriptors::{CommandDescriptor, DeclaredRelationshipDescriptor, KeyRuleDescriptor};
 use std::collections::HashSet;
+#[cfg(test)]
+use type_names::{ToCommandName, ToPropertyName};
 
 use crate::descriptors::{
     accessor_helpers, effective_relationships,
     inheritance::{effective_relationship_targets, walk_extends_chain},
-    CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
-    InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor, QualifiedRelationship,
-    RelationshipDescriptor, TypeHeader,
+    DanceDescriptor, Descriptor, InverseRelationshipDescriptor, PropertyDescriptor,
+    QualifiedRelationship, RelationshipDescriptor, TypeHeader,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
-use core_types::{HolonError, PropertyName};
-use type_names::{
-    CorePropertyTypeName, CoreRelationshipTypeName, ToCommandName, ToDanceName, ToPropertyName,
-    ToRelationshipName,
-};
+use core_types::HolonError;
+#[cfg(test)]
+use core_types::PropertyName;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToDanceName, ToRelationshipName};
 
 /// Runtime wrapper for holon-type descriptors.
 ///
-/// This is the main descriptor surface that callers will reach from ordinary
-/// holon instances via `ReadableHolon::holon_descriptor()`.
+/// Provides authoritative metadata. Ordinary inherited-schema consumers acquire
+/// `EffectiveHolonDescriptor`; crate-private methods support kernel/bootstrap prerequisites.
 pub struct HolonDescriptor {
     holon: HolonReference,
 }
@@ -35,7 +37,8 @@ impl HolonDescriptor {
 
     /// Returns inherited constraint occurrences with their declaring descriptors.
     /// Ancestor contributions precede local contributions; duplicates remain visible.
-    pub fn effective_constraints(
+    #[cfg(test)]
+    pub(crate) fn effective_constraints(
         &self,
     ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
         effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Constraints)
@@ -43,7 +46,8 @@ impl HolonDescriptor {
 
     /// Returns inherited validation commitments with their declaring descriptors.
     /// Provenance lets callers assess binding placement before dispatching a rule.
-    pub fn effective_validation_bindings(
+    #[cfg(test)]
+    pub(crate) fn effective_validation_bindings(
         &self,
     ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
         effective_relationship_targets(&self.holon, CoreRelationshipTypeName::ValidationBindings)
@@ -81,17 +85,18 @@ impl HolonDescriptor {
     }
 
     /// Returns effective instance property descriptors across this descriptor's inheritance chain.
-    pub fn instance_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
+    pub(crate) fn instance_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
         self.flatten_property_descriptors(CoreRelationshipTypeName::InstanceProperties)
     }
 
     /// Returns effective instance relationship descriptors across this descriptor's inheritance chain.
-    pub fn instance_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+    pub(crate) fn instance_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
         self.effective_relationship_descriptors(CoreRelationshipTypeName::InstanceRelationships)
     }
 
     /// Returns effective command descriptors across this descriptor's inheritance chain.
-    pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
+    #[cfg(test)]
+    pub(crate) fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
         effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsCommand).map(
             |members| {
                 members
@@ -103,7 +108,7 @@ impl HolonDescriptor {
     }
 
     /// Returns effective dance descriptors across this descriptor's inheritance chain.
-    pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
+    pub(crate) fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
         effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsDance).map(
             |members| {
                 members
@@ -115,12 +120,14 @@ impl HolonDescriptor {
     }
 
     /// Returns effective property type descriptors across this descriptor's inheritance chain.
-    pub fn properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
+    #[cfg(test)]
+    pub(crate) fn properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
         self.flatten_property_descriptors(CoreRelationshipTypeName::Properties)
     }
 
     /// Validates that instances of this descriptor allow the named property.
-    pub fn allows_property(
+    #[cfg(test)]
+    pub(crate) fn allows_property(
         &self,
         name: impl ToPropertyName,
     ) -> Result<PropertyDescriptor, HolonError> {
@@ -128,7 +135,8 @@ impl HolonDescriptor {
     }
 
     /// Finds an effective instance property by property type identity.
-    pub fn get_property_by_name(
+    #[cfg(test)]
+    pub(crate) fn get_property_by_name(
         &self,
         name: impl ToPropertyName,
     ) -> Result<PropertyDescriptor, HolonError> {
@@ -160,7 +168,8 @@ impl HolonDescriptor {
     }
 
     /// Validates that this descriptor affords the named command.
-    pub fn affords_command(
+    #[cfg(test)]
+    pub(crate) fn affords_command(
         &self,
         name: impl ToCommandName,
     ) -> Result<CommandDescriptor, HolonError> {
@@ -168,7 +177,8 @@ impl HolonDescriptor {
     }
 
     /// Finds an effective command affordance by command descriptor type name.
-    pub fn get_command_by_name(
+    #[cfg(test)]
+    pub(crate) fn get_command_by_name(
         &self,
         name: impl ToCommandName,
     ) -> Result<CommandDescriptor, HolonError> {
@@ -200,12 +210,23 @@ impl HolonDescriptor {
     }
 
     /// Validates that this descriptor affords the named dance.
-    pub fn affords_dance(&self, name: impl ToDanceName) -> Result<DanceDescriptor, HolonError> {
+    #[cfg(test)]
+    pub(crate) fn affords_dance(
+        &self,
+        name: impl ToDanceName,
+    ) -> Result<DanceDescriptor, HolonError> {
         self.get_dance_by_name(name)
     }
 
     /// Finds an effective dance affordance by dance descriptor type name.
-    pub fn get_dance_by_name(&self, name: impl ToDanceName) -> Result<DanceDescriptor, HolonError> {
+    pub(crate) fn get_dance_by_name(
+        &self,
+        name: impl ToDanceName,
+    ) -> Result<DanceDescriptor, HolonError> {
+        // Invocation binding is also required to construct the prepared view.
+        if let Some(prepared) = super::EffectiveHolonDescriptor::find_prepared(&self.holon)? {
+            return prepared.get_dance_by_name(name);
+        }
         let requested_name = name.to_dance_name();
         let requested = requested_name.to_string();
         let mut seen = HashSet::new();
@@ -234,7 +255,7 @@ impl HolonDescriptor {
     }
 
     /// Finds an effective instance relationship by base relationship name.
-    pub fn get_relationship_by_name(
+    pub(crate) fn get_relationship_by_name(
         &self,
         name: impl ToRelationshipName,
     ) -> Result<RelationshipDescriptor, HolonError> {
@@ -266,7 +287,8 @@ impl HolonDescriptor {
     }
 
     /// Finds the inverse descriptor for an effective declared relationship name.
-    pub fn get_inverse_relationship_by_name(
+    #[cfg(test)]
+    pub(crate) fn get_inverse_relationship_by_name(
         &self,
         declared_name: impl ToRelationshipName,
     ) -> Result<InverseRelationshipDescriptor, HolonError> {
@@ -286,7 +308,7 @@ impl HolonDescriptor {
     /// It does **not** authorize an agent, validate an authored occurrence, or
     /// determine whether a write is permitted. Those are separate security and
     /// relationship-orientation concerns.
-    pub fn resolve_available_relationship(
+    pub(crate) fn resolve_available_relationship(
         &self,
         name: impl ToRelationshipName,
     ) -> Result<QualifiedRelationship, HolonError> {
@@ -300,7 +322,8 @@ impl HolonDescriptor {
     /// relationship operations. It includes only declared relationships and
     /// is staged-safe because it follows forward `InstanceRelationships` on
     /// the descriptor's `Extends` lineage. It is not an authorization check.
-    pub fn effective_declared_relationships(
+    #[cfg(test)]
+    pub(crate) fn effective_declared_relationships(
         &self,
     ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
         effective_relationships::effective_declared_relationships(self)
@@ -312,7 +335,7 @@ impl HolonDescriptor {
     /// This is read-navigation metadata, not authored-write permission. It
     /// requires the materialized `TargetOf` index and therefore may return
     /// `UnsupportedStagedTraversal` for unsaved descriptor endpoints.
-    pub fn effective_inverse_relationships(
+    pub(crate) fn effective_inverse_relationships(
         &self,
     ) -> Result<Vec<InverseRelationshipDescriptor>, HolonError> {
         effective_relationships::effective_inverse_relationships(self)
@@ -325,12 +348,14 @@ impl HolonDescriptor {
     /// This is type-level and state-agnostic; use
     /// [`crate::reference_layer::ReadableHolon::available_relationships`] to
     /// filter by the state of a concrete source holon reference.
-    pub fn effective_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
+    #[cfg(test)]
+    pub(crate) fn effective_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
         effective_relationships::effective_relationships(self)
     }
 
     /// Resolves the effective key rule for instances of this descriptor.
-    pub fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
+    #[cfg(test)]
+    pub(crate) fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
         let members =
             effective_relationship_targets(&self.holon, CoreRelationshipTypeName::InstanceKeyRule)?;
         let rule = match members.as_slice() {

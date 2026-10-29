@@ -2,6 +2,10 @@ use crate::core_shared_objects::holon::SavedHolon;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
+use crate::descriptors::{
+    ComputedEffectiveSchema, Descriptor, EffectiveHolonDescriptor, PreparedRelationship,
+    PreparedSchema,
+};
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
 };
@@ -32,6 +36,14 @@ fn unreachable_in_descriptor_tests<T>() -> Result<T, HolonError> {
 impl HolonServiceApi for TestHolonService {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        construct_prepared_fixture(context, target)
     }
 
     fn commit_internal(
@@ -90,7 +102,7 @@ impl HolonServiceApi for TestHolonService {
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
         if !self.saved_holons.contains_key(source_id) {
-            return unreachable_in_descriptor_tests();
+            return Err(HolonError::HolonNotFound(format!("test saved holon: {source_id:?}")));
         }
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) =
@@ -486,4 +498,83 @@ pub(crate) fn core_operator(
             extends: None,
         },
     )
+}
+
+pub(crate) fn construct_prepared_fixture(
+    context: &Arc<TransactionContext>,
+    target: HolonReference,
+) -> Result<EffectiveHolonDescriptor, HolonError> {
+    let schema = ComputedEffectiveSchema::resolve(&target)?;
+    let mut result = context.mutation().new_holon(None)?;
+    result.add_related_holons(CoreRelationshipTypeName::DescribedHolonType, vec![target])?;
+    for (source, product) in [
+        (
+            CoreRelationshipTypeName::InstanceProperties,
+            CoreRelationshipTypeName::EffectiveInstanceProperties,
+        ),
+        (
+            CoreRelationshipTypeName::InstanceRelationships,
+            CoreRelationshipTypeName::EffectiveInstanceRelationships,
+        ),
+        (CoreRelationshipTypeName::AffordsDance, CoreRelationshipTypeName::EffectiveAffordsDance),
+        (
+            CoreRelationshipTypeName::AffordsCommand,
+            CoreRelationshipTypeName::EffectiveAffordsCommand,
+        ),
+        (
+            CoreRelationshipTypeName::ValidationBindings,
+            CoreRelationshipTypeName::EffectiveValidationBindings,
+        ),
+        (CoreRelationshipTypeName::Constraints, CoreRelationshipTypeName::EffectiveConstraints),
+        (
+            CoreRelationshipTypeName::InstanceKeyRule,
+            CoreRelationshipTypeName::EffectiveInstanceKeyRule,
+        ),
+    ] {
+        result.add_related_holons(
+            product,
+            schema.contributions(source).iter().map(|entry| entry.member.clone()).collect(),
+        )?;
+    }
+    // Small unit fixtures predate the full SourceOf/SourceType index. Project
+    // their declared and inverse contracts at the mocked service boundary.
+    let navigation = match crate::descriptors::HolonDescriptor::from_holon(schema.target.clone())
+        .effective_relationships()
+    {
+        Ok(navigation) => navigation,
+        Err(HolonError::UnsupportedStagedTraversal { .. }) => schema
+            .instance_relationships()
+            .into_iter()
+            .map(|member| crate::descriptors::QualifiedRelationship {
+                descriptor: crate::descriptors::RelationshipDescriptor::from_holon(
+                    member.holon().clone(),
+                ),
+                descriptor_direction: crate::descriptors::RelationshipDirection::Declared,
+            })
+            .collect(),
+        Err(error) => return Err(error),
+    };
+    result.add_related_holons(
+        CoreRelationshipTypeName::NavigableRelationships,
+        navigation.iter().map(|entry| entry.descriptor.holon().clone()).collect(),
+    )?;
+    let relationships = navigation
+        .iter()
+        .map(|entry| {
+            Ok(PreparedRelationship {
+                identity: entry.descriptor.holon().full_reference_id_string(),
+                name: entry.descriptor.base_relationship_name()?,
+                policy: crate::RelationshipCachePolicy::Fresh,
+                updateable: entry.descriptor_direction
+                    == crate::descriptors::RelationshipDirection::Declared,
+            })
+        })
+        .collect::<Result<_, HolonError>>()?;
+    let prepared = PreparedSchema { relationships, ..Default::default() };
+    result.with_property_value(
+        CorePropertyTypeName::PreparedSchema,
+        base_types::MapString(serde_json::to_string(&prepared).unwrap()),
+    )?;
+    result.mark_as_immutable()?;
+    Ok(EffectiveHolonDescriptor::from_constructed_holon(result.into()))
 }

@@ -58,6 +58,7 @@ pub struct TransactionContext {
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
     restricted_cache_read: bool,
+    descriptor_registry_root: std::sync::RwLock<Option<core_types::TemporaryId>>,
 }
 
 impl fmt::Debug for TransactionContext {
@@ -85,6 +86,7 @@ impl TransactionContext {
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
             restricted_cache_read,
+            descriptor_registry_root: Default::default(),
         })
     }
 
@@ -100,6 +102,45 @@ impl TransactionContext {
     /// Creates a saved-reference read capability for this context's space.
     pub fn space_read_handle(self: &Arc<Self>) -> SpaceReadHandle {
         SpaceReadHandle::new(Arc::clone(&self.space_manager))
+    }
+
+    /// Session capability used for saved-schema acquisition, independent of this carrier.
+    pub fn descriptor_registry(
+        &self,
+    ) -> Option<
+        Arc<crate::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry>,
+    > {
+        self.space_manager.descriptor_registry()
+    }
+
+    /// Installs a registry snapshot already present in this transaction's transient pool.
+    pub fn set_descriptor_registry_root(
+        &self,
+        root: &TransientReference,
+    ) -> Result<(), HolonError> {
+        if root.tx_id() != self.tx_id() {
+            return Err(HolonError::InvalidParameter(
+                "Registry root belongs to another transaction".into(),
+            ));
+        }
+        *self
+            .descriptor_registry_root
+            .write()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))? =
+            Some(root.temporary_id());
+        Ok(())
+    }
+
+    /// Returns the Commit-local registry root, retaining its actual owner binding.
+    pub fn descriptor_registry_root(
+        self: &Arc<Self>,
+    ) -> Result<Option<TransientReference>, HolonError> {
+        Ok(self
+            .descriptor_registry_root
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .as_ref()
+            .map(|id| TransientReference::from_temporary_id(self.context_handle(), id)))
     }
 
     /// Returns the transaction id.
@@ -559,6 +600,15 @@ impl TransactionContext {
         }
     }
 
+    /// Resolves the complete effective schema through this context's service.
+    /// Population runs in the guest even when initiated by a host consumer.
+    pub fn construct_effective_holon_descriptor(
+        self: &Arc<Self>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        self.get_holon_service().construct_effective_holon_descriptor_internal(self, target)
+    }
+
     /// Initiates a dance request through the configured space-scoped initiator.
     pub async fn initiate_dance(
         self: &Arc<Self>,
@@ -597,7 +647,7 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
 
     /// Returns the holon service.
-    fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
+    pub(crate) fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
         self.space_manager.get_holon_service()
     }
 
@@ -634,7 +684,7 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
 
     /// Returns a strong reference to the space manager.
-    fn space_manager(&self) -> Arc<HolonSpaceManager> {
+    pub(crate) fn space_manager(&self) -> Arc<HolonSpaceManager> {
         Arc::clone(&self.space_manager)
     }
 

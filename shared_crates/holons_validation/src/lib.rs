@@ -50,3 +50,8 @@ pub use subjects::{PreparedRuleSubject, ValueValidationSubject};
 
 #[cfg(test)]
 mod subject_assessment_tests;
+
+mod transient_contract;
+pub use transient_contract::{
+    validate_effective_descriptor_dance_contract, validate_transient_contract,
+};

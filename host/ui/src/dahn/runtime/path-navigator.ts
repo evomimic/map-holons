@@ -401,9 +401,8 @@ export class PathNavigator implements PathNavigation {
       // Rebind descriptor-classified rail targets rather than carrying old affordance objects.
       const rebind = async (old: RelationshipAffordance | undefined) => {
         if (!old) return undefined;
-        const name = await old.relationship.descriptor.relationshipName();
-        for (const item of prepared!.singularRelationships) if (item.relationship.direction === old.relationship.direction
-          && await item.relationship.descriptor.relationshipName() === name) return item;
+        const identity = await old.relationship.descriptor.identity();
+        for (const item of prepared!.singularRelationships) if (await item.relationship.descriptor.identity() === identity) return item;
         throw new Error('Selected Node cannot preserve the active relationship.');
       };
       const singular = { ...occurrence.singular, active: await rebind(occurrence.singular.active), attempted: await rebind(occurrence.singular.attempted) };
@@ -414,10 +413,10 @@ export class PathNavigator implements PathNavigation {
           affordances.set(old, old); collections.set(old, identity); continue;
         }
         if (old.kind !== 'relationship') throw new Error('Collection selection cannot be transferred.');
-        const name = await old.relationship.descriptor.relationshipName();
+        const relationshipIdentity = await old.relationship.descriptor.identity();
         let replacement: CollectionAffordance | undefined;
         for (const item of prepared!.collectionAffordances ?? []) if (item.kind === 'relationship'
-          && item.relationship.direction === old.relationship.direction && await item.relationship.descriptor.relationshipName() === name) replacement = item;
+          && await item.relationship.descriptor.identity() === relationshipIdentity) replacement = item;
         if (!replacement) throw new Error('Selected Node cannot preserve a retained collection target.');
         affordances.set(old, replacement); collections.set(replacement, identity);
       }

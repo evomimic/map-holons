@@ -8,6 +8,7 @@
     { "name": "dance", "import_directory": "dance" },
     { "name": "dancer", "import_directory": "dancer" },
     { "name": "commands", "import_directory": "commands" },
+    { "name": "descriptor-runtime", "import_directory": "descriptor-runtime" },
     { "name": "query", "import_directory": "query" },
     { "name": "query-dance", "import_directory": "query-dance" },
     { "name": "design-tokens", "import_directory": "design-tokens" },

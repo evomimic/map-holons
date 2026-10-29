@@ -60,6 +60,15 @@ impl Runtime {
             MapCommand::Space(_) => None,
         };
 
+        if context.as_ref().is_some_and(|context| context.is_restricted_cache_read())
+            && !matches!(&command, MapCommand::Holon(command) if matches!(&command.action, map_commands_contract::HolonAction::Read(_))
+                && lifecycle_policy.mutation == MutationClassification::ReadOnly)
+        {
+            return Err(HolonError::InvalidParameter(
+                "Session-derived ingress supports only Holon reads".into(),
+            ));
+        }
+
         // A lease covers execution and recovery persistence. Disposal excludes leases,
         // including commands already bound by another ingress caller.
         let disposing = matches!(&command, MapCommand::Transaction(cmd) if matches!(cmd.action, TransactionAction::Dispose));

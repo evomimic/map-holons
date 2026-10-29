@@ -12,6 +12,9 @@ use crate::ExecutionPolicy;
 pub struct RuntimeSession {
     pub(crate) discoveries: crate::discovery_evidence::DiscoveryEvidence,
     pub(crate) usage_transactions: crate::usage_transactions::UsageTransactions,
+    descriptor_registry: Arc<
+        holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry,
+    >,
     space_manager: Arc<HolonSpaceManager>,
     recovery: Option<Arc<SessionReceptor>>,
     admissions:
@@ -25,7 +28,14 @@ impl RuntimeSession {
         space_manager: Arc<HolonSpaceManager>,
         recovery: Option<Arc<SessionReceptor>>,
     ) -> Self {
+        let descriptor_registry = Arc::new(
+            holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry::new(
+                &space_manager,
+            ),
+        );
+        space_manager.attach_descriptor_registry(&descriptor_registry);
         Self {
+            descriptor_registry,
             discoveries: Default::default(),
             usage_transactions: Default::default(),
             space_manager,
@@ -34,6 +44,13 @@ impl RuntimeSession {
             active_sessions: RwLock::new(HashMap::new()),
             archived_sessions: RwLock::new(HashMap::new()),
         }
+    }
+
+    pub fn descriptor_registry(
+        &self,
+    ) -> &Arc<holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry>
+    {
+        &self.descriptor_registry
     }
 
     pub fn restore_open_sessions(&self) -> Result<usize, HolonError> {
@@ -108,6 +125,9 @@ impl RuntimeSession {
     }
 
     pub fn get_transaction(&self, tx_id: &TxId) -> Result<Arc<TransactionContext>, HolonError> {
+        if let Some(context) = self.descriptor_registry.owned_context(*tx_id) {
+            return Ok(context);
+        }
         Ok(Arc::clone(self.get_client_session(tx_id)?.context()))
     }
 

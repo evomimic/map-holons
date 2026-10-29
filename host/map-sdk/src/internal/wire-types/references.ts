@@ -71,6 +71,7 @@ export type HolonReferenceWire =
 // ===========================================
 
 export type CollectionState =
+  | 'Immutable'
   | 'Fetched'
   | 'Transient'
   | 'Staged'
@@ -558,6 +559,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const COLLECTION_STATES = new Set<CollectionState>([
+  'Immutable',
   'Fetched',
   'Transient',
   'Staged',

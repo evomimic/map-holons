@@ -16,6 +16,12 @@ pub struct DeclaredRelationshipDescriptor {
 }
 
 impl DeclaredRelationshipDescriptor {
+    /// Retains a declaration's projected role without classifying its source schema.
+    /// Validation inspects the raw projection independently.
+    pub(crate) fn from_projected_holon(holon: HolonReference) -> Self {
+        Self { holon }
+    }
+
     /// Wraps a relationship descriptor only if it extends
     /// [`CoreHolonTypeName::DeclaredRelationshipType`].
     pub fn try_from_holon(holon: HolonReference) -> Result<Self, HolonError> {

@@ -337,8 +337,10 @@ pub fn select_collection_visualizer(
     parent: HolonReference,
     slot: HolonReference,
 ) -> Result<VisualizerSelection, HolonError> {
-    let _ = holons_core::descriptors::HolonDescriptor::from_holon(collection.element_type.clone())
-        .instance_properties()?;
+    let _ = holons_core::descriptors::EffectiveHolonDescriptor::acquire(
+        collection.element_type.clone(),
+    )?
+    .instance_properties()?;
     let slots = parent
         .related_holons(DahnRelationshipTypeName::HasSlot)?
         .read()

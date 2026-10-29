@@ -106,6 +106,8 @@ impl ToPropertyName for &PropertyName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CorePropertyTypeName {
+    ContributionPosition,
+    PreparedSchema,
     AllowsDuplicates,
     Arity,
     CaseMatching,

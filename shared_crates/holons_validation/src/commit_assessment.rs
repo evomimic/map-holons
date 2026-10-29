@@ -16,8 +16,8 @@ use holons_core::core_shared_objects::{holon::StagedState, Holon};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type, SchemaOwnershipKind},
-    ContractContributions, DefinitionIdentity, DescribingTypeResolution, DescriptorKindRoots,
-    HolonReference, StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
+    DefinitionIdentity, DescribingTypeResolution, DescriptorKindRoots, HolonReference,
+    StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -153,11 +153,6 @@ fn assess_commit_candidates_with_observer<'a>(
         candidates,
         &mut collector,
         &mut observer,
-    )?;
-    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
-        context,
-        candidates,
-        &mut collector,
     )?;
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::ReadinessResolution));
     let roots = ReadinessContext::resolve(context).map_err(HolonError::from)?;
@@ -372,6 +367,12 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &workset,
         observer,
     )?;
+    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
+        context,
+        candidates,
+        Some(&packages),
+        &mut collector,
+    )?;
     Ok(ConstructedAssessment { context, candidates, roots, prepared, workset, packages, collector })
 }
 
@@ -445,8 +446,8 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     );
                     continue;
                 }
-                let contributions = ContractContributions::resolve(&descriptor)?;
-                products.prepare_contract(&contributions, &kinds, &roots.contracts)?;
+                let projection = packages.effective_schema(&descriptor)?;
+                products.prepare_effective_schema(projection, context, &kinds, &roots.contracts)?;
                 if products.has_findings() {
                     invalid.insert(identity.clone());
                 }

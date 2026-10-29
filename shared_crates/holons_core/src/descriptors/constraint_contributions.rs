@@ -1,4 +1,6 @@
-use super::{effective_relationship_targets, EffectiveRelationshipMember, ValidExtendsLineage};
+use super::{
+    inheritance::relationship_targets_in_lineage, EffectiveRelationshipMember, ValidExtendsLineage,
+};
 use crate::{DefinitionIdentity, HolonReference};
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
@@ -17,16 +19,11 @@ impl ConstraintContributions {
     /// Supply a lineage diagnosed from the same unchanged input snapshot.
     pub fn resolve(lineage: ValidExtendsLineage<'_>) -> Result<Self, HolonError> {
         let parent = lineage.members().get(1).cloned();
-        let inherited = match &parent {
-            Some(parent) => {
-                effective_relationship_targets(parent, CoreRelationshipTypeName::Constraints)?
-            }
-            None => Vec::new(),
-        };
-        let effective = effective_relationship_targets(
-            lineage.subject(),
+        let inherited = relationship_targets_in_lineage(
+            &lineage.members()[1..],
             CoreRelationshipTypeName::Constraints,
         )?;
+        let effective = lineage.relationship_targets(CoreRelationshipTypeName::Constraints)?;
         Ok(Self { parent, inherited, effective })
     }
 

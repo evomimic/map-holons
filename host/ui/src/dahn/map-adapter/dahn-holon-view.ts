@@ -1,5 +1,6 @@
 import type {
   AvailableRelationshipHandle,
+  EffectiveHolonDescriptorHandle,
   BaseValue,
   HolonCollection,
   HolonDescriptorHandle,
@@ -19,6 +20,10 @@ import type { HolonViewAccess } from '../contracts/holon-view';
  */
 export class DahnHolonView implements HolonViewAccess {
   constructor(private readonly reference: HolonReference) {}
+
+  private schema(): Promise<EffectiveHolonDescriptorHandle> {
+    return this.reference.effectiveDescriptor();
+  }
 
   holonId(): Promise<HolonId> {
     return this.reference.holonId();
@@ -40,16 +45,16 @@ export class DahnHolonView implements HolonViewAccess {
     return this.reference.holonDescriptor();
   }
 
-  availableDances(): Promise<ReadonlyArray<HolonReference>> {
-    return this.reference.availableDances();
+  async availableDances(): Promise<ReadonlyArray<HolonReference>> {
+    return (await this.schema()).affordedDances();
   }
 
-  availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
-    return this.reference.availableProperties();
+  async availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
+    return (await this.schema()).instanceProperties();
   }
 
-  availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
-    return this.reference.availableRelationships();
+  async availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+    return this.reference.availableRelationships(await this.schema());
   }
 
   expandRelationship(name: RelationshipName): Promise<HolonCollection> {

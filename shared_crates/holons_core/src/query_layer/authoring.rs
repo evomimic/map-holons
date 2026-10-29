@@ -56,10 +56,11 @@ pub fn new_comparison_predicate<P: ToPropertyName, O: ToOperatorName>(
     ordered_authored_operands: Vec<HolonReference>,
 ) -> Result<TransientReference, HolonError> {
     let property_name = property.to_property_name();
-    let operator = element_type
-        .get_property_by_name(property_name.clone())?
-        .value_type()?
-        .get_operator_by_name(operator)?;
+    let operator =
+        crate::descriptors::EffectiveHolonDescriptor::acquire(element_type.holon().clone())?
+            .get_property_by_name(property_name.clone())?
+            .value_type()?
+            .get_operator_by_name(operator)?;
     for operand in &ordered_authored_operands {
         require_holon_type(operand, &QueryHolonTypeName::LiteralOperand.as_holon_name())?;
     }

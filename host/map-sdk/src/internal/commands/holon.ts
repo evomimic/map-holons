@@ -419,3 +419,24 @@ export function readPropertyValueKind(txId: TxId, target: HolonReferenceWire) {
 export function readValidationFindings(txId: TxId, target: HolonReferenceWire): Promise<CommitValidationViolationWire[]> {
   return runHolonCommand(txId, target, { Read: 'GetValidationFindings' }, expectValidationFindings);
 }
+
+/** Applies ordinary instance lifecycle policy to an already resolved schema. */
+export function readAvailableRelationshipsFromEffective(txId: TxId, target: HolonReferenceWire, descriptor: HolonReferenceWire): Promise<QualifiedRelationshipWire[]> {
+  return runHolonCommand(txId, target, { Read: { GetAvailableRelationshipsFromEffective: { descriptor } } }, expectQualifiedRelationships);
+}
+
+/** Acquires an opaque Session-owned schema handle through one Holon command. */
+export function readEffectiveDescriptor(txId: TxId, target: HolonReferenceWire): Promise<HolonReferenceWire> {
+  return runHolonCommand(txId, target, { Read: 'GetEffectiveDescriptor' }, expectReference);
+}
+
+export function readReferenceIdentity(txId: TxId, target: HolonReferenceWire): Promise<BaseValue> {
+  return runHolonCommand(txId, target, { Read: 'GetReferenceIdentity' }, expectValue);
+}
+export function readEffectiveMember(txId: TxId, target: HolonReferenceWire, collection: RelationshipName, name: string): Promise<HolonReferenceWire | null> {
+  return runHolonCommand(txId, target, { Read: { GetEffectiveMember: { collection, name } } }, expectOptionalReference);
+}
+
+export function readEffectiveDescriptorForType(txId: TxId, target: HolonReferenceWire): Promise<HolonReferenceWire> {
+  return runHolonCommand(txId, target, { Read: 'GetEffectiveDescriptorForType' }, expectReference);
+}
