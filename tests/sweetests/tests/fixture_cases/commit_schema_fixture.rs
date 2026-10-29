@@ -481,7 +481,9 @@ pub fn commit_core_successor_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         None,
     )?;
-    test_case.add_match_saved_content_step()?;
+    // Persisted identity and predecessor checks live in the isolated test. A full
+    // saved-content comparison of this Core hub would read its large relationship sets
+    // one dance call at a time and add no successor coverage.
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
