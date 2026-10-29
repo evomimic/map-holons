@@ -1,35 +1,127 @@
-//! Reader-aware traversal for the Commit gate. Rule evaluation stays in existing handlers.
+//! Binding preparation and subject assessment through exact bound references.
 use crate::{
     assessment_support::{blocked, path},
     commitments::{required_key, ResolvedConstraint},
-    contexts::{BindingDispatchRoute, SubjectLevel},
-    handlers::{finding, native_rule_kind, rule_violation},
+    contexts::SubjectLevel,
+    handlers::{finding, rule_violation},
+    registries::{registration, RuleImplementation, RuleRegistration, SubjectApplicability},
     ConstraintTypeKey, DescriptorRuleProducts, PreparedRuleSubject, ResolvedValidationBinding,
-    RuleOutcome, StaticConstraintRegistry, StaticRuleHandler, StaticRuleRegistry,
-    ValidationCollector, ValidationInvocation, ValidationRuleKey, ValueValidationContext,
+    RuleOutcome, StaticConstraintRegistry, ValidationCollector, ValidationInvocation,
+    ValueValidationContext,
 };
 use core_types::{
     BaseValue, CommitValidationViolationKind, HolonError, PropertyName, ValidationSubjectPath,
 };
 use holons_core::{
-    descriptors::{effective_relationship_targets, resolve_describing_type},
-    ContractContributions, DescribingTypeResolution, Descriptor, HolonDescriptor, HolonReference,
-    PropertyDescriptor, ReadableHolon, UniversalDescriptorContract, ValueDescriptor,
-    ValueDescriptorKind,
+    core_shared_objects::transactions::TransactionContext,
+    descriptors::{effective_relationship_targets, extends_role, resolve_describing_type},
+    ContractContributions, DefinitionIdentity, DescribingTypeResolution, Descriptor,
+    EffectiveRelationshipMember, HolonReference, PropertyDescriptor, ReadableHolon,
+    UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind,
 };
-use std::collections::HashSet;
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+use type_names::{
+    CoreDefinitionRole, CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName,
+};
+
+/// Role facts for encountered bindings, prepared before assessment consumes packages.
+/// Only exact identity/role pairs are retained, not another descriptor closure.
+#[derive(Default)]
+pub(crate) struct BindingRoleMemo {
+    roles: HashMap<(DefinitionIdentity, CoreDefinitionRole), Result<bool, HolonError>>,
+}
+
+impl BindingRoleMemo {
+    /// Prepares role inputs for implemented bindings, reusing diagnosed governing lineages.
+    pub fn prepare<'a>(
+        context: &Arc<TransactionContext>,
+        contributions: impl IntoIterator<Item = &'a EffectiveRelationshipMember>,
+        governing_lineages: impl IntoIterator<Item = ValidExtendsLineage<'a>>,
+    ) -> Result<Self, HolonError> {
+        let mut diagnosed = HashMap::new();
+        for lineage in governing_lineages {
+            let identity = DefinitionIdentity::for_reference(lineage.subject(), context)?;
+            if diagnosed.contains_key(&identity) {
+                continue;
+            }
+            for member in lineage.members() {
+                diagnosed
+                    .entry(DefinitionIdentity::for_reference(member, context)?)
+                    .or_insert(lineage);
+            }
+        }
+        let mut memo = Self::default();
+        for contribution in contributions {
+            // Unsupported or malformed keys need no placement inputs. Required key errors
+            // are still returned when the binding itself is consumed.
+            let Some(registration) = required_key(&contribution.member)
+                .ok()
+                .and_then(|key| CoreValidationRuleName::from_key(&key))
+                .map(registration)
+                .filter(|registration| registration.implementation.is_some())
+            else {
+                continue;
+            };
+            if let Ok(DescribingTypeResolution::Unique(family)) =
+                resolve_describing_type(&contribution.member)
+            {
+                memo.prepare_role(context, &family, registration.family, &diagnosed)?;
+                memo.prepare_role(
+                    context,
+                    &contribution.declared_on,
+                    registration.declaring,
+                    &diagnosed,
+                )?;
+            }
+        }
+        Ok(memo)
+    }
+
+    fn prepare_role(
+        &mut self,
+        context: &Arc<TransactionContext>,
+        reference: &HolonReference,
+        role: CoreDefinitionRole,
+        diagnosed: &HashMap<DefinitionIdentity, ValidExtendsLineage<'_>>,
+    ) -> Result<(), HolonError> {
+        let identity = DefinitionIdentity::for_reference(reference, context)?;
+        let lineage = diagnosed.get(&identity);
+        self.roles.entry((identity, role)).or_insert_with(|| match lineage {
+            Some(lineage) => lineage.contains_role_from(reference, role),
+            None => extends_role(reference, role),
+        });
+        Ok(())
+    }
+
+    fn matches(
+        &self,
+        reference: &HolonReference,
+        role: CoreDefinitionRole,
+        context: &Arc<TransactionContext>,
+    ) -> Result<bool, HolonError> {
+        let identity = DefinitionIdentity::for_reference(reference, context)?;
+        // A failed required read remains operational when its binding is reached.
+        self.roles
+            .get(&(identity, role))
+            .cloned()
+            .ok_or_else(|| HolonError::InvalidState("Binding role was not prepared".into()))?
+    }
+}
 
 pub(crate) struct PreparedBinding {
     binding: ResolvedValidationBinding,
-    handler: StaticRuleHandler,
-    route: BindingDispatchRoute,
+    name: CoreValidationRuleName,
+    registration: RuleRegistration,
 }
 
 pub(crate) fn prepare_bindings(
     descriptor: &HolonReference,
     level: SubjectLevel,
     context: &ValueValidationContext,
+    roles: &BindingRoleMemo,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
@@ -38,17 +130,35 @@ pub(crate) fn prepare_bindings(
     let contributions = packages.effective_bindings(descriptor)?;
     for contribution in contributions {
         let binding = ResolvedValidationBinding::from(contribution);
-        let key = ValidationRuleKey(required_key(&binding.rule)?);
-        collector.observations.discovered_rule_keys.insert(key.0.clone());
+        let key = required_key(&binding.rule)?;
+        collector.observations.discovered_rule_keys.insert(key.clone());
+        let registered = CoreValidationRuleName::from_key(&key)
+            .map(|name| (name, registration(name)))
+            .filter(|(_, registration)| registration.implementation.is_some());
+        let Some((name, registration)) = registered else {
+            finding(
+                collector,
+                CommitValidationViolationKind::UnsupportedValidationRule,
+                Some(key),
+                path,
+                Some(binding.declaring_descriptor.holon().reference_id_string()),
+                "Mandatory validation binding has no registered handler.".into(),
+            );
+            continue;
+        };
+        match registration.applicability {
+            SubjectApplicability::AnySubject => {}
+        }
         let family = resolve_describing_type(&binding.rule)?;
         let compatible = match family {
             DescribingTypeResolution::Unique(family) => compatible_binding(
                 &binding,
-                &HolonDescriptor::from_holon(family),
-                &key,
+                &family,
+                registration,
                 descriptor,
                 level,
                 context,
+                roles,
             )?,
             _ => false,
         };
@@ -57,74 +167,37 @@ pub(crate) fn prepare_bindings(
                 "The selected rule needs one compatible describing family and a compatible declaring descriptor before dispatch.".into())?;
             continue;
         }
-        if let Some(handler) = StaticRuleRegistry::lookup(&key) {
-            let route = context
-                .bindings
-                .entries
-                .iter()
-                .find(|entry| entry.name.as_str() == key.0)
-                .map(|entry| entry.route)
-                .unwrap_or(BindingDispatchRoute::Subject);
-            result.push(PreparedBinding { binding, handler, route });
-        } else {
-            finding(
-                collector,
-                CommitValidationViolationKind::UnsupportedValidationRule,
-                Some(key.0),
-                path,
-                Some(binding.declaring_descriptor.holon().reference_id_string()),
-                "Mandatory validation binding has no registered handler.".into(),
-            );
-        }
+        result.push(PreparedBinding { binding, name, registration });
     }
     Ok(result)
 }
 
-/// Checks binding placement and rule-family lineage in the selected descriptor view.
+/// Checks binding placement with prepared role facts, preserving exact bound definitions.
 pub(crate) fn compatible_binding(
     binding: &ResolvedValidationBinding,
-    family: &HolonDescriptor,
-    key: &ValidationRuleKey,
+    family: &HolonReference,
+    registration: RuleRegistration,
     governing: &HolonReference,
     level: SubjectLevel,
     context: &ValueValidationContext,
+    roles: &BindingRoleMemo,
 ) -> Result<bool, HolonError> {
-    use holons_core::descriptors::equals_or_extends;
-    let roots = &context.bindings;
-    if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
-        // A familiar key on another reference cannot impersonate a canonical rule.
-        if !holons_core::same_definition(&binding.rule, &root.rule)?
-            || root.level != level
-            || !equals_or_extends(family.holon(), &root.family)?
-            || !equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
-        {
-            return Ok(false);
-        }
-        if let Some(expected) = native_rule_kind(root.name) {
-            holons_core::reference_layer::assert_reference_transaction_compatible(
-                governing,
-                &context.context,
-            )?;
-            return Ok(ValueDescriptor::from_holon(governing.clone()).value_kind()?
-                == ValueDescriptorKind::BaseValue(expected));
-        }
-        return Ok(true);
+    if registration.level != level
+        || !roles.matches(family, registration.family, &context.context)?
+        || !roles.matches(
+            binding.declaring_descriptor.holon(),
+            registration.declaring,
+            &context.context,
+        )?
+    {
+        return Ok(false);
     }
-    // A family may have roots at several declaring descriptors or subject levels.
-    // Inspect all matching roots so their registration order cannot change placement.
-    let mut matched_family = false;
-    let mut admitted = false;
-    for root in &roots.entries {
-        if equals_or_extends(family.holon(), &root.family)? {
-            matched_family = true;
-            if root.level == level
-                && equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
-            {
-                admitted = true;
-            }
-        }
+    if let Some(expected) = registration.native_kind {
+        holons_core::assert_reference_transaction_compatible(governing, &context.context)?;
+        return Ok(ValueDescriptor::from_holon(governing.clone()).value_kind()?
+            == ValueDescriptorKind::BaseValue(expected));
     }
-    Ok(!matched_family || admitted)
+    Ok(true)
 }
 
 pub(crate) fn dispatch_schema(
@@ -135,13 +208,17 @@ pub(crate) fn dispatch_schema(
 ) -> Result<(), HolonError> {
     let mut dispatched = HashSet::new();
     for prepared in bindings {
-        if prepared.route != BindingDispatchRoute::SchemaAggregate {
+        let Some(RuleImplementation::SchemaAggregate(handler)) =
+            prepared.registration.implementation
+        else {
             continue;
-        }
-        collector.observations.dispatched_rule_keys.insert(required_key(&prepared.binding.rule)?);
-        dispatched.insert(required_key(&prepared.binding.rule)?);
-        (prepared.handler)(
+        };
+        let key = prepared.name.as_str();
+        collector.observations.dispatched_rule_keys.insert(key.into());
+        dispatched.insert(key);
+        handler(
             ValidationInvocation::Schema {
+                code: prepared.registration.code,
                 binding: &prepared.binding,
                 path: &path(subject),
                 products,
@@ -165,20 +242,19 @@ pub(crate) fn dispatch_descriptor(
 ) -> Result<(), HolonError> {
     let mut dispatched = HashSet::new();
     for prepared in bindings {
-        if prepared.route != BindingDispatchRoute::Descriptor {
+        if !matches!(
+            prepared.registration.implementation,
+            Some(RuleImplementation::DescriptorProduct)
+        ) {
             continue;
         }
-        let key = required_key(&prepared.binding.rule)?;
-        collector.observations.dispatched_rule_keys.insert(key.clone());
-        if let Some(name) = CoreValidationRuleName::from_key(&key) {
-            dispatched.insert(name);
-        }
-        (prepared.handler)(
-            ValidationInvocation::Descriptor {
-                binding: &prepared.binding,
-                path: &path(subject),
-                products,
-            },
+        collector.observations.dispatched_rule_keys.insert(prepared.name.as_str().into());
+        dispatched.insert(prepared.name);
+        products.emit(
+            prepared.name,
+            prepared.registration.code,
+            &prepared.binding,
+            &path(subject),
             collector,
         )?;
     }
@@ -193,13 +269,18 @@ fn dispatch_subject(
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
     for prepared in bindings {
-        if prepared.route != BindingDispatchRoute::Subject {
+        let Some(RuleImplementation::Subject(handler)) = prepared.registration.implementation
+        else {
             continue;
-        }
-        let key = required_key(&prepared.binding.rule)?;
-        collector.observations.dispatched_rule_keys.insert(key);
-        if (prepared.handler)(
-            ValidationInvocation::Prepared { binding: &prepared.binding, path, subject },
+        };
+        collector.observations.dispatched_rule_keys.insert(prepared.name.as_str().into());
+        if handler(
+            ValidationInvocation::Prepared {
+                code: prepared.registration.code,
+                binding: &prepared.binding,
+                path,
+                subject,
+            },
             collector,
         )? == RuleOutcome::StopValueEvaluation
         {
@@ -252,7 +333,8 @@ pub(crate) fn assess_holon(
     bindings: &[PreparedBinding],
     key_claim: Option<&crate::key_evidence::KeyClaim>,
     values: &ValueValidationContext,
-    universal: &UniversalDescriptorContract,
+    roles: &BindingRoleMemo,
+    universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
@@ -290,8 +372,9 @@ pub(crate) fn assess_holon(
         }
     }
     for (name, property) in properties {
-        let result =
-            assess_property(subject, &name, &property, values, universal, collector, packages);
+        let result = assess_property(
+            subject, &name, &property, values, roles, universal, collector, packages,
+        );
         // Each property consumes its exact prepared definition.
         result?;
     }
@@ -303,7 +386,8 @@ fn assess_property(
     name: &PropertyName,
     property: &PropertyDescriptor,
     values: &ValueValidationContext,
-    universal: &UniversalDescriptorContract,
+    roles: &BindingRoleMemo,
+    universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
@@ -316,12 +400,18 @@ fn assess_property(
         property.holon(),
         SubjectLevel::Property,
         values,
+        roles,
         &path,
         collector,
         packages,
     )?;
     let missing_required = value.is_none()
-        && universal.enforce_minimum(subject, property.holon())?
+        && match universal {
+            // Contracts are prepared only for diagnosed descriptor subjects.
+            Some(contract) => contract.enforce_minimum(subject, true, property.holon())?,
+            // Ordinary holons and descriptors without a meta-type role get no abstract exemption.
+            None => true,
+        }
         && property.is_required()?;
     let facts = PreparedRuleSubject::Property {
         missing_required,
@@ -349,7 +439,7 @@ fn assess_property(
             holon_identity: subject.full_reference_id_string(),
             property: name.to_string(),
         };
-        assess_value(&value, &descriptor, &path, values, collector, packages)?;
+        assess_value(&value, &descriptor, &path, values, roles, collector, packages)?;
     }
     Ok(())
 }
@@ -359,6 +449,7 @@ fn assess_value(
     descriptor: &ValueDescriptor,
     path: &ValidationSubjectPath,
     values: &ValueValidationContext,
+    roles: &BindingRoleMemo,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
@@ -366,6 +457,7 @@ fn assess_value(
         descriptor.holon(),
         SubjectLevel::Value,
         values,
+        roles,
         path,
         collector,
         packages,

@@ -1,4 +1,5 @@
 pub mod command_names;
+pub mod core_definition_roles;
 pub mod holon_names;
 pub mod operator_names;
 pub mod property_names;
@@ -7,6 +8,7 @@ pub mod validation_rule_names;
 pub mod value_names;
 
 pub use command_names::*;
+pub use core_definition_roles::*;
 pub use holon_names::*;
 pub use operator_names::*;
 pub use property_names::*;

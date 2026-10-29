@@ -22,7 +22,6 @@ mod handlers;
 mod key_evidence;
 pub use key_evidence::{KeyClaim, KeyEvidence};
 mod outcomes;
-mod prospective;
 mod registries;
 mod report;
 mod schema_rules;
@@ -36,13 +35,12 @@ pub use commit_assessment::{
     validate_commit_candidates_with_profile,
 };
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
-pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};
+pub use constraint_declarations::ConstraintDeclarationAssessment;
 pub use contexts::ValueValidationContext;
-pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
-pub use prospective::{resolve_validation_anchor, AnchorResolutionError};
+pub use descriptor_rules::DescriptorRuleProducts;
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
-    StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,
+    StaticRuleHandler, ValidationInvocation, ValidationRuleKey,
 };
 pub use report::{CommitAssessment, CommitValidationReport};
 pub use schema_rules::SchemaRuleProducts;

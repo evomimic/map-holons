@@ -345,6 +345,19 @@ impl DescriptorPackages {
         })
     }
 
+    /// Supplies reached binding contributions for construction-time role preparation.
+    pub fn binding_contributions(&self) -> Vec<EffectiveRelationshipMember> {
+        self.definitions
+            .values()
+            .filter_map(|definition| definition.schema.as_ref().ok())
+            .flat_map(|schema| schema.contributions(R::ValidationBindings))
+            .map(|entry| EffectiveRelationshipMember {
+                member: entry.member.clone(),
+                declared_on: entry.declared_on.clone(),
+            })
+            .collect()
+    }
+
     pub fn effective_schema(
         &self,
         reference: &HolonReference,

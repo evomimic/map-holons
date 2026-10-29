@@ -401,19 +401,20 @@ pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, Ho
     Ok(test_case)
 }
 
-/// Required Core definitions remain readable, but publishing their successors is
-/// temporarily unsupported. Rejection preserves the source and all other candidates.
-pub fn commit_required_anchor_update_fixture() -> Result<DancesTestCase, HolonError> {
+/// Core successors retain normal validation and can commit after an independent
+/// candidate is corrected or abandoned. Run this fixture in an isolated runtime:
+/// rekeying the Core lineage head changes subsequent key-based lookups.
+pub fn commit_core_successor_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
-        "Required Core anchor update",
-        "No-op staging passes; rekeying an anchor successor rejects before any write",
+        "Rekeyed Core definition successor",
+        "An independent finding rejects the batch; the valid rekeyed Core successor commits on retry",
     );
     test_case.add_begin_transaction_step(None, None)?;
-    let anchor =
+    let core_definition =
         saved(&fixture_context, &mut test_case, &mut fixture_holons, "HolonType.TypeDescriptor")?;
     let unchanged = test_case.add_stage_new_version_step(
         &mut fixture_holons,
-        anchor,
+        core_definition,
         None,
         MapInteger(1),
         None,
@@ -439,12 +440,12 @@ pub fn commit_required_anchor_update_fixture() -> Result<DancesTestCase, HolonEr
     let successor = test_case.add_with_properties_step(
         &mut fixture_holons,
         successor,
-        [("Key".to_property_name(), "Rekeyed.RequiredCoreAnchor".to_base_value())].into(),
+        [("Key".to_property_name(), "Rekeyed.CoreDefinition".to_base_value())].into(),
         None,
         None,
     )?;
     // A second, independent error must still be reported by the common assessment.
-    let key = MapString("Undescribed.AnchorRestriction.Control".into());
+    let key = MapString("Undescribed.CoreSuccessor.Control".into());
     let source = fixture_context.mutation().new_holon(Some(key.clone()))?;
     let control = test_case.add_new_holon_step(
         &mut fixture_holons,
@@ -456,50 +457,51 @@ pub fn commit_required_anchor_update_fixture() -> Result<DancesTestCase, HolonEr
     )?;
     let control = test_case.add_stage_holon_step(&mut fixture_holons, control, None, None)?;
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
+    // RejectedHolons lists only finding-bearing candidates. The valid successor is
+    // omitted here and proven by the retry's NewVersion disposition below.
     test_case.add_verify_commit_rejection_step(
-        vec![
-            ExpectedRejectedHolon {
-                token: successor,
-                validation_state: ValidationState::Invalid,
-                findings: vec![ExpectedValidationFinding {
-                    kind: CommitValidationViolationKind::RuleViolation {
-                        code: "UnsupportedRequiredAnchorUpdate".into(),
-                    },
-                    rule_key: None,
-                    subject: ExpectedValidationSubject::Holon,
-                }],
-            },
-            ExpectedRejectedHolon {
-                token: control,
-                validation_state: ValidationState::NoDescriptor,
-                findings: vec![ExpectedValidationFinding {
-                    kind: CommitValidationViolationKind::NoDescriptor,
-                    rule_key: None,
-                    subject: ExpectedValidationSubject::Holon,
-                }],
-            },
-        ],
-        MapInteger(2),
+        vec![ExpectedRejectedHolon {
+            token: control.clone(),
+            validation_state: ValidationState::NoDescriptor,
+            findings: vec![ExpectedValidationFinding {
+                kind: CommitValidationViolationKind::NoDescriptor,
+                rule_key: None,
+                subject: ExpectedValidationSubject::Holon,
+            }],
+        }],
+        MapInteger(1),
         None,
     )?;
+    test_case.add_abandon_staged_changes_step(&mut fixture_holons, control, None, None)?;
+    test_case.add_commit_step_with_dispositions(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        vec![ExpectedCommitCandidate::new(successor, ExpectedDisposition::NewVersion)],
+        vec![],
+        None,
+        None,
+    )?;
+    // Persisted identity and predecessor checks live in the isolated test. A full
+    // saved-content comparison of this Core hub would read its large relationship sets
+    // one dance call at a time and add no successor coverage.
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
 
 /// Loader references may name a saved write source. A real definitional edit
-/// must reach the same anchor restriction as an ordinary staged successor.
-pub fn loader_required_anchor_update_fixture() -> Result<DancesTestCase, HolonError> {
+/// publishes a successor while existing references retain the saved predecessor.
+pub fn loader_core_successor_fixture() -> Result<DancesTestCase, HolonError> {
     use super::load_holons_internal_fixture::{
         add_loader_relationship_reference, make_load_set_from_bundles, BundleWithFilename,
     };
     use holons_test::ExpectedLoadStatus;
     let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
-        "Loader required anchor update",
-        "Loader promotion of a saved Core write source rejects before persistence",
+        "Loader Core successor",
+        "Loader promotion of a saved Core write source persists its explicit contract edit",
     );
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
-    let mut carrier = fixture_context.mutation().new_holon(Some("AnchorEdit.Carrier".into()))?;
+    let mut carrier = fixture_context.mutation().new_holon(Some("CoreEdit.Carrier".into()))?;
     add_loader_relationship_reference(
         &fixture_context,
         &mut carrier,
@@ -507,23 +509,32 @@ pub fn loader_required_anchor_update_fixture() -> Result<DancesTestCase, HolonEr
         "HolonType.TypeDescriptor",
         &["Title.PropertyType"],
     )?;
-    let mut bundle = fixture_context.mutation().new_holon(Some("AnchorEdit.Bundle".into()))?;
+    // Bundle members are staged as real holons, even when their relationship
+    // references edit a different source. Person keeps the carrier valid without Title.
+    add_loader_relationship_reference(
+        &fixture_context,
+        &mut carrier,
+        "DescribedBy",
+        "CoreEdit.Carrier",
+        &["Person.HolonType"],
+    )?;
+    let mut bundle = fixture_context.mutation().new_holon(Some("CoreEdit.Bundle".into()))?;
     bundle.add_related_holons(CoreRelationshipTypeName::BundleMembers, vec![carrier.into()])?;
     let load_set = make_load_set_from_bundles(
         &fixture_context,
-        "AnchorEdit.LoadSet",
-        vec![BundleWithFilename::new(bundle, "anchor-edit.json")],
+        "CoreEdit.LoadSet",
+        vec![BundleWithFilename::new(bundle, "core-edit.json")],
     )?;
     test_case.add_load_holons_internal_step(
         load_set,
-        MapInteger(1),
+        MapInteger(1), // Pass-1 carrier; the saved Core source is promoted in Pass 2.
+        MapInteger(2), // Carrier and Core successor.
+        MapInteger(2), // InstanceProperties and DescribedBy.
         MapInteger(0),
         MapInteger(1),
-        MapInteger(0),
         MapInteger(1),
-        MapInteger(1),
-        ExpectedLoadStatus::Rejected,
-        Some(MapInteger(2)),
+        ExpectedLoadStatus::Complete,
+        Some(MapInteger(0)),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)

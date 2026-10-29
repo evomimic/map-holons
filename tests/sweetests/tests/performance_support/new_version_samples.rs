@@ -1,8 +1,7 @@
 //! Successive NewVersion Commits of one bootstrap-loaded instance whose key never changes.
-//! Selected by `measure-commit-performance.py --mode new-version` to measure the anchor lineage
-//! evidence that every version-producing Commit of a non-anchor holon loads. The subject is not
-//! a required anchor, so each assessment loads that evidence; its unchanged key keeps
-//! key-uniqueness evidence constant across samples.
+//! Selected by `measure-commit-performance.py --mode new-version` to compare version-producing
+//! Commits across captures. The unchanged key keeps key-uniqueness evidence constant across
+//! samples; current assessment performs no anchor-lineage inventory scan.
 use holons_core::{core_shared_objects::transactions::TxId, RelationshipReadHint};
 use holons_prelude::prelude::*;
 use map_commands_contract::{

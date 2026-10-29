@@ -4,7 +4,7 @@ use std::sync::Arc;
 use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::{equals_or_extends, TypeHeader};
+use crate::descriptors::TypeHeader;
 use crate::reference_layer::{assert_reference_transaction_compatible, HolonReference};
 
 /// Universal property and relationship identities for one validation pass.
@@ -15,30 +15,18 @@ use crate::reference_layer::{assert_reference_transaction_compatible, HolonRefer
 /// Discard this value after the pass, before changing the schema snapshot.
 #[derive(Clone, Debug)]
 pub struct UniversalDescriptorContract {
-    descriptor_root: HolonReference,
     member_ids: HashSet<crate::DefinitionIdentity>,
     context: Arc<TransactionContext>,
 }
 
 impl UniversalDescriptorContract {
-    /// Resolves the Core baseline and descriptor-classification root by unique key.
-    /// The latter ensures that ordinary holons cannot claim the abstract exemption
-    /// merely by carrying an `IsAbstractType` property.
-    /// Resolves assessment anchors rather than using general Core lookup;
-    /// version-producing successors do not replace these saved contracts.
-    pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        let meta_type = super::resolve_assessment_anchor(context, "MetaTypeDescriptor.HolonType")?;
-        let descriptor_root = super::resolve_assessment_anchor(context, "TypeDescriptor")?;
-        Self::from_resolved(context, &meta_type, descriptor_root)
-    }
-
-    fn from_resolved(
+    /// Computes universal member identities from the exact meta-type definition reached
+    /// through a subject's governing lineage. Prepare this before consuming conformance.
+    pub fn from_meta_type(
         context: &Arc<TransactionContext>,
         meta_type: &HolonReference,
-        descriptor_root: HolonReference,
     ) -> Result<Self, HolonError> {
         assert_reference_transaction_compatible(meta_type, context)?;
-        assert_reference_transaction_compatible(&descriptor_root, context)?;
         let contributions = super::ContractContributions::resolve(meta_type)?;
         let member_ids = contributions
             .properties
@@ -48,7 +36,7 @@ impl UniversalDescriptorContract {
                 crate::DefinitionIdentity::for_reference(&contribution.member, context)
             })
             .collect::<Result<_, HolonError>>()?;
-        Ok(Self { descriptor_root, member_ids, context: Arc::clone(context) })
+        Ok(Self { member_ids, context: Arc::clone(context) })
     }
 
     /// Implements `EnforceMinimum(H, M)` for a member of H's conformance contract.
@@ -56,15 +44,17 @@ impl UniversalDescriptorContract {
     /// Concrete holons enforce every minimum. Abstract descriptor holons may omit
     /// category-specific members, but universal structure remains required. This
     /// predicate does not relax validation of a populated member.
+    /// `is_descriptor` comes from the caller's structural diagnosis; this operation
+    /// reads abstractness lazily without walking inheritance or recognizing roles.
     pub fn enforce_minimum(
         &self,
         holon: &HolonReference,
+        is_descriptor: bool,
         member: &HolonReference,
     ) -> Result<bool, HolonError> {
         assert_reference_transaction_compatible(holon, &self.context)?;
         assert_reference_transaction_compatible(member, &self.context)?;
-        let is_abstract = equals_or_extends(holon, &self.descriptor_root)?
-            && TypeHeader::new(holon).is_abstract_type()?;
+        let is_abstract = is_descriptor && TypeHeader::new(holon).is_abstract_type()?;
         Ok(!is_abstract
             || self
                 .member_ids
@@ -103,24 +93,32 @@ mod tests {
         let mut baseline = new_test_holon(&context, "MetaTypeDescriptor.HolonType")?;
         baseline
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![baseline_parent.into()])?;
-        context.mutation().stage_new_holon(baseline)?;
+        let baseline = context.mutation().stage_new_holon(baseline)?;
 
-        let contract = UniversalDescriptorContract::resolve(&context)?;
+        let contract = UniversalDescriptorContract::from_meta_type(&context, &baseline.into())?;
         let category_member: HolonReference = new_test_holon(&context, "category-member")?.into();
         let mut descriptor = new_descriptor_holon(&context, "descriptor", "Example", "Property")?;
         descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
-        assert!(contract.enforce_minimum(&(&descriptor).into(), &category_member)?);
+        assert!(contract.enforce_minimum(&(&descriptor).into(), true, &category_member)?);
         descriptor.with_property_value(CorePropertyTypeName::IsAbstractType, true)?;
-        assert!(!contract.enforce_minimum(&(&descriptor).into(), &category_member)?);
-        assert!(contract.enforce_minimum(&(&descriptor).into(), &universal_property.into())?);
-        assert!(contract.enforce_minimum(&(&descriptor).into(), &universal_relationship.into())?);
+        assert!(!contract.enforce_minimum(&(&descriptor).into(), true, &category_member)?);
+        assert!(contract.enforce_minimum(
+            &(&descriptor).into(),
+            true,
+            &universal_property.into()
+        )?);
+        assert!(contract.enforce_minimum(
+            &(&descriptor).into(),
+            true,
+            &universal_relationship.into()
+        )?);
 
         // Neither a familiar label nor an authored Boolean classifies an ordinary holon.
         let mut ordinary = new_descriptor_holon(&context, "ordinary", "TypeDescriptor", "Holon")?;
         ordinary.with_property_value(CorePropertyTypeName::IsAbstractType, true)?;
-        assert!(contract.enforce_minimum(&ordinary.into(), &category_member)?);
+        assert!(contract.enforce_minimum(&ordinary.into(), false, &category_member)?);
         let ordinary = new_test_holon(&context, "ordinary-without-abstractness")?;
-        assert!(contract.enforce_minimum(&ordinary.into(), &category_member)?);
+        assert!(contract.enforce_minimum(&ordinary.into(), false, &category_member)?);
         Ok(())
     }
 
@@ -129,15 +127,14 @@ mod tests {
         let context = build_context();
         let root: HolonReference = new_test_holon(&context, "root")?.into();
         let baseline = new_test_holon(&context, "baseline")?.into();
-        let contract =
-            UniversalDescriptorContract::from_resolved(&context, &baseline, root.clone())?;
+        let contract = UniversalDescriptorContract::from_meta_type(&context, &baseline)?;
         let mut descriptor = new_test_holon(&context, "incomplete-descriptor")?;
         descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![root])?;
         let member: HolonReference = new_test_holon(&context, "member")?.into();
-        assert!(contract.enforce_minimum(&descriptor.into(), &member).is_err());
+        assert!(contract.enforce_minimum(&descriptor.into(), true, &member).is_err());
         let foreign = new_test_holon(&build_context(), "foreign")?;
         assert!(matches!(
-            contract.enforce_minimum(&foreign.into(), &member),
+            contract.enforce_minimum(&foreign.into(), true, &member),
             Err(HolonError::CrossTransactionReference { .. })
         ));
         Ok(())

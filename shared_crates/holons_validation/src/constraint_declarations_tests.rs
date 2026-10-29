@@ -14,16 +14,6 @@ const BOUNDED: [&str; 4] = [
 const CARDINALITY: &str = "CardinalityConstraint.ConstraintType";
 const UNIQUE: &str = "UniqueItemsConstraint.ConstraintType";
 
-fn roots(fixture: &Fixture) -> ConstraintDeclarationRoots {
-    ConstraintDeclarationRoots {
-        type_descriptor: fixture.nodes["TypeDescriptor"].clone(),
-        constraint_type: fixture.nodes["ConstraintType.HolonType"].clone(),
-        bounded: BOUNDED.map(|key| fixture.nodes[key].clone()),
-        cardinality: fixture.nodes[CARDINALITY].clone(),
-        unique_items: fixture.nodes[UNIQUE].clone(),
-    }
-}
-
 fn fixture() -> Result<Fixture, HolonError> {
     add_constraint_definitions(Fixture::new()?)
 }
@@ -145,8 +135,8 @@ fn bounded_configuration_boundaries_are_declarations_without_evaluators() -> Res
                     constraint.with_property_value(name, value)?;
                 }
             }
-            let roots = roots(&fixture);
-            let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+
+            let mut assessment = ConstraintDeclarationAssessment::new();
             let mut collector = ValidationCollector::default();
             assert_eq!(
                 assessment.assess_constraint(&constraint, &mut collector)?,
@@ -221,9 +211,9 @@ fn cardinality_and_presence_only_uniqueness_have_distinct_configuration_contract
         for (name, value) in fields {
             constraint.with_property_value(name, value)?;
         }
-        let roots = roots(&fixture);
+
         let mut collector = ValidationCollector::default();
-        let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+        let mut assessment = ConstraintDeclarationAssessment::new();
         assert_eq!(
             assessment.assess_constraint(&constraint, &mut collector)?,
             accepted,
@@ -258,14 +248,13 @@ fn broader_local_constraints_preserve_inherited_obligations_and_check_reusable_r
     fixture.node("Child")?;
     fixture.link("Child", CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
     fixture.link("Child", CoreRelationshipTypeName::Constraints, "Broader")?;
-    let roots = roots(&fixture);
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+
+    let mut assessment = ConstraintDeclarationAssessment::new();
     let mut products = DescriptorRuleProducts::default();
     let mut collector = ValidationCollector::default();
     let mut attachment_count = 0;
     for key in ["StringValueType.ValueType", "Child"] {
-        let diagnosis =
-            ExtendsLineageDiagnosis::assess(&fixture.nodes[key], &roots.type_descriptor)?;
+        let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[key])?;
         let lineage = diagnosis.valid_lineage().unwrap();
         attachment_count += ConstraintContributions::resolve(lineage)?.effective.len();
         assert!(assessment.assess_descriptor(lineage, &mut products, &mut collector)?);
@@ -299,8 +288,8 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
         fixture.node("Child")?;
         fixture.link("Child", CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
         let subject = fixture.nodes["Child"].clone();
-        let roots = roots(&fixture);
-        let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &roots.type_descriptor)?;
+
+        let diagnosis = ExtendsLineageDiagnosis::assess(&subject)?;
         let lineage = diagnosis.valid_lineage().unwrap();
         let mut contributions = ConstraintContributions::resolve(lineage)?;
         // Deliberately bypass the kernel's additive construction. Normal authoring
@@ -312,7 +301,7 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
         }
         let mut products = DescriptorRuleProducts::default();
         let mut collector = ValidationCollector::default();
-        let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+        let mut assessment = ConstraintDeclarationAssessment::new();
         assert!(!assessment.assess_contributions(
             lineage,
             &contributions,
@@ -344,10 +333,9 @@ fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
         CoreRelationshipTypeName::Constraints,
         "Configured",
     )?;
-    let roots = roots(&fixture);
+
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(&roots)?
-        .assess_constraint(&constraint, &mut collector)?);
+    assert!(ConstraintDeclarationAssessment::new().assess_constraint(&constraint, &mut collector)?);
     assert_eq!(collector.observations().effective_constraint_count, 0);
     assert!(collector.into_report().is_accepted());
     let mut subject = fixture.staged_subject("configured-value")?;
@@ -406,14 +394,11 @@ fn extension_owned_constraint_and_dependency_owned_reuse_do_not_change_ownership
         CoreRelationshipTypeName::ComponentOf,
         "ExtensionSchema",
     )?;
-    let roots = roots(&fixture);
-    let diagnosis = ExtendsLineageDiagnosis::assess(
-        &fixture.nodes["ExtensionDescriptor"],
-        &roots.type_descriptor,
-    )?;
+
+    let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes["ExtensionDescriptor"])?;
     let mut collector = ValidationCollector::default();
     let mut products = DescriptorRuleProducts::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+    let mut assessment = ConstraintDeclarationAssessment::new();
     assert!(assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut products,
@@ -440,11 +425,11 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
         CoreRelationshipTypeName::Constraints,
         "BadConfiguration",
     )?;
-    let roots = roots(&fixture);
+
     let subject = fixture.nodes["IntegerValueType.ValueType"].clone();
-    let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &roots.type_descriptor)?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&subject)?;
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+    let mut assessment = ConstraintDeclarationAssessment::new();
     assert!(!assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut DescriptorRuleProducts::default(),
@@ -471,7 +456,7 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
         "IntegerValueType.ValueType",
     )?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(&roots)?.assess_descriptor(
+    assert!(ConstraintDeclarationAssessment::new().assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut DescriptorRuleProducts::default(),
         &mut collector
@@ -492,9 +477,9 @@ fn malformed_describing_selections_are_findings() -> Result<(), HolonError> {
         vec![fixture.nodes[UNIQUE].clone(), fixture.nodes[CARDINALITY].clone()],
     )?;
     let wrong = configured(&mut fixture, "Wrong", "StringValueType.ValueType")?;
-    let roots = roots(&fixture);
+
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+    let mut assessment = ConstraintDeclarationAssessment::new();
     for constraint in [&missing, &multiple, &wrong] {
         assert!(!assessment.assess_constraint(constraint, &mut collector)?);
     }
@@ -525,9 +510,9 @@ fn declaration_reads_exact_configuration_and_deduplicates_each_definition() -> R
     let fixture = fixture.saved_snapshot()?;
     let mut replacement = fixture.stage_update_of("Configured")?;
     replacement.with_property_value("Minimum", -1_i64)?;
-    let roots = roots(&fixture);
+
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots).unwrap();
+    let mut assessment = ConstraintDeclarationAssessment::new();
     assert!(assessment.assess_constraint(&fixture.nodes["Configured"], &mut collector).unwrap());
     assert!(!assessment.assess_constraint(&replacement.into(), &mut collector).unwrap());
     assert_eq!(collector.observations().constraint_declaration_count, 2);
@@ -572,9 +557,9 @@ fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), Hol
         "MetaConstraintType.MetaHolonType",
     )?;
     let fixture = fixture.saved_snapshot()?;
-    let roots = roots(&fixture);
+
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new(&roots)?
+    assert!(!ConstraintDeclarationAssessment::new()
         .assess_constraint(&fixture.nodes["Configured"], &mut collector)?);
 
     let mut replacement = fixture.stage_update_of("Extension.ConstraintType")?;
@@ -592,7 +577,7 @@ fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), Hol
         Ok(())
     })?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(&roots)?
+    assert!(ConstraintDeclarationAssessment::new()
         .assess_constraint(&configured.into(), &mut collector)?);
     assert!(collector.into_report().is_accepted());
     Ok(())
@@ -610,9 +595,9 @@ fn bound_diagnostics_distinguish_negative_integers_from_wrong_value_kinds() -> R
         constraint
             .with_property_value("Minimum", value)?
             .with_property_value("MinimumIsInclusive", true)?;
-        let roots = roots(&fixture);
+
         let mut collector = ValidationCollector::default();
-        assert!(!ConstraintDeclarationAssessment::new(&roots)?
+        assert!(!ConstraintDeclarationAssessment::new()
             .assess_constraint(&constraint, &mut collector)?);
         let report = collector.into_report();
         assert_eq!(report.violation_count(), 1);
@@ -632,10 +617,9 @@ fn malformed_inclusivity_does_not_invent_an_equal_endpoint_interval_failure(
         .with_property_value("Maximum", 2_i64)?
         .with_property_value("MinimumIsInclusive", "invalid")?
         .with_property_value("MaximumIsInclusive", true)?;
-    let roots = roots(&fixture);
+
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new(&roots)?
-        .assess_constraint(&constraint, &mut collector)?);
+    assert!(!ConstraintDeclarationAssessment::new().assess_constraint(&constraint, &mut collector)?);
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 1);
     assert!(report.violations[0].message.contains("MinimumIsInclusive must be Boolean"));
@@ -653,12 +637,11 @@ fn shared_invalid_constraint_findings_keep_their_subject_in_either_candidate_ord
             fixture.link(key, CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
             fixture.link(key, CoreRelationshipTypeName::Constraints, "SharedInvalid")?;
         }
-        let roots = roots(&fixture);
-        let mut assessment = ConstraintDeclarationAssessment::new(&roots)?;
+
+        let mut assessment = ConstraintDeclarationAssessment::new();
         let mut collector = ValidationCollector::default();
         for key in order {
-            let diagnosis =
-                ExtendsLineageDiagnosis::assess(&fixture.nodes[key], &roots.type_descriptor)?;
+            let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[key])?;
             assert!(!assessment.assess_descriptor(
                 diagnosis.valid_lineage().unwrap(),
                 &mut DescriptorRuleProducts::default(),
@@ -687,7 +670,7 @@ fn declaration_backend_errors_remain_operational_through_plain_references() -> R
         "Unreadable",
         HolonError::EmptyField("injected backend failure".into()),
     )])?;
-    let mut assessment = ConstraintDeclarationAssessment::new(&roots(&fixture))?;
+    let mut assessment = ConstraintDeclarationAssessment::new();
     let mut collector = ValidationCollector::default();
     assert!(
         matches!(assessment.assess_constraint(&fixture.nodes["Unreadable"], &mut collector), Err(HolonError::EmptyField(message)) if message == "injected backend failure")

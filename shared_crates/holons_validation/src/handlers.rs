@@ -3,7 +3,6 @@ use core_types::{
     ValidationSubjectPath,
 };
 use holons_core::ValueDescriptorKind;
-use type_names::CoreValidationRuleName;
 
 use crate::commitments::{declaring_identity, required_key};
 use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector, ValidationInvocation};
@@ -50,13 +49,14 @@ pub(crate) fn required_property_presence(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let (binding, path, missing_required, name, identity) = match invocation {
+    let (binding, path, code, missing_required, name, identity) = match invocation {
         ValidationInvocation::Prepared {
+            code,
             binding,
             path,
             subject:
                 crate::PreparedRuleSubject::Property { missing_required, name, descriptor_identity },
-        } => (binding, path, *missing_required, name.clone(), descriptor_identity.clone()),
+        } => (binding, path, code, *missing_required, name.clone(), descriptor_identity.clone()),
         _ => return Err(wrong_invocation("property")),
     };
     if missing_required {
@@ -64,7 +64,7 @@ pub(crate) fn required_property_presence(
             collector,
             binding,
             path,
-            "DS-PROP-001",
+            code,
             format!("Supply required property {name} (descriptor {identity})."),
         )?;
     }
@@ -76,16 +76,17 @@ pub(crate) fn no_undescribed_properties(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let (binding, path, names) = match invocation {
+    let (binding, path, code, names) = match invocation {
         ValidationInvocation::Prepared {
+            code,
             binding,
             path,
             subject: crate::PreparedRuleSubject::Holon { undescribed_properties, .. },
-        } => (binding, path, undescribed_properties.clone()),
+        } => (binding, path, code, undescribed_properties.clone()),
         _ => return Err(wrong_invocation("holon")),
     };
     for name in names {
-        rule_violation(collector, binding, path, "DS-PROP-003", format!(
+        rule_violation(collector, binding, path, code, format!(
             "Property {name} is populated but is not described; remove it or declare it in the effective property contract."
         ))?;
     }
@@ -98,12 +99,13 @@ pub(crate) fn key_uniqueness(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let (binding, path, key_claim) = match invocation {
+    let (binding, path, code, key_claim) = match invocation {
         ValidationInvocation::Prepared {
+            code,
             binding,
             path,
             subject: crate::PreparedRuleSubject::Holon { key_claim, .. },
-        } => (binding, path, key_claim),
+        } => (binding, path, code, key_claim),
         _ => return Err(wrong_invocation("holon")),
     };
     if let Some(claim) = key_claim {
@@ -116,7 +118,7 @@ pub(crate) fn key_uniqueness(
                  different lineages: {conflicts}. Committed historical key associations are retained.",
                 claim.evidence.key, claim.lineage,
             );
-            rule_violation(collector, binding, path, "DS-KEY-006", message)?;
+            rule_violation(collector, binding, path, code, message)?;
         }
     }
     Ok(RuleOutcome::Continue)
@@ -128,12 +130,13 @@ pub(crate) fn base_value_kind_matches(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let (binding, path, expected, actual, identity) = match invocation {
+    let (binding, path, code, expected, actual, identity) = match invocation {
         ValidationInvocation::Prepared {
+            code,
             binding,
             path,
             subject: crate::PreparedRuleSubject::Value { expected, actual, descriptor_identity },
-        } => (binding, path, expected.clone(), *actual, descriptor_identity.clone()),
+        } => (binding, path, code, expected.clone(), *actual, descriptor_identity.clone()),
         _ => return Err(wrong_invocation("value")),
     };
     let compatible = match &expected {
@@ -146,7 +149,7 @@ pub(crate) fn base_value_kind_matches(
             collector,
             binding,
             path,
-            "BaseValueKindMismatch",
+            code,
             format!("Expected {expected:?}, found {actual:?} for value descriptor {identity}."),
         )?;
         return Ok(RuleOutcome::StopValueEvaluation);
@@ -156,36 +159,4 @@ pub(crate) fn base_value_kind_matches(
 
 fn wrong_invocation(expected: &str) -> HolonError {
     HolonError::InvalidParameter(format!("Validation handler requires a {expected} invocation"))
-}
-
-/// Expected native family for each fixed handler, independent of authored labels.
-pub(crate) fn native_rule_kind(name: CoreValidationRuleName) -> Option<core_types::BaseValueKind> {
-    use core_types::BaseValueKind;
-    use CoreValidationRuleName::*;
-    match name {
-        BaseValueKindMatchesString => Some(BaseValueKind::String),
-        BaseValueKindMatchesInteger => Some(BaseValueKind::Integer),
-        BaseValueKindMatchesBoolean => Some(BaseValueKind::Boolean),
-        BaseValueKindMatchesBytes => Some(BaseValueKind::Bytes),
-        BaseValueKindMatchesEnum => Some(BaseValueKind::Enum),
-        RequiredPropertyPresence
-        | NoUndescribedProperties
-        | KeyUniqueness
-        | AtMostOneDirectParent
-        | AcyclicExtendsLineage
-        | ExtendsLineageTerminatesAtTypeDescriptor
-        | UniqueTypeDescriptorRoot
-        | LocalInstanceKindAnchorDesignation
-        | InstanceKindAnchorsAreAbstract
-        | TypeDescriptorRootKindException
-        | DescribingCategoryCompatibility
-        | DescriptorMetaTypeCorrespondence
-        | NoInheritedMemberRedeclaration
-        | UniqueSemanticMemberNames
-        | WellFormedEffectiveMemberDefinitions
-        | ContractMemberKindCompatibility
-        | InheritedValueConstraintNonRelaxation
-        | SchemaDependenciesAcyclic
-        | CrossSchemaDependenciesDeclared => None,
-    }
 }

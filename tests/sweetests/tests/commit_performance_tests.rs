@@ -3,6 +3,8 @@
 use holons_core::RelationshipReadHint;
 use holons_prelude::prelude::*;
 use holons_test::{init_commit_performance_runtime, init_test_runtime, DancesTestCase};
+#[path = "performance_support/creation_samples.rs"]
+mod creation_samples;
 #[path = "performance_support/link_queries.rs"]
 mod link_queries;
 #[path = "performance_support/new_version_samples.rs"]
@@ -49,6 +51,23 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
     if mode == "new-version" {
         assert_eq!(subjects, 1, "new-version samples publish one successor per Commit");
         new_version_samples::run(&runtime, samples).await;
+        return;
+    }
+    if mode == "visualizer-slot" || mode == "descriptor" {
+        assert!(link_output.is_none(), "link-query profiling supports only create mode");
+        let workload = if mode == "visualizer-slot" {
+            creation_samples::CreationWorkload::VisualizerSlot
+        } else {
+            assert!(
+                std::env::var_os("MAP_COMMIT_READINESS_CASES_OUTPUT").is_none(),
+                "readiness cases support only instance creation modes"
+            );
+            creation_samples::CreationWorkload::Descriptor
+        };
+        creation_samples::run(&runtime, samples, subjects, workload).await;
+        if let Ok(path) = std::env::var("MAP_COMMIT_READINESS_CASES_OUTPUT") {
+            readiness_cases::run(&runtime, &path, &mode).await;
+        }
         return;
     }
     assert_eq!(mode, "create");
@@ -172,6 +191,6 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
         link_queries::profile(&backend, &path).await;
     }
     if let Ok(path) = std::env::var("MAP_COMMIT_READINESS_CASES_OUTPUT") {
-        readiness_cases::run(&runtime, &path).await;
+        readiness_cases::run(&runtime, &path, &mode).await;
     }
 }

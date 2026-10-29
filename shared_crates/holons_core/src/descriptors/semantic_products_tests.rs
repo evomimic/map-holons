@@ -1,19 +1,19 @@
 use super::test_support::*;
 use super::*;
-use crate::reference_layer::{HolonReference, WritableHolon};
+use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 use core_types::HolonError;
-use type_names::{CorePropertyTypeName as P, CoreRelationshipTypeName as R};
+use type_names::{CoreDefinitionRole, CorePropertyTypeName as P, CoreRelationshipTypeName as R};
 
 #[test]
 fn structural_products_do_not_require_classification() -> Result<(), HolonError> {
     let context = build_context();
-    let root: HolonReference = new_test_holon(&context, "root")?.into();
+    let root: HolonReference = new_test_holon(&context, "TypeDescriptor")?.into();
     let mut ordinary = new_test_holon(&context, "ordinary")?;
     assert!(matches!(
         resolve_describing_type(&ordinary.clone().into())?,
         DescribingTypeResolution::Missing
     ));
-    assert!(ExtendsLineageDiagnosis::assess(&ordinary.clone().into(), &root)?.defects.is_empty());
+    assert!(ExtendsLineageDiagnosis::assess(&ordinary.clone().into())?.defects.is_empty());
     describe(&mut ordinary, &root)?;
     assert!(matches!(
         resolve_describing_type(&ordinary.clone().into())?,
@@ -25,7 +25,7 @@ fn structural_products_do_not_require_classification() -> Result<(), HolonError>
         matches!(resolve_describing_type(&ordinary.clone().into())?, DescribingTypeResolution::Multiple(targets) if targets.len() == 2)
     );
     ordinary.add_related_holons(R::Extends, vec![root.clone(), other])?;
-    let diagnosis = ExtendsLineageDiagnosis::assess(&ordinary.into(), &root)?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&ordinary.into())?;
     assert!(matches!(
         diagnosis.defects.as_slice(),
         [ExtendsLineageDefect::MultipleParents { count: 2, .. }]
@@ -36,22 +36,22 @@ fn structural_products_do_not_require_classification() -> Result<(), HolonError>
 #[test]
 fn lineage_drains_pending_errors_and_checks_termination_and_root() -> Result<(), HolonError> {
     let context = build_context();
-    let mut root = new_test_holon(&context, "root")?;
+    let mut root = new_test_holon(&context, "TypeDescriptor")?;
     let mut first = new_test_holon(&context, "first")?;
     let mut second = new_test_holon(&context, "second")?;
     first.add_related_holons(R::Extends, vec![second.clone().into()])?;
-    let diagnosis = ExtendsLineageDiagnosis::assess(&first.clone().into(), &root.clone().into())?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&first.clone().into())?;
     assert!(matches!(
         diagnosis.defects.as_slice(),
         [ExtendsLineageDefect::WrongTermination { .. }]
     ));
     second.add_related_holons(R::Extends, vec![first.clone().into()])?;
     assert!(equals_or_extends(&first.clone().into(), &first.clone().into())?);
-    let diagnosis = ExtendsLineageDiagnosis::assess(&first.clone().into(), &root.clone().into())?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&first.clone().into())?;
     assert_eq!(diagnosis.lineage.len(), 2);
     assert!(matches!(diagnosis.defects.as_slice(), [ExtendsLineageDefect::Cycle { .. }]));
     root.add_related_holons(R::Extends, vec![first.into()])?;
-    let diagnosis = ExtendsLineageDiagnosis::assess(&root.clone().into(), &root.into())?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&root.clone().into())?;
     assert!(diagnosis
         .defects
         .iter()
@@ -62,12 +62,11 @@ fn lineage_drains_pending_errors_and_checks_termination_and_root() -> Result<(),
 #[test]
 fn a_unique_describer_does_not_establish_its_lineage_validity() -> Result<(), HolonError> {
     let context = build_context();
-    let root: HolonReference = new_test_holon(&context, "root")?.into();
     let mut descriptor = new_test_holon(&context, "descriptor")?;
     descriptor.add_related_holons(R::Extends, vec![descriptor.clone().into()])?;
     let mut subject = new_test_holon(&context, "subject")?;
     describe(&mut subject, &descriptor.into())?;
-    let prerequisites = StructuralPrerequisites::assess(&subject.into(), &root)?;
+    let prerequisites = StructuralPrerequisites::assess(&subject.into())?;
     assert!(prerequisites.subject_lineage.defects.is_empty());
     assert!(matches!(
         prerequisites.governing_lineage.unwrap().defects.as_slice(),
@@ -76,9 +75,17 @@ fn a_unique_describer_does_not_establish_its_lineage_validity() -> Result<(), Ho
     Ok(())
 }
 
-fn kind_roots(
+struct KindFixture {
+    type_descriptor: HolonReference,
+    holon_type: HolonReference,
+    meta_type: HolonReference,
+    meta_holon_type: HolonReference,
+    semantics: DescriptorKindSemantics,
+}
+
+fn kind_fixture(
     context: &std::sync::Arc<crate::core_shared_objects::transactions::TransactionContext>,
-) -> Result<DescriptorKindRoots, HolonError> {
+) -> Result<KindFixture, HolonError> {
     // Transient construction permits the canonical self-describing meta-type.
     let mut root = new_kind_descriptor(context, "TypeDescriptor", None, false)?;
     let mut holon =
@@ -99,21 +106,25 @@ fn kind_roots(
     describe(&mut meta_holon, &self_reference)?;
     describe(&mut root, &self_reference)?;
     describe(&mut holon, &self_reference)?;
-    DescriptorKindRoots::from_resolved(
-        context,
-        root.into(),
-        holon.into(),
-        meta.into(),
-        meta_holon.into(),
-    )
+    Ok(KindFixture {
+        type_descriptor: root.into(),
+        holon_type: holon.into(),
+        meta_type: meta.into(),
+        meta_holon_type: meta_holon.into(),
+        semantics: DescriptorKindSemantics::new(context),
+    })
 }
 
 #[test]
-fn kind_roots_require_available_canonical_identities() {
-    assert!(matches!(
-        DescriptorKindRoots::resolve(&build_context()),
-        Err(HolonError::HolonNotFound(_))
-    ));
+fn kind_semantics_need_no_core_catalog() -> Result<(), HolonError> {
+    let context = build_context();
+    let kinds = DescriptorKindSemantics::new(&context);
+    let ordinary: HolonReference = new_test_holon(&context, "ordinary")?.into();
+    let diagnosis = ExtendsLineageDiagnosis::assess(&ordinary)?;
+    let lineage = diagnosis.valid_lineage().unwrap();
+    assert!(!kinds.is_descriptor(lineage)?);
+    assert!(kinds.instance_type_kind(lineage)?.is_none());
+    Ok(())
 }
 
 #[test]
@@ -163,33 +174,33 @@ fn contributions_preserve_redeclarations_and_separate_namespaces() -> Result<(),
 #[test]
 fn ownership_keeps_readable_defects_and_namespaces_distinct() -> Result<(), HolonError> {
     let context = build_context();
-    let schema_type: HolonReference = new_test_holon(&context, "schema-type")?.into();
+    let schema_type: HolonReference = new_test_holon(&context, "Schema.HolonType")?.into();
     let owner: HolonReference = new_schema_holon(&context, "schema", &schema_type)?.into();
     for kind in [SchemaOwnershipKind::Component, SchemaOwnershipKind::Rule] {
         let mut subject = new_test_holon(&context, "subject")?;
         assert!(matches!(
-            resolve_schema_ownership(&subject.clone().into(), kind, &schema_type)?,
+            resolve_schema_ownership(&subject.clone().into(), kind)?,
             SchemaOwnershipResolution::Missing
         ));
         own(&mut subject, &owner, kind)?;
         assert!(
-            matches!(resolve_schema_ownership(&subject.clone().into(), kind, &schema_type)?, SchemaOwnershipResolution::OwnedBy(found) if found == owner)
+            matches!(resolve_schema_ownership(&subject.clone().into(), kind)?, SchemaOwnershipResolution::OwnedBy(found) if found == owner)
         );
         own(&mut subject, &new_test_holon(&context, "invalid-owner")?.into(), kind)?;
         assert!(
-            matches!(resolve_schema_ownership(&subject.into(), kind, &schema_type)?, SchemaOwnershipResolution::Multiple(targets) if targets.len() == 2)
+            matches!(resolve_schema_ownership(&subject.into(), kind)?, SchemaOwnershipResolution::Multiple(targets) if targets.len() == 2)
         );
         let mut subject = new_test_holon(&context, "invalid")?;
         own(&mut subject, &new_test_holon(&context, "untyped-owner")?.into(), kind)?;
         assert!(matches!(
-            resolve_schema_ownership(&subject.into(), kind, &schema_type)?,
+            resolve_schema_ownership(&subject.into(), kind)?,
             SchemaOwnershipResolution::InvalidOwner { .. }
         ));
     }
     let constraint_type: HolonReference = new_test_holon(&context, "constraint-type")?.into();
     let constraint = new_constraint_holon(&context, "constraint", &constraint_type, &owner)?;
     assert!(matches!(
-        resolve_schema_ownership(&constraint.into(), SchemaOwnershipKind::Component, &schema_type)?,
+        resolve_schema_ownership(&constraint.into(), SchemaOwnershipKind::Component)?,
         SchemaOwnershipResolution::Missing
     ));
     assert!(schema_components(&owner)?.is_empty());
@@ -215,37 +226,42 @@ fn applicability_uses_identity_and_local_policy_without_evaluation() -> Result<(
 }
 
 fn kind_of(
-    roots: &DescriptorKindRoots,
+    roots: &KindFixture,
     subject: &HolonReference,
 ) -> Result<Option<HolonReference>, HolonError> {
-    let diagnosis = ExtendsLineageDiagnosis::assess(subject, &roots.type_descriptor)?;
-    roots.instance_type_kind(diagnosis.valid_lineage().expect("fixture has a valid lineage"))
+    let diagnosis = ExtendsLineageDiagnosis::assess(subject)?;
+    roots
+        .semantics
+        .instance_type_kind(diagnosis.valid_lineage().expect("fixture has a valid lineage"))
 }
 
 fn category_of(
-    roots: &DescriptorKindRoots,
+    roots: &KindFixture,
     subject: &HolonReference,
-) -> Result<Option<HolonReference>, HolonError> {
-    let diagnosis = ExtendsLineageDiagnosis::assess(subject, &roots.type_descriptor)?;
-    roots.required_describing_category(
+) -> Result<Option<RequiredCategory>, HolonError> {
+    let diagnosis = ExtendsLineageDiagnosis::assess(subject)?;
+    roots.semantics.required_describing_category(
         diagnosis.valid_lineage().expect("fixture has a valid lineage"),
     )
 }
 
 fn compatibility_of(
-    roots: &DescriptorKindRoots,
+    roots: &KindFixture,
     subject: &HolonReference,
 ) -> Result<Option<DescribingCompatibility>, HolonError> {
-    let prerequisites = StructuralPrerequisites::assess(subject, &roots.type_descriptor)?;
-    roots.describing_lineages_compatible(&prerequisites)
+    let prerequisites = StructuralPrerequisites::assess(subject)?;
+    roots.semantics.describing_lineages_compatible(&prerequisites)
 }
 
 #[test]
 fn graph_derived_categories_support_extensions_and_self_description() -> Result<(), HolonError> {
     let context = build_context();
-    let roots = kind_roots(&context)?;
+    let roots = kind_fixture(&context)?;
     assert!(kind_of(&roots, &roots.type_descriptor)?.is_none());
-    assert_eq!(category_of(&roots, &roots.type_descriptor)?, Some(roots.meta_holon_type.clone()));
+    assert_eq!(
+        category_of(&roots, &roots.type_descriptor)?,
+        Some(RequiredCategory::Role(CoreDefinitionRole::MetaHolonType))
+    );
     assert!(
         compatibility_of(&roots, &roots.type_descriptor)?.unwrap()
             == DescribingCompatibility {
@@ -273,7 +289,10 @@ fn graph_derived_categories_support_extensions_and_self_description() -> Result<
     describe(&mut descriptor, &extension_meta)?;
     let descriptor: HolonReference = descriptor.into();
     assert_eq!(kind_of(&roots, &descriptor)?, Some(anchor.clone()));
-    assert_eq!(category_of(&roots, &descriptor)?, Some(extension_meta.clone()));
+    assert_eq!(
+        category_of(&roots, &descriptor)?,
+        Some(RequiredCategory::Exact(extension_meta.clone()))
+    );
     assert!(
         compatibility_of(&roots, &descriptor)?.unwrap()
             == DescribingCompatibility {
@@ -320,16 +339,15 @@ fn graph_derived_categories_support_extensions_and_self_description() -> Result<
     );
     let mut malformed = new_kind_descriptor(&context, "malformed", None, true)?;
     malformed.add_related_holons(R::Extends, vec![malformed.clone().into()])?;
-    let malformed = ExtendsLineageDiagnosis::assess(&malformed.into(), &roots.type_descriptor)?;
+    let malformed = ExtendsLineageDiagnosis::assess(&malformed.into())?;
     assert!(malformed.valid_lineage().is_none());
     assert!(
         matches!(malformed.defects.as_slice(), [ExtendsLineageDefect::Cycle { repeated_descriptor, .. }] if !repeated_descriptor.is_empty())
     );
     let mut no_describer = new_test_holon(&context, "no-describer")?;
     no_describer.add_related_holons(R::Extends, vec![roots.type_descriptor.clone()])?;
-    let prerequisites =
-        StructuralPrerequisites::assess(&no_describer.into(), &roots.type_descriptor)?;
-    assert!(roots.describing_lineages_compatible(&prerequisites)?.is_none());
+    let prerequisites = StructuralPrerequisites::assess(&no_describer.into())?;
+    assert!(roots.semantics.describing_lineages_compatible(&prerequisites)?.is_none());
     Ok(())
 }
 
@@ -365,15 +383,15 @@ fn saved_navigation_reads_distinct_collections_and_operational_failures_propagat
         HolonId::Local(LocalId(vec![99; 39])),
     );
     assert!(schema_components(&missing).is_err());
-    assert!(resolve_schema_ownership(&missing, SchemaOwnershipKind::Rule, &references[0]).is_err());
-    assert!(ExtendsLineageDiagnosis::assess(&missing, &references[0]).is_err());
+    assert!(resolve_schema_ownership(&missing, SchemaOwnershipKind::Rule).is_err());
+    assert!(ExtendsLineageDiagnosis::assess(&missing).is_err());
     Ok(())
 }
 
 #[test]
 fn nearest_anchor_wins_and_foreign_transaction_is_rejected() -> Result<(), HolonError> {
     let context = build_context();
-    let roots = kind_roots(&context)?;
+    let roots = kind_fixture(&context)?;
     let mut nearer = new_kind_descriptor(&context, "nearer", Some(&roots.holon_type), true)?;
     describe(&mut nearer, &roots.meta_holon_type)?;
     let nearer: HolonReference = nearer.into();
@@ -385,20 +403,15 @@ fn nearest_anchor_wins_and_foreign_transaction_is_rejected() -> Result<(), Holon
         new_kind_descriptor(&context, "abstract-anchor", Some(&roots.holon_type), true)?;
     abstract_anchor.with_property_value(P::IsAbstractType, true)?;
     assert!(TypeHeader::new(&abstract_anchor.into()).is_abstract_type()?);
-    let foreign = new_test_holon(&build_context(), "foreign")?;
+    let foreign_context = build_context();
+    let foreign: HolonReference = new_test_holon(&foreign_context, "foreign")?.into();
+    // A valid foreign lineage still cannot be consumed by this transaction's semantics.
+    let foreign_diagnosis = ExtendsLineageDiagnosis::assess(&foreign)?;
     assert!(matches!(
-        ExtendsLineageDiagnosis::assess(&foreign.clone().into(), &roots.type_descriptor),
+        roots.semantics.instance_type_kind(foreign_diagnosis.valid_lineage().unwrap()),
         Err(HolonError::CrossTransactionReference { .. })
     ));
-    let foreign: HolonReference = foreign.into();
-    // Build a valid foreign lineage to exercise the roots' transaction check independently.
-    let foreign_diagnosis = ExtendsLineageDiagnosis::assess(&foreign, &foreign)?;
-    assert!(matches!(
-        roots.instance_type_kind(foreign_diagnosis.valid_lineage().unwrap()),
-        Err(HolonError::CrossTransactionReference { .. })
-    ));
-    let prerequisite =
-        StructuralPrerequisites::assess(&roots.meta_holon_type, &roots.type_descriptor)?;
+    let prerequisite = StructuralPrerequisites::assess(&roots.meta_holon_type)?;
     assert_eq!(
         prerequisite.subject_lineage.lineage,
         prerequisite.governing_lineage.unwrap().lineage
@@ -409,14 +422,14 @@ fn nearest_anchor_wins_and_foreign_transaction_is_rejected() -> Result<(), Holon
 #[test]
 fn ownership_rejects_wrong_categories_ambiguous_describers_and_cycles() -> Result<(), HolonError> {
     let context = build_context();
-    let schema_type: HolonReference = new_test_holon(&context, "schema-type")?.into();
+    let schema_type: HolonReference = new_test_holon(&context, "Schema.HolonType")?.into();
     let mut unrelated_type = new_test_holon(&context, "unrelated-type")?;
     let mut owner = new_schema_holon(&context, "owner", &unrelated_type.clone().into())?;
     for kind in [SchemaOwnershipKind::Component, SchemaOwnershipKind::Rule] {
         let mut subject = new_test_holon(&context, "subject")?;
         own(&mut subject, &owner.clone().into(), kind)?;
         assert!(matches!(
-            resolve_schema_ownership(&subject.into(), kind, &schema_type)?,
+            resolve_schema_ownership(&subject.into(), kind)?,
             SchemaOwnershipResolution::InvalidOwner { .. }
         ));
     }
@@ -424,12 +437,12 @@ fn ownership_rejects_wrong_categories_ambiguous_describers_and_cycles() -> Resul
     let mut subject = new_test_holon(&context, "cyclic-owner")?;
     own(&mut subject, &owner.clone().into(), SchemaOwnershipKind::Rule)?;
     assert!(matches!(
-        resolve_schema_ownership(&subject.clone().into(), SchemaOwnershipKind::Rule, &schema_type)?,
+        resolve_schema_ownership(&subject.clone().into(), SchemaOwnershipKind::Rule)?,
         SchemaOwnershipResolution::MalformedOwnerLineage { .. }
     ));
     describe(&mut owner, &schema_type)?;
     assert!(matches!(
-        resolve_schema_ownership(&subject.into(), SchemaOwnershipKind::Rule, &schema_type)?,
+        resolve_schema_ownership(&subject.into(), SchemaOwnershipKind::Rule)?,
         SchemaOwnershipResolution::InvalidOwner {
             describing: DescribingTypeResolution::Multiple(_),
             ..
@@ -443,7 +456,7 @@ fn staged_ownership_and_local_dependencies_need_no_materialized_inverses() -> Re
 {
     let context = build_context();
     let schema_type: HolonReference =
-        context.mutation().stage_new_holon(new_test_holon(&context, "schema-type")?)?.into();
+        context.mutation().stage_new_holon(new_test_holon(&context, "Schema.HolonType")?)?.into();
     let owner: HolonReference = context
         .mutation()
         .stage_new_holon(new_schema_holon(&context, "owner", &schema_type)?)?
@@ -452,7 +465,7 @@ fn staged_ownership_and_local_dependencies_need_no_materialized_inverses() -> Re
     own(&mut component, &owner, SchemaOwnershipKind::Component)?;
     let component: HolonReference = context.mutation().stage_new_holon(component)?.into();
     assert!(
-        matches!(resolve_schema_ownership(&component, SchemaOwnershipKind::Component, &schema_type)?, SchemaOwnershipResolution::OwnedBy(found) if found == owner)
+        matches!(resolve_schema_ownership(&component, SchemaOwnershipKind::Component)?, SchemaOwnershipResolution::OwnedBy(found) if found == owner)
     );
     assert!(schema_components(&owner)?.is_empty());
     let mut parent = new_test_holon(&context, "parent")?;
@@ -502,44 +515,38 @@ fn saved_lineage_recognizes_no_op_staged_root() -> Result<(), HolonError> {
         new_test_holon(&context, "TypeDescriptor")?,
     )?
     .into();
-    let roots = DescriptorKindRoots::from_resolved(
-        &context,
-        replacement.clone(),
-        replacement.clone(),
-        replacement.clone(),
-        replacement.clone(),
-    )?;
+    let kinds = DescriptorKindSemantics::new(&context);
     // A no-op staged handle represents the saved definition; recognizing it does not substitute content.
     assert!(!same_definition(&child, &replacement)?);
     assert!(equals_or_extends(&saved_root.clone().into(), &replacement)?);
-    assert!(ExtendsLineageDiagnosis::assess(&child, &replacement)?.defects.is_empty());
-    let diagnosis = ExtendsLineageDiagnosis::assess(&child, &replacement)?;
-    assert!(roots.is_descriptor(diagnosis.valid_lineage().unwrap())?);
+    assert!(ExtendsLineageDiagnosis::assess(&child)?.defects.is_empty());
+    let diagnosis = ExtendsLineageDiagnosis::assess(&child)?;
+    assert!(kinds.is_descriptor(diagnosis.valid_lineage().unwrap())?);
     let HolonReference::Staged(mut staged) = replacement else { panic!("staged update") };
     staged.with_property_value(P::Description, "new definition")?;
     let successor = staged.into();
     assert!(!equals_or_extends(&child, &successor)?);
-    assert!(ExtendsLineageDiagnosis::assess(&child, &saved_root.into())?.defects.is_empty());
+    assert!(ExtendsLineageDiagnosis::assess(&child)?.defects.is_empty());
     Ok(())
 }
 
 #[test]
 fn kind_designation_diagnosis_retains_malformed_value_causes() -> Result<(), HolonError> {
     let context = build_context();
-    let roots = kind_roots(&context)?;
+    let roots = kind_fixture(&context)?;
     let mut subject = new_test_holon(&context, "missing-local-designation")?;
     subject.add_related_holons(R::Extends, vec![roots.holon_type.clone()])?;
     describe(&mut subject, &roots.meta_holon_type)?;
     let reference: HolonReference = subject.clone().into();
-    let prerequisites = StructuralPrerequisites::assess(&reference, &roots.type_descriptor)?;
+    let prerequisites = StructuralPrerequisites::assess(&reference)?;
     let lineage = prerequisites.subject_lineage.valid_lineage().unwrap();
     for wrong_type in [false, true] {
         if wrong_type {
             subject.with_property_value(P::DefinesInstanceTypeKind, "false")?;
         }
         for result in [
-            roots.assess_instance_type_kind(lineage).map(|_| ()),
-            roots.assess_describing_lineages_compatible(&prerequisites).map(|_| ()),
+            roots.semantics.assess_instance_type_kind(lineage).map(|_| ()),
+            roots.semantics.assess_describing_lineages_compatible(&prerequisites).map(|_| ()),
         ] {
             let Err(KindResolutionError::InvalidDesignation { descriptor, error }) = result else {
                 panic!("readable malformed designation must retain its cause");
@@ -560,7 +567,7 @@ fn kind_designation_diagnosis_retains_malformed_value_causes() -> Result<(), Hol
 fn effective_constraint_contributions_preserve_parent_identity_and_provenance(
 ) -> Result<(), HolonError> {
     let context = build_context();
-    let root: HolonReference = new_kind_descriptor(&context, "root", None, false)?.into();
+    let root: HolonReference = new_kind_descriptor(&context, "TypeDescriptor", None, false)?.into();
     let mut parent = new_kind_descriptor(&context, "parent", Some(&root), true)?;
     let mut child = new_kind_descriptor(&context, "child", Some(&parent.clone().into()), false)?;
     let inherited: HolonReference = new_test_holon(&context, "inherited")?.into();
@@ -568,7 +575,7 @@ fn effective_constraint_contributions_preserve_parent_identity_and_provenance(
     parent.add_related_holons(R::Constraints, vec![inherited.clone()])?;
     child.add_related_holons(R::Constraints, vec![broader])?;
     let subject: HolonReference = child.into();
-    let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &root)?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&subject)?;
     let mut contributions = ConstraintContributions::resolve(diagnosis.valid_lineage().unwrap())?;
     assert_eq!(contributions.inherited.len(), 1);
     assert_eq!(contributions.effective.len(), 2);
@@ -581,5 +588,123 @@ fn effective_constraint_contributions_preserve_parent_identity_and_provenance(
     assert_eq!(contributions.missing_inherited()?.len(), 1);
     contributions.effective.clear();
     assert_eq!(contributions.missing_inherited()?.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn own_role_and_lineage_roles_preserve_exact_definition_membership() -> Result<(), HolonError> {
+    let context = build_context();
+    let root: HolonReference = new_kind_descriptor(&context, "TypeDescriptor", None, false)?.into();
+    let other_root: HolonReference =
+        new_kind_descriptor(&context, "TypeDescriptor", None, false)?.into();
+    let child: HolonReference =
+        new_kind_descriptor(&context, "PropertyType.TypeDescriptor", Some(&root), false)?.into();
+    let diagnosis = ExtendsLineageDiagnosis::assess(&child)?;
+    let lineage = diagnosis.valid_lineage().unwrap();
+    assert!(has_role(&root, CoreDefinitionRole::TypeDescriptor)?);
+    assert!(!has_role(&child, CoreDefinitionRole::TypeDescriptor)?);
+    assert!(!lineage.subject_has_role(CoreDefinitionRole::TypeDescriptor));
+    assert!(lineage.subject_has_role(CoreDefinitionRole::PropertyType));
+    assert!(extends_role(&child, CoreDefinitionRole::TypeDescriptor)?);
+    assert!(lineage.contains_role(CoreDefinitionRole::TypeDescriptor));
+    assert_eq!(lineage.member_with_role(CoreDefinitionRole::TypeDescriptor), Some(&root));
+    assert!(!lineage.contains(&other_root)?);
+    assert!(lineage.contains_role_from(&child, CoreDefinitionRole::TypeDescriptor)?);
+    assert!(!lineage.contains_role_from(&other_root, CoreDefinitionRole::TypeDescriptor)?);
+    assert!(lineage.contains_role(CoreDefinitionRole::PropertyType));
+    assert!(!lineage.contains_role_from(&root, CoreDefinitionRole::PropertyType)?);
+    assert!(!same_definition(&root, &other_root)?);
+    Ok(())
+}
+
+#[test]
+fn core_roles_read_saved_record_keys_instead_of_smart_properties() -> Result<(), HolonError> {
+    use crate::core_shared_objects::holon::SavedHolon;
+    use base_types::{BaseValue, MapInteger, MapString};
+    use core_types::{HolonId, LocalId, PropertyMap};
+    use std::collections::HashMap;
+    use type_names::ToPropertyName;
+
+    let saved = ["TypeDescriptor", "Ordinary"]
+        .iter()
+        .enumerate()
+        .map(|(index, key)| {
+            SavedHolon::new(
+                LocalId(vec![index as u8 + 1; 39]),
+                PropertyMap::from([(
+                    "Key".to_property_name(),
+                    BaseValue::StringValue(MapString((*key).into())),
+                )]),
+                None,
+                MapInteger(1),
+            )
+        })
+        .collect();
+    let context = build_context_with_saved_holons(saved, HashMap::new());
+    for (index, cached_key, expected_role) in [(1, "Ordinary", true), (2, "TypeDescriptor", false)]
+    {
+        let subject = HolonReference::smart_with_key(
+            context.space_read_handle(),
+            HolonId::Local(LocalId(vec![index; 39])),
+            MapString(cached_key.into()),
+        );
+        assert_eq!(subject.key()?, Some(MapString(cached_key.into())));
+        assert_eq!(has_role(&subject, CoreDefinitionRole::TypeDescriptor)?, expected_role);
+        assert_eq!(extends_role(&subject, CoreDefinitionRole::TypeDescriptor)?, expected_role);
+        let diagnosis = ExtendsLineageDiagnosis::assess(&subject)?;
+        let lineage = diagnosis.valid_lineage().unwrap();
+        assert_eq!(lineage.contains_role(CoreDefinitionRole::TypeDescriptor), expected_role);
+        assert_eq!(lineage.subject_has_role(CoreDefinitionRole::TypeDescriptor), expected_role);
+        assert_eq!(
+            lineage.member_with_role(CoreDefinitionRole::TypeDescriptor).is_some(),
+            expected_role
+        );
+        let mut child = new_test_holon(&context, "child")?;
+        child.add_related_holons(R::Extends, vec![subject])?;
+        let diagnosis = ExtendsLineageDiagnosis::assess(&child.into())?;
+        assert_eq!(diagnosis.defects.is_empty(), expected_role);
+        if !expected_role {
+            assert!(matches!(
+                diagnosis.defects.as_slice(),
+                [ExtendsLineageDefect::WrongTermination { .. }]
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn role_walk_preserves_short_circuiting_and_structural_errors() -> Result<(), HolonError> {
+    let context = build_context();
+    let mut root = new_test_holon(&context, "TypeDescriptor")?;
+    let parent: HolonReference = new_test_holon(&context, "parent")?.into();
+    let other_parent: HolonReference = new_test_holon(&context, "other-parent")?.into();
+    root.add_related_holons(R::Extends, vec![parent, other_parent])?;
+    let root: HolonReference = root.into();
+    assert!(extends_role(&root, CoreDefinitionRole::TypeDescriptor)?);
+    assert!(matches!(
+        extends_role(&root, CoreDefinitionRole::Schema),
+        Err(HolonError::MultipleExtends { .. })
+    ));
+    let diagnosis = ExtendsLineageDiagnosis::assess(&root)?;
+    assert!(diagnosis
+        .defects
+        .iter()
+        .any(|defect| matches!(defect, ExtendsLineageDefect::RootHasParent)));
+    assert!(diagnosis.valid_lineage().is_none());
+    Ok(())
+}
+
+#[test]
+fn multiple_type_descriptor_roles_report_the_root_parent_defect_once() -> Result<(), HolonError> {
+    let context = build_context();
+    let terminal: HolonReference = new_test_holon(&context, "TypeDescriptor")?.into();
+    let mut middle = new_test_holon(&context, "TypeDescriptor")?;
+    middle.add_related_holons(R::Extends, vec![terminal])?;
+    let mut subject = new_test_holon(&context, "TypeDescriptor")?;
+    subject.add_related_holons(R::Extends, vec![middle.into()])?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&subject.into())?;
+    assert_eq!(diagnosis.lineage.len(), 3);
+    assert!(matches!(diagnosis.defects.as_slice(), [ExtendsLineageDefect::RootHasParent]));
     Ok(())
 }

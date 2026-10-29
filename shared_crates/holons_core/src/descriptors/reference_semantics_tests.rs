@@ -1,5 +1,5 @@
 use super::{test_support::*, *};
-use crate::core_shared_objects::{holon::SavedHolon, transactions::TransactionContext, Holon};
+use crate::core_shared_objects::{holon::SavedHolon, transactions::TransactionContext};
 use crate::{HolonReference, ReadableHolon, WritableHolon};
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, HolonId, LocalId, PropertyMap};
@@ -17,7 +17,11 @@ fn saved_fixture() -> (Arc<TransactionContext>, Vec<HolonReference>) {
                 PropertyMap::from([
                     (
                         "Key".to_property_name(),
-                        BaseValue::StringValue(MapString(format!("saved-{i}"))),
+                        BaseValue::StringValue(MapString(match i {
+                            0 => "TypeDescriptor".into(),
+                            2 => "Schema.HolonType".into(),
+                            _ => format!("saved-{i}"),
+                        })),
                     ),
                     (
                         "DefinesInstanceTypeKind".to_property_name(),
@@ -53,7 +57,7 @@ fn saved_lineage_ignores_staged_successor_but_explicit_reference_uses_it() -> Re
         stage_update_snapshot(&context, saved[1].holon_id()?.local_id().clone(), snapshot)?;
     update.with_property_value("Description", "changed")?;
     assert_eq!(ancestors(&saved[2])?, vec![saved[2].clone(), saved[1].clone(), saved[0].clone()]);
-    let diagnosis = ExtendsLineageDiagnosis::assess(&saved[2], &saved[0])?;
+    let diagnosis = ExtendsLineageDiagnosis::assess(&saved[2])?;
     assert!(diagnosis.defects.is_empty());
     let update: HolonReference = update.into();
     assert_eq!(ancestors(&update)?, vec![update.clone(), saved[4].clone()]);
@@ -61,50 +65,6 @@ fn saved_lineage_ignores_staged_successor_but_explicit_reference_uses_it() -> Re
     let mut explicit = new_test_holon(&context, "explicit")?;
     explicit.add_related_holons(R::Extends, vec![update.clone()])?;
     assert_eq!(ancestors(&explicit.into())?[1], update);
-    Ok(())
-}
-
-#[test]
-fn anchor_lookup_collapses_equivalent_handles_and_ignores_successors() -> Result<(), HolonError> {
-    let (context, saved) = saved_fixture();
-    let source = saved[0].holon_id()?.local_id().clone();
-    let first =
-        stage_update_snapshot(&context, source.clone(), new_test_holon(&context, "saved-0")?)?;
-    let second =
-        stage_update_snapshot(&context, source.clone(), new_test_holon(&context, "saved-0")?)?;
-    {
-        let rc = second.get_holon_to_commit(&context)?;
-        let mut holon = rc.write().unwrap();
-        let Holon::Staged(holon) = &mut *holon else { panic!("staged snapshot") };
-        holon.note_relationship_mutation(false)?;
-    }
-    let mut successor =
-        stage_update_snapshot(&context, source, new_test_holon(&context, "saved-0")?)?;
-    successor.with_property_value("Description", "successor")?;
-    let resolved = resolve_assessment_anchor(&context, "saved-0")?;
-    assert!(matches!(resolved, HolonReference::Smart(_)));
-    assert_eq!(resolved, saved[0]);
-    first.abandon_staged_changes(&context)?;
-    second.abandon_staged_changes(&context)?;
-    assert_eq!(resolve_assessment_anchor(&context, "saved-0")?, saved[0]);
-    // General lookup outside assessment retains its existing staged-first behavior.
-    assert!(matches!(
-        resolve_core_descriptor(&context, "saved-0"),
-        Err(HolonError::DuplicateError(..))
-    ));
-    Ok(())
-}
-
-#[test]
-fn distinct_same_key_anchor_creates_are_ambiguous() -> Result<(), HolonError> {
-    let context = build_context();
-    for _ in 0..2 {
-        context.mutation().stage_new_holon(new_test_holon(&context, "anchor")?)?;
-    }
-    assert!(matches!(
-        resolve_assessment_anchor(&context, "anchor"),
-        Err(HolonError::DuplicateError(..))
-    ));
     Ok(())
 }
 
@@ -128,11 +88,11 @@ fn exact_contract_members_applicability_and_ownership_preserve_provenance() -> R
     assert!(constraint_applies_to(&update, &saved[2])?);
     assert!(!constraint_applies_to(&saved[1], &saved[2])?);
     assert!(matches!(
-        resolve_schema_ownership(&saved[1], SchemaOwnershipKind::Component, &saved[0])?,
+        resolve_schema_ownership(&saved[1], SchemaOwnershipKind::Component)?,
         SchemaOwnershipResolution::Missing
     ));
     assert!(
-        matches!(resolve_schema_ownership(&update, SchemaOwnershipKind::Component, &saved[0])?, SchemaOwnershipResolution::OwnedBy(owner) if owner == saved[3])
+        matches!(resolve_schema_ownership(&update, SchemaOwnershipKind::Component)?, SchemaOwnershipResolution::OwnedBy(owner) if owner == saved[3])
     );
     Ok(())
 }
@@ -140,15 +100,12 @@ fn exact_contract_members_applicability_and_ownership_preserve_provenance() -> R
 #[test]
 fn plain_apis_preserve_backend_errors_and_reject_foreign_mutable_lineage() -> Result<(), HolonError>
 {
-    let (context, saved) = saved_fixture();
+    let (context, _) = saved_fixture();
     let missing = HolonReference::smart_from_id(
         context.space_read_handle(),
         HolonId::Local(LocalId(vec![99; 39])),
     );
-    assert!(matches!(
-        ExtendsLineageDiagnosis::assess(&missing, &saved[0]),
-        Err(HolonError::HolonNotFound(_))
-    ));
+    assert!(matches!(ExtendsLineageDiagnosis::assess(&missing), Err(HolonError::HolonNotFound(_))));
     let other = build_context();
     let foreign: HolonReference = new_test_holon(&other, "foreign")?.into();
     let mut local = new_test_holon(&context, "local")?;
@@ -169,22 +126,18 @@ fn field_shaped_backend_errors_remain_kind_read_failures() -> Result<(), HolonEr
             HashMap::new(),
             HashMap::from([(id.clone(), error.clone())]),
         );
-        let root: HolonReference = new_kind_descriptor(&context, "root", None, false)?.into();
+        let root: HolonReference =
+            new_kind_descriptor(&context, "TypeDescriptor", None, false)?.into();
         let mut child = new_kind_descriptor(&context, "child", Some(&root), false)?;
         child.add_related_holons(R::DescribedBy, vec![root.clone()])?;
         let child: HolonReference = child.into();
-        let mut prerequisites = StructuralPrerequisites::assess(&child, &root)?;
+        let mut prerequisites = StructuralPrerequisites::assess(&child)?;
         // The product contains a known lineage; inject a backend failure for its supporting
         // definition fields rather than replacing traversal with a custom reader.
         let unreadable = HolonReference::smart_from_id(context.space_read_handle(), id.clone());
         prerequisites.subject_lineage.lineage.insert(1, unreadable);
-        let roots = DescriptorKindRoots::from_resolved(
-            &context,
-            root.clone(),
-            root.clone(),
-            root.clone(),
-            root,
-        )?;
+        prerequisites.subject_lineage.member_keys.insert(1, None);
+        let roots = DescriptorKindSemantics::new(&context);
         for result in [
             roots
                 .assess_instance_type_kind(prerequisites.subject_lineage.valid_lineage().unwrap())
@@ -200,7 +153,7 @@ fn field_shaped_backend_errors_remain_kind_read_failures() -> Result<(), HolonEr
 }
 
 #[test]
-fn universal_contract_uses_saved_anchors_with_split_bootstrap_and_successors(
+fn universal_contract_uses_explicit_meta_type_with_split_bootstrap_and_successors(
 ) -> Result<(), HolonError> {
     // One root is saved and the meta-type is still a bootstrap create.
     let root_id = HolonId::Local(LocalId(vec![50; 39]));
@@ -219,29 +172,21 @@ fn universal_contract_uses_saved_anchors_with_split_bootstrap_and_successors(
         context.mutation().stage_new_holon(new_test_holon(&context, "universal-member")?)?;
     let mut meta = new_test_holon(&context, "MetaTypeDescriptor.HolonType")?;
     meta.add_related_holons(R::InstanceProperties, vec![member.clone().into()])?;
-    context.mutation().stage_new_holon(meta)?;
+    let meta = context.mutation().stage_new_holon(meta)?;
     let mut successor = stage_update_snapshot(
         &context,
         root_id.local_id().clone(),
         new_test_holon(&context, "TypeDescriptor")?,
     )?;
     successor.with_property_value("Description", "new root definition")?;
-    let contract = UniversalDescriptorContract::resolve(&context)?;
+    let contract = UniversalDescriptorContract::from_meta_type(&context, &meta.into())?;
     let mut descriptor = new_test_holon(&context, "abstract-descriptor")?;
     descriptor.with_property_value("IsAbstractType", true)?;
     descriptor.add_related_holons(R::Extends, vec![root])?;
     let descriptor = descriptor.into();
     let unrelated = new_test_holon(&context, "unrelated")?.into();
-    assert!(!contract.enforce_minimum(&descriptor, &unrelated)?);
-    assert!(contract.enforce_minimum(&descriptor, &member.into())?);
-    assert!(matches!(
-        resolve_assessment_anchor(&context, "TypeDescriptor")?,
-        HolonReference::Smart(_)
-    ));
-    assert!(matches!(
-        resolve_assessment_anchor(&context, "MetaTypeDescriptor.HolonType")?,
-        HolonReference::Staged(_)
-    ));
+    assert!(!contract.enforce_minimum(&descriptor, true, &unrelated)?);
+    assert!(contract.enforce_minimum(&descriptor, true, &member.into())?);
     Ok(())
 }
 
@@ -276,13 +221,14 @@ fn universal_contract_does_not_adopt_successor_member_content() -> Result<(), Ho
     snapshot.add_related_holons(R::InstanceProperties, vec![successor_member.clone()])?;
     let mut successor = stage_update_snapshot(&context, ids[0].local_id().clone(), snapshot)?;
     successor.with_property_value("Description", "new contract")?;
-    let contract = UniversalDescriptorContract::resolve(&context)?;
+    let meta = HolonReference::smart_from_id(context.space_read_handle(), ids[0].clone());
+    let contract = UniversalDescriptorContract::from_meta_type(&context, &meta)?;
     let mut subject = new_test_holon(&context, "abstract")?;
     subject.with_property_value("IsAbstractType", true)?;
     subject.add_related_holons(R::Extends, vec![root.into()])?;
     let subject = subject.into();
     let saved_member = HolonReference::smart_from_id(context.space_read_handle(), ids[1].clone());
-    assert!(contract.enforce_minimum(&subject, &saved_member)?);
-    assert!(!contract.enforce_minimum(&subject, &successor_member)?);
+    assert!(contract.enforce_minimum(&subject, true, &saved_member)?);
+    assert!(!contract.enforce_minimum(&subject, true, &successor_member)?);
     Ok(())
 }

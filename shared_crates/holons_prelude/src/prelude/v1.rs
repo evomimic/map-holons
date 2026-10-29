@@ -57,21 +57,21 @@ pub use holons_core::reference_layer::{
 };
 pub use holons_core::{
     ComputedEffectiveSchema, ContractContributions, DefinitionIdentity, DescribingCompatibility,
-    DescribingTypeResolution, Descriptor, DescriptorKindRoots, EffectiveHolonDescriptor,
+    DescribingTypeResolution, Descriptor, DescriptorKindSemantics, EffectiveHolonDescriptor,
     EffectiveRelationshipMember, ExtendsIter, ExtendsLineageDefect, ExtendsLineageDiagnosis,
     HolonDescriptor, HolonSpaceDescriptor, LineageIdentity, PropertyDescriptor,
-    RelationshipDescriptor, RelationshipDirection, SchemaOwnershipKind, SchemaOwnershipResolution,
-    StructuralPrerequisites, TransactionDescriptor, TypeHeader, UniversalDescriptorContract,
-    ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind, ancestors,
-    applicable_descriptor_types, assert_reference_transaction_compatible,
+    RelationshipDescriptor, RelationshipDirection, RequiredCategory, SchemaOwnershipKind,
+    SchemaOwnershipResolution, StructuralPrerequisites, TransactionDescriptor, TypeHeader,
+    UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind,
+    ancestors, applicable_descriptor_types, assert_reference_transaction_compatible,
     classify_relationship_direction, constraint_applies_to, effective_relationship_declaration,
-    effective_relationship_targets, equals_or_extends, resolve_core_descriptor,
-    resolve_describing_type, resolve_schema_ownership, schema_components, schema_dependencies,
-    schema_rules, walk_extends_chain,
+    effective_relationship_targets, equals_or_extends, extends_role, has_role,
+    resolve_core_descriptor, resolve_describing_type, resolve_schema_ownership, schema_components,
+    schema_dependencies, schema_rules, walk_extends_chain,
 };
 
 pub use type_names::{
-    CommandName, CoreCommandTypeName, CoreHolonTypeName, CoreOperatorTypeName,
+    CommandName, CoreCommandTypeName, CoreDefinitionRole, CoreHolonTypeName, CoreOperatorTypeName,
     CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName, OperatorName, ToCommandName,
     ToOperatorName, ToPropertyName, ToRelationshipName,
 };
