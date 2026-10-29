@@ -76,6 +76,17 @@ async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     run_dance_test_suite(suite).await;
 }
 
+/// Isolates inherited-member rejection from preceding runtime-matrix scenarios.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused schema rejection diagnosis; covered by runtime_behavior_matrix"]
+async fn cross_schema_dependency_gap_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "cross_schema_dependency_gap",
+        test_cases: vec![commit_cross_schema_dependency_gap_fixture().unwrap()],
+    })
+    .await;
+}
+
 /// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
 /// so it shares this suite's bootstrap instead of paying for its own.
 ///

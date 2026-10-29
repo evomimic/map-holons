@@ -433,10 +433,8 @@ impl DescriptorRuleProducts {
                         declared_on.reference_id_string()
                     ));
                 }
-                self.violation(UniqueSemanticMemberNames, format!(
-                    "Effective {namespace} repeats member {} declared on {}; every declaration occurrence requires a unique semantic name.",
-                    member.reference_id_string(), declared_on.reference_id_string()
-                ));
+                // Name collisions require distinct member definitions; this identity's
+                // inherited redeclaration was assessed above.
                 continue;
             }
             prior_members.push((member.clone(), declared_on.clone()));
