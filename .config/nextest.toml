@@ -52,6 +52,8 @@ default-filter = "binary(dance_tests) & not test(=pristine_bootstrap_and_loader)
 
 [profile.ci-rest]
 inherits = "ci"
+# scripts/sweet-test-ci.sh runs priority regressions first with fail-fast, then
+# runs this profile's remaining selection once with the usual full reporting.
 # TEMP (2026-10-20): commit_incomplete is skipped in CI. It timed out at 600s and then at 1200s
 # under the probe override, well past comparable probe tests (516-746s), so it may hang rather
 # than just be slow. It still runs locally; remove the `test(=…)` exclusion to re-enable it.

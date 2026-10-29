@@ -204,7 +204,11 @@ impl EffectiveHolonDescriptorRegistry {
         let Some(source) = source else {
             return Ok(None);
         };
-        let members = source
+        // Freeze membership before cloning entries. Clone default population may
+        // prepare and publish additional Session descriptors reentrantly; those
+        // later entries belong to a subsequent snapshot, never this copied root.
+        let mut root = destination.clone_holon(&source)?;
+        let members = root
             .related_holons(CoreRelationshipTypeName::PreparedDescriptors)?
             .read()
             .map_err(lock_error)?
@@ -218,7 +222,6 @@ impl EffectiveHolonDescriptorRegistry {
             copy.mark_as_immutable()?;
             copies.push(copy.into());
         }
-        let mut root = destination.clone_holon(&source)?;
         root.remove_related_holons(CoreRelationshipTypeName::PreparedDescriptors, members)?;
         root.add_related_holons(CoreRelationshipTypeName::PreparedDescriptors, copies)?;
         root.mark_as_immutable()?;
