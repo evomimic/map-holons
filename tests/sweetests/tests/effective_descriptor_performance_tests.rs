@@ -11,10 +11,11 @@ use map_commands_runtime::{ExecutionPolicy, Runtime};
 use serde_json::json;
 use std::{sync::Arc, time::Instant};
 
-const PRODUCTS: [&str; 8] = [
+const PRODUCTS: [&str; 9] = [
     "EffectiveInstanceProperties",
     "EffectiveInstanceRelationships",
-    "NavigableRelationships",
+    "SingularNavigableRelationships",
+    "PluralNavigableRelationships",
     "EffectiveAffordsDance",
     "EffectiveAffordsCommand",
     "EffectiveValidationBindings",

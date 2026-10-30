@@ -2281,8 +2281,16 @@ holon Example.HolonType {
         };
         assert_eq!(targets(find(runtime_key), "DependsOn"), vec!["MAP Core Schema-v0.0.7", "MAP Dance Schema-v0.1.0", "MAP Commands Schema-v0.1.0"]);
         let contract = targets(find("EffectiveHolonDescriptor.HolonType"), "InstanceRelationships");
-        for name in ["EffectiveInstanceProperties", "EffectiveInstanceRelationships", "NavigableRelationships", "EffectiveAffordsDance", "EffectiveAffordsCommand", "EffectiveValidationBindings", "EffectiveConstraints", "EffectiveInstanceKeyRule"] {
+        for name in ["EffectiveInstanceProperties", "EffectiveInstanceRelationships", "SingularNavigableRelationships", "PluralNavigableRelationships", "EffectiveAffordsDance", "EffectiveAffordsCommand", "EffectiveValidationBindings", "EffectiveConstraints", "EffectiveInstanceKeyRule"] {
             assert!(contract.iter().any(|key| key.contains(&format!("-[{name}]->"))), "missing {name}");
+        }
+        assert!(!contract.iter().any(|key| key.contains("-[NavigableRelationships]->")));
+        for name in ["SingularNavigableRelationships", "PluralNavigableRelationships"] {
+            let key = format!("(EffectiveHolonDescriptor.HolonType)-[{name}]->(RelationshipType.TypeDescriptor)");
+            let pair = find(&key);
+            assert_eq!(pair["properties"]["AllowsDuplicates"], true);
+            assert_eq!(pair["properties"]["TargetBinding"], "Version");
+            assert_eq!(targets(pair, "HasInverse").len(), 1);
         }
         for holon in holons {
             assert!(targets(holon, "InstanceRelationshipFor").is_empty());

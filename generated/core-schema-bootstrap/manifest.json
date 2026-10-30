@@ -111,7 +111,7 @@
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "fb7c0c8dbed6d17008ecf47f78f0d71eaa38f4db99c61c7ed8e295e48de58875"
+      "sha256": "ab64f7e626caff3e0b56aba136d9719bb8e117217512a6491b37035b4f1478e2"
     },
     {
       "path": "imports/query/schema.json",
@@ -376,7 +376,11 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1016,7 +1020,11 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "key": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {

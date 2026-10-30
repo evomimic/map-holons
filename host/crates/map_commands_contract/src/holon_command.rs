@@ -153,6 +153,7 @@ pub enum ReadableHolonAction {
     /// Instance availability filtered from a retained resolved schema.
     GetAvailableRelationshipsFromEffective {
         descriptor: HolonReference,
+        singular: Option<bool>,
     },
 
     /// Inclusive bounds of the target relationship descriptor.

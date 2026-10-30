@@ -22,7 +22,8 @@ holon EffectiveHolonDescriptor.HolonType {
       (EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType),
-      (EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType),
@@ -184,27 +185,27 @@ inverse relationship (DeclaredRelationshipType.RelationshipType)-[DeclarationInE
   }
 }
 
-def relationship (EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
   source EffectiveHolonDescriptor.HolonType
   target RelationshipType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
-  AllowsDuplicates false
+  AllowsDuplicates true
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
+    HasInverse -> (RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
-    description: "Derived schema result relationship NavigableRelationships."
-    display_name: "NavigableRelationships"
-    plural: "NavigableRelationships"
+    description: "Derived schema result relationship SingularNavigableRelationships."
+    display_name: "SingularNavigableRelationships"
+    plural: "SingularNavigableRelationships"
   }
 }
 
-inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
+inverse relationship (RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source RelationshipType.TypeDescriptor
@@ -212,15 +213,55 @@ inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolo
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
-  AllowsDuplicates false
+  AllowsDuplicates true
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }
   header {
-    description: "Inverse discovery for NavigableRelationships."
-    display_name: "NavigableInEffectiveHolonDescriptor"
-    plural: "NavigableInEffectiveHolonDescriptor"
+    description: "Inverse discovery for SingularNavigableRelationships."
+    display_name: "SingularNavigableInEffectiveHolonDescriptor"
+    plural: "SingularNavigableInEffectiveHolonDescriptor"
+  }
+}
+
+def relationship (EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source EffectiveHolonDescriptor.HolonType
+  target RelationshipType.TypeDescriptor
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
+  }
+  header {
+    description: "Derived schema result relationship PluralNavigableRelationships."
+    display_name: "PluralNavigableRelationships"
+    plural: "PluralNavigableRelationships"
+  }
+}
+
+inverse relationship (RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source RelationshipType.TypeDescriptor
+  target EffectiveHolonDescriptor.HolonType
+  TargetBinding Version
+  IsDefinitional true
+  IsOrdered false
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for PluralNavigableRelationships."
+    display_name: "PluralNavigableInEffectiveHolonDescriptor"
+    plural: "PluralNavigableInEffectiveHolonDescriptor"
   }
 }
 

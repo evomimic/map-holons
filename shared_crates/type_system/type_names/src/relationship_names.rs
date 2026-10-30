@@ -120,8 +120,12 @@ pub enum CoreRelationshipTypeName {
     PropertyInEffectiveHolonDescriptor,
     EffectiveInstanceRelationships,
     DeclarationInEffectiveHolonDescriptor,
+    /// Logical composed accessor selector; not a stored relationship on the result.
     NavigableRelationships,
-    NavigableInEffectiveHolonDescriptor,
+    SingularNavigableRelationships,
+    PluralNavigableRelationships,
+    SingularNavigableInEffectiveHolonDescriptor,
+    PluralNavigableInEffectiveHolonDescriptor,
     EffectiveAffordsDance,
     DanceInEffectiveHolonDescriptor,
     EffectiveAffordsCommand,

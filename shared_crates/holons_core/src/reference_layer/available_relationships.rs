@@ -110,6 +110,12 @@ pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Siz
                 }),
         );
     }
+    let navigable = effective
+        .navigable_relationships()?
+        .into_iter()
+        .map(|entry| entry.holon().full_reference_id_string())
+        .collect::<std::collections::HashSet<_>>();
+    result.retain(|entry| navigable.contains(&entry.descriptor.holon().full_reference_id_string()));
     Ok(result)
 }
 

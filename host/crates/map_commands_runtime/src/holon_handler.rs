@@ -233,11 +233,25 @@ fn handle_read(
                 BTreeMap::new(),
             )))
         }
-        ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor } => {
+        ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor, singular } => {
             let descriptor =
                 holons_core::descriptors::EffectiveHolonDescriptor::try_from_holon(descriptor)?;
+            let mut relationships = descriptor.available_relationships(&target)?;
+            if let Some(singular) = singular {
+                let partition = if singular {
+                    descriptor.singular_navigable_relationships()?
+                } else {
+                    descriptor.plural_navigable_relationships()?
+                };
+                let identities = partition
+                    .into_iter()
+                    .map(|entry| entry.holon().full_reference_id_string())
+                    .collect::<std::collections::HashSet<_>>();
+                relationships
+                    .retain(|entry| identities.contains(&entry.holon().full_reference_id_string()));
+            }
             Ok(MapResult::QualifiedRelationships(
-                descriptor.available_relationships(&target)?.into_iter().map(Into::into).collect(),
+                relationships.into_iter().map(Into::into).collect(),
             ))
         }
         ReadableHolonAction::GetAvailableRelationships => Ok(MapResult::QualifiedRelationships(

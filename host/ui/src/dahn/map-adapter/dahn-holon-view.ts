@@ -53,8 +53,10 @@ export class DahnHolonView implements HolonViewAccess {
     return (await this.schema()).instanceProperties();
   }
 
-  async availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
-    return this.reference.availableRelationships(await this.schema());
+  async availableRelationships(multiplicity?: 'singular' | 'plural'): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+    const schema = await this.schema();
+    return multiplicity === undefined ? this.reference.availableRelationships(schema)
+      : this.reference.availableRelationships(schema, multiplicity);
   }
 
   expandRelationship(name: RelationshipName): Promise<HolonCollection> {

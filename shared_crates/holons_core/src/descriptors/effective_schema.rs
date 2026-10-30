@@ -113,12 +113,17 @@ impl ComputedEffectiveSchema {
             restored.push(EffectiveCollection { source, result, occurrences });
         }
         let navigation = OnceLock::new();
-        let navigation_members = descriptor
-            .navigable_relationships()?
-            .into_iter()
+        if metadata.navigation_members.len() != metadata.navigation_origins.len() {
+            return Err(HolonError::InvalidParameter(
+                "Prepared navigation/origin length mismatch".into(),
+            ));
+        }
+        let navigation_members = metadata
+            .navigation_members
+            .iter()
             .zip(&metadata.navigation_origins)
-            .map(|(relationship, (origin, position, source_of))| EffectiveContribution {
-                member: relationship.holon().clone(),
+            .map(|(member, (origin, position, source_of))| EffectiveContribution {
+                member: HolonReference::smart_from_id(context.space_read_handle(), member.clone()),
                 declared_on: HolonReference::smart_from_id(
                     context.space_read_handle(),
                     origin.clone(),

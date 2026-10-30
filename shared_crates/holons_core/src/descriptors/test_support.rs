@@ -555,7 +555,7 @@ pub(crate) fn construct_prepared_fixture(
         Err(error) => return Err(error),
     };
     result.add_related_holons(
-        CoreRelationshipTypeName::NavigableRelationships,
+        CoreRelationshipTypeName::PluralNavigableRelationships,
         navigation.iter().map(|entry| entry.descriptor.holon().clone()).collect(),
     )?;
     let relationships = navigation

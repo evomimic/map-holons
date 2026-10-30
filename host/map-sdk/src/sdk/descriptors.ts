@@ -273,7 +273,13 @@ export class EffectiveHolonDescriptorHandle {
     return Object.freeze((await this.members('EffectiveInstanceRelationships')).map(createRelationshipDescriptorHandle));
   }
   async navigableRelationships(): Promise<ReadonlyArray<RelationshipDescriptorHandle>> {
-    return Object.freeze((await this.members('NavigableRelationships')).map(createRelationshipDescriptorHandle));
+    return Object.freeze([...(await this.singularNavigableRelationships()), ...(await this.pluralNavigableRelationships())]);
+  }
+  async singularNavigableRelationships(): Promise<ReadonlyArray<RelationshipDescriptorHandle>> {
+    return Object.freeze((await this.members('SingularNavigableRelationships')).map(createRelationshipDescriptorHandle));
+  }
+  async pluralNavigableRelationships(): Promise<ReadonlyArray<RelationshipDescriptorHandle>> {
+    return Object.freeze((await this.members('PluralNavigableRelationships')).map(createRelationshipDescriptorHandle));
   }
   affordedDances(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveAffordsDance'); }
   affordedCommands(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveAffordsCommand'); }

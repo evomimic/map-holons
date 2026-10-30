@@ -18,6 +18,8 @@ pub struct PreparedSchema {
     pub relationships: Vec<PreparedRelationship>,
     pub lineage: Vec<HolonId>,
     pub navigation_origins: Vec<(HolonId, usize, bool)>,
+    /// Full source navigation identities, including maximum-zero declarations, aligned with origins.
+    pub navigation_members: Vec<HolonId>,
     /// Declaring type and local position, in the same order as each effective product.
     pub origins: Vec<Vec<(HolonId, usize)>>,
 }
@@ -44,6 +46,11 @@ impl PreparedSchema {
             });
         }
         if computed.lineage.iter().all(|reference| matches!(reference, HolonReference::Smart(_))) {
+            prepared.navigation_members = computed
+                .navigable_relationships()?
+                .iter()
+                .map(|entry| entry.member.holon_id())
+                .collect::<Result<_, _>>()?;
             prepared.navigation_origins = computed
                 .navigable_relationships()?
                 .iter()

@@ -48,7 +48,10 @@ function subject(name: string) {
     holonDescriptor: async () => ({ hasInstanceKey: async () => false, displayName: async () => 'Example' }),
     async effectiveDescriptor() { return { instanceProperties: () => this.availableProperties(), affordedDances: () => this.availableDances() }; },
     availableProperties: async () => [property],
-    availableRelationships: async () => [relationship('Members'), relationship('Other'), relationship('First', 1), relationship('Second', 1), relationship('Third', 1)],
+    availableRelationships: async (_effective?: unknown, multiplicity?: string) => multiplicity === 'singular'
+      ? [relationship('First', 1), relationship('Second', 1), relationship('Third', 1)]
+      : multiplicity === 'plural' ? [relationship('Members'), relationship('Other')]
+      : [relationship('Members'), relationship('Other'), relationship('First', 1), relationship('Second', 1), relationship('Third', 1)],
     availableDances: async () => [],
     describedRelatedHolons: vi.fn(),
     relatedHolons: vi.fn(),

@@ -175,10 +175,11 @@ export class HolonReference implements WritableHolon {
     );
   }
 
-  async availableRelationships(effective?: EffectiveHolonDescriptorHandle): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+  async availableRelationships(effective?: EffectiveHolonDescriptorHandle, multiplicity?: 'singular' | 'plural'): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
     const txId = txIdFor(this);
+    if (multiplicity !== undefined && effective === undefined) effective = await this.effectiveDescriptor();
     const relationships = effective
-      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveHolonDescriptorHandle(effective)))
+      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveHolonDescriptorHandle(effective)), multiplicity === undefined ? undefined : multiplicity === 'singular')
       : await internalHolon.readAvailableRelationships(txId, wireRefFor(this));
     return Object.freeze(
       relationships.map(({ descriptor }) => ({
