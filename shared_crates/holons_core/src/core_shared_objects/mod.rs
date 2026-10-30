@@ -3,6 +3,7 @@ mod holon_collection;
 mod relationship;
 
 pub mod cache_access;
+pub mod cache_population;
 pub mod cache_request_router;
 
 pub mod descriptor_registry;

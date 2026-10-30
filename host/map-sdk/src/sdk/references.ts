@@ -55,6 +55,23 @@ export class HolonReference implements WritableHolon {
     holonReferenceWires.set(this, wireRef);
   }
 
+  /** Load consolidated semantic Theme bindings through one Space-authoritative Dance. */
+  async loadTheme(): Promise<import('./theme').LoadedTheme> {
+    const txId = txIdFor(this);
+    const loaded = await internalTransaction.loadTheme(txId, wireRefFor(this));
+    if (!this.equals(createHolonReference(txId, loaded.theme))) throw new Error('LoadTheme returned a different Theme');
+    return Object.freeze({
+      reference: this,
+      metaDesignSystem: createHolonReference(txId, loaded.meta_design_system),
+      themeKey: loaded.data.theme_key, themeVersionedKey: loaded.data.theme_versioned_key,
+      metaDesignSystemKey: loaded.data.meta_design_system_key, metaDesignSystemVersionedKey: loaded.data.meta_design_system_versioned_key,
+      bindings: Object.freeze(loaded.data.bindings.map((binding, index) => Object.freeze({
+        token: createHolonReference(txId, loaded.tokens[index]),
+        tokenVersionedKey: binding.token_versioned_key, tokenName: binding.token_name, presentationValue: binding.presentation_value,
+      }))),
+    });
+  }
+
   /** Findings on this staged carrier, including Saved-backed staged references.
    * Reads remain subject to transaction lifecycle enforcement. */
   async validationFindings(): Promise<ValidationFinding[]> {
@@ -158,10 +175,11 @@ export class HolonReference implements WritableHolon {
     );
   }
 
-  async availableRelationships(effective?: EffectiveHolonDescriptorHandle): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+  async availableRelationships(effective?: EffectiveHolonDescriptorHandle, multiplicity?: 'singular' | 'plural'): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
     const txId = txIdFor(this);
+    if (multiplicity !== undefined && effective === undefined) effective = await this.effectiveDescriptor();
     const relationships = effective
-      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveHolonDescriptorHandle(effective)))
+      ? await internalHolon.readAvailableRelationshipsFromEffective(txId, wireRefFor(this), wireRefFor(unwrapEffectiveHolonDescriptorHandle(effective)), multiplicity === undefined ? undefined : multiplicity === 'singular')
       : await internalHolon.readAvailableRelationships(txId, wireRefFor(this));
     return Object.freeze(
       relationships.map(({ descriptor }) => ({

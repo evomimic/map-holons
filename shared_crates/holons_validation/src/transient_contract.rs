@@ -76,7 +76,7 @@ impl ConstructionSubject {
                 "EffectiveHolonDescriptor.HolonType",
                 "DeclaredRelationshipType.RelationshipType",
             )),
-            (Self::Result, "NavigableRelationships") => {
+            (Self::Result, "SingularNavigableRelationships" | "PluralNavigableRelationships") => {
                 Some(("EffectiveHolonDescriptor.HolonType", "RelationshipType.TypeDescriptor"))
             }
             (Self::Result, "EffectiveAffordsDance") => {
@@ -217,11 +217,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn construction_defers_only_six_explicit_target_checks() {
+    fn construction_defers_only_explicit_target_checks() {
         let deferred = [
             "EffectiveInstanceProperties",
             "EffectiveInstanceRelationships",
-            "NavigableRelationships",
+            "SingularNavigableRelationships",
+            "PluralNavigableRelationships",
             "EffectiveAffordsDance",
             "EffectiveAffordsCommand",
         ];

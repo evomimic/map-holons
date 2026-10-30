@@ -527,6 +527,24 @@ impl HolonServiceApi for GuestHolonService {
         Ok(RelationshipMap::new(relationship_map))
     }
 
+    /// Hydrates exact saved IDs while isolating storage/decode failures per identity.
+    fn fetch_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Result<Vec<holons_core::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        let mut seen = std::collections::HashSet::new();
+        Ok(ids
+            .iter()
+            .filter(|id| seen.insert((*id).clone()))
+            .map(|id| holons_core::core_shared_objects::cache_population::SavedHolonFetch {
+                id: id.clone(),
+                result: self.fetch_holon_internal(context, id),
+            })
+            .collect())
+    }
+
     /// gets the exact HolonNode version named by the supplied id from the local persistent store,
     /// then "inflates" it into a Holon and returns it
     ///
@@ -722,6 +740,29 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_set(context, set)
     }
 
+    fn load_theme_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let started = sys_time().ok();
+        let loaded = holons_core::dances::loaded_theme::resolve_theme(theme.clone())?;
+        let resolved = sys_time().ok();
+        let bindings = loaded.data.bindings.len();
+        let body = loaded.into_projection(context)?;
+        let finished = sys_time().ok();
+        // Bounded diagnostics contain counts/timings, never token values or reference payloads.
+        tracing::info!(
+            bindings,
+            resolve_us =
+                started.zip(resolved).map(|(a, b)| b.as_micros().saturating_sub(a.as_micros())),
+            projection_us =
+                resolved.zip(finished).map(|(a, b)| b.as_micros().saturating_sub(a.as_micros())),
+            "LoadTheme guest projection"
+        );
+        Ok(body)
+    }
+
     fn invoke_load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -764,25 +805,31 @@ impl GuestHolonService {
         if status != "Complete" {
             let message = if status == "Rejected" {
                 let mut findings = Vec::new();
-                for reference in staged_references {
-                    for finding in reference.validation_findings()? {
-                        findings.push(format!(
-                            "{}: {:?}",
-                            reference.key()?.map(|key| key.0).unwrap_or_default(),
-                            finding
+                for staged in staged_references {
+                    let key = staged
+                        .key()?
+                        .map(|key| key.0)
+                        .unwrap_or_else(|| staged.reference_id_string());
+                    for finding in staged.validation_findings()? {
+                        let dependency = matches!(
+                            finding.kind,
+                            core_types::CommitValidationViolationKind::UnresolvedLocalDependency
+                        );
+                        findings.push((
+                            dependency,
+                            format!("{key}: {:?}: {}", finding.kind, finding.message),
                         ));
-                        if findings.len() == 8 {
-                            break;
-                        }
-                    }
-                    if findings.len() == 8 {
-                        break;
                     }
                 }
-                format!(
-                    "Core Schema bootstrap commit was rejected by semantic validation: {}",
-                    findings.join("; ")
-                )
+                let count = findings.len();
+                findings.sort();
+                let details = findings
+                    .into_iter()
+                    .take(20)
+                    .map(|(_, text)| text)
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                format!("Core Schema bootstrap commit was rejected by semantic validation ({count} staged findings): {details}")
             } else {
                 format!("Core Schema bootstrap commit did not complete (status: {status})")
             };

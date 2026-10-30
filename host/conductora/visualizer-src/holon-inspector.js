@@ -28,7 +28,6 @@ export default class HolonInspectorElement extends HTMLElement {
       this.scheduleLayout();
     });
   }
-  static compositionSlots = { visualizerActions: 'HolonInspector.VisualizerControlsSlot', titleBar: 'HolonInspector.TitleBarSlot', propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot', diagnostics: 'LoadHolons.DiagnosticsSlot', committed: 'LoadHolons.CommittedHolonsSlot', collection: 'HolonInspector.CollectionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute('aria-pressed', String(state.active === affordance));
@@ -150,7 +149,7 @@ export default class HolonInspectorElement extends HTMLElement {
           this.selectView('collection');
           return;
         }
-        this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, update => {
+        this.collectionActivation.activate(item, 'collection', update => {
           if (update.placement !== 'source' && update.state !== 'unresolved') {
             this.activeCollection = item;
             this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
@@ -162,7 +161,7 @@ export default class HolonInspectorElement extends HTMLElement {
       button.addEventListener('click', activate);
       this.collectionSelections.set(item, () => {
         // Contracted state restoration does not wait for fresh population discovery.
-        this.collectionActivation.activate(item, this.constructor.compositionSlots.collection, update => {
+        this.collectionActivation.activate(item, 'collection', update => {
           this.activeCollection = item;
           this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
           this.collectionViewer.setAttribute('aria-labelledby', button.id);

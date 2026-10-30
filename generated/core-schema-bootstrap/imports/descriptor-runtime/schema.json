@@ -87,7 +87,10 @@
               "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)"
             },
             {
-              "$ref": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor)"
             },
             {
               "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)"
@@ -645,16 +648,16 @@
       ]
     },
     {
-      "key": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "NavigableRelationships",
-        "TypeNamePlural": "NavigableRelationships",
-        "DisplayName": "NavigableRelationships",
-        "Description": "Derived schema result relationship NavigableRelationships.",
+        "TypeName": "SingularNavigableRelationships",
+        "TypeNamePlural": "SingularNavigableRelationships",
+        "DisplayName": "SingularNavigableRelationships",
+        "Description": "Derived schema result relationship SingularNavigableRelationships.",
         "IsDefinitional": true,
         "IsOrdered": false,
-        "AllowsDuplicates": false,
+        "AllowsDuplicates": true,
         "DeletionSemantic": "Block",
         "TargetBinding": "Version"
       },
@@ -695,7 +698,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
+              "$ref": "(RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -718,16 +721,154 @@
       ]
     },
     {
-      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "key": "(RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "NavigableInEffectiveHolonDescriptor",
-        "TypeNamePlural": "NavigableInEffectiveHolonDescriptor",
-        "DisplayName": "NavigableInEffectiveHolonDescriptor",
-        "Description": "Inverse discovery for NavigableRelationships.",
+        "TypeName": "SingularNavigableInEffectiveHolonDescriptor",
+        "TypeNamePlural": "SingularNavigableInEffectiveHolonDescriptor",
+        "DisplayName": "SingularNavigableInEffectiveHolonDescriptor",
+        "Description": "Inverse discovery for SingularNavigableRelationships.",
         "IsDefinitional": true,
         "IsOrdered": false,
-        "AllowsDuplicates": false,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PluralNavigableRelationships",
+        "TypeNamePlural": "PluralNavigableRelationships",
+        "DisplayName": "PluralNavigableRelationships",
+        "Description": "Derived schema result relationship PluralNavigableRelationships.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PluralNavigableInEffectiveHolonDescriptor",
+        "TypeNamePlural": "PluralNavigableInEffectiveHolonDescriptor",
+        "DisplayName": "PluralNavigableInEffectiveHolonDescriptor",
+        "Description": "Inverse discovery for PluralNavigableRelationships.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": true,
         "DeletionSemantic": "Block",
         "TargetBinding": "Version"
       },

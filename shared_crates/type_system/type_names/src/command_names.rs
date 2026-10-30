@@ -126,10 +126,12 @@ pub enum CoreDanceImplementationName {
     LoadHolons,
 }
 
-/// Canonical implementation names for DAHN dances with native service operations.
+/// Canonical implementation names for DAHN dances with execution-context service operations.
 #[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
 pub enum DahnDanceImplementationName {
     LocalMaterializeVisualizer,
+    GuestResolveVisualizerUsage,
+    GuestLoadTheme,
 }
 
 /// Canonical implementation names for generic Dancer lifecycle dances.

@@ -25,7 +25,18 @@ struct Graph {
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
-        self.edges.insert((source, name.into()), targets.into());
+        if name == "HasSlot" {
+            let descriptor = self
+                .edges
+                .get(&(source, "DescribedBy".into()))
+                .and_then(|values| values.first())
+                .copied()
+                .unwrap_or(source + 100);
+            self.edges.insert((source, "DescribedBy".into()), vec![descriptor]);
+            self.edges.insert((descriptor, name.into()), targets.into());
+        } else {
+            self.edges.insert((source, name.into()), targets.into());
+        }
     }
     fn reference(context: &Arc<TransactionContext>, id: u8) -> HolonReference {
         HolonReference::smart_with_key(
@@ -85,6 +96,7 @@ impl HolonServiceApi for Graph {
             "TableCollectionVisualizer.CollectionVisualizer" => 20,
             "Dancer.HolonType" => 40,
             "RootedNavigationVisualizer.HolonType" => 41,
+            "VisualizerUsage.HolonType" => 80,
             _ => panic!("unexpected canonical role lookup {key}"),
         };
         match Self::reference(context, id) {
@@ -110,6 +122,10 @@ impl HolonServiceApi for Graph {
         ] {
             properties.insert(PropertyName(name.into()), BaseValue::StringValue(value.into()));
         }
+        properties.insert(
+            PropertyName("CompositionRole".into()),
+            BaseValue::StringValue(format!("slot-{}", id.local_id().0[0]).into()),
+        );
         properties.insert(
             PropertyName("DefinesInstanceTypeKind".into()),
             BaseValue::BooleanValue(self.anchors.contains(&id.local_id().0[0]).into()),
@@ -475,10 +491,10 @@ fn node_selection_starts_at_described_type_and_falls_back_through_extends() {
     }
 }
 
-#[test]
-fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
+fn home_graph() -> Graph {
     let mut graph = Graph::default();
-    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(60, "DescribedBy", &[2]);
+    graph.edge(61, "DescribedBy", &[2]);
     graph.edge(44, "DescribedBy", &[45]);
     graph.edge(44, "AffordsDancer", &[43]);
     graph.edge(43, "DescribedBy", &[40]);
@@ -492,31 +508,88 @@ fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
     graph.edge(49, "DescribedBy", &[10]);
     graph.edge(51, "DescribedBy", &[42]);
     graph.edge(60, "ForMetaDesignSystem", &[61]);
-    for candidate in [20, 21, 22] {
+    for candidate in [46, 49] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
+    graph
+}
+
+fn home_select(graph: Graph) -> Result<Option<dahn_selection::HomeDancerSelection>, HolonError> {
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
     ));
-    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
-    let selected = dahn_selection::select_home_dancer(
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    dahn_selection::select_home_dancer(
         &context,
         dahn_selection::HomeDancerSelectionContext {
             active_holon_space: Graph::reference(&context, 44),
-            selected_theme: Graph::reference(&context, 1),
-            selected_meta_design_system: Graph::reference(&context, 1),
+            selected_theme: Graph::reference(&context, 60),
+            selected_meta_design_system: Graph::reference(&context, 61),
             runtime: dahn_selection::HomeDancerRuntime::Local,
             person: None,
         },
     )
-    .unwrap()
-    .unwrap();
+}
+
+#[test]
+fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
+    let selected = home_select(home_graph()).unwrap().unwrap();
     assert_eq!(selected.dancer.holon_id().unwrap().local_id().0, vec![43]);
     assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
     assert_eq!(selected.root_node_visualizer.holon_id().unwrap().local_id().0, vec![49]);
+}
+
+#[test]
+fn home_selection_excludes_unavailable_or_theme_incompatible_navigation_candidates() {
+    for unavailable in [false, true] {
+        let mut graph = home_graph();
+        graph.edge(45, "HasApplicableVisualizer", &[46, 49, 51, 52]);
+        graph.edge(52, "DescribedBy", &[41]);
+        graph.edge(52, "ImplementedBy", &[70]);
+        if unavailable {
+            graph.unavailable.push(52);
+        } else {
+            graph.edge(52, "ConsumesDesignToken", &[99]);
+        }
+        let selected = home_select(graph).unwrap().unwrap();
+        assert_eq!(
+            selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0,
+            vec![46]
+        );
+    }
+}
+
+#[test]
+fn home_selection_rejects_an_unavailable_or_theme_incompatible_root_node() {
+    for unavailable in [false, true] {
+        let mut graph = home_graph();
+        if unavailable {
+            graph.unavailable.push(49);
+        } else {
+            graph.edge(49, "ConsumesDesignToken", &[99]);
+        }
+        assert!(matches!(home_select(graph), Err(HolonError::NotImplemented(_))));
+    }
+}
+
+#[test]
+fn home_selection_reuses_the_slots_eligible_usage_before_broad_discovery() {
+    let mut graph = home_graph();
+    // Two broadly viable navigation candidates would be ambiguous without the Slot Usage.
+    graph.edge(45, "HasApplicableVisualizer", &[46, 49, 52]);
+    graph.edge(52, "DescribedBy", &[41]);
+    graph.edge(52, "ImplementedBy", &[70]);
+    graph.edge(47, "HasSelectedUsage", &[81]);
+    graph.edge(81, "DescribedBy", &[80]);
+    graph.edge(81, "UsesVisualizer", &[46]);
+    graph.edge(81, "ForSubjectType", &[45]);
+    graph.edge(81, "SelectedForSlot", &[47]);
+    graph.edge(46, "ApplicableToType", &[45]);
+    let selected = home_select(graph).unwrap().unwrap();
+    assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
 }
 
 fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {

@@ -216,3 +216,79 @@ fn explicit_policy_adoption_invalidates_membership_and_policy_together() -> Resu
     assert_eq!(service.metadata_reads.load(Ordering::Relaxed), 0);
     Ok(())
 }
+
+#[derive(Debug, Default)]
+struct UsageResolutionTransport {
+    calls: AtomicUsize,
+    ambiguous: std::sync::atomic::AtomicBool,
+}
+
+#[async_trait::async_trait]
+impl holons_core::dances::DanceInitiator for UsageResolutionTransport {
+    async fn initiate_dance(
+        &self,
+        context: &Arc<TransactionContext>,
+        request: holons_core::dances::DanceRequest,
+    ) -> holons_core::dances::DanceResponse {
+        use holons_core::dances::{DanceResponse, RequestBody};
+        use holons_core::WritableHolon;
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        assert_eq!(request.dance_name.0, "resolve_visualizer_usage");
+        let RequestBody::TargetHolons(name, inputs) = request.body else {
+            panic!("resolution inputs")
+        };
+        assert_eq!(name.to_string(), "UsageResolutionInputs");
+        assert_eq!(inputs.len(), 3);
+        if self.ambiguous.load(Ordering::Relaxed) {
+            return DanceResponse::from_error(HolonError::InvalidState(
+                "Multiple applicable VisualizerUsages".into(),
+            ));
+        }
+        let mut projection =
+            context.mutation().new_holon(Some("usage-resolution-response".into())).unwrap();
+        projection.add_related_holons("DefaultUsageType", vec![inputs[1].clone()]).unwrap();
+        projection.add_related_holons("UsageSearchPath", vec![inputs[1].clone()]).unwrap();
+        let response = DanceResponse::new(
+            ResponseStatusCode::OK,
+            "Success".into(),
+            ResponseBody::HolonReference(projection.into()),
+            None,
+        );
+        // Exercise the existing boundary projection/binding used by real service responses.
+        holons_boundary::DanceResponseWire::from(&response).bind(context).unwrap()
+    }
+}
+
+#[test]
+fn usage_resolution_delegates_once_without_client_relationship_discovery() -> Result<(), HolonError>
+{
+    let service = Arc::new(CountingService::new());
+    let transport = Arc::new(UsageResolutionTransport::default());
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        Some(transport.clone()),
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let visualizer =
+        HolonReference::smart_with_key(context.space_read_handle(), id(1), "node-1".into());
+    let subject =
+        HolonReference::smart_with_key(context.space_read_handle(), id(2), "node-2".into());
+    let slot = HolonReference::smart_with_key(context.space_read_handle(), id(3), "node-3".into());
+    let result =
+        service.client.resolve_visualizer_usage_internal(&context, &visualizer, &subject, &slot)?;
+    assert!(result.usage.is_none());
+    assert_eq!(result.default_type, subject);
+    assert_eq!(result.search_path, vec![subject.clone()]);
+    assert_eq!(transport.calls.load(Ordering::Relaxed), 1);
+    assert_eq!(service.calls.load(Ordering::Relaxed), 0);
+    assert_eq!(context.lookup().staged_count()?, 0);
+    transport.ambiguous.store(true, Ordering::Relaxed);
+    assert!(matches!(
+        service.client.resolve_visualizer_usage_internal(&context, &visualizer, &subject, &slot),
+        Err(HolonError::InvalidState(_))
+    ));
+    assert_eq!(transport.calls.load(Ordering::Relaxed), 2);
+    Ok(())
+}

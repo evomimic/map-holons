@@ -4,13 +4,9 @@
     "Ok": {
       "VisualizerUsageSelection": {
         "usage": {
-          "Smart": {
-            "holon_id": {
-              "Local": [
-                99
-              ]
-            },
-            "smart_property_values": null
+          "Transient": {
+            "tx_id": 41,
+            "id": "11111111-1111-1111-1111-111111111111"
           }
         },
         "initialized": true,

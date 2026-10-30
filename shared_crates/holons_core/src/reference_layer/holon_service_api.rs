@@ -123,6 +123,18 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         id: &HolonId,
     ) -> Result<Holon, HolonError>;
 
+    /// Fetches exact saved nodes in one supported-route transport operation.
+    /// Per-ID failures preserve independent successes; unsupported providers do not
+    /// silently fall back to one transport operation per identity.
+    fn fetch_holons_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _ids: &[HolonId],
+    ) -> Result<Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        Err(HolonError::NotImplemented("bulk saved hydration".into()))
+    }
+
     fn fetch_related_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -159,6 +171,22 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         _visualizer: &HolonReference,
     ) -> Result<bool, HolonError> {
         Ok(false)
+    }
+
+    /// Resolve committed Visualizer configuration in the current authorized space.
+    /// Native clients delegate this read-only operation to the guest in one Dance.
+    fn resolve_visualizer_usage_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+        subject_type: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<crate::dances::VisualizerUsageResolution, HolonError> {
+        crate::dances::visualizer_usage_resolution::resolve_visualizer_usage(
+            visualizer,
+            subject_type,
+            slot,
+        )
     }
 
     /// Materializes the executable artifact for a selected Visualizer.
@@ -242,6 +270,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &Arc<TransactionContext>,
         load_set: TransientReference,
     ) -> Result<TransientReference, HolonError>;
+
+    /// Load a Theme through the Space-authoritative canonical Dance.
+    fn load_theme_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        Err(HolonError::NotImplemented("Space-authoritative LoadTheme".into()))
+    }
 
     /// Executes a validated canonical loader invocation in the authoritative Space.
     fn invoke_load_holons_internal(

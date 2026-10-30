@@ -1,4 +1,4 @@
-use super::VisualizerKind;
+use super::VisualizerSelection;
 use base_types::BaseValue;
 use core_types::HolonId;
 use holons_core::core_shared_objects::transactions::TxId;
@@ -63,8 +63,10 @@ pub enum MapResult {
     /// Semantic DAHN selection. The references identify Visualizer holons;
     /// executable artifacts are deliberately absent from this result.
     VisualizerSelection(VisualizerSelection),
+    LoadedTheme(holons_core::dances::LoadedTheme),
     VisualizerDiscovery(super::VisualizerDiscovery),
     VisualizerUsageSelection(super::VisualizerUsageSelection),
+    VisualizerUsagePersistence(super::VisualizerUsagePersistence),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
@@ -93,13 +95,6 @@ pub enum MapResult {
 
     /// Transitional dance-result exception retained for legacy and in-flight dance paths.
     DanceResponse(DanceResponse),
-}
-
-#[derive(Debug)]
-pub struct VisualizerSelection {
-    pub selected: HolonReference,
-    pub requested_kind: VisualizerKind,
-    pub alternatives_available: bool,
 }
 
 /// A collection whose declared element type survives empty membership.

@@ -12,6 +12,10 @@
     "SpaceNavigator.CanvasVisualizer",
     "PathInspector.RootedNavigationVisualizer",
     "HolonInspector.NodeVisualizer",
+    "HolonInspector.NodeVisualizerType",
+    "PathInspector.RootedNavigationVisualizerType",
+    "TableCollectionVisualizer.CollectionVisualizerType",
+    "VisualizerInspector.VisualizerType",
     "TableCollectionVisualizer.CollectionVisualizer"
   ]
 }

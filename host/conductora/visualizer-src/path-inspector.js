@@ -2,7 +2,6 @@ import { contextualPresentations } from './path-presentation.js';
 import { participationProfile, resolveAxis, applyNodePresentation } from './node-presentation.js';
 
 export default class PathInspectorElement extends HTMLElement {
-  static compositionSlots = { node: 'PathInspector.RootNodeSlot' };
   getVisualizerComposition() {
     return [
       ...(this.viewControls ? [{ label: 'View controls', element: this.viewControls,

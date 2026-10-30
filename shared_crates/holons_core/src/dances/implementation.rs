@@ -86,6 +86,20 @@ impl DanceImplementation {
         }
 
         if implementation_name
+            == DahnDanceImplementationName::GuestLoadTheme.as_implementation_name()
+        {
+            return implementations::load_theme::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
+        }
+
+        if implementation_name
+            == DahnDanceImplementationName::GuestResolveVisualizerUsage.as_implementation_name()
+        {
+            return implementations::resolve_visualizer_usage::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
+        }
+
+        if implementation_name
             == DancerDanceImplementationName::LocalActivateDancer.as_implementation_name()
         {
             return implementations::activate_dancer::invoke(context, bound_invocation)

@@ -76,6 +76,40 @@ impl CacheRequestRouter {
     }
 }
 impl HolonCacheAccess for CacheRequestRouter {
+    fn ensure_cached(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Vec<super::cache_population::CachePopulationError> {
+        use super::cache_population::CachePopulationError;
+        let mut seen = std::collections::HashSet::new();
+        let mut local = Vec::new();
+        let mut errors = Vec::new();
+        for id in ids {
+            let first = seen.insert(id.clone());
+            match Self::get_request_route(id, &self.cache_routing_policy) {
+                Ok(ServiceRoute::Local) => local.push(id.clone()),
+                Err(error) if first => {
+                    errors.push(CachePopulationError::new(vec![id.clone()], error))
+                }
+                Err(_) => {}
+            }
+        }
+        if !local.is_empty() {
+            // Release the router's manager lock before a guest call can re-enter.
+            let manager = self.local_cache_manager.read().map(|manager| manager.clone());
+            match manager {
+                Ok(manager) => errors.extend(manager.ensure_cached(context, &local)),
+                Err(error) => errors.push(CachePopulationError::new(
+                    local,
+                    HolonError::FailedToAcquireLock(error.to_string()),
+                )),
+            }
+        }
+        tracing::info!(target: "map_profile", requested = ids.len(), distinct = seen.len(), errors = errors.len(), "saved cache population routes");
+        errors
+    }
+
     fn get_cached_rc_holon(
         &self,
         holon_id: &HolonId,

@@ -28,11 +28,13 @@ const valueContext = { theme: { reference: {} } } as never;
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, identity: async () => name, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture(populated = false) {
   const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
-  const valueSlot = { key: async () => 'TableCollection.ValueSlot' };
-  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async () => [valueSlot] };
+  const valueSlot = { key: async () => 'TableCollection.ValueSlot', propertyValue: async () => ({ StringValue: 'value' }) };
+  const selectedType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [valueSlot] : [] };
+  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async (name: string) => name === 'DescribedBy' ? [selectedType] : [] };
   const value = { key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
-  const slot = {};
-  const parent = {};
+  const slot = { propertyValue: async () => ({ StringValue: 'collection' }) };
+  const parentType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [slot] : [] };
+  const parent = { relatedHolons: async (name: string) => name === 'DescribedBy' ? [parentType] : [] };
   const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })), selectValueVisualizer: vi.fn(async () => ({ selected: value })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => property('Key')) };
   const materialize = vi.fn(async (reference: unknown) => ({ source: reference === value ? valueSource : tableSource, format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
@@ -51,7 +53,7 @@ describe('selected collection activation', () => {
     const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(collection(count));
     expect(f.owner.describedRelatedHolons).not.toHaveBeenCalled();
     const updates: CollectionUpdate[] = [];
-    f.activation.activate(tab('InverseName', 'inverse'), 'slot', update => updates.push(update));
+    f.activation.activate(tab('InverseName', 'inverse'), 'collection', update => updates.push(update));
     expect(updates[0].state).toBe('checking');
     await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
     expect(f.owner.describedRelatedHolons).toHaveBeenCalledWith('InverseName');
@@ -67,27 +69,27 @@ describe('selected collection activation', () => {
 
   it('rereads on return, does nothing on active-tab activation, and keeps occurrences independent', async () => {
     const f = fixture(); const a = tab('A'), b = tab('B'); const publish = vi.fn();
-    f.activation.activate(a, 'slot', publish); await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
-    f.activation.activate(a, 'slot', publish); await wait(); expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
-    f.activation.activate(b, 'slot', publish); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(2)); await wait();
-    f.activation.activate(a, 'slot', publish); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(3)); await wait();
+    f.activation.activate(a, 'collection', publish); await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
+    f.activation.activate(a, 'collection', publish); await wait(); expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
+    f.activation.activate(b, 'collection', publish); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(2)); await wait();
+    f.activation.activate(a, 'collection', publish); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(3)); await wait();
     const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime, undefined, undefined, valueContext);
-    second.activate(a, 'slot', vi.fn()); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(4));
+    second.activate(a, 'collection', vi.fn()); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(4));
   });
 
   it('isolates realization from superseded work until transaction pool round-trips are concurrency-safe', async () => {
     const f = fixture(true); let finish!: (value: ReturnType<typeof collection>) => void;
     f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     const updates: CollectionUpdate[] = [];
-    f.activation.activate(tab('A'), 'slot', update => updates.push(update)); await wait();
-    f.activation.activate(tab('B'), 'slot', update => updates.push(update)); await wait();
+    f.activation.activate(tab('A'), 'collection', update => updates.push(update)); await wait();
+    f.activation.activate(tab('B'), 'collection', update => updates.push(update)); await wait();
     expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
     finish(collection(1)); await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
     expect(updates.filter(update => update.content)).toHaveLength(1);
     expect(updates.at(-1)?.content?.querySelector('table')?.getAttribute('aria-label')).toBe('B');
     const disposed = fixture(); let end!: (value: ReturnType<typeof collection>) => void;
     disposed.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { end = resolve; }));
-    const publish = vi.fn(); disposed.activation.activate(tab('C'), 'slot', publish); await wait();
+    const publish = vi.fn(); disposed.activation.activate(tab('C'), 'collection', publish); await wait();
     disposed.activation.dispose(); end(collection(1)); await wait();
     expect(publish).toHaveBeenCalledTimes(2); expect(disposed.materialize).not.toHaveBeenCalled();
   });
@@ -103,7 +105,7 @@ describe('selected collection activation', () => {
       f.owner.describedRelatedHolons.mockResolvedValueOnce(broken);
     }
     const updates: CollectionUpdate[] = [];
-    f.activation.activate(tab('A'), 'slot', update => updates.push(update));
+    f.activation.activate(tab('A'), 'collection', update => updates.push(update));
     await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('error'));
     expect(updates.at(-1)?.message).toMatch(/retrieval|selection|materialization/);
     updates.at(-1)!.retry!(); await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
@@ -179,7 +181,7 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
 
   const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime, undefined, undefined, valueContext);
   const updates: CollectionUpdate[] = [];
-  second.activate(tab('A'), 'slot', update => updates.push(update));
+  second.activate(tab('A'), 'collection', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
   const other = updates.at(-1)!.content!; node.append(other);
   const otherRows = other.querySelectorAll<HTMLTableRowElement>('tbody tr');
@@ -211,7 +213,7 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
   const described = { length: members.length, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
   const updates: CollectionUpdate[] = [];
-  f.activation.activate(tab(name), 'slot', update => updates.push(update));
+  f.activation.activate(tab(name), 'collection', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
   const element = updates.at(-1)!.content!;
   document.body.append(element);
@@ -228,7 +230,7 @@ it.each([1])('renders the identity-only projection for %i members, including an 
   const described = { length: count, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
   const updates: CollectionUpdate[] = [];
-  f.activation.activate(tab('Descriptors'), 'slot', update => updates.push(update));
+  f.activation.activate(tab('Descriptors'), 'collection', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
   const element = updates.at(-1)!.content!;
   expect(element.querySelector('th [data-sort-toggle]')?.textContent).toBe('Key');
@@ -242,7 +244,7 @@ it('restores independent tab sorts after fresh projection and keeps sorted activ
   const updates: CollectionUpdate[] = [];
   const publish = (update: CollectionUpdate) => { updates.push(update); if (update.content) document.body.replaceChildren(update.content); };
   const activate = async (affordance: CollectionAffordance) => {
-    f.activation.activate(affordance, 'slot', publish);
+    f.activation.activate(affordance, 'collection', publish);
     await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
     return updates.at(-1)!.content!;
   };
@@ -266,7 +268,7 @@ it('restores independent tab sorts after fresh projection and keeps sorted activ
   const restoredB = await activate(b);
   expect(restoredB.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
   const other = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime, undefined, undefined, valueContext);
-  other.activate(a, 'slot', publish);
+  other.activate(a, 'collection', publish);
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
   expect(updates.at(-1)!.content!.querySelector('[aria-sort]')?.getAttribute('aria-sort')).toBe('ascending');
   f.activation.dispose(); other.dispose();
@@ -276,7 +278,7 @@ it('uses the element type key rule and actual keys for default ordering', async 
   const f = fixture();
   const members = ['b', 'a'].map(key => ({ key: async () => key, propertyValue: async () => ({ StringValue: 'unrelated label' }) }));
   f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => true, instanceProperties: async () => [property('Name')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
-  const publish = vi.fn(); f.activation.activate(tab('Keyed'), 'slot', publish);
+  const publish = vi.fn(); f.activation.activate(tab('Keyed'), 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
   const table = publish.mock.lastCall![0].content as HTMLElement;
   expect([...table.querySelectorAll('td[data-column-id="Key"]')].map(cell => cell.textContent)).toEqual(['a', 'b']);
@@ -287,7 +289,7 @@ it('keeps ordered collections readable while reporting deferred manual order', a
   const f = fixture(); const ordered = tab('Ordered');
   if (ordered.kind !== 'relationship') throw new Error('Expected relationship');
   ordered.relationship.descriptor.isOrdered = async () => true;
-  const publish = vi.fn(); f.activation.activate(ordered, 'slot', publish);
+  const publish = vi.fn(); f.activation.activate(ordered, 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
   const element = publish.mock.lastCall![0].content as HTMLElement;
   expect(element.querySelector('[data-table-collection="sort-status"]')?.textContent).toBe('Manual order unavailable · supplied order');
@@ -304,7 +306,7 @@ it('defaults a broad Owns collection to actual member keys when concrete types a
     propertyValue: async () => ({ StringValue: key }),
   }));
   f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property('Key')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
-  const publish = vi.fn(); f.activation.activate(tab('Owns'), 'slot', publish);
+  const publish = vi.fn(); f.activation.activate(tab('Owns'), 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
   const table = publish.mock.lastCall![0].content as HTMLElement;
   expect([...table.querySelectorAll('td[data-column-id="Key"]')].map(cell => cell.textContent)).toEqual(['Alpha.PropertyType', 'Zebra.HolonType']);
@@ -322,7 +324,7 @@ it('renders InstanceRelationships when its classification anchor has no instance
     hasInstanceKey: async () => { throw Object.assign(new Error('No effective key rule'), { code: 'DOMAIN_ERROR', variant: 'NoEffectiveKeyRule' }); },
     instanceProperties: async () => [],
   }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
-  const publish = vi.fn(); f.activation.activate(tab('InstanceRelationships'), 'slot', publish);
+  const publish = vi.fn(); f.activation.activate(tab('InstanceRelationships'), 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
   const table = publish.mock.lastCall![0].content as HTMLElement;
   expect([...table.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['ARelationship', 'ZRelationship']);
@@ -340,7 +342,7 @@ it('reads 57 existing keys without inspecting key rules or member descriptors', 
   f.owner.describedRelatedHolons.mockResolvedValue({ length: 57, elementType: { effectiveDescriptor: async function () { return this; },
     hasInstanceKey: forbidden, instanceProperties: async () => [property('Name')],
   }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
-  const publish = vi.fn(); f.activation.activate(tab('Defines Design Token'), 'slot', publish);
+  const publish = vi.fn(); f.activation.activate(tab('Defines Design Token'), 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
   const table = publish.mock.lastCall![0].content as HTMLElement;
   const cells = [...table.querySelectorAll('td[data-column-id="Key"]')];
@@ -354,7 +356,7 @@ it('reads 57 existing keys without inspecting key rules or member descriptors', 
 it.each(['empty', 'failed'])('keeps the live collection and member binding during %s preflight', async outcome => {
   const f = fixture(); const a = tab('A'), b = tab('B');
   const updates: CollectionUpdate[] = [];
-  f.activation.activate(a, 'slot', update => updates.push(update));
+  f.activation.activate(a, 'collection', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
   const content = updates.at(-1)!.content!; document.body.append(content);
   const beforeChange = vi.fn(() => true); f.activation.setBeforeChange(beforeChange);
@@ -362,7 +364,7 @@ it.each(['empty', 'failed'])('keeps the live collection and member binding durin
   let fail!: (error: Error) => void;
   f.owner.relatedHolons.mockImplementationOnce(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
   const attempted: CollectionUpdate[] = [];
-  f.activation.activate(b, 'slot', update => attempted.push(update));
+  f.activation.activate(b, 'collection', update => attempted.push(update));
   await wait();
   expect(f.activation.sourceAffordance(content)).toBe(a);
   expect(beforeChange).not.toHaveBeenCalled();
@@ -383,7 +385,7 @@ it('paints the named collection destination before immediate selection and handl
   vi.mocked(destinationPaint).mockImplementationOnce(() => new Promise(resolve => { paint = resolve; }));
   f.owner.describedRelatedHolons.mockResolvedValue(collection(0));
   const updates: CollectionUpdate[] = [];
-  f.activation.activate(tab('Gone'), 'slot', update => updates.push(update));
+  f.activation.activate(tab('Gone'), 'collection', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loading'));
   expect(updates.at(-1)?.message).toBe('Opening Gone…');
   expect(f.owner.describedRelatedHolons).not.toHaveBeenCalled();
@@ -399,10 +401,10 @@ it('does not strand an opening collection when a newer attempt proves empty', as
   const f = fixture(); let finish!: (value: ReturnType<typeof collection>) => void;
   f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
   const a: CollectionUpdate[] = [], b: CollectionUpdate[] = [];
-  f.activation.activate(tab('A'), 'slot', update => a.push(update));
+  f.activation.activate(tab('A'), 'collection', update => a.push(update));
   await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalled());
   f.owner.relatedHolons.mockResolvedValueOnce(collection(0));
-  f.activation.activate(tab('B'), 'slot', update => b.push(update));
+  f.activation.activate(tab('B'), 'collection', update => b.push(update));
   finish(collection(2));
   await vi.waitFor(() => expect(b.at(-1)?.state).toBe('empty'));
   expect(a.at(-1)?.state).toBe('loaded');
@@ -413,12 +415,12 @@ it('closes collection presentation without disposing activation and rejects late
   const f = fixture(true), a = tab('A'), publish = vi.fn();
   let finish!: (value: ReturnType<typeof collection>) => void;
   f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-  f.activation.activate(a, 'slot', publish); await wait();
+  f.activation.activate(a, 'collection', publish); await wait();
   f.activation.close(a);
   expect(publish.mock.lastCall?.[0].state).toBe('unresolved');
   finish(collection(2)); await wait();
   expect(publish.mock.calls.some(([update]) => update.content)).toBe(false);
-  f.activation.activate(a, 'slot', publish);
+  f.activation.activate(a, 'collection', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
   const content = publish.mock.lastCall![0].content;
   expect(f.activation.sourceAffordance(content)).toBe(a);
@@ -428,7 +430,7 @@ it('closes collection presentation without disposing activation and rejects late
 
 it('refreshes an open collection from fresh membership on semantic invalidation', async () => {
   const f = fixture(true); const updates: CollectionUpdate[] = [];
-  f.activation.activate(tab('Owns'), 'slot', update => updates.push(update));
+  f.activation.activate(tab('Owns'), 'collection', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
   f.owner.describedRelatedHolons.mockResolvedValue(collection(3));
   semanticWork(f.transaction as never).invalidate();
@@ -442,14 +444,14 @@ it('selects in the open presentation context while retaining committed loader me
   const retained = collection(1); f.owner.describedRelatedHolons.mockResolvedValue(retained);
   f.transaction.getSavedHolonByBaseKey.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
   f.transaction.selectCollectionVisualizer.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
-  const type = {}, parent = {}, slot = {};
+  const type = {}, parent = { ...f.parent }, slot = f.slot;
   const bind = vi.fn((ref: unknown) => ref === retained.elementType ? type : ref === f.parent ? parent : ref);
   const presentation = { getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
     selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: f.selected })),
     selectValueVisualizer: f.transaction.selectValueVisualizer, getSavedPropertyDescriptorByBaseKey: f.transaction.getSavedPropertyDescriptorByBaseKey };
   const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation, valueContext);
   const updates: CollectionUpdate[] = [];
-  activation.activate(tab('Sources'), 'slot', (update: CollectionUpdate) => updates.push(update));
+  activation.activate(tab('Sources'), 'collection', (update: CollectionUpdate) => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
   expect(presentation.selectProjectedCollectionVisualizer).toHaveBeenCalledWith(retained.elementType, parent, slot);
   expect(f.transaction.getSavedHolonByBaseKey).not.toHaveBeenCalled();

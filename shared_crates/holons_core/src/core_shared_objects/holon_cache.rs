@@ -74,6 +74,25 @@ impl HolonCache {
     pub fn insert(&self, key: HolonId, value: Arc<RwLock<Holon>>) {
         self.entries.insert(key, value);
     }
+
+    /// Serializes admission with retention and other completed retrievals.
+    /// No retrieval or user callback runs while the residency lock is held.
+    pub(crate) fn insert_if_absent(
+        &self,
+        key: HolonId,
+        value: Arc<RwLock<Holon>>,
+    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
+        let retained =
+            self.retained.write().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        if let Some((_, existing)) = retained.get(&key) {
+            return Ok(existing.clone());
+        }
+        if let Some(existing) = self.entries.get(&key) {
+            return Ok(existing);
+        }
+        self.entries.insert(key, value.clone());
+        Ok(value)
+    }
 }
 impl Deref for HolonCache {
     type Target = Cache<HolonId, Arc<RwLock<Holon>>>;

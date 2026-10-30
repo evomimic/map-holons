@@ -21,6 +21,25 @@ pub struct SpaceReadHandle {
 }
 
 impl SpaceReadHandle {
+    /// Populates explicit saved identities through a restricted cache-read context.
+    /// Success is implicit and ordinarily evictable; no retention leases are returned.
+    pub fn ensure_cached(
+        &self,
+        ids: &[HolonId],
+    ) -> Vec<super::cache_population::CachePopulationError> {
+        if ids.is_empty() {
+            return Vec::new();
+        }
+        match self.with_cache_context(|context| {
+            Ok(self.space_manager.get_cache_access().ensure_cached(&context, ids))
+        }) {
+            Ok(errors) => errors,
+            Err(error) => {
+                vec![super::cache_population::CachePopulationError::new(ids.to_vec(), error)]
+            }
+        }
+    }
+
     pub(crate) fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
         Self { space_manager }
     }

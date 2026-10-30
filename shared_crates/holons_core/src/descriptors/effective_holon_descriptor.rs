@@ -219,9 +219,29 @@ impl EffectiveHolonDescriptor {
             .collect())
     }
 
-    /// Reads outbound declared and inverse schema vocabulary, independently of instances.
+    /// Composes singular then plural outbound references without deduplication. Maximum-zero
+    /// definitions remain in the instance contract but are absent from navigation.
     pub fn navigable_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::NavigableRelationships)?
+        let mut relationships = self.singular_navigable_relationships()?;
+        relationships.extend(self.plural_navigable_relationships()?);
+        Ok(relationships)
+    }
+
+    /// Reads maximum-one navigation references, retaining contributed duplicates.
+    pub fn singular_navigable_relationships(
+        &self,
+    ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+        Ok(targets(&self.holon, CoreRelationshipTypeName::SingularNavigableRelationships)?
+            .into_iter()
+            .map(RelationshipDescriptor::from_holon)
+            .collect())
+    }
+
+    /// Reads finite-many or unbounded navigation references, retaining contributed duplicates.
+    pub fn plural_navigable_relationships(
+        &self,
+    ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+        Ok(targets(&self.holon, CoreRelationshipTypeName::PluralNavigableRelationships)?
             .into_iter()
             .map(RelationshipDescriptor::from_holon)
             .collect())
@@ -469,8 +489,18 @@ pub(super) fn materialize_effective_schema(
         });
     }
     checkpoint("target_category", "");
-    let navigable =
-        computed.navigable_relationships()?.iter().map(|entry| entry.member.clone()).collect();
+    let mut singular = Vec::new();
+    let mut plural = Vec::new();
+    for occurrence in computed.navigable_relationships()? {
+        match RelationshipDescriptor::from_holon(occurrence.member.clone())
+            .effective_cardinality()?
+            .maximum
+        {
+            Some(0) => {}
+            Some(1) => singular.push(occurrence.member.clone()),
+            _ => plural.push(occurrence.member.clone()),
+        }
+    }
     checkpoint("navigation", "");
     let result_type = resolve_core_descriptor(
         context,
@@ -485,7 +515,12 @@ pub(super) fn materialize_effective_schema(
         result.add_related_references(CoreRelationshipTypeName::OwnedBy, vec![space.clone()])?;
     }
     result.add_related_references(CoreRelationshipTypeName::DescribedHolonType, vec![target])?;
-    result.add_related_references(CoreRelationshipTypeName::NavigableRelationships, navigable)?;
+    result.add_related_references(
+        CoreRelationshipTypeName::SingularNavigableRelationships,
+        singular,
+    )?;
+    result
+        .add_related_references(CoreRelationshipTypeName::PluralNavigableRelationships, plural)?;
     checkpoint("result_allocation", "");
     for collection in &computed.collections {
         let result_name = collection.result.clone();
@@ -628,6 +663,104 @@ mod tests {
             .mutation()
             .stage_new_holon(new_descriptor_holon(context, key, name, "")?)?
             .into())
+    }
+
+    /// Attaches explicit directional bounds to a relationship fixture.
+    fn constrain(
+        context: &Arc<TransactionContext>,
+        relationship: &mut HolonReference,
+        maximum: Option<i64>,
+    ) -> Result<(), HolonError> {
+        let descriptor = context.mutation().stage_new_holon(new_descriptor_holon(
+            context,
+            "cardinality-type",
+            "CardinalityConstraint",
+            "",
+        )?)?;
+        let mut constraint = new_test_holon(context, "cardinality")?;
+        constraint
+            .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor.into()])?;
+        constraint.with_property_value("Minimum", 0i64)?;
+        if let Some(maximum) = maximum {
+            constraint.with_property_value("Maximum", maximum)?;
+        }
+        let constraint = context.mutation().stage_new_holon(constraint)?;
+        relationship
+            .add_related_holons(CoreRelationshipTypeName::Constraints, vec![constraint.into()])?;
+        Ok(())
+    }
+
+    #[test]
+    fn navigation_partitions_preserve_occurrences_and_omit_only_zero_maximum(
+    ) -> Result<(), HolonError> {
+        let (context, mut parent, target) = fixture()?;
+        let anchor =
+            resolve_core_descriptor(&context, "DeclaredRelationshipType.RelationshipType")?;
+        let mut members = Vec::new();
+        for (name, maximum) in
+            [("Disabled", Some(0)), ("One", Some(1)), ("Many", Some(3)), ("Unbounded", None)]
+        {
+            let mut relationship: HolonReference = context
+                .mutation()
+                .stage_new_holon(new_descriptor_holon(&context, name, name, "")?)?
+                .into();
+            relationship
+                .add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.clone()])?;
+            relationship
+                .add_related_holons(CoreRelationshipTypeName::SourceType, vec![parent.clone()])?;
+            relationship
+                .add_related_holons(CoreRelationshipTypeName::TargetType, vec![parent.clone()])?;
+            relationship.with_property_value(CorePropertyTypeName::IsDefinitional, true)?;
+            constrain(&context, &mut relationship, maximum)?;
+            members.push(relationship);
+        }
+        // Repeated authored occurrences remain visible to downstream validation.
+        parent.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![members[2].clone(), members[1].clone(), members[0].clone(), members[3].clone()],
+        )?;
+        let mut child = target.clone();
+        child.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![members[1].clone()],
+        )?;
+        let result = construct_effective_holon_descriptor(&context, target)?;
+        let names = |entries: Vec<RelationshipDescriptor>| {
+            entries
+                .into_iter()
+                .map(|entry| entry.base_relationship_name().map(|name| name.to_string()))
+                .collect::<Result<Vec<_>, _>>()
+        };
+        assert_eq!(names(result.singular_navigable_relationships()?)?, ["One", "One"]);
+        assert_eq!(names(result.plural_navigable_relationships()?)?, ["Many", "Unbounded"]);
+        assert_eq!(names(result.navigable_relationships()?)?, ["One", "One", "Many", "Unbounded"]);
+        assert_eq!(
+            result.instance_relationships()?.len(),
+            5,
+            "disabled definitions remain in the schema contract"
+        );
+        // The consumer accessor must not read constraint targets again.
+        let mut constraint =
+            targets(&members[1], CoreRelationshipTypeName::Constraints)?[0].clone();
+        constraint.with_property_value("Maximum", "malformed")?;
+        assert_eq!(result.navigable_relationships()?.len(), 4);
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_cardinality_is_a_construction_error() -> Result<(), HolonError> {
+        let (context, mut parent, target) = fixture()?;
+        let mut member: HolonReference = context
+            .mutation()
+            .stage_new_holon(new_descriptor_holon(&context, "Broken", "Broken", "")?)?
+            .into();
+        member.add_related_holons(CoreRelationshipTypeName::SourceType, vec![parent.clone()])?;
+        parent.add_related_holons(CoreRelationshipTypeName::InstanceRelationships, vec![member])?;
+        let error = construct_effective_holon_descriptor(&context, target)
+            .err()
+            .expect("missing bounds must fail");
+        assert!(error.to_string().contains("no direct CardinalityConstraint"));
+        Ok(())
     }
 
     fn fixture() -> Result<(Arc<TransactionContext>, HolonReference, HolonReference), HolonError> {
@@ -864,6 +997,10 @@ mod tests {
                 }
             } else {
                 member.with_descriptor(anchor)?;
+            }
+            if matches!(source_name, CoreRelationshipTypeName::InstanceRelationships) {
+                let mut reference: HolonReference = member.clone().into();
+                constrain(&context, &mut reference, None)?;
             }
             let member: HolonReference = context.mutation().stage_new_holon(member)?.into();
             parent.add_related_holons(source_name.clone(), vec![member.clone()])?;

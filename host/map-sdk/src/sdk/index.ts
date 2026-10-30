@@ -19,6 +19,7 @@ export {
   TransientHolonReference,
 } from './references';
 export { MapTransaction } from './transaction';
+export type { LoadedTheme } from './theme';
 export type {
   MaterializedVisualizer,
   VisualizerKind,

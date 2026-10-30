@@ -10,6 +10,10 @@ use type_names::ToRelationshipName;
 
 #[derive(Debug)]
 struct CountingService {
+    hydration_requests: RwLock<Vec<Vec<HolonId>>>,
+    hydration_response:
+        RwLock<Option<Result<Vec<super::super::cache_population::SavedHolonFetch>, HolonError>>>,
+    hydration_barriers: RwLock<Option<(Arc<std::sync::Barrier>, Arc<std::sync::Barrier>)>>,
     reuse_frozen: bool,
     edges: RwLock<HashMap<(u8, String), Vec<u8>>>,
     calls: RwLock<HashMap<(u8, String), usize>>,
@@ -44,6 +48,9 @@ impl CountingService {
             edges.insert((source, name.into()), targets);
         }
         Self {
+            hydration_requests: RwLock::new(Vec::new()),
+            hydration_response: RwLock::new(None),
+            hydration_barriers: RwLock::new(None),
             reuse_frozen,
             edges: RwLock::new(edges),
             calls: RwLock::new(HashMap::new()),
@@ -106,6 +113,30 @@ impl HolonServiceApi for CountingService {
             result.pop();
         }
         Ok(result)
+    }
+    fn fetch_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Result<Vec<super::super::cache_population::SavedHolonFetch>, HolonError> {
+        assert!(context.is_restricted_cache_read());
+        self.hydration_requests.write().unwrap().push(ids.to_vec());
+        let barriers = self.hydration_barriers.read().unwrap().clone();
+        if let Some((entered, resume)) = barriers {
+            entered.wait();
+            resume.wait();
+        }
+        if let Some(response) = self.hydration_response.read().unwrap().clone() {
+            return response;
+        }
+        Ok(ids
+            .iter()
+            .rev()
+            .map(|id| super::super::cache_population::SavedHolonFetch {
+                id: id.clone(),
+                result: self.fetch_holon_internal(context, id),
+            })
+            .collect())
     }
     fn fetch_holon_internal(
         &self,
@@ -798,3 +829,5 @@ fn batch_and_named_reads_share_policies_across_expiration_and_public_transaction
     assert_eq!(service.content_reads.load(Ordering::Relaxed), 0);
     Ok(())
 }
+
+mod population;

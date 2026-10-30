@@ -47,6 +47,60 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
     }
     assert_eq!(references[0].full_reference_id_string(), references[1].full_reference_id_string());
     let descriptor = EffectiveHolonDescriptor::from_constructed_holon(references[0].clone());
+    let singular = descriptor.singular_navigable_relationships().unwrap();
+    let plural = descriptor.plural_navigable_relationships().unwrap();
+    assert!(!singular.is_empty());
+    assert!(!plural.is_empty());
+    for relationship in &singular {
+        assert_eq!(relationship.effective_cardinality().unwrap().maximum, Some(1));
+    }
+    for relationship in &plural {
+        let maximum = relationship.effective_cardinality().unwrap().maximum;
+        assert!(maximum.is_none() || maximum.is_some_and(|value| value > 1));
+    }
+    let identities = |entries: Vec<holons_core::RelationshipDescriptor>| {
+        entries
+            .into_iter()
+            .map(|entry| entry.holon().full_reference_id_string())
+            .collect::<Vec<_>>()
+    };
+    let expected = singular
+        .iter()
+        .chain(&plural)
+        .map(|entry| entry.holon().full_reference_id_string())
+        .collect::<Vec<_>>();
+    assert_eq!(identities(descriptor.navigable_relationships().unwrap()), expected);
+    for (is_singular, partition) in [(true, singular), (false, plural)] {
+        let source = contexts[0].get_space_holon().unwrap().unwrap();
+        let MapResult::QualifiedRelationships(available) = runtime
+            .execute_command(
+                MapCommand::Holon(HolonCommand {
+                    context: contexts[0].clone(),
+                    target: source,
+                    action: HolonAction::Read(
+                        ReadableHolonAction::GetAvailableRelationshipsFromEffective {
+                            descriptor: references[0].clone(),
+                            singular: Some(is_singular),
+                        },
+                    ),
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("expected relationship partition")
+        };
+        let expected = identities(partition);
+        assert_eq!(
+            available.len(),
+            expected.len(),
+            "saved sources admit both declared and inverse vocabulary"
+        );
+        assert!(available
+            .iter()
+            .all(|entry| expected.contains(&entry.descriptor.holon().full_reference_id_string())));
+    }
     // Cardinality reads follow Constraints on relationship definitions. Those
     // structural collections must acquire policy after bootstrap as well.
     let relationship = descriptor
@@ -94,6 +148,25 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
         };
         assert_eq!(identities(&direct), identities(&prepared));
     }
+    let navigation = |schema: &ComputedEffectiveSchema| {
+        schema
+            .navigable_relationships()
+            .unwrap()
+            .iter()
+            .map(|entry| {
+                (
+                    entry.member.full_reference_id_string(),
+                    entry.declared_on.full_reference_id_string(),
+                    entry.local_position,
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        navigation(&direct),
+        navigation(&prepared),
+        "presentation partition order must not scramble structural provenance"
+    );
     assert!(descriptor.contributions().unwrap().is_empty());
     assert!(!descriptor.navigable_relationships().unwrap().is_empty());
     let mut sealed = references[0].clone();

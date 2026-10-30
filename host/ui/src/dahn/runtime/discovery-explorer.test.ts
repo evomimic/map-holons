@@ -24,7 +24,7 @@ vi.mock('./materialized-visualizer-runtime', () => ({ MaterializedVisualizerRunt
 
 function reference(key: string, properties: Record<string, any> = {}, edges: Record<string, any[]> = {}): any {
   return { key: async () => key, versionedKey: async () => key, equals: (other: any) => other?.identity === key, identity: key,
-    propertyValue: async (name: string) => properties[name] ?? null, relatedHolons: async (name: string) => edges[name] ?? [] };
+    propertyValue: async (name: string) => properties[name] ?? null, relatedHolons: async (name: string) => { const members = edges[name] ?? []; return Object.assign(members, { members }); } };
 }
 function fixture() {
   const descriptor = reference('Specific type'), selected = reference('Tree'), alternative = reference('List');
@@ -36,6 +36,9 @@ function fixture() {
   });
   const evidenceTx = {
     findVisualizerUsage: vi.fn(async (): Promise<any> => null),
+    withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
+    recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
+    prepareVisualizerUsage: async () => ({}),
     selectVisualizer: vi.fn(async () => ({ selected })),
     chooseVisualizer: vi.fn(async () => ({ selected: alternative })),
     selectVisualizerUsage: vi.fn(async () => ({ usage: reference('Usage'), reportSession: 'session' })),
@@ -52,7 +55,7 @@ function fixture() {
   const target = { occurrenceId: 'Original', isLive: () => true } as VisualizerInspectionTarget;
   const binding = { materialized: new MaterializedVisualizerRuntime(null as never), theme: { reference: reference('Theme') }, canvas: {} } as SpaceNavigatorBinding;
   const inspect = vi.fn();
-  const inspector = reference('Inspector', {}, { HasSlot: [reference('Explorer slot')] });
+  const inspector = reference('Inspector', {}, { DescribedBy: [reference('Inspector type', {}, { HasSlot: [reference('Explorer slot', { CompositionRole: { StringValue: 'discovery' } })] })] });
   const owner = new DiscoveryExplorerOwner(binding, target, inspector, discovery, inspect, client as unknown as MapClient);
   const host = document.createElement('section'); document.body.append(host);
   return { owner, host, discovery, client, evidenceTx, presentations, selected, alternative, descriptor, subject, inspect, binding, inspector };
@@ -63,7 +66,7 @@ it('resolves the child slot from the already materialized parent without issuing
   const f = fixture();
   const { MaterializedVisualizerRuntime: Runtime } = await vi.importActual<typeof import('./materialized-visualizer-runtime')>('./materialized-visualizer-runtime');
   const materialize = vi.fn(async () => ({ source: 'verified inspector', format: 'ESModule' as const, entrypoint: 'default' }));
-  class Inspector { static compositionSlots = { discovery: 'Explorer slot' }; }
+  class Inspector {}
   f.binding.materialized = new Runtime(new MaterializedVisualizerCache({ materialize }), async () => ({ default: Inspector }));
   await f.binding.materialized.realize(f.inspector);
   f.evidenceTx.selectVisualizer.mockRejectedValueOnce(new Error('selection checkpoint'));

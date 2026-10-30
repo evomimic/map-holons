@@ -17,6 +17,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
 #holochain dependencies
 holochain_client = { version = "0.9" }
 holochain_types = "0.7"
+holochain_websocket = "0.7"
 
 #map dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }

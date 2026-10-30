@@ -432,6 +432,35 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
+    fn fetch_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Result<Vec<holons_core::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let request = holon_dance_builders::build_get_holons_by_ids_dance_request(ids.to_vec());
+        let started = std::time::Instant::now();
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await });
+        tracing::info!(target: "map_profile", requested = ids.len(), guest_invocations = 1, elapsed_us = started.elapsed().as_micros(), "bulk saved hydration");
+        let response = response?;
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(response.error.unwrap_or_else(|| {
+                HolonError::Misc(format!(
+                    "GetHolonsByIds dance failed: {:?} — {}",
+                    response.status_code, response.description.0
+                ))
+            }));
+        }
+        match response.body {
+            ResponseBody::SavedHolonHydration(entries) => Ok(entries),
+            _ => Err(HolonError::InvalidParameter("Expected SavedHolonHydration".into())),
+        }
+    }
+
     fn fetch_holon_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -544,6 +573,45 @@ impl HolonServiceApi for ClientHolonService {
         self.dahn_materializer.is_available(visualizer)
     }
 
+    fn resolve_visualizer_usage_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+        subject_type: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<holons_core::dances::VisualizerUsageResolution, HolonError> {
+        let request = holon_dance_builders::build_resolve_visualizer_usage_dance_request(
+            visualizer.clone(),
+            subject_type.clone(),
+            slot.clone(),
+        )?;
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(response.error.unwrap_or_else(|| {
+                HolonError::Misc(format!(
+                    "ResolveVisualizerUsage failed: {:?} — {}",
+                    response.status_code, response.description.0
+                ))
+            }));
+        }
+        match response.body {
+            ResponseBody::HolonReference(body) => {
+                let resolved =
+                    holons_core::dances::VisualizerUsageResolution::from_projection(&body)?;
+                if resolved.search_path.first() != Some(subject_type) {
+                    return Err(HolonError::InvalidState(
+                        "Usage resolution returned a different starting descriptor".into(),
+                    ));
+                }
+                Ok(resolved)
+            }
+            other => Err(HolonError::InvalidParameter(format!(
+                "ResolveVisualizerUsage expected a projection, got {other:?}"
+            ))),
+        }
+    }
+
     fn materialize_visualizer_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -625,6 +693,41 @@ impl HolonServiceApi for ClientHolonService {
         Ok(holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(
             response.require_response_body()?,
         ))
+    }
+
+    fn load_theme_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let started = Instant::now();
+        let invocation =
+            holons_core::dances::implementations::load_theme::invocation(context, theme.clone())?;
+        let setup_ms = started.elapsed().as_secs_f64() * 1000.0;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })?;
+        let execution_ms = started.elapsed().as_secs_f64() * 1000.0 - setup_ms;
+        // Canonical execution validated the response contract in the guest. Read
+        // only its transported transient graph here; revalidating descriptor ancestry
+        // through DanceResponseReference would introduce additional source graph reads.
+        if !matches!(response, HolonReference::Transient(_)) {
+            return Err(HolonError::InvalidParameter(
+                "LoadTheme response must be transient".into(),
+            ));
+        }
+        let bodies = response
+            .related_holons(type_names::CoreRelationshipTypeName::ResponseBody)?
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        if std::env::var_os("MAP_PROFILE").is_some() {
+            tracing::info!(target: "map_profile", setup_ms, execution_ms, "LoadTheme canonical guest loading");
+        }
+        match bodies.as_slice() {
+            [body] => Ok(body.clone()),
+            _ => Err(HolonError::InvalidParameter("LoadTheme requires one response body".into())),
+        }
     }
 
     fn invoke_load_holons_internal(

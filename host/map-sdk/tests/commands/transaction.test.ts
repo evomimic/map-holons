@@ -18,6 +18,8 @@ import {
   newHolon,
   redoLast,
   stageNewFromClone,
+  specializeVisualizerUsage,
+  selectVisualizerUsage,
   stageNewHolon,
   stageNewVersion,
   stageNewVersionFromId,
@@ -435,4 +437,27 @@ it('projects explicit disposal and captured-target verification through transact
   invokeMapCommandMock.mockClear(); resetRequestIdCounter();
   await checkLoadTarget(txId, { Smart: smartWire });
   expectTransactionRequest({ CheckLoadTarget: { space: { Smart: smartWire } } });
+});
+
+
+it('sends explicit Usage specialization with its source configuration', async () => {
+  invokeMapCommandMock.mockReset();
+  resetRequestIdCounter();
+  const smartReference: HolonReferenceWire = { Smart: smartWire };
+  invokeMapCommandMock.mockResolvedValue(okResponse({ VisualizerUsageSelection: { usage: transientReference, initialized: true, report_session: 'session' } }));
+  const request = { subject: smartReference, requested_kind: 'Node' as const, owner: { Visualizer: smartReference }, slot: smartReference, theme: smartReference };
+  const result = await specializeVisualizerUsage(txId, request, smartReference, transientReference);
+  expect(result.initialized).toBe(true);
+  expectTransactionRequest({ SpecializeVisualizerUsage: { request, selected: smartReference, usage: transientReference } });
+});
+
+
+it('transports an explicit Usage selection independently of default resolution', async () => {
+  invokeMapCommandMock.mockReset();
+  resetRequestIdCounter();
+  const smartReference: HolonReferenceWire = { Smart: smartWire };
+  const request = { subject: smartReference, requested_kind: 'Node' as const, owner: { Visualizer: smartReference }, slot: smartReference, theme: smartReference };
+  invokeMapCommandMock.mockResolvedValue(okResponse({ VisualizerUsageSelection: { usage: transientReference, initialized: false, report_session: 'session' } }));
+  await selectVisualizerUsage(txId, request, smartReference, smartReference);
+  expectTransactionRequest({ SelectVisualizerUsage: { request, selected: smartReference, usage: smartReference } });
 });

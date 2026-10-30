@@ -1,0 +1,19 @@
+{
+  "request_id": 156,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "RetryVisualizerUsagePersistence": {
+          "batch_id": "1"
+        }
+      }
+    }
+  },
+  "options": {
+    "marker_id": null,
+    "marker_label": null,
+    "snapshot_after": false,
+    "disable_undo": false
+  }
+}

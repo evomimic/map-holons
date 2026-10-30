@@ -3778,6 +3778,7 @@ dependencies = [
  "futures-executor",
  "holochain_client",
  "holochain_types",
+ "holochain_websocket",
  "holochain_zome_types",
  "holon_dance_builders",
  "holons_boundary",
@@ -5660,6 +5661,7 @@ dependencies = [
  "serde_json",
  "session_receptor",
  "tokio",
+ "tracing",
  "type_names",
 ]
 

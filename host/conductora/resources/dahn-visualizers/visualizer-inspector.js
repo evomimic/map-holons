@@ -1,6 +1,5 @@
 /** A semantic Visualizer definition view, separate from usage configuration and history. */
 export default class VisualizerInspector extends HTMLElement {
-  static compositionSlots = { discovery: 'VisualizerInspector.DiscoveryExplorerSlot' };
   setContext(context) {
     for (const observer of this.compositionObservers ?? []) observer.disconnect();
     this.compositionObservers = new Set();

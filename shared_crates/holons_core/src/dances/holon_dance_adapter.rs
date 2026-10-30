@@ -141,6 +141,17 @@ pub fn get_holon_by_id_dance(
     Ok(ResponseBody::Holon(holon))
 }
 
+/// Fetches explicit saved identities, preserving independent failures and successes.
+pub fn get_holons_by_ids_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    let RequestBody::SavedHolonIds(ids) = request.body else {
+        return Err(HolonError::InvalidParameter("Expected SavedHolonIds".into()));
+    };
+    Ok(ResponseBody::SavedHolonHydration(context.fetch_holons_internal(&ids)?))
+}
+
 /// Resolves an exact key in the current persisted holon space to its sole visible lineage head.
 pub fn get_saved_holon_by_key_dance(
     context: &Arc<TransactionContext>,
@@ -295,4 +306,33 @@ pub fn fetch_all_related_holons_dance(
             "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),
         )),
     }
+}
+
+/// Terminal guest adapter for the read-only Visualizer Usage service transport.
+pub fn resolve_visualizer_usage_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter(
+            "Expected standalone Usage resolution transport".into(),
+        ));
+    }
+    let RequestBody::TargetHolons(name, inputs) = request.body else {
+        return Err(HolonError::InvalidParameter("Expected Usage resolution inputs".into()));
+    };
+    let [visualizer, subject_type, slot] = inputs.as_slice() else {
+        return Err(HolonError::InvalidParameter(
+            "Usage resolution requires Visualizer, subject type and Slot".into(),
+        ));
+    };
+    if name.to_string() != "UsageResolutionInputs"
+        || inputs.iter().any(|r| !matches!(r, HolonReference::Smart(_)))
+    {
+        return Err(HolonError::InvalidParameter("Usage resolution requires saved inputs".into()));
+    }
+    context
+        .resolve_visualizer_usage(visualizer, subject_type, slot)?
+        .into_projection(context)
+        .map(ResponseBody::HolonReference)
 }

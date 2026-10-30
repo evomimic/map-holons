@@ -102,7 +102,8 @@ pub async fn init_probe_test_runtime(
 }
 
 /// Uses the same bootstrap and fixture import path with either conductor configuration.
-async fn init_runtime_with_initiator(
+/// Initialize ordinary bootstrap with a caller-supplied transport for focused boundary tests.
+pub async fn init_runtime_with_initiator(
     test_case: &mut DancesTestCase,
     dance_initiator: Arc<dyn DanceInitiator + Send + Sync>,
 ) -> (Runtime, TxId) {
@@ -253,4 +254,15 @@ async fn init_runtime_with_initiator(
     );
 
     (runtime, tx_id)
+}
+
+/// Retains a probe-enabled disposable backend only for explicit read-cost experiments.
+pub async fn init_probe_performance_runtime(
+    test_case: &mut DancesTestCase,
+) -> (Runtime, TxId, Arc<super::MockConductorConfig>) {
+    init_tracing();
+    let backend = setup_probe_enabled_conductor().await;
+    let initiator = Arc::new(TrustChannel::new(backend.clone()));
+    let (runtime, tx_id) = init_runtime_with_initiator(test_case, initiator).await;
+    (runtime, tx_id, backend)
 }
