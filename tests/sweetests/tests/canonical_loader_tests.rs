@@ -520,10 +520,11 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         command(&runtime, &usage_context, TransactionAction::Dispose).await.unwrap();
     }
     // Assert the authored forward edge and its committed inverse at the consuming seam.
-    let load_visualizer = saved("LoadHolons.ActionVisualizerType");
+    let load_visualizer_type = saved("LoadHolons.ActionVisualizerType");
+    let load_visualizer = saved("LoadHolons.ActionVisualizer");
     for slot_key in ["LoadHolons.DiagnosticsSlot", "LoadHolons.CommittedHolonsSlot"] {
         let slot = saved(slot_key);
-        assert!(load_visualizer
+        assert!(load_visualizer_type
             .related_holons("HasSlot")
             .unwrap()
             .read()
@@ -536,7 +537,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
             .read()
             .unwrap()
             .get_members()
-            .contains(&load_visualizer));
+            .contains(&load_visualizer_type));
         let MapResult::VisualizerSelection(selection) = command(
             &runtime,
             &context,
