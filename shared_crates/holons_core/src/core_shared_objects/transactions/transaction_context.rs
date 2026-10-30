@@ -469,6 +469,14 @@ impl TransactionContext {
         self.get_holon_service().visualizer_artifact_available_internal(self, visualizer)
     }
 
+    /// Resolve Theme presentation data through the execution-context service.
+    pub fn load_theme(
+        self: &Arc<Self>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        self.get_holon_service().load_theme_internal(self, theme)
+    }
+
     /// Resolve committed Usage configuration through the execution-context service.
     pub fn resolve_visualizer_usage(
         self: &Arc<Self>,

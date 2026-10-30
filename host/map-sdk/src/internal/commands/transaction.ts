@@ -1,7 +1,7 @@
 import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
-  expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
+  expectLoadedTheme, expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
   expectRedoToMarkerComplete, expectReference, expectReferences, expectUndoComplete,
   expectUndoToMarkerComplete, expectValue, expectVisualizerSelection, expectVisualizerDiscovery, expectVisualizerUsageSelection,
 } from '../result-decoders';
@@ -12,6 +12,11 @@ import type {
   SmartReferenceWire, TransactionActionWire, TransientReferenceWire, TxId,
   VisualizerSelectionRequestWire, VisualizerSelectionWire, VisualizerDiscoveryWire,
 } from '../wire-types';
+
+/** One adapter command executes the canonical guest Dance and returns all fields together. */
+export function loadTheme(txId: TxId, theme: HolonReferenceWire): Promise<import('../wire-types').LoadedThemeWire> {
+  return runTransactionCommand(txId, { LoadTheme: { theme } }, expectLoadedTheme);
+}
 
 // ===========================================
 // Transaction Command Builders

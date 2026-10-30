@@ -78,6 +78,9 @@ pub enum TransactionActionWire {
     },
 
     SelectVisualizer(VisualizerSelectionRequestWire),
+    LoadTheme {
+        theme: HolonReferenceWire,
+    },
     ProjectVisualizerDiscovery {
         snapshot: MapString,
     },
@@ -359,6 +362,9 @@ impl TransactionActionWire {
             }
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
+            }
+            TransactionActionWire::LoadTheme { theme } => {
+                Ok(TransactionAction::LoadTheme { theme: theme.bind(context)? })
             }
             TransactionActionWire::InvalidateVisualizerBindings => {
                 Ok(TransactionAction::InvalidateVisualizerBindings)

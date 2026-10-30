@@ -39,6 +39,7 @@ pub enum MapResultWire {
     Reference(HolonReferenceWire),
 
     VisualizerSelection(VisualizerSelectionWire),
+    LoadedTheme(LoadedThemeWire),
     VisualizerDiscovery(VisualizerDiscoveryWire),
     VisualizerUsageSelection(VisualizerUsageSelectionWire),
     VisualizerUsagePersistence(VisualizerUsagePersistenceWire),
@@ -87,6 +88,15 @@ pub struct QualifiedRelationshipWire {
     pub descriptor: HolonReferenceWire,
 }
 
+/// Complete projection; conversion projects handles without reading source holons.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LoadedThemeWire {
+    pub theme: HolonReferenceWire,
+    pub meta_design_system: HolonReferenceWire,
+    pub tokens: Vec<HolonReferenceWire>,
+    pub data: holons_core::dances::ThemeData,
+}
+
 impl From<MapResult> for MapResultWire {
     fn from(result: MapResult) -> Self {
         match result {
@@ -97,6 +107,12 @@ impl From<MapResult> for MapResultWire {
                 })
             }
             MapResult::ValidationFindings(findings) => MapResultWire::ValidationFindings(findings),
+            MapResult::LoadedTheme(loaded) => MapResultWire::LoadedTheme(LoadedThemeWire {
+                theme: (&loaded.theme).into(),
+                meta_design_system: (&loaded.meta_design_system).into(),
+                tokens: loaded.tokens.iter().map(HolonReferenceWire::from).collect(),
+                data: loaded.data,
+            }),
             MapResult::None => MapResultWire::None,
             MapResult::UndoComplete => MapResultWire::UndoComplete,
             MapResult::RedoComplete => MapResultWire::RedoComplete,

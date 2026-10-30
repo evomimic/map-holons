@@ -96,6 +96,21 @@ pub async fn handle_transaction(
                 }
             }
         }
+        TransactionAction::LoadTheme { theme } => {
+            let body = context.load_theme(&theme)?;
+            let started = std::time::Instant::now();
+            let loaded = holons_core::dances::LoadedTheme::from_projection(&body)?;
+            if std::env::var_os("MAP_PROFILE").is_some() {
+                tracing::info!(target: "map_profile", projection_ms = started.elapsed().as_secs_f64() * 1000.0,
+                    bindings = loaded.data.bindings.len(), "LoadTheme local response decoding");
+            }
+            if loaded.theme != theme {
+                return Err(HolonError::InvalidParameter(
+                    "LoadTheme returned a different Theme".into(),
+                ));
+            }
+            Ok(MapResult::LoadedTheme(loaded))
+        }
         TransactionAction::SelectCollectionVisualizer { collection, parent_visualizer, slot } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::select_collection_visualizer(
                 context,

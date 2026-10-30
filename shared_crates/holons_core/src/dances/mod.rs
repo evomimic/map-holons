@@ -1,3 +1,5 @@
+pub mod loaded_theme;
+pub use loaded_theme::{LoadedTheme, ThemeData, ThemeTokenBinding};
 pub mod contract;
 pub mod dance_initiator;
 pub mod dance_request;

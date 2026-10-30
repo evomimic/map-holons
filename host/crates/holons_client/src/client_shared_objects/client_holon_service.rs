@@ -666,6 +666,41 @@ impl HolonServiceApi for ClientHolonService {
         ))
     }
 
+    fn load_theme_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let started = Instant::now();
+        let invocation =
+            holons_core::dances::implementations::load_theme::invocation(context, theme.clone())?;
+        let setup_ms = started.elapsed().as_secs_f64() * 1000.0;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })?;
+        let execution_ms = started.elapsed().as_secs_f64() * 1000.0 - setup_ms;
+        // Canonical execution validated the response contract in the guest. Read
+        // only its transported transient graph here; revalidating descriptor ancestry
+        // through DanceResponseReference would introduce additional source graph reads.
+        if !matches!(response, HolonReference::Transient(_)) {
+            return Err(HolonError::InvalidParameter(
+                "LoadTheme response must be transient".into(),
+            ));
+        }
+        let bodies = response
+            .related_holons(type_names::CoreRelationshipTypeName::ResponseBody)?
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        if std::env::var_os("MAP_PROFILE").is_some() {
+            tracing::info!(target: "map_profile", setup_ms, execution_ms, "LoadTheme canonical guest loading");
+        }
+        match bodies.as_slice() {
+            [body] => Ok(body.clone()),
+            _ => Err(HolonError::InvalidParameter("LoadTheme requires one response body".into())),
+        }
+    }
+
     fn invoke_load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,

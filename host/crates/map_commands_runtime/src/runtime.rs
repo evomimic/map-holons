@@ -138,10 +138,12 @@ impl Runtime {
                 TransactionAction::DanceV2 { invocation } => {
                     // These kernel contracts construct presentation/query artifacts;
                     // they do not edit the saved semantic selection graph.
-                    !matches!(
-                        invocation.dance_name()?.to_string().as_str(),
-                        "MaterializeVisualizer" | "QueryDance" | "ResolveVisualizerUsage"
-                    )
+                    let name = invocation.dance_name()?.to_string();
+                    name != type_names::ThemeTypeName::LoadTheme.name().to_string()
+                        && !matches!(
+                            name.as_str(),
+                            "MaterializeVisualizer" | "QueryDance" | "ResolveVisualizerUsage"
+                        )
                 }
                 _ => lifecycle_policy.mutation != MutationClassification::ReadOnly,
             },

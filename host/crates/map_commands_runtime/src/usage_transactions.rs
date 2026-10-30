@@ -57,6 +57,7 @@ struct LiveUsage {
 struct Snapshot {
     model: HolonCloneModel,
     progress: Arc<Mutex<Progress>>,
+    first_revision: u64,
     revision: u64,
     write_configuration: bool,
 }
@@ -100,13 +101,14 @@ struct UsageResolutionMemo {
 }
 
 struct Batch {
+    owner: TxId,
     context: Arc<TransactionContext>,
     snapshots: HashMap<String, Snapshot>,
     reports: Vec<Report>,
     prepared: Vec<PreparedUsage>,
     selection_metadata: Option<(u64, Arc<Mutex<dahn_selection::PreparedSelectionMetadata>>)>,
     usage_resolutions: Option<Arc<UsageResolutionMemo>>,
-    preference_revisions: HashMap<(HolonId, HolonId), (Arc<Mutex<PreferenceOrder>>, u64)>,
+    preference_revisions: HashMap<(HolonId, HolonId), (Arc<Mutex<PreferenceOrder>>, u64, u64)>,
 }
 
 /// Session-local coordination of live revisions and accepted batches, not a
@@ -177,6 +179,7 @@ impl UsageTransactions {
         active.insert(
             caller.tx_id(),
             Batch {
+                owner: caller.tx_id(),
                 context,
                 snapshots: HashMap::new(),
                 reports: Vec::new(),
@@ -828,6 +831,7 @@ impl UsageTransactions {
             Snapshot {
                 model,
                 progress: Arc::clone(&entry.progress),
+                first_revision: revision,
                 revision,
                 write_configuration,
             },
@@ -940,7 +944,7 @@ impl UsageTransactions {
                     order.submitted += 1;
                     order.submitted
                 };
-                batch.preference_revisions.insert(scope, (progress, revision));
+                batch.preference_revisions.insert(scope, (progress, revision, revision));
             }
         }
         if !batch
@@ -990,15 +994,73 @@ struct BatchSave {
 }
 
 impl UsageSave for BatchSave {
+    fn conflicts(&self, other: &dyn UsageSave) -> bool {
+        let other: &dyn std::any::Any = other;
+        let Some(other) = other.downcast_ref::<Self>() else { return true };
+        self.batch.snapshots.keys().any(|id| other.batch.snapshots.contains_key(id))
+            || self
+                .batch
+                .preference_revisions
+                .keys()
+                .any(|scope| other.batch.preference_revisions.contains_key(scope))
+    }
+
+    fn coalesce(&mut self, newer: &mut dyn UsageSave) -> bool {
+        let newer: &mut dyn std::any::Any = newer;
+        let Some(newer) = newer.downcast_mut::<Self>() else { return false };
+        if self.batch.owner != newer.batch.owner
+            || !self.staged.is_empty()
+            || self.reports_prepared
+            || !newer.staged.is_empty()
+            || newer.reports_prepared
+            || !self.batch.snapshots.keys().any(|id| newer.batch.snapshots.contains_key(id))
+        {
+            return false;
+        }
+        // A merged revision range must not jump over another batch (including
+        // failed work). Keep both Usage and cross-Usage preference dependencies.
+        for (id, next) in &newer.batch.snapshots {
+            if let Some(previous) = self.batch.snapshots.get(id) {
+                if !Arc::ptr_eq(&previous.progress, &next.progress)
+                    || previous.revision + 1 != next.first_revision
+                {
+                    return false;
+                }
+            }
+        }
+        for (scope, (progress, first, _)) in &newer.batch.preference_revisions {
+            if let Some((previous, _, last)) = self.batch.preference_revisions.get(scope) {
+                if !Arc::ptr_eq(previous, progress) || *last + 1 != *first {
+                    return false;
+                }
+            }
+        }
+        for (id, mut next) in newer.batch.snapshots.drain() {
+            if let Some(previous) = self.batch.snapshots.remove(&id) {
+                next.first_revision = previous.first_revision;
+                next.write_configuration |= previous.write_configuration;
+            }
+            self.batch.snapshots.insert(id, next);
+        }
+        for (scope, (progress, mut first, last)) in newer.batch.preference_revisions.drain() {
+            if let Some((_, previous_first, _)) = self.batch.preference_revisions.remove(&scope) {
+                first = previous_first;
+            }
+            self.batch.preference_revisions.insert(scope, (progress, first, last));
+        }
+        self.batch.reports.append(&mut newer.batch.reports);
+        self.batch.prepared.append(&mut newer.batch.prepared);
+        true
+    }
     fn is_ready(&self) -> bool {
         self.batch.snapshots.values().all(|snapshot| {
             snapshot
                 .progress
                 .lock()
-                .map(|progress| progress.committed + 1 == snapshot.revision)
+                .map(|progress| progress.committed + 1 == snapshot.first_revision)
                 .unwrap_or(false)
-        }) && self.batch.preference_revisions.values().all(|(progress, revision)| {
-            progress.lock().map(|order| order.committed + 1 == *revision).unwrap_or(false)
+        }) && self.batch.preference_revisions.values().all(|(progress, first, _)| {
+            progress.lock().map(|order| order.committed + 1 == *first).unwrap_or(false)
         })
     }
 
@@ -1075,7 +1137,7 @@ impl UsageSave for BatchSave {
             ));
             progress.committed = snapshot.revision;
         }
-        for (progress, revision) in self.batch.preference_revisions.values() {
+        for (progress, _, revision) in self.batch.preference_revisions.values() {
             progress.lock().map_err(lock_error)?.committed = *revision;
         }
         Ok(SaveOutcome::Complete)

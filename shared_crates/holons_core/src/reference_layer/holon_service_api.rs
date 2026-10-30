@@ -259,6 +259,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         load_set: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 
+    /// Load a Theme through the Space-authoritative canonical Dance.
+    fn load_theme_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        Err(HolonError::NotImplemented("Space-authoritative LoadTheme".into()))
+    }
+
     /// Executes a validated canonical loader invocation in the authoritative Space.
     fn invoke_load_holons_internal(
         &self,

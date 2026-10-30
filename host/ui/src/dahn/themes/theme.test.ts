@@ -14,6 +14,16 @@ interface ReferenceFixture {
 
 function reference(fixture: ReferenceFixture): HolonReference {
   return {
+    loadTheme: async () => ({
+      themeKey: fixture.key, themeVersionedKey: fixture.versionedKey,
+      metaDesignSystemKey: fixture.relationships!.ForMetaDesignSystem![0].key,
+      metaDesignSystemVersionedKey: fixture.relationships!.ForMetaDesignSystem![0].versionedKey,
+      bindings: fixture.relationships!.HasThemeTokenAssignment!.map(assignment => {
+        const token = assignment.relationships!.ForDesignToken![0];
+        return { tokenVersionedKey: token.versionedKey, tokenName: token.properties!.DesignTokenName,
+          presentationValue: assignment.properties!.PresentationValue };
+      }),
+    }),
     key: async () => fixture.key,
     versionedKey: async () => fixture.versionedKey,
     propertyValue: async (name: string) => {
@@ -101,22 +111,27 @@ describe('Theme', () => {
     });
   });
 
-  it('rejects an incomplete Theme instead of silently falling back', async () => {
+  it('rejects unsafe browser CSS without performing graph validation', async () => {
     const fixture = themeFixture();
-    fixture.relationships!.HasThemeTokenAssignment = fixture.relationships!.HasThemeTokenAssignment!.slice(0, 1);
-
-    await expect(new Theme(reference(fixture)).toCssCustomProperties()).rejects.toThrow(
-      'must assign exactly one value',
-    );
+    fixture.relationships!.HasThemeTokenAssignment![0].properties!.PresentationValue = 'red; display:none';
+    await expect(new Theme(reference(fixture)).toCssCustomProperties()).rejects.toThrow('CSS control syntax');
   });
 
-  it('rejects a value that does not conform to its DesignToken value kind', async () => {
+  it('loads once and projects locally without individual graph reads', async () => {
     const fixture = themeFixture();
-    fixture.relationships!.HasThemeTokenAssignment![0].properties!.PresentationValue = 'wide';
+    const semanticTheme = reference(fixture);
+    const loaded = await semanticTheme.loadTheme();
+    let calls = 0;
+    const bound = { loadTheme: async () => { calls++; return loaded; } } as HolonReference;
+    const result = await new Theme(bound).toCssCustomProperties();
+    expect(calls).toBe(1);
+    expect(result.reference).toBe(bound);
+    expect(result.cssCustomProperties['--dahn-canvas-gap']).toBe('16px');
+  });
 
-    await expect(new Theme(reference(fixture)).toCssCustomProperties()).rejects.toThrow(
-      'Dimension.DesignTokenType',
-    );
+  it('propagates loading failure without selecting a fallback Theme', async () => {
+    const bound = { loadTheme: async () => { throw new Error('unresolvable Theme'); } } as unknown as HolonReference;
+    await expect(new Theme(bound).toCssCustomProperties()).rejects.toThrow('unresolvable Theme');
   });
 
   it('resolves the sole POC Theme through the injected active HolonSpace', async () => {
@@ -157,6 +172,9 @@ describe('bundled theme coverage', () => {
       };
     };
     const bootstrap = await new Theme(reference(fixture('Demo1.DeepOceanTheme'))).toCssCustomProperties();
+    const projection = performance.getEntriesByName('map.theme.css', 'measure').at(-1)! as PerformanceMeasure;
+    expect(projection.detail.bindings).toBe(63);
+    console.info('[LoadTheme CSS evidence]', JSON.stringify({ bindings: 63, localCssMs: projection.duration }));
     const alternate = await new Theme(reference(fixture('DAHN.DefaultTheme'))).toCssCustomProperties();
     expect(Object.keys(alternate.cssCustomProperties).sort()).toEqual(Object.keys(bootstrap.cssCustomProperties).sort());
     const css = await readFile(resolve(process.cwd(), 'ui/src/launcher-theme.generated.css'), 'utf8');

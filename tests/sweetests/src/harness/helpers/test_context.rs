@@ -102,7 +102,8 @@ pub async fn init_probe_test_runtime(
 }
 
 /// Uses the same bootstrap and fixture import path with either conductor configuration.
-async fn init_runtime_with_initiator(
+/// Initialize ordinary bootstrap with a caller-supplied transport for focused boundary tests.
+pub async fn init_runtime_with_initiator(
     test_case: &mut DancesTestCase,
     dance_initiator: Arc<dyn DanceInitiator + Send + Sync>,
 ) -> (Runtime, TxId) {

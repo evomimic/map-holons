@@ -63,6 +63,7 @@ pub enum MapResult {
     /// Semantic DAHN selection. The references identify Visualizer holons;
     /// executable artifacts are deliberately absent from this result.
     VisualizerSelection(VisualizerSelection),
+    LoadedTheme(holons_core::dances::LoadedTheme),
     VisualizerDiscovery(super::VisualizerDiscovery),
     VisualizerUsageSelection(super::VisualizerUsageSelection),
     VisualizerUsagePersistence(super::VisualizerUsagePersistence),

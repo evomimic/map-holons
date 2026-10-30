@@ -131,7 +131,7 @@
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "fb5b3690993ff0d891402f7ec76c24f452a8e452f21555f00c9b303964e33425"
+      "sha256": "4aba924fdcba7a94c14e944a30756d84824828c64df83e9fcf1621c341784c4e"
     },
     {
       "path": "imports/dahn/schema.json",
@@ -313,6 +313,10 @@
     },
     {
       "key": "(DesignToken.HolonType)-[HasThemeTokenAssignmentFor]->(ThemeTokenAssignment.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DesignToken.HolonType)-[LoadedDesignTokenProjectionOf]->(LoadedTheme.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -736,6 +740,18 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(LoadedTheme.Projection)-[LoadedDesignTokens]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadedTheme.Projection)-[LoadedMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoadedTheme.Projection)-[LoadedThemeSource]->(Theme.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -777,6 +793,10 @@
     },
     {
       "key": "(MetaDesignSystem.HolonType)-[HasTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[LoadedMetaDesignSystemProjectionOf]->(LoadedTheme.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1050,6 +1070,10 @@
     {
       "key": "(Theme.HolonType)-[HasThemeTokenAssignment]->(ThemeTokenAssignment.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Theme.HolonType)-[LoadedThemeProjectionOf]->(LoadedTheme.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Theme.HolonType)-[OfferedByHolonSpace]->(HolonSpace.HolonType)",
@@ -2892,6 +2916,10 @@
       "type": "MetaVisualizerType.MetaHolonType"
     },
     {
+      "key": "GuestLoadTheme.DanceImplementation",
+      "type": "DanceImplementation.HolonType"
+    },
+    {
       "key": "GuestResolveVisualizerUsage.DanceImplementation",
       "type": "DanceImplementation.HolonType"
     },
@@ -3304,8 +3332,24 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "LoadTheme.DanceType",
+      "type": "MetaDanceType.MetaHolonType"
+    },
+    {
+      "key": "LoadThemeResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType"
+    },
+    {
       "key": "LoadValidationSource.Projection",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadedTheme.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadedThemeData.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "LoaderHolon.HolonType",

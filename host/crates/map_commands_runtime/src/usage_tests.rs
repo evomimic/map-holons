@@ -17,7 +17,7 @@ use std::{
     any::Any,
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
     },
 };
@@ -32,6 +32,8 @@ struct Store {
     anchor_reads: Mutex<Vec<String>>,
     usage_lookups: Mutex<Vec<[u32; 3]>>,
     fail: AtomicBool,
+    commit_attempts: AtomicUsize,
+    fail_on_attempt: AtomicUsize,
     unavailable: AtomicBool,
     rejected: AtomicBool,
     incomplete: AtomicBool,
@@ -57,6 +59,8 @@ impl Store {
         let inverse = match name {
             "DescribedBy" => "Instances",
             "UsesVisualizer" => "UsedByVisualizerUsage",
+            "HasApplicableVisualizer" => "ApplicableToType",
+            "SelectedForSlot" => "HasSelectedUsage",
             "SourceType" => "SourceOf",
             _ => return,
         };
@@ -204,6 +208,7 @@ impl HolonServiceApi for Store {
         context: &Arc<TransactionContext>,
         staged: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
+        let attempt = self.commit_attempts.fetch_add(1, Ordering::SeqCst) + 1;
         if self.block_commit.load(Ordering::SeqCst) {
             let mut entered = self.commit_gate.lock().unwrap();
             *entered = true;
@@ -220,7 +225,9 @@ impl HolonServiceApi for Store {
             response.with_property_value("CommitRequestStatus", "Rejected")?;
             return Ok(response);
         }
-        if self.fail.swap(false, Ordering::SeqCst) {
+        if self.fail.swap(false, Ordering::SeqCst)
+            || self.fail_on_attempt.load(Ordering::SeqCst) == attempt
+        {
             return Err(HolonError::Misc("injected commit failure".into()));
         }
         self.commits.lock().unwrap().push(context.tx_id().value());
@@ -811,24 +818,72 @@ fn queued_updates_coalesce_and_continue_after_creation_without_another_gesture(
     let selection =
         service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?;
     let first = service.submit(&caller)?.unwrap();
+    let gate = store.commit_gate.lock().unwrap();
+    let (gate, timeout) = store
+        .commit_changed
+        .wait_timeout_while(gate, std::time::Duration::from_secs(2), |entered| !*entered)
+        .unwrap();
+    assert!(!timeout.timed_out(), "creation must be in flight before later rounds");
+    drop(gate);
     let mut live = selection.usage;
     service.begin(&space, &caller)?;
     live.with_property_value("Key", "intermediate")?;
     service.capture(&caller, &live)?;
     live.with_property_value("Key", "latest")?;
     service.capture(&caller, &live)?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        live.clone(),
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 1),
+    )?;
     let second = service.submit(&caller)?.unwrap();
+    service.begin(&space, &caller)?;
+    live.with_property_value("Key", "latest separate round")?;
+    service.capture(&caller, &live)?;
+    service.record(
+        &space,
+        &caller,
+        request(&caller, 2, 30),
+        reference(&caller, 20),
+        live.clone(),
+        VisualizerChoiceOrigin::Explicit,
+        usage_report(&service, 2),
+    )?;
+    let third = service.submit(&caller)?.unwrap();
+    service.release_context(caller.tx_id())?;
+    store.fail_on_attempt.store(2, Ordering::SeqCst);
     store.block_commit.store(false, Ordering::SeqCst);
     store.commit_changed.notify_all();
     wait_saved(&service, first);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !matches!(service.status(second)?, crate::usage_persistence::SaveStatus::Failed(_)) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    assert_eq!(service.status(second)?, service.status(third)?);
+    // Any accepted batch id can retry the one retained merged save.
+    service.retry(third)?;
     wait_saved(&service, second);
+    wait_saved(&service, third);
     let members = dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?;
     assert_eq!(members.len(), 1);
     assert_eq!(
         store.nodes.lock().unwrap()[&number(&members[0].holon_id()?)][&PropertyName("Key".into())],
-        BaseValue::StringValue("latest".into())
+        BaseValue::StringValue("latest separate round".into())
     );
     assert_eq!(store.commits.lock().unwrap().len(), 2);
+    let preferences =
+        dahn_selection::usage::instances(&caller, "VisualizerSlotPreference.HolonType")?;
+    assert_eq!(preferences.len(), 1);
+    assert_eq!(single_preferred(&preferences[0])?, members[0]);
+    assert_eq!(
+        dahn_selection::usage::related(&members[0], "SelectedForSlot")?,
+        vec![reference(&caller, 30)]
+    );
     Ok(())
 }
 
@@ -2262,5 +2317,152 @@ fn alternate_visualizer_on_committed_result_keeps_usage_persistence_independent(
             1
         );
     }
+    Ok(())
+}
+
+fn associated_usage(store: &Store, usage: u32, visualizer: u32, scope: u32) {
+    store.nodes.lock().unwrap().insert(usage, PropertyMap::new());
+    store.edge(usage, "DescribedBy", &[100]);
+    store.edge(usage, "UsesVisualizer", &[visualizer]);
+    store.edge(usage, "ForSubjectType", &[scope]);
+    store.edge(usage, "SelectedForSlot", &[30]);
+}
+
+#[test]
+fn sole_slot_usage_avoids_broad_discovery_and_preserves_configuration() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    associated_usage(&store, 200, 20, 1);
+    store.property(200, "Key", BaseValue::StringValue("configured".into()));
+    // A resolved Usage must not inspect irrelevant, malformed farther ancestry.
+    store.edge(1, "Extends", &[5, 10]);
+    // Broad discovery is ambiguous between 20 and 21. The retained Usage narrows it to 20.
+    let selected = dahn_selection::select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert_eq!(selected.selected, reference(&caller, 20));
+    assert!(!store
+        .relationship_reads
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|(_, n)| n == "HasApplicableVisualizer"));
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let selected = service.select_visualizer(&caller, request(&caller, 2, 30))?;
+    let usage = selected.usage.unwrap();
+    assert!(!usage.initialized);
+    assert_eq!(usage.usage.key()?, Some("configured".into()));
+    Ok(())
+}
+
+#[test]
+fn multiple_slot_usages_restrict_candidates_and_preserve_ambiguity() -> Result<(), HolonError> {
+    let (store, _space, caller) = setup();
+    associated_usage(&store, 200, 20, 1);
+    associated_usage(&store, 201, 21, 1);
+    store.edge(22, "DescribedBy", &[10]);
+    store.edge(22, "ImplementedBy", &[70]);
+    store.edge(1, "HasApplicableVisualizer", &[20, 21, 22]);
+    // This associated candidate is unavailable; the unused viable candidate must not enter.
+    store.edge(21, "ImplementedBy", &[]);
+    let selected = dahn_selection::select_visualizer(&caller, request(&caller, 2, 30))?;
+    assert_eq!(selected.selected, reference(&caller, 20));
+    assert!(!store
+        .relationship_reads
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|(_, n)| n == "HasApplicableVisualizer"));
+    store.edge(21, "ImplementedBy", &[70]);
+    assert!(matches!(
+        dahn_selection::select_visualizer(&caller, request(&caller, 2, 30)),
+        Err(HolonError::MultipleRelatedHolons { .. })
+    ));
+    Ok(())
+}
+
+#[test]
+fn inapplicable_slot_usage_falls_back_without_waiving_owner_or_theme() -> Result<(), HolonError> {
+    let (store, _space, caller) = setup();
+    associated_usage(&store, 200, 21, 5);
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    assert_eq!(
+        dahn_selection::select_visualizer(&caller, request(&caller, 2, 30))?.selected,
+        reference(&caller, 20)
+    );
+    let mut invalid = request(&caller, 2, 30);
+    invalid.owner = VisualizerOwner::Visualizer(reference(&caller, 21));
+    assert!(dahn_selection::select_visualizer(&caller, invalid).is_err());
+    let mut invalid = request(&caller, 2, 30);
+    invalid.theme = reference(&caller, 61);
+    assert!(dahn_selection::select_visualizer(&caller, invalid).is_err());
+    Ok(())
+}
+
+#[test]
+fn pending_usage_updates_coalesce_across_an_unrelated_batch_and_retry_together(
+) -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    let service = UsageTransactions::default();
+    store.block_commit.store(true, Ordering::SeqCst);
+    service.begin(&space, &caller)?;
+    let mut live =
+        service.select(&space, &caller, request(&caller, 2, 30), reference(&caller, 20))?.usage;
+    let first = service.submit(&caller)?.unwrap();
+    let gate = store.commit_gate.lock().unwrap();
+    let (gate, timeout) = store
+        .commit_changed
+        .wait_timeout_while(gate, std::time::Duration::from_secs(2), |entered| !*entered)
+        .unwrap();
+    assert!(!timeout.timed_out());
+    drop(gate);
+    service.begin(&space, &caller)?;
+    live.with_property_value("Key", "intermediate")?;
+    service.capture(&caller, &live)?;
+    let second = service.submit(&caller)?.unwrap();
+    service.begin(&space, &caller)?;
+    service.select(&space, &caller, request(&caller, 2, 31), reference(&caller, 21))?;
+    let unrelated = service.submit(&caller)?.unwrap();
+    service.begin(&space, &caller)?;
+    live.with_property_value("Key", "latest")?;
+    service.capture(&caller, &live)?;
+    let third = service.submit(&caller)?.unwrap();
+    // Fail creation, then retry the same identity. Pending batches must remain queued.
+    store.fail.store(true, Ordering::SeqCst);
+    store.block_commit.store(false, Ordering::SeqCst);
+    store.commit_changed.notify_all();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !matches!(service.status(first)?, crate::usage_persistence::SaveStatus::Failed(_)) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    service.retry(first)?;
+    for batch in [first, second, unrelated, third] {
+        wait_saved(&service, batch);
+    }
+    assert_eq!(store.commits.lock().unwrap().len(), 3);
+    let usages = dahn_selection::usage::instances(&caller, "VisualizerUsage.HolonType")?;
+    assert_eq!(usages.len(), 2);
+    assert!(usages.iter().any(|usage| {
+        store.nodes.lock().unwrap()[&number(&usage.holon_id().unwrap())]
+            .get(&PropertyName("Key".into()))
+            == Some(&BaseValue::StringValue("latest".into()))
+    }));
+    Ok(())
+}
+
+#[test]
+fn slot_usage_lookup_errors_are_not_discovery_misses() -> Result<(), HolonError> {
+    let (store, _space, caller) = setup();
+    associated_usage(&store, 200, 20, 1);
+    // An inconsistent inverse association is an error, even when broad discovery can succeed.
+    store.edges.lock().unwrap().insert((200, "SelectedForSlot".into()), vec![]);
+    store.edge(1, "HasApplicableVisualizer", &[20]);
+    assert!(matches!(dahn_selection::select_visualizer(&caller, request(&caller, 2, 30)),
+        Err(HolonError::InvalidState(reason)) if reason.contains("inverse membership")));
+    assert!(!store
+        .relationship_reads
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|(_, n)| n == "HasApplicableVisualizer"));
     Ok(())
 }

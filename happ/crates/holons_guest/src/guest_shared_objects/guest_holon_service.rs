@@ -722,6 +722,29 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_set(context, set)
     }
 
+    fn load_theme_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let started = sys_time().ok();
+        let loaded = holons_core::dances::loaded_theme::resolve_theme(theme.clone())?;
+        let resolved = sys_time().ok();
+        let bindings = loaded.data.bindings.len();
+        let body = loaded.into_projection(context)?;
+        let finished = sys_time().ok();
+        // Bounded diagnostics contain counts/timings, never token values or reference payloads.
+        tracing::info!(
+            bindings,
+            resolve_us =
+                started.zip(resolved).map(|(a, b)| b.as_micros().saturating_sub(a.as_micros())),
+            projection_us =
+                resolved.zip(finished).map(|(a, b)| b.as_micros().saturating_sub(a.as_micros())),
+            "LoadTheme guest projection"
+        );
+        Ok(body)
+    }
+
     fn invoke_load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,

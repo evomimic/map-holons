@@ -73,6 +73,11 @@ pub enum TransactionAction {
         invocation: DanceInvocation,
     },
 
+    /// Load the selected Theme through its canonical guest Dance.
+    LoadTheme {
+        theme: HolonReference,
+    },
+
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
     SelectVisualizer {
         request: VisualizerSelectionRequest,
@@ -257,7 +262,8 @@ impl TransactionAction {
             }
             // Selection only reads the retained subject and descriptor graph.
             // Materialization still creates invocation holons and requires an open context.
-            TransactionAction::ProjectVisualizerDiscovery { .. } => {
+            TransactionAction::LoadTheme { .. }
+            | TransactionAction::ProjectVisualizerDiscovery { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::ReleaseVisualizerDiscovery { .. } => {
@@ -326,6 +332,7 @@ impl TransactionAction {
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
+            TransactionAction::LoadTheme { .. } => "load_theme",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::ProjectVisualizerDiscovery { .. } => "project_visualizer_discovery",
             TransactionAction::ReleaseVisualizerDiscovery { .. } => "release_visualizer_discovery",

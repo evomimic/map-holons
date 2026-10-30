@@ -219,6 +219,82 @@ pub fn select_visualizer_with_metadata(
     select_with_metadata(context, request, Some(metadata))
 }
 
+/// Request-local applicability facts for a configuration already associated with the Slot.
+struct SlotUsageCandidate {
+    visualizer: HolonReference,
+    scope: HolonReference,
+    applicability: Vec<HolonReference>,
+    scope_seen: bool,
+    assessed: bool,
+}
+
+/// Restrict ordinary selection to applicable, eligible configurations already used in this Slot.
+/// Check retained Visualizers' own declarations rather than enumerating unrelated candidates.
+fn select_slot_usage(
+    context: &Arc<TransactionContext>,
+    facts: &AssessmentContext,
+    mut metadata: Option<(&mut super::PreparedSelectionMetadata, usize)>,
+) -> Result<Option<HolonReference>, HolonError> {
+    let usages = members(&facts.slot, "HasSelectedUsage")?;
+    if usages.is_empty() {
+        return Ok(None);
+    }
+    let usage_type = super::usage::anchor(context, "VisualizerUsage.HolonType")?;
+    let mut associated = Vec::new();
+    for usage in usages {
+        let usage = super::usage::VisualizerUsage::from_holon_with_type(usage, &usage_type)?;
+        if !usage.selected_slots()?.contains(&facts.slot) {
+            return Err(HolonError::InvalidState(
+                "Slot Usage inverse membership disagrees with SelectedForSlot".into(),
+            ));
+        }
+        let visualizer = usage.visualizer()?;
+        associated.push(SlotUsageCandidate {
+            applicability: members(&visualizer, "ApplicableToType")?,
+            visualizer,
+            scope: usage.subject_type()?,
+            scope_seen: false,
+            assessed: false,
+        });
+    }
+    // Preserve nearest-applicability policy and stop immediately on success or
+    // ambiguity. Ancestors beyond a resolved declaration cannot change that choice.
+    for descriptor in walk_extends_chain(&facts.start) {
+        let descriptor = descriptor?;
+        let mut candidates: Vec<VisualizerCandidate> = Vec::new();
+        for usage in &mut associated {
+            usage.scope_seen |= usage.scope == descriptor;
+            if usage.assessed || !usage.applicability.contains(&descriptor) {
+                continue;
+            }
+            usage.assessed = true;
+            // Configuration outside the nearest direct applicability boundary is inapplicable.
+            if !usage.scope_seen || candidates.iter().any(|c| c.visualizer == usage.visualizer) {
+                continue;
+            }
+            let assessment = if let Some((metadata, compatibility)) = metadata.as_mut() {
+                metadata.assess(context, *compatibility, facts, &usage.visualizer)?
+            } else {
+                assess(context, facts, &usage.visualizer)?
+            };
+            if assessment == VisualizerAssessment::Viable {
+                candidates.push(VisualizerCandidate {
+                    visualizer: usage.visualizer.clone(),
+                    declared_on: vec![descriptor.clone()],
+                    assessment,
+                });
+            }
+        }
+        if let Some(selected) = sole_viable(&candidates, &descriptor)? {
+            return Ok(Some(selected));
+        }
+        if associated.iter().all(|usage| usage.assessed) || boundary(&descriptor)? {
+            break;
+        }
+    }
+    Ok(None)
+}
+
 fn select_with_metadata(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
@@ -229,6 +305,18 @@ fn select_with_metadata(
     } else {
         (resolve(&request)?, None)
     };
+    if let Some(selected) = select_slot_usage(context, &facts, metadata.as_deref_mut().zip(scope))?
+    {
+        return Ok((
+            VisualizerSelection {
+                selected,
+                requested_kind: request.requested_kind,
+                alternatives_available: false,
+                usage: None,
+            },
+            facts.start.clone(),
+        ));
+    }
     for descriptor in walk_extends_chain(&facts.start) {
         let descriptor = descriptor?;
         if let Some(selected) = sole_viable(

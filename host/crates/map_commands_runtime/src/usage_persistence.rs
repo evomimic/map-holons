@@ -11,8 +11,16 @@ pub(crate) enum SaveOutcome {
 }
 
 /// A retained logical save. Retrying must resume this object, not create a new transaction.
-pub(crate) trait UsageSave: Send {
+pub(crate) trait UsageSave: Send + std::any::Any {
     fn attempt(&mut self) -> Result<SaveOutcome, HolonError>;
+    /// Whether ordering can be affected by this other save. Unknown save kinds are barriers.
+    fn conflicts(&self, _other: &dyn UsageSave) -> bool {
+        true
+    }
+    /// Absorb an unstarted successor without backend work. False leaves both saves unchanged.
+    fn coalesce(&mut self, _newer: &mut dyn UsageSave) -> bool {
+        false
+    }
     /// Dependencies are in-memory save revisions, never backend availability probes.
     fn is_ready(&self) -> bool {
         true
@@ -29,7 +37,7 @@ pub(crate) enum SaveStatus {
 }
 
 struct Job {
-    id: u64,
+    ids: Vec<u64>,
     save: Box<dyn UsageSave>,
     attempts: usize,
     ready: Instant,
@@ -94,12 +102,26 @@ impl Drop for UsagePersistence {
 
 impl UsagePersistence {
     /// Acceptance transfers ownership before returning, independently of worker availability.
-    pub(crate) fn submit(&self, save: Box<dyn UsageSave>) -> Result<u64, HolonError> {
+    pub(crate) fn submit(&self, mut save: Box<dyn UsageSave>) -> Result<u64, HolonError> {
         let mut state = self.shared.state.lock().map_err(lock_error)?;
         state.next_id += 1;
         let id = state.next_id;
         state.statuses.insert(id, SaveStatus::Queued);
-        state.queue.push_back(Job { id, save, attempts: 0, ready: Instant::now() });
+        // Disjoint batches may be skipped, but never cross a shared Usage or
+        // preference dependency. In-flight, failed and retried transactions retain
+        // their original snapshots and retry budgets.
+        for previous in state.queue.iter_mut().rev() {
+            if !previous.save.conflicts(save.as_ref()) {
+                continue;
+            }
+            if previous.attempts == 0 && previous.save.coalesce(save.as_mut()) {
+                previous.ids.push(id);
+                self.shared.changed.notify_one();
+                return Ok(id);
+            }
+            break;
+        }
+        state.queue.push_back(Job { ids: vec![id], save, attempts: 0, ready: Instant::now() });
         self.shared.changed.notify_one();
         Ok(id)
     }
@@ -118,16 +140,24 @@ impl UsagePersistence {
     /// Explicit retry resumes retained work and releases an outage pause without probing.
     pub(crate) fn retry(&self, id: u64) -> Result<(), HolonError> {
         let mut state = self.shared.state.lock().map_err(lock_error)?;
-        let mut job = state.retained.remove(&id).ok_or_else(|| {
+        let retained_id =
+            state.retained.iter().find(|(_, job)| job.ids.contains(&id)).map(|(key, _)| *key);
+        let mut job = retained_id.and_then(|key| state.retained.remove(&key)).ok_or_else(|| {
             HolonError::InvalidState("Usage batch has no failed save to retry".into())
         })?;
         job.attempts = 0;
         job.ready = Instant::now();
         state.service_paused = false;
-        state.statuses.insert(id, SaveStatus::Queued);
+        set_status(&mut state, &job, SaveStatus::Queued);
         state.queue.push_front(job);
         self.shared.changed.notify_one();
         Ok(())
+    }
+}
+
+fn set_status(state: &mut State, job: &Job, status: SaveStatus) {
+    for id in &job.ids {
+        state.statuses.insert(*id, status.clone());
     }
 }
 
@@ -163,7 +193,7 @@ fn run(shared: Arc<Shared>) {
                 shared.changed.wait_timeout(state, delay.unwrap()).expect("Usage queue lock").0
             };
         };
-        state.statuses.insert(job.id, SaveStatus::Saving);
+        set_status(&mut state, &job, SaveStatus::Saving);
         drop(state);
 
         job.attempts += 1;
@@ -175,13 +205,13 @@ fn run(shared: Arc<Shared>) {
         }
         match outcome {
             Ok(SaveOutcome::Complete) => {
-                state.statuses.insert(job.id, SaveStatus::Saved);
+                set_status(&mut state, &job, SaveStatus::Saved);
             }
             // An incomplete response is explicit lifecycle evidence that the SAME
             // retained transaction may resume. Unknown transport errors are not.
             Ok(SaveOutcome::Incomplete) if job.attempts < 3 => {
                 job.ready = Instant::now() + Duration::from_millis(250 * job.attempts as u64);
-                state.statuses.insert(job.id, SaveStatus::Queued);
+                set_status(&mut state, &job, SaveStatus::Queued);
                 state.queue.push_back(job);
             }
             other => {
@@ -195,8 +225,8 @@ fn run(shared: Arc<Shared>) {
                         "Incomplete Usage commit exhausted automatic retries".into(),
                     ),
                 };
-                state.statuses.insert(job.id, status);
-                state.retained.insert(job.id, job);
+                set_status(&mut state, &job, status);
+                state.retained.insert(job.ids[0], job);
             }
         }
         shared.changed.notify_all();

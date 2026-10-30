@@ -114,6 +114,7 @@ export type TransactionActionWire =
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
+  | { LoadTheme: { theme: HolonReferenceWire } }
   | { ProjectVisualizerDiscovery: { snapshot: string } }
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
   | { DiscoverVisualizers: { request: VisualizerSelectionRequestWire; current_selection: HolonReferenceWire | null; retain_evidence?: boolean } }
@@ -359,6 +360,7 @@ export function isTransactionActionWire(
       isDescribedHolonCollectionWire(value.SelectCollectionVisualizer['collection']) &&
       isHolonReferenceWire(value.SelectCollectionVisualizer['parent_visualizer']) &&
       isHolonReferenceWire(value.SelectCollectionVisualizer['slot'])) ||
+    (hasSingleKey(value, 'LoadTheme') && isRecord(value.LoadTheme) && isHolonReferenceWire(value.LoadTheme['theme'])) ||
     (hasSingleKey(value, 'SelectVisualizer') && isVisualizerSelectionRequestWire(value.SelectVisualizer)) ||
     (hasSingleKey(value, 'ProjectVisualizerDiscovery') && isRecord(value.ProjectVisualizerDiscovery) && isString(value.ProjectVisualizerDiscovery['snapshot'])) ||
     (hasSingleKey(value, 'ReleaseVisualizerDiscovery') && isRecord(value.ReleaseVisualizerDiscovery) && isString(value.ReleaseVisualizerDiscovery['snapshot'])) ||
