@@ -8,10 +8,10 @@ use crate::reference_layer::{HolonReference, HolonServiceApi};
 use crate::{HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HolonCacheManager {
     cache: HolonCache, // Thread-safe cache of holons
-    relationship_cache: RwLock<RelationshipCache>,
+    relationship_cache: Arc<RwLock<RelationshipCache>>,
     holon_service: Arc<dyn HolonServiceApi>,
 }
 
@@ -20,7 +20,7 @@ impl HolonCacheManager {
     pub fn new(holon_service: Arc<dyn HolonServiceApi>) -> Self {
         Self {
             cache: HolonCache::new(),
-            relationship_cache: RwLock::new(RelationshipCache::new()),
+            relationship_cache: Arc::new(RwLock::new(RelationshipCache::new())),
             holon_service,
         }
     }
@@ -55,6 +55,75 @@ impl HolonCacheManager {
 }
 
 impl HolonCacheAccess for HolonCacheManager {
+    fn ensure_cached(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Vec<super::cache_population::CachePopulationError> {
+        use super::cache_population::{validate_saved_content, CachePopulationError};
+        use std::collections::HashMap;
+        if !ids.is_empty() && !context.is_restricted_cache_read() {
+            return vec![CachePopulationError::new(
+                ids.to_vec(),
+                HolonError::InvalidParameter(
+                    "Saved cache population requires a restricted cache-read context".into(),
+                ),
+            )];
+        }
+        let mut seen = HashSet::new();
+        let distinct: Vec<_> =
+            ids.iter().filter(|id| seen.insert((*id).clone())).cloned().collect();
+        let missing: Vec<_> =
+            distinct.iter().filter(|id| self.cache.get(id).is_none()).cloned().collect();
+        let mut errors = Vec::new();
+        let mut populated = 0;
+        if !missing.is_empty() {
+            match self.holon_service.fetch_holons_internal(context, &missing) {
+                Err(error) => errors.push(CachePopulationError::new(missing.clone(), error)),
+                Ok(entries) => {
+                    let requested: HashSet<_> = missing.iter().cloned().collect();
+                    let mut grouped: HashMap<_, Vec<_>> = HashMap::new();
+                    for entry in entries {
+                        if !requested.contains(&entry.id) {
+                            errors.push(CachePopulationError::new(
+                                vec![entry.id],
+                                HolonError::InvalidParameter(
+                                    "Unexpected saved hydration identity".into(),
+                                ),
+                            ));
+                        } else {
+                            grouped.entry(entry.id).or_default().push(entry.result);
+                        }
+                    }
+                    for id in &missing {
+                        let results = grouped.remove(id).unwrap_or_default();
+                        let result = if results.len() != 1 {
+                            Err(HolonError::InvalidParameter(format!(
+                                "Saved hydration expected one response for {id:?}, received {}",
+                                results.len()
+                            )))
+                        } else {
+                            results.into_iter().next().unwrap().and_then(|holon| {
+                                validate_saved_content(id, &holon)?;
+                                self.cache
+                                    .insert_if_absent(id.clone(), Arc::new(RwLock::new(holon)))?;
+                                Ok(())
+                            })
+                        };
+                        match result {
+                            Ok(()) => populated += 1,
+                            Err(error) => {
+                                errors.push(CachePopulationError::new(vec![id.clone()], error))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        info!(target: "map_profile", requested = ids.len(), distinct = distinct.len(), hits = distinct.len() - missing.len(), missing = missing.len(), populated, errors = errors.len(), "saved cache population");
+        errors
+    }
+
     fn get_cached_rc_holon(
         &self,
         holon_id: &HolonId,
@@ -84,10 +153,11 @@ impl HolonCacheAccess for HolonCacheManager {
         info!("[PERF-674] holon cache miss");
         debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
         let holon = self.holon_service.fetch_holon_internal(context, holon_id)?;
+        super::cache_population::validate_saved_content(holon_id, &holon)?;
         let arc_holon = Arc::new(RwLock::new(holon));
 
         // Insert the resolved holon into the cache
-        self.cache.insert(holon_id.clone(), arc_holon.clone());
+        let arc_holon = self.cache.insert_if_absent(holon_id.clone(), arc_holon)?;
         debug!("Holon with HolonId {:?} fetched and cached.", holon_id);
 
         Ok(arc_holon)

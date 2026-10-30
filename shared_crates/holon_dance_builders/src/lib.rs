@@ -3,6 +3,8 @@ pub mod delete_holon_dance;
 pub mod fetch_all_related_holons_dance;
 pub mod get_all_holons_dance;
 pub mod get_holon_by_id_dance;
+pub mod get_holons_by_ids_dance;
+pub use get_holons_by_ids_dance::build_get_holons_by_ids_dance_request;
 pub mod get_saved_holon_by_key_dance;
 pub mod load_holons_dance;
 pub mod query_relationships_dance;

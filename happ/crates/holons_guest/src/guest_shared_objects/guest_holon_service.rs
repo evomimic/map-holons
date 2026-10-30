@@ -527,6 +527,24 @@ impl HolonServiceApi for GuestHolonService {
         Ok(RelationshipMap::new(relationship_map))
     }
 
+    /// Hydrates exact saved IDs while isolating storage/decode failures per identity.
+    fn fetch_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Result<Vec<holons_core::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        let mut seen = std::collections::HashSet::new();
+        Ok(ids
+            .iter()
+            .filter(|id| seen.insert((*id).clone()))
+            .map(|id| holons_core::core_shared_objects::cache_population::SavedHolonFetch {
+                id: id.clone(),
+                result: self.fetch_holon_internal(context, id),
+            })
+            .collect())
+    }
+
     /// gets the exact HolonNode version named by the supplied id from the local persistent store,
     /// then "inflates" it into a Holon and returns it
     ///

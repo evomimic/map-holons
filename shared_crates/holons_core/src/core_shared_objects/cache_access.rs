@@ -7,6 +7,24 @@ use crate::{HolonCollection, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
 pub trait HolonCacheAccess: Debug + Send + Sync {
+    /// Populates explicit saved IDs, returning errors only. Entries remain evictable.
+    /// Retrieval must run in the owning space's restricted cache-read context.
+    fn ensure_cached(
+        &self,
+        _context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Vec<super::cache_population::CachePopulationError> {
+        if ids.is_empty() {
+            return Vec::new();
+        }
+        vec![super::cache_population::CachePopulationError::new(
+            ids.to_vec(),
+            HolonError::NotImplemented(
+                "saved cache population unsupported by cache adapter".into(),
+            ),
+        )]
+    }
+
     /// Returns a resident saved holon without starting a cache-fill transaction.
     fn get_cached_rc_holon(
         &self,

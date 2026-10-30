@@ -417,6 +417,22 @@ impl TransactionContext {
         Ok(response)
     }
 
+    /// Populates saved state through the space-owned restricted cache-read context.
+    pub fn ensure_cached(
+        self: &Arc<Self>,
+        ids: &[HolonId],
+    ) -> Vec<crate::core_shared_objects::cache_population::CachePopulationError> {
+        self.space_read_handle().ensure_cached(ids)
+    }
+
+    pub(crate) fn fetch_holons_internal(
+        self: &Arc<Self>,
+        ids: &[HolonId],
+    ) -> Result<Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        self.get_holon_service().fetch_holons_internal(self, ids)
+    }
+
     pub(crate) fn fetch_holon_internal(
         self: &Arc<Self>,
         id: &HolonId,

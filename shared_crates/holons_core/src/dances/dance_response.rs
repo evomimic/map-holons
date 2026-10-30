@@ -51,6 +51,7 @@ pub enum ResponseBody {
     Holon(Holon),
     HolonCollection(HolonCollection),
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
+    SavedHolonHydration(Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>),
     HolonReference(HolonReference),
     NodeCollection(NodeCollection),
     // SmartCollection(SmartCollection),
@@ -133,6 +134,9 @@ impl DanceResponse {
 
     fn body_summary(&self) -> String {
         match &self.body {
+            ResponseBody::SavedHolonHydration(entries) => {
+                format!("SavedHolonHydration(count={})", entries.len())
+            }
             ResponseBody::None => "None".to_string(),
             ResponseBody::Holon(holon) => {
                 // Holon summaries are bounded and useful for test logging.

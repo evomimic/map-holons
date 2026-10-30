@@ -47,6 +47,7 @@ impl Dancer {
             .insert("fetch_all_related_holons", fetch_all_related_holons_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
+        dispatch_table.insert("get_holons_by_ids", get_holons_by_ids_dance as DanceFunction);
         dispatch_table
             .insert("get_saved_holon_by_key", get_saved_holon_by_key_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);

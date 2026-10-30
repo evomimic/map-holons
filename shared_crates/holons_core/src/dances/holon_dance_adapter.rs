@@ -141,6 +141,17 @@ pub fn get_holon_by_id_dance(
     Ok(ResponseBody::Holon(holon))
 }
 
+/// Fetches explicit saved identities, preserving independent failures and successes.
+pub fn get_holons_by_ids_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    let RequestBody::SavedHolonIds(ids) = request.body else {
+        return Err(HolonError::InvalidParameter("Expected SavedHolonIds".into()));
+    };
+    Ok(ResponseBody::SavedHolonHydration(context.fetch_holons_internal(&ids)?))
+}
+
 /// Resolves an exact key in the current persisted holon space to its sole visible lineage head.
 pub fn get_saved_holon_by_key_dance(
     context: &Arc<TransactionContext>,

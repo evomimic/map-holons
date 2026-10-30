@@ -123,6 +123,18 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         id: &HolonId,
     ) -> Result<Holon, HolonError>;
 
+    /// Fetches exact saved nodes in one supported-route transport operation.
+    /// Per-ID failures preserve independent successes; unsupported providers do not
+    /// silently fall back to one transport operation per identity.
+    fn fetch_holons_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _ids: &[HolonId],
+    ) -> Result<Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        Err(HolonError::NotImplemented("bulk saved hydration".into()))
+    }
+
     fn fetch_related_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
