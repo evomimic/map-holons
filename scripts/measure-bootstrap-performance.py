@@ -28,6 +28,7 @@ def main():
                 "profile": args.profile, "instrumentation": "822-v2" if args.profile else "unprofiled",
                 "devdocs_revision": subprocess.check_output(["git", "-C", "../map-dev-docs", "rev-parse", "HEAD"], text=True).strip(),
                 "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+                "startup_timeout_secs": os.environ.get("MAP_SWEET_STARTUP_TIMEOUT_SECS", "10 (upstream default)"),
                 "runs": args.runs, "workload": "generated-bootstrap", "substrate": "loader-commits",
                 "host_snapshot": "only if commit_internal is exercised; loader observations remain separate"}
     (args.output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")

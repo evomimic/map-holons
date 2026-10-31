@@ -5,8 +5,8 @@ use holochain::conductor::{CellError, ConductorHandle};
 use holochain::core::ribosome::error::RibosomeError;
 use holochain::prelude::AgentPubKey;
 use holochain::prelude::{
-    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, DnaWasmHashed, WasmHash,
-    ZomeDef, ZomeError, ZomeName,
+    CellId, CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaFile, DnaHash, DnaWasm, DnaWasmHashed,
+    WasmHash, ZomeDef, ZomeError, ZomeName,
 };
 use holochain::sweettest::{
     DynSweetRendezvous, SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
@@ -141,6 +141,71 @@ async fn create_local_conductor() -> SweetConductor {
     SweetConductor::from_config_rendezvous(local_only_config(&rendezvous), rendezvous).await
 }
 
+/// Installs one DNA, optionally extending Sweettest's fixed peer-store readiness wait.
+/// The override changes untimed startup; the exact local agent must still become visible.
+async fn setup_cell_for_agent(
+    conductor: &mut SweetConductor,
+    app_id: &str,
+    agent: AgentPubKey,
+    dna: &DnaFile,
+) -> SweetCell {
+    let timeout =
+        parse_startup_timeout(std::env::var("MAP_SWEET_STARTUP_TIMEOUT_SECS").ok().as_deref())
+            .expect("MAP_SWEET_STARTUP_TIMEOUT_SECS must be a positive integer");
+    let Some(timeout) = timeout else {
+        return conductor
+            .setup_app_for_agent(app_id, agent, &[dna.clone()])
+            .await
+            .unwrap()
+            .into_cells()[0]
+            .clone();
+    };
+    // Public install/enable operations avoid the convenience helper's fixed ten-second wait.
+    conductor.install_app(app_id, Some(agent.clone()), &[dna.clone()], None).await.unwrap();
+    conductor.enable_app(app_id.to_owned()).await.unwrap();
+    let started = std::time::Instant::now();
+    tokio::time::timeout(timeout, async {
+        loop {
+            let infos = conductor
+                .raw_handle()
+                .get_agent_infos(Some(vec![dna.dna_hash().clone()]))
+                .await
+                .expect("read local agent peer store during startup");
+            if infos.iter().any(|info| info.agent == agent.to_k2_agent()) {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|_| {
+        panic!(
+            "agent info did not reach the peer store within {} seconds (app={app_id})",
+            timeout.as_secs()
+        )
+    });
+    info!(
+        "[sweet-startup] app={} peer_store_timeout_secs={} peer_store_wait_ms={}",
+        app_id,
+        timeout.as_secs(),
+        started.elapsed().as_millis()
+    );
+    conductor.get_sweet_cell(CellId::new(dna.dna_hash().clone(), agent)).unwrap()
+}
+
+/// No override retains upstream setup behavior; invalid overrides fail before installation.
+fn parse_startup_timeout(value: Option<&str>) -> Result<Option<std::time::Duration>, &'static str> {
+    value
+        .map(|value| {
+            let seconds: u64 = value.parse().map_err(|_| "invalid seconds")?;
+            if seconds == 0 {
+                return Err("timeout must be positive");
+            }
+            Ok(std::time::Duration::from_secs(seconds))
+        })
+        .transpose()
+}
+
 /// Initializes a new Holochain SweetConductor instance for use in integration tests.
 ///
 /// This helper function:
@@ -174,12 +239,7 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
 
     let mut conductor = create_local_conductor().await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
-    let app = conductor
-        .setup_app_for_agent("app", holochain_agent.clone(), &[dna.clone()])
-        .await
-        .unwrap();
-
-    let cell = app.into_cells()[0].clone();
+    let cell = setup_cell_for_agent(&mut conductor, "app", holochain_agent.clone(), &dna).await;
     conductor.declare_full_storage_arcs(cell.dna_hash()).await;
     let agent_hash = holochain_agent.into_inner();
     let agent = AgentPubKey::from_raw_39(agent_hash);
@@ -253,12 +313,9 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
     let mut conductor = create_local_conductor().await;
     let holochain_agent = SweetAgents::one(conductor.keystore()).await;
-    let app = conductor
-        .setup_app_for_agent("probe-enabled-app", holochain_agent.clone(), &[dna])
-        .await
-        .unwrap();
-
-    let cell = app.into_cells()[0].clone();
+    let cell =
+        setup_cell_for_agent(&mut conductor, "probe-enabled-app", holochain_agent.clone(), &dna)
+            .await;
     let cell_id = cell.cell_id().clone();
     let installed_dna_hash = cell.dna_hash().clone();
 
@@ -438,6 +495,14 @@ pub async fn create_test_dance_initiator() -> Arc<dyn DanceInitiator + Send + Sy
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn startup_timeout_override_is_optional_and_requires_positive_seconds() {
+        assert_eq!(parse_startup_timeout(None), Ok(None));
+        assert_eq!(parse_startup_timeout(Some("60")), Ok(Some(std::time::Duration::from_secs(60))));
+        for invalid in ["0", "-1", "", "abc"] {
+            assert!(parse_startup_timeout(Some(invalid)).is_err());
+        }
+    }
 
     /// Both endpoints must resolve to the live loopback server, preserving standard tuning.
     #[tokio::test]

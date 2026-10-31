@@ -251,6 +251,7 @@ def main():
             "governor_reuse": args.governor_reuse,
             "guest_cache_state": args.guest_cache_state,
             "session_product_reuse": args.session_product_reuse,
+            "startup_timeout_secs": env.get("MAP_SWEET_STARTUP_TIMEOUT_SECS", "10 (upstream default)"),
             "host_snapshot_policy": "required",
             "host_snapshot_observation": "ClientHolonService::commit_internal via Sweettest mock conductor; construction expected, production envelope encoding unavailable",
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),

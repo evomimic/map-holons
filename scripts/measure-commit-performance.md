@@ -174,3 +174,17 @@ these include non-registry content. Snapshot-only serialization is unavailable w
 encoding pass, which instrumentation does not perform. Conductor round-trip time includes guest
 execution and must not be added to it. Parsed samples distinguish unavailable host observations
 from measured zero. Run the workload smoke tests and matched baseline manifest in Phase 2.
+
+### Slow conductor startup
+
+Holochain 0.7.1's Sweettest convenience installer has a fixed ten-second local-agent
+peer-store wait. For slow relay startup, opt into a longer allowance with
+`MAP_SWEET_STARTUP_TIMEOUT_SECS=60`. Without this variable, the harness retains the
+upstream installer and its default. The override uses public install/enable APIs,
+then waits for the same exact agent in the DNA's peer store before creating the test cell.
+It does not skip readiness or retry failed workloads. Invalid or zero values fail setup.
+
+The allowance affects only conductor initialization before bootstrap and timed Commit
+samples. Commit and bootstrap capture metadata record the allowance; preserve this setting
+when repeating comparable captures. Longer startup is not evidence that a measured Commit
+was slower. A timeout at the larger allowance remains a setup failure to investigate.
