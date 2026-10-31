@@ -11,6 +11,10 @@ mod link_queries;
 mod new_version_samples;
 #[path = "performance_support/readiness_cases.rs"]
 mod readiness_cases;
+#[path = "performance_support/registry_setup.rs"]
+mod registry_setup;
+#[path = "performance_support/update_samples.rs"]
+mod update_samples;
 use map_commands_contract::{
     MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
 };
@@ -37,6 +41,8 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
     };
     runtime.session().archive_transaction(&initial_tx_id).unwrap();
 
+    let runtime = registry_setup::configure(runtime).await;
+
     // Each sample creates a new usage with the same four outbound members. Shared inverse
     // buckets grow by one per sample; this is repeated execution, not identical storage state.
     let samples = std::env::var("MAP_COMMIT_PERF_SAMPLES")
@@ -48,6 +54,11 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
         .unwrap_or(1);
     assert!(subjects > 0);
     let mode = std::env::var("MAP_COMMIT_PERF_MODE").unwrap_or_else(|_| "create".into());
+    if ["no-op", "mixed", "graph-only", "graph-only-overlap"].contains(&mode.as_str()) {
+        assert_eq!(subjects, 1);
+        update_samples::run(&runtime, samples, &mode).await;
+        return;
+    }
     if mode == "new-version" {
         assert_eq!(subjects, 1, "new-version samples publish one successor per Commit");
         new_version_samples::run(&runtime, samples).await;

@@ -1,0 +1,23 @@
+{
+  "semantic_baseline": "3d053ba8becbac13496d7531abea8ce9a5303c53",
+  "phase_1_revision": "95b9966337d6fe70f4b7685544b72089f7be9b35",
+  "runs": 5,
+  "samples": 6,
+  "workloads": [
+    {"name": "usage", "args": ["--mode", "create"]},
+    {"name": "slot", "args": ["--mode", "visualizer-slot"]},
+    {"name": "shared-type", "args": ["--mode", "create", "--subjects", "8"]},
+    {"name": "descriptor", "args": ["--mode", "descriptor"]},
+    {"name": "new-version", "args": ["--mode", "new-version"]},
+    {"name": "mixed", "args": ["--mode", "mixed"]},
+    {"name": "no-op", "args": ["--mode", "no-op"]},
+    {"name": "graph-only", "args": ["--mode", "graph-only"]},
+    {"name": "graph-only-overlap", "args": ["--mode", "graph-only-overlap"]},
+    {"name": "registry-zero", "args": ["--mode", "create", "--registry-population", "0"]},
+    {"name": "registry-eight-miss", "args": ["--mode", "create", "--registry-population", "8"]},
+    {"name": "registry-thirtytwo-hit", "args": ["--mode", "create", "--registry-population", "32", "--governor-reuse"]},
+    {"name": "registry-eight-hit", "args": ["--mode", "create", "--registry-population", "8", "--governor-reuse"]},
+    {"name": "registry-thirtytwo-bypass", "args": ["--mode", "descriptor", "--registry-population", "32"]}
+  ],
+  "bootstrap": {"runs": 5}
+}

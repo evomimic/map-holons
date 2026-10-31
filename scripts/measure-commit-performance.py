@@ -66,7 +66,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                     sample["host_shipping"] = "measured-envelope"
                 if prefix == "commit-host-snapshot":
                     sample["host_snapshot"] = "measured"
-                if prefix in ["commit-logical-reads", "commit-derivation"]:
+                if prefix in ["commit-logical-reads", "commit-derivation", "commit-graph-only"]:
                     prefix += "." + fields["phase"]
 
                 elif prefix == "commit-logical-read":
@@ -117,6 +117,11 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                         raise ValueError(f"Final substrate contains broad readiness discovery in {log}")
                 if host_snapshot_policy == "required":
                     required += [f"commit-host-snapshot.{field}" for field in ["construction_us", "entries", "shipped_holons"]]
+                if mode == "graph-only-overlap":
+                    for field, minimum in [("overlap_buckets", 1), ("binding_interpretations", 1), ("target_identities", 2), ("target_keys", 2)]:
+                        metric = f"commit-graph-only.PreparedProducts.{field}"
+                        if sample["metrics"].get(metric, 0) < minimum:
+                            raise ValueError(f"Missing overlap branch evidence {metric} in {log}")
                 if variant == "prefetch":
                     required.append("commit-preparation-operation.MembershipPrefetch." + ("ValidatorRoot" if assessment in ["validator-package", "combined", "warm-probe"] else "Commitment") + ".elapsed_us")
                 elif any(key.startswith("commit-preparation-operation.MembershipPrefetch.") for key in sample["metrics"]):
@@ -184,7 +189,7 @@ def main():
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--samples", type=int, default=6)
     parser.add_argument("--subjects", type=int, default=1)
-    parser.add_argument("--mode", choices=["create", "visualizer-slot", "descriptor", "new-version"], default="create", help="create: VisualizerUsage instances; visualizer-slot: VisualizerSlot instances; descriptor: one new HolonType descriptor and its affected saved Schema; new-version: one property-only successor of a saved non-root version")
+    parser.add_argument("--mode", choices=["create", "visualizer-slot", "descriptor", "new-version", "mixed", "no-op", "graph-only", "graph-only-overlap"], default="create", help="create: VisualizerUsage instances; visualizer-slot: VisualizerSlot instances; descriptor: one new HolonType descriptor and its affected saved Schema; new-version: one property-only successor of a saved non-root version")
     parser.add_argument("--anchor-evidence-policy", choices=["per-new-version", "retired"], default="retired", help="Expected evidence path in the guest artifact; saved in capture metadata")
     parser.add_argument("--variant", choices=["prefetch", "on-demand"], default="prefetch")
     parser.add_argument("--readiness-cases", action="store_true")
@@ -193,6 +198,7 @@ def main():
     parser.add_argument("--instrumentation", choices=["822-v2", "historical"], default="822-v2")
     parser.add_argument("--preparation-substrate", choices=["broad-readiness", "declared-demand"], default="broad-readiness")
     parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
+    parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
     parser.add_argument("--governor-presence", default="unavailable", help="Governor entry presence established by workload setup")
     parser.add_argument("--guest-artifact-revision", default="unavailable", help="Revision used to build the supplied guest artifact")
     parser.add_argument("--registry-population", type=int, help="Requested setup population; observed values come from logs")
@@ -201,9 +207,11 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--summarize-only", action="store_true", help="Re-summarize logs using their recorded metadata; older captures without a policy use per-new-version")
     args = parser.parse_args()
+    if args.registry_population is not None and args.registry_population < 0:
+        parser.error("--registry-population must be nonnegative")
     if args.runs < 1 or args.samples < 2 or args.subjects < 1:
         parser.error("--runs must be positive and --samples must be at least two")
-    if args.mode in ["descriptor", "new-version"] and (args.subjects != 1 or args.readiness_cases):
+    if args.mode in ["descriptor", "new-version", "mixed", "no-op", "graph-only", "graph-only-overlap"] and (args.subjects != 1 or args.readiness_cases):
         parser.error(f"--mode {args.mode} measures one subject per Commit without readiness cases")
     if args.link_profile and args.mode != "create":
         parser.error("--link-profile supports only --mode create")
@@ -217,9 +225,17 @@ def main():
         env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,holons_client=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
         if "MAP_COMMIT_PERF_INDEX_MODE" in env or "MAP_COMMIT_PERF_INDEX_OUTPUT" in env:
             parser.error("MAP_COMMIT_PERF_INDEX_* is retired; unset it and use --link-profile")
+        env.pop("MAP_COMMIT_PERF_REGISTRY", None)
+        env.pop("MAP_COMMIT_PERF_GOVERNOR_REUSE", None)
         env.pop("MAP_COMMIT_PERF_LINK_OUTPUT", None)
         env.pop("MAP_COMMIT_READINESS_CASES_OUTPUT", None)
         env["MAP_COMMIT_PERF_MODE"] = args.mode
+        if args.registry_population is not None:
+            env["MAP_COMMIT_PERF_REGISTRY"] = str(args.registry_population)
+        if args.governor_reuse:
+            if not args.registry_population:
+                parser.error("--governor-reuse requires a positive --registry-population")
+            env["MAP_COMMIT_PERF_GOVERNOR_REUSE"] = "1"
         args.output.mkdir(parents=True, exist_ok=False)
         paths = [Path("happ/workdir/map_holons.dna"), Path("happ/Cargo.lock"), Path("host/Cargo.lock"), Path("Cargo.lock"), Path("flake.lock")]
         paths += sorted(Path("generated/core-schema-bootstrap").rglob("*.json"))
@@ -232,6 +248,7 @@ def main():
             "preparation_substrate": args.preparation_substrate,
             "guest_artifact_revision": args.guest_artifact_revision,
             "requested_registry_population": args.registry_population,
+            "governor_reuse": args.governor_reuse,
             "guest_cache_state": args.guest_cache_state,
             "session_product_reuse": args.session_product_reuse,
             "host_snapshot_policy": "required",

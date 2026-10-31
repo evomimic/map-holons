@@ -49,6 +49,12 @@ pub(crate) fn classify_graph_only_delta_overlaps(
             }
         }
         for (name, indices) in buckets {
+            if indices.len() > 1 {
+                holons_core::core_shared_objects::read_observations::record_derivation(
+                    "graph_overlap_buckets",
+                    1,
+                );
+            }
             if indices.len() > 1
                 && overlap_is_unsupported(context, &participants, &name, &indices, packages)?
             {
@@ -140,6 +146,10 @@ fn overlap_is_unsupported(
         other => other?,
     };
     let binding = relationship.try_into_declared_relationship_descriptor()?.target_binding()?;
+    holons_core::core_shared_objects::read_observations::record_derivation(
+        "graph_binding_interpretations",
+        1,
+    );
     let mut writes: HashMap<PersistedTarget, (DefinitionIdentity, Option<base_types::MapString>)> =
         HashMap::new();
     let mut unsupported = false;
@@ -164,6 +174,10 @@ fn overlap_is_unsupported(
                     HolonError::InvalidState(message)
                 })?;
             let definition = DefinitionIdentity::for_reference(target, context)?;
+            holons_core::core_shared_objects::read_observations::record_derivation(
+                "graph_target_identities",
+                1,
+            );
             let persisted = match binding {
                 TargetBinding::Version => PersistedTarget::Version(definition.clone()),
                 TargetBinding::Lineage => {
@@ -171,6 +185,10 @@ fn overlap_is_unsupported(
                 }
             };
             let write = (definition, target.key()?);
+            holons_core::core_shared_objects::read_observations::record_derivation(
+                "graph_target_keys",
+                1,
+            );
             if let Some(existing) = writes.get(&persisted) {
                 if existing != &write {
                     unsupported = true;
