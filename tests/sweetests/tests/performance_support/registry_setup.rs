@@ -68,10 +68,8 @@ pub async fn configure(runtime: Runtime) -> Runtime {
     }
     runtime.session().archive_transaction(&tx_id).unwrap();
     // A new Session starts empty while preserving the already bootstrapped saved graph.
-    let runtime = Runtime::new(Arc::new(RuntimeSession::new(
-        runtime.session().space_manager().clone(),
-        None,
-    )));
+    drop(context);
+    let runtime = fresh_session(runtime);
     let registry = runtime.session().descriptor_registry();
     let owner = registry.context().unwrap();
     for id in &targets {
@@ -89,4 +87,34 @@ pub async fn configure(runtime: Runtime) -> Runtime {
     );
     assert_eq!(targets.len(), population);
     runtime
+}
+
+/// Release the previous Session before attaching its replacement to the retained space proxy.
+fn fresh_session(runtime: Runtime) -> Runtime {
+    let space = runtime.session().space_manager().clone();
+    drop(runtime);
+    Runtime::new(Arc::new(RuntimeSession::new(space, None)))
+}
+
+#[test]
+fn registry_setup_replaces_the_session_without_two_active_owners() {
+    use holons_core::core_shared_objects::{
+        space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+    };
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(holons_client::ClientHolonService::development_default()),
+        None,
+        ServiceRoutingPolicy::Combined,
+    ));
+    let runtime = Runtime::new(Arc::new(RuntimeSession::new(space.clone(), None)));
+    let previous = Arc::downgrade(runtime.session().descriptor_registry());
+    let replacement = fresh_session(runtime);
+    assert!(previous.upgrade().is_none(), "the previous registry owner must be released");
+    assert!(Arc::ptr_eq(replacement.session().space_manager(), &space));
+    assert!(replacement.session().descriptor_registry().is_empty().unwrap());
+    assert!(Arc::ptr_eq(
+        &space.descriptor_registry().unwrap(),
+        replacement.session().descriptor_registry()
+    ));
 }
