@@ -151,8 +151,11 @@ pub async fn run(runtime: &Runtime, samples: usize, mode: &str) {
             "[commit-baseline] sample_end={} condition={} command_us={}",
             sample, condition, command_us
         );
+        runtime.session().archive_transaction(&context.tx_id()).unwrap();
         if let Some(source) = source {
-            let saved = HolonReference::smart_from_id(context.space_read_handle(), source);
+            // Saved-key lookup requires an active transaction; verification remains outside timing.
+            let verification = begin(runtime).await;
+            let saved = HolonReference::smart_from_id(verification.space_read_handle(), source);
             let members = saved
                 .related_holons_with_hint("SelectedForSlot", RelationshipReadHint::RequireFresh)
                 .unwrap()
@@ -163,9 +166,11 @@ pub async fn run(runtime: &Runtime, samples: usize, mode: &str) {
             assert_eq!(members.len(), 1, "overlapping identical puts persist exactly once");
             assert_eq!(
                 members[0].holon_id().unwrap(),
-                lookup(&context, "DefaultPropertyMapVisualizer.PropertySlot").holon_id().unwrap()
+                lookup(&verification, "DefaultPropertyMapVisualizer.PropertySlot")
+                    .holon_id()
+                    .unwrap()
             );
+            runtime.session().archive_transaction(&verification.tx_id()).unwrap();
         }
-        runtime.session().archive_transaction(&context.tx_id()).unwrap();
     }
 }
