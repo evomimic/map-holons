@@ -48,7 +48,29 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
     assert_eq!(references[0].full_reference_id_string(), references[1].full_reference_id_string());
     let descriptor = EffectiveHolonDescriptor::from_constructed_holon(references[0].clone());
     let singular = descriptor.singular_navigable_relationships().unwrap();
+    let MapResult::Collection(plural_collection) = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: contexts[0].clone(),
+                target: references[0].clone(),
+                action: HolonAction::Read(ReadableHolonAction::GetPluralNavigableRelationships),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("expected plural descriptor collection")
+    };
     let plural = descriptor.plural_navigable_relationships().unwrap();
+    assert_eq!(
+        plural_collection
+            .get_members()
+            .iter()
+            .map(|entry| entry.full_reference_id_string())
+            .collect::<Vec<_>>(),
+        plural.iter().map(|entry| entry.holon().full_reference_id_string()).collect::<Vec<_>>()
+    );
     assert!(!singular.is_empty());
     assert!(!plural.is_empty());
     for relationship in &singular {

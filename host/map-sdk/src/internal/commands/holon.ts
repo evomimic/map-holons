@@ -409,6 +409,10 @@ export function readAvailableDances(txId: TxId, target: HolonReferenceWire) {
 export function readDescribedRelatedHolons(txId: TxId, target: HolonReferenceWire, name: RelationshipName) {
   return runHolonCommand(txId, target, { Read: { GetDescribedRelatedHolons: { name } } }, expectDescribedCollection);
 }
+export function readPluralNavigableRelationships(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetPluralNavigableRelationships' }, expectCollection);
+}
+
 export function readInstanceProperties(txId: TxId, target: HolonReferenceWire) {
   return runHolonCommand(txId, target, { Read: 'GetInstanceProperties' }, expectCollection);
 }

@@ -9,6 +9,7 @@ use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::{
     space_manager::HolonSpaceManager, transactions::TransactionContext,
 };
+use holons_core::descriptors::Descriptor;
 use holons_core::reference_layer::HolonSpaceBehavior;
 use holons_core::ServiceRoutingPolicy;
 use holons_prelude::prelude::*;
@@ -130,6 +131,57 @@ async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_r
         );
         assert!(context.is_open());
     }
+    // A real prepared descriptor warms only its plural targets at navigation time.
+    let (space, context) = fresh_context(initiator.clone(), anchor.clone());
+    let source = context.get_space_holon().unwrap().unwrap();
+    let effective = source.effective_descriptor().unwrap();
+    let members = effective
+        .holon()
+        .related_holons("PluralNavigableRelationships")
+        .unwrap()
+        .read()
+        .unwrap()
+        .get_members()
+        .clone();
+    let mut seen = std::collections::HashSet::new();
+    let saved_ids: Vec<_> = members
+        .iter()
+        .filter_map(|member| match member {
+            HolonReference::Smart(saved) => Some(saved.holon_id()),
+            _ => None,
+        })
+        .filter(|id| seen.insert(id.clone()))
+        .collect();
+    let missing: Vec<_> = saved_ids
+        .iter()
+        .filter(|id| space.get_cache_access().get_cached_rc_holon(id).unwrap().is_none())
+        .cloned()
+        .collect();
+    assert!(!missing.is_empty(), "fixture must exercise cold plural targets");
+    measured.calls.lock().unwrap().clear();
+    effective.singular_navigable_relationships().unwrap();
+    assert!(measured.calls.lock().unwrap().is_empty());
+    let plural = effective.plural_navigable_relationships().unwrap();
+    assert_eq!(
+        *measured.calls.lock().unwrap(),
+        vec![("get_holons_by_ids".into(), missing.clone())]
+    );
+    assert_eq!(
+        plural.iter().map(|entry| entry.holon().full_reference_id_string()).collect::<Vec<_>>(),
+        members.iter().map(|member| member.full_reference_id_string()).collect::<Vec<_>>()
+    );
+    measured.calls.lock().unwrap().clear();
+    for descriptor in plural {
+        descriptor.holon().property_value("DisplayName").unwrap();
+        descriptor.holon().property_value("Description").unwrap();
+    }
+    effective.plural_navigable_relationships().unwrap();
+    assert!(
+        measured.calls.lock().unwrap().is_empty(),
+        "labels and repeated navigation reuse the warmed host cache"
+    );
+    println!("[plural navigation evidence] saved_targets={} cold_targets={} bulk_guest_invocations=1 subsequent_label_guest_invocations=0", saved_ids.len(), missing.len());
+
     // A malformed ID is a per-ID error, while a valid target is still populated.
     let (space, context) = fresh_context(initiator, anchor);
     let bad = HolonId::Local(LocalId(vec![1]));

@@ -85,6 +85,9 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::GetDescribedRelatedHolons { .. }) => {
                 "get_described_related_holons"
             }
+            HolonAction::Read(ReadableHolonAction::GetPluralNavigableRelationships) => {
+                "get_plural_navigable_relationships"
+            }
             HolonAction::Read(ReadableHolonAction::GetInstanceProperties) => {
                 "get_instance_properties"
             }
@@ -172,6 +175,8 @@ pub enum ReadableHolonAction {
     },
     /// Effective properties of the target HolonType, not its metatype.
     GetInstanceProperties,
+    /// Plural navigation of a retained effective descriptor, warming saved targets.
+    GetPluralNavigableRelationships,
     /// Declared scalar representation of a property descriptor.
     GetPropertyValueKind,
 }

@@ -67,6 +67,14 @@ pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Siz
     source: &T,
     effective: &crate::descriptors::EffectiveHolonDescriptor,
 ) -> Result<Vec<QualifiedRelationship>, HolonError> {
+    available_relationships_from_effective_partition(source, effective, None)
+}
+
+pub(crate) fn available_relationships_from_effective_partition<T: ReadableHolonImpl + ?Sized>(
+    source: &T,
+    effective: &crate::descriptors::EffectiveHolonDescriptor,
+    singular: Option<bool>,
+) -> Result<Vec<QualifiedRelationship>, HolonError> {
     if !crate::descriptors::same_definition(
         source.holon_descriptor()?.holon(),
         effective.described_holon_type()?.holon(),
@@ -75,6 +83,15 @@ pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Siz
             "EffectiveHolonDescriptor describes another HolonType".into(),
         ));
     }
+    let navigation = match singular {
+        Some(true) => effective.singular_navigable_relationships()?,
+        Some(false) => effective.plural_navigable_relationships()?,
+        None => effective.navigable_relationships()?,
+    };
+    let navigable = navigation
+        .iter()
+        .map(|entry| entry.holon().full_reference_id_string())
+        .collect::<std::collections::HashSet<_>>();
     let mut result = effective
         .instance_relationships()?
         .into_iter()
@@ -88,8 +105,7 @@ pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Siz
     if source.is_committed_source_impl()? {
         let prepared = effective.prepared_schema()?;
         result.extend(
-            effective
-                .navigable_relationships()?
+            navigation
                 .into_iter()
                 .filter(|relationship| {
                     !declared_ids.contains(&relationship.holon().full_reference_id_string())
@@ -110,11 +126,6 @@ pub(crate) fn available_relationships_from_effective<T: ReadableHolonImpl + ?Siz
                 }),
         );
     }
-    let navigable = effective
-        .navigable_relationships()?
-        .into_iter()
-        .map(|entry| entry.holon().full_reference_id_string())
-        .collect::<std::collections::HashSet<_>>();
     result.retain(|entry| navigable.contains(&entry.descriptor.holon().full_reference_id_string()));
     Ok(result)
 }

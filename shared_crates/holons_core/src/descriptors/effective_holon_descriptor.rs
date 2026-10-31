@@ -93,6 +93,32 @@ impl EffectiveHolonDescriptor {
         .collect())
     }
 
+    /// Returns available maximum-one navigation without reading the plural collection.
+    pub fn available_singular_relationships(
+        &self,
+        source: &HolonReference,
+    ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+        Ok(crate::reference_layer::available_relationships::available_relationships_from_effective_partition(
+            source, self, Some(true),
+        )?
+        .into_iter()
+        .map(|entry| entry.descriptor)
+        .collect())
+    }
+
+    /// Returns available finite-many or unbounded navigation, warming only plural targets.
+    pub fn available_plural_relationships(
+        &self,
+        source: &HolonReference,
+    ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+        Ok(crate::reference_layer::available_relationships::available_relationships_from_effective_partition(
+            source, self, Some(false),
+        )?
+        .into_iter()
+        .map(|entry| entry.descriptor)
+        .collect())
+    }
+
     pub fn allows_property(
         &self,
         name: impl type_names::ToPropertyName,
@@ -241,10 +267,36 @@ impl EffectiveHolonDescriptor {
     pub fn plural_navigable_relationships(
         &self,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::PluralNavigableRelationships)?
-            .into_iter()
-            .map(RelationshipDescriptor::from_holon)
-            .collect())
+        let members = targets(&self.holon, CoreRelationshipTypeName::PluralNavigableRelationships)?;
+        self.warm_saved_targets(&members);
+        Ok(members.into_iter().map(RelationshipDescriptor::from_holon).collect())
+    }
+
+    /// Advisory population leaves occurrence order, duplicates, and ordinary read errors intact.
+    fn warm_saved_targets(&self, members: &[HolonReference]) {
+        let mut seen = std::collections::HashSet::new();
+        let mut ids = Vec::new();
+        for member in members {
+            if !matches!(member, HolonReference::Smart(_)) {
+                continue;
+            }
+            match member.holon_id() {
+                Ok(id) if seen.insert(id.clone()) => ids.push(id),
+                Ok(_) => {}
+                Err(error) => tracing::warn!(?error, "Unable to identify saved navigation target"),
+            }
+        }
+        if ids.is_empty() {
+            return;
+        }
+        match self.holon.resolution_context() {
+            Ok(context) => {
+                for error in context.ensure_cached(&ids) {
+                    tracing::warn!(?error, "Unable to warm saved navigation targets");
+                }
+            }
+            Err(error) => tracing::warn!(?error, "Unable to resolve navigation warming context"),
+        }
     }
 
     pub fn prepared_schema(&self) -> Result<PreparedSchema, HolonError> {

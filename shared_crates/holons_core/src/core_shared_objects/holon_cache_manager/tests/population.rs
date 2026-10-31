@@ -206,3 +206,88 @@ fn direct_population_rejects_an_unrestricted_execution_context() {
     assert_eq!(errors.len(), 1);
     assert!(service.hydration_requests.read().unwrap().is_empty());
 }
+
+#[test]
+fn plural_navigation_warms_only_distinct_saved_targets_and_preserves_occurrences() {
+    use crate::descriptors::{Descriptor, EffectiveHolonDescriptor};
+    let (service, _space, context) = setup();
+    let smart = |n| HolonReference::smart_from_id(context.space_read_handle(), id(n));
+    let transient = context.mutation().new_holon(None).unwrap();
+    let draft = context.mutation().new_holon(Some("draft".into())).unwrap();
+    let staged = context.mutation().stage_new_holon(draft).unwrap();
+    let members: Vec<HolonReference> =
+        vec![smart(1), transient.into(), smart(2), smart(1), staged.into()];
+    let mut projection = context.mutation().new_holon(None).unwrap();
+    projection.add_related_references("PluralNavigableRelationships", members.clone()).unwrap();
+    projection.add_related_references("SingularNavigableRelationships", vec![smart(3)]).unwrap();
+    let effective = EffectiveHolonDescriptor::from_constructed_holon(projection.into());
+    effective.singular_navigable_relationships().unwrap();
+    effective.instance_properties().unwrap();
+    assert!(service.hydration_requests.read().unwrap().is_empty());
+    let identities = |refs: Vec<crate::descriptors::RelationshipDescriptor>| {
+        refs.into_iter().map(|entry| entry.holon().full_reference_id_string()).collect::<Vec<_>>()
+    };
+    let expected =
+        members.iter().map(|member| member.full_reference_id_string()).collect::<Vec<_>>();
+    assert_eq!(identities(effective.plural_navigable_relationships().unwrap()), expected);
+    assert_eq!(*service.hydration_requests.read().unwrap(), vec![vec![id(1), id(2)]]);
+    let reads = service.content_reads.load(Ordering::Relaxed);
+    smart(1).key().unwrap();
+    smart(2).key().unwrap();
+    assert_eq!(service.content_reads.load(Ordering::Relaxed), reads);
+    assert_eq!(identities(effective.plural_navigable_relationships().unwrap()), expected);
+    assert_eq!(service.hydration_requests.read().unwrap().len(), 1);
+    assert_eq!(context.lookup().staged_count().unwrap(), 1);
+    assert!(context.is_open());
+}
+
+#[test]
+fn plural_navigation_warming_failure_preserves_results_and_retries() {
+    use crate::descriptors::EffectiveHolonDescriptor;
+    let (service, _space, context) = setup();
+    let member = HolonReference::smart_from_id(context.space_read_handle(), id(1));
+    let mut projection = context.mutation().new_holon(None).unwrap();
+    projection
+        .add_related_references("PluralNavigableRelationships", vec![member.clone(), member])
+        .unwrap();
+    let effective = EffectiveHolonDescriptor::from_constructed_holon(projection.into());
+    *service.hydration_response.write().unwrap() =
+        Some(Err(HolonError::ConductorError("offline".into())));
+    assert_eq!(effective.plural_navigable_relationships().unwrap().len(), 2);
+    *service.hydration_response.write().unwrap() = None;
+    assert_eq!(effective.plural_navigable_relationships().unwrap().len(), 2);
+    assert_eq!(*service.hydration_requests.read().unwrap(), vec![vec![id(1)], vec![id(1)]]);
+}
+
+#[test]
+fn singular_availability_does_not_warm_plural_navigation() {
+    use crate::{
+        descriptors::{Descriptor, EffectiveHolonDescriptor, PreparedSchema},
+        WritableHolon,
+    };
+    let (service, _space, context) = setup();
+    let smart = |n| HolonReference::smart_from_id(context.space_read_handle(), id(n));
+    let mut projection = context.mutation().new_holon(None).unwrap();
+    projection.add_related_references("DescribedHolonType", vec![smart(2)]).unwrap();
+    projection
+        .add_related_references("EffectiveInstanceRelationships", vec![smart(5), smart(6)])
+        .unwrap();
+    projection.add_related_references("SingularNavigableRelationships", vec![smart(5)]).unwrap();
+    projection
+        .add_related_references("PluralNavigableRelationships", vec![smart(6), smart(7)])
+        .unwrap();
+    projection
+        .with_property_value(
+            "PreparedSchema",
+            serde_json::to_string(&PreparedSchema::default()).unwrap(),
+        )
+        .unwrap();
+    let effective = EffectiveHolonDescriptor::from_constructed_holon(projection.into());
+    let singular = effective.available_singular_relationships(&smart(1)).unwrap();
+    assert_eq!(singular.len(), 1);
+    assert_eq!(singular[0].holon().holon_id().unwrap(), id(5));
+    assert!(service.hydration_requests.read().unwrap().is_empty());
+    let plural = effective.available_plural_relationships(&smart(1)).unwrap();
+    assert_eq!(plural.len(), 2);
+    assert_eq!(*service.hydration_requests.read().unwrap(), vec![vec![id(6), id(7)]]);
+}

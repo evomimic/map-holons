@@ -88,6 +88,8 @@ pub enum ReadableHolonActionWire {
         name: RelationshipName,
     },
     GetInstanceProperties,
+    /// Plural navigation of a retained effective descriptor, warming saved targets.
+    GetPluralNavigableRelationships,
     GetPropertyValueKind,
 }
 
@@ -154,6 +156,9 @@ impl ReadableHolonActionWire {
         Ok(match self {
             ReadableHolonActionWire::GetDescribedRelatedHolons { name } => {
                 ReadableHolonAction::GetDescribedRelatedHolons { name }
+            }
+            ReadableHolonActionWire::GetPluralNavigableRelationships => {
+                ReadableHolonAction::GetPluralNavigableRelationships
             }
             ReadableHolonActionWire::GetInstanceProperties => {
                 ReadableHolonAction::GetInstanceProperties

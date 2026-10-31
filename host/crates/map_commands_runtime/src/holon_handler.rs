@@ -220,6 +220,19 @@ fn handle_read(
                 BTreeMap::new(),
             )))
         }
+        ReadableHolonAction::GetPluralNavigableRelationships => {
+            let members =
+                holons_core::descriptors::EffectiveHolonDescriptor::try_from_holon(target)?
+                    .plural_navigable_relationships()?
+                    .into_iter()
+                    .map(|descriptor| descriptor.holon().clone())
+                    .collect();
+            Ok(MapResult::Collection(HolonCollection::from_parts(
+                CollectionState::Fetched,
+                members,
+                BTreeMap::new(),
+            )))
+        }
         ReadableHolonAction::GetAvailableProperties => {
             let members = target
                 .effective_descriptor()?
@@ -236,20 +249,11 @@ fn handle_read(
         ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor, singular } => {
             let descriptor =
                 holons_core::descriptors::EffectiveHolonDescriptor::try_from_holon(descriptor)?;
-            let mut relationships = descriptor.available_relationships(&target)?;
-            if let Some(singular) = singular {
-                let partition = if singular {
-                    descriptor.singular_navigable_relationships()?
-                } else {
-                    descriptor.plural_navigable_relationships()?
-                };
-                let identities = partition
-                    .into_iter()
-                    .map(|entry| entry.holon().full_reference_id_string())
-                    .collect::<std::collections::HashSet<_>>();
-                relationships
-                    .retain(|entry| identities.contains(&entry.holon().full_reference_id_string()));
-            }
+            let relationships = match singular {
+                Some(true) => descriptor.available_singular_relationships(&target)?,
+                Some(false) => descriptor.available_plural_relationships(&target)?,
+                None => descriptor.available_relationships(&target)?,
+            };
             Ok(MapResult::QualifiedRelationships(
                 relationships.into_iter().map(Into::into).collect(),
             ))

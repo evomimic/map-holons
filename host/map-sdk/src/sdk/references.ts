@@ -351,6 +351,13 @@ export function readDescriptorHasInstanceKey(reference: HolonReference) {
 }
 
 /** Internal descriptor bridge; inheritance is resolved only in Rust. */
+export async function readPluralNavigableRelationships(reference: HolonReference) {
+  const txId = txIdFor(reference);
+  const collection = await internalHolon.readPluralNavigableRelationships(txId, wireRefFor(reference));
+  return Object.freeze(collection.members.map(member => createHolonReference(txId, member)));
+}
+
+/** Internal descriptor bridge; inheritance is resolved only in Rust. */
 export async function readInstanceProperties(reference: HolonReference) {
   const txId = txIdFor(reference);
   const collection = await internalHolon.readInstanceProperties(txId, wireRefFor(reference));

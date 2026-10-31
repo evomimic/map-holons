@@ -1,6 +1,6 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
-import { acquireTypeDescriptor, readReferenceIdentity, readEffectiveMember, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, readDescriptorIsOrdered, readDescriptorHasInstanceKey, type HolonReference } from './references';
+import { acquireTypeDescriptor, readPluralNavigableRelationships, readReferenceIdentity, readEffectiveMember, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, readDescriptorIsOrdered, readDescriptorHasInstanceKey, type HolonReference } from './references';
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
@@ -279,7 +279,7 @@ export class EffectiveHolonDescriptorHandle {
     return Object.freeze((await this.members('SingularNavigableRelationships')).map(createRelationshipDescriptorHandle));
   }
   async pluralNavigableRelationships(): Promise<ReadonlyArray<RelationshipDescriptorHandle>> {
-    return Object.freeze((await this.members('PluralNavigableRelationships')).map(createRelationshipDescriptorHandle));
+    return Object.freeze((await readPluralNavigableRelationships(unwrapEffectiveHolonDescriptorHandle(this))).map(createRelationshipDescriptorHandle));
   }
   affordedDances(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveAffordsDance'); }
   affordedCommands(): Promise<ReadonlyArray<HolonReference>> { return this.members('EffectiveAffordsCommand'); }

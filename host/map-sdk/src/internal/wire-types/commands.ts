@@ -183,6 +183,7 @@ export type ReadableHolonActionWire =
   | 'GetRelationshipIsOrdered'
   | 'GetAvailableDances'
   | 'GetInstanceProperties'
+  | 'GetPluralNavigableRelationships'
   | 'GetPropertyValueKind'
   | { GetDescribedRelatedHolons: { name: RelationshipName } }
   | { GetPropertyValue: { name: PropertyName } }
@@ -237,6 +238,7 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetRelationshipIsOrdered',
   'GetAvailableDances',
   'GetInstanceProperties',
+  'GetPluralNavigableRelationships',
   'GetPropertyValueKind',
 
 ]);

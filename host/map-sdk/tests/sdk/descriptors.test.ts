@@ -102,18 +102,28 @@ it('routes retained descriptor reads through their actual owner after acquisitio
   expect(acquire).toHaveBeenCalledWith(41, sourceWire);
   await expect(descriptor.instanceProperties()).resolves.toEqual([]);
   expect(read).toHaveBeenCalledWith(77, preparedWire, 'EffectiveInstanceProperties', undefined, false);
-  acquire.mockRestore(); read.mockRestore();
+  const plural = vi.spyOn(commands, 'readPluralNavigableRelationships').mockResolvedValue({ state: 'Fetched', members: [], keyed_index: {} });
+  await expect(descriptor.pluralNavigableRelationships()).resolves.toEqual([]);
+  expect(plural).toHaveBeenCalledExactlyOnceWith(77, preparedWire);
+  acquire.mockRestore(); read.mockRestore(); plural.mockRestore();
 });
 
 it('composes navigation partitions without dropping repeated descriptor occurrences', async () => {
   const { createEffectiveHolonDescriptorHandle } = await import('../../src/sdk/descriptors');
-  const one = { propertyValue: vi.fn().mockResolvedValue({ StringValue: 'One' }) };
-  const many = { propertyValue: vi.fn().mockResolvedValue({ StringValue: 'Many' }) };
-  const relatedHolons = vi.fn(async (name: string) => ({ members: name === 'SingularNavigableRelationships' ? [one, one] : [many] }));
-  const descriptor = createEffectiveHolonDescriptorHandle({ relatedHolons } as unknown as HolonReference);
+  const commands = await import('../../src/internal/commands/holon');
+  const { createHolonReference } = await import('../../src/sdk/references');
+  const wire = { Transient: { tx_id: 77, id: '00000000-0000-0000-0000-000000000002' } } as const;
+  const one: HolonReferenceWire = { Smart: { holon_id: { Local: [1] }, smart_property_values: null } };
+  const many: HolonReferenceWire = { Smart: { holon_id: { Local: [2] }, smart_property_values: null } };
+  const read = vi.spyOn(commands, 'readRelatedHolons').mockResolvedValue({ state: 'Fetched', members: [one, one], keyed_index: {} });
+  const plural = vi.spyOn(commands, 'readPluralNavigableRelationships').mockResolvedValue({ state: 'Fetched', members: [many, many], keyed_index: {} });
+  const property = vi.spyOn(commands, 'readPropertyValue').mockImplementation(async (_tx, ref) => ({ StringValue: JSON.stringify(ref) === JSON.stringify(one) ? 'One' : 'Many' }));
+  const descriptor = createEffectiveHolonDescriptorHandle(createHolonReference(77, wire));
   const navigation = await descriptor.navigableRelationships();
-  expect(await Promise.all(navigation.map(entry => entry.displayName()))).toEqual(['One', 'One', 'Many']);
-  expect(relatedHolons.mock.calls.map(([name]) => name)).toEqual(['SingularNavigableRelationships', 'PluralNavigableRelationships']);
+  expect(await Promise.all(navigation.map(entry => entry.displayName()))).toEqual(['One', 'One', 'Many', 'Many']);
+  expect(read).toHaveBeenCalledExactlyOnceWith(77, wire, 'SingularNavigableRelationships', undefined, false);
+  expect(plural).toHaveBeenCalledExactlyOnceWith(77, wire);
+  read.mockRestore(); plural.mockRestore(); property.mockRestore();
 });
 
 it.each([['singular', true], ['plural', false]] as const)('requests the prepared %s availability partition without cardinality reads', async (multiplicity, singular) => {
