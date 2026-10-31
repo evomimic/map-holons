@@ -13,6 +13,11 @@ pub struct ContractContributions {
 impl ContractContributions {
     /// Reads the contract defined by this descriptor, preserving contribution provenance.
     pub fn resolve(descriptor: &HolonReference) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::record_derivation(
+            "contract_contribution_resolutions",
+            1,
+        );
+
         let lineage = ancestors(descriptor)?;
         Ok(Self {
             properties: relationship_targets_in_lineage(

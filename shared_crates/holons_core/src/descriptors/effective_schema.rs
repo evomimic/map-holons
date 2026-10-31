@@ -71,6 +71,14 @@ pub struct ComputedEffectiveSchema {
 impl ComputedEffectiveSchema {
     /// Restores occurrence evidence from a prepared saved-schema result without Extends reads.
     pub fn from_prepared(descriptor: &super::EffectiveHolonDescriptor) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::observe_attempt(
+            "saved_restoration_attempts",
+            "saved_restoration_successes",
+            || Self::restore_prepared(descriptor),
+        )
+    }
+
+    fn restore_prepared(descriptor: &super::EffectiveHolonDescriptor) -> Result<Self, HolonError> {
         use super::Descriptor;
         let target = descriptor.described_holon_type()?.holon().clone();
         let context = descriptor.holon().resolution_context()?;
@@ -214,12 +222,28 @@ impl ComputedEffectiveSchema {
         target: &HolonReference,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::record_derivation(
+            "schema_resolution_requests",
+            1,
+        );
+
         let lineage = ancestors(target)?;
         checkpoint("lineage", "");
         Self::from_members(lineage, checkpoint)
     }
 
     fn from_members(
+        lineage: Vec<HolonReference>,
+        checkpoint: &mut impl FnMut(&str, &str),
+    ) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::observe_attempt(
+            "schema_builder_attempts",
+            "schema_builder_successes",
+            || Self::build_from_members(lineage, checkpoint),
+        )
+    }
+
+    fn build_from_members(
         lineage: Vec<HolonReference>,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
@@ -326,6 +350,10 @@ impl ComputedEffectiveSchema {
         };
         cache
             .get_or_init(|| {
+                crate::core_shared_objects::read_observations::record_derivation(
+                    "name_index_builds",
+                    1,
+                );
                 let occurrences = match vocabulary {
                     EffectiveVocabulary::Properties => {
                         self.contributions(CoreRelationshipTypeName::InstanceProperties)
@@ -404,6 +432,26 @@ mod tests {
         )?;
         context.mutation().stage_new_holon(descriptor)?;
         Ok((context, parent, child))
+    }
+
+    #[test]
+    fn observation_distinguishes_failed_lineage_resolution_from_builder_work(
+    ) -> Result<(), HolonError> {
+        use crate::core_shared_objects::read_observations::DerivationProbe;
+        let (_context, _parent, mut child) = fixture()?;
+        let probe = DerivationProbe::start(true);
+        ComputedEffectiveSchema::resolve(&child.clone().into())?;
+        let counts = probe.finish().0;
+        assert_eq!(counts["schema_resolution_requests"], 1);
+        assert_eq!(counts["schema_builder_attempts"], 1);
+        assert_eq!(counts["schema_builder_successes"], 1);
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![child.clone().into()])?;
+        let probe = DerivationProbe::start(true);
+        assert!(ComputedEffectiveSchema::resolve(&child.into()).is_err());
+        let counts = probe.finish().0;
+        assert_eq!(counts["schema_resolution_requests"], 1);
+        assert!(!counts.contains_key("schema_builder_attempts"));
+        Ok(())
     }
 
     #[test]

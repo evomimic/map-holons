@@ -564,8 +564,8 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
     let described_by_requests: usize = events
         .iter()
         .filter_map(|event| match event {
-            crate::AssessmentEvent::PreparationEdge { edge, requests, .. }
-                if edge == "DescribedBy" =>
+            crate::AssessmentEvent::PreparationEdge { role, edge, requests, .. }
+                if edge == "DescribedBy" && *role != "Readiness" =>
             {
                 Some(*requests)
             }
@@ -600,7 +600,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
                 );
             } else {
                 assert_eq!(active.take(), Some((*operation, *role)));
-                if *operation == "EffectiveContract" {
+                if matches!(*operation, "FreshEffectiveSchema" | "SavedRestoration") {
                     contracts += 1;
                 }
                 if *operation == "MembershipPrefetch" {

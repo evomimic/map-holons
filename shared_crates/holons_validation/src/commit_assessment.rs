@@ -233,14 +233,24 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             products.clone()
         } else {
             let definition = identity.definition_reference(context, &subject);
-            let subject_lineage = holons_core::ExtendsLineageDiagnosis::assess(&definition)?;
+            let subject_lineage = crate::assessment_phase::observe_operation(
+                observer,
+                "StructuralDiagnosis",
+                "PreparedDefinition",
+                || holons_core::ExtendsLineageDiagnosis::assess(&definition),
+            )?;
             let describing_type = resolve_describing_type(&definition)?;
             let governing_lineage =
                 if let DescribingTypeResolution::Unique(descriptor) = &describing_type {
                     if holons_core::same_definition(descriptor, &definition)? {
                         Some(subject_lineage.clone())
                     } else {
-                        Some(holons_core::ExtendsLineageDiagnosis::assess(descriptor)?)
+                        Some(crate::assessment_phase::observe_operation(
+                            observer,
+                            "StructuralDiagnosis",
+                            "PreparedDefinition",
+                            || holons_core::ExtendsLineageDiagnosis::assess(descriptor),
+                        )?)
                     }
                 } else {
                     None
@@ -249,7 +259,12 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                 StructuralPrerequisites { describing_type, subject_lineage, governing_lineage };
             let mut products = DescriptorRuleProducts::default();
             products.prepare_structure(&prerequisites);
-            products.prepare_kind(&prerequisites, &kinds)?;
+            crate::assessment_phase::observe_operation(
+                observer,
+                "KindClassification",
+                "PreparedDefinition",
+                || products.prepare_kind(&prerequisites, &kinds),
+            )?;
             definition_products.insert(identity, (prerequisites.clone(), products.clone()));
             (prerequisites, products)
         };
@@ -314,7 +329,12 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         });
     }
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SchemaWorksetPreparation));
-    let workset = SchemaWorkset::prepare(context, &schemas, &owned, &mut collector)?;
+    let workset = crate::assessment_phase::observe_operation(
+        observer,
+        "SchemaWorkset",
+        "Assessment",
+        || SchemaWorkset::prepare(context, &schemas, &owned, &mut collector),
+    )?;
     let package_roots: Vec<_> = prepared
         .iter()
         .filter_map(|subject| match &subject.prerequisites.describing_type {
@@ -330,25 +350,40 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &workset,
         observer,
     )?;
-    crate::graph_only_deltas::classify_graph_only_delta_overlaps(
-        context,
-        candidates,
-        Some(&packages),
-        &mut collector,
+    crate::assessment_phase::observe_operation(
+        observer,
+        "GraphOnlyClassification",
+        "Assessment",
+        || {
+            crate::graph_only_deltas::classify_graph_only_delta_overlaps(
+                context,
+                candidates,
+                Some(&packages),
+                &mut collector,
+            )
+        },
     )?;
     let binding_contributions = packages.binding_contributions();
-    let binding_roles = BindingRoleMemo::prepare(
-        context,
-        &binding_contributions,
-        prepared.iter().filter_map(|subject| {
-            subject
-                .prerequisites
-                .governing_lineage
-                .as_ref()
-                .and_then(|diagnosis| diagnosis.valid_lineage())
-        }),
+    let binding_roles =
+        crate::assessment_phase::observe_operation(observer, "BindingRoles", "Assessment", || {
+            BindingRoleMemo::prepare(
+                context,
+                &binding_contributions,
+                prepared.iter().filter_map(|subject| {
+                    subject
+                        .prerequisites
+                        .governing_lineage
+                        .as_ref()
+                        .and_then(|diagnosis| diagnosis.valid_lineage())
+                }),
+            )
+        })?;
+    crate::assessment_phase::observe_operation(
+        observer,
+        "UniversalContracts",
+        "Assessment",
+        || prepare_universal_contracts(context, &mut prepared),
     )?;
-    prepare_universal_contracts(context, &mut prepared)?;
     Ok(ConstructedAssessment {
         context,
         candidates,
@@ -404,6 +439,11 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         // classified separately by readiness observation.
         let mut invalid = HashSet::new();
         // Effective contracts are checked once per exact definition.
+        let operation = crate::assessment_phase::observe_operation_scope(
+            &mut observer,
+            "ContractChecks",
+            "Assessment",
+        );
         let mut checked_contracts = HashSet::new();
         for index in 0..prepared.len() {
             let mut contracts = Vec::new();
@@ -450,9 +490,15 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 }
             }
         }
+        drop(operation);
         // Only staged members are declaration subjects, grouped by exact Version-bound owner;
         // saved unstaged members are not reread.
         // Declaration coverage belongs to exact definitions.
+        let operation = crate::assessment_phase::observe_operation_scope(
+            &mut observer,
+            "DeclarationChecks",
+            "Assessment",
+        );
         let mut declaration_members = HashSet::new();
         let declaration_start = collector.violations().len();
         for view in &workset.schemas {
@@ -505,6 +551,12 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             &definition_candidates,
             &mut invalid,
         )?;
+        drop(operation);
+        let operation = crate::assessment_phase::observe_operation_scope(
+            &mut observer,
+            "BindingDispatch",
+            "Assessment",
+        );
         for subject in &mut prepared {
             if subject.products.has_findings() {
                 invalid.insert(DefinitionIdentity::for_reference(&subject.subject, context)?);
@@ -533,6 +585,12 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 &mut collector,
             )?;
         }
+        drop(operation);
+        let operation = crate::assessment_phase::observe_operation_scope(
+            &mut observer,
+            "SchemaChecks",
+            "Assessment",
+        );
         let cycles = schema_rules::dependency_cycles(context, &workset.schemas)?;
         for view in &workset.schemas {
             collector.observations.schema_assessment_count += 1;
@@ -574,9 +632,10 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 )?;
             }
         }
+        drop(operation);
         // Preparation is complete before any subject consumes commitments. Readiness
         // propagation indexes references once and consumes only newly added findings.
-        let (order, mut readiness) = commitment_order(context, &prepared, &workset)?;
+        let (order, mut readiness) = commitment_order(context, &prepared, &workset, &mut observer)?;
         for identity in invalid {
             readiness.invalidate(identity);
         }
@@ -792,7 +851,14 @@ fn commitment_order(
     context: &Arc<TransactionContext>,
     subjects: &[SubjectPreparation],
     workset: &SchemaWorkset,
+    observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<(Vec<Vec<usize>>, ReadinessPropagation), HolonError> {
+    let operation = crate::assessment_phase::observe_operation_scope(
+        observer,
+        "ReadinessDiscovery",
+        "Assessment",
+    );
+    let mut edge_demand = std::collections::BTreeMap::<String, (usize, usize)>::new();
     let mut dependencies = HashMap::new();
     // Each dependency node can have several independently assessed candidates.
     let mut definition_candidates = HashMap::<DefinitionIdentity, Vec<usize>>::new();
@@ -831,20 +897,26 @@ fn commitment_order(
             CoreRelationshipTypeName::ValueType,
             CoreRelationshipTypeName::Constraints,
             CoreRelationshipTypeName::ValidationBindings,
+            CoreRelationshipTypeName::ComponentOf,
+            CoreRelationshipTypeName::RuleOf,
         ] {
-            for target in targets(&definition, edge)? {
+            let members = targets(&definition, edge.clone())?;
+            let demand = edge_demand.entry(edge.as_relationship_name().to_string()).or_default();
+            demand.0 += 1;
+            demand.1 += members.len();
+            for target in members {
                 edges.push(DefinitionIdentity::for_reference(&target, context)?);
                 pending.push_back(target);
             }
         }
-        for edge in [CoreRelationshipTypeName::ComponentOf, CoreRelationshipTypeName::RuleOf] {
-            for owner in targets(&definition, edge)? {
-                edges.push(DefinitionIdentity::for_reference(&owner, context)?);
-                pending.push_back(owner);
-            }
-        }
         dependencies.insert(id, edges);
     }
+    drop(operation);
+    let operation = crate::assessment_phase::observe_operation_scope(
+        observer,
+        "DependencyGrouping",
+        "Assessment",
+    );
     let mut reverse = HashMap::<_, Vec<_>>::new();
     for (subject, targets) in &dependencies {
         for target in targets {
@@ -864,6 +936,15 @@ fn commitment_order(
                 .collect()
         })
         .collect();
+    drop(operation);
+    for (edge, (requests, members)) in edge_demand {
+        observer(crate::AssessmentEvent::PreparationEdge {
+            role: "Readiness",
+            edge,
+            requests,
+            members,
+        });
+    }
     Ok((
         order,
         ReadinessPropagation {

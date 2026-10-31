@@ -333,7 +333,39 @@ pub fn commit(
     // Assessment must finish before any node, SmartLink, or ownership-index write.
     let validation_started_at = performance_timestamp_micros();
     let profile = commit_profiling_enabled();
+    if profile {
+        info!(
+            "[commit-instrumentation] version=822-v2 substrate=broad-readiness read_detail={}",
+            if cfg!(feature = "commit-read-inventory") { "enabled" } else { "disabled" }
+        );
+    }
+    let (received_registry, registry_population) = if profile {
+        match context.descriptor_registry_root() {
+            Ok(Some(root)) => {
+                let population = root
+                    .related_holons(CoreRelationshipTypeName::PreparedDescriptors)
+                    .and_then(|members| {
+                        members
+                            .read()
+                            .map(|members| members.get_members().len())
+                            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))
+                    });
+                (
+                    "present",
+                    population
+                        .map(|count| count.to_string())
+                        .unwrap_or_else(|_| "unavailable".into()),
+                )
+            }
+            Ok(None) => ("absent", "0".into()),
+            Err(_) => ("unavailable", "unavailable".into()),
+        }
+    } else {
+        ("unavailable", "unavailable".into())
+    };
     let read_cost_scope = crate::read_cost::Scope::assessment(profile);
+    let mut logical_probe = None;
+    let mut derivation_probe = None;
     let mut construction_costs = None;
     let mut phase = None;
     let mut phase_start = performance_timestamp_micros();
@@ -368,6 +400,23 @@ pub fn commit(
                     info!("[commit-construction] elapsed_us={} backend_calls={} link_queries={} returned_links={} exact_node_reads={}",
                         construction_micros, current.0 - construction_reads.0, current.1 - construction_reads.1, current.2 - construction_reads.2, current_nodes - construction_node_reads);
                 }
+                if let Some(previous) = phase {
+                    emit_assessment_observations(
+                        previous,
+                        logical_probe.take(),
+                        derivation_probe.take(),
+                    );
+                }
+                logical_probe = Some(
+                    holons_core::core_shared_objects::read_observations::CacheReadProbe::start(
+                        true,
+                    ),
+                );
+                derivation_probe = Some(
+                    holons_core::core_shared_objects::read_observations::DerivationProbe::start(
+                        true,
+                    ),
+                );
                 reads = current;
                 node_reads = current_nodes;
                 phase_start = performance_timestamp_micros();
@@ -380,14 +429,21 @@ pub fn commit(
             } => {
                 let current = crate::persistence_layer::smartlink::relationship_read_metrics();
                 if starting {
+                    debug_assert!(
+                        preparation_operation_start.is_none(),
+                        "operation spans must be siblings"
+                    );
                     preparation_operation_start = Some((
+                        operation,
+                        role,
                         performance_timestamp_micros(),
                         current,
                         crate::persistence_layer::holon_storage::exact_node_read_count(),
                     ));
-                } else if let Some((started, before, before_nodes)) =
+                } else if let Some((active_operation, active_role, started, before, before_nodes)) =
                     preparation_operation_start.take()
                 {
+                    debug_assert_eq!((active_operation, active_role), (operation, role));
                     let entry = preparation_operations.entry((operation, role)).or_default();
                     record_elapsed_micros(started, &mut entry.0);
                     entry.1 += 1;
@@ -424,10 +480,11 @@ pub fn commit(
                 }
             }
             holons_validation::AssessmentEvent::Preparation(metrics) => {
-                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={}",
+                info!("[commit-registry] received={} bypassed={} population={} governor_presence=workload_setup", received_registry, metrics.affected_schemas > 0, registry_population);
+                info!("[commit-preparation] package_roots={} subjects={} affected_schemas={} distinct_content={} identity_role_visits={} contract_consumers={} constraint_consumers={} binding_consumers={} requested_schema_products={} constructed_schema_products={}",
                     metrics.package_roots, metrics.subjects, metrics.affected_schemas,
                     metrics.distinct_content, metrics.identity_role_visits, metrics.contract_consumers,
-                    metrics.constraint_consumers, metrics.binding_consumers);
+                    metrics.constraint_consumers, metrics.binding_consumers, metrics.requested_schema_products, metrics.constructed_schema_products);
             }
             holons_validation::AssessmentEvent::PreparationEdge {
                 role,
@@ -449,6 +506,21 @@ pub fn commit(
     );
     // Close the active phase on success, rejection, and operational assessment failure.
     drop(observe);
+    let mut final_phase_micros = 0;
+    record_elapsed_micros(phase_start, &mut final_phase_micros);
+    if let Some(previous) = phase {
+        emit_assessment_observations(previous, logical_probe.take(), derivation_probe.take());
+    }
+    if profile {
+        if let Some((operation, role, started, before, before_nodes)) =
+            preparation_operation_start.take()
+        {
+            let mut micros = 0;
+            record_elapsed_micros(started, &mut micros);
+            let after = crate::persistence_layer::smartlink::relationship_read_metrics();
+            info!("[commit-preparation-interrupted] operation={} role={} elapsed_us={} backend_calls={} link_queries={} returned_links={} exact_node_reads={}", operation, role, micros, after.0-before.0, after.1-before.1, after.2-before.2, crate::persistence_layer::holon_storage::exact_node_read_count()-before_nodes);
+        }
+    }
     drop(read_cost_scope);
     if let Some((wall_us, costs)) = construction_costs {
         for (component, micros) in crate::read_cost::Component::ALL.into_iter().zip(costs) {
@@ -469,8 +541,7 @@ pub fn commit(
     if profile {
         if let Some(phase) = phase {
             let current = crate::persistence_layer::smartlink::relationship_read_metrics();
-            let mut micros = 0;
-            record_elapsed_micros(phase_start, &mut micros);
+            let micros = final_phase_micros;
             info!("[commit-assessment] phase={:?} elapsed_us={} elapsed_ms={} backend_calls={} link_queries={} returned_links={} exact_node_reads={} assessment_completed={}",
                 phase, micros, micros / 1000, current.0 - reads.0, current.1 - reads.1, current.2 - reads.2, crate::persistence_layer::holon_storage::exact_node_read_count() - node_reads, report.is_ok());
         }
@@ -1525,6 +1596,42 @@ fn require_local_target(
 
 fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKey, HolonError> {
     CanonicalKey::new(key.map_or_else(String::new, |value| value.0))
+}
+
+/// Emit one closed phase's evidence before another probe (including Pass 2) can start.
+fn emit_assessment_observations(
+    phase: holons_validation::AssessmentPhase,
+    reads: Option<holons_core::core_shared_objects::read_observations::CacheReadProbe>,
+    derivations: Option<holons_core::core_shared_objects::read_observations::DerivationProbe>,
+) {
+    if let Some(probe) = reads {
+        let observations = probe.finish();
+        let summary = holons_core::core_shared_objects::read_observations::CacheReadSummary::from_observations(&observations);
+        info!("[commit-logical-reads] phase={:?} requests={} distinct_memberships={} membership_requests={} content_requests={} hits={} misses={}", phase, summary.requests, summary.distinct_memberships, summary.membership_requests, summary.content_requests, summary.hits, summary.misses);
+        if cfg!(feature = "commit-read-inventory") {
+            for read in observations {
+                let source = read
+                    .source
+                    .to_canonical_bytes()
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>();
+                info!(
+                "[commit-logical-read] phase={:?} source={} relationship={} outcome={} requests={}",
+                phase,
+                source,
+                read.relationship.map(|name| name.to_string()).unwrap_or_else(|| "Node".into()),
+                read.outcome,
+                read.requests
+            );
+            }
+        }
+    }
+    if let Some(probe) = derivations {
+        let counts = probe.finish().0;
+        info!("[commit-derivation] phase={:?} schema_resolution_requests={} schema_builder_attempts={} schema_builder_successes={} saved_restoration_attempts={} saved_restoration_successes={} contract_contribution_resolutions={} constraint_contribution_resolutions={} structural_diagnoses={} role_walks={} snapshot_lookups={} registry_entries_examined={} registry_hits={} name_index_builds={}",
+            phase, counts.get("schema_resolution_requests").copied().unwrap_or(0), counts.get("schema_builder_attempts").copied().unwrap_or(0), counts.get("schema_builder_successes").copied().unwrap_or(0), counts.get("saved_restoration_attempts").copied().unwrap_or(0), counts.get("saved_restoration_successes").copied().unwrap_or(0), counts.get("contract_contribution_resolutions").copied().unwrap_or(0), counts.get("constraint_contribution_resolutions").copied().unwrap_or(0), counts.get("structural_diagnoses").copied().unwrap_or(0), counts.get("role_walks").copied().unwrap_or(0), counts.get("snapshot_lookups").copied().unwrap_or(0), counts.get("registry_entries_examined").copied().unwrap_or(0), counts.get("registry_hits").copied().unwrap_or(0), counts.get("name_index_builds").copied().unwrap_or(0));
+    }
 }
 
 #[cfg(test)]

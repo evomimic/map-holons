@@ -136,17 +136,13 @@ impl DescriptorPackages {
             if distinct_content {
                 definitions_to_prepare.push(selected.clone());
                 if let HolonReference::Smart(saved) = &selected {
-                    observer(crate::AssessmentEvent::PreparationOperation {
-                        operation: "ContentRetention",
-                        role: "SavedContent",
-                        starting: true,
-                    });
+                    let operation = crate::assessment_phase::observe_operation_scope(
+                        observer,
+                        "ContentRetention",
+                        "SavedContent",
+                    );
                     let retained = saved.retain_content();
-                    observer(crate::AssessmentEvent::PreparationOperation {
-                        operation: "ContentRetention",
-                        role: "SavedContent",
-                        starting: false,
-                    });
+                    drop(operation);
                     content.push(retained?);
                 }
             }
@@ -176,26 +172,22 @@ impl DescriptorPackages {
                 Schema => "Schema",
             };
             if let HolonReference::Smart(saved) = &selected {
-                observer(crate::AssessmentEvent::PreparationOperation {
-                    operation: "MembershipPrefetch",
-                    role: role_name,
-                    starting: true,
-                });
+                let operation = crate::assessment_phase::observe_operation_scope(
+                    observer,
+                    "MembershipPrefetch",
+                    role_name,
+                );
                 let preparation = saved.prepare_relationships(
                     &edges.iter().map(|edge| edge.as_relationship_name()).collect::<Vec<_>>(),
                 );
-                observer(crate::AssessmentEvent::PreparationOperation {
-                    operation: "MembershipPrefetch",
-                    role: role_name,
-                    starting: false,
-                });
+                drop(operation);
                 preparation?;
             }
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "RelationshipTraversal",
-                role: role_name,
-                starting: true,
-            });
+            let operation = crate::assessment_phase::observe_operation_scope(
+                observer,
+                "RelationshipTraversal",
+                role_name,
+            );
             for edge in edges {
                 let members = targets(&selected, edge.clone())?;
                 if matches!(edge, R::DescribedBy) {
@@ -227,92 +219,94 @@ impl DescriptorPackages {
                 };
                 pending.extend(members.into_iter().map(|reference| (reference, next_role)));
             }
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "RelationshipTraversal",
-                role: role_name,
-                starting: false,
-            });
+            drop(operation);
             observer(crate::AssessmentEvent::PreparationVisitFinished {
                 type_name,
                 distinct_content,
             });
         }
-        let preparation = crate::PreparationMetrics {
+        let mut preparation = crate::PreparationMetrics {
             package_roots: packages.len(),
             subjects: subjects.len(),
             affected_schemas: workset.schemas.len(),
             distinct_content: definitions_to_prepare.len(),
+            requested_schema_products: definitions_to_prepare.len(),
             identity_role_visits: seen.len(),
             ..Default::default()
         };
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts));
         let mut definitions = HashMap::new();
         for reference in definitions_to_prepare {
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "EffectiveContract",
-                role: "PreparedDefinition",
-                starting: true,
-            });
             // A schema-edit assessment must observe its candidate graph, including
             // repeated declarations. Saved-only assessments can reuse the shipped snapshot.
-            let prepared = if workset.schemas.is_empty() {
-                holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
-                    context, &reference,
-                )?
-            } else {
-                None
-            };
+            let prepared = crate::assessment_phase::observe_operation(
+                observer,
+                if workset.schemas.is_empty() { "SnapshotLookup" } else { "SnapshotBypass" },
+                "PreparedDefinition",
+                || {
+                    if workset.schemas.is_empty() {
+                        holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
+                            context, &reference,
+                        )
+                    } else {
+                        Ok(None)
+                    }
+                },
+            )?;
             let schema = match prepared {
-                Some(descriptor) => {
-                    holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
-                }
-                None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+                Some(descriptor) => crate::assessment_phase::observe_operation(
+                    observer,
+                    "SavedRestoration",
+                    "PreparedDefinition",
+                    || {
+                        holons_core::descriptors::ComputedEffectiveSchema::from_prepared(
+                            &descriptor,
+                        )
+                    },
+                ),
+                None => crate::assessment_phase::observe_operation(
+                    observer,
+                    "FreshEffectiveSchema",
+                    "PreparedDefinition",
+                    || holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+                ),
             }
             .map(Arc::new);
             // All name/navigation reads required by validation belong to preparation,
             // and the same cached projection is consumed during assessment.
-            if let Ok(schema) = &schema {
-                for vocabulary in [
-                    holons_core::descriptors::EffectiveVocabulary::Properties,
-                    holons_core::descriptors::EffectiveVocabulary::Dances,
-                    holons_core::descriptors::EffectiveVocabulary::Commands,
-                ] {
-                    let _ = schema.name_index(vocabulary); // Results, including errors, remain cached.
-                }
-                if schema.defines_holon_instances()? {
-                    let _ = schema
-                        .name_index(holons_core::descriptors::EffectiveVocabulary::Relationships);
-                }
-            }
-            let contract = schema
-                .as_ref()
-                .map(|schema| Arc::new(schema.contract_contributions()))
-                .map_err(Clone::clone);
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "EffectiveContract",
-                role: "PreparedDefinition",
-                starting: false,
-            });
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "EffectiveConstraints",
-                role: "PreparedDefinition",
-                starting: true,
-            });
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "EffectiveConstraints",
-                role: "PreparedDefinition",
-                starting: false,
-            });
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "EffectiveBindings",
-                role: "PreparedDefinition",
-                starting: true,
-            });
-            observer(crate::AssessmentEvent::PreparationOperation {
-                operation: "EffectiveBindings",
-                role: "PreparedDefinition",
-                starting: false,
-            });
+            crate::assessment_phase::observe_operation(
+                observer,
+                "NameIndexes",
+                "PreparedDefinition",
+                || -> Result<(), HolonError> {
+                    if let Ok(schema) = &schema {
+                        for vocabulary in [
+                            holons_core::descriptors::EffectiveVocabulary::Properties,
+                            holons_core::descriptors::EffectiveVocabulary::Dances,
+                            holons_core::descriptors::EffectiveVocabulary::Commands,
+                        ] {
+                            let _ = schema.name_index(vocabulary); // Results, including errors, remain cached.
+                        }
+                        if schema.defines_holon_instances()? {
+                            let _ = schema.name_index(
+                                holons_core::descriptors::EffectiveVocabulary::Relationships,
+                            );
+                        }
+                    }
+                    Ok(())
+                },
+            )?;
+            let contract = crate::assessment_phase::observe_operation(
+                observer,
+                "ContributionProjection",
+                "PreparedDefinition",
+                || {
+                    schema
+                        .as_ref()
+                        .map(|schema| Arc::new(schema.contract_contributions()))
+                        .map_err(Clone::clone)
+                },
+            );
             definitions.insert(
                 DefinitionIdentity::for_reference(&reference, context)?,
                 PreparedDefinition {
@@ -323,6 +317,8 @@ impl DescriptorPackages {
                 },
             );
         }
+        preparation.constructed_schema_products =
+            definitions.values().filter(|definition| definition.schema.is_ok()).count();
         for root in roots {
             let identity = DefinitionIdentity::for_reference(root, context)?;
             let entry = packages.get_mut(&identity).expect("root registered before discovery");

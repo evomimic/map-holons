@@ -128,6 +128,8 @@ impl<'a> ValidExtendsLineage<'a> {
 impl ExtendsLineageDiagnosis {
     /// Applies to any holon, without requiring descriptor classification.
     pub fn assess(subject: &HolonReference) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::record_derivation("structural_diagnoses", 1);
+
         let mut lineage = Vec::new();
         let mut member_keys = Vec::new();
         let mut defects = Vec::new();

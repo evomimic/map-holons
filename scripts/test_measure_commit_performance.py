@@ -23,13 +23,20 @@ def complete_run():
             "[commit-assessment] phase=PackageDiscovery elapsed_us=100 backend_calls=9",
             "[commit-assessment] phase=PreparedProducts elapsed_us=20 backend_calls=0",
             "[commit-adapter] total_us=200",
+            "[commit-host-snapshot] construction_us=4 entries=0 shipped_holons=0 completed=true",
             "[commit-transport] conductor_call_us=220 success=true",
             "[commit-construction] elapsed_us=150 backend_calls=201 link_queries=201 exact_node_reads=80",
-            "[commit-preparation] distinct_content=10 contract_consumers=1",
+            "[commit-preparation] distinct_content=10 contract_consumers=1 requested_schema_products=10 constructed_schema_products=10",
             "[commit-preparation-type] type=MetaPropertyType.MetaTypeDescriptor distinct_content=3 identity_role_visits=4 backend_calls=2 exact_node_reads=1",
             "[commit-preparation-operation] operation=MembershipPrefetch role=Commitment elapsed_us=80",
             "[commit-preparation-operation] operation=EffectiveContract role=PreparedDefinition elapsed_us=15",
             "[commit-preparation-operation] operation=ContentRetention role=SavedContent exact_node_reads=3",
+            "[commit-instrumentation] version=822-v2 substrate=broad-readiness read_detail=disabled",
+            "[commit-preparation-operation] operation=ReadinessDiscovery role=Assessment elapsed_us=10",
+            "[commit-preparation-operation] operation=DependencyGrouping role=Assessment elapsed_us=2",
+            "[commit-preparation-edge] role=Readiness edge=Extends requests=1 members=2",
+            *[f"[commit-logical-reads] phase={phase} requests=1 distinct_memberships=1 membership_requests=1 content_requests=0 hits=1 misses=0" for phase in measure.ASSESSMENT_PHASES],
+            *[f"[commit-derivation] phase={phase} " + " ".join(f"{operation}=0" for operation in measure.DERIVATION_OPERATIONS) for phase in measure.ASSESSMENT_PHASES],
             "[PERF-688] guest_commit: validation_ms=1",
             f"[commit-baseline] sample_end={sample} condition={condition} command_us={250 + sample}",
         ])
@@ -40,9 +47,10 @@ class CaptureTests(unittest.TestCase):
     def test_link_profile_wires_separate_output_and_records_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "capture"
-            argv = ["measure", "--runs", "1", "--link-profile", "--output", str(destination)]
+            argv = ["measure", "--runs", "1", "--link-profile", "--semantic-revision", "semantic-test", "--output", str(destination)]
 
             def capture(command, *, stdout, stderr, env):
+                self.assertIn("holons_client=info", env["RUST_LOG"])
                 self.assertIn("--exact", command)
                 self.assertIn("measures_first_and_repeated_visualizer_usage_commits", command)
                 self.assertNotIn("MAP_COMMIT_PERF_INDEX_MODE", env)
@@ -61,6 +69,9 @@ class CaptureTests(unittest.TestCase):
                 self.assertEqual(measure.main(), 0)
             metadata = json.loads((destination / "metadata.json").read_text())
             self.assertTrue(metadata["link_profile"])
+            self.assertEqual(metadata["semantic_revision"], "semantic-test")
+            self.assertEqual(metadata["host_snapshot_policy"], "required")
+            self.assertNotIn("instrumentation_revision", metadata)
             self.assertEqual(metadata["anchor_evidence_policy"], "retired")
             self.assertEqual(metadata["package_substrate"], "DescriptorPackage")
             self.assertEqual(metadata["runtime_versions"], {"holochain": "Cargo.lock:holochain",
@@ -110,7 +121,7 @@ class CaptureTests(unittest.TestCase):
                 if policy is not None:
                     metadata["anchor_evidence_policy"] = policy
                 (destination / "metadata.json").write_text(json.dumps(metadata))
-                content = complete_run().split("[commit-baseline] sample_start=2")[0]
+                content = complete_run().replace("[commit-instrumentation] version=822-v2 substrate=broad-readiness read_detail=disabled", "").split("[commit-baseline] sample_start=2")[0]
                 if policy != "retired":
                     content = content.replace("[PERF-688]", marker + "[PERF-688]")
                 (destination / "run-01.log").write_text(content)
@@ -143,6 +154,64 @@ class CaptureTests(unittest.TestCase):
                 measure.main()
             self.assertEqual(error.exception.code, 2)
             self.assertFalse(destination.exists())
+
+
+    def test_readiness_required_only_for_declared_substrate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(complete_run())
+            self.assertEqual(measure.summarize([log], instrumentation="822-v2")["instrumentation"], "822-v2")
+            text = complete_run().replace("[commit-preparation-operation] operation=ReadinessDiscovery role=Assessment elapsed_us=10", "")
+            log.write_text(text)
+            with self.assertRaisesRegex(ValueError, "Missing measurements"):
+                measure.summarize([log], instrumentation="822-v2")
+            log.write_text(text.replace("substrate=broad-readiness", "substrate=declared-demand"))
+            result = measure.summarize([log], instrumentation="822-v2", preparation_substrate="declared-demand")
+            self.assertEqual(result["samples"][0]["host_snapshot"], "measured")
+
+    def test_required_counters_and_version_marker_cannot_disappear(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            for text in [complete_run().replace("snapshot_lookups=0", "wrong=0"),
+                         complete_run().replace("[commit-instrumentation] version=822-v2 substrate=broad-readiness read_detail=disabled", "")]:
+                log.write_text(text)
+                with self.assertRaisesRegex(ValueError, "Missing"):
+                    measure.summarize([log], instrumentation="822-v2")
+            log.write_text(complete_run().replace("version=822-v2", "version=other"))
+            with self.assertRaisesRegex(ValueError, "Incompatible"):
+                measure.summarize([log], instrumentation="822-v2")
+
+    def test_edge_requests_accumulate_and_measured_host_zero_is_not_unavailable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(complete_run().replace("[PERF-688]", "[commit-preparation-edge] role=Readiness edge=Extends requests=3 members=4\n[commit-host-snapshot] construction_us=0 entries=0 shipped_holons=0\n[PERF-688]"))
+            sample = measure.summarize([log], instrumentation="822-v2")["samples"][0]
+            self.assertEqual(sample["metrics"]["commit-preparation-edge.Readiness.Extends.requests"], 4)
+            self.assertEqual(sample["host_snapshot"], "measured")
+
+    def test_compact_phase_records_and_read_inventory_do_not_expand_metric_keys(self):
+        content = complete_run().replace("snapshot_lookups=0", "snapshot_lookups=3")
+        content = content.replace("[PERF-688]", "[commit-logical-read] phase=Construction source=abcdef relationship=Extends outcome=hit requests=100\n[PERF-688]")
+        sample = self.summarize([content])["samples"][0]
+        self.assertEqual(sample["metrics"]["commit-derivation.Construction.snapshot_lookups"], 3)
+        self.assertFalse(any("abcdef" in key for key in sample["metrics"]))
+        with self.assertRaisesRegex(ValueError, "read_detail=disabled"):
+            self.summarize([content.replace("read_detail=disabled", "read_detail=enabled")])
+
+    def test_missing_content_and_cache_outcome_metrics_fail_visibly(self):
+        for field in ["content_requests", "membership_requests", "hits", "misses"]:
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "Missing measurements"):
+                self.summarize([complete_run().replace(f"{field}=", "omitted=")])
+
+    def test_host_construction_is_required_for_capture_path_but_optional_for_other_logs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            # Preserve other measurements while removing only host snapshot records.
+            log.write_text("\n".join(line for line in complete_run().splitlines() if "[commit-host-snapshot]" not in line))
+            sample = measure.summarize([log])["samples"][0]
+            self.assertEqual(sample["host_snapshot"], "unavailable")
+            with self.assertRaisesRegex(ValueError, "Missing measurements"):
+                measure.summarize([log], host_snapshot_policy="required")
 
     def summarize(self, contents):
         with tempfile.TemporaryDirectory() as directory:

@@ -312,10 +312,41 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<TransientReference, HolonError> {
         // Build commit dance request
         let mut request = holon_dance_builders::build_commit_dance_request()?;
+        let profile = std::env::var_os("MAP_PROFILE").is_some();
+        let snapshot_started = profile.then(Instant::now);
         if let Some(registry) = context.descriptor_registry() {
-            if let Some(root) = registry.snapshot_into(context)? {
+            let snapshot_result = registry.snapshot_into(context);
+            let construction_us = snapshot_started.map(|started| started.elapsed().as_micros());
+            let root = match snapshot_result {
+                Ok(root) => root,
+                Err(error) => {
+                    if let Some(micros) = construction_us {
+                        info!("[commit-host-snapshot] construction_us={} entries=unavailable shipped_holons=unavailable completed=false", micros);
+                    }
+                    return Err(error);
+                }
+            };
+            if let Some(micros) = construction_us {
+                // Count only the returned transient root membership; never hydrate descriptors.
+                let counts = root
+                    .as_ref()
+                    .map(|root| {
+                        root.related_holons(CoreRelationshipTypeName::PreparedDescriptors)?
+                            .read()
+                            .map(|members| members.get_members().len())
+                            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))
+                    })
+                    .transpose();
+                match counts {
+                    Ok(entries) => info!("[commit-host-snapshot] construction_us={} entries={} shipped_holons={} completed=true", micros, entries.unwrap_or(0), entries.map(|count| count + 1).unwrap_or(0)),
+                    Err(_) => info!("[commit-host-snapshot] construction_us={} entries=unavailable shipped_holons=unavailable completed=true", micros),
+                }
+            }
+            if let Some(root) = root {
                 request.body = holons_core::dances::RequestBody::TransientReference(root);
             }
+        } else if let Some(started) = snapshot_started {
+            info!("[commit-host-snapshot] construction_us={} entries=0 shipped_holons=0 completed=true", started.elapsed().as_micros());
         }
 
         // Run the dance (sync → async → sync)

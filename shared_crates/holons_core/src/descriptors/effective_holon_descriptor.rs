@@ -65,6 +65,7 @@ impl EffectiveHolonDescriptor {
         let Some(root) = context.descriptor_registry_root()? else {
             return Ok(None);
         };
+        crate::core_shared_objects::read_observations::record_derivation("snapshot_lookups", 1);
         let members = root
             .related_holons(CoreRelationshipTypeName::PreparedDescriptors)?
             .read()
@@ -72,8 +73,16 @@ impl EffectiveHolonDescriptor {
             .get_members()
             .clone();
         for member in members {
+            crate::core_shared_objects::read_observations::record_derivation(
+                "registry_entries_examined",
+                1,
+            );
             let descriptor = Self::from_constructed_holon(member);
             if same_definition(descriptor.described_holon_type()?.holon(), target)? {
+                crate::core_shared_objects::read_observations::record_derivation(
+                    "registry_hits",
+                    1,
+                );
                 return Ok(Some(descriptor));
             }
         }
@@ -697,6 +706,30 @@ mod tests {
         let mut child = new_test_holon(&context, "child")?;
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone()])?;
         Ok((context, parent, child.into()))
+    }
+
+    #[test]
+    fn snapshot_lookup_counts_only_eligible_saved_targets_with_a_registry() -> Result<(), HolonError>
+    {
+        use crate::core_shared_objects::read_observations::DerivationProbe;
+        let (context, target, _) = fixture()?;
+        let saved = HolonReference::smart_from_id(
+            context.space_read_handle(),
+            core_types::HolonId::Local(core_types::LocalId(vec![1; 39])),
+        );
+        let probe = DerivationProbe::start(true);
+        assert!(EffectiveHolonDescriptor::find_in_context(&context, &target)?.is_none());
+        assert!(EffectiveHolonDescriptor::find_in_context(&context, &saved)?.is_none());
+        assert!(!probe.finish().0.contains_key("snapshot_lookups"));
+        let root = context.mutation().new_holon(None)?;
+        context.set_descriptor_registry_root(&root)?;
+        let probe = DerivationProbe::start(true);
+        assert!(EffectiveHolonDescriptor::find_in_context(&context, &target)?.is_none());
+        assert!(EffectiveHolonDescriptor::find_in_context(&context, &saved)?.is_none());
+        let counts = probe.finish().0;
+        assert_eq!(counts["snapshot_lookups"], 1);
+        assert!(!counts.contains_key("registry_entries_examined"));
+        Ok(())
     }
 
     #[test]
