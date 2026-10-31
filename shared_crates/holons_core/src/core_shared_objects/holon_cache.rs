@@ -33,7 +33,7 @@ impl Drop for SavedHolonRetention {
 impl HolonCache {
     /// Creates a new HolonCache with a default size.
     pub fn new() -> Self {
-        Self::new_with_capacity(99) // Default size
+        Self::new_with_capacity(10000) // Default size
     }
 
     /// Creates a new HolonCache with a custom size.
