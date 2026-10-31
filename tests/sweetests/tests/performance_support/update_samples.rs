@@ -130,9 +130,23 @@ pub async fn run(runtime: &Runtime, samples: usize, mode: &str) {
             response.related_holons("SavedHolons").unwrap().read().unwrap().get_members().clone();
         assert_eq!(
             saved.len(),
-            if mode == "mixed" { 2 } else { 0 },
-            "updates retain saved identity; mixed creates two roots"
+            match mode {
+                "mixed" => 2,
+                "no-op" => 0,
+                "graph-only" | "graph-only-overlap" => candidates,
+                _ => unreachable!("unsupported update workload"),
+            },
+            "graph-only candidates return saved-source aliases; unchanged updates return no result"
         );
+        if let Some(source) = &source {
+            for reference in &saved {
+                assert_eq!(
+                    reference.holon_id().unwrap(),
+                    *source,
+                    "graph-only updates must return the exact saved source, not a new version"
+                );
+            }
+        }
         info!(
             "[commit-baseline] sample_end={} condition={} command_us={}",
             sample, condition, command_us
