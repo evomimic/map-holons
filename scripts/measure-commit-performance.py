@@ -28,7 +28,7 @@ def output(*command):
 
 def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard", mode="create",
               anchor_evidence_policy="per-new-version", instrumentation="822-v2",
-              preparation_substrate="broad-readiness", host_snapshot_policy="optional"):
+              preparation_substrate="broad-readiness", host_snapshot_policy="optional", expected_guest_cache_capacity=None):
     if not logs:
         raise ValueError("No captured run logs were found")
     if anchor_evidence_policy not in ["per-new-version", "retired"]:
@@ -61,6 +61,8 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                         raise ValueError(f"Incompatible instrumentation or substrate in {log}")
                     if fields.get("read_detail") != "disabled":
                         raise ValueError(f"Timed captures require read_detail=disabled in {log}")
+                    if expected_guest_cache_capacity is not None and fields.get("holon_cache_capacity") != str(expected_guest_cache_capacity):
+                        raise ValueError(f"Guest cache capacity does not match expected {expected_guest_cache_capacity} in {log}; rebuild the intended guest artifact")
                     sample["instrumentation"] = fields["version"]
                 if prefix == "commit-governor":
                     prefix += "." + fields["boundary"]
@@ -203,6 +205,7 @@ def main():
     parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
     parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
     parser.add_argument("--governor-presence", default="unavailable", help="Governor entry presence established by workload setup")
+    parser.add_argument("--expected-guest-cache-capacity", type=int, choices=[99, 1024], default=99, help="Validate the diagnostic content-cache capacity reported by the guest")
     parser.add_argument("--guest-artifact-revision", default="unavailable", help="Revision used to build the supplied guest artifact")
     parser.add_argument("--registry-population", type=int, help="Requested setup population; observed values come from logs")
     parser.add_argument("--guest-cache-state", default="unavailable", help="Describe ingress and setup warming; a fresh transaction does not establish cold cache")
@@ -223,7 +226,7 @@ def main():
         result = summarize(sorted(args.output.glob("run-*.log")), metadata["samples_per_run"],
                            metadata["variant"], metadata["assessment"], metadata.get("mode", "create"),
                            metadata.get("anchor_evidence_policy", "per-new-version"),
-                           metadata.get("instrumentation", "historical"), metadata.get("preparation_substrate", "broad-readiness"), metadata.get("host_snapshot_policy", "optional"))
+                           metadata.get("instrumentation", "historical"), metadata.get("preparation_substrate", "broad-readiness"), metadata.get("host_snapshot_policy", "optional"), metadata.get("expected_guest_cache_capacity"))
     else:
         env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,holons_client=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
         if "MAP_COMMIT_PERF_INDEX_MODE" in env or "MAP_COMMIT_PERF_INDEX_OUTPUT" in env:
@@ -250,6 +253,7 @@ def main():
             "instrumentation": args.instrumentation,
             "preparation_substrate": args.preparation_substrate,
             "guest_artifact_revision": args.guest_artifact_revision,
+            "expected_guest_cache_capacity": args.expected_guest_cache_capacity,
             "requested_registry_population": args.registry_population,
             "governor_reuse": args.governor_reuse,
             "guest_cache_state": args.guest_cache_state,
@@ -292,10 +296,10 @@ def main():
                 return result.returncode
             # Validate each run before spending time on another conductor capture.
             summarize([path], args.samples, args.variant, args.assessment, args.mode,
-                      args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required")
+                      args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required", args.expected_guest_cache_capacity)
             logs.append(path)
         result = summarize(logs, args.samples, args.variant, args.assessment, args.mode,
-                           args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required")
+                           args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required", args.expected_guest_cache_capacity)
     (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
     for condition, metrics in result["summary"].items():
         value = metrics["commit-baseline.command_us"]

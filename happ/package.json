@@ -16,6 +16,7 @@
     "test:unit:no-run": "cargo test --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown --no-run",
     "test:unit": "cargo test --manifest-path Cargo.toml --workspace",
     "build:commit-perf": "CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown --features holons/commit-performance-profiling && hc app pack workdir --recursive",
+    "build:commit-perf-large-cache": "CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown --features holons/diagnostic-large-holon-cache && hc app pack workdir --recursive",
     "build:commit-inventory": "CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown --features holons/commit-read-inventory && hc app pack workdir --recursive"
   },
   "devDependencies": {

@@ -201,3 +201,23 @@ Pre-command membership alone is not proof of shipped membership: snapshot constr
 reentrant preparation. The parser keeps the two boundaries separate. Registry population flags seed
 a Session once per run; they do not maintain a fixed population across samples. Compare observed
 snapshot entries, membership flags, lookup requests, and entries examined, not seeded case names.
+
+### Diagnostic saved-content capacity comparison
+
+The nominal production content-cache capacity is 99; retained content and relationship membership
+have separate storage. `build:commit-perf-large-cache` enables a WASM-only diagnostic capacity of
+1024. Host content-cache defaults remain unchanged. This is a counterfactual experiment, not a new
+production default or a replacement for the 99-capacity baseline. Quick_cache may round its nominal
+capacity into shard capacities.
+
+Build each variant explicitly, then run one usage capture with six samples. Use
+`--expected-guest-cache-capacity 99` or `1024` respectively: the parser checks the value emitted by
+the guest instrumentation marker and records the expectation in metadata. Earlier captures without
+this field remain readable using their original metadata. The experiment should use normal profiling,
+not the read-inventory build, so observation overhead remains comparable between variants.
+
+Compare NameIndexes exact node reads and the frequency of the observed high-read mode before
+interpreting total latency. Report sample index 1's host snapshot preparation separately. Absence
+of high-read samples at larger capacity supports cache-pressure sensitivity; it does not isolate
+hash seeding as the cause, since capacity can also change shard geometry and eviction behavior.
+Keep these runs apart from baseline/final results, and rebuild ordinary profiling after the experiment.

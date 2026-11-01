@@ -31,9 +31,17 @@ impl Drop for SavedHolonRetention {
 }
 
 impl HolonCache {
-    /// Creates a new HolonCache with a default size.
+    /// Requested capacity of the evictable content cache; explicit retention is separate.
+    pub const DEFAULT_CAPACITY: usize =
+        if cfg!(all(target_arch = "wasm32", feature = "diagnostic-large-holon-cache")) {
+            1024
+        } else {
+            99
+        };
+
+    /// Creates a content cache using the production default or explicit WASM diagnostic build.
     pub fn new() -> Self {
-        Self::new_with_capacity(99) // Default size
+        Self::new_with_capacity(Self::DEFAULT_CAPACITY)
     }
 
     /// Creates a new HolonCache with a custom size.
