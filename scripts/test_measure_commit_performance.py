@@ -44,6 +44,26 @@ def complete_run():
 
 
 class CaptureTests(unittest.TestCase):
+    def test_missing_guest_instrumentation_stops_after_first_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "capture"
+            def capture(command, *, stdout, stderr, env):
+                stdout.write("\n".join(line for line in complete_run().splitlines() if "[commit-instrumentation]" not in line))
+                return SimpleNamespace(returncode=0)
+            with patch.object(measure.sys, "argv", ["measure", "--runs", "5", "--output", str(destination)]), \
+                 patch.dict(measure.os.environ, {}, clear=True), \
+                 patch.object(measure, "output", return_value=""), \
+                 patch.object(measure.platform, "platform", return_value="test-platform"), \
+                 patch.object(measure.platform, "machine", return_value="test-machine"), \
+                 patch.object(measure.subprocess, "run", side_effect=capture) as run, \
+                 patch.object(measure, "locked_version", return_value="test-version"), \
+                 patch("builtins.print"):
+                with self.assertRaisesRegex(ValueError, "Missing instrumentation marker"):
+                    measure.main()
+                self.assertEqual(run.call_count, 1)
+            self.assertTrue((destination / "run-01.log").exists())
+            self.assertFalse((destination / "run-02.log").exists())
+
     def test_link_profile_wires_separate_output_and_records_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "capture"

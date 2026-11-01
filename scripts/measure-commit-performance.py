@@ -102,7 +102,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                 required = ["commit-baseline.command_us", "commit-adapter.total_us", "commit-transport.conductor_call_us", "commit-construction.elapsed_us", "commit-preparation.distinct_content", "guest_commit.validation_ms", "commit-preparation-operation.EffectiveContract.PreparedDefinition.elapsed_us", "commit-preparation-operation.ContentRetention.SavedContent.exact_node_reads"]
                 if instrumentation == "822-v2":
                     if sample.get("instrumentation") != instrumentation:
-                        raise ValueError(f"Missing instrumentation marker in {log}")
+                        raise ValueError(f"Missing instrumentation marker in {log}; rebuild with npm run build:commit-perf -w map-happ and retry without --skip-build")
                     required.remove("commit-preparation-operation.EffectiveContract.PreparedDefinition.elapsed_us")
                     required += ["commit-preparation.requested_schema_products", "commit-preparation.constructed_schema_products"]
                     for phase in ASSESSMENT_PHASES:
@@ -287,6 +287,9 @@ def main():
             if result.returncode:
                 print(f"Run failed; inspect {path}", file=sys.stderr)
                 return result.returncode
+            # Validate each run before spending time on another conductor capture.
+            summarize([path], args.samples, args.variant, args.assessment, args.mode,
+                      args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required")
             logs.append(path)
         result = summarize(logs, args.samples, args.variant, args.assessment, args.mode,
                            args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required")
