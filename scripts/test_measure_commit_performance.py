@@ -64,6 +64,14 @@ class CaptureTests(unittest.TestCase):
             self.assertTrue((destination / "run-01.log").exists())
             self.assertFalse((destination / "run-02.log").exists())
 
+    def test_governor_membership_is_separate_at_command_and_shipped_boundaries(self):
+        records = ("[commit-governor] sample=0 boundary=before-command present=false\n"
+                   "[commit-governor] sample=0 boundary=shipped-snapshot present=true entries=9\n")
+        sample = self.summarize([complete_run().replace("[PERF-688]", records + "[PERF-688]")])["samples"][0]
+        self.assertEqual(sample["metrics"]["commit-governor.before-command.present"], 0)
+        self.assertEqual(sample["metrics"]["commit-governor.shipped-snapshot.present"], 1)
+        self.assertEqual(sample["metrics"]["commit-governor.shipped-snapshot.entries"], 9)
+
     def test_link_profile_wires_separate_output_and_records_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "capture"

@@ -124,6 +124,15 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
 
         let condition = if sample == 0 { "first" } else { "repeated" };
         info!("[commit-baseline] sample_start={} condition={} candidates={} outbound_members={} prior_usages={}", sample, condition, subjects, subjects * 4, sample * subjects);
+        let governor_id = descriptor.holon_id().unwrap();
+        let governor_present =
+            runtime.session().descriptor_registry().get(&governor_id).unwrap().is_some();
+        info!(
+            "[commit-governor] sample={} boundary=before-command present={} governor={}",
+            sample,
+            governor_present,
+            descriptor.full_reference_id_string()
+        );
         let started = Instant::now();
         let response = runtime
             .execute_command(
@@ -136,6 +145,36 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
             .await
             .unwrap();
         let command_us = started.elapsed().as_micros();
+        // Inspect the frozen, actually shipped snapshot outside the measured command.
+        // These are transient memberships and exact IDs; this does not hydrate saved content.
+        let mut shipped_governor = false;
+        let mut shipped_entries = 0;
+        if let Some(root) = context.descriptor_registry_root().unwrap() {
+            let entries = root
+                .related_holons("PreparedDescriptors")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .clone();
+            shipped_entries = entries.len();
+            for entry in entries {
+                let targets = entry
+                    .related_holons("DescribedHolonType")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .clone();
+                assert_eq!(targets.len(), 1);
+                shipped_governor |= targets[0].holon_id().unwrap() == governor_id;
+            }
+        }
+        info!(
+            "[commit-governor] sample={} boundary=shipped-snapshot present={} entries={}",
+            sample, shipped_governor, shipped_entries
+        );
+
         let MapResult::Reference(response) = response else {
             panic!("Commit must return a response");
         };

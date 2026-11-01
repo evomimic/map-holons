@@ -376,6 +376,7 @@ pub fn commit(
     let mut preparation_operations: BTreeMap<(&str, &str), (i64, usize, u64, u64, u64, u64)> =
         BTreeMap::new();
     let mut preparation_operation_start = None;
+    let mut index_read_start = None;
     let mut preparation_visit_start = None;
     let mut preparation_types: BTreeMap<String, PreparationTypeMetrics> = BTreeMap::new();
     let mut observe = |event| {
@@ -428,6 +429,15 @@ pub fn commit(
                 starting,
             } => {
                 let current = crate::persistence_layer::smartlink::relationship_read_metrics();
+                if cfg!(feature = "commit-read-inventory") && operation == "NameIndexes" {
+                    if starting {
+                        index_read_start = logical_probe.as_ref().map(|probe| probe.snapshot());
+                    } else if let (Some(before), Some(probe)) =
+                        (index_read_start.take(), logical_probe.as_ref())
+                    {
+                        emit_index_read_inventory(before, probe.snapshot());
+                    }
+                }
                 if starting {
                     debug_assert!(
                         preparation_operation_start.is_none(),
@@ -1596,6 +1606,34 @@ fn require_local_target(
 
 fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKey, HolonError> {
     CanonicalKey::new(key.map_or_else(String::new, |value| value.0))
+}
+
+/// Attribute logical content reads to name-index construction in diagnostic builds only.
+fn emit_index_read_inventory(
+    before: Vec<holons_core::core_shared_objects::read_observations::CacheReadObservation>,
+    after: Vec<holons_core::core_shared_objects::read_observations::CacheReadObservation>,
+) {
+    let before: std::collections::HashMap<_, _> = before
+        .into_iter()
+        .map(|read| ((read.source, read.relationship, read.outcome), read.requests))
+        .collect();
+    for read in after {
+        let requests = read.requests
+            - before
+                .get(&(read.source.clone(), read.relationship.clone(), read.outcome))
+                .copied()
+                .unwrap_or(0);
+        if requests == 0 {
+            continue;
+        }
+        let source = read
+            .source
+            .to_canonical_bytes()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        info!("[commit-operation-read] operation=NameIndexes source={} relationship={} outcome={} requests={}", source, read.relationship.map(|name| name.to_string()).unwrap_or_else(|| "Node".into()), read.outcome, requests);
+    }
 }
 
 /// Emit one closed phase's evidence before another probe (including Pass 2) can start.

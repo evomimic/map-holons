@@ -77,6 +77,22 @@ impl CacheReadProbe {
             });
         Self(active)
     }
+    /// Copy current evidence without closing the scope or changing cache state.
+    pub fn snapshot(&self) -> Vec<CacheReadObservation> {
+        if !self.0 {
+            return Vec::new();
+        }
+        READS
+            .with(|reads| reads.borrow().clone().unwrap_or_default())
+            .into_iter()
+            .map(|((source, relationship, outcome), requests)| CacheReadObservation {
+                source,
+                relationship,
+                outcome,
+                requests,
+            })
+            .collect()
+    }
     /// Close the scope and return its grouped observations.
     pub fn finish(mut self) -> Vec<CacheReadObservation> {
         if !self.0 {
@@ -192,6 +208,22 @@ pub(crate) fn observe_attempt<T, E>(
 #[cfg(test)]
 mod derivation_tests {
     use super::*;
+    #[test]
+    fn cache_snapshots_preserve_outer_observations_for_operation_deltas() {
+        let source = HolonId::Local(core_types::LocalId(vec![1; 39]));
+        let probe = CacheReadProbe::start(true);
+        record(&source, None, "missing");
+        let before = probe.snapshot();
+        assert_eq!(before[0].requests, 1);
+        let nested = CacheReadProbe::start(true);
+        assert!(nested.snapshot().is_empty());
+        drop(nested);
+        record(&source, None, "missing");
+        let after = probe.snapshot();
+        assert_eq!(after[0].requests - before[0].requests, 1);
+        assert_eq!(probe.finish()[0].requests, 2);
+    }
+
     #[test]
     fn summary_preserves_content_membership_and_cache_outcome_accounting() {
         use type_names::ToRelationshipName;

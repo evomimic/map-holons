@@ -140,8 +140,7 @@ read-removal investigations only. Build the coordinator with `holons/commit-read
 (which enables profiling), for example:
 
 ```sh
-CARGO_TARGET_DIR=target cargo build --manifest-path happ/Cargo.toml -p holons_integrity -p holons --release --target wasm32-unknown-unknown --features holons/commit-read-inventory
-hc app pack happ/workdir --recursive
+npm run build:commit-inventory -w map-happ
 ```
 
 Keep those raw logs as inventory evidence. Never use that artifact for timed captures: the
@@ -188,3 +187,17 @@ The allowance affects only conductor initialization before bootstrap and timed C
 samples. Commit and bootstrap capture metadata record the allowance; preserve this setting
 when repeating comparable captures. Longer startup is not evidence that a measured Commit
 was slower. A timeout at the larger allowance remains a setup failure to investigate.
+
+
+Inventory builds also emit `commit-operation-read` records for `NameIndexes`, with exact source
+identity, relationship (or Node), cache outcome, and request count. These are deltas of existing
+phase probes, captured at operation boundaries. They require no extra content reads and attribute
+requests that phase-wide inventories alone cannot separate. Inventory timings include observation
+overhead and must not be used as latency measurements.
+
+Usage workloads emit exact governor presence at `before-command` and `shipped-snapshot` boundaries.
+The latter inspects only frozen transient memberships and exact IDs after the command timer stops.
+Pre-command membership alone is not proof of shipped membership: snapshot construction may cause
+reentrant preparation. The parser keeps the two boundaries separate. Registry population flags seed
+a Session once per run; they do not maintain a fixed population across samples. Compare observed
+snapshot entries, membership flags, lookup requests, and entries examined, not seeded case names.

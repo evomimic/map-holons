@@ -62,6 +62,9 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                     if fields.get("read_detail") != "disabled":
                         raise ValueError(f"Timed captures require read_detail=disabled in {log}")
                     sample["instrumentation"] = fields["version"]
+                if prefix == "commit-governor":
+                    prefix += "." + fields["boundary"]
+                    sample["metrics"][prefix + ".present"] = float(fields["present"] == "true")
                 if prefix == "commit-host-shipping":
                     sample["host_shipping"] = "measured-envelope"
                 if prefix == "commit-host-snapshot":
