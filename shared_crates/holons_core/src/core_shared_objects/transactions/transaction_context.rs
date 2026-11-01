@@ -16,12 +16,12 @@ use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
 
 use super::{
-    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess, HolonCloneModel,
-    HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
-    HolonStagingBehavior, HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery,
-    NurseryAccess, NurseryAccessInternal, SmartReference, TransactionContextHandle,
-    TransactionLifecycleState, TransientHolonBehavior, TransientHolonManager,
-    TransientManagerAccess, TransientReference, TxId,
+    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCloneModel, HolonPool, HolonReference,
+    HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager, HolonStagingBehavior,
+    HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery, NurseryAccess,
+    NurseryAccessInternal, SmartReference, TransactionContextHandle, TransactionLifecycleState,
+    TransientHolonBehavior, TransientHolonManager, TransientManagerAccess, TransientReference,
+    TxId,
 };
 use crate::core_shared_objects::SpaceReadHandle;
 
@@ -754,13 +754,6 @@ impl TransactionContext {
         Arc::clone(&self.nursery) as Arc<dyn NurseryAccess + Send + Sync>
     }
 
-    pub(crate) fn cache_access(
-        &self,
-        _key: crate::reference_layer::smart_reference::SmartRefAccessKey,
-    ) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.space_manager().get_cache_access()
-    }
-
     // Internal privileged accessors for reference resolution.
     fn transition_to_committed_if_needed(&self) -> Result<(), HolonError> {
         match self.transition_to_committed() {
@@ -964,12 +957,12 @@ mod tests {
     fn build_context_with_status(response_status: &'static str) -> Arc<TransactionContext> {
         let holon_service: Arc<dyn HolonServiceApi> =
             Arc::new(TestHolonService { response_status });
-        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+        let space_manager = HolonSpaceManager::new_with_managers(
             None,
             holon_service,
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
 
         space_manager
             .get_transaction_manager()

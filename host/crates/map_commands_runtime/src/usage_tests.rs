@@ -363,12 +363,12 @@ fn setup() -> (Arc<Store>, Arc<HolonSpaceManager>, Arc<TransactionContext>) {
         }
         store.edge(descriptor, "InstanceRelationships", &declarations);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         store.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     (store, space, context)
 }

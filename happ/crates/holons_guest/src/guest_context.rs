@@ -57,12 +57,12 @@ pub fn init_guest_context(
     // A missing local-space id is represented faithfully here. The dance adapter
     // rejects it for ordinary transactions and accepts it only for the
     // host-authorized bootstrap-provisioning transaction.
-    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let space_manager = HolonSpaceManager::new_with_managers(
         None,
         guest_holon_service,
         local_space_holon_id,
         ServiceRoutingPolicy::Combined,
-    ));
+    );
 
     // Step 3: Open the default transaction for this space.
     let transaction_context = if restricted_cache_read {

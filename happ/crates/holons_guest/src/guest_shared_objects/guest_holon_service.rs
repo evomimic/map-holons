@@ -937,12 +937,12 @@ mod lineage_evidence_tests {
     #[test]
     fn saved_key_evidence_allows_absent_space_only_during_bootstrap() -> Result<(), HolonError> {
         let service = Arc::new(GuestHolonService::new());
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             service.clone(),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let key = MapString("unclaimed".into());
         assert!(matches!(

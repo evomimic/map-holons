@@ -33,9 +33,8 @@ use crate::descriptors::accessor_helpers::{
     descriptor_label, related_members, require_single_related,
 };
 use crate::descriptors::{
-    classify_holon_type, equals_or_extends, require_holon_type, resolve_core_descriptor,
-    same_definition, Descriptor, HolonDescriptor, OperatorDescriptor, OperatorKind,
-    ResolvedOperator, ValueDescriptor,
+    classify_holon_type, equals_or_extends, require_holon_type, same_definition, Descriptor,
+    HolonDescriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -233,8 +232,8 @@ fn read_property_name(predicate: &HolonReference) -> Result<PropertyName, HolonE
 /// that operator resolution applies.
 fn require_string_subject(operator: &ResolvedOperator) -> Result<(), HolonError> {
     let subject_type = operator.subject_type();
-    let string_type = resolve_core_descriptor(
-        &subject_type.holon().resolution_context()?,
+    let string_type = crate::descriptors::resolve_core_descriptor_for(
+        subject_type.holon(),
         &value_type_descriptor_key(
             &CoreValueTypeName::MapStringValueType.as_value_name(),
             &CoreValueTypeName::StringValueType,

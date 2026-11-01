@@ -64,12 +64,12 @@ impl HolonServiceApi for NoStorage {
 }
 
 fn context() -> Arc<TransactionContext> {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(NoStorage),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
 }
 

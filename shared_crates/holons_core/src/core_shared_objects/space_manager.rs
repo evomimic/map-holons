@@ -40,35 +40,38 @@ impl HolonSpaceManager {
     /// - `local_holon_space`: An optional id of the local holon space.
     /// - `cache_routing_policy`: Specifies how cache requests should be routed.
     /// # Returns
-    /// A new instance of `HolonSpaceManager`
+    /// A shared Space whose cache can open private read transactions without a strong back-reference.
     pub fn new_with_managers(
         dance_initiator: Option<Arc<dyn DanceInitiator>>,
         holon_service: Arc<dyn HolonServiceApi>,
         local_holon_space: Option<HolonId>,
         cache_routing_policy: ServiceRoutingPolicy,
-    ) -> Self {
-        // Step 1: Initialize the Local Cache Manager inside Arc<RwLock>
-        let local_cache_manager =
-            Arc::new(RwLock::new(HolonCacheManager::new(Arc::clone(&holon_service))));
+    ) -> Arc<Self> {
+        Arc::new_cyclic(|space| {
+            // Step 1: Initialize the Local Cache Manager inside Arc<RwLock>
+            let local_cache_manager = Arc::new(RwLock::new(HolonCacheManager::new(
+                Arc::clone(&holon_service),
+                space.clone(),
+            )));
 
-        // Step 2: Create the CacheRequestRouter using thread-safe manager
-        let cache_request_router: Arc<dyn HolonCacheAccess> = Arc::new(CacheRequestRouter::new(
-            Arc::clone(&local_cache_manager),
-            cache_routing_policy,
-        ));
+            // Step 2: Create the CacheRequestRouter using thread-safe manager
+            let cache_request_router: Arc<dyn HolonCacheAccess> = Arc::new(
+                CacheRequestRouter::new(Arc::clone(&local_cache_manager), cache_routing_policy),
+            );
 
-        // Step 3: Initialize the per-space transaction manager.
-        let transaction_manager = Arc::new(TransactionManager::new());
+            // Step 3: Initialize the per-space transaction manager.
+            let transaction_manager = Arc::new(TransactionManager::new());
 
-        // Step 4: Initialize and return the HolonSpaceManager with thread-safe fields
-        Self {
-            descriptor_registry: RwLock::new(Weak::new()),
-            cache_request_router,
-            dance_initiator,
-            holon_service,
-            local_holon_space: RwLock::new(local_holon_space),
-            transaction_manager,
-        }
+            // Step 4: Initialize and return the HolonSpaceManager with thread-safe fields
+            Self {
+                descriptor_registry: RwLock::new(Weak::new()),
+                cache_request_router,
+                dance_initiator,
+                holon_service,
+                local_holon_space: RwLock::new(local_holon_space),
+                transaction_manager,
+            }
+        })
     }
 
     /// Attaches the agent session's derived-state capability without retaining its owner.

@@ -88,6 +88,17 @@ async fn cross_schema_dependency_gap_acceptance() {
     .await;
 }
 
+/// Isolates historical descriptor membership from preceding matrix scenarios.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused membership history diagnosis; covered by runtime_behavior_matrix"]
+async fn schema_successor_membership_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "schema_successor_membership",
+        test_cases: vec![commit_schema_successor_membership_fixture().unwrap()],
+    })
+    .await;
+}
+
 /// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
 /// so it shares this suite's bootstrap instead of paying for its own.
 ///

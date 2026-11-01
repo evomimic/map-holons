@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, RwLock};
 use tracing::debug;
 
+use super::holon_cache_manager::CacheReadTransactions;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{CollectionState, HolonCollection};
 use crate::reference_layer::HolonServiceApi;
@@ -100,9 +101,9 @@ impl RelationshipCache {
 
     /// Prepares requested saved memberships through the existing retention policy.
     /// A failed/incomplete provider response installs none of its new collections.
-    pub fn prepare(
+    pub(super) fn prepare(
         &self,
-        context: &Arc<TransactionContext>,
+        transactions: &CacheReadTransactions,
         service: &dyn HolonServiceApi,
         source: &HolonId,
         names: &[RelationshipName],
@@ -133,8 +134,16 @@ impl RelationshipCache {
         if missing.is_empty() {
             return Ok(());
         }
+        let context = transactions.open()?;
+        for name in &missing {
+            if !policies.contains_key(name) {
+                service.prepare_relationship_policy_internal(&context, source, name)?;
+            }
+        }
+        // Preparation may publish a new schema generation.
+        let generation = service.relationship_cache_generation();
         let fetched_at = service.relationship_cache_time_millis();
-        let mut fetched = service.fetch_relationship_set_internal(context, source, &missing)?;
+        let mut fetched = service.fetch_relationship_set_internal(&context, source, &missing)?;
         if fetched.len() != missing.len()
             || missing
                 .iter()
@@ -147,7 +156,7 @@ impl RelationshipCache {
             let collection = Arc::new(RwLock::new(seal_saved_collection(collection)?));
             let policy = match policies.get(&name) {
                 Some(policy) => Some(*policy),
-                None => service.relationship_cache_policy(context, source, &name)?,
+                None => service.relationship_cache_policy(&context, source, &name)?,
             };
             if let Some(policy) = policy {
                 prepared.push((
@@ -169,16 +178,18 @@ impl RelationshipCache {
     /// Classified cache hits, including known-empty collections, require no classification.
     /// On a membership miss, fetch and seal; resolve policy only if none is retained.
     /// No cache lock is held during policy resolution.
-    pub fn related_holons(
+    pub(super) fn related_holons(
         &self,
-        context: &Arc<TransactionContext>,
+        transactions: &CacheReadTransactions,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-        cache_policy: impl FnOnce() -> Result<Option<RelationshipCachePolicy>, HolonError>,
+        cache_policy: impl FnOnce(
+            &Arc<TransactionContext>,
+        ) -> Result<Option<RelationshipCachePolicy>, HolonError>,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.related_holons_with_hint(
-            context,
+            transactions,
             holon_service,
             source_holon_id,
             relationship_name,
@@ -188,20 +199,21 @@ impl RelationshipCache {
     }
 
     /// Applies caller freshness before returning a cached membership collection.
-    pub fn related_holons_with_hint(
+    pub(super) fn related_holons_with_hint(
         &self,
-        context: &Arc<TransactionContext>,
+        transactions: &CacheReadTransactions,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
         hint: RelationshipReadHint,
-        cache_policy: impl FnOnce() -> Result<Option<RelationshipCachePolicy>, HolonError>,
+        cache_policy: impl FnOnce(
+            &Arc<TransactionContext>,
+        ) -> Result<Option<RelationshipCachePolicy>, HolonError>,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         #[cfg(not(target_arch = "wasm32"))]
         let _profile = tracing::debug_span!(
             target: "map_profile", "relationship_read",
-            relationship = %relationship_name,
-            tx_id = context.tx_id().value()
+            relationship = %relationship_name
         )
         .entered();
         // Release the cache lock before classification: descriptor traversal
@@ -247,10 +259,19 @@ impl RelationshipCache {
         "Cache miss for source_holon_id: {:?}, relationship_name: {:?}. Fetching from HolonServiceApi.",
         source_holon_id, relationship_name
     );
+        let context = transactions.open()?;
+        if retained_policy.is_none() {
+            holon_service.prepare_relationship_policy_internal(
+                &context,
+                source_holon_id,
+                relationship_name,
+            )?;
+        }
+        let generation = holon_service.relationship_cache_generation();
         // Start TTL before the fetch, so transport time never extends freshness.
         let fetched_at = holon_service.relationship_cache_time_millis();
         let fetched_holons = holon_service.fetch_related_holons_internal(
-            context,
+            &context,
             &source_holon_id,
             relationship_name,
         )?;
@@ -266,7 +287,7 @@ impl RelationshipCache {
                 #[cfg(not(target_arch = "wasm32"))]
                 let _policy =
                     tracing::debug_span!(target: "map_profile", "relationship_policy").entered();
-                cache_policy()?
+                cache_policy(&context)?
             }
         };
         #[cfg(not(target_arch = "wasm32"))]

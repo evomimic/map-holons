@@ -204,12 +204,12 @@ pub(crate) fn build_context_with_read_errors(
         saved_relationships: relationships,
         read_errors,
     });
-    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let space_manager = HolonSpaceManager::new_with_managers(
         None,
         holon_service,
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
 
     space_manager
         .get_transaction_manager()

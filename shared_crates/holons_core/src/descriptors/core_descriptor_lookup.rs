@@ -1,4 +1,4 @@
-//! Transaction-scoped lookup of Core descriptor identities.
+//! Canonical Core descriptor lookup in saved or transaction-local scopes.
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::HolonReference;
@@ -27,6 +27,20 @@ pub fn resolve_core_descriptor(
     }
 }
 
+/// Resolves a canonical identity in the source's real scope. Transaction-local
+/// references keep staged-first semantics; saved references resolve saved state
+/// through their Space, using a bounded context only for the service lookup.
+pub(crate) fn resolve_core_descriptor_for(
+    source: &HolonReference,
+    key: &str,
+) -> Result<HolonReference, HolonError> {
+    if let Some(context) = source.transaction_context() {
+        resolve_core_descriptor(&context, key)
+    } else {
+        Ok(source.space_read_handle().get_saved_holon_by_key(&MapString(key.into()))?.into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,6 +53,69 @@ mod tests {
             .mutation()
             .stage_new_holon(new_test_holon(&context, "StringValueType.ValueType")?)?;
         assert_eq!(resolve_core_descriptor(&context, "StringValueType.ValueType")?, staged.into());
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use super::*;
+    use crate::core_shared_objects::holon::SavedHolon;
+    use crate::descriptors::test_support::{build_context_with_saved_holons, new_test_holon};
+    use crate::ReadableHolon;
+    use base_types::{BaseValue, MapInteger};
+    use core_types::{HolonId, LocalId, PropertyMap, PropertyName};
+
+    #[test]
+    fn saved_scope_ignores_staged_overrides_but_transaction_scope_preserves_them(
+    ) -> Result<(), HolonError> {
+        let key = "StringValueType.ValueType";
+        let id = HolonId::Local(LocalId(vec![37; 39]));
+        let saved = SavedHolon::new(
+            id.local_id().clone(),
+            PropertyMap::from([(PropertyName("Key".into()), BaseValue::StringValue(key.into()))]),
+            None,
+            MapInteger(1),
+        );
+        let context = build_context_with_saved_holons(vec![saved], Default::default());
+        let staged: HolonReference =
+            context.mutation().stage_new_holon(new_test_holon(&context, key)?)?.into();
+        let source: HolonReference =
+            crate::SmartReference::new_from_id(context.space_read_handle(), id.clone()).into();
+        assert_eq!(resolve_core_descriptor_for(&source, key)?.holon_id()?, id);
+        assert_eq!(resolve_core_descriptor_for(&staged, key)?, staged);
+        assert_eq!(resolve_core_descriptor(&context, key)?, staged);
+        assert!(context.is_open());
+        Ok(())
+    }
+
+    #[test]
+    fn saved_scope_preserves_missing_and_duplicate_key_errors() -> Result<(), HolonError> {
+        let key = "Duplicate.HolonType";
+        let saved = |value| {
+            SavedHolon::new(
+                LocalId(vec![value; 39]),
+                PropertyMap::from([(
+                    PropertyName("Key".into()),
+                    BaseValue::StringValue(key.into()),
+                )]),
+                None,
+                MapInteger(1),
+            )
+        };
+        let context = build_context_with_saved_holons(vec![saved(1), saved(2)], Default::default());
+        let source = HolonReference::smart_from_id(
+            context.space_read_handle(),
+            HolonId::Local(LocalId(vec![1; 39])),
+        );
+        assert!(matches!(
+            resolve_core_descriptor_for(&source, key),
+            Err(HolonError::DuplicateError(..))
+        ));
+        assert!(matches!(
+            resolve_core_descriptor_for(&source, "Missing.HolonType"),
+            Err(HolonError::HolonNotFound(_))
+        ));
         Ok(())
     }
 }

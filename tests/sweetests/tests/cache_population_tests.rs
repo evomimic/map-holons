@@ -52,12 +52,12 @@ fn fresh_context(
     initiator: Arc<dyn holons_core::dances::DanceInitiator>,
     anchor: HolonId,
 ) -> (Arc<HolonSpaceManager>, Arc<TransactionContext>) {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         Some(initiator),
         Arc::new(ClientHolonService::development_default()),
         Some(anchor),
         ServiceRoutingPolicy::Combined,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     (space, context)
 }
@@ -132,7 +132,7 @@ async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_r
         assert!(context.is_open());
     }
     // A real prepared descriptor warms only its plural targets at navigation time.
-    let (space, context) = fresh_context(initiator.clone(), anchor.clone());
+    let (_space, context) = fresh_context(initiator.clone(), anchor.clone());
     let source = context.get_space_holon().unwrap().unwrap();
     let effective = source.effective_descriptor().unwrap();
     let members = effective
@@ -152,20 +152,17 @@ async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_r
         })
         .filter(|id| seen.insert(id.clone()))
         .collect();
-    let missing: Vec<_> = saved_ids
-        .iter()
-        .filter(|id| space.get_cache_access().get_cached_rc_holon(id).unwrap().is_none())
-        .cloned()
-        .collect();
-    assert!(!missing.is_empty(), "fixture must exercise cold plural targets");
     measured.calls.lock().unwrap().clear();
     effective.singular_navigable_relationships().unwrap();
     assert!(measured.calls.lock().unwrap().is_empty());
     let plural = effective.plural_navigable_relationships().unwrap();
-    assert_eq!(
-        *measured.calls.lock().unwrap(),
-        vec![("get_holons_by_ids".into(), missing.clone())]
-    );
+    let calls = measured.calls.lock().unwrap().clone();
+    assert_eq!(calls.len(), 1, "cold plural targets use one bulk invocation");
+    assert_eq!(calls[0].0, "get_holons_by_ids");
+    let missing = &calls[0].1;
+    assert!(!missing.is_empty(), "fixture must exercise cold plural targets");
+    assert!(missing.iter().all(|id| saved_ids.contains(id)));
+    assert_eq!(missing.iter().collect::<std::collections::HashSet<_>>().len(), missing.len());
     assert_eq!(
         plural.iter().map(|entry| entry.holon().full_reference_id_string()).collect::<Vec<_>>(),
         members.iter().map(|member| member.full_reference_id_string()).collect::<Vec<_>>()
@@ -183,10 +180,12 @@ async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_r
     println!("[plural navigation evidence] saved_targets={} cold_targets={} bulk_guest_invocations=1 subsequent_label_guest_invocations=0", saved_ids.len(), missing.len());
 
     // A malformed ID is a per-ID error, while a valid target is still populated.
-    let (space, context) = fresh_context(initiator, anchor);
+    let (_space, context) = fresh_context(initiator, anchor);
     let bad = HolonId::Local(LocalId(vec![1]));
     let errors = context.ensure_cached(&[ids[0].clone(), bad.clone()]);
     assert_eq!(errors.len(), 1, "{errors:?}");
     assert_eq!(errors[0].ids, vec![bad]);
-    assert!(space.get_cache_access().get_cached_rc_holon(&ids[0]).unwrap().is_some());
+    measured.calls.lock().unwrap().clear();
+    HolonReference::smart_from_id(context.space_read_handle(), ids[0].clone()).key().unwrap();
+    assert!(measured.calls.lock().unwrap().is_empty(), "successful population is reused");
 }

@@ -38,10 +38,10 @@ pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<Tr
 pub fn init_client_runtime(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<HolonSpaceManager> {
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
-    Arc::new(HolonSpaceManager::new_with_managers(
+    HolonSpaceManager::new_with_managers(
         initiator,
         holon_service,
         None,
         ServiceRoutingPolicy::Combined,
-    ))
+    )
 }

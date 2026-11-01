@@ -245,12 +245,12 @@ fn select(
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let result = dahn_selection::select_visualizer(
         &context,
@@ -321,12 +321,12 @@ fn select_collection(
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let collection = map_commands_contract::DescribedHolonCollection {
         members: HolonCollection::from_parts(
@@ -378,12 +378,12 @@ fn slot_select_kind(
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let result = dahn_selection::select_visualizer(
         &context,
@@ -515,12 +515,12 @@ fn home_graph() -> Graph {
 }
 
 fn home_select(graph: Graph) -> Result<Option<dahn_selection::HomeDancerSelection>, HolonError> {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     dahn_selection::select_home_dancer(
         &context,
@@ -597,12 +597,12 @@ fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
 }
 fn candidate_request(context: &Arc<TransactionContext>) -> VisualizerSelectionRequest {
@@ -803,12 +803,12 @@ fn malformed_implementation_is_an_evaluation_error_not_a_rejection() {
     malformed.edge(1, "HasApplicableVisualizer", &[20]);
     malformed.edge(60, "ForMetaDesignSystem", &[61]);
     malformed.edge(20, "ImplementedBy", &[70, 71]);
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(malformed),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let malformed_context =
         space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     assert!(

@@ -21,37 +21,55 @@ pub struct EffectiveHolonDescriptor {
 impl EffectiveHolonDescriptor {
     /// Acquires the schema of this exact HolonType, rather than its describing meta-type.
     pub fn acquire(target: HolonReference) -> Result<Self, HolonError> {
-        let context = target.resolution_context()?;
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(prepared) = Self::find_prepared(&target)? {
+                return Ok(prepared);
+            }
+        }
+        let context = Self::construction_owner(&target)?;
         context.get_holon_service().acquire_effective_holon_descriptor_internal(&context, target)
     }
 
     /// Explicitly pulls a new selected view; this wrapper continues to describe its original snapshot.
     pub fn pull(&self) -> Result<Self, HolonError> {
         let target = self.described_holon_type()?.holon().clone();
-        let context = self.holon.resolution_context()?;
+        let context = Self::construction_owner(&self.holon)?;
         context.get_holon_service().pull_effective_holon_descriptor_internal(&context, target)
     }
 
     /// Reads this instance's Commit-local prepared contract without initiating construction.
     /// Persistence uses this after assessment, when all candidate decisions are already fixed.
     pub fn find_for_instance(source: &HolonReference) -> Result<Option<Self>, HolonError> {
-        let context = source.resolution_context()?;
+        let Some(context) = source.transaction_context() else {
+            return Ok(None);
+        };
         let descriptor = source.holon_descriptor()?;
         Self::find_in_context(&context, descriptor.holon())
     }
 
-    /// Reuses published products during structural assembly without starting construction.
+    /// Reads existing preparation from the reference's actual owner or Session.
+    /// Saved references have no transaction-local snapshot to inspect.
     pub(crate) fn find_prepared(target: &HolonReference) -> Result<Option<Self>, HolonError> {
-        let context = target.resolution_context()?;
-        if let Some(descriptor) = Self::find_in_context(&context, target)? {
-            return Ok(Some(descriptor));
+        if let Some(context) = target.transaction_context() {
+            return Self::find_in_context(&context, target);
         }
-        if matches!(target, HolonReference::Smart(_)) {
-            if let Some(registry) = context.descriptor_registry() {
-                return registry.get(&target.holon_id()?);
-            }
+        match target.space_read_handle().descriptor_registry() {
+            Some(registry) => registry.get(&target.holon_id()?),
+            None => Ok(None),
         }
-        Ok(None)
+    }
+
+    /// Construction requires an owner for its transient result graph. Reuse a real
+    /// transaction or the Session's retained owner before allocating a fallback.
+    fn construction_owner(target: &HolonReference) -> Result<Arc<TransactionContext>, HolonError> {
+        if let Some(context) = target.transaction_context() {
+            return Ok(context);
+        }
+        let space = target.space_read_handle();
+        if let Some(registry) = space.descriptor_registry() {
+            return registry.context();
+        }
+        space.open_descriptor_construction_context()
     }
 
     /// Finds saved entries in a Commit-local snapshot without following Extends.
@@ -289,13 +307,8 @@ impl EffectiveHolonDescriptor {
         if ids.is_empty() {
             return;
         }
-        match self.holon.resolution_context() {
-            Ok(context) => {
-                for error in context.ensure_cached(&ids) {
-                    tracing::warn!(?error, "Unable to warm saved navigation targets");
-                }
-            }
-            Err(error) => tracing::warn!(?error, "Unable to resolve navigation warming context"),
+        for error in self.holon.space_read_handle().ensure_cached(&ids) {
+            tracing::warn!(?error, "Unable to warm saved navigation targets");
         }
     }
 
@@ -343,7 +356,7 @@ impl EffectiveHolonDescriptor {
         if contributions.is_empty() {
             return Ok(());
         }
-        let context = self.holon.resolution_context()?;
+        let context = self.holon.transaction_context();
         let mut grouped = std::collections::HashMap::<String, Vec<(i64, HolonReference)>>::new();
         for record in contributions {
             record.validate_provenance()?;
@@ -363,14 +376,16 @@ impl EffectiveHolonDescriptor {
             }
             let direct = targets(&self.holon, result)?
                 .into_iter()
-                .map(|member| DefinitionIdentity::for_reference(&member, &context))
+                .map(|member| DefinitionIdentity::for_optional_context(&member, context.as_ref()))
                 .collect::<Result<Vec<_>, _>>()?;
             if records.is_empty() && direct.is_empty() {
                 continue;
             }
             let expected = records
                 .into_iter()
-                .map(|(_, member)| DefinitionIdentity::for_reference(&member, &context))
+                .map(|(_, member)| {
+                    DefinitionIdentity::for_optional_context(&member, context.as_ref())
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             let mut actual_counts = std::collections::HashMap::new();
             let mut expected_counts = std::collections::HashMap::new();
@@ -430,9 +445,8 @@ impl EffectiveSchemaContribution {
         )?;
         // Collection authority is independent of relationship direction. Only the
         // seven canonical collections used by construction may identify origins.
-        let context = reference.resolution_context()?;
         for (_, _, key, _, _) in collections() {
-            match resolve_core_descriptor(&context, &key.0) {
+            match resolve_core_descriptor_for(&reference, &key.0) {
                 Ok(expected) if same_definition(&reference, &expected)? => {
                     return Ok(RelationshipDescriptor::from_holon(reference));
                 }
@@ -468,8 +482,10 @@ impl EffectiveSchemaContribution {
             KeyRuleDescriptor::from_holon(contribution.member.clone())
                 .require_concrete_strategy()?;
         } else {
-            let context = self.holon.resolution_context()?;
-            if !has_type(&contribution.member, &resolve_core_descriptor(&context, &category.0)?)? {
+            if !has_type(
+                &contribution.member,
+                &resolve_core_descriptor_for(&self.holon, &category.0)?,
+            )? {
                 return Err(HolonError::InvalidParameter(
                     "Contribution member has the wrong configured type".into(),
                 ));
@@ -662,7 +678,7 @@ pub(super) fn collections(
 }
 
 fn require_descriptor_category(target: &HolonReference, key: &str) -> Result<(), HolonError> {
-    let anchor = resolve_core_descriptor(&target.resolution_context()?, key)?;
+    let anchor = resolve_core_descriptor_for(target, key)?;
     if equals_or_extends(target, &anchor)? {
         return Ok(());
     }

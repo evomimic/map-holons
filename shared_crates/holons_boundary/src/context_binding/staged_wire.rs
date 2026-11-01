@@ -163,12 +163,12 @@ mod tests {
     }
 
     fn test_space() -> Arc<HolonSpaceManager> {
-        Arc::new(HolonSpaceManager::new_with_managers(
+        HolonSpaceManager::new_with_managers(
             None,
             Arc::new(UnusedHolonService),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ))
+        )
     }
 
     fn graph_only_update_with_touched_collection() -> Result<StagedHolon, HolonError> {

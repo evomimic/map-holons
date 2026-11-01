@@ -380,4 +380,27 @@ mod tests {
             .is_some());
         Ok(())
     }
+
+    #[test]
+    fn saved_descriptor_hits_do_not_open_resolution_transactions() -> Result<(), HolonError> {
+        let (registry, caller, descriptor, target) = fixture()?;
+        registry.publish(target.clone(), &descriptor)?;
+        let space = caller.space_manager();
+        let before = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let saved = HolonReference::smart_from_id(caller.space_read_handle(), target);
+        for _ in 0..8 {
+            let prepared =
+                EffectiveHolonDescriptor::find_prepared(&saved)?.expect("published descriptor");
+            assert_eq!(prepared.holon(), descriptor.holon());
+            assert_eq!(
+                EffectiveHolonDescriptor::acquire(saved.clone())?.holon(),
+                descriptor.holon()
+            );
+            assert!(EffectiveHolonDescriptor::find_for_instance(&saved)?.is_none());
+        }
+        let after = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        assert_eq!(after.tx_id().value(), before.tx_id().value() + 1);
+        assert!(caller.is_open());
+        Ok(())
+    }
 }

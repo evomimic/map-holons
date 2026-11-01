@@ -14,6 +14,10 @@ struct CountingService {
     hydration_response:
         RwLock<Option<Result<Vec<super::super::cache_population::SavedHolonFetch>, HolonError>>>,
     hydration_barriers: RwLock<Option<(Arc<std::sync::Barrier>, Arc<std::sync::Barrier>)>>,
+    read_contexts: RwLock<Vec<Weak<TransactionContext>>>,
+    exercise_context_lifetime: std::sync::atomic::AtomicBool,
+    fail_reads: std::sync::atomic::AtomicBool,
+    preparation_calls: AtomicUsize,
     reuse_frozen: bool,
     edges: RwLock<HashMap<(u8, String), Vec<u8>>>,
     calls: RwLock<HashMap<(u8, String), usize>>,
@@ -51,6 +55,10 @@ impl CountingService {
             hydration_requests: RwLock::new(Vec::new()),
             hydration_response: RwLock::new(None),
             hydration_barriers: RwLock::new(None),
+            read_contexts: Default::default(),
+            exercise_context_lifetime: Default::default(),
+            fail_reads: Default::default(),
+            preparation_calls: Default::default(),
             reuse_frozen,
             edges: RwLock::new(edges),
             calls: RwLock::new(HashMap::new()),
@@ -61,6 +69,26 @@ impl CountingService {
             policy_calls: AtomicUsize::new(0),
             clock: AtomicU64::new(0),
         }
+    }
+    fn observe_read_context(&self, context: &Arc<TransactionContext>) -> Result<(), HolonError> {
+        if !self.exercise_context_lifetime.load(Ordering::Relaxed) {
+            return Ok(());
+        }
+        assert!(context.is_restricted_cache_read());
+        assert!(context
+            .space_manager()
+            .get_transaction_manager()
+            .get_transaction(&context.tx_id())?
+            .is_none());
+        self.read_contexts.write().unwrap().push(Arc::downgrade(context));
+        // Mimic transported transient graphs retaining references to their owner.
+        // Dropping the caller's Arc alone cannot reclaim this pool/context cycle.
+        let mut envelope = context.mutation().new_holon(None)?;
+        envelope.add_related_references("Temporary", vec![envelope.clone().into()])?;
+        if self.fail_reads.load(Ordering::Relaxed) {
+            return Err(HolonError::ConductorError("fetch failed".into()));
+        }
+        Ok(())
     }
     fn count(&self, name: &str) -> usize {
         *self.calls.read().unwrap().get(&(1, name.into())).unwrap_or(&0)
@@ -75,6 +103,33 @@ impl CountingService {
 }
 
 impl HolonServiceApi for CountingService {
+    fn get_saved_holon_by_key_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<crate::SmartReference, HolonError> {
+        use type_names::CoreHolonTypeName;
+        self.observe_read_context(context)?;
+        if *key
+            == CoreHolonTypeName::EffectiveHolonDescriptorRegistry
+                .descriptor_key(&CoreHolonTypeName::HolonType)
+        {
+            return Ok(crate::SmartReference::new_from_id(
+                context.space_read_handle(),
+                HolonId::Local(LocalId(vec![13])),
+            ));
+        }
+        Err(HolonError::NotImplemented("unexpected saved-key lookup".into()))
+    }
+    fn prepare_relationship_policy_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _source: &HolonId,
+        _name: &RelationshipName,
+    ) -> Result<(), HolonError> {
+        self.preparation_calls.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    }
     fn relationship_cache_time_millis(&self) -> Option<u64> {
         Some(self.clock.load(Ordering::Relaxed))
     }
@@ -119,6 +174,7 @@ impl HolonServiceApi for CountingService {
         context: &Arc<TransactionContext>,
         ids: &[HolonId],
     ) -> Result<Vec<super::super::cache_population::SavedHolonFetch>, HolonError> {
+        self.observe_read_context(context)?;
         assert!(context.is_restricted_cache_read());
         self.hydration_requests.write().unwrap().push(ids.to_vec());
         let barriers = self.hydration_barriers.read().unwrap().clone();
@@ -140,9 +196,10 @@ impl HolonServiceApi for CountingService {
     }
     fn fetch_holon_internal(
         &self,
-        _: &Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        self.observe_read_context(context)?;
         self.content_reads.fetch_add(1, Ordering::Relaxed);
         let number = id.local_id().0[0];
         let name = match number {
@@ -173,6 +230,7 @@ impl HolonServiceApi for CountingService {
         id: &HolonId,
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        self.observe_read_context(context)?;
         let key = (id.local_id().0[0], name.to_string());
         *self.calls.write().unwrap().entry(key.clone()).or_default() += 1;
         let targets = self.edges.read().unwrap().get(&key).cloned().unwrap_or_default();
@@ -224,12 +282,12 @@ fn smart_reference_access_checks_do_not_fetch_saved_content() -> Result<(), Holo
     use crate::core_shared_objects::holon::state::AccessType;
 
     let service = Arc::new(CountingService::new(true));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     // Exercise both bare saved identities and references carrying smart properties.
     let references = [
@@ -260,12 +318,12 @@ fn smart_reference_access_checks_do_not_fetch_saved_content() -> Result<(), Holo
 #[test]
 fn smart_property_hits_avoid_fetching_and_misses_resolve_saved_content() -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(true));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let reference = CountingService::reference(&context, 1);
     assert_eq!(reference.property_value("Key")?, Some(BaseValue::StringValue("node-1".into())));
@@ -279,17 +337,69 @@ fn smart_property_hits_avoid_fetching_and_misses_resolve_saved_content() -> Resu
 }
 
 #[test]
+fn all_relationship_reads_preserve_declared_content_outside_prepared_navigation(
+) -> Result<(), HolonError> {
+    use crate::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry;
+    use crate::descriptors::{EffectiveHolonDescriptor, PreparedSchema};
+    use crate::WritableHolon;
+
+    let service = Arc::new(CountingService::new(true));
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        service,
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let registry = Arc::new(EffectiveHolonDescriptorRegistry::new(&space));
+    space.attach_descriptor_registry(&registry);
+    let owner = registry.context()?;
+    let reference = |id| CountingService::reference(&owner, id);
+    let mut prepared = owner.mutation().new_holon(None)?;
+    prepared.add_related_references("DescribedHolonType", vec![reference(2)])?;
+    prepared.add_related_references(
+        "EffectiveInstanceRelationships",
+        vec![reference(5), reference(6), reference(12)],
+    )?;
+    // Presentation navigation is deliberately narrower than the authored contract.
+    prepared.add_related_references("SingularNavigableRelationships", vec![reference(6)])?;
+    prepared.with_property_value(
+        "PreparedSchema",
+        serde_json::to_string(&PreparedSchema::default()).unwrap(),
+    )?;
+    registry.publish(
+        HolonId::Local(LocalId(vec![2])),
+        &EffectiveHolonDescriptor::from_constructed_holon(prepared.into()),
+    )?;
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let source = CountingService::reference(&context, 1);
+    let available =
+        crate::reference_layer::available_relationships::available_relationships(&source)?;
+    assert_eq!(available.len(), 1);
+    assert_eq!(available[0].descriptor.base_relationship_name()?.to_string(), "Moving");
+
+    let all = source.all_related_holons()?;
+    let frozen = all
+        .get_collection_for_relationship(&"Frozen".to_relationship_name())
+        .expect("all reads must retain declared content omitted from presentation navigation");
+    assert_eq!(
+        frozen.read().unwrap().get_members(),
+        &vec![CountingService::reference(&context, 10)]
+    );
+    Ok(())
+}
+
+#[test]
 fn named_and_all_reads_share_definitional_cache_and_keep_mutable_membership_fresh(
 ) -> Result<(), HolonError> {
     {
         for named_first in [true, false] {
             let service = Arc::new(CountingService::new(true));
-            let space = Arc::new(HolonSpaceManager::new_with_managers(
+            let space = HolonSpaceManager::new_with_managers(
                 None,
                 service.clone(),
                 None,
                 ServiceRoutingPolicy::BlockExternal,
-            ));
+            );
             let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
             let source = CountingService::reference(&context, 1);
             let frozen_before =
@@ -362,25 +472,30 @@ fn cached_membership_bypasses_classification() -> Result<(), HolonError> {
             if empty {
                 service.edges.write().unwrap().insert((1, "Frozen".into()), vec![]);
             }
-            let space = Arc::new(HolonSpaceManager::new_with_managers(
+            let space = HolonSpaceManager::new_with_managers(
                 None,
                 service.clone(),
                 None,
                 ServiceRoutingPolicy::BlockExternal,
-            ));
+            );
             let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
-            let manager = HolonCacheManager::new(service.clone());
+            let manager =
+                HolonCacheManager::new(service.clone(), Arc::downgrade(&context.space_manager()));
             let id = HolonId::Local(LocalId(vec![1]));
             let name = "Frozen".to_relationship_name();
             let probe = crate::core_shared_objects::read_observations::CacheReadProbe::start(true);
-            let first = manager.get_related_holons(&context, &id, &name)?;
+            let first = manager.get_related_holons(&id, &name)?;
             let before = service.calls.read().unwrap().clone();
-            let again = manager.get_related_holons(&context, &id, &name)?;
+            let again = manager.get_related_holons(&id, &name)?;
             assert!(Arc::ptr_eq(&first, &again));
             let cache = manager.relationship_cache.read().unwrap().clone();
-            let hit = cache.related_holons(&context, service.as_ref(), &id, &name, || {
-                panic!("cache hits must not resolve descriptors")
-            })?;
+            let hit = cache.related_holons(
+                &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+                service.as_ref(),
+                &id,
+                &name,
+                |_| panic!("cache hits must not resolve descriptors"),
+            )?;
             assert!(Arc::ptr_eq(&first, &hit));
             assert_eq!(*service.calls.read().unwrap(), before);
             let observations = probe.finish();
@@ -397,10 +512,8 @@ fn cached_membership_bypasses_classification() -> Result<(), HolonError> {
             };
             assert_eq!(requests("missing"), 1);
             assert_eq!(requests("hit"), 2, "known-empty sets also produce cache hits");
-            let moving =
-                manager.get_related_holons(&context, &id, &"Moving".to_relationship_name())?;
-            let again =
-                manager.get_related_holons(&context, &id, &"Moving".to_relationship_name())?;
+            let moving = manager.get_related_holons(&id, &"Moving".to_relationship_name())?;
+            let again = manager.get_related_holons(&id, &"Moving".to_relationship_name())?;
             assert!(!Arc::ptr_eq(&moving, &again));
         }
     }
@@ -411,25 +524,37 @@ fn cached_membership_bypasses_classification() -> Result<(), HolonError> {
 fn miss_fetches_before_classification_and_failed_classification_is_not_cached(
 ) -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(false));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let cache = RelationshipCache::new();
     let id = HolonId::Local(LocalId(vec![1]));
     let name = "Frozen".to_relationship_name();
-    let result = cache.related_holons(&context, service.as_ref(), &id, &name, || {
-        assert_eq!(service.count("Frozen"), 1);
-        Err(HolonError::InvalidState("classification failed".into()))
-    });
+    let result = cache.related_holons(
+        &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+        service.as_ref(),
+        &id,
+        &name,
+        |_| {
+            assert_eq!(service.count("Frozen"), 1);
+            Err(HolonError::InvalidState("classification failed".into()))
+        },
+    );
     assert!(matches!(result, Err(HolonError::InvalidState(_))));
-    cache.related_holons(&context, service.as_ref(), &id, &name, || {
-        assert_eq!(service.count("Frozen"), 2);
-        Ok(Some(RelationshipCachePolicy::Reuse))
-    })?;
+    cache.related_holons(
+        &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+        service.as_ref(),
+        &id,
+        &name,
+        |_| {
+            assert_eq!(service.count("Frozen"), 2);
+            Ok(Some(RelationshipCachePolicy::Reuse))
+        },
+    )?;
     Ok(())
 }
 
@@ -503,12 +628,12 @@ impl HolonServiceApi for GuestLikeService {
 #[test]
 fn guest_kernel_policy_bootstraps_without_descriptor_traversal() -> Result<(), HolonError> {
     let service = Arc::new(GuestLikeService(CountingService::new(false)));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let source = CountingService::reference(&context, 1);
     for name in ["DescribedBy", "Extends", "InstanceRelationships"] {
@@ -528,12 +653,12 @@ fn guest_kernel_policy_bootstraps_without_descriptor_traversal() -> Result<(), H
 fn bounded_cache_expires_and_fresh_reads_replace_even_empty_membership() -> Result<(), HolonError> {
     use crate::RelationshipReadHint;
     let service = Arc::new(CountingService::new(false));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let cache = RelationshipCache::new();
     let id = HolonId::Local(LocalId(vec![1]));
@@ -541,10 +666,17 @@ fn bounded_cache_expires_and_fresh_reads_replace_even_empty_membership() -> Resu
     service.edges.write().unwrap().insert((1, "Moving".into()), vec![]);
     let policy_calls = AtomicUsize::new(0);
     let read = |hint| {
-        cache.related_holons_with_hint(&context, service.as_ref(), &id, &name, hint, || {
-            policy_calls.fetch_add(1, Ordering::Relaxed);
-            Ok(Some(RelationshipCachePolicy::MaxAgeMillis(30_000)))
-        })
+        cache.related_holons_with_hint(
+            &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+            service.as_ref(),
+            &id,
+            &name,
+            hint,
+            |_| {
+                policy_calls.fetch_add(1, Ordering::Relaxed);
+                Ok(Some(RelationshipCachePolicy::MaxAgeMillis(30_000)))
+            },
+        )
     };
     let empty = read(RelationshipReadHint::SchemaDefault)?;
     service.edges.write().unwrap().insert((1, "Moving".into()), vec![11]);
@@ -580,12 +712,12 @@ fn guest_default_reuses_declared_definitional_membership() -> Result<(), HolonEr
             .write()
             .unwrap()
             .insert((20, "InstanceRelationships".into()), vec![5, 6, 12]);
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             service.clone(),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let source = CountingService::reference(&context, 1);
         let first = source.related_holons("Frozen")?;
@@ -612,12 +744,12 @@ fn guest_default_reuses_declared_definitional_membership() -> Result<(), HolonEr
 #[test]
 fn one_shot_guest_relationship_read_does_not_fetch_a_descriptor_graph() -> Result<(), HolonError> {
     let service = Arc::new(GuestLikeService(CountingService::new(false)));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     CountingService::reference(&context, 1).related_holons("Frozen")?;
     assert_eq!(
@@ -633,12 +765,12 @@ fn guest_reuses_all_membership_without_descriptors_and_honors_explicit_fresh(
 ) -> Result<(), HolonError> {
     for name in ["Moving", "Incoming", "Unknown"] {
         let service = Arc::new(GuestLikeService(CountingService::new(false)));
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             service.clone(),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let source = CountingService::reference(&context, 1);
         let first = source.related_holons(name)?;
@@ -660,12 +792,12 @@ fn guest_reuses_all_membership_without_descriptors_and_honors_explicit_fresh(
         assert_eq!(service.0.count(name), 2, "explicit fresh fetches again");
         service.0.edges.write().unwrap().insert((1, name.into()), vec![]);
         assert!(Arc::ptr_eq(&second, &source.related_holons(name)?));
-        let next_request = Arc::new(HolonSpaceManager::new_with_managers(
+        let next_request = HolonSpaceManager::new_with_managers(
             None,
             service.clone(),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let next_context =
             next_request.get_transaction_manager().open_public_transaction(next_request.clone())?;
         assert!(CountingService::reference(&next_context, 1)
@@ -683,12 +815,12 @@ fn guest_reuses_all_membership_without_descriptors_and_honors_explicit_fresh(
 fn requested_memberships_reuse_empty_results_without_unrelated_reads_or_hydration(
 ) -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(true));
-    let manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let manager = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
     let reference = CountingService::reference(&context, 1);
     let HolonReference::Smart(saved) = &reference else { unreachable!() };
@@ -706,12 +838,12 @@ fn requested_memberships_reuse_empty_results_without_unrelated_reads_or_hydratio
 #[test]
 fn incomplete_requested_set_does_not_install_partial_memberships() -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(true));
-    let manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let manager = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
     let HolonReference::Smart(saved) = CountingService::reference(&context, 1) else {
         unreachable!()
@@ -729,45 +861,52 @@ fn incomplete_requested_set_does_not_install_partial_memberships() -> Result<(),
 #[test]
 fn retained_content_survives_eviction_pressure_until_last_lease_drops() -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(true));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
-    let mut manager = HolonCacheManager::new(service.clone());
+    let mut manager =
+        HolonCacheManager::new(service.clone(), Arc::downgrade(&context.space_manager()));
     manager.cache = HolonCache::new_with_capacity(1);
     let id = HolonId::Local(LocalId(vec![1]));
-    let first = manager.retain_holon(&context, &id)?;
-    let second = manager.retain_holon(&context, &id)?;
+    let first = manager.retain_holon(&id)?;
+    let second = manager.retain_holon(&id)?;
     manager.cache.clear();
     drop(first);
-    assert!(manager.get_cached_rc_holon(&id)?.is_some());
+    assert!(manager.cache.get(&id).is_some());
     drop(second);
-    assert!(manager.get_cached_rc_holon(&id)?.is_none());
+    assert!(manager.cache.get(&id).is_none());
     Ok(())
 }
 
 #[test]
 fn fresh_membership_retains_its_policy_without_retaining_members() -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(false));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let cache = RelationshipCache::new();
     let id = HolonId::Local(LocalId(vec![1]));
     let name = "Moving".to_relationship_name();
     let policy_calls = AtomicUsize::new(0);
     for _ in 0..3 {
-        cache.related_holons(&context, service.as_ref(), &id, &name, || {
-            policy_calls.fetch_add(1, Ordering::Relaxed);
-            Ok(Some(RelationshipCachePolicy::Fresh))
-        })?;
+        cache.related_holons(
+            &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+            service.as_ref(),
+            &id,
+            &name,
+            |_| {
+                policy_calls.fetch_add(1, Ordering::Relaxed);
+                Ok(Some(RelationshipCachePolicy::Fresh))
+            },
+        )?;
     }
     assert_eq!(service.count("Moving"), 3);
     assert_eq!(policy_calls.load(Ordering::Relaxed), 1);
@@ -777,23 +916,37 @@ fn fresh_membership_retains_its_policy_without_retaining_members() -> Result<(),
 #[test]
 fn unresolved_policy_is_retried_until_authoritative_fresh_is_retained() -> Result<(), HolonError> {
     let service = Arc::new(CountingService::new(false));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let cache = RelationshipCache::new();
     let id = HolonId::Local(LocalId(vec![1]));
     let name = "Moving".to_relationship_name();
-    cache.related_holons(&context, service.as_ref(), &id, &name, || Ok(None))?;
-    cache.related_holons(&context, service.as_ref(), &id, &name, || {
-        Ok(Some(RelationshipCachePolicy::Fresh))
-    })?;
-    cache.related_holons(&context, service.as_ref(), &id, &name, || {
-        panic!("resolved Fresh must survive membership refresh")
-    })?;
+    cache.related_holons(
+        &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+        service.as_ref(),
+        &id,
+        &name,
+        |_| Ok(None),
+    )?;
+    cache.related_holons(
+        &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+        service.as_ref(),
+        &id,
+        &name,
+        |_| Ok(Some(RelationshipCachePolicy::Fresh)),
+    )?;
+    cache.related_holons(
+        &CacheReadTransactions { space: Arc::downgrade(&context.space_manager()) },
+        service.as_ref(),
+        &id,
+        &name,
+        |_| panic!("resolved Fresh must survive membership refresh"),
+    )?;
     assert_eq!(service.count("Moving"), 3);
     Ok(())
 }
@@ -803,12 +956,12 @@ fn batch_and_named_reads_share_policies_across_expiration_and_public_transaction
 ) -> Result<(), HolonError> {
     use crate::RelationshipReadHint;
     let service = Arc::new(CountingService::new(false));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let first_context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let first = CountingService::reference(&first_context, 1);
     let HolonReference::Smart(saved) = &first else { unreachable!() };
@@ -831,3 +984,114 @@ fn batch_and_named_reads_share_policies_across_expiration_and_public_transaction
 }
 
 mod population;
+
+#[test]
+fn private_fetch_contexts_are_reclaimed_on_success_and_failure() -> Result<(), HolonError> {
+    for fail in [false, true] {
+        let service = Arc::new(CountingService::new(true));
+        service.exercise_context_lifetime.store(true, Ordering::Relaxed);
+        service.fail_reads.store(fail, Ordering::Relaxed);
+        let space = HolonSpaceManager::new_with_managers(
+            None,
+            service.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        );
+        let manager = HolonCacheManager::new(service.clone(), Arc::downgrade(&space));
+        let id = HolonId::Local(LocalId(vec![1]));
+        for _ in 0..4 {
+            assert_eq!(manager.get_rc_holon(&id).is_err(), fail);
+            assert_eq!(
+                manager.get_related_holons(&id, &"Frozen".to_relationship_name()).is_err(),
+                fail
+            );
+            assert_eq!(
+                manager.prepare_relationships(&id, &["Frozen".to_relationship_name()]).is_err(),
+                fail
+            );
+            assert_eq!(
+                !manager.ensure_cached(&[HolonId::Local(LocalId(vec![10]))]).is_empty(),
+                fail
+            );
+            let contexts = service.read_contexts.read().unwrap();
+            assert!(!contexts.is_empty());
+            assert!(
+                contexts.iter().all(|context| context.upgrade().is_none()),
+                "private context survived completed fetch"
+            );
+        }
+        // Successful saved content remains usable after the fetch owner is gone.
+        if !fail {
+            assert!(manager
+                .get_rc_holon(&id)?
+                .read()
+                .unwrap()
+                .property_map_clone()
+                .contains_key(&PropertyName("TypeName".into())));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn saved_cache_hits_create_no_transactions_or_policy_preparation() -> Result<(), HolonError> {
+    let service = Arc::new(CountingService::new(true));
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let public = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let saved = crate::SmartReference::new_from_id(
+        public.space_read_handle(),
+        HolonId::Local(LocalId(vec![1])),
+    );
+    saved.property_value("TypeName")?;
+    saved.prepare_relationships(&["Frozen".to_relationship_name()])?;
+    let before = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let preparations = service.preparation_calls.load(Ordering::Relaxed);
+    let reads = service.content_reads.load(Ordering::Relaxed);
+    for _ in 0..8 {
+        saved.property_value("TypeName")?;
+        saved.related_holons("Frozen")?;
+        saved.prepare_relationships(&["Frozen".to_relationship_name()])?;
+        let _retained = saved.retain_content()?;
+        assert!(public.ensure_cached(&[saved.holon_id()]).is_empty());
+    }
+    let after = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    assert_eq!(after.tx_id().value(), before.tx_id().value() + 1);
+    assert_eq!(service.preparation_calls.load(Ordering::Relaxed), preparations);
+    assert_eq!(service.content_reads.load(Ordering::Relaxed), reads);
+    assert!(public.is_open());
+    Ok(())
+}
+
+#[test]
+fn canonical_saved_key_lookup_disposes_temporary_execution_state() -> Result<(), HolonError> {
+    use crate::descriptors::resolve_core_descriptor_for;
+    use type_names::CoreHolonTypeName;
+    for fail in [false, true] {
+        let service = Arc::new(CountingService::new(true));
+        service.exercise_context_lifetime.store(true, Ordering::Relaxed);
+        service.fail_reads.store(fail, Ordering::Relaxed);
+        let space = HolonSpaceManager::new_with_managers(
+            None,
+            service.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        );
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let source = CountingService::reference(&context, 1);
+        let key = CoreHolonTypeName::EffectiveHolonDescriptorRegistry
+            .descriptor_key(&CoreHolonTypeName::HolonType);
+        let result = resolve_core_descriptor_for(&source, &key.0);
+        assert_eq!(result.is_err(), fail);
+        assert!(service.read_contexts.read().unwrap().iter().all(|weak| weak.upgrade().is_none()));
+        if let Ok(saved) = result {
+            assert_eq!(saved.holon_id()?, HolonId::Local(LocalId(vec![13])));
+        }
+        assert!(context.is_open());
+    }
+    Ok(())
+}

@@ -112,14 +112,15 @@ impl HolonServiceApi for CountingService {
 fn fixture(
     service: &Arc<CountingService>,
 ) -> Result<(Arc<TransactionContext>, HolonCacheManager), HolonError> {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
-    Ok((context, HolonCacheManager::new(service.clone())))
+    let cache = HolonCacheManager::new(service.clone(), Arc::downgrade(&space));
+    Ok((context, cache))
 }
 
 #[test]
@@ -134,11 +135,11 @@ fn first_and_expired_reads_resolve_policy_locally_and_retain_empty_membership(
         service.prepare(1, 2, "Incoming", policy);
         let (context, cache) = fixture(&service)?;
         let name = "Incoming".to_relationship_name();
-        let first = cache.get_related_holons(&context, &id(1), &name)?;
-        let again = cache.get_related_holons(&context, &id(1), &name)?;
+        let first = cache.get_related_holons(&id(1), &name)?;
+        let again = cache.get_related_holons(&id(1), &name)?;
         assert_eq!(Arc::ptr_eq(&first, &again), policy != RelationshipCachePolicy::Fresh);
         service.now.store(200, Ordering::Relaxed);
-        let expired = cache.get_related_holons(&context, &id(1), &name)?;
+        let expired = cache.get_related_holons(&id(1), &name)?;
         assert_eq!(Arc::ptr_eq(&first, &expired), policy == RelationshipCachePolicy::Reuse);
         assert_eq!(service.policy_calls.load(Ordering::Relaxed), 1);
         assert_eq!(service.metadata_reads.load(Ordering::Relaxed), 0);
@@ -152,15 +153,14 @@ fn fresh_hint_bypasses_membership_without_recomputing_policy() -> Result<(), Hol
     service.prepare(1, 2, "Incoming", RelationshipCachePolicy::MaxAgeMillis(100));
     let (context, cache) = fixture(&service)?;
     let name = "Incoming".to_relationship_name();
-    let first = cache.get_related_holons(&context, &id(1), &name)?;
+    let first = cache.get_related_holons(&id(1), &name)?;
     let fresh = cache.get_related_holons_with_hint(
-        &context,
         &id(1),
         &name,
         holons_core::RelationshipReadHint::RequireFresh,
     )?;
     assert!(!Arc::ptr_eq(&first, &fresh));
-    assert!(Arc::ptr_eq(&fresh, &cache.get_related_holons(&context, &id(1), &name)?));
+    assert!(Arc::ptr_eq(&fresh, &cache.get_related_holons(&id(1), &name)?));
     assert_eq!(service.policy_calls.load(Ordering::Relaxed), 1);
     assert_eq!(service.metadata_reads.load(Ordering::Relaxed), 0);
     Ok(())
@@ -172,11 +172,11 @@ fn missing_preparation_is_retryable_and_never_retained_as_authoritative_fresh(
     let service = Arc::new(CountingService::new());
     let (context, cache) = fixture(&service)?;
     let name = "Incoming".to_relationship_name();
-    let unresolved = cache.get_related_holons(&context, &id(1), &name)?;
+    let unresolved = cache.get_related_holons(&id(1), &name)?;
     service.prepare(1, 2, "Incoming", RelationshipCachePolicy::Reuse);
-    let prepared = cache.get_related_holons(&context, &id(1), &name)?;
+    let prepared = cache.get_related_holons(&id(1), &name)?;
     assert!(!Arc::ptr_eq(&unresolved, &prepared));
-    assert!(Arc::ptr_eq(&prepared, &cache.get_related_holons(&context, &id(1), &name)?));
+    assert!(Arc::ptr_eq(&prepared, &cache.get_related_holons(&id(1), &name)?));
     assert_eq!(service.policy_calls.load(Ordering::Relaxed), 2);
     assert_eq!(service.metadata_reads.load(Ordering::Relaxed), 0);
     Ok(())
@@ -192,8 +192,8 @@ fn type_policies_are_shared_across_instances_and_names_remain_type_specific(
     let (context, cache) = fixture(&service)?;
     let name = "Incoming".to_relationship_name();
     for source in [1, 3, 4] {
-        let first = cache.get_related_holons(&context, &id(source), &name)?;
-        let again = cache.get_related_holons(&context, &id(source), &name)?;
+        let first = cache.get_related_holons(&id(source), &name)?;
+        let again = cache.get_related_holons(&id(source), &name)?;
         assert_eq!(Arc::ptr_eq(&first, &again), source != 4);
     }
     assert_eq!(service.metadata_reads.load(Ordering::Relaxed), 0);
@@ -206,12 +206,12 @@ fn explicit_policy_adoption_invalidates_membership_and_policy_together() -> Resu
     service.prepare(1, 2, "Incoming", RelationshipCachePolicy::Reuse);
     let (context, cache) = fixture(&service)?;
     let name = "Incoming".to_relationship_name();
-    let first = cache.get_related_holons(&context, &id(1), &name)?;
+    let first = cache.get_related_holons(&id(1), &name)?;
     service.prepare(1, 2, "Incoming", RelationshipCachePolicy::Fresh);
     service.client.prepared_generation.fetch_add(1, Ordering::AcqRel);
-    let changed = cache.get_related_holons(&context, &id(1), &name)?;
+    let changed = cache.get_related_holons(&id(1), &name)?;
     assert!(!Arc::ptr_eq(&first, &changed));
-    assert!(!Arc::ptr_eq(&changed, &cache.get_related_holons(&context, &id(1), &name)?));
+    assert!(!Arc::ptr_eq(&changed, &cache.get_related_holons(&id(1), &name)?));
     assert_eq!(service.policy_calls.load(Ordering::Relaxed), 2);
     assert_eq!(service.metadata_reads.load(Ordering::Relaxed), 0);
     Ok(())
@@ -264,12 +264,12 @@ fn usage_resolution_delegates_once_without_client_relationship_discovery() -> Re
 {
     let service = Arc::new(CountingService::new());
     let transport = Arc::new(UsageResolutionTransport::default());
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         Some(transport.clone()),
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let visualizer =
         HolonReference::smart_with_key(context.space_read_handle(), id(1), "node-1".into());

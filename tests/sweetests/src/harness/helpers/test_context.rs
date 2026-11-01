@@ -39,12 +39,12 @@ pub fn init_fixture_context() -> Arc<TransactionContext> {
     // SKIP -- Fixtures cannot initiate dances!
 
     // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`
-    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let space_manager = HolonSpaceManager::new_with_managers(
         None,
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
-    ));
+    );
 
     // Step 4: Open the default transaction for this space.
     let transaction_context = space_manager
@@ -115,12 +115,12 @@ pub async fn init_runtime_with_initiator(
         Arc::new(ClientHolonService::development_default());
 
     // Step 2: Create a new `HolonSpaceManager` wrapped in `Arc`
-    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let space_manager = HolonSpaceManager::new_with_managers(
         Some(dance_initiator),
         holon_service,
         None, // No local space holon initially
         ServiceRoutingPolicy::Combined,
-    ));
+    );
 
     // Step 3: Create RuntimeSession and Runtime
     let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager), None));

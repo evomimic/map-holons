@@ -111,12 +111,12 @@ impl HolonServiceApi for TestHolonService {
 
 fn build_test_space_manager() -> Arc<HolonSpaceManager> {
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
-    Arc::new(HolonSpaceManager::new_with_managers(
+    HolonSpaceManager::new_with_managers(
         None,
         holon_service,
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ))
+    )
 }
 
 fn build_test_runtime() -> Runtime {

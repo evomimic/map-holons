@@ -1,6 +1,5 @@
 use super::*;
 use crate::core_shared_objects::cache_population::SavedHolonFetch;
-use crate::reference_layer::HolonSpaceBehavior;
 
 fn id(n: u8) -> HolonId {
     HolonId::Local(LocalId(vec![n]))
@@ -10,14 +9,26 @@ fn content(n: u8) -> Holon {
 }
 fn setup() -> (Arc<CountingService>, Arc<HolonSpaceManager>, Arc<TransactionContext>) {
     let service = Arc::new(CountingService::new(true));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         service.clone(),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     (service, space, context)
+}
+
+/// Assert reuse through ordinary resolution without exposing a residency query.
+fn resolve_without_fetch(
+    service: &CountingService,
+    context: &Arc<TransactionContext>,
+    id: &HolonId,
+) -> Arc<RwLock<Holon>> {
+    let before = service.content_reads.load(Ordering::Relaxed);
+    let holon = context.space_read_handle().get_rc_holon(id).unwrap();
+    assert_eq!(service.content_reads.load(Ordering::Relaxed), before);
+    holon
 }
 
 #[test]
@@ -53,7 +64,7 @@ fn cold_partial_warm_duplicates_empty_and_cross_request_reuse() {
 
 #[test]
 fn per_id_absence_failure_and_transport_failure_do_not_erase_successes() {
-    let (service, space, context) = setup();
+    let (service, _space, context) = setup();
     *service.hydration_response.write().unwrap() = Some(Ok(vec![
         SavedHolonFetch { id: id(3), result: Err(HolonError::InvalidParameter("bad ID".into())) },
         SavedHolonFetch { id: id(1), result: Ok(content(1)) },
@@ -64,20 +75,20 @@ fn per_id_absence_failure_and_transport_failure_do_not_erase_successes() {
     assert_eq!(errors[0].ids, vec![id(2)]);
     assert!(matches!(errors[0].error, HolonError::HolonNotFound(_)));
     assert_eq!(errors[1].ids, vec![id(3)]);
-    assert!(space.get_cache_access().get_cached_rc_holon(&id(1)).unwrap().is_some());
+    resolve_without_fetch(&service, &context, &id(1));
     *service.hydration_response.write().unwrap() =
         Some(Err(HolonError::ConductorError("offline".into())));
     let errors = context.ensure_cached(&[id(1), id(2), id(3)]);
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].ids, vec![id(2), id(3)]);
-    assert!(space.get_cache_access().get_cached_rc_holon(&id(1)).unwrap().is_some());
+    resolve_without_fetch(&service, &context, &id(1));
     *service.hydration_response.write().unwrap() = None;
     assert!(context.ensure_cached(&[id(2), id(3)]).is_empty(), "failures are not negative cached");
 }
 
 #[test]
 fn invalid_associations_are_errors_while_independent_successes_are_cached() {
-    let (service, space, context) = setup();
+    let (service, _space, context) = setup();
     *service.hydration_response.write().unwrap() = Some(Ok(vec![
         SavedHolonFetch { id: id(1), result: Ok(content(1)) },
         SavedHolonFetch { id: id(1), result: Ok(content(1)) },
@@ -101,15 +112,20 @@ fn invalid_associations_are_errors_while_independent_successes_are_cached() {
     assert_eq!(errors.len(), 5);
     let affected: HashSet<_> = errors.into_iter().flat_map(|e| e.ids).collect();
     assert_eq!(affected, [id(1), id(2), id(3), id(4), id(9)].into_iter().collect());
-    for n in [1, 2, 3, 4, 8, 9] {
-        assert!(space.get_cache_access().get_cached_rc_holon(&id(n)).unwrap().is_none());
-    }
-    assert!(space.get_cache_access().get_cached_rc_holon(&id(5)).unwrap().is_some());
+    resolve_without_fetch(&service, &context, &id(5));
+    service.hydration_requests.write().unwrap().clear();
+    *service.hydration_response.write().unwrap() = None;
+    assert!(context.ensure_cached(&(1..=5).chain([8, 9]).map(id).collect::<Vec<_>>()).is_empty());
+    assert_eq!(
+        *service.hydration_requests.read().unwrap(),
+        vec![vec![id(1), id(2), id(3), id(4), id(8), id(9)]],
+        "invalid results remain misses; the independent success is reused",
+    );
 }
 
 #[test]
 fn blocked_external_id_is_not_conflated_with_a_local_version() {
-    let (service, space, context) = setup();
+    let (service, _space, context) = setup();
     let external = HolonId::External(core_types::ExternalId {
         space_id: core_types::OutboundProxyId(LocalId(vec![42])),
         local_id: LocalId(vec![1]),
@@ -118,7 +134,7 @@ fn blocked_external_id_is_not_conflated_with_a_local_version() {
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].ids, vec![external]);
     assert_eq!(*service.hydration_requests.read().unwrap(), vec![vec![id(1)]]);
-    assert!(space.get_cache_access().get_cached_rc_holon(&id(1)).unwrap().is_some());
+    resolve_without_fetch(&service, &context, &id(1));
 }
 
 #[test]
@@ -128,22 +144,22 @@ fn capacity_pressure_preserves_existing_pins_and_adds_no_leases() {
         .get_transaction_manager()
         .open_private_restricted_cache_read_transaction(space.clone())
         .unwrap();
-    let mut manager = HolonCacheManager::new(service);
+    let mut manager = HolonCacheManager::new(service, Arc::downgrade(&context.space_manager()));
     manager.cache = HolonCache::new_with_capacity(1);
-    let lease = manager.retain_holon(&context, &id(1)).unwrap();
-    let pinned = manager.get_cached_rc_holon(&id(1)).unwrap().unwrap();
-    assert!(manager.ensure_cached(&context, &[id(1), id(2), id(3)]).is_empty());
-    assert!(Arc::ptr_eq(&pinned, &manager.get_cached_rc_holon(&id(1)).unwrap().unwrap()));
+    let lease = manager.retain_holon(&id(1)).unwrap();
+    let pinned = manager.cache.get(&id(1)).unwrap();
+    assert!(manager.ensure_cached(&[id(1), id(2), id(3)]).is_empty());
+    assert!(Arc::ptr_eq(&pinned, &manager.cache.get(&id(1)).unwrap()));
     manager.cache.clear();
-    assert!(manager.get_cached_rc_holon(&id(2)).unwrap().is_none());
-    assert!(manager.get_cached_rc_holon(&id(3)).unwrap().is_none());
+    assert!(manager.cache.get(&id(2)).is_none());
+    assert!(manager.cache.get(&id(3)).is_none());
     drop(lease);
-    assert!(manager.get_cached_rc_holon(&id(1)).unwrap().is_none());
+    assert!(manager.cache.get(&id(1)).is_none());
 }
 
 #[test]
 fn concurrent_lazy_read_wins_over_in_flight_population() {
-    let (service, space, context) = setup();
+    let (service, _space, context) = setup();
     let entered = Arc::new(std::sync::Barrier::new(2));
     let resume = Arc::new(std::sync::Barrier::new(2));
     *service.hydration_barriers.write().unwrap() = Some((entered.clone(), resume.clone()));
@@ -155,17 +171,17 @@ fn concurrent_lazy_read_wins_over_in_flight_population() {
     // Normal reference resolution races with the bulk call, without acquiring its manager lock.
     let reference = HolonReference::smart_from_id(context.space_read_handle(), id(1));
     reference.key().unwrap();
-    let concurrent = space.get_cache_access().get_cached_rc_holon(&id(1)).unwrap().unwrap();
+    let concurrent = resolve_without_fetch(&service, &context, &id(1));
     resume.wait();
     assert!(worker.join().unwrap().is_empty());
-    let installed = space.get_cache_access().get_cached_rc_holon(&id(1)).unwrap().unwrap();
+    let installed = resolve_without_fetch(&service, &context, &id(1));
     assert!(Arc::ptr_eq(&concurrent, &installed));
 }
 
 #[test]
 fn exact_versions_stay_separate_and_unrelated_staged_edits_are_untouched() {
     use crate::WritableHolon;
-    let (service, space, context) = setup();
+    let (service, _space, context) = setup();
     let mut draft = context.mutation().new_holon(Some("node-1".into())).unwrap();
     draft.with_property_value("Description", "uncommitted").unwrap();
     let draft = context.mutation().stage_new_holon(draft).unwrap();
@@ -181,14 +197,8 @@ fn exact_versions_stay_separate_and_unrelated_staged_edits_are_untouched() {
         SavedHolonFetch { id: id(2), result: Ok(version.clone()) },
     ]));
     assert!(context.ensure_cached(&[id(1), id(2)]).is_empty());
-    assert_eq!(
-        *space.get_cache_access().get_cached_rc_holon(&id(1)).unwrap().unwrap().read().unwrap(),
-        content(1)
-    );
-    assert_eq!(
-        *space.get_cache_access().get_cached_rc_holon(&id(2)).unwrap().unwrap().read().unwrap(),
-        version
-    );
+    assert_eq!(*resolve_without_fetch(&service, &context, &id(1)).read().unwrap(), content(1));
+    assert_eq!(*resolve_without_fetch(&service, &context, &id(2)).read().unwrap(), version);
     assert_eq!(
         draft.property_value("Description").unwrap(),
         Some(BaseValue::StringValue("uncommitted".into()))
@@ -198,13 +208,15 @@ fn exact_versions_stay_separate_and_unrelated_staged_edits_are_untouched() {
 }
 
 #[test]
-fn direct_population_rejects_an_unrestricted_execution_context() {
-    let (service, _, context) = setup();
-    let manager = HolonCacheManager::new(service.clone());
-    assert!(manager.ensure_cached(&context, &[]).is_empty());
-    let errors = manager.ensure_cached(&context, &[id(1)]);
-    assert_eq!(errors.len(), 1);
-    assert!(service.hydration_requests.read().unwrap().is_empty());
+fn direct_population_uses_its_own_restricted_execution_context() {
+    let (service, space, context) = setup();
+    service.exercise_context_lifetime.store(true, Ordering::Relaxed);
+    let manager = HolonCacheManager::new(service.clone(), Arc::downgrade(&space));
+    assert!(manager.ensure_cached(&[]).is_empty());
+    assert!(service.read_contexts.read().unwrap().is_empty());
+    assert!(manager.ensure_cached(&[id(1)]).is_empty());
+    assert!(service.read_contexts.read().unwrap().iter().all(|weak| weak.upgrade().is_none()));
+    assert!(context.is_open());
 }
 
 #[test]

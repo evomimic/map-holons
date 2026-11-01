@@ -1537,12 +1537,12 @@ mod tests {
         use holons_core::core_shared_objects::{
             space_manager::HolonSpaceManager, ServiceRoutingPolicy,
         };
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let mut references = Vec::new();
         for (key, source, committed) in [
@@ -1588,12 +1588,12 @@ mod tests {
             space_manager::HolonSpaceManager, ServiceRoutingPolicy,
         };
 
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let transient = context.mutation().new_holon(Some("unchanged-target".into()))?;
         let target = context.mutation().stage_new_holon(transient)?;

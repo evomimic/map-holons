@@ -127,7 +127,7 @@ fn saved_write_source_without_a_staged_match_is_promoted_and_reused() {
     );
     let descriptor =
         SavedHolon::new(LocalId(vec![202]), descriptor_properties, None, MapInteger(1));
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(SavedSourceService {
             holons: HashMap::from([
@@ -141,7 +141,7 @@ fn saved_write_source_without_a_staged_match_is_promoted_and_reused() {
         }),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     let saved = HolonReference::smart_with_key(
         context.space_read_handle(),
@@ -210,12 +210,12 @@ impl SavedRelationshipFixture {
             ((id(203), "Extends".to_relationship_name()), vec![id(204)]),
             ((id(205), "Extends".to_relationship_name()), vec![id(204)]),
         ]);
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(SavedSourceService { holons, relationships }),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context =
             space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
         let source = HolonReference::smart_with_key(

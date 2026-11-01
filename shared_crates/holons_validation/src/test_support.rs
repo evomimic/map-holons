@@ -187,12 +187,12 @@ pub(super) fn subject_rules(
 impl Fixture {
     /// Opens an empty schema snapshot for bootstrap precondition tests.
     pub fn empty() -> Result<Self, HolonError> {
-        let manager = Arc::new(HolonSpaceManager::new_with_managers(
+        let manager = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(FixtureStorage::default()),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
         Ok(Self { context, nodes: BTreeMap::new(), saved_storage: None })
     }
@@ -460,12 +460,12 @@ impl Fixture {
             storage.read_errors.insert(ids[*key].clone(), error.clone());
         }
         let storage = Arc::new(storage);
-        let manager = Arc::new(HolonSpaceManager::new_with_managers(
+        let manager = HolonSpaceManager::new_with_managers(
             None,
             storage.clone(),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
         let nodes = ids
             .into_iter()

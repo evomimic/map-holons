@@ -73,12 +73,12 @@ impl ComputedEffectiveSchema {
     pub fn from_prepared(descriptor: &super::EffectiveHolonDescriptor) -> Result<Self, HolonError> {
         use super::Descriptor;
         let target = descriptor.described_holon_type()?.holon().clone();
-        let context = descriptor.holon().resolution_context()?;
+        let space = descriptor.holon().space_read_handle();
         let metadata = descriptor.prepared_schema()?;
         let lineage = metadata
             .lineage
             .iter()
-            .map(|id| HolonReference::smart_from_id(context.space_read_handle(), id.clone()))
+            .map(|id| HolonReference::smart_from_id(space.clone(), id.clone()))
             .collect::<Vec<_>>();
         let mut restored = Vec::new();
         for (index, (source, result, _, _, _)) in collections().into_iter().enumerate() {
@@ -102,10 +102,7 @@ impl ComputedEffectiveSchema {
                 .zip(origins)
                 .map(|(member, (origin, position))| EffectiveContribution {
                     member,
-                    declared_on: HolonReference::smart_from_id(
-                        context.space_read_handle(),
-                        origin.clone(),
-                    ),
+                    declared_on: HolonReference::smart_from_id(space.clone(), origin.clone()),
                     source_collection: source.clone(),
                     local_position: *position,
                 })
@@ -123,11 +120,8 @@ impl ComputedEffectiveSchema {
             .iter()
             .zip(&metadata.navigation_origins)
             .map(|(member, (origin, position, source_of))| EffectiveContribution {
-                member: HolonReference::smart_from_id(context.space_read_handle(), member.clone()),
-                declared_on: HolonReference::smart_from_id(
-                    context.space_read_handle(),
-                    origin.clone(),
-                ),
+                member: HolonReference::smart_from_id(space.clone(), member.clone()),
+                declared_on: HolonReference::smart_from_id(space.clone(), origin.clone()),
                 source_collection: if *source_of {
                     CoreRelationshipTypeName::SourceOf
                 } else {

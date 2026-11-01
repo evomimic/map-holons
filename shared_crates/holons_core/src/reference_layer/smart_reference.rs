@@ -34,15 +34,6 @@ pub struct SmartReference {
     smart_property_values: Option<PropertyMap>,
 }
 
-/// Capability token allowing cache access only from this module.
-pub(crate) struct SmartRefAccessKey(());
-
-impl SmartRefAccessKey {
-    pub(crate) fn new() -> Self {
-        Self(())
-    }
-}
-
 impl SmartReference {
     // *************** CONSTRUCTORS ***************
 
@@ -114,12 +105,9 @@ impl SmartReference {
         self.smart_property_values.as_ref()
     }
 
-    /// Opens an internal restricted context for descriptor resolution rooted in
-    /// this reference's space. It is not retained by the saved reference.
-    pub(crate) fn resolution_context(
-        &self,
-    ) -> Result<Arc<crate::core_shared_objects::transactions::TransactionContext>, HolonError> {
-        self.space_read_handle.open_resolution_context()
+    /// Returns the existing saved-reference binding without creating execution state.
+    pub(crate) fn space_read_handle(&self) -> SpaceReadHandle {
+        self.space_read_handle.clone()
     }
 
     /// Returns the persistent holon id (kept for backwards compatibility with existing call sites).
