@@ -54,22 +54,20 @@ pub(crate) fn classify_graph_only_delta_overlaps(
                     "graph_overlap_buckets",
                     1,
                 );
-            }
-            if indices.len() > 1
-                && overlap_is_unsupported(context, &participants, &name, &indices, packages)?
-            {
-                let source_identity = HolonReference::smart_from_id(
-                    context.space_read_handle(),
-                    HolonId::Local(source.clone()),
-                )
-                .full_reference_id_string();
-                report_unsupported_overlap(
-                    &source_identity,
-                    &participants,
-                    &name,
-                    &indices,
-                    collector,
-                );
+                if overlap_is_unsupported(context, &participants, &name, &indices, packages)? {
+                    let source_identity = HolonReference::smart_from_id(
+                        context.space_read_handle(),
+                        HolonId::Local(source.clone()),
+                    )
+                    .full_reference_id_string();
+                    report_unsupported_overlap(
+                        &source_identity,
+                        &participants,
+                        &name,
+                        &indices,
+                        collector,
+                    );
+                }
             }
         }
     }

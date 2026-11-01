@@ -1629,7 +1629,11 @@ fn emit_assessment_observations(
     }
     if let Some(probe) = derivations {
         let counts = probe.finish().0;
-        info!("[commit-graph-only] phase={:?} overlap_buckets={} binding_interpretations={} target_identities={} target_keys={}", phase, counts.get("graph_overlap_buckets").copied().unwrap_or(0), counts.get("graph_binding_interpretations").copied().unwrap_or(0), counts.get("graph_target_identities").copied().unwrap_or(0), counts.get("graph_target_keys").copied().unwrap_or(0));
+        // Graph-only overlap classification runs during prepared-product construction.
+        if phase == holons_validation::AssessmentPhase::PreparedProducts {
+            info!("[commit-graph-only] phase={:?} overlap_buckets={} binding_interpretations={} target_identities={} target_keys={}", phase, counts.get("graph_overlap_buckets").copied().unwrap_or(0), counts.get("graph_binding_interpretations").copied().unwrap_or(0), counts.get("graph_target_identities").copied().unwrap_or(0), counts.get("graph_target_keys").copied().unwrap_or(0));
+        }
+
         info!("[commit-derivation] phase={:?} schema_resolution_requests={} schema_builder_attempts={} schema_builder_successes={} saved_restoration_attempts={} saved_restoration_successes={} contract_contribution_resolutions={} constraint_contribution_resolutions={} structural_diagnoses={} role_walks={} snapshot_lookups={} registry_entries_examined={} registry_hits={} name_index_builds={}",
             phase, counts.get("schema_resolution_requests").copied().unwrap_or(0), counts.get("schema_builder_attempts").copied().unwrap_or(0), counts.get("schema_builder_successes").copied().unwrap_or(0), counts.get("saved_restoration_attempts").copied().unwrap_or(0), counts.get("saved_restoration_successes").copied().unwrap_or(0), counts.get("contract_contribution_resolutions").copied().unwrap_or(0), counts.get("constraint_contribution_resolutions").copied().unwrap_or(0), counts.get("structural_diagnoses").copied().unwrap_or(0), counts.get("role_walks").copied().unwrap_or(0), counts.get("snapshot_lookups").copied().unwrap_or(0), counts.get("registry_entries_examined").copied().unwrap_or(0), counts.get("registry_hits").copied().unwrap_or(0), counts.get("name_index_builds").copied().unwrap_or(0));
     }

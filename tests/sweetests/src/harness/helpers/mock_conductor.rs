@@ -164,19 +164,18 @@ async fn setup_cell_for_agent(
     conductor.install_app(app_id, Some(agent.clone()), &[dna.clone()], None).await.unwrap();
     conductor.enable_app(app_id.to_owned()).await.unwrap();
     let started = std::time::Instant::now();
-    tokio::time::timeout(timeout, async {
-        loop {
+    holochain::test_utils::retry_fn_until_timeout(
+        || async {
             let infos = conductor
                 .raw_handle()
                 .get_agent_infos(Some(vec![dna.dna_hash().clone()]))
                 .await
                 .expect("read local agent peer store during startup");
-            if infos.iter().any(|info| info.agent == agent.to_k2_agent()) {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
-    })
+            infos.iter().any(|info| info.agent == agent.to_k2_agent())
+        },
+        Some(timeout.as_millis().try_into().expect("startup timeout is too large")),
+        Some(100),
+    )
     .await
     .unwrap_or_else(|_| {
         panic!(
