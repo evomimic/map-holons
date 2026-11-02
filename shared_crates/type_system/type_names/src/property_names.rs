@@ -107,6 +107,9 @@ impl ToPropertyName for &PropertyName {
 #[derive(Debug, Clone, VariantNames)]
 pub enum CorePropertyTypeName {
     ContributionPosition,
+    DerivedOrigins,
+    DerivedValueKind,
+    DerivedInstanceTypeKind,
     PreparedSchema,
     AllowsDuplicates,
     Arity,

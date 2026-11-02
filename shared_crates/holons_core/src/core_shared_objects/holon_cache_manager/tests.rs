@@ -10,6 +10,7 @@ use type_names::ToRelationshipName;
 
 #[derive(Debug)]
 struct CountingService {
+    relationship_barriers: RwLock<Option<(Arc<std::sync::Barrier>, Arc<std::sync::Barrier>)>>,
     hydration_requests: RwLock<Vec<Vec<HolonId>>>,
     hydration_response:
         RwLock<Option<Result<Vec<super::super::cache_population::SavedHolonFetch>, HolonError>>>,
@@ -52,6 +53,7 @@ impl CountingService {
             edges.insert((source, name.into()), targets);
         }
         Self {
+            relationship_barriers: Default::default(),
             hydration_requests: RwLock::new(Vec::new()),
             hydration_response: RwLock::new(None),
             hydration_barriers: RwLock::new(None),
@@ -234,6 +236,11 @@ impl HolonServiceApi for CountingService {
         let key = (id.local_id().0[0], name.to_string());
         *self.calls.write().unwrap().entry(key.clone()).or_default() += 1;
         let targets = self.edges.read().unwrap().get(&key).cloned().unwrap_or_default();
+        let barriers = self.relationship_barriers.write().unwrap().take();
+        if let Some((entered, resume)) = barriers {
+            entered.wait();
+            resume.wait();
+        }
         // The cache must seal even a mutable collection supplied by the service.
         let mut collection = HolonCollection::new_transient();
         collection
@@ -1092,6 +1099,115 @@ fn canonical_saved_key_lookup_disposes_temporary_execution_state() -> Result<(),
             assert_eq!(saved.holon_id()?, HolonId::Local(LocalId(vec![13])));
         }
         assert!(context.is_open());
+    }
+    Ok(())
+}
+
+#[test]
+fn derived_reset_preserves_reuse_membership_saved_content_and_staged_work() -> Result<(), HolonError>
+{
+    use crate::WritableHolon;
+    let service = Arc::new(CountingService::new(true));
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let reference = CountingService::reference(&context, 1);
+    reference.property_value("Key")?;
+    let node_fetches = service.content_reads.load(Ordering::Relaxed);
+    let old = reference.related_holons("Frozen")?;
+    service.edges.write().unwrap().insert((1, "Frozen".into()), vec![11]);
+    assert!(Arc::ptr_eq(&old, &reference.related_holons("Frozen")?));
+    let mut transient = context.mutation().new_holon(Some("session-staged".into()))?;
+    transient.with_property_value("Title", "preserved")?;
+    let staged = context.mutation().stage_new_holon(transient)?;
+    let staged_before = context.lookup().staged_count()?;
+    space.reset_session()?;
+    assert!(context.is_open());
+    assert_eq!(context.lookup().staged_count()?, staged_before);
+    assert_eq!(staged.property_value("Title")?, Some(BaseValue::StringValue("preserved".into())));
+    reference.property_value("Key")?;
+    assert_eq!(service.content_reads.load(Ordering::Relaxed), node_fetches);
+    let new = reference.related_holons("Frozen")?;
+    assert!(Arc::ptr_eq(&old, &new));
+    assert_eq!(new.read().unwrap().get_members(), &vec![CountingService::reference(&context, 10)]);
+    // A fresh caller hint, rather than derived retirement, overrides membership reuse.
+    let fresh =
+        reference.related_holons_with_hint("Frozen", crate::RelationshipReadHint::RequireFresh)?;
+    assert_eq!(
+        fresh.read().unwrap().get_members(),
+        &vec![CountingService::reference(&context, 11)]
+    );
+    Ok(())
+}
+
+#[test]
+fn in_flight_relationship_fetch_keeps_its_policy_across_derived_reset() -> Result<(), HolonError> {
+    let service = Arc::new(CountingService::new(true));
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let reference = CountingService::reference(&context, 1);
+    let entered = Arc::new(std::sync::Barrier::new(2));
+    let resume = Arc::new(std::sync::Barrier::new(2));
+    *service.relationship_barriers.write().unwrap() = Some((entered.clone(), resume.clone()));
+    let worker_reference = reference.clone();
+    let worker = std::thread::spawn(move || worker_reference.related_holons("Frozen"));
+    entered.wait();
+    space.reset_session()?;
+    service.edges.write().unwrap().insert((1, "Frozen".into()), vec![11]);
+    resume.wait();
+    let fetched = worker.join().unwrap()?;
+    let fresh = reference.related_holons("Frozen")?;
+    assert!(Arc::ptr_eq(&fetched, &fresh));
+    assert_eq!(
+        fresh.read().unwrap().get_members(),
+        &vec![CountingService::reference(&context, 10)]
+    );
+    assert_eq!(service.calls.read().unwrap().get(&(1, "Frozen".into())), Some(&1));
+    Ok(())
+}
+
+#[test]
+fn derived_reset_does_not_override_fresh_or_bounded_membership_policies() -> Result<(), HolonError>
+{
+    let service = Arc::new(CountingService::new(true));
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let reference = CountingService::reference(&context, 1);
+    for name in ["Moving", "Bounded"] {
+        service.edges.write().unwrap().insert((1, name.into()), vec![10]);
+        let before = reference.related_holons(name)?;
+        service.edges.write().unwrap().insert((1, name.into()), vec![11]);
+        space.reset_session()?;
+        let after = reference.related_holons(name)?;
+        if name == "Bounded" {
+            assert!(Arc::ptr_eq(&before, &after));
+            service.clock.store(11, Ordering::Relaxed);
+            let expired = reference.related_holons(name)?;
+            assert_eq!(
+                expired.read().unwrap().get_members(),
+                &vec![CountingService::reference(&context, 11)]
+            );
+        } else {
+            assert!(!Arc::ptr_eq(&before, &after));
+            assert_eq!(
+                after.read().unwrap().get_members(),
+                &vec![CountingService::reference(&context, 11)]
+            );
+        }
     }
     Ok(())
 }

@@ -133,6 +133,16 @@ impl TransactionContext {
         Ok(())
     }
 
+    /// Clears only the selected snapshot marker; transaction state and copied
+    /// holons retain their normal owner lifetime.
+    pub(crate) fn clear_descriptor_registry_root(&self) -> Result<(), HolonError> {
+        *self
+            .descriptor_registry_root
+            .write()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))? = None;
+        Ok(())
+    }
+
     /// Returns the Commit-local registry root, retaining its actual owner binding.
     pub fn descriptor_registry_root(
         self: &Arc<Self>,
@@ -645,6 +655,14 @@ impl TransactionContext {
             transient_service: Arc::clone(&self.transient_manager)
                 as Arc<dyn TransientHolonBehavior + Send + Sync>,
         }
+    }
+
+    /// Constructs value/property products through the context-specific service strategy.
+    pub fn construct_derived_descriptor(
+        self: &Arc<Self>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        self.get_holon_service().construct_derived_descriptor_internal(self, target)
     }
 
     /// Resolves the complete effective schema through this context's service.

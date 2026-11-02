@@ -45,6 +45,14 @@ impl Graph {
     }
 }
 impl HolonServiceApi for Graph {
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::DerivedDescriptor, HolonError> {
+        holons_core::descriptors::construct_derived_descriptor(context, target)
+    }
+
     fn construct_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -79,6 +87,7 @@ impl HolonServiceApi for Graph {
             "ValueArrayValueType.ValueType" => 36,
             "KeyRuleType.HolonType" => 4,
             "NoneRule.KeyRuleType" => 37,
+            "DerivedDescriptor.HolonType" => 38,
             _ => return Err(HolonError::InvalidParameter(format!("Unknown fixture key {key}"))),
         };
         match Self::reference(context, id) {

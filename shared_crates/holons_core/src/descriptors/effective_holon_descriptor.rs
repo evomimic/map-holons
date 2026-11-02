@@ -14,6 +14,21 @@ use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
 
 /// One immutable derived Holon schema graph retained by its owning Session or candidate context.
 /// Collections are read from relationships; the wrapper retains no resolution cache.
+///
+/// # Prepared HolonType payload
+///
+/// Instance properties, declared instance relationships, singular/plural
+/// navigable relationships, afforded Dances and Commands, constraints, validation
+/// bindings, and the effective instance key rule. Combined navigation composes
+/// the two partitions without removing occurrences. Supporting state identifies
+/// the described type and carries prepared relationship policies and origins.
+///
+/// The destination payload also includes effective Instance TypeKind, which is
+/// not yet stored here. Migration to DerivedDescriptor acquisition and shared
+/// Session retirement is pending; current `pull` still leaves prior results
+/// readable. Commit-local copies remain distinct from Session-owned results.
+/// See map-dev-docs `docs/core/core-runtime/descriptors/descriptors-design-spec.md`,
+/// "Derived payload inventory by descriptor kind".
 pub struct EffectiveHolonDescriptor {
     holon: HolonReference,
 }

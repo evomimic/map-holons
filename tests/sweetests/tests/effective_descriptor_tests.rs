@@ -293,3 +293,129 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
     drop(runtime);
     assert!(descriptor.instance_properties().is_err());
 }
+
+/// The non-HolonType trial keeps the public wrapper API while reusing one
+/// guest-produced, Session-retained result for each exact saved definition.
+#[tokio::test(flavor = "multi_thread")]
+async fn value_and_property_wrappers_reuse_guest_derived_products() {
+    use holons_core::descriptors::{
+        effective_relationship_targets, PropertyDescriptor, ValueDescriptor,
+    };
+    let (runtime, _) = init_test_runtime(&mut DancesTestCase::default()).await;
+    let MapResult::TransactionCreated { tx_id } = runtime
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("expected transaction")
+    };
+    let context = runtime.session().get_transaction(&tx_id).unwrap();
+    let registry = context.descriptor_registry().unwrap();
+    let saved_value: HolonReference = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString("MapStringValueType.StringValueType".into()))
+        .unwrap()
+        .into();
+    let saved_property: HolonReference = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString("TypeName.PropertyType".into()))
+        .unwrap()
+        .into();
+    let value = ValueDescriptor::from_holon(saved_value.clone());
+    assert_eq!(
+        value.value_kind().unwrap(),
+        holons_core::descriptors::ValueDescriptorKind::BaseValue(base_types::BaseValueKind::String)
+    );
+    assert!(!value.is_array().unwrap());
+    assert!(value.supported_operators().unwrap().len() >= 3);
+    assert!(!value.effective_validation_bindings().unwrap().is_empty());
+    let property = PropertyDescriptor::from_holon(saved_property.clone());
+    let expected = effective_relationship_targets(
+        &saved_property,
+        CoreRelationshipTypeName::ValidationBindings,
+    )
+    .unwrap();
+    let actual = property.effective_validation_bindings().unwrap();
+    assert_eq!(actual.len(), expected.len());
+    for (actual, expected) in actual.iter().zip(expected) {
+        assert_eq!(actual.member, expected.member);
+        assert_eq!(actual.declared_on, expected.declared_on);
+    }
+    let value_result = registry.get_derived(&saved_value.holon_id().unwrap()).unwrap().unwrap();
+    let property_result =
+        registry.get_derived(&saved_property.holon_id().unwrap()).unwrap().unwrap();
+    assert_ne!(value_result.lineage().unwrap()[0], property_result.lineage().unwrap()[0]);
+    let owner = registry.context().unwrap();
+    let before = owner.lookup().transient_count().unwrap();
+    assert!(!ValueDescriptor::from_holon(saved_value.clone()).is_array().unwrap());
+    assert!(
+        ValueDescriptor::from_holon(saved_value.clone()).supported_operators().unwrap().len() >= 3
+    );
+    PropertyDescriptor::from_holon(saved_property.clone()).effective_constraints().unwrap();
+    assert_eq!(owner.lookup().transient_count().unwrap(), before);
+    let snapshot = context.open_isolated_transaction().unwrap();
+    registry.snapshot_into(&snapshot).unwrap();
+    let copied =
+        holons_core::descriptors::DerivedDescriptor::find_in_context(&snapshot, &saved_value)
+            .unwrap()
+            .unwrap();
+    assert_eq!(
+        copied.supported_operators().unwrap().len(),
+        value.supported_operators().unwrap().len()
+    );
+    assert_eq!(copied.value_kind().unwrap(), value.value_kind().unwrap());
+    let old_kind = value.instance_type_kind().unwrap();
+    context.space_read_handle().reset_session().unwrap();
+    assert!(matches!(value_result.value_kind(), Err(HolonError::ObsoleteSession)));
+    assert!(matches!(property_result.effective_constraints(), Err(HolonError::ObsoleteSession)));
+    // Captured Commit-local products remain readable after the host Session retires.
+    assert_eq!(copied.value_kind().unwrap(), value.value_kind().unwrap());
+    assert_eq!(old_kind, value.instance_type_kind().unwrap());
+    assert_eq!(copied.instance_type_kind().unwrap(), old_kind);
+    assert!(property.effective_validation_bindings().is_ok());
+    // A real, nonempty guest Commit validates using the captured products and
+    // retires the current host Session only after its persistence response arrives.
+    let name_property: HolonReference = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString("HolonSpaceName.PropertyType".into()))
+        .unwrap()
+        .into();
+    PropertyDescriptor::from_holon(name_property).effective_validation_bindings().unwrap();
+    let space_type: HolonReference = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString("HolonSpace.HolonType".into()))
+        .unwrap()
+        .into();
+    let mut created = context.mutation().new_holon(Some("SessionResetProof".into())).unwrap();
+    created.with_descriptor(space_type).unwrap();
+    created.with_property_value("HolonSpaceName", "SessionResetProof").unwrap();
+    let mut staged_proof = context.mutation().stage_new_holon(created).unwrap();
+    let before_commit = registry.get_derived(&saved_value.holon_id().unwrap()).unwrap().unwrap();
+    let rejected = context.commit().unwrap();
+    assert_eq!(
+        rejected.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue("Rejected".into()))
+    );
+    assert!(context.is_open());
+    assert!(before_commit.value_kind().is_ok());
+    // HolonSpace requires all three properties. Correct the rejected candidate
+    // in place; failed validation must preserve both staged work and the Session.
+    staged_proof.with_property_value("DisplayName", "Session reset proof").unwrap();
+    staged_proof.with_property_value("Description", "Checks local Commit adoption").unwrap();
+    let committed = context.commit().unwrap();
+    assert_eq!(
+        committed.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue("Complete".into())),
+        "Commit findings: {:?}",
+        staged_proof.validation_findings().unwrap()
+    );
+    assert!(matches!(before_commit.value_kind(), Err(HolonError::ObsoleteSession)));
+    assert_eq!(value.value_kind().unwrap(), copied.value_kind().unwrap());
+    snapshot.dispose().unwrap();
+    context.dispose().unwrap();
+    assert!(value.supported_operators().unwrap().len() >= 3);
+    property.effective_constraints().unwrap();
+}

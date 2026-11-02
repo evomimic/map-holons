@@ -369,6 +369,14 @@ fn smartlink_reference_properties(
 }
 
 impl HolonServiceApi for GuestHolonService {
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::DerivedDescriptor, HolonError> {
+        holons_core::descriptors::construct_derived_descriptor(context, target)
+    }
+
     fn construct_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,

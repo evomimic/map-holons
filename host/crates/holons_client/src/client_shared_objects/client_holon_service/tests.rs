@@ -292,3 +292,108 @@ fn usage_resolution_delegates_once_without_client_relationship_discovery() -> Re
     assert_eq!(transport.calls.load(Ordering::Relaxed), 2);
     Ok(())
 }
+
+#[derive(Debug)]
+struct CommitResetTransport {
+    status: &'static str,
+    persisted: bool,
+    reset_during_request: bool,
+    during: std::sync::Mutex<
+        Option<Arc<holons_core::core_shared_objects::space_session::SpaceSession>>,
+    >,
+}
+
+#[async_trait::async_trait]
+impl holons_core::dances::DanceInitiator for CommitResetTransport {
+    async fn initiate_dance(
+        &self,
+        context: &Arc<TransactionContext>,
+        _: holons_core::dances::DanceRequest,
+    ) -> holons_core::dances::DanceResponse {
+        use holons_core::WritableHolon;
+        if self.reset_during_request {
+            context.space_read_handle().reset_session().unwrap();
+        }
+        *self.during.lock().unwrap() = Some(context.space_read_handle().session().unwrap());
+        let mut response = context.mutation().new_holon(None).unwrap();
+        response
+            .with_property_value(type_names::CorePropertyTypeName::CommitRequestStatus, self.status)
+            .unwrap();
+        let members = if self.persisted {
+            vec![context.mutation().new_holon(Some("persisted-result".into())).unwrap().into()]
+        } else {
+            vec![]
+        };
+        response
+            .add_related_holons(type_names::CoreRelationshipTypeName::SavedHolons, members)
+            .unwrap();
+        holons_core::dances::DanceResponse::new(
+            ResponseStatusCode::OK,
+            "Commit completed".into(),
+            ResponseBody::HolonReference(response.into()),
+            None,
+        )
+    }
+}
+
+#[test]
+fn local_commit_resets_current_session_only_when_persistence_may_have_changed() {
+    for (status, persisted, reset_during_request, should_reset) in [
+        ("Complete", true, false, true),
+        ("Complete", true, true, true),
+        ("Complete", false, false, false),
+        ("Rejected", false, false, false),
+        ("Incomplete", true, false, true),
+        // Partial graph persistence can occur without a newly saved node.
+        ("Incomplete", false, false, true),
+    ] {
+        let transport = Arc::new(CommitResetTransport {
+            status,
+            persisted,
+            reset_during_request,
+            during: Default::default(),
+        });
+        let client = Arc::new(ClientHolonService::development_default());
+        let space = HolonSpaceManager::new_with_managers(
+            Some(transport.clone()),
+            client.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        );
+        let context =
+            space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+        let before = space.session().unwrap();
+        client.commit_internal(&context, &[]).unwrap();
+        let during = transport.during.lock().unwrap().clone().unwrap();
+        assert_eq!(during.check_active().is_err(), should_reset, "{status}/{persisted}");
+        assert_eq!(before.check_active().is_err(), should_reset || reset_during_request);
+        assert!(space.session().unwrap().check_active().is_ok());
+    }
+}
+
+#[test]
+fn derived_reset_preserves_policies_source_resolutions_and_membership_generation() {
+    let client = Arc::new(ClientHolonService::development_default());
+    client.source_types.write().unwrap().insert(id(1), id(2));
+    client
+        .relationship_policies
+        .write()
+        .unwrap()
+        .insert((id(2), "Frozen".to_relationship_name()), RelationshipCachePolicy::Reuse);
+    let generation = client.relationship_cache_generation();
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        client.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let old = space.session().unwrap();
+    space.reset_session().unwrap();
+    assert_eq!(old.check_active(), Err(HolonError::ObsoleteSession));
+    assert_eq!(client.source_types.read().unwrap().get(&id(1)), Some(&id(2)));
+    assert_eq!(
+        client.relationship_policies.read().unwrap().get(&(id(2), "Frozen".to_relationship_name())),
+        Some(&RelationshipCachePolicy::Reuse)
+    );
+    assert_eq!(client.relationship_cache_generation(), generation);
+}

@@ -233,6 +233,11 @@ impl Fixture {
                 fixture.node(rule.as_str())?;
             }
         }
+        fixture
+            .nodes
+            .get_mut("PropertyType.TypeDescriptor")
+            .unwrap()
+            .with_property_value("IsAbstractType", true)?;
         fixture.node("Schema.HolonType")?;
         fixture.link("Contract", CoreRelationshipTypeName::Extends, "HolonType.TypeDescriptor")?;
         for (key, name) in [("Title.PropertyType", "Title"), ("Key.PropertyType", "Key")] {

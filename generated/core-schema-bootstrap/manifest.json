@@ -83,11 +83,11 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "a82dffb428976bd2445588c85299880e501a80187b36c53d8c09afb7a4780f46"
+      "sha256": "48a4719972f5739d2cdef57ae7eac1ac75cc063234d790e44ad5ce57ca4bd52b"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "a873797a5bd5ba1f1692c2d951e861762902b48e0453e02ac4704aea56ee1866"
+      "sha256": "0767a9b8e83ebf74f8f3b79fef8bc5d3d7f6ef07171b179fbd019d86ca49ffc9"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -111,7 +111,7 @@
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "ab64f7e626caff3e0b56aba136d9719bb8e117217512a6491b37035b4f1478e2"
+      "sha256": "4aaf5728801e80519c53e09c08a876d3f64d14c62f79c8fe401cc834a1e5f6c6"
     },
     {
       "path": "imports/query/schema.json",
@@ -208,8 +208,16 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Constraint.HolonType)-[ConstraintInDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Constraint.HolonType)-[ConstraintInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ConstructDerivedDescriptorRequest.HolonType)-[RequestedDescriptor]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(ConstructEffectiveHolonDescriptorRequest.HolonType)-[RequestedHolonType]->(HolonType.TypeDescriptor)",
@@ -300,6 +308,26 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedConstraints]->(Constraint.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedDescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedLineage]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedOperators]->(OperatorType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedValidationBindings]->(ValidationRule.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(DesignToken.HolonType)-[ConsumedByVisualizer]->(Visualizer.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -381,6 +409,10 @@
     },
     {
       "key": "(EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDerivedDescriptors]->(DerivedDescriptor.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -860,6 +892,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(OperatorType.HolonType)-[OperatorInDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -1160,6 +1196,14 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(TypeDescriptor)-[LineageOfDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[RequestedByDerivedDescriptorRequest]->(ConstructDerivedDescriptorRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(TypeDescriptor)-[ResolvedUsageTypeOf]->(VisualizerUsageResolution.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -1185,6 +1229,10 @@
     },
     {
       "key": "(ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValidationRule.HolonType)-[ValidationBindingInDerivedDescriptor]->(DerivedDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1437,6 +1485,10 @@
     },
     {
       "key": "AbstractMemberMinimumEnforcement.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "AbstractPropertyParent.ValidationRule",
       "type": "HolonValidationRule.HolonType"
     },
     {
@@ -1858,6 +1910,22 @@
     {
       "key": "ConstraintTypeIdentity.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ConstructDerivedDescriptor.DanceImplementation",
+      "type": "DanceImplementation.HolonType"
+    },
+    {
+      "key": "ConstructDerivedDescriptor.DanceType",
+      "type": "MetaDanceType.MetaHolonType"
+    },
+    {
+      "key": "ConstructDerivedDescriptorRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ConstructDerivedDescriptorResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType"
     },
     {
       "key": "ConstructEffectiveHolonDescriptor.DanceImplementation",
@@ -2558,6 +2626,22 @@
     {
       "key": "Demo1.WarmParchmentThemeTableHeaderTextColor",
       "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "DerivedDescriptor.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DerivedInstanceTypeKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DerivedOrigins.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DerivedValueKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "DescribedTypeRule.KeyRuleType",

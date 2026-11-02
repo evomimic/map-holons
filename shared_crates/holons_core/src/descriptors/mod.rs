@@ -1,3 +1,5 @@
+pub mod derived_descriptor;
+pub use derived_descriptor::{construct_derived_descriptor, DerivedDescriptor};
 pub(crate) mod accessor_helpers;
 pub mod command_descriptor;
 mod constraint_applicability;
@@ -107,3 +109,5 @@ pub use value_descriptor_subtypes::{
 mod reference_semantics_tests;
 
 pub use accessor_helpers::effective_property_value;
+
+pub mod value_kind;

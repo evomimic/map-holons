@@ -266,7 +266,25 @@ impl DescriptorPackages {
                 Some(descriptor) => {
                     holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
                 }
-                None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+                None => {
+                    let derived = if workset.schemas.is_empty() {
+                        holons_core::descriptors::DerivedDescriptor::find_in_context(
+                            context, &reference,
+                        )?
+                    } else {
+                        None
+                    };
+                    match derived {
+                        Some(derived) => {
+                            holons_core::descriptors::ComputedEffectiveSchema::from_derived(
+                                &derived,
+                            )
+                        }
+                        None => {
+                            holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference)
+                        }
+                    }
+                }
             }
             .map(Arc::new);
             // All name/navigation reads required by validation belong to preparation,

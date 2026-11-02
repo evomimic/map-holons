@@ -9,6 +9,10 @@ use holons_core::TransientReference;
 
 use crate::ExecutionPolicy;
 
+/// Host execution/recovery coordinator spanning successive space cache Sessions.
+/// Its registry ownership prevents cycles; HolonSpaceManager owns cache retirement.
+/// The active/archived ClientSessions below are transaction recovery lifetimes,
+/// not the saved-state cache Sessions ended by reset.
 pub struct RuntimeSession {
     pub(crate) discoveries: crate::discovery_evidence::DiscoveryEvidence,
     pub(crate) usage_transactions: crate::usage_transactions::UsageTransactions,

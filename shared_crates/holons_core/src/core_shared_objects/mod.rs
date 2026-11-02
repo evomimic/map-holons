@@ -20,6 +20,7 @@ pub mod relationship_behavior;
 pub mod relationship_cache;
 pub mod space_manager;
 pub mod space_read_handle;
+pub mod space_session;
 pub mod staged_relationship;
 pub mod transactions;
 pub mod transient_collection;

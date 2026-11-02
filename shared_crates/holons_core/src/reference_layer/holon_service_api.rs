@@ -1,4 +1,4 @@
-use super::{HolonReference, SmartReference, TransientReference};
+use super::{HolonReference, ReadableHolon, SmartReference, TransientReference};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::RelationshipMap;
@@ -95,6 +95,47 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         _target: HolonReference,
     ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
         Err(HolonError::NotImplemented("construct_effective_holon_descriptor_internal".into()))
+    }
+
+    /// Value/property products share the same service boundary as effective Holon schemas.
+    fn acquire_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        if let Some(result) =
+            crate::descriptors::DerivedDescriptor::find_in_context(context, &target)?
+        {
+            return Ok(result);
+        }
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(registry) = context.descriptor_registry() {
+                let id = target.holon_id()?;
+                if let Some(result) = registry.get_derived(&id)? {
+                    return Ok(result);
+                }
+                let session = context.space_read_handle().session()?;
+                let owner = registry.context()?;
+                let result = self.construct_derived_descriptor_internal(&owner, target);
+                return match result {
+                    Ok(result) => registry.publish_derived(id, &result, &session),
+                    Err(error) => {
+                        let _ = registry.prune_envelopes();
+                        Err(error)
+                    }
+                };
+            }
+        }
+        self.construct_derived_descriptor_internal(context, target)
+    }
+
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        let _ = (context, target);
+        Err(HolonError::NotImplemented("construct_derived_descriptor_internal".into()))
     }
 
     /// This function commits the staged holons to the persistent store

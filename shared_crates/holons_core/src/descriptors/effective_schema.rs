@@ -199,6 +199,13 @@ impl ComputedEffectiveSchema {
         super::effective_holon_descriptor::materialize_effective_schema(context, self, |_, _| {})
     }
 
+    /// Reuses the prepared ValueType/PropertyType lineage and inherited commitments.
+    /// Other contract collections retain their kernel semantics; no second Extends
+    /// traversal or fabricated empty contract is introduced.
+    pub fn from_derived(descriptor: &super::DerivedDescriptor) -> Result<Self, HolonError> {
+        Self::from_members_with_derived(descriptor.lineage()?, &mut |_, _| {}, Some(descriptor))
+    }
+
     /// Resolves L(T), never L(D(T)); supports invalid but structurally traversable schemas.
     pub fn resolve(target: &HolonReference) -> Result<Self, HolonError> {
         Self::resolve_with_checkpoint(target, &mut |_, _| {})
@@ -222,13 +229,29 @@ impl ComputedEffectiveSchema {
         lineage: Vec<HolonReference>,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
+        Self::from_members_with_derived(lineage, checkpoint, None)
+    }
+
+    fn from_members_with_derived(
+        lineage: Vec<HolonReference>,
+        checkpoint: &mut impl FnMut(&str, &str),
+        derived: Option<&super::DerivedDescriptor>,
+    ) -> Result<Self, HolonError> {
         let target = lineage
             .first()
             .ok_or_else(|| HolonError::InvalidParameter("Empty descriptor lineage".into()))?
             .clone();
         let mut resolved = Vec::new();
         for (source, result, _, _, _) in collections() {
-            let selected = relationship_targets_in_lineage(&lineage, source.clone())?;
+            let selected = match (derived, &source) {
+                (Some(derived), CoreRelationshipTypeName::Constraints) => {
+                    derived.effective_constraints()?
+                }
+                (Some(derived), CoreRelationshipTypeName::ValidationBindings) => {
+                    derived.effective_validation_bindings()?
+                }
+                _ => relationship_targets_in_lineage(&lineage, source.clone())?,
+            };
             let mut positions = HashMap::<DefinitionIdentity, usize>::new();
             let mut occurrences = Vec::with_capacity(selected.len());
             for contribution in selected {

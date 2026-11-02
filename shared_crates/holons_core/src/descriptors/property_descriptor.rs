@@ -23,14 +23,46 @@ pub enum EffectiveValue {
 /// Runtime wrapper for property descriptors.
 ///
 /// This wrapper exposes property descriptor fields through the shared descriptor kernel.
+///
+/// # Derived payload
+///
+/// Acquires inherited constraints and validation bindings, with self-first
+/// lineage and per-occurrence declaring origins. Property name, requiredness,
+/// and ValueType remain fixed concrete declarations, not derived overrides.
+/// Abstract property families can contribute constraints and bindings; concrete
+/// properties are leaves. Effective Instance TypeKind is retained as its exact lineage-anchor identity.
+///
+/// Saved wrappers share registered products; staged/transient wrappers acquire
+/// fresh products without memoization. See [`super::DerivedDescriptor`] for the
+/// backing payload and its authoritative specification location.
 pub struct PropertyDescriptor {
     holon: HolonReference,
+    derived_fields: super::derived_descriptor::DerivedFields,
 }
 
 impl PropertyDescriptor {
     /// Wraps an already-resolved descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
-        Self { holon }
+        Self { holon, derived_fields: Default::default() }
+    }
+
+    /// Returns inherited constraint occurrences without evaluating them.
+    pub fn effective_constraints(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        self.derived_fields.read(&self.holon, |derived| derived.effective_constraints())
+    }
+
+    /// Returns inherited bindings, preserving declaring origins and duplicates.
+    pub fn effective_validation_bindings(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        self.derived_fields.read(&self.holon, |derived| derived.effective_validation_bindings())
+    }
+
+    /// Returns the exact effective Instance TypeKind anchor from the shared derived payload.
+    pub fn instance_type_kind(&self) -> Result<Option<HolonReference>, HolonError> {
+        self.derived_fields.read(&self.holon, |derived| derived.instance_type_kind())
     }
 
     /// Projects the shared descriptor header view for this descriptor holon.

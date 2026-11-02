@@ -26,7 +26,7 @@ use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeNa
 struct TestHolonService {
     read_errors: HashMap<HolonId, HolonError>,
     saved_holons: HashMap<HolonId, SavedHolon>,
-    saved_relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+    saved_relationships: std::sync::RwLock<HashMap<(HolonId, RelationshipName), Vec<HolonId>>>,
 }
 
 fn unreachable_in_descriptor_tests<T>() -> Result<T, HolonError> {
@@ -44,6 +44,14 @@ impl HolonServiceApi for TestHolonService {
         target: HolonReference,
     ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
         construct_prepared_fixture(context, target)
+    }
+
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        crate::descriptors::construct_derived_descriptor(context, target)
     }
 
     fn commit_internal(
@@ -71,7 +79,7 @@ impl HolonServiceApi for TestHolonService {
             return unreachable_in_descriptor_tests();
         }
         let mut result = RelationshipMap::new_empty();
-        for (source, name) in self.saved_relationships.keys() {
+        for (source, name) in self.saved_relationships.read().unwrap().clone().keys() {
             if source == source_id {
                 let collection = self.fetch_related_holons_internal(context, source_id, name)?;
                 result.insert(name.clone(), Arc::new(std::sync::RwLock::new(collection)));
@@ -105,8 +113,11 @@ impl HolonServiceApi for TestHolonService {
             return Err(HolonError::HolonNotFound(format!("test saved holon: {source_id:?}")));
         }
         let mut collection = HolonCollection::new_transient();
-        if let Some(targets) =
-            self.saved_relationships.get(&(source_id.clone(), relationship_name.clone()))
+        if let Some(targets) = self
+            .saved_relationships
+            .read()
+            .unwrap()
+            .get(&(source_id.clone(), relationship_name.clone()))
         {
             collection.add_references(
                 targets
@@ -195,13 +206,55 @@ pub(crate) fn build_context_with_read_errors(
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     read_errors: HashMap<HolonId, HolonError>,
 ) -> Arc<TransactionContext> {
-    let saved_holons = holons
+    let mut saved_holons: HashMap<HolonId, SavedHolon> = holons
         .into_iter()
         .map(|holon| (HolonId::Local(holon.get_local_id().unwrap()), holon))
         .collect();
+    // The derived runtime result has an ordinary saved describing type, just as
+    // in the loaded Descriptor Runtime package. No source members are mocked.
+    use type_names::ToPropertyName;
+    let result_type_id = LocalId::from_bytes(vec![253; 39]);
+    let result_type = SavedHolon::new(
+        result_type_id.clone(),
+        core_types::PropertyMap::from([
+            (
+                "Key".to_property_name(),
+                base_types::BaseValue::StringValue(MapString("DerivedDescriptor.HolonType".into())),
+            ),
+            (
+                "TypeName".to_property_name(),
+                base_types::BaseValue::StringValue(MapString("DerivedDescriptor".into())),
+            ),
+        ]),
+        None,
+        base_types::MapInteger(1),
+    );
+    saved_holons.entry(HolonId::Local(result_type_id)).or_insert(result_type);
+    let registry_type_id = LocalId::from_bytes(vec![252; 39]);
+    saved_holons.entry(HolonId::Local(registry_type_id.clone())).or_insert_with(|| {
+        SavedHolon::new(
+            registry_type_id,
+            core_types::PropertyMap::from([
+                (
+                    "Key".to_property_name(),
+                    base_types::BaseValue::StringValue(MapString(
+                        "EffectiveHolonDescriptorRegistry.HolonType".into(),
+                    )),
+                ),
+                (
+                    "TypeName".to_property_name(),
+                    base_types::BaseValue::StringValue(MapString(
+                        "EffectiveHolonDescriptorRegistry".into(),
+                    )),
+                ),
+            ]),
+            None,
+            base_types::MapInteger(1),
+        )
+    });
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService {
         saved_holons,
-        saved_relationships: relationships,
+        saved_relationships: std::sync::RwLock::new(relationships),
         read_errors,
     });
     let space_manager = HolonSpaceManager::new_with_managers(
@@ -577,4 +630,23 @@ pub(crate) fn construct_prepared_fixture(
     )?;
     result.mark_as_immutable()?;
     Ok(EffectiveHolonDescriptor::from_constructed_holon(result.into()))
+}
+
+/// Changes the fake persistence provider, independently of reference/cache state.
+/// Used to distinguish session stability from genuinely refreshed derivation inputs.
+pub(crate) fn replace_saved_relationship(
+    context: &Arc<TransactionContext>,
+    source: HolonId,
+    name: RelationshipName,
+    targets: Vec<HolonId>,
+) {
+    context
+        .get_holon_service()
+        .as_any()
+        .downcast_ref::<TestHolonService>()
+        .unwrap()
+        .saved_relationships
+        .write()
+        .unwrap()
+        .insert((source, name), targets);
 }

@@ -1,9 +1,5 @@
-use std::collections::HashSet;
-
 use crate::descriptors::value_descriptor_subtypes::helpers::{
-    single_operand, supported_operators as collect_supported_operators,
-    supports_operator as descriptor_supports_operator,
-    unsupported_operator as descriptor_unsupported_operator,
+    single_operand, unsupported_operator as descriptor_unsupported_operator,
     value_kind_mismatch as descriptor_value_kind_mismatch,
 };
 use crate::descriptors::{
@@ -13,9 +9,24 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
-use type_names::{CoreRelationshipTypeName, ToOperatorName};
+#[cfg(test)]
+use type_names::CoreRelationshipTypeName;
+use type_names::ToOperatorName;
 
 /// Runtime wrapper for value-type descriptors.
+///
+/// # Derived payload
+///
+/// Acquires native value kind (including array classification), afforded
+/// operators, inherited constraints, and validation bindings. Shared supporting
+/// state contains the self-first lineage and per-occurrence declaring origins.
+/// Enum variants and array element declarations retain their local semantics.
+/// Effective Instance TypeKind is retained as its exact lineage-anchor identity,
+/// independently of native value kind.
+///
+/// Saved wrappers share registered products; staged/transient wrappers acquire
+/// fresh products without memoization. See [`super::DerivedDescriptor`] for the
+/// backing payload and its authoritative specification location.
 ///
 /// `ValueDescriptor` is the public semantic dispatch point for value validation
 /// and operator execution. Subtype wrappers own the local behavior for each
@@ -24,12 +35,18 @@ use type_names::{CoreRelationshipTypeName, ToOperatorName};
 #[derive(Debug, Clone)]
 pub struct ValueDescriptor {
     holon: HolonReference,
+    derived_fields: super::derived_descriptor::DerivedFields,
 }
 
 impl ValueDescriptor {
     /// Wraps an already-resolved descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
-        Self { holon }
+        Self { holon, derived_fields: Default::default() }
+    }
+
+    /// Returns the exact effective Instance TypeKind anchor from the shared derived payload.
+    pub fn instance_type_kind(&self) -> Result<Option<HolonReference>, HolonError> {
+        self.derived_fields.read(&self.holon, |derived| derived.instance_type_kind())
     }
 
     /// Projects the shared descriptor header view for this descriptor holon.
@@ -66,17 +83,24 @@ impl ValueDescriptor {
     pub fn effective_constraints(
         &self,
     ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
-        super::effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Constraints)
+        self.derived_fields.read(&self.holon, |derived| derived.effective_constraints())
+    }
+
+    /// Returns inherited bindings without evaluating validation rules.
+    pub fn effective_validation_bindings(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        self.derived_fields.read(&self.holon, |derived| derived.effective_validation_bindings())
     }
 
     /// Returns operators afforded by this descriptor across its inheritance chain.
     pub fn supported_operators(&self) -> Result<Vec<OperatorDescriptor>, HolonError> {
-        collect_supported_operators(&self.holon)
+        self.derived_fields.read(&self.holon, |derived| derived.supported_operators())
     }
 
     /// Returns whether this descriptor affords the supplied operator.
     pub fn supports_operator(&self, op: &OperatorDescriptor) -> Result<bool, HolonError> {
-        descriptor_supports_operator(&self.holon, op)
+        self.derived_fields.read(&self.holon, |derived| derived.supports_operator(op))
     }
 
     /// Finds an afforded operator by operator descriptor type name.
@@ -84,31 +108,11 @@ impl ValueDescriptor {
         &self,
         operator_name: N,
     ) -> Result<OperatorDescriptor, HolonError> {
-        let requested_name = operator_name.to_operator_name();
-        let requested = requested_name.to_string();
-        let mut seen = HashSet::new();
-        let mut found = None;
-
-        for operator_descriptor in self.supported_operators()? {
-            let declaration_name = operator_descriptor.operator_name()?;
-            let declaration_label = declaration_name.to_string();
-            if !seen.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "operator".to_string(),
-                    name: declaration_label,
-                    descriptor: accessor_helpers::descriptor_label(&self.holon),
-                });
-            }
-            if declaration_name == requested_name {
-                found = Some(operator_descriptor);
-            }
+        {
+            let name = operator_name.to_operator_name();
+            self.derived_fields
+                .read(&self.holon, |derived| derived.get_operator_by_name(name.clone()))
         }
-
-        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
-            kind: "operator".to_string(),
-            name: requested,
-            descriptor: accessor_helpers::descriptor_label(&self.holon),
-        })
     }
 
     /// Validates that this descriptor affords the named operator.
@@ -124,13 +128,11 @@ impl ValueDescriptor {
         &self,
         operator_name: N,
     ) -> Result<bool, HolonError> {
-        let requested_name = operator_name.to_operator_name();
-        for operator_descriptor in self.supported_operators()? {
-            if operator_descriptor.operator_name()? == requested_name {
-                return Ok(true);
-            }
+        {
+            let name = operator_name.to_operator_name();
+            self.derived_fields
+                .read(&self.holon, |derived| derived.supports_operator_by_name(name.clone()))
         }
-        Ok(false)
     }
 
     /// Applies an afforded binary operator to a subject and one authored operand.
@@ -190,28 +192,9 @@ impl ValueDescriptor {
     }
 
     /// Classifies representation from the nearest local Instance TypeKind anchor.
-    /// No canonical-key lookup or instance-value validation is performed.
+    /// Reads the guest-prepared kind projection; it never walks Extends here.
     pub fn value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
-        use BaseValueKind::*;
-        for ancestor in super::inheritance::walk_extends_chain(&self.holon) {
-            let ancestor = ancestor?;
-            let header = TypeHeader::new(&ancestor);
-            if !header.defines_instance_type_kind()? {
-                continue;
-            }
-            let name = header.type_name()?;
-            return Ok(match name.0.as_str() {
-                "StringValueType" => ValueDescriptorKind::BaseValue(String),
-                "IntegerValueType" => ValueDescriptorKind::BaseValue(Integer),
-                "BooleanValueType" => ValueDescriptorKind::BaseValue(Boolean),
-                "BytesValueType" => ValueDescriptorKind::BaseValue(Bytes),
-                "EnumValueType" | "MapEnumValueType" => ValueDescriptorKind::BaseValue(Enum),
-                "BaseValueValueType" | "ValueType" => ValueDescriptorKind::AnyBaseValue,
-                "ValueArrayValueType" | "MapValueArrayType" => ValueDescriptorKind::ValueArray,
-                _ => ValueDescriptorKind::Unsupported(name.to_string()),
-            });
-        }
-        Err(self.wrong_value_kind("No instance TypeKind anchor".into()).into())
+        self.derived_fields.read(&self.holon, |derived| derived.value_kind())
     }
 
     /// Classifies the declared representation without inspecting an instance value.
@@ -310,7 +293,7 @@ impl ValueDescriptor {
 }
 
 /// Native representation classified independently of configured constraints.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ValueDescriptorKind {
     /// One of the five scalar representations supported by `BaseValue`.
     BaseValue(BaseValueKind),
@@ -354,9 +337,8 @@ mod tests {
     use type_names::CoreOperatorTypeName;
 
     #[test]
-    fn layout_classification_uses_nearest_local_anchor_without_root_lookups(
-    ) -> Result<(), HolonError> {
-        // This context cannot fetch saved holons: any canonical-root lookup fails.
+    fn layout_classification_uses_prepared_nearest_local_anchor() -> Result<(), HolonError> {
+        // The same nearest-anchor rule applies through the prepared product.
         let context = test_support::build_context();
         for name in
             ["StringValueType", "BooleanValueType", "ValueArrayValueType", "MapValueArrayType"]
@@ -442,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn value_kind_uses_nearest_anchor_without_saved_lookups() -> Result<(), HolonError> {
+    fn value_kind_uses_prepared_nearest_anchor() -> Result<(), HolonError> {
         let context = test_support::build_context();
         for (name, expected) in [
             ("StringValueType", ValueDescriptorKind::BaseValue(BaseValueKind::String)),

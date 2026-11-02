@@ -130,6 +130,11 @@ fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
             "MetaTypeDescriptor.HolonType",
         ),
         (
+            "AbstractPropertyParent.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
             "AcyclicExtendsLineage.ValidationRule",
             "HolonValidationRule.HolonType",
             "MetaTypeDescriptor.HolonType",

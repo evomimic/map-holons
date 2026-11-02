@@ -1005,6 +1005,7 @@ fn descriptor_rules_have_product_routes_and_no_native_value_kind() {
     use CoreValidationRuleName::*;
     for rule in [
         AtMostOneDirectParent,
+        AbstractPropertyParent,
         AcyclicExtendsLineage,
         ExtendsLineageTerminatesAtTypeDescriptor,
         UniqueTypeDescriptorRoot,
@@ -2596,6 +2597,10 @@ fn registrations_match_independent_core_placement_expectations() {
             ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
         ),
         (
+            "AbstractPropertyParent.ValidationRule",
+            ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
+        ),
+        (
             "AcyclicExtendsLineage.ValidationRule",
             ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
         ),
@@ -3099,6 +3104,98 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
             findings.iter().any(|finding| finding.message.contains(namespace)),
             "missing {namespace} conflict: {findings:?}"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn property_extension_requires_an_abstract_parent() -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    for (parent_key, abstract_parent, child_abstract, expected) in [
+        ("PropertyType.TypeDescriptor", true, false, false),
+        ("Title.PropertyType", true, false, false),
+        ("Title.PropertyType", true, true, false),
+        ("Title.PropertyType", false, false, true),
+        ("Title.PropertyType", false, true, true),
+        ("Contract", false, false, false),
+    ] {
+        let mut fixture = Fixture::new()?;
+        let roots = c2_kind_semantics(&mut fixture)?;
+        fixture
+            .nodes
+            .get_mut(parent_key)
+            .unwrap()
+            .with_property_value("IsAbstractType", abstract_parent)?;
+        fixture
+            .node("PropertyChild")?
+            .with_property_value("DefinesInstanceTypeKind", false)?
+            .with_property_value("IsAbstractType", child_abstract)?;
+        fixture.link("PropertyChild", CoreRelationshipTypeName::Extends, parent_key)?;
+        let subject = fixture.nodes["PropertyChild"].clone();
+        let prerequisites = StructuralPrerequisites::assess(&subject)?;
+        let mut products = DescriptorRuleProducts::default();
+        products.prepare_kind(&prerequisites, &roots)?;
+        let findings = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::AbstractPropertyParent,
+            &products,
+            &subject,
+        )?;
+        assert_eq!(
+            findings.len(),
+            usize::from(expected),
+            "parent={parent_key}, abstract={abstract_parent}, child abstract={child_abstract}"
+        );
+        if expected {
+            assert!(
+                matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-STRUCT-006")
+            );
+            assert!(findings[0].message.contains("only abstract property descriptors"));
+            // This prerequisite cannot be bypassed by omitting a validation binding.
+            let mut collector = ValidationCollector::default();
+            crate::subject_assessment::dispatch_descriptor(
+                &[],
+                &products,
+                &subject,
+                &mut collector,
+            )?;
+            assert!(collector
+                .into_report()
+                .violations
+                .iter()
+                .any(|finding| finding.rule_key.as_deref()
+                    == Some(CoreValidationRuleName::AbstractPropertyParent.as_str())));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn property_parent_abstractness_must_be_a_local_boolean() -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    for malformed in [false, true] {
+        let mut fixture = Fixture::new()?;
+        let roots = c2_kind_semantics(&mut fixture)?;
+        let parent = fixture.nodes.get_mut("Title.PropertyType").unwrap();
+        if malformed {
+            parent.with_property_value("IsAbstractType", "true")?;
+        } else {
+            parent.remove_property_value("IsAbstractType")?;
+        }
+        fixture.node("PropertyChild")?.with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link("PropertyChild", CoreRelationshipTypeName::Extends, "Title.PropertyType")?;
+        let subject = fixture.nodes["PropertyChild"].clone();
+        let prerequisites = StructuralPrerequisites::assess(&subject)?;
+        let mut products = DescriptorRuleProducts::default();
+        products.prepare_kind(&prerequisites, &roots)?;
+        let findings = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::AbstractPropertyParent,
+            &products,
+            &subject,
+        )?;
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
     }
     Ok(())
 }

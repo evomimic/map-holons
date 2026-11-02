@@ -12,6 +12,7 @@ use crate::dances::dance_initiator::DanceInitiator;
 use std::fmt::{Debug, Formatter};
 
 pub struct HolonSpaceManager {
+    session: RwLock<Arc<super::space_session::SpaceSession>>,
     descriptor_registry: RwLock<Weak<EffectiveHolonDescriptorRegistry>>,
     /// Manages cache access for retrieving both local and external holons efficiently.
     cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
@@ -64,6 +65,7 @@ impl HolonSpaceManager {
 
             // Step 4: Initialize and return the HolonSpaceManager with thread-safe fields
             Self {
+                session: RwLock::new(Arc::default()),
                 descriptor_registry: RwLock::new(Weak::new()),
                 cache_request_router,
                 dance_initiator,
@@ -74,18 +76,49 @@ impl HolonSpaceManager {
         })
     }
 
-    /// Attaches the agent session's derived-state capability without retaining its owner.
+    /// Captures the current saved-state lifetime; no transaction or cache fill is opened.
+    pub fn session(&self) -> Result<Arc<super::space_session::SpaceSession>, HolonError> {
+        let current =
+            self.session.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        let session = current.clone();
+        session.check_active().map_err(|error| match error {
+            HolonError::ObsoleteSession => {
+                HolonError::ServiceNotAvailable("Space Session reset is incomplete".into())
+            }
+            other => other,
+        })?;
+        Ok(session)
+    }
+
+    /// Retires registered derived state. Public transactions, staged edits, and
+    /// Undo/Redo are preserved. Reconstruction is lazy and uses normal relationship
+    /// cache policies; reset neither changes saved version IDs nor flushes inputs.
+    pub fn reset_session(&self) -> Result<(), HolonError> {
+        let mut current =
+            self.session.write().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        current.retire()?;
+        // Only prepared results belong to this retirement boundary. Ordinary
+        // saved reads continue under their existing relationship cache policies.
+        if let Some(registry) = self.descriptor_registry() {
+            registry.reset_session()?;
+        }
+        *current = Arc::default();
+        Ok(())
+    }
+
+    /// Associates the runtime's registry participant without retaining its owner.
+    /// Cache Session resets reuse this association and retire its selected entries.
     pub fn attach_descriptor_registry(&self, registry: &Arc<EffectiveHolonDescriptorRegistry>) {
         let mut current =
             self.descriptor_registry.write().expect("descriptor registry lock poisoned");
         assert!(
             current.upgrade().is_none(),
-            "A runtime space proxy may have only one active agent Session"
+            "A runtime space proxy may have only one attached descriptor registry"
         );
         *current = Arc::downgrade(registry);
     }
 
-    /// Returns the registry owned by the active agent session, if present.
+    /// Returns the registry participant associated with this runtime space proxy.
     pub fn descriptor_registry(&self) -> Option<Arc<EffectiveHolonDescriptorRegistry>> {
         self.descriptor_registry.read().ok()?.upgrade()
     }
@@ -100,7 +133,7 @@ impl HolonSpaceManager {
 impl HolonSpaceBehavior for HolonSpaceManager {
     /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        Arc::clone(&self.cache_request_router)
+        self.cache_request_router.clone()
     }
 
     fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {

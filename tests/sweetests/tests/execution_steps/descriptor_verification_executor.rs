@@ -975,6 +975,7 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
         ("BytesValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBytes),
         ("EnumValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesEnum),
         ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AtMostOneDirectParent),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AbstractPropertyParent),
         ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AcyclicExtendsLineage),
         (
             "MetaTypeDescriptor.HolonType",

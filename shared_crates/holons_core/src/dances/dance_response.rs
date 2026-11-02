@@ -171,6 +171,8 @@ impl From<HolonError> for ResponseStatusCode {
     fn from(error: HolonError) -> Self {
         match error {
             // 500-ish (internal / infrastructure)
+            HolonError::CacheResetAfterCommit(_) => ResponseStatusCode::ServerError,
+            HolonError::ObsoleteSession => ResponseStatusCode::Conflict,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::ConductorError(_) => ResponseStatusCode::ServerError,

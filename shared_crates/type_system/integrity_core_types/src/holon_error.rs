@@ -16,6 +16,10 @@ pub enum LineageIntegrityReason {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
+    #[error("The saved-state Session has been retired")]
+    ObsoleteSession,
+    #[error("Persistence completed but cache Session reset failed: {0}")]
+    CacheResetAfterCommit(String),
     #[error("Cache Error: {0}")]
     CacheError(String),
     #[error("Commit Failure {0}")]
@@ -216,6 +220,8 @@ pub enum SchemaInvalidityKind {
 /// payloads (strings, tx ids, etc.).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HolonErrorKind {
+    ObsoleteSession,
+    CacheResetAfterCommit,
     CacheError,
     CommitFailure,
     ConductorError,
@@ -288,6 +294,8 @@ pub enum HolonErrorKind {
 impl From<&HolonError> for HolonErrorKind {
     fn from(error: &HolonError) -> Self {
         match error {
+            HolonError::ObsoleteSession => Self::ObsoleteSession,
+            HolonError::CacheResetAfterCommit(_) => Self::CacheResetAfterCommit,
             HolonError::CacheError(_) => Self::CacheError,
             HolonError::CommitFailure(_) => Self::CommitFailure,
             HolonError::ConductorError(_) => Self::ConductorError,

@@ -32,6 +32,16 @@ impl SpaceReadHandle {
         self.space_manager.get_cache_access().ensure_cached(ids)
     }
 
+    /// Captures the owning space's current Session without inspecting cache residency.
+    pub fn session(&self) -> Result<Arc<super::space_session::SpaceSession>, HolonError> {
+        self.space_manager.session()
+    }
+
+    /// Retires this space proxy's registered derived state without overriding read policies.
+    pub fn reset_session(&self) -> Result<(), HolonError> {
+        self.space_manager.reset_session()
+    }
+
     pub(crate) fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
         Self { space_manager }
     }

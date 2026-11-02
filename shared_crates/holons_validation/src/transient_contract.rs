@@ -128,16 +128,20 @@ fn validate_contract(
                 return Err(invalid("Missing required transient property"))
             }
             None => {}
-            Some(value) => match property.value_type()?.value_kind()? {
-                ValueDescriptorKind::BaseValue(kind) if kind == value.kind() => {}
-                ValueDescriptorKind::AnyBaseValue => {}
-                other => {
-                    return Err(HolonError::UnexpectedValueType(
-                        format!("{:?}", value.kind()),
-                        format!("{other:?}"),
-                    ))
+            Some(value) => {
+                match holons_core::descriptors::value_kind::classify_value_kind_for_validation(
+                    property.value_type()?.holon(),
+                )? {
+                    ValueDescriptorKind::BaseValue(kind) if kind == value.kind() => {}
+                    ValueDescriptorKind::AnyBaseValue => {}
+                    other => {
+                        return Err(HolonError::UnexpectedValueType(
+                            format!("{:?}", value.kind()),
+                            format!("{other:?}"),
+                        ))
+                    }
                 }
-            },
+            }
         }
     }
     let mut names = HashSet::new();
