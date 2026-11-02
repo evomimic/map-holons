@@ -31,7 +31,7 @@ def complete_run():
             "[commit-preparation-operation] operation=MembershipPrefetch role=Commitment elapsed_us=80",
             "[commit-preparation-operation] operation=EffectiveContract role=PreparedDefinition elapsed_us=15",
             "[commit-preparation-operation] operation=ContentRetention role=SavedContent exact_node_reads=3",
-            "[commit-instrumentation] version=822-v2 substrate=broad-readiness holon_cache_capacity=99 read_detail=disabled",
+            "[commit-instrumentation] version=822-v2 substrate=broad-readiness holon_cache_capacity=10000 read_detail=disabled",
             "[commit-preparation-operation] operation=ReadinessDiscovery role=Assessment elapsed_us=10",
             "[commit-preparation-operation] operation=DependencyGrouping role=Assessment elapsed_us=2",
             "[commit-preparation-edge] role=Readiness edge=Extends requests=1 members=2",
@@ -76,10 +76,10 @@ class CaptureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "run.log"
             log.write_text(complete_run())
-            measure.summarize([log], expected_guest_cache_capacity=99)
+            measure.summarize([log], expected_guest_cache_capacity=10000)
             with self.assertRaisesRegex(ValueError, "Guest cache capacity"):
                 measure.summarize([log], expected_guest_cache_capacity=1024)
-            log.write_text(complete_run().replace("holon_cache_capacity=99", "holon_cache_capacity=1024"))
+            log.write_text(complete_run().replace("holon_cache_capacity=10000", "holon_cache_capacity=1024"))
             measure.summarize([log], expected_guest_cache_capacity=1024)
             with self.assertRaisesRegex(ValueError, "Guest cache capacity"):
                 measure.summarize([log], expected_guest_cache_capacity=99)
@@ -161,7 +161,7 @@ class CaptureTests(unittest.TestCase):
                 if policy is not None:
                     metadata["anchor_evidence_policy"] = policy
                 (destination / "metadata.json").write_text(json.dumps(metadata))
-                content = complete_run().replace("[commit-instrumentation] version=822-v2 substrate=broad-readiness holon_cache_capacity=99 read_detail=disabled", "").split("[commit-baseline] sample_start=2")[0]
+                content = complete_run().replace("[commit-instrumentation] version=822-v2 substrate=broad-readiness holon_cache_capacity=10000 read_detail=disabled", "").split("[commit-baseline] sample_start=2")[0]
                 if policy != "retired":
                     content = content.replace("[PERF-688]", marker + "[PERF-688]")
                 (destination / "run-01.log").write_text(content)
@@ -213,7 +213,7 @@ class CaptureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "run.log"
             for text in [complete_run().replace("snapshot_lookups=0", "wrong=0"),
-                         complete_run().replace("[commit-instrumentation] version=822-v2 substrate=broad-readiness holon_cache_capacity=99 read_detail=disabled", "")]:
+                         complete_run().replace("[commit-instrumentation] version=822-v2 substrate=broad-readiness holon_cache_capacity=10000 read_detail=disabled", "")]:
                 log.write_text(text)
                 with self.assertRaisesRegex(ValueError, "Missing"):
                     measure.summarize([log], instrumentation="822-v2")

@@ -205,7 +205,7 @@ def main():
     parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
     parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
     parser.add_argument("--governor-presence", default="unavailable", help="Governor entry presence established by workload setup")
-    parser.add_argument("--expected-guest-cache-capacity", type=int, choices=[99, 1024], default=99, help="Validate the diagnostic content-cache capacity reported by the guest")
+    parser.add_argument("--expected-guest-cache-capacity", type=int, choices=[99, 1024, 10000], default=10000, help="Validate the diagnostic content-cache capacity reported by the guest")
     parser.add_argument("--guest-artifact-revision", default="unavailable", help="Revision used to build the supplied guest artifact")
     parser.add_argument("--registry-population", type=int, help="Requested setup population; observed values come from logs")
     parser.add_argument("--guest-cache-state", default="unavailable", help="Describe ingress and setup warming; a fresh transaction does not establish cold cache")

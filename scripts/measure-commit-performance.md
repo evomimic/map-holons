@@ -221,3 +221,14 @@ interpreting total latency. Report sample index 1's host snapshot preparation se
 of high-read samples at larger capacity supports cache-pressure sensitivity; it does not isolate
 hash seeding as the cause, since capacity can also change shard geometry and eviction behavior.
 Keep these runs apart from baseline/final results, and rebuild ordinary profiling after the experiment.
+
+
+### 2026-11-02 guest cache decision
+
+The architect approved a nominal saved-content capacity of 10,000 for guests. Ordinary guest
+builds now request 10,000; the host default remains 99 because the approval followed the guest-only
+experiment. The existing diagnostic build continues to request 1024 on WASM. Retained saved content,
+relationship memberships, and staged/transient pools remain separate. New captures default to
+`--expected-guest-cache-capacity 10000`; archived 99/1024 captures retain their recorded expectations.
+Record this configuration change separately from preparation narrowing and incoming descriptor/registry
+changes when comparing performance. Historical baseline and capacity-experiment records are unchanged.

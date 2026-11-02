@@ -35,6 +35,8 @@ impl HolonCache {
     pub const DEFAULT_CAPACITY: usize =
         if cfg!(all(target_arch = "wasm32", feature = "diagnostic-large-holon-cache")) {
             1024
+        } else if cfg!(target_arch = "wasm32") {
+            10_000
         } else {
             99
         };
