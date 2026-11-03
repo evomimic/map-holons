@@ -1,7 +1,7 @@
 //! Assessment-local effective contracts. Holon content remains in bound references/caches.
 use crate::assessment_support::targets;
 use crate::schema_view::SchemaWorkset;
-use core_types::{HolonError, RelationshipName};
+use core_types::HolonError;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext, ContractContributions,
     DefinitionIdentity, EffectiveRelationshipMember, HolonReference, ReadableHolon,
@@ -13,20 +13,10 @@ use std::{
 };
 use type_names::CoreRelationshipTypeName as R;
 
-/// State is scoped to this assessment, never persisted as schema acceptance.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum PackageState {
-    Constructing,
-    Constructed,
-    Validated,
-    Blocked,
-}
-
 /// The root's effective contract retains kernel contribution ordering and provenance.
 pub(crate) struct DescriptorPackage {
     pub root: HolonReference,
     pub contract: Result<Arc<ContractContributions>, HolonError>,
-    pub state: PackageState,
     consumed: Cell<bool>,
 }
 
@@ -39,6 +29,7 @@ pub(crate) struct DescriptorPackages {
     definitions: HashMap<DefinitionIdentity, PreparedDefinition>,
     _content: Vec<holons_core::core_shared_objects::holon_cache::SavedHolonRetention>,
     preparation: crate::PreparationMetrics,
+    pub(crate) diagnoses: Arc<crate::structural_diagnoses::StructuralDiagnoses>,
 }
 
 /// Shared kernel products; configuration and other domain values remain on the holons.
@@ -83,7 +74,14 @@ impl DescriptorPackages {
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
     ) -> Result<Self, HolonError> {
-        Self::construct_with_observer(context, roots, subjects, workset, &mut |_| {})
+        Self::construct_with_observer(
+            context,
+            roots,
+            subjects,
+            workset,
+            Arc::new(crate::structural_diagnoses::StructuralDiagnoses::new(context)),
+            &mut |_| {},
+        )
     }
 
     pub fn construct_with_observer(
@@ -91,6 +89,7 @@ impl DescriptorPackages {
         roots: &[HolonReference],
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
+        diagnoses: Arc<crate::structural_diagnoses::StructuralDiagnoses>,
         observer: &mut impl FnMut(crate::AssessmentEvent),
     ) -> Result<Self, HolonError> {
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageDiscovery));
@@ -104,7 +103,6 @@ impl DescriptorPackages {
                     "Descriptor package is still constructing".into(),
                 )
                 .into()),
-                state: PackageState::Constructing,
                 consumed: Cell::new(false),
             });
         }
@@ -146,7 +144,7 @@ impl DescriptorPackages {
                     content.push(retained?);
                 }
             }
-            // These are the existing readiness commitments, not arbitrary instance edges.
+            // Preserve the current preparation closure over definition relationships.
             let mut edges = vec![
                 R::DescribedBy,
                 R::Extends,
@@ -268,7 +266,13 @@ impl DescriptorPackages {
                     observer,
                     "FreshEffectiveSchema",
                     "PreparedDefinition",
-                    || holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+                    || {
+                        let diagnosis = diagnoses.get(&reference)?;
+                        match diagnosis.valid_lineage() {
+                            Some(lineage) => holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage),
+                            None => Err(diagnosed_lineage_error(&diagnosis, &reference)),
+                        }
+                    },
                 ),
             }
             .map(Arc::new);
@@ -327,7 +331,6 @@ impl DescriptorPackages {
                 .ok_or_else(|| HolonError::InvalidState("Missing prepared descriptor".into()))?
                 .contract
                 .clone();
-            entry.state = PackageState::Constructed;
         }
         for ((role, edge), (requests, members)) in edge_demand {
             observer(crate::AssessmentEvent::PreparationEdge { role, edge, requests, members });
@@ -338,6 +341,7 @@ impl DescriptorPackages {
             definitions,
             _content: content,
             preparation,
+            diagnoses,
         })
     }
 
@@ -352,6 +356,27 @@ impl DescriptorPackages {
                 declared_on: entry.declared_on.clone(),
             })
             .collect()
+    }
+
+    /// Projects obligations from complete prepared occurrences without another collection walk.
+    pub fn constraint_contributions(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<holons_core::descriptors::ConstraintContributions, HolonError> {
+        let diagnosis = self.diagnoses.get(reference)?;
+        let lineage = diagnosis.valid_lineage().ok_or_else(|| {
+            HolonError::InvalidState(format!(
+                "Constraint contributions require a valid lineage for {}",
+                reference.reference_id_string()
+            ))
+        })?;
+        let parent = lineage.members().get(1).cloned();
+        let effective = self.effective_constraints(reference)?;
+        let inherited = match &parent {
+            Some(parent) => self.effective_constraints(parent)?,
+            None => Vec::new(),
+        };
+        Ok(holons_core::descriptors::ConstraintContributions { parent, inherited, effective })
     }
 
     pub fn effective_schema(
@@ -442,34 +467,28 @@ impl DescriptorPackages {
             ..self.preparation.clone()
         }
     }
-
-    pub fn finish(&mut self, invalid: &HashSet<DefinitionIdentity>) {
-        for (identity, package) in &mut self.packages {
-            package.state = if invalid.contains(identity) || package.contract.is_err() {
-                PackageState::Blocked
-            } else {
-                PackageState::Validated
-            };
-        }
-    }
 }
 
-/// Enumerates an effective declared surface without ordinary query-layer discovery.
-pub(crate) fn declared_names(
-    contract: &ContractContributions,
-) -> Result<Vec<RelationshipName>, HolonError> {
-    let mut names = Vec::new();
-    for contribution in &contract.relationships {
-        match contribution.member.property_value(type_names::CorePropertyTypeName::TypeName)? {
-            Some(core_types::BaseValue::StringValue(name)) => {
-                let name = RelationshipName(name);
-                if !names.contains(&name) {
-                    names.push(name);
-                }
-            }
-            _ => return Err(HolonError::EmptyField("TypeName".into())),
+/// Preserve typed structural defects separately from missing promised preparation.
+fn diagnosed_lineage_error(
+    diagnosis: &holons_core::ExtendsLineageDiagnosis,
+    reference: &HolonReference,
+) -> HolonError {
+    use holons_core::ExtendsLineageDefect;
+    match &diagnosis.defects[0] {
+        ExtendsLineageDefect::MultipleParents { subject, count } => {
+            HolonError::MultipleExtends { descriptor: subject.reference_id_string(), count: *count }
         }
+        ExtendsLineageDefect::Cycle { repeated_descriptor, .. } => {
+            HolonError::CyclicExtends { descriptor: repeated_descriptor.clone() }
+        }
+        ExtendsLineageDefect::WrongTermination { terminal } => HolonError::WrongDescriptorKind {
+            expected: "Extends lineage terminating at TypeDescriptor".into(),
+            found: terminal.reference_id_string(),
+            descriptor: reference.reference_id_string(),
+        },
+        ExtendsLineageDefect::RootHasParent => HolonError::InvalidParameter(
+            "Diagnosed TypeDescriptor root has an Extends parent".into(),
+        ),
     }
-    names.sort_by_key(ToString::to_string);
-    Ok(names)
 }

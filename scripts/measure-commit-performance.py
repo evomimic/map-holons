@@ -35,7 +35,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
         raise ValueError(f"Unknown anchor evidence policy: {anchor_evidence_policy}")
     if instrumentation not in ["historical", "822-v2"]:
         raise ValueError(f"Unknown instrumentation: {instrumentation}")
-    if preparation_substrate not in ["broad-readiness", "declared-demand"]:
+    if preparation_substrate not in ["broad-readiness", "broad-preparation", "declared-demand"]:
         raise ValueError(f"Unknown preparation substrate: {preparation_substrate}")
     if host_snapshot_policy not in ["optional", "required"]:
         raise ValueError(f"Unknown host snapshot policy: {host_snapshot_policy}")
@@ -118,8 +118,14 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                         required += [f"commit-preparation-operation.{operation}.Assessment.elapsed_us"
                                      for operation in ["ReadinessDiscovery", "DependencyGrouping"]]
                         required.append("commit-preparation-edge.Readiness.Extends.requests")
-                    elif any(key.startswith("commit-preparation-operation.ReadinessDiscovery.") for key in sample["metrics"]):
-                        raise ValueError(f"Final substrate contains broad readiness discovery in {log}")
+                    else:
+                        if any(key.startswith(("commit-preparation-operation.ReadinessDiscovery.",
+                                               "commit-preparation-operation.DependencyGrouping.",
+                                               "commit-preparation-edge.Readiness.")) for key in sample["metrics"]):
+                            raise ValueError(f"Substrate contains broad readiness observations in {log}")
+                        if preparation_substrate == "broad-preparation":
+                            required += ["commit-preparation-edge.Commitment.Extends.requests",
+                                         "commit-preparation.identity_role_visits"]
                 if host_snapshot_policy == "required":
                     required += [f"commit-host-snapshot.{field}" for field in ["construction_us", "entries", "shipped_holons"]]
                 if mode == "graph-only-overlap":
@@ -201,7 +207,7 @@ def main():
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")
     parser.add_argument("--link-profile", action="store_true", help="Capture read-only persisted link-query timings after Commit samples; replaces the retired --index-mode experiment")
     parser.add_argument("--instrumentation", choices=["822-v2", "historical"], default="822-v2")
-    parser.add_argument("--preparation-substrate", choices=["broad-readiness", "declared-demand"], default="broad-readiness")
+    parser.add_argument("--preparation-substrate", choices=["broad-readiness", "broad-preparation", "declared-demand"], default="broad-preparation")
     parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
     parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
     parser.add_argument("--governor-presence", default="unavailable", help="Governor entry presence established by workload setup")

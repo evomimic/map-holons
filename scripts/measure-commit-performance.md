@@ -232,3 +232,18 @@ relationship memberships, and staged/transient pools remain separate. New captur
 `--expected-guest-cache-capacity 10000`; archived 99/1024 captures retain their recorded expectations.
 Record this configuration change separately from preparation narrowing and incoming descriptor/registry
 changes when comparing performance. Historical baseline and capacity-experiment records are unchanged.
+
+## Step A checkpoint
+
+The current guest emits `substrate=broad-preparation`. Capture with
+`--preparation-substrate broad-preparation` (the current CLI default). This labels broad
+package preparation with scoped guards and no readiness discovery; it is not declared demand.
+The parser requires the package Extends edge counter and identity/role visits, rejects
+readiness discovery/grouping spans and readiness edges, and retains the historical
+`broad-readiness` requirements for older captures. `InterpretationGuards` reports candidate
+contract guard decisions separately from supporting contract checks and candidate evaluation.
+
+Use `usage`, `no-op`, `mixed`, and `shared-type`, one run of six samples each, at capacity
+10,000. Compare prepared definitions and package edges with the cache checkpoint. Derivation
+counts may fall; cache and foundation must match before comparing latency or backend reads.
+Do not use the manifest runner's two-sample `--smoke` shortcut for this checkpoint.

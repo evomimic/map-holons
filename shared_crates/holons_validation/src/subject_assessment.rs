@@ -324,7 +324,7 @@ fn subject_constraints(
 }
 
 /// Conformance of H through D(H), never through the contract H defines for its instances.
-/// The caller has already diagnosed the governing structure and established readiness.
+/// The caller has already diagnosed the governing structure and contract vocabulary.
 /// Consumes a constructed contract without rediscovering its effective member surface.
 pub(crate) fn assess_holon(
     subject: &HolonReference,
@@ -337,6 +337,7 @@ pub(crate) fn assess_holon(
     universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
+    interpretation: &crate::descriptor_rules::ContractInterpretation,
 ) -> Result<(), HolonError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();
@@ -363,17 +364,58 @@ pub(crate) fn assess_holon(
             _ => return Err(HolonError::EmptyField("TypeName".into()).into()),
         }
     }
-    for (name, target) in crate::schema_rules::authored_targets(subject)? {
-        if !declared_names.contains(&name.to_string()) {
-            // Delivered checks assess declaredness per subject; none reads a combined graph-only bucket.
-            finding(collector, CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() }, None,
-                &ValidationSubjectPath::Relationship { source_identity: subject.full_reference_id_string(), name: name.to_string(), target_identity: target.reference_id_string() },
-                Some(descriptor.reference_id_string()), format!("Populated relationship {name} must be declared by the source's effective descriptor."));
+    let HolonReference::Staged(_) = subject else {
+        return Err(HolonError::InvalidState(
+            "Commit declaration gate requires a staged subject".into(),
+        ));
+    };
+    let mut authored = subject.all_related_holons()?.iter();
+    authored.sort_by_key(|(name, _)| name.to_string());
+    for (name, members) in authored {
+        if declared_names.contains(&name.to_string()) {
+            continue;
+        }
+        let targets = members
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+            .get_members()
+            .clone();
+        for target in targets {
+            // Declaredness is assessed per occurrence; no combined graph-only bucket is read.
+            finding(
+                collector,
+                CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() },
+                None,
+                &ValidationSubjectPath::Relationship {
+                    source_identity: subject.full_reference_id_string(),
+                    name: name.to_string(),
+                    target_identity: target.reference_id_string(),
+                },
+                Some(descriptor.reference_id_string()),
+                format!("Populated relationship {name} must be declared by the source's effective descriptor."),
+            );
         }
     }
     for (name, property) in properties {
+        let identity = DefinitionIdentity::for_reference(property.holon(), &values.context)?;
+        if interpretation.unusable_properties.contains(&identity) {
+            blocked(
+                collector,
+                subject,
+                format!("Property {name} has an unusable descriptor category."),
+            );
+            continue;
+        }
         let result = assess_property(
-            subject, &name, &property, values, roles, universal, collector, packages,
+            subject,
+            &name,
+            &property,
+            values,
+            roles,
+            universal,
+            collector,
+            packages,
+            !interpretation.unusable_values.contains(&identity),
         );
         // Each property consumes its exact prepared definition.
         result?;
@@ -390,6 +432,7 @@ fn assess_property(
     universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
+    value_usable: bool,
 ) -> Result<(), HolonError> {
     let value = subject.property_value(name)?;
     let path = ValidationSubjectPath::Property {
@@ -421,6 +464,17 @@ fn assess_property(
     dispatch_subject(&bindings, &facts, &path, collector)?;
     subject_constraints(property.holon(), &path, collector, packages)?;
     if let Some(value) = value {
+        if !value_usable {
+            blocked(
+                collector,
+                subject,
+                format!(
+                    "Property {} requires one usable ValueType before value assessment.",
+                    property.holon().reference_id_string()
+                ),
+            );
+            return Ok(());
+        }
         let targets =
             effective_relationship_targets(property.holon(), CoreRelationshipTypeName::ValueType)?;
         let [target] = targets.as_slice() else {

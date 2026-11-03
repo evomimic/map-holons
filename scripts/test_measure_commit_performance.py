@@ -87,7 +87,7 @@ class CaptureTests(unittest.TestCase):
     def test_link_profile_wires_separate_output_and_records_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "capture"
-            argv = ["measure", "--runs", "1", "--link-profile", "--semantic-revision", "semantic-test", "--output", str(destination)]
+            argv = ["measure", "--preparation-substrate", "broad-readiness", "--runs", "1", "--link-profile", "--semantic-revision", "semantic-test", "--output", str(destination)]
 
             def capture(command, *, stdout, stderr, env):
                 self.assertIn("holons_client=info", env["RUST_LOG"])
@@ -123,7 +123,7 @@ class CaptureTests(unittest.TestCase):
         for mode in ["visualizer-slot", "descriptor"]:
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 destination = Path(directory) / "capture"
-                argv = ["measure", "--runs", "1", "--mode", mode, "--output", str(destination)]
+                argv = ["measure", "--preparation-substrate", "broad-readiness", "--runs", "1", "--mode", mode, "--output", str(destination)]
                 if mode == "visualizer-slot":
                     argv.append("--readiness-cases")
 
@@ -196,7 +196,7 @@ class CaptureTests(unittest.TestCase):
             self.assertFalse(destination.exists())
 
 
-    def test_readiness_required_only_for_declared_substrate(self):
+    def test_readiness_required_for_broad_readiness_substrate(self):
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "run.log"
             log.write_text(complete_run())
@@ -205,9 +205,31 @@ class CaptureTests(unittest.TestCase):
             log.write_text(text)
             with self.assertRaisesRegex(ValueError, "Missing measurements"):
                 measure.summarize([log], instrumentation="822-v2")
+            text = "\n".join(line for line in text.splitlines()
+                             if "operation=DependencyGrouping" not in line and "role=Readiness" not in line)
             log.write_text(text.replace("substrate=broad-readiness", "substrate=declared-demand"))
             result = measure.summarize([log], instrumentation="822-v2", preparation_substrate="declared-demand")
             self.assertEqual(result["samples"][0]["host_snapshot"], "measured")
+
+    def test_step_a_requires_broad_package_counters_and_matching_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            text = "\n".join(line for line in complete_run().splitlines()
+                             if "operation=ReadinessDiscovery" not in line
+                             and "operation=DependencyGrouping" not in line and "role=Readiness" not in line)
+            text = text.replace("substrate=broad-readiness", "substrate=broad-preparation")
+            text = text.replace("[commit-baseline] sample_end=", "[commit-preparation] identity_role_visits=5\n[commit-preparation-edge] role=Commitment edge=Extends requests=5 members=4\n[commit-baseline] sample_end=")
+            log.write_text(text)
+            result = measure.summarize([log], preparation_substrate="broad-preparation")
+            self.assertEqual(result["preparation_substrate"], "broad-preparation")
+            with self.assertRaises(ValueError):
+                measure.summarize([log], preparation_substrate="declared-demand")
+            log.write_text(text.replace("role=Commitment edge=Extends", "role=Commitment edge=Other"))
+            with self.assertRaisesRegex(ValueError, "Missing measurements"):
+                measure.summarize([log], preparation_substrate="broad-preparation")
+            log.write_text(text.replace("[commit-baseline] sample_end=", "[commit-preparation-operation] operation=DependencyGrouping role=Assessment elapsed_us=1\n[commit-baseline] sample_end="))
+            with self.assertRaisesRegex(ValueError, "readiness observations"):
+                measure.summarize([log], preparation_substrate="broad-preparation")
 
     def test_required_counters_and_version_marker_cannot_disappear(self):
         with tempfile.TemporaryDirectory() as directory:

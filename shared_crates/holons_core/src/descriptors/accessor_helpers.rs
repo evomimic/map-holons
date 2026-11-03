@@ -159,10 +159,20 @@ pub(crate) fn search_extends_chain<T>(
     expected_type_names: &[MapString],
     matcher: impl Fn(&MapString) -> Option<T>,
 ) -> Result<T, HolonError> {
+    search_lineage(holon, walk_extends_chain(holon), expected_type_names, matcher)
+}
+
+/// Classifies supplied lineage members with the same bootstrap rules as an Extends search.
+pub(crate) fn search_lineage<T>(
+    holon: &HolonReference,
+    members: impl IntoIterator<Item = Result<HolonReference, HolonError>>,
+    expected_type_names: &[MapString],
+    matcher: impl Fn(&MapString) -> Option<T>,
+) -> Result<T, HolonError> {
     let mut found = None;
 
     // Walk the effective type lineage self-first.
-    for ancestor in walk_extends_chain(holon) {
+    for ancestor in members {
         let ancestor = ancestor?;
         match TypeHeader::new(&ancestor).type_name() {
             Ok(type_name) => {

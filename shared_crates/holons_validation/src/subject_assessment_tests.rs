@@ -1271,7 +1271,9 @@ fn inherited_member_identity_does_not_create_a_semantic_name_collision() -> Resu
         fixture.link("Subtype", collection, member)?;
         let subject = fixture.nodes["Subtype"].clone();
         let contributions = ContractContributions::resolve(&subject)?;
-        let mut products = DescriptorRuleProducts::default();
+        let mut products = DescriptorRuleProducts::with_diagnoses(std::sync::Arc::new(
+            crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context),
+        ));
         products.prepare_contract(&contributions, &roots)?;
         let redeclarations = dispatch_c2_rule(
             &mut fixture,
@@ -1346,7 +1348,9 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
     )?;
     let subject = fixture.nodes["Subtype"].clone();
     let contributions = ContractContributions::resolve(&subject)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::with_diagnoses(std::sync::Arc::new(
+        crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context),
+    ));
     products.prepare_contract(&contributions, &roots)?;
     for (rule, code) in [
         (CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001"),
@@ -1499,7 +1503,9 @@ fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> R
 
     let subtype = fixture.nodes["Subtype"].clone();
     let contributions = ContractContributions::resolve(&subtype)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::with_diagnoses(std::sync::Arc::new(
+        crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context),
+    ));
     products.prepare_contract(&contributions, &roots)?;
     assert!(!products.has_findings());
     for rule in [
@@ -1855,7 +1861,7 @@ fn generic_predecessor_edit_promotes_and_is_rejected_by_both_assessment_modes(
 
 /// A saved contract's successor is a separate subject, never a substituted prerequisite.
 #[test]
-fn saved_book_keeps_title_v1_while_explicit_book_v2_depends_on_invalid_title_v2(
+fn saved_predecessor_and_staged_successor_consumers_are_assessed_independently(
 ) -> Result<(), HolonError> {
     use holons_core::{HolonCollection, HolonCollectionApi};
     use std::sync::{Arc, RwLock};
@@ -1898,10 +1904,11 @@ fn saved_book_keeps_title_v1_while_explicit_book_v2_depends_on_invalid_title_v2(
         assert_eq!(saved_consumer.validation_state()?, ValidationState::Validated);
         assert!(saved_consumer.validation_findings()?.is_empty());
         assert_ne!(title.validation_state()?, ValidationState::Validated);
-        assert!(explicit_consumer.validation_findings()?.iter().any(|finding| matches!(
-            finding.kind,
-            CommitValidationViolationKind::UnresolvedLocalDependency
-        )));
+        assert!(!explicit_consumer.validation_findings()?.iter().any(
+            |finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+        ));
+        assert_eq!(explicit_consumer.validation_state()?, ValidationState::Validated);
+        assert!(explicit_consumer.validation_findings()?.is_empty());
         let package = holons_core::ContractContributions::resolve(&book.clone().into())?;
         assert!(package.properties.iter().any(|member| holons_core::same_definition(
             &member.member,
@@ -1991,6 +1998,13 @@ fn no_op_and_graph_only_siblings_are_both_assessed_without_poisoning_saved_defin
         )?;
         staged.note_relationship_mutation(false)?;
     }
+    // Aliases share structural evidence, while their candidate outcomes remain independent.
+    let diagnoses = crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context);
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let saved_diagnosis = diagnoses.get(&fixture.nodes["SavedInstance"])?;
+    assert!(std::sync::Arc::ptr_eq(&saved_diagnosis, &diagnoses.get(&clean.clone().into())?));
+    assert!(std::sync::Arc::ptr_eq(&saved_diagnosis, &diagnoses.get(&graph.clone().into())?));
+    assert_eq!(probe.finish().0.get("structural_diagnoses"), Some(&1));
     let mut consumer = fixture.staged_subject("consumer")?;
     consumer.with_property_value("Title", "valid")?;
     for candidates in [
@@ -2344,7 +2358,10 @@ fn prerequisite_products_remain_reported_without_compatible_bindings() -> Result
     let mut collector = ValidationCollector::default();
     crate::subject_assessment::dispatch_descriptor(&[], &products, &subject, &mut collector)?;
     let report = collector.into_report();
-    assert_eq!(report.violation_count(), 7);
+    assert_eq!(report.violation_count(), 8);
+    assert!(report.violations.iter().any(|finding| finding.rule_key.as_deref()
+        == Some(LocalInstanceKindAnchorDesignation.as_str())
+        && finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
     for (name, expected_code) in prerequisites {
         assert!(report.violations.iter().any(|finding| finding.rule_key.as_deref() == Some(name.as_str())
             && matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == expected_code)));
@@ -2894,7 +2911,20 @@ fn abstract_descriptor_universal_contract_needs_no_backend_reads_after_construct
     )?;
     let relationship_reads = fixture.backend_relationship_reads();
     let node_reads = fixture.backend_node_reads();
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
     let report = constructed.assess(|_| {})?.0.into_report();
+    let derivations = probe.finish();
+    for operation in [
+        "structural_diagnoses",
+        "contract_contribution_resolutions",
+        "constraint_contribution_resolutions",
+    ] {
+        assert_eq!(
+            derivations.0.get(operation).copied().unwrap_or(0),
+            0,
+            "assessment repeated {operation}"
+        );
+    }
     assert!(report.is_accepted(), "{report:?}");
     assert_eq!(relationship_reads, fixture.backend_relationship_reads());
     assert_eq!(node_reads, fixture.backend_node_reads());
@@ -3085,7 +3115,9 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
     let count = fixture.context.lookup().transient_count()?;
     let projection = ComputedEffectiveSchema::resolve(&subject)?;
     assert_eq!(count, fixture.context.lookup().transient_count()?);
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::with_diagnoses(std::sync::Arc::new(
+        crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context),
+    ));
     products.prepare_effective_schema(&projection, &roots)?;
     assert_eq!(fixture.saved_key_lookup_reads(), keyed_reads);
     let findings = dispatch_c2_rule(

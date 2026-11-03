@@ -28,6 +28,14 @@ impl UniversalDescriptorContract {
     ) -> Result<Self, HolonError> {
         assert_reference_transaction_compatible(meta_type, context)?;
         let contributions = super::ContractContributions::resolve(meta_type)?;
+        Self::from_contributions(context, &contributions)
+    }
+
+    /// Uses the exact meta-type's prepared contributions without rediscovering inheritance.
+    pub fn from_contributions(
+        context: &Arc<TransactionContext>,
+        contributions: &super::ContractContributions,
+    ) -> Result<Self, HolonError> {
         let member_ids = contributions
             .properties
             .iter()

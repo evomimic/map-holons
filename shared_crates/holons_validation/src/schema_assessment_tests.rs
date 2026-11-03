@@ -413,14 +413,9 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
 }
 
 #[test]
-fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
-) -> Result<(), HolonError> {
+fn owning_schema_cycle_and_staged_component_are_assessed_independently() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
-    fixture.link(
-        "Schema.HolonType",
-        CoreRelationshipTypeName::Extends,
-        "HolonType.TypeDescriptor",
-    )?;
+    super::preparation_characterization::prepare_meta_contract(&mut fixture)?;
     for rule in [CoreValidationRuleName::SchemaDependenciesAcyclic] {
         fixture.link(
             "Schema.HolonType",
@@ -452,6 +447,11 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
         CoreRelationshipTypeName::DescribedBy,
         "MetaHolonType.MetaTypeDescriptor",
     )?;
+    fixture.link(
+        "MetaHolonType.MetaTypeDescriptor",
+        CoreRelationshipTypeName::InstanceProperties,
+        "Title.PropertyType",
+    )?;
     let candidate = staged(&fixture.nodes["StagedComponent"]);
     let report = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
@@ -461,7 +461,8 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
     let cycles = aggregates.iter().filter(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-SCHEMA-001")).collect::<Vec<_>>();
     assert_eq!(cycles.len(), 1, "one assessment of the affected owner");
     assert_eq!(cycles[0].subject, path(&fixture.nodes["OwnerA"]));
-    assert!(candidate
+    assert!(candidate.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001")), "the component must assess its own required Title");
+    assert!(!candidate
         .validation_findings()?
         .iter()
         .any(|finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
@@ -559,6 +560,23 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
     assert!(metrics.distinct_content > 1);
     assert!(metrics.identity_role_visits >= metrics.distinct_content);
     assert_eq!(metrics.contract_consumers, 1);
+    assert!(!events.iter().any(|event| matches!(
+        event,
+        crate::AssessmentEvent::PreparationEdge { role: "Readiness", .. }
+            | crate::AssessmentEvent::PreparationOperation {
+                operation: "ReadinessDiscovery" | "DependencyGrouping",
+                ..
+            }
+    )));
+    assert!(events.iter().any(|event| matches!(
+        event,
+        crate::AssessmentEvent::PreparationOperation {
+            operation: "InterpretationGuards",
+            starting: true,
+            ..
+        }
+    )));
+
     assert!(metrics.binding_consumers > 0);
     assert!(metrics.binding_consumers <= metrics.distinct_content);
     let described_by_requests: usize = events

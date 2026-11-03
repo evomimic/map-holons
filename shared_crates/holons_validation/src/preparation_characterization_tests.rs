@@ -1,4 +1,4 @@
-//! Baseline behavior controls for preparation and readiness narrowing.
+//! Scenario and evidence controls for Commit preparation and interpretation guards.
 //!
 //! The two ignored evidence tests are temporary. Run them explicitly with `--ignored`
 //! for the baseline and again after Step C. In the final verification step, delete them and
@@ -101,29 +101,52 @@ fn unusable_property_selection_beside_invalid_sibling_value() -> Result<(), Holo
     let control_report = validate_commit_candidates(&usable.context, &[control])?;
     assert!(has_rule_code(&control_report.violations, "BaseValueKindMismatch"));
     assert!(has_rule_code(&control_report.violations, "DS-PROP-001"));
-    let mut fixture = readiness_fixture()?;
-    fixture.link("Title.PropertyType", R::ValueType, "BooleanValueType.ValueType")?;
-    let fixture = fixture.saved_snapshot()?;
-    let mut subject = fixture.staged_subject("unusable-property")?;
-    subject.with_property_value("Key", 42_i64)?;
-    let report = validate_commit_candidates(&fixture.context, &[subject.clone()])?;
-    assert!(!report.is_accepted());
-    assert!(subject
-        .validation_findings()?
-        .iter()
-        .any(|f| f.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
-    assert!(!has_rule_code(&subject.validation_findings()?, "BaseValueKindMismatch"));
-    assert!(!has_rule_code(&subject.validation_findings()?, "DS-PROP-001"));
-    assert_eq!(
-        report
-            .unattached_findings()?
-            .iter()
-            .filter(|f| f
-                .message
-                .contains("Saved governing contract has invalid effective member definitions"))
-            .count(),
-        1
-    );
+    for required in [false, true] {
+        let mut fixture = readiness_fixture()?;
+        fixture
+            .nodes
+            .get_mut("Title.PropertyType")
+            .unwrap()
+            .with_property_value("IsValueRequired", required)?;
+        fixture.link("Title.PropertyType", R::ValueType, "BooleanValueType.ValueType")?;
+        let fixture = fixture.saved_snapshot()?;
+        let mut subject = fixture.staged_subject("unusable-property")?;
+        subject.with_property_value("Key", 42_i64)?;
+        let report = validate_commit_candidates(&fixture.context, &[subject.clone()])?;
+        assert!(!report.is_accepted());
+        assert!(has_rule_code(&subject.validation_findings()?, "BaseValueKindMismatch"));
+        assert_eq!(has_rule_code(&subject.validation_findings()?, "DS-PROP-001"), required);
+        assert!(
+            !subject
+                .validation_findings()?
+                .iter()
+                .any(|finding| finding.kind
+                    == CommitValidationViolationKind::UnresolvedLocalDependency),
+            "absent values require no value interpretation"
+        );
+        assert_eq!(
+            report
+                .unattached_findings()?
+                .iter()
+                .filter(|finding| finding
+                    .message
+                    .contains("Saved governing contract has invalid effective member definitions"))
+                .count(),
+            1
+        );
+        subject.with_property_value("Key", "valid")?;
+        validate_commit_candidates(&fixture.context, &[subject.clone()])?;
+        assert_eq!(
+            subject.validation_state()?,
+            if required { ValidationState::Invalid } else { ValidationState::Validated }
+        );
+        // The very same contract must block value checks once a value is present.
+        subject.with_property_value("Title", "present")?;
+        validate_commit_candidates(&fixture.context, &[subject.clone()])?;
+        assert!(subject.validation_findings()?.iter().any(
+            |finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+        ));
+    }
     Ok(())
 }
 
@@ -147,10 +170,11 @@ fn unrelated_staged_ownership_defect_beside_its_consumer() -> Result<(), HolonEr
             "only the ownership defect is relevant"
         );
         assert!(has_rule_code(&definition.validation_findings()?, "SchemaOwnership"));
-        assert!(subject
+        assert!(!subject
             .validation_findings()?
             .iter()
             .any(|f| f.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
+        assert!(has_rule_code(&subject.validation_findings()?, "DS-PROP-001"));
     }
     Ok(())
 }
@@ -212,6 +236,25 @@ fn malformed_candidate_lineages() -> Result<(), HolonError> {
         let HolonReference::Staged(subject) = fixture.nodes["Malformed"].clone() else {
             unreachable!()
         };
+        let packages = crate::descriptor_package::DescriptorPackages::construct(
+            &fixture.context,
+            &[subject.clone().into()],
+            &[],
+            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+        )?;
+        let error = packages
+            .effective_schema(&subject.clone().into())
+            .err()
+            .expect("diagnosed structural defect");
+        assert!(if cycle {
+            matches!(error, HolonError::CyclicExtends { .. })
+        } else {
+            matches!(error, HolonError::MultipleExtends { .. })
+        });
+        assert!(matches!(
+            packages.constraint_contributions(&subject.clone().into()),
+            Err(HolonError::InvalidState(_))
+        ));
         let report = validate_commit_candidates(&fixture.context, &[subject.clone()])?;
         assert!(!report.is_accepted());
         assert_eq!(subject.validation_state()?, ValidationState::Invalid);
@@ -242,7 +285,9 @@ fn mutual_description_with_later_peer_failure() -> Result<(), HolonError> {
     for subject in [a.clone(), b.clone()] {
         let reference = subject.into();
         let pre = holons_core::StructuralPrerequisites::assess(&reference)?;
-        let mut prod = DescriptorRuleProducts::default();
+        let mut prod = DescriptorRuleProducts::with_diagnoses(std::sync::Arc::new(
+            crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context),
+        ));
         prod.prepare_structure(&pre);
         prod.prepare_kind(&pre, &holons_core::DescriptorKindSemantics::new(&fixture.context))?;
         prod.prepare_effective_schema(
@@ -254,24 +299,19 @@ fn mutual_description_with_later_peer_failure() -> Result<(), HolonError> {
     for candidates in [[a.clone(), b.clone()], [b.clone(), a.clone()]] {
         let report = validate_commit_candidates(&fixture.context, &candidates)?;
         assert!(!report.is_accepted());
-        assert_eq!(report.violations.len(), 2, "one peer failure and one propagated blocker");
-        assert_eq!(a.validation_findings()?.len(), 1);
+        assert_eq!(report.violations.len(), 1, "only the independently failing peer rejects");
+        assert!(a.validation_findings()?.is_empty());
         assert_eq!(b.validation_findings()?.len(), 1);
         assert!(has_rule_code(&b.validation_findings()?, "DS-PROP-001"));
         assert!(has_rule_code(&report.violations, "DS-PROP-001"));
-        assert!(a
-            .validation_findings()?
-            .iter()
-            .any(|f| f.message.contains("did not establish readiness")
-                || f.message.contains("Required prospective commitment")));
-        assert_eq!(a.validation_state()?, ValidationState::Invalid);
+        assert_eq!(a.validation_state()?, ValidationState::Validated);
         assert_eq!(b.validation_state()?, ValidationState::Invalid);
     }
     Ok(())
 }
 
-/// Supplies a usable meta-contract so readiness findings can be isolated from product defects.
-fn prepare_meta_contract(fixture: &mut Fixture) -> Result<(), HolonError> {
+/// Supplies a usable meta-contract to isolate candidate findings from product defects.
+pub(super) fn prepare_meta_contract(fixture: &mut Fixture) -> Result<(), HolonError> {
     fixture.link("HolonType.TypeDescriptor", R::DescribedBy, "MetaHolonType.MetaTypeDescriptor")?;
     fixture.link("Schema.HolonType", R::Extends, "HolonType.TypeDescriptor")?;
     for name in ["Extends", "ComponentOf", "InstanceProperties"] {
@@ -314,4 +354,38 @@ fn has_rule_code(findings: &[core_types::CommitValidationViolation], expected: &
             &finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == expected
         )
     })
+}
+
+#[test]
+fn saved_restoration_attempt_does_not_diagnose_lineage() -> Result<(), HolonError> {
+    let mut fixture = Fixture::empty()?;
+    fixture.node("SavedSupportingDefinition")?;
+    let fixture = fixture.saved_snapshot()?;
+    let mut prepared = fixture.context.mutation().new_holon(None)?;
+    prepared.add_related_holons(
+        R::DescribedHolonType,
+        vec![fixture.nodes["SavedSupportingDefinition"].clone()],
+    )?;
+    // An incomplete transported result exercises the restoration error boundary as well:
+    // neither a successful lookup nor failed restoration justifies fresh source diagnosis.
+    let mut root = fixture.context.mutation().new_holon(None)?;
+    root.add_related_holons(R::PreparedDescriptors, vec![prepared.into()])?;
+    fixture.context.set_descriptor_registry_root(&root)?;
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &[fixture.nodes["SavedSupportingDefinition"].clone()],
+        &[],
+        &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+    )?;
+    let observations = probe.finish();
+    assert_eq!(observations.0.get("registry_hits"), Some(&1));
+    assert_eq!(observations.0.get("saved_restoration_attempts"), Some(&1));
+    assert_eq!(observations.0.get("structural_diagnoses").copied().unwrap_or(0), 0);
+    assert_eq!(observations.0.get("schema_builder_attempts").copied().unwrap_or(0), 0);
+    assert!(matches!(
+        packages.effective_schema(&fixture.nodes["SavedSupportingDefinition"]),
+        Err(HolonError::InvalidParameter(_))
+    ));
+    Ok(())
 }

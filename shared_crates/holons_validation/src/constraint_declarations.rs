@@ -9,8 +9,7 @@ use core_types::{CommitValidationViolationKind, HolonError, PropertyName};
 use holons_core::{
     descriptors::{
         constraint_applies_to, constraint_applies_to_lineage, resolve_describing_type,
-        same_definition, ConstraintContributions, DescribingTypeResolution,
-        ExtendsLineageDiagnosis, ValidExtendsLineage,
+        same_definition, ConstraintContributions, DescribingTypeResolution, ValidExtendsLineage,
     },
     HolonReference, ReadableHolon,
 };
@@ -44,9 +43,16 @@ struct CheckedConstraint {
 #[derive(Default)]
 pub struct ConstraintDeclarationAssessment {
     checked: Vec<CheckedConstraint>,
+    diagnoses: Option<std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>>,
 }
 
 impl ConstraintDeclarationAssessment {
+    pub(crate) fn with_diagnoses(
+        diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    ) -> Self {
+        Self { diagnoses: Some(diagnoses), ..Self::default() }
+    }
+
     /// Creates an empty Schema-scoped declaration workset over an unchanged input snapshot.
     pub fn new() -> Self {
         Self::default()
@@ -181,7 +187,23 @@ impl ConstraintDeclarationAssessment {
         let mut checked =
             CheckedConstraint { constraint: constraint.clone(), constraint_type, valid: false };
         if let Some(constraint_type) = checked.constraint_type.clone() {
-            let diagnosis = ExtendsLineageDiagnosis::assess(&constraint_type)?;
+            let diagnosis = match &self.diagnoses {
+                Some(diagnoses) => diagnoses.get(&constraint_type)?,
+                None => {
+                    #[cfg(test)]
+                    {
+                        std::sync::Arc::new(holons_core::ExtendsLineageDiagnosis::assess(
+                            &constraint_type,
+                        )?)
+                    }
+                    #[cfg(not(test))]
+                    {
+                        return Err(HolonError::InvalidState(
+                            "Shared structural diagnoses were not supplied".into(),
+                        ));
+                    }
+                }
+            };
             if let Some(lineage) = diagnosis.valid_lineage() {
                 let root = CoreDefinitionRole::ConstraintType;
                 if lineage.contains_role(root)

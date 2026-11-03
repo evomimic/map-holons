@@ -67,8 +67,9 @@ pub use effective_relationships::{effective_relationship_declaration, QualifiedR
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;
 pub use inheritance::{
-    ancestors, classify_relationship_direction, effective_relationship_targets, equals_or_extends,
-    walk_extends_chain, EffectiveRelationshipMember, ExtendsIter, RelationshipDirection,
+    ancestors, classify_relationship_direction, classify_relationship_direction_in_lineage,
+    effective_relationship_targets, equals_or_extends, walk_extends_chain,
+    EffectiveRelationshipMember, ExtendsIter, RelationshipDirection,
 };
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;

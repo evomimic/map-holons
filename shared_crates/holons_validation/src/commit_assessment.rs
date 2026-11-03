@@ -19,7 +19,7 @@ use holons_core::{
     StagedReference, StructuralPrerequisites, UniversalDescriptorContract,
 };
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet},
     sync::Arc,
 };
 use type_names::{CoreDefinitionRole, CoreRelationshipTypeName, CoreValidationRuleName};
@@ -29,6 +29,7 @@ use type_names::{CoreDefinitionRole, CoreRelationshipTypeName, CoreValidationRul
 fn prepare_universal_contracts(
     context: &Arc<TransactionContext>,
     subjects: &mut [SubjectPreparation],
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
     use std::collections::hash_map::Entry;
 
@@ -46,8 +47,12 @@ fn prepare_universal_contracts(
         let identity = DefinitionIdentity::for_reference(meta_type, context)?;
         let contract = match contracts.entry(identity) {
             Entry::Occupied(entry) => entry.into_mut(),
-            Entry::Vacant(entry) => entry
-                .insert(Arc::new(UniversalDescriptorContract::from_meta_type(context, meta_type)?)),
+            Entry::Vacant(entry) => {
+                entry.insert(Arc::new(UniversalDescriptorContract::from_contributions(
+                    context,
+                    &packages.effective_schema(meta_type)?.contract_contributions(),
+                )?))
+            }
         };
         subject.universal_contract = Some(Arc::clone(contract));
     }
@@ -219,6 +224,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SubjectPreparation));
     let mut key_claims = crate::key_evidence::prepare_key_evidence(context, candidates, observer)?;
     let kinds = DescriptorKindSemantics::new(context);
+    let diagnoses = Arc::new(crate::structural_diagnoses::StructuralDiagnoses::new(context));
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
     let mut schemas = Vec::new();
@@ -237,7 +243,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                 observer,
                 "StructuralDiagnosis",
                 "PreparedDefinition",
-                || holons_core::ExtendsLineageDiagnosis::assess(&definition),
+                || diagnoses.get(&definition).map(|diagnosis| (*diagnosis).clone()),
             )?;
             let describing_type = resolve_describing_type(&definition)?;
             let governing_lineage =
@@ -249,7 +255,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                             observer,
                             "StructuralDiagnosis",
                             "PreparedDefinition",
-                            || holons_core::ExtendsLineageDiagnosis::assess(descriptor),
+                            || diagnoses.get(descriptor).map(|diagnosis| (*diagnosis).clone()),
                         )?)
                     }
                 } else {
@@ -257,7 +263,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                 };
             let prerequisites =
                 StructuralPrerequisites { describing_type, subject_lineage, governing_lineage };
-            let mut products = DescriptorRuleProducts::default();
+            let mut products = DescriptorRuleProducts::with_diagnoses(Arc::clone(&diagnoses));
             products.prepare_structure(&prerequisites);
             crate::assessment_phase::observe_operation(
                 observer,
@@ -348,6 +354,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &package_roots,
         &package_subjects,
         &workset,
+        diagnoses,
         observer,
     )?;
     crate::assessment_phase::observe_operation(
@@ -382,7 +389,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         observer,
         "UniversalContracts",
         "Assessment",
-        || prepare_universal_contracts(context, &mut prepared),
+        || prepare_universal_contracts(context, &mut prepared, &packages),
     )?;
     Ok(ConstructedAssessment {
         context,
@@ -410,7 +417,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             mut prepared,
             binding_roles,
             workset,
-            mut packages,
+            packages,
             mut collector,
         } = self;
         let kinds = DescriptorKindSemantics::new(context);
@@ -433,11 +440,10 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 .or_default()
                 .push(prepared_index[&candidate.temporary_id()]);
         }
-        // Defined contracts are prepared before any subject consumes them. Include unstaged
-        // governors, whose malformed definitions must block rather than escape as a read error.
-        // Only definition-scoped product failures enter this set; candidate failures are
-        // classified separately by readiness observation.
-        let mut invalid = HashSet::new();
+        // Assess exact defined and governing contracts before candidate conformance.
+        // Saved supporting definitions supply defects and usability facts without becoming
+        // full validation subjects; candidate findings remain independently routed.
+        let mut interpretations = HashMap::new();
         // Effective contracts are checked once per exact definition.
         let operation = crate::assessment_phase::observe_operation_scope(
             &mut observer,
@@ -461,26 +467,15 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     continue;
                 }
                 let descriptor = identity.definition_reference(context, &descriptor);
-                let mut products = DescriptorRuleProducts::default();
-                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(&descriptor);
-                let diagnosis = diagnosis?;
+                let mut products =
+                    DescriptorRuleProducts::with_diagnoses(Arc::clone(&packages.diagnoses));
+                let diagnosis = packages.diagnoses.get(&descriptor)?;
                 if diagnosis.valid_lineage().is_none() {
-                    invalid.insert(identity);
-                    blocked(
-                        &mut collector,
-                        &prepared[index].subject,
-                        format!(
-                            "Governing descriptor {} has a malformed Extends lineage.",
-                            descriptor.reference_id_string()
-                        ),
-                    );
                     continue;
                 }
                 let projection = packages.effective_schema(&descriptor)?;
-                products.prepare_effective_schema(projection, &kinds)?;
-                if products.has_findings() {
-                    invalid.insert(identity.clone());
-                }
+                let interpretation = products.prepare_effective_schema(projection, &kinds)?;
+                interpretations.insert(identity.clone(), interpretation);
                 if let Some(indices) = definition_candidates.get(&identity) {
                     for index in indices {
                         prepared[*index].products.append(products.clone());
@@ -491,76 +486,12 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
         }
         drop(operation);
-        // Only staged members are declaration subjects, grouped by exact Version-bound owner;
-        // saved unstaged members are not reread.
-        // Declaration coverage belongs to exact definitions.
-        let operation = crate::assessment_phase::observe_operation_scope(
-            &mut observer,
-            "DeclarationChecks",
-            "Assessment",
-        );
-        let mut declaration_members = HashSet::new();
-        let declaration_start = collector.violations().len();
-        for view in &workset.schemas {
-            let mut declarations = ConstraintDeclarationAssessment::new();
-            for descriptor in &view.staged_components {
-                declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
-                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(descriptor)?;
-                let Some(lineage) = diagnosis.valid_lineage() else {
-                    continue;
-                };
-                let mut products = DescriptorRuleProducts::default();
-                declarations.assess_descriptor(lineage, &mut products, &mut collector)?;
-                if let Some(indices) = definition_candidates
-                    .get(&DefinitionIdentity::for_reference(descriptor, context)?)
-                {
-                    for index in indices {
-                        prepared[*index].products.append(products.clone());
-                    }
-                }
-            }
-            for rule in &view.staged_rules {
-                declaration_members.insert(DefinitionIdentity::for_reference(rule, context)?);
-                assess_configured_rule(rule, &mut declarations, &mut collector)?;
-            }
-        }
-        // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
-        let mut orphan_declarations = ConstraintDeclarationAssessment::new();
-        for subject in &mut prepared {
-            if !declaration_members
-                .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)
-            {
-                if subject.is_descriptor {
-                    if let Some(lineage) = subject.prerequisites.subject_lineage.valid_lineage() {
-                        orphan_declarations.assess_descriptor(
-                            lineage,
-                            &mut subject.products,
-                            &mut collector,
-                        )?;
-                    }
-                } else if subject.is_constraint {
-                    orphan_declarations.assess_constraint(&subject.subject, &mut collector)?;
-                }
-            }
-        }
-        route_definition_findings(
-            context,
-            &mut collector,
-            declaration_start,
-            &prepared,
-            &definition_candidates,
-            &mut invalid,
-        )?;
-        drop(operation);
         let operation = crate::assessment_phase::observe_operation_scope(
             &mut observer,
             "BindingDispatch",
             "Assessment",
         );
         for subject in &mut prepared {
-            if subject.products.has_findings() {
-                invalid.insert(DefinitionIdentity::for_reference(&subject.subject, context)?);
-            }
             if let Some(governing) = subject
                 .prerequisites
                 .governing_lineage
@@ -578,12 +509,6 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 );
                 subject.bindings = result?;
             }
-            subject_assessment::dispatch_descriptor(
-                &subject.bindings,
-                &subject.products,
-                &subject.subject,
-                &mut collector,
-            )?;
         }
         drop(operation);
         let operation = crate::assessment_phase::observe_operation_scope(
@@ -598,9 +523,6 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             let id = DefinitionIdentity::for_reference(&view.schema, context)?;
             if let Some(Some(witness)) = cycles.get(&id) {
                 products.record(CoreValidationRuleName::SchemaDependenciesAcyclic, format!("Schema {} reaches a versioned DependsOn cycle containing {}; remove the cyclic dependency.", view.schema.reference_id_string(), witness.reference_id_string()));
-            }
-            if products.has_findings() {
-                invalid.insert(id.clone());
             }
             if let Some(indices) = definition_candidates.get(&id) {
                 for index in indices {
@@ -633,66 +555,108 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
         }
         drop(operation);
-        // Preparation is complete before any subject consumes commitments. Readiness
-        // propagation indexes references once and consumes only newly added findings.
-        let (order, mut readiness) = commitment_order(context, &prepared, &workset, &mut observer)?;
-        for identity in invalid {
-            readiness.invalidate(identity);
+        // Only staged members are declaration subjects, grouped by exact Version-bound owner;
+        // saved unstaged members are not reread.
+        // Declaration coverage belongs to exact definitions.
+        let operation = crate::assessment_phase::observe_operation_scope(
+            &mut observer,
+            "DeclarationChecks",
+            "Assessment",
+        );
+        let mut declaration_members = HashSet::new();
+        let declaration_start = collector.violations().len();
+        for view in &workset.schemas {
+            let mut declarations =
+                ConstraintDeclarationAssessment::with_diagnoses(Arc::clone(&packages.diagnoses));
+            for descriptor in &view.staged_components {
+                declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
+                let diagnosis = packages.diagnoses.get(descriptor)?;
+                let Some(lineage) = diagnosis.valid_lineage() else {
+                    continue;
+                };
+                let mut products =
+                    DescriptorRuleProducts::with_diagnoses(Arc::clone(&packages.diagnoses));
+                declarations.assess_contributions(
+                    lineage,
+                    &packages.constraint_contributions(descriptor)?,
+                    &mut products,
+                    &mut collector,
+                )?;
+                if let Some(indices) = definition_candidates
+                    .get(&DefinitionIdentity::for_reference(descriptor, context)?)
+                {
+                    for index in indices {
+                        prepared[*index].products.append(products.clone());
+                    }
+                }
+            }
+            for rule in &view.staged_rules {
+                declaration_members.insert(DefinitionIdentity::for_reference(rule, context)?);
+                assess_configured_rule(
+                    rule,
+                    &mut declarations,
+                    &mut collector,
+                    &packages.diagnoses,
+                )?;
+            }
         }
-        readiness.observe(&collector);
+        // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
+        let mut orphan_declarations =
+            ConstraintDeclarationAssessment::with_diagnoses(Arc::clone(&packages.diagnoses));
+        for subject in &mut prepared {
+            if !declaration_members
+                .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)
+            {
+                if subject.is_descriptor {
+                    if let Some(lineage) = subject.prerequisites.subject_lineage.valid_lineage() {
+                        orphan_declarations.assess_contributions(
+                            lineage,
+                            &packages.constraint_contributions(&subject.subject)?,
+                            &mut subject.products,
+                            &mut collector,
+                        )?;
+                    }
+                } else if subject.is_constraint {
+                    orphan_declarations.assess_constraint(&subject.subject, &mut collector)?;
+                }
+            }
+        }
+        route_definition_findings(
+            context,
+            &mut collector,
+            declaration_start,
+            &prepared,
+            &definition_candidates,
+        )?;
+        drop(operation);
+        // Supporting facts and Schema checks complete before deterministic candidate assessment.
         let is_definition = |subject: &SubjectPreparation| {
             subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema
         };
-        // Each strongly connected group establishes conformance before ordinary consumers run.
-        for group in &order {
-            for &index in group {
-                let subject = &prepared[index];
-                if !is_definition(subject) {
-                    continue;
-                }
-                assess_candidate(
-                    context,
-                    subject,
-                    &values,
-                    &binding_roles,
-                    &packages,
-                    &mut readiness,
-                    &mut collector,
-                )?;
-            }
+        for subject in prepared.iter().filter(|subject| is_definition(subject)) {
+            assess_candidate(
+                context,
+                subject,
+                &values,
+                &binding_roles,
+                &packages,
+                &interpretations,
+                &mut collector,
+                &mut observer,
+            )?;
         }
-        packages.finish(&readiness.invalid);
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::InstanceValidation));
-        for group in &order {
-            for &index in group {
-                let subject = &prepared[index];
-                if is_definition(subject) {
-                    continue;
-                }
-                assess_candidate(
-                    context,
-                    subject,
-                    &values,
-                    &binding_roles,
-                    &packages,
-                    &mut readiness,
-                    &mut collector,
-                )?;
-            }
-        }
-        // Mutually describing commitments are legal. If a later conformance check
-        // invalidates an earlier dependent, expose that blocking result without re-evaluation.
-        for subject in &prepared {
-            let id = DefinitionIdentity::for_reference(&subject.subject, context)?;
-            if readiness.invalid.contains(&id)
-                && !readiness.diagnosed.contains(&subject.subject.full_reference_id_string())
-            {
-                blocked(
-                    &mut collector,
-                    &subject.subject,
-                    "A required prospective commitment did not establish readiness.".into(),
-                );
-            }
+        for subject in prepared.iter().filter(|subject| !is_definition(subject)) {
+            assess_candidate(
+                context,
+                subject,
+                &values,
+                &binding_roles,
+                &packages,
+                &interpretations,
+                &mut collector,
+                &mut observer,
+            )?;
         }
         observer(crate::AssessmentEvent::Preparation(packages.preparation_metrics()));
         finish_assessment(candidates, collector)
@@ -708,7 +672,6 @@ fn route_definition_findings(
     start: usize,
     prepared: &[SubjectPreparation],
     definition_candidates: &HashMap<DefinitionIdentity, Vec<usize>>,
-    invalid: &mut HashSet<DefinitionIdentity>,
 ) -> Result<(), HolonError> {
     let mut declaration_definitions = HashMap::new();
     for subject in prepared {
@@ -722,7 +685,6 @@ fn route_definition_findings(
         let identity = crate::outcomes::subject_identity(&finding.subject)
             .and_then(|name| declaration_definitions.get(name));
         if let Some(identity) = identity {
-            invalid.insert(identity.clone());
             for index in &definition_candidates[identity] {
                 let mut routed = finding.clone();
                 routed.subject = finding
@@ -737,50 +699,78 @@ fn route_definition_findings(
     Ok(())
 }
 
-/// Definition groups use constructed peer contracts provisionally. Ordinary instances
-/// reach this operation only after package readiness has been established.
+/// Consumes usable interpretation facts independently of other candidates' acceptance.
 fn assess_candidate(
     context: &Arc<TransactionContext>,
     subject: &SubjectPreparation,
     values: &ValueValidationContext,
     binding_roles: &BindingRoleMemo,
     packages: &crate::descriptor_package::DescriptorPackages,
-    readiness: &mut ReadinessPropagation,
+    interpretations: &HashMap<DefinitionIdentity, crate::descriptor_rules::ContractInterpretation>,
     collector: &mut ValidationCollector,
+    observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<(), HolonError> {
-    let id = DefinitionIdentity::for_reference(&subject.subject, context)?;
-    if let Some(dependency) = readiness.blocking_dependency(&id) {
-        blocked(collector, &subject.subject, format!("Required prospective commitment {dependency} is invalid; correct its reported findings before retrying."));
-    } else if let Some(governing) =
-        subject.prerequisites.governing_lineage.as_ref().and_then(|lineage| lineage.valid_lineage())
-    {
-        let package = packages.get(context, governing.subject())?;
-        let definition =
-            subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema;
-        if !definition && package.state != crate::descriptor_package::PackageState::Validated {
-            blocked(
-                collector,
-                &subject.subject,
-                "Required descriptor package did not establish readiness.".into(),
-            );
-        } else {
-            let contract = package.contract.clone()?;
-            let result = subject_assessment::assess_holon(
-                &subject.subject,
-                &package.root,
-                &contract,
-                &subject.bindings,
-                subject.key_claim.as_ref(),
-                values,
-                binding_roles,
-                subject.universal_contract.as_deref(),
-                collector,
-                packages,
-            );
-            result?;
-        }
+    subject_assessment::dispatch_descriptor(
+        &subject.bindings,
+        &subject.products,
+        &subject.subject,
+        collector,
+    )?;
+    let inputs = crate::assessment_phase::observe_operation(
+        observer,
+        "InterpretationGuards",
+        "Candidate",
+        || {
+            if let Some(governing) = subject.prerequisites.governing_lineage.as_ref() {
+                let Some(lineage) = governing.valid_lineage() else {
+                    blocked(
+                        collector,
+                        &subject.subject,
+                        format!(
+                            "Governing descriptor {} has a malformed Extends lineage.",
+                            governing.lineage[0].reference_id_string()
+                        ),
+                    );
+                    return Ok(None);
+                };
+                let package = packages.get(context, lineage.subject())?;
+                let identity = DefinitionIdentity::for_reference(lineage.subject(), context)?;
+                let interpretation = interpretations.get(&identity).ok_or_else(|| {
+                    HolonError::InvalidState(
+                        "Governing contract interpretation was not prepared".into(),
+                    )
+                })?;
+                if !interpretation.vocabulary_usable {
+                    blocked(
+                        collector,
+                        &subject.subject,
+                        format!(
+                            "Governing descriptor {} has ambiguous or unnamed effective members.",
+                            package.root.reference_id_string()
+                        ),
+                    );
+                    return Ok(None);
+                }
+                return Ok(Some((package, interpretation)));
+            }
+            Ok(None)
+        },
+    )?;
+    if let Some((package, interpretation)) = inputs {
+        subject_assessment::assess_holon(
+            &subject.subject,
+            &package.root,
+            package.contract.as_ref().map_err(Clone::clone)?.as_ref(),
+            &subject.bindings,
+            subject.key_claim.as_ref(),
+            values,
+            binding_roles,
+            subject.universal_contract.as_deref(),
+            collector,
+            packages,
+            interpretation,
+        )?;
     }
-    readiness.observe(collector);
     Ok(())
 }
 
@@ -788,176 +778,18 @@ fn assess_configured_rule(
     rule: &HolonReference,
     declarations: &mut ConstraintDeclarationAssessment,
     collector: &mut ValidationCollector,
+    diagnoses: &crate::structural_diagnoses::StructuralDiagnoses,
 ) -> Result<(), HolonError> {
     if let DescribingTypeResolution::Unique(descriptor) = resolve_describing_type(rule)? {
-        if holons_core::descriptors::extends_role(&descriptor, CoreDefinitionRole::ConstraintType)?
+        if diagnoses
+            .get(&descriptor)?
+            .valid_lineage()
+            .is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::ConstraintType))
         {
             declarations.assess_constraint(rule, collector)?;
         }
     }
     Ok(())
-}
-
-type Dependencies = HashMap<DefinitionIdentity, Vec<DefinitionIdentity>>;
-
-/// Ephemeral assessment dependencies, not a descriptor cache or a second inheritance model.
-struct ReadinessPropagation {
-    dependencies: Dependencies,
-    reverse: Dependencies,
-    names: HashMap<String, DefinitionIdentity>,
-    candidate_names: HashSet<String>,
-    labels: HashMap<DefinitionIdentity, String>,
-    invalid: HashSet<DefinitionIdentity>,
-    diagnosed: HashSet<String>,
-    observed: usize,
-}
-impl ReadinessPropagation {
-    fn invalidate(&mut self, identity: DefinitionIdentity) {
-        let mut queue = VecDeque::from([identity]);
-        while let Some(identity) = queue.pop_front() {
-            if self.invalid.insert(identity.clone()) {
-                queue.extend(self.reverse.get(&identity).into_iter().flatten().cloned());
-            }
-        }
-    }
-    fn observe(&mut self, collector: &ValidationCollector) {
-        for finding in &collector.violations()[self.observed..] {
-            if let Some((name, identity)) = crate::outcomes::subject_identity(&finding.subject)
-                .and_then(|name| self.names.get(name).cloned().map(|identity| (name, identity)))
-            {
-                self.diagnosed.insert(name.to_string());
-                // A candidate's own failure cannot invalidate its immutable saved definition.
-                if !self.candidate_names.contains(name)
-                    || matches!(identity, DefinitionIdentity::Staged(_))
-                {
-                    self.invalidate(identity);
-                }
-            }
-        }
-        self.observed = collector.violations().len();
-    }
-    fn blocking_dependency(&self, subject: &DefinitionIdentity) -> Option<&str> {
-        self.dependencies
-            .get(subject)
-            .into_iter()
-            .flatten()
-            .find(|dependency| *dependency != subject && self.invalid.contains(*dependency))
-            .and_then(|dependency| self.labels.get(dependency))
-            .map(String::as_str)
-    }
-}
-
-fn commitment_order(
-    context: &Arc<TransactionContext>,
-    subjects: &[SubjectPreparation],
-    workset: &SchemaWorkset,
-    observer: &mut impl FnMut(crate::AssessmentEvent),
-) -> Result<(Vec<Vec<usize>>, ReadinessPropagation), HolonError> {
-    let operation = crate::assessment_phase::observe_operation_scope(
-        observer,
-        "ReadinessDiscovery",
-        "Assessment",
-    );
-    let mut edge_demand = std::collections::BTreeMap::<String, (usize, usize)>::new();
-    let mut dependencies = HashMap::new();
-    // Each dependency node can have several independently assessed candidates.
-    let mut definition_candidates = HashMap::<DefinitionIdentity, Vec<usize>>::new();
-    let mut candidate_names = HashSet::new();
-    let mut names = HashMap::new();
-    let mut labels = HashMap::new();
-    let mut pending = VecDeque::new();
-    for (index, subject) in subjects.iter().enumerate() {
-        definition_candidates
-            .entry(DefinitionIdentity::for_reference(&subject.subject, context)?)
-            .or_default()
-            .push(index);
-        candidate_names.insert(subject.subject.full_reference_id_string());
-        pending.push_back(subject.subject.clone());
-    }
-    for view in &workset.schemas {
-        pending.push_back(view.schema.clone());
-    }
-    while let Some(subject) = pending.pop_front() {
-        let id = DefinitionIdentity::for_reference(&subject, context)?;
-        names.insert(subject.full_reference_id_string(), id.clone());
-        labels.entry(id.clone()).or_insert_with(|| subject.reference_id_string());
-        if dependencies.contains_key(&id) {
-            continue;
-        }
-        let mut edges = Vec::new();
-        let definition = id.definition_reference(context, &subject);
-        names.insert(definition.full_reference_id_string(), id.clone());
-        // These are commitment dependencies. Arbitrary instance relationship
-        // endpoints are not readiness dependencies; their policies belong to C4.
-        for edge in [
-            CoreRelationshipTypeName::DescribedBy,
-            CoreRelationshipTypeName::Extends,
-            CoreRelationshipTypeName::InstanceProperties,
-            CoreRelationshipTypeName::InstanceRelationships,
-            CoreRelationshipTypeName::ValueType,
-            CoreRelationshipTypeName::Constraints,
-            CoreRelationshipTypeName::ValidationBindings,
-            CoreRelationshipTypeName::ComponentOf,
-            CoreRelationshipTypeName::RuleOf,
-        ] {
-            let members = targets(&definition, edge.clone())?;
-            let demand = edge_demand.entry(edge.as_relationship_name().to_string()).or_default();
-            demand.0 += 1;
-            demand.1 += members.len();
-            for target in members {
-                edges.push(DefinitionIdentity::for_reference(&target, context)?);
-                pending.push_back(target);
-            }
-        }
-        dependencies.insert(id, edges);
-    }
-    drop(operation);
-    let operation = crate::assessment_phase::observe_operation_scope(
-        observer,
-        "DependencyGrouping",
-        "Assessment",
-    );
-    let mut reverse = HashMap::<_, Vec<_>>::new();
-    for (subject, targets) in &dependencies {
-        for target in targets {
-            reverse.entry(target.clone()).or_default().push(subject.clone());
-        }
-    }
-    let starts: Vec<_> = subjects
-        .iter()
-        .map(|subject| DefinitionIdentity::for_reference(&subject.subject, context))
-        .collect::<Result<_, _>>()?;
-    let order = crate::dependency_groups::dependency_groups(&starts, &dependencies)
-        .into_iter()
-        .map(|group| {
-            group
-                .into_iter()
-                .flat_map(|id| definition_candidates.get(&id).cloned().unwrap_or_default())
-                .collect()
-        })
-        .collect();
-    drop(operation);
-    for (edge, (requests, members)) in edge_demand {
-        observer(crate::AssessmentEvent::PreparationEdge {
-            role: "Readiness",
-            edge,
-            requests,
-            members,
-        });
-    }
-    Ok((
-        order,
-        ReadinessPropagation {
-            dependencies,
-            reverse,
-            names,
-            candidate_names,
-            labels,
-            invalid: HashSet::new(),
-            diagnosed: HashSet::new(),
-            observed: 0,
-        },
-    ))
 }
 
 /// Require live, distinct candidates before constructing an assessment or installing outcomes.
@@ -974,49 +806,4 @@ pub(crate) fn require_distinct_live_candidates(
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod readiness_tests {
-    use super::*;
-    use core_types::{CommitValidationViolation, ValidationSeverity, ValidationSubjectPath};
-
-    /// The same collector path is used by conformance and future contextual capability checks.
-    #[test]
-    fn candidate_failure_only_invalidates_a_new_definition() {
-        let saved = DefinitionIdentity::Saved(HolonId::Local(core_types::LocalId(vec![1; 39])));
-        let successor = DefinitionIdentity::Staged(TemporaryId::default());
-        let consumer = DefinitionIdentity::Staged(TemporaryId(
-            "00000000-0000-0000-0000-000000000001".parse().unwrap(),
-        ));
-        for definition in [saved.clone(), successor.clone()] {
-            let mut readiness = ReadinessPropagation {
-                dependencies: HashMap::from([(consumer.clone(), vec![definition.clone()])]),
-                reverse: HashMap::from([(definition.clone(), vec![consumer.clone()])]),
-                names: HashMap::from([("candidate".into(), definition.clone())]),
-                candidate_names: HashSet::from(["candidate".into()]),
-                labels: HashMap::from([(definition.clone(), "definition".into())]),
-                invalid: HashSet::new(),
-                diagnosed: HashSet::new(),
-                observed: 0,
-            };
-            let mut collector = ValidationCollector::default();
-            collector.record(CommitValidationViolation {
-                kind: CommitValidationViolationKind::RuleViolation {
-                    code: "CandidateCheck".into(),
-                },
-                rule_key: None,
-                severity: ValidationSeverity::Error,
-                subject: ValidationSubjectPath::Holon { holon_identity: "candidate".into() },
-                descriptor_identity: None,
-                message: "candidate-specific failure".into(),
-            });
-            readiness.observe(&collector);
-            assert_eq!(readiness.blocking_dependency(&consumer).is_some(), definition == successor);
-            assert_eq!(readiness.invalid.contains(&definition), definition == successor);
-            // A separately established immutable product failure does invalidate the definition.
-            readiness.invalidate(definition.clone());
-            assert!(readiness.blocking_dependency(&consumer).is_some());
-        }
-    }
 }
