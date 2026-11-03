@@ -129,6 +129,34 @@ holon AnyOf.HolonType {
   }
 }
 
+holon Not.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryPredicate.HolonType
+  header {
+    description: "Negation of exactly one child predicate. True exactly when its child is false; an absent optional value makes a comparison false, so its negation is true. A missing or additional child is invalid."
+    display_name: "Not"
+    display_plural: "Not Predicates"
+    plural: "NotPredicates"
+  }
+  relationships {
+    InstanceRelationships -> (Not.HolonType)-[Predicate]->(QueryPredicate.HolonType)
+  }
+}
+
+holon AllOf.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryPredicate.HolonType
+  header {
+    description: "Conjunction of one or more ordered child predicates. True exactly when every child is true; every child is validated and evaluated, so a false branch never hides another branch's error. An empty group is invalid."
+    display_name: "All Of"
+    display_plural: "All Of Predicates"
+    plural: "AllOfPredicates"
+  }
+  relationships {
+    InstanceRelationships -> (AllOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)
+  }
+}
+
 holon LiteralOperand.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
@@ -933,6 +961,77 @@ inverse relationship (QueryPredicate.HolonType)-[PredicatesForAnyOf]->(AnyOf.Hol
     display_name: "Predicates For Any Of"
     display_plural: "Predicates For Any Of"
     plural: "PredicatesForAnyOf"
+  }
+}
+
+def relationship (Not.HolonType)-[Predicate]->(QueryPredicate.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> PredicateForNot
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Not.HolonType
+  target QueryPredicate.HolonType
+  deletion_semantic Block
+  header {
+    description: "The single child predicate a Not negates."
+    display_name: "Predicate"
+    display_plural: "Predicates"
+    plural: "Predicates"
+  }
+}
+
+inverse relationship (QueryPredicate.HolonType)-[PredicateForNot]->(Not.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryPredicate.HolonType
+  target Not.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Predicate, from a predicate to the Not predicates negating it."
+    display_name: "Predicate For Not"
+    display_plural: "Predicate For Not"
+    plural: "PredicateForNot"
+  }
+}
+
+def relationship (AllOf.HolonType)-[Predicates]->(QueryPredicate.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+    HasInverse -> PredicatesForAllOf
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source AllOf.HolonType
+  target QueryPredicate.HolonType
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Ordered child predicates of an AllOf."
+    display_name: "Predicates"
+    display_plural: "Predicates"
+    plural: "Predicates"
+  }
+}
+
+inverse relationship (QueryPredicate.HolonType)-[PredicatesForAllOf]->(AllOf.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryPredicate.HolonType
+  target AllOf.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Predicates, from a predicate to the AllOf groups containing it."
+    display_name: "Predicates For All Of"
+    display_plural: "Predicates For All Of"
+    plural: "PredicatesForAllOf"
   }
 }
 

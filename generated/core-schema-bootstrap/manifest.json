@@ -115,7 +115,7 @@
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "9704c09e39ce40bd3fa98dbc47b431ac1fb172691fac339fc1612b9021c660d5"
+      "sha256": "8bc7cb8eb296eb0e726ff96e34b7ad7d18a8277b4f1848c5736f4ae17a329e40"
     },
     {
       "path": "imports/query-dance/schema.json",
@@ -150,6 +150,10 @@
     {
       "key": "(ActionSalienceOverride.HolonType)-[OverrideOfUsage]->(VisualizerUsage.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(AllOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
@@ -816,6 +820,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Not.HolonType)-[Predicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(OperandSpecification.HolonType)-[OperandSpecificationsForOperators]->(OperatorType.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -969,6 +977,14 @@
     },
     {
       "key": "(QueryPredicate.HolonType)-[PredicateForFilters]->(Filter.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicateForNot]->(Not.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicatesForAllOf]->(AllOf.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1446,6 +1462,10 @@
     {
       "key": "AgreementValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "AllOf.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "AllowsDuplicates.PropertyType",
@@ -3549,6 +3569,10 @@
     },
     {
       "key": "NoneRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Not.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {

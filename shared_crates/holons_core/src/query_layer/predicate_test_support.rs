@@ -2,7 +2,8 @@
 //!
 //! Stages the canonical descriptors predicate validation resolves by key
 //! (`MapStringValueType.StringValueType`, the Contains/Equals/LessThan
-//! operators, and the Query predicate and literal types) and builds transient
+//! operators, `QueryPredicate` and the predicate forms extending it, and the
+//! Query literal and Filter types) and builds transient
 //! member types over them. Staged holons cannot reference transient ones, so
 //! operator affordances sit on a transient `Text` subtype of the canonical
 //! string type, the way an application string type would extend it. The
@@ -74,12 +75,17 @@ impl PredicateWorld {
         let stage = |holon: TransientReference| -> HolonReference {
             context.mutation().stage_new_holon(holon).unwrap().into()
         };
+        let query_predicate =
+            canonical_type(&context, &QueryHolonTypeName::QueryPredicate.as_holon_name().0);
         for type_name in [
             QueryHolonTypeName::ComparisonPredicate,
+            QueryHolonTypeName::Not,
+            QueryHolonTypeName::AllOf,
             QueryHolonTypeName::AnyOf,
-            QueryHolonTypeName::LiteralOperand,
-            QueryHolonTypeName::Filter,
         ] {
+            canonical_predicate_type(&context, &type_name.as_holon_name().0, &query_predicate);
+        }
+        for type_name in [QueryHolonTypeName::LiteralOperand, QueryHolonTypeName::Filter] {
             canonical_type(&context, &type_name.as_holon_name().0);
         }
 
@@ -282,11 +288,35 @@ impl PredicateWorld {
 
     /// An `AnyOf` over `predicates`, built directly so an empty group is possible.
     pub(crate) fn any_of(&self, predicates: Vec<HolonReference>) -> HolonReference {
-        let mut any_of = self.described("any-of", QueryHolonTypeName::AnyOf);
+        self.group("any-of", QueryHolonTypeName::AnyOf, predicates)
+    }
+
+    /// An `AllOf` over `predicates`, built directly so an empty group is possible.
+    pub(crate) fn all_of(&self, predicates: Vec<HolonReference>) -> HolonReference {
+        self.group("all-of", QueryHolonTypeName::AllOf, predicates)
+    }
+
+    /// A `Not` over `predicates`, built directly so that zero or several
+    /// children are possible.
+    pub(crate) fn not(&self, predicates: Vec<HolonReference>) -> HolonReference {
+        let mut not = self.described("not", QueryHolonTypeName::Not);
         if !predicates.is_empty() {
-            any_of.add_related_holons(QueryRelationshipTypeName::Predicates, predicates).unwrap();
+            not.add_related_holons(QueryRelationshipTypeName::Predicate, predicates).unwrap();
         }
-        any_of.into()
+        not.into()
+    }
+
+    fn group(
+        &self,
+        key: &str,
+        type_name: QueryHolonTypeName,
+        predicates: Vec<HolonReference>,
+    ) -> HolonReference {
+        let mut group = self.described(key, type_name);
+        if !predicates.is_empty() {
+            group.add_related_holons(QueryRelationshipTypeName::Predicates, predicates).unwrap();
+        }
+        group.into()
     }
 
     /// A transient holon described by the canonical Query type `type_name`.
@@ -329,6 +359,30 @@ pub(crate) fn canonical_type(context: &Arc<TransactionContext>, type_name: &str)
             )
             .unwrap()
             .into(),
+        Err(error) => panic!("resolving {type_name}: {error:?}"),
+    }
+}
+
+/// The canonical `<type_name>.HolonType` predicate descriptor, staged on first
+/// use as an extension of `query_predicate`, as the Query Schema declares it.
+fn canonical_predicate_type(
+    context: &Arc<TransactionContext>,
+    type_name: &str,
+    query_predicate: &HolonReference,
+) -> HolonReference {
+    let key = format!("{type_name}.HolonType");
+    match resolve_core_descriptor(context, &key) {
+        Ok(descriptor) => descriptor,
+        Err(HolonError::HolonNotFound(_)) => {
+            let mut descriptor = new_holon_type_descriptor(context, &key, type_name).unwrap();
+            descriptor
+                .add_related_holons(
+                    CoreRelationshipTypeName::Extends,
+                    vec![query_predicate.clone()],
+                )
+                .unwrap();
+            context.mutation().stage_new_holon(descriptor).unwrap().into()
+        }
         Err(error) => panic!("resolving {type_name}: {error:?}"),
     }
 }

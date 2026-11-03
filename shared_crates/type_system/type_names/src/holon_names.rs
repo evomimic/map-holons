@@ -111,6 +111,7 @@ impl CoreHolonTypeName {
 /// Canonical Query Schema holon type names consumed by the Query runtime.
 #[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
 pub enum QueryHolonTypeName {
+    AllOf,
     AnyOf,
     ComparisonPredicate,
     Distinct,
@@ -119,10 +120,12 @@ pub enum QueryHolonTypeName {
     Filter,
     Limit,
     LiteralOperand,
+    Not,
     OrderBy,
     OrderBySpec,
     Query,
     QueryExpressionExecution,
+    QueryPredicate,
     SeedHolons,
     Skip,
 }
@@ -212,6 +215,7 @@ mod tests {
     fn query_holon_type_names_match_their_variants() {
         use strum::VariantNames as _;
         let variants = [
+            QueryHolonTypeName::AllOf,
             QueryHolonTypeName::AnyOf,
             QueryHolonTypeName::ComparisonPredicate,
             QueryHolonTypeName::Distinct,
@@ -220,10 +224,12 @@ mod tests {
             QueryHolonTypeName::Filter,
             QueryHolonTypeName::Limit,
             QueryHolonTypeName::LiteralOperand,
+            QueryHolonTypeName::Not,
             QueryHolonTypeName::OrderBy,
             QueryHolonTypeName::OrderBySpec,
             QueryHolonTypeName::Query,
             QueryHolonTypeName::QueryExpressionExecution,
+            QueryHolonTypeName::QueryPredicate,
             QueryHolonTypeName::SeedHolons,
             QueryHolonTypeName::Skip,
         ];
