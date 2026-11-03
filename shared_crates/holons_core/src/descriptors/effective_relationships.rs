@@ -302,6 +302,69 @@ pub(crate) fn effective_declared_relationships_for_holon(
     effective_declared_relationships(&source_descriptor)
 }
 
+/// Binds fetched membership to an exact relationship version in the retrieval guest.
+/// Includes the describing contract and descriptor endpoint ancestry. This is not
+/// a cache callback: it may read schema, entirely within the existing guest request.
+pub(crate) fn bind_relationship_policy(
+    source: &HolonReference,
+    name: &RelationshipName,
+) -> Result<crate::core_shared_objects::relationship_fetch::RelationshipPolicyBinding, HolonError> {
+    let source_type = source.holon_descriptor()?;
+    let mut candidates = collect_candidates(&source_type)?.candidates;
+    let parents = source.related_holons(CoreRelationshipTypeName::Extends)?;
+    let has_parent = !parents
+        .read()
+        .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+        .get_members()
+        .is_empty();
+    if has_parent || source.key()? == Some("TypeDescriptor".into()) {
+        for ancestor in super::ancestors(source)? {
+            let members = ancestor
+                .related_holons(CoreRelationshipTypeName::SourceOf)?
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .get_members()
+                .clone();
+            for member in members {
+                let descriptor = RelationshipDescriptor::from_holon(member);
+                let candidate_name = descriptor.base_relationship_name()?;
+                if candidate_name != *name {
+                    continue;
+                }
+                let descriptor_id = descriptor.holon().reference_id_string();
+                if candidates.iter().any(|candidate| candidate.descriptor_id == descriptor_id) {
+                    continue;
+                }
+                candidates.push(NavigationCandidate {
+                    name: candidate_name,
+                    descriptor_id,
+                    qualified: QualifiedRelationship {
+                        descriptor_direction: descriptor.direction()?,
+                        descriptor,
+                    },
+                });
+            }
+        }
+    }
+    let mut matches = candidates.into_iter().filter(|entry| entry.name == *name);
+    let matched = matches.next().ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+        kind: "relationship".into(),
+        name: name.to_string(),
+        descriptor: source_type.holon().full_reference_id_string(),
+    })?;
+    if matches.next().is_some() {
+        return Err(HolonError::AmbiguousRelationshipTraversal {
+            relationship: name.to_string(),
+            descriptor: source.full_reference_id_string(),
+        });
+    }
+    let descriptor = matched.qualified.descriptor;
+    Ok(crate::core_shared_objects::relationship_fetch::RelationshipPolicyBinding {
+        descriptor_id: descriptor.holon().holon_id()?,
+        policy: descriptor.membership_cache_policy()?,
+    })
+}
+
 /// Resolves `relationship_name` as effective outbound navigation from `endpoint`.
 ///
 /// Matches the requested name against inherited declared and inverse effective
@@ -448,6 +511,97 @@ mod tests {
     use core_types::RelationshipName;
     use std::sync::Arc;
     use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
+
+    #[test]
+    fn retrieval_binds_complete_meta_contract_and_own_inherited_inverse() -> Result<(), HolonError>
+    {
+        use crate::core_shared_objects::SavedHolon;
+        use crate::descriptors::test_support::build_context_with_saved_holons;
+        use base_types::{BaseValue, MapInteger};
+        use core_types::{HolonId, LocalId, PropertyMap, PropertyName};
+        use std::collections::HashMap;
+        let id = |n| HolonId::Local(LocalId(vec![n; 39]));
+        let saved = |n, key: &str, name: &str, definitional: bool| {
+            SavedHolon::new(
+                LocalId(vec![n; 39]),
+                PropertyMap::from([
+                    (PropertyName("Key".into()), BaseValue::StringValue(key.into())),
+                    (PropertyName("TypeName".into()), BaseValue::StringValue(name.into())),
+                    (
+                        PropertyName("IsDefinitional".into()),
+                        BaseValue::BooleanValue(definitional.into()),
+                    ),
+                ]),
+                None,
+                MapInteger(1),
+            )
+        };
+        let context = build_context_with_saved_holons(
+            vec![
+                saved(1, "Concrete.TypeDescriptor", "Concrete", false),
+                saved(2, "Meta.HolonType", "Meta", false),
+                saved(3, "ValueType.RelationshipType", "ValueType", true),
+                saved(4, "DeclaredRelationshipType.HolonType", "DeclaredRelationshipType", false),
+                saved(5, "ValueTypeFor.RelationshipType", "ValueTypeFor", true),
+                saved(6, "InverseRelationshipType.HolonType", "InverseRelationshipType", false),
+                saved(7, "Parent.TypeDescriptor", "Parent", false),
+                saved(8, "Conflicting.RelationshipType", "ValueType", false),
+            ],
+            HashMap::from([
+                ((id(1), relationship_name("DescribedBy")), vec![id(2)]),
+                ((id(1), relationship_name("Extends")), vec![id(7)]),
+                ((id(2), relationship_name("InstanceRelationships")), vec![id(3)]),
+                ((id(3), relationship_name("Extends")), vec![id(4)]),
+                // The declaration's endpoint is outside L(D(H)); the explicit contract still applies.
+                ((id(3), relationship_name("SourceType")), vec![id(7)]),
+                ((id(5), relationship_name("Extends")), vec![id(6)]),
+                ((id(7), relationship_name("SourceOf")), vec![id(5)]),
+                ((id(8), relationship_name("Extends")), vec![id(6)]),
+                ((id(1), relationship_name("ValueType")), vec![id(7)]),
+            ]),
+        );
+        let source = HolonReference::smart_from_id(context.space_read_handle(), id(1));
+        let declared = bind_relationship_policy(&source, &relationship_name("ValueType"))?;
+        assert_eq!(declared.descriptor_id, id(3));
+        assert_eq!(declared.policy, crate::RelationshipCachePolicy::Reuse);
+        let inverse = bind_relationship_policy(&source, &relationship_name("ValueTypeFor"))?;
+        assert_eq!(inverse.descriptor_id, id(5));
+        // IsDefinitional on the inverse never grants immutable membership reuse.
+        assert_eq!(inverse.policy, crate::RelationshipCachePolicy::Fresh);
+        assert!(matches!(
+            bind_relationship_policy(&source, &relationship_name("Missing")),
+            Err(HolonError::DescriptorDeclarationNotFound { .. })
+        ));
+        let mut expression =
+            crate::query_layer::QueryExpression::new(relationship_name("ValueType"));
+        expression.include_relationship_descriptor = true;
+        let request = crate::dances::DanceRequest::new(
+            "query_relationships".into(),
+            crate::dances::DanceType::QueryMethod(crate::query_layer::NodeCollection {
+                members: vec![crate::query_layer::Node::new(source.clone(), None)],
+                query_spec: None,
+            }),
+            crate::dances::RequestBody::QueryExpression(expression),
+        );
+        let crate::dances::ResponseBody::SavedRelationship(fetched) =
+            crate::dances::holon_dance_adapter::query_relationships_dance(&context, request)?
+        else {
+            panic!("membership and descriptor must travel together");
+        };
+        assert_eq!(fetched.descriptor.unwrap(), declared);
+        assert_eq!(fetched.collection.get_members()[0].holon_id()?, id(7));
+        crate::descriptors::test_support::replace_saved_relationship(
+            &context,
+            id(7),
+            relationship_name("SourceOf"),
+            vec![id(5), id(8)],
+        );
+        assert!(matches!(
+            bind_relationship_policy(&source, &relationship_name("ValueType")),
+            Err(HolonError::AmbiguousRelationshipTraversal { .. })
+        ));
+        Ok(())
+    }
 
     struct RelationshipPairFixture {
         source_type: TransientReference,

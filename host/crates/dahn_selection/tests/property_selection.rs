@@ -22,6 +22,8 @@ struct Graph {
     anchors: Vec<u8>,
     holon_root: Option<u8>,
     unavailable: Vec<u8>,
+    visualizer_root: Option<u8>,
+    non_slot_owners: Vec<u8>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
@@ -82,9 +84,16 @@ impl HolonServiceApi for Graph {
     fn relationship_cache_policy(
         &self,
         _: &Arc<TransactionContext>,
-        _: &HolonId,
-        _: &RelationshipName,
+        source: &HolonId,
+        name: &RelationshipName,
     ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        if name.to_string() == "HasSlot" && self.non_slot_owners.contains(&source.local_id().0[0]) {
+            return Err(HolonError::DescriptorDeclarationNotFound {
+                kind: "relationship".into(),
+                name: "HasSlot".into(),
+                descriptor: format!("{source:?}"),
+            });
+        }
         Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn get_saved_holon_by_key_internal(
@@ -134,6 +143,8 @@ impl HolonServiceApi for Graph {
             PropertyName("Key".into()),
             BaseValue::StringValue(MapString(if self.holon_root == Some(id.local_id().0[0]) {
                 "HolonType.TypeDescriptor".into()
+            } else if self.visualizer_root == Some(id.local_id().0[0]) {
+                "Visualizer.HolonType".into()
             } else {
                 format!("node-{}", id.local_id().0[0])
             })),
@@ -162,6 +173,12 @@ impl HolonServiceApi for Graph {
                             context.space_read_handle(),
                             HolonId::Local(LocalId(vec![*id])),
                             MapString("HolonType.TypeDescriptor".into()),
+                        )
+                    } else if self.visualizer_root == Some(*id) {
+                        HolonReference::smart_with_key(
+                            context.space_read_handle(),
+                            HolonId::Local(LocalId(vec![*id])),
+                            "Visualizer.HolonType".into(),
                         )
                     } else {
                         Self::reference(context, *id)
@@ -936,4 +953,40 @@ fn title_selection_preserves_subject_owner_theme_and_discovers_ancestor_alternat
             .selected,
         Graph::reference(&context, 22)
     );
+}
+
+#[test]
+fn composition_slots_stays_within_visualizer_type_ancestry() {
+    let mut graph = Graph::default();
+    graph.visualizer_root = Some(3);
+    graph.non_slot_owners = vec![4];
+    // A Visualizer's describing type and its family root can own Slots. The
+    // generic HolonType parent of that root has no HasSlot declaration.
+    for (source, name, targets) in [
+        (1, "DescribedBy", vec![2]),
+        (2, "Extends", vec![3]),
+        (3, "Extends", vec![4]),
+        (2, "HasSlot", vec![10]),
+        (3, "HasSlot", vec![11]),
+    ] {
+        graph.edges.insert((source, name.into()), targets);
+    }
+    let context = candidate_context(graph);
+    let slots = holons_core::dahn::composition_slots(&Graph::reference(&context, 1)).unwrap();
+    assert_eq!(
+        slots.iter().map(|slot| slot.holon_id().unwrap().local_id().0[0]).collect::<Vec<_>>(),
+        vec![10, 11]
+    );
+}
+
+#[test]
+fn composition_slots_propagates_resolution_errors_within_visualizer_family() {
+    let mut graph = Graph::default();
+    graph.visualizer_root = Some(3);
+    graph.non_slot_owners = vec![2];
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(2, "Extends", &[3]);
+    let context = candidate_context(graph);
+    assert!(matches!(holons_core::dahn::composition_slots(&Graph::reference(&context, 1)),
+        Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "HasSlot"));
 }

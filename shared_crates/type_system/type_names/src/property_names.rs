@@ -109,6 +109,7 @@ pub enum CorePropertyTypeName {
     ContributionPosition,
     DerivedOrigins,
     DerivedValueKind,
+    DerivedRelationshipPolicy,
     DerivedInstanceTypeKind,
     PreparedSchema,
     AllowsDuplicates,

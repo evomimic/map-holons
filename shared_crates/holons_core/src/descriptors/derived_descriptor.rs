@@ -1,4 +1,4 @@
-//! Reference-backed, sealed effective products for value and property descriptors.
+//! Reference-backed, sealed effective products for value, property and relationship descriptors.
 use super::{accessor_helpers, OperatorDescriptor, ValueDescriptorKind};
 use std::{
     collections::HashSet,
@@ -33,6 +33,10 @@ use crate::{
 ///   classification is a projection of the prepared native value kind.
 /// - PropertyType: consumes constraints and bindings; the generic carrier's
 ///   other fields do not define additional PropertyType semantics.
+///
+/// - RelationshipType: direction and final membership cache policy, backed by the
+///   same lineage. Declared definitional membership reuses; other directions use
+///   inherited maximum age. Unused value/property collections are left empty.
 ///
 /// One resolved Extends lineage supplies all products. Targets are not eagerly
 /// materialized, and preparation does not evaluate constraints or validation.
@@ -93,6 +97,13 @@ impl DerivedFields {
             }
         }
     }
+}
+
+/// Compact direction-specific policy, transported as part of the sealed derived result.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub(crate) struct DerivedRelationshipPolicy {
+    pub direction: super::RelationshipDirection,
+    pub policy: crate::RelationshipCachePolicy,
 }
 
 impl DerivedDescriptor {
@@ -202,6 +213,25 @@ impl DerivedDescriptor {
                     })
                 })
                 .transpose()
+        })
+    }
+
+    /// Reads only the prepared scalar; unrelated descriptor kinds carry no policy product.
+    pub(crate) fn relationship_policy(&self) -> Result<DerivedRelationshipPolicy, HolonError> {
+        self.read(|| match self.holon.property_value(P::DerivedRelationshipPolicy)? {
+            Some(base_types::BaseValue::StringValue(value)) => {
+                let prepared: Option<Result<DerivedRelationshipPolicy, HolonError>> =
+                    serde_json::from_str(&value.0)
+                        .map_err(|error| HolonError::InvalidParameter(error.to_string()))?;
+                prepared.unwrap_or_else(|| {
+                    Err(HolonError::WrongDescriptorKind {
+                        expected: "DeclaredRelationshipType or InverseRelationshipType".into(),
+                        found: "No relationship direction anchor".into(),
+                        descriptor: self.holon.full_reference_id_string(),
+                    })
+                })
+            }
+            _ => Err(HolonError::InvalidParameter("Missing derived relationship policy".into())),
         })
     }
 
@@ -407,10 +437,17 @@ pub fn construct_derived_descriptor(
     };
     let (instance_kind, value_kind) = super::value_kind::prepare_kind_products(&target, &lineage)?;
 
+    let relationship_policy = prepare_relationship_policy(&target, &lineage)?;
     let mut products = Vec::new();
     let mut origins = Vec::new();
     for (source, result) in collections() {
-        let contributions = relationship_targets_in_lineage(&lineage, source)?;
+        // RelationshipType's supported product is policy. The common carrier's
+        // value/property collections are unused, so do not read them speculatively.
+        let contributions = if relationship_policy.is_some() {
+            Vec::new()
+        } else {
+            relationship_targets_in_lineage(&lineage, source)?
+        };
         let mut positions = Vec::new();
         let mut targets = Vec::new();
         for contribution in contributions {
@@ -443,6 +480,13 @@ pub fn construct_derived_descriptor(
                 .map_err(|e| HolonError::InvalidParameter(e.to_string()))?,
         ),
     )?;
+    result.with_property_value(
+        P::DerivedRelationshipPolicy,
+        MapString(
+            serde_json::to_string(&relationship_policy)
+                .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
+        ),
+    )?;
     result.add_related_references(R::DerivedLineage, lineage)?;
     result.with_property_value(
         P::DerivedValueKind,
@@ -466,6 +510,80 @@ pub fn construct_derived_descriptor(
     Ok(DerivedDescriptor::from_constructed_holon(result.into()))
 }
 
+/// Uses the constructor's single lineage. Field read failures prevent publication;
+/// readable semantic errors are retained so unrelated descriptor products remain usable.
+fn prepare_relationship_policy(
+    target: &HolonReference,
+    lineage: &[HolonReference],
+) -> Result<Option<Result<DerivedRelationshipPolicy, HolonError>>, HolonError> {
+    use super::RelationshipDirection as Direction;
+    use crate::RelationshipCachePolicy as Policy;
+    let mut direction = None;
+    for ancestor in lineage {
+        match ancestor.property_value(P::TypeName)? {
+            Some(base_types::BaseValue::StringValue(name))
+                if name == H::DeclaredRelationshipType.as_holon_name() =>
+            {
+                direction = Some(Direction::Declared);
+                break;
+            }
+            Some(base_types::BaseValue::StringValue(name))
+                if name == H::InverseRelationshipType.as_holon_name() =>
+            {
+                direction = Some(Direction::Inverse);
+                break;
+            }
+            _ => {}
+        }
+    }
+    let Some(direction) = direction else {
+        return Ok(None);
+    };
+    if direction == Direction::Declared {
+        match target.property_value(P::IsDefinitional)? {
+            Some(base_types::BaseValue::BooleanValue(value)) if value.0 => {
+                return Ok(Some(Ok(DerivedRelationshipPolicy {
+                    direction,
+                    policy: Policy::Reuse,
+                })));
+            }
+            Some(base_types::BaseValue::BooleanValue(_)) => {}
+            Some(other) => {
+                return Ok(Some(Err(HolonError::UnexpectedValueType(
+                    format!("{other:?}"),
+                    "Boolean".into(),
+                ))))
+            }
+            None => return Ok(Some(Err(HolonError::EmptyField("IsDefinitional".into())))),
+        }
+    }
+    Ok(Some(relationship_max_age(lineage)?.map(|age| DerivedRelationshipPolicy {
+        direction,
+        policy: if age == 0 { Policy::Fresh } else { Policy::MaxAgeMillis(age) },
+    })))
+}
+
+/// Inherited optional age: explicit zero overrides an ancestor; omission resolves Fresh.
+/// The outer result distinguishes failed reads from readable invalid schema values.
+pub(crate) fn relationship_max_age(
+    lineage: &[HolonReference],
+) -> Result<Result<u64, HolonError>, HolonError> {
+    for ancestor in lineage {
+        match ancestor.property_value("MembershipCacheMaxAgeMillis")? {
+            None => continue,
+            Some(base_types::BaseValue::IntegerValue(value)) if value.0 >= 0 => {
+                return Ok(Ok(value.0 as u64))
+            }
+            _ => {
+                return Ok(Err(HolonError::InvalidParameter(
+                    "MembershipCacheMaxAgeMillis must be a nonnegative integer".into(),
+                )))
+            }
+        }
+    }
+    Ok(Ok(0))
+}
+
 fn collections() -> [(R, R); 3] {
     [
         (R::Constraints, R::DerivedConstraints),
@@ -487,6 +605,51 @@ mod tests {
         test_support::{build_context, new_test_holon},
         PropertyDescriptor, ValueDescriptor,
     };
+
+    #[test]
+    fn relationship_preparation_does_not_read_unused_value_property_collections(
+    ) -> Result<(), HolonError> {
+        use crate::core_shared_objects::{holon::SavedHolon, read_observations::CacheReadProbe};
+        use crate::descriptors::test_support::build_context_with_saved_holons;
+        use type_names::ToPropertyName;
+        let id = core_types::LocalId(vec![81; 39]);
+        let context = build_context_with_saved_holons(
+            vec![SavedHolon::new(
+                id.clone(),
+                core_types::PropertyMap::from([
+                    (
+                        "Key".to_property_name(),
+                        base_types::BaseValue::StringValue(MapString("inverse".into())),
+                    ),
+                    (
+                        "TypeName".to_property_name(),
+                        base_types::BaseValue::StringValue(MapString(
+                            "InverseRelationshipType".into(),
+                        )),
+                    ),
+                ]),
+                None,
+                base_types::MapInteger(1),
+            )],
+            Default::default(),
+        );
+        let source = HolonReference::smart_from_id(
+            context.space_read_handle(),
+            core_types::HolonId::Local(id),
+        );
+        let probe = CacheReadProbe::start(true);
+        let result = construct_derived_descriptor(&context, source)?;
+        assert_eq!(result.relationship_policy()?.policy, crate::RelationshipCachePolicy::Fresh);
+        for entry in probe.finish() {
+            assert!(![R::Constraints, R::ValidationBindings, R::AffordsOperator].iter().any(
+                |name| {
+                    use type_names::ToRelationshipName;
+                    entry.relationship == Some(name.to_relationship_name())
+                }
+            ));
+        }
+        Ok(())
+    }
 
     #[test]
     fn prepared_kind_reads_do_not_resolve_the_lineage_targets() -> Result<(), HolonError> {

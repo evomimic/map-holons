@@ -2720,7 +2720,7 @@
         "TypeName": "DerivedDescriptor",
         "TypeNamePlural": "DerivedDescriptors",
         "DisplayName": "DerivedDescriptors",
-        "Description": "Sealed derived products for value and property descriptors; targets retain authoritative identities."
+        "Description": "Sealed derived products for value, property and relationship descriptors; targets retain authoritative identities."
       },
       "relationships": [
         {
@@ -2758,6 +2758,9 @@
             },
             {
               "$ref": "DerivedInstanceTypeKind.PropertyType"
+            },
+            {
+              "$ref": "DerivedRelationshipPolicy.PropertyType"
             }
           ]
         },
@@ -3900,6 +3903,51 @@
         "TypeNamePlural": "DerivedInstanceTypeKinds",
         "DisplayName": "Derived Instance TypeKind",
         "Description": "Prepared optional Instance TypeKind anchor index into DerivedLineage, or its semantic resolution error. Does not author a TypeKind classification.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DerivedRelationshipPolicy.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DerivedRelationshipPolicy",
+        "TypeNamePlural": "DerivedRelationshipPolicies",
+        "DisplayName": "Derived Relationship Policy",
+        "Description": "Prepared relationship direction and final membership cache policy, or semantic classification error, resolved from the retained descriptor lineage.",
         "IsValueRequired": true
       },
       "relationships": [

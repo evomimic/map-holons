@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 use tracing::debug;
 
 use super::holon_cache_manager::CacheReadTransactions;
+use super::relationship_fetch::{FetchedRelationship, RelationshipPolicyBinding};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{CollectionState, HolonCollection};
 use crate::reference_layer::HolonServiceApi;
@@ -45,6 +46,7 @@ struct CachedMembership {
 struct CachedRelationship {
     generation: u64,
     policy: RelationshipCachePolicy,
+    descriptor: Option<RelationshipPolicyBinding>,
     membership: Option<CachedMembership>,
 }
 
@@ -54,6 +56,7 @@ impl CachedRelationship {
         collection: Arc<RwLock<HolonCollection>>,
         fetched_at: Option<u64>,
         generation: u64,
+        descriptor: Option<RelationshipPolicyBinding>,
     ) -> Self {
         let expiry = match policy {
             RelationshipCachePolicy::Reuse => Some(None),
@@ -65,6 +68,7 @@ impl CachedRelationship {
         Self {
             generation,
             policy,
+            descriptor,
             membership: expiry
                 .map(|expires_at_millis| CachedMembership { collection, expires_at_millis }),
         }
@@ -80,7 +84,7 @@ impl CachedMembership {
 /// In-memory cache of relationship collections.
 ///
 /// Keys are logically `(source HolonId, relationship name)`. The nested map is
-/// only a storage optimization. Entries retain resolved policies independently
+/// only a storage optimization. Entries retain descriptor associations and scalar policies independently
 /// of optional saved memberships and their service-selected expiry. Policy lifetime
 /// follows the enclosing cache/schema snapshot, not membership freshness.
 /// The cache enforces service-selected eligibility, expiry, and caller hints.
@@ -112,6 +116,7 @@ impl RelationshipCache {
         let generation = service.relationship_cache_generation();
         let mut missing = Vec::new();
         let mut policies = HashMap::new();
+        let mut descriptors = HashMap::new();
         {
             let cache =
                 self.cache.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
@@ -122,6 +127,9 @@ impl RelationshipCache {
                     .filter(|entry| entry.generation == generation);
                 if let Some(entry) = entry {
                     policies.insert(name.clone(), entry.policy);
+                    if let Some(descriptor) = &entry.descriptor {
+                        descriptors.insert(name.clone(), descriptor.clone());
+                    }
                 }
                 let resident = entry
                     .and_then(|entry| entry.membership.as_ref())
@@ -143,7 +151,14 @@ impl RelationshipCache {
         // Preparation may publish a new schema generation.
         let generation = service.relationship_cache_generation();
         let fetched_at = service.relationship_cache_time_millis();
-        let mut fetched = service.fetch_relationship_set_internal(&context, source, &missing)?;
+        let unresolved: Vec<_> =
+            missing.iter().filter(|name| !policies.contains_key(*name)).cloned().collect();
+        let mut fetched = service.fetch_relationship_set_with_descriptors_internal(
+            &context,
+            source,
+            &missing,
+            &unresolved,
+        )?;
         if fetched.len() != missing.len()
             || missing
                 .iter()
@@ -152,16 +167,20 @@ impl RelationshipCache {
             return Err(HolonError::InvalidState("Incomplete requested relationship set".into()));
         }
         let mut prepared = Vec::new();
-        for (name, collection) in fetched.drain(..) {
-            let collection = Arc::new(RwLock::new(seal_saved_collection(collection)?));
+        for (name, fetched) in fetched.drain(..) {
+            let descriptor = fetched.descriptor.or_else(|| descriptors.remove(&name));
+            let collection = Arc::new(RwLock::new(seal_saved_collection(fetched.collection)?));
             let policy = match policies.get(&name) {
                 Some(policy) => Some(*policy),
-                None => service.relationship_cache_policy(&context, source, &name)?,
+                None => match &descriptor {
+                    Some(binding) => Some(binding.policy),
+                    None => service.relationship_cache_policy(&context, source, &name)?,
+                },
             };
             if let Some(policy) = policy {
                 prepared.push((
                     name,
-                    CachedRelationship::new(policy, collection, fetched_at, generation),
+                    CachedRelationship::new(policy, collection, fetched_at, generation, descriptor),
                 ));
             }
         }
@@ -176,8 +195,9 @@ impl RelationshipCache {
     /// that the `HolonCollection` could be empty.
     ///
     /// Classified cache hits, including known-empty collections, require no classification.
-    /// On a membership miss, fetch and seal; resolve policy only if none is retained.
-    /// No cache lock is held during policy resolution.
+    /// On a membership miss, fetch and seal; consume the fetched descriptor policy
+    /// only if none is retained. Policy lookup itself never discovers schema.
+    /// No cache lock is held during retrieval.
     pub(super) fn related_holons(
         &self,
         transactions: &CacheReadTransactions,
@@ -216,8 +236,8 @@ impl RelationshipCache {
             relationship = %relationship_name
         )
         .entered();
-        // Release the cache lock before classification: descriptor traversal
-        // resolves its own relationship reads through this same cache.
+        // Release the cache lock before retrieval. Descriptor binding belongs
+        // to that provider operation; policy consumption below is a local read.
         let generation = holon_service.relationship_cache_generation();
         let cached = self
             .cache
@@ -270,15 +290,27 @@ impl RelationshipCache {
         let generation = holon_service.relationship_cache_generation();
         // Start TTL before the fetch, so transport time never extends freshness.
         let fetched_at = holon_service.relationship_cache_time_millis();
-        let fetched_holons = holon_service.fetch_related_holons_internal(
-            &context,
-            &source_holon_id,
-            relationship_name,
-        )?;
+        let fetched = if retained_policy.is_some() {
+            FetchedRelationship {
+                collection: holon_service.fetch_related_holons_internal(
+                    &context,
+                    source_holon_id,
+                    relationship_name,
+                )?,
+                descriptor: cached.as_ref().and_then(|entry| entry.descriptor.clone()),
+            }
+        } else {
+            holon_service.fetch_related_holons_with_descriptor_internal(
+                &context,
+                source_holon_id,
+                relationship_name,
+            )?
+        };
+        let descriptor = fetched.descriptor;
         let fetched_arc = {
             #[cfg(not(target_arch = "wasm32"))]
             let _seal = tracing::debug_span!(target: "map_profile", "seal_collection").entered();
-            Arc::new(RwLock::new(seal_saved_collection(fetched_holons)?))
+            Arc::new(RwLock::new(seal_saved_collection(fetched.collection)?))
         };
 
         let policy = match retained_policy {
@@ -287,7 +319,10 @@ impl RelationshipCache {
                 #[cfg(not(target_arch = "wasm32"))]
                 let _policy =
                     tracing::debug_span!(target: "map_profile", "relationship_policy").entered();
-                cache_policy(&context)?
+                match &descriptor {
+                    Some(binding) => Some(binding.policy),
+                    None => cache_policy(&context)?,
+                }
             }
         };
         #[cfg(not(target_arch = "wasm32"))]
@@ -311,6 +346,7 @@ impl RelationshipCache {
                         Arc::clone(&fetched_arc),
                         fetched_at,
                         generation,
+                        descriptor,
                     ),
                 );
         }

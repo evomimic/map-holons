@@ -786,12 +786,12 @@ holon DerivedDescriptor.HolonType {
   extends HolonType.TypeDescriptor
   instance_keyrule NoneRule.KeyRuleType
   header {
-    description: "Sealed derived products for value and property descriptors; targets retain authoritative identities."
+    description: "Sealed derived products for value, property and relationship descriptors; targets retain authoritative identities."
     display_name: "DerivedDescriptors"
     plural: "DerivedDescriptors"
   }
   relationships {
-    InstanceProperties -> [DerivedOrigins.PropertyType, DerivedValueKind.PropertyType, DerivedInstanceTypeKind.PropertyType]
+    InstanceProperties -> [DerivedOrigins.PropertyType, DerivedValueKind.PropertyType, DerivedInstanceTypeKind.PropertyType, DerivedRelationshipPolicy.PropertyType]
     InstanceRelationships -> [
       (DerivedDescriptor.HolonType)-[DerivedLineage]->(TypeDescriptor),
       (DerivedDescriptor.HolonType)-[DerivedConstraints]->(Constraint.HolonType),
@@ -1122,5 +1122,17 @@ property DerivedInstanceTypeKind.PropertyType {
     description: "Prepared optional Instance TypeKind anchor index into DerivedLineage, or its semantic resolution error. Does not author a TypeKind classification."
     display_name: "Derived Instance TypeKind"
     plural: "DerivedInstanceTypeKinds"
+  }
+}
+
+property DerivedRelationshipPolicy.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Prepared relationship direction and final membership cache policy, or semantic classification error, resolved from the retained descriptor lineage."
+    display_name: "Derived Relationship Policy"
+    plural: "DerivedRelationshipPolicies"
   }
 }

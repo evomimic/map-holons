@@ -227,18 +227,37 @@ pub fn query_relationships_dance(
 
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
-            let relationship_name =
-                match request.body {
-                    RequestBody::QueryExpression(expression) => expression.relationship_name,
-                    _ => return Err(HolonError::InvalidParameter(
-                        "Invalid RequestBody: expected QueryExpression with relationship name, \
-                        didn't get one"
-                            .to_string(),
-                    )),
-                };
-
-            let result_collection = evaluate_query(node_collection, relationship_name)?;
-            Ok(ResponseBody::NodeCollection(result_collection))
+            let expression = match request.body {
+                RequestBody::QueryExpression(expression) => expression,
+                _ => return Err(HolonError::InvalidParameter("Expected QueryExpression".into())),
+            };
+            if expression.include_relationship_descriptor {
+                if node_collection.members.len() != 1 {
+                    return Err(HolonError::InvalidParameter(
+                        "Descriptor-associated membership requires one source".into(),
+                    ));
+                }
+                let source = &node_collection.members[0].source_holon;
+                let descriptor = crate::descriptors::bind_relationship_policy(
+                    source,
+                    &expression.relationship_name,
+                )?;
+                let collection = source
+                    .related_holons(&expression.relationship_name)?
+                    .read()
+                    .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                    .clone();
+                Ok(ResponseBody::SavedRelationship(
+                    crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+                        collection,
+                        descriptor: Some(descriptor),
+                    },
+                ))
+            } else {
+                let result_collection =
+                    evaluate_query(node_collection, expression.relationship_name)?;
+                Ok(ResponseBody::NodeCollection(result_collection))
+            }
         }
         _ => Err(HolonError::InvalidParameter(
             "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),

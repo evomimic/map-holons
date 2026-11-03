@@ -111,7 +111,7 @@
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "4aaf5728801e80519c53e09c08a876d3f64d14c62f79c8fe401cc834a1e5f6c6"
+      "sha256": "1d3f9d0caf68d5550d9330caddacc16e05189e3379d1ba07794eaa33acf73f6b"
     },
     {
       "path": "imports/query/schema.json",
@@ -2637,6 +2637,10 @@
     },
     {
       "key": "DerivedOrigins.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DerivedRelationshipPolicy.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {

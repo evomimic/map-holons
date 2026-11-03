@@ -42,8 +42,8 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// `Some` is authoritative for the enclosing cache lifetime. `None` means
     /// unresolved: fetch fresh for this read and retry policy resolution later.
     /// Called after a fetch, with no cache lock held, only when no policy is retained.
-    /// The default resolves declared policies. Request-local guests override it
-    /// with unconditional reuse; clients also resolve inverse descriptor policies.
+    /// This callback must be local: no schema acquisition, ancestry traversal or transport.
+    /// Ordinary client associations arrive with membership; request-local guests reuse it.
     fn relationship_cache_policy(
         &self,
         _context: &Arc<TransactionContext>,
@@ -182,6 +182,51 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
+
+    /// Retrieves membership and its descriptor association in the same operation.
+    /// A client obtains the association from its guest, never by host-side discovery.
+    fn fetch_related_holons_with_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<crate::core_shared_objects::relationship_fetch::FetchedRelationship, HolonError>
+    {
+        Ok(crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+            collection: self.fetch_related_holons_internal(context, source, name)?,
+            descriptor: None,
+        })
+    }
+
+    /// Retrieves a complete set; only `unresolved` names need descriptor binding.
+    /// Retained associations survive membership expiry, including bulk preparation.
+    fn fetch_relationship_set_with_descriptors_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+        _unresolved: &[RelationshipName],
+    ) -> Result<
+        Vec<(
+            RelationshipName,
+            crate::core_shared_objects::relationship_fetch::FetchedRelationship,
+        )>,
+        HolonError,
+    > {
+        Ok(self
+            .fetch_relationship_set_internal(context, source, names)?
+            .into_iter()
+            .map(|(name, collection)| {
+                (
+                    name,
+                    crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+                        collection,
+                        descriptor: None,
+                    },
+                )
+            })
+            .collect())
+    }
 
     /// Fetches complete memberships for exactly the requested names, including empty sets.
     /// Providers may consolidate transport without changing selection or freshness semantics.

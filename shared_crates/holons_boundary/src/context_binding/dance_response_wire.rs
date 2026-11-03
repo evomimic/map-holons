@@ -27,6 +27,11 @@ pub struct DanceResponseWire {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseBodyWire {
     SavedHolonHydration(Vec<super::saved_holon_fetch_wire::SavedHolonFetchWire>),
+    SavedRelationship {
+        collection: HolonCollectionWire,
+        descriptor:
+            Option<holons_core::core_shared_objects::relationship_fetch::RelationshipPolicyBinding>,
+    },
     None,
     Holon(HolonWire),
     HolonCollection(HolonCollectionWire),
@@ -72,6 +77,14 @@ impl ResponseBodyWire {
                     entries.into_iter().map(|entry| entry.bind()).collect(),
                 ))
             }
+            ResponseBodyWire::SavedRelationship { collection, descriptor } => {
+                Ok(ResponseBody::SavedRelationship(
+                    holons_core::core_shared_objects::relationship_fetch::FetchedRelationship {
+                        collection: collection.bind(context)?,
+                        descriptor,
+                    },
+                ))
+            }
             ResponseBodyWire::None => Ok(ResponseBody::None),
             ResponseBodyWire::Holon(holon_wire) => {
                 Ok(ResponseBody::Holon(holon_wire.bind(context)?))
@@ -100,6 +113,9 @@ impl ResponseBodyWire {
         match self {
             ResponseBodyWire::SavedHolonHydration(entries) => {
                 format!("SavedHolonHydration(count={})", entries.len())
+            }
+            ResponseBodyWire::SavedRelationship { collection, descriptor } => {
+                format!("SavedRelationship({}, descriptor={descriptor:?})", collection.summarize())
             }
             ResponseBodyWire::None => "None".to_string(),
 
@@ -147,6 +163,10 @@ impl From<&ResponseBody> for ResponseBodyWire {
                     .map(super::saved_holon_fetch_wire::SavedHolonFetchWire::from)
                     .collect(),
             ),
+            ResponseBody::SavedRelationship(fetched) => ResponseBodyWire::SavedRelationship {
+                collection: HolonCollectionWire::from(&fetched.collection),
+                descriptor: fetched.descriptor.clone(),
+            },
             ResponseBody::None => ResponseBodyWire::None,
             ResponseBody::Holon(holon) => ResponseBodyWire::Holon(HolonWire::from(holon)),
             ResponseBody::HolonCollection(collection) => {

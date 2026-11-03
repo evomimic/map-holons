@@ -370,6 +370,38 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
         .get_saved_holon_by_key(&MapString("TypeName.PropertyType".into()))
         .unwrap()
         .into();
+    // ValueType must resolve on demand without a separately primed policy table.
+    let first = saved_property.related_holons(CoreRelationshipTypeName::ValueType).unwrap();
+    let probe = holons_core::core_shared_objects::read_observations::CacheReadProbe::start(true);
+    let repeated = saved_property.related_holons(CoreRelationshipTypeName::ValueType).unwrap();
+    let observations = probe.finish();
+    assert!(std::sync::Arc::ptr_eq(&first, &repeated));
+    assert!(observations.iter().any(|entry| entry.source == saved_property.holon_id().unwrap()
+        && entry.relationship == Some(CoreRelationshipTypeName::ValueType.to_relationship_name())
+        && entry.outcome == "hit"));
+    assert!(!observations.iter().any(|entry| entry.outcome != "hit"));
+    let value_type_relationship: HolonReference = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString(
+            "(PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor)".into(),
+        ))
+        .unwrap()
+        .into();
+    assert_eq!(
+        holons_core::descriptors::RelationshipDescriptor::from_holon(value_type_relationship)
+            .membership_cache_policy()
+            .unwrap(),
+        holons_core::RelationshipCachePolicy::Reuse
+    );
+    let incoming = saved_value.related_holons("ValueTypeFor").unwrap();
+    assert!(!std::sync::Arc::ptr_eq(
+        &incoming,
+        &saved_value.related_holons("ValueTypeFor").unwrap()
+    ));
+    assert!(matches!(
+        saved_property.related_holons("NoSuchRelationship"),
+        Err(HolonError::DescriptorDeclarationNotFound { .. })
+    ));
     let value = ValueDescriptor::from_holon(saved_value.clone());
     assert_eq!(
         value.value_kind().unwrap(),
@@ -489,4 +521,33 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     context.dispose().unwrap();
     assert!(value.supported_operators().unwrap().len() >= 3);
     property.effective_constraints().unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn saved_visualizer_composition_stops_before_generic_descriptor_ancestors() {
+    let (runtime, _) = init_test_runtime(&mut DancesTestCase::default()).await;
+    let MapResult::TransactionCreated { tx_id } = runtime
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("expected transaction")
+    };
+    let context = runtime.session().get_transaction(&tx_id).unwrap();
+    // Real type-owned composition must finish at the Visualizer family root;
+    // its generic descriptor parents have no HasSlot policy to resolve.
+    for (key, expected_slots) in
+        [("HolonInspector.NodeVisualizer", 8), ("PathInspector.RootedNavigationVisualizer", 1)]
+    {
+        let visualizer: HolonReference =
+            context.lookup().get_saved_holon_by_key(&MapString(key.into())).unwrap().into();
+        assert_eq!(
+            holons_core::dahn::composition_slots(&visualizer).unwrap().len(),
+            expected_slots
+        );
+    }
+    context.dispose().unwrap();
 }

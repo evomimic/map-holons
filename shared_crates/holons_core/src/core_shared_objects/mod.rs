@@ -18,6 +18,7 @@ pub mod pending_relationship_deltas;
 pub mod read_observations;
 pub mod relationship_behavior;
 pub mod relationship_cache;
+pub mod relationship_fetch;
 pub mod space_manager;
 pub mod space_read_handle;
 pub mod space_session;

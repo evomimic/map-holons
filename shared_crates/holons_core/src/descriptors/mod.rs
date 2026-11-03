@@ -66,6 +66,7 @@ pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
 pub use definition_identity::{lineage_contains, same_definition};
 pub use descriptor::Descriptor;
+pub(crate) use effective_relationships::bind_relationship_policy;
 pub use effective_relationships::{effective_relationship_declaration, QualifiedRelationship};
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;

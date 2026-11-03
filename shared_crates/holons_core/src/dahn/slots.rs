@@ -3,6 +3,8 @@ use crate::{Descriptor, HolonReference, ReadableHolon};
 use core_types::HolonError;
 
 /// Resolve type-owned Slots, allowing a nearer type to override one role.
+/// Includes the Visualizer family root, then stops before generic descriptor
+/// ancestors whose describing contract does not declare HasSlot.
 /// Missing and duplicate role declarations fail rather than choosing arbitrarily.
 pub fn composition_slots(visualizer: &HolonReference) -> Result<Vec<HolonReference>, HolonError> {
     let mut roles = Vec::new();
@@ -27,6 +29,9 @@ pub fn composition_slots(visualizer: &HolonReference) -> Result<Vec<HolonReferen
                 roles.push(role);
                 result.push(slot);
             }
+        }
+        if descriptor.key()? == Some("Visualizer.HolonType".into()) {
+            break;
         }
     }
     Ok(result)
