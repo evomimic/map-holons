@@ -9,6 +9,8 @@ use core_types::HolonError;
 /// Kernel-only classification for validation before derived runtime schema is available.
 /// Ordinary semantic reads use ValueDescriptor::value_kind and its prepared products.
 /// This primitive performs no derived construction and does not validate conformance.
+/// Ordinary consumers use ValueDescriptor::value_kind so registered/frozen products
+/// are reused. This kernel path is reserved for bootstrap before result schemas exist.
 pub fn classify_value_kind_for_validation(
     target: &HolonReference,
 ) -> Result<ValueDescriptorKind, HolonError> {

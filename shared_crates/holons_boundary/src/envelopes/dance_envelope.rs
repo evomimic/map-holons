@@ -31,6 +31,9 @@ pub enum DanceEnvelopeResponse {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceRequestEnvelope {
     pub request: DanceEnvelopeRequest,
+    /// Commit-only registry-owner state. It is never echoed in response pools.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub descriptor_registry: Option<crate::DescriptorRegistryWire>,
     pub session: Option<SessionStateWire>,
 }
 

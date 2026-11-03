@@ -60,7 +60,9 @@ pub struct TransactionContext {
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
     restricted_cache_read: bool,
-    descriptor_registry_root: std::sync::RwLock<Option<core_types::TemporaryId>>,
+    /// Reuse of mutable descriptor inputs is confined to one frozen assessment.
+    pub(super) frozen_validation:
+        std::sync::Mutex<Option<Arc<super::frozen_validation_scope::FrozenValidationState>>>,
 }
 
 impl fmt::Debug for TransactionContext {
@@ -88,7 +90,7 @@ impl TransactionContext {
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
             restricted_cache_read,
-            descriptor_registry_root: Default::default(),
+            frozen_validation: Default::default(),
         })
     }
 
@@ -115,47 +117,7 @@ impl TransactionContext {
         self.space_manager.descriptor_registry()
     }
 
-    /// Installs a registry snapshot already present in this transaction's transient pool.
-    pub fn set_descriptor_registry_root(
-        &self,
-        root: &TransientReference,
-    ) -> Result<(), HolonError> {
-        if root.tx_id() != self.tx_id() {
-            return Err(HolonError::InvalidParameter(
-                "Registry root belongs to another transaction".into(),
-            ));
-        }
-        *self
-            .descriptor_registry_root
-            .write()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))? =
-            Some(root.temporary_id());
-        Ok(())
-    }
-
-    /// Clears only the selected snapshot marker; transaction state and copied
-    /// holons retain their normal owner lifetime.
-    pub(crate) fn clear_descriptor_registry_root(&self) -> Result<(), HolonError> {
-        *self
-            .descriptor_registry_root
-            .write()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))? = None;
-        Ok(())
-    }
-
-    /// Returns the Commit-local registry root, retaining its actual owner binding.
-    pub fn descriptor_registry_root(
-        self: &Arc<Self>,
-    ) -> Result<Option<TransientReference>, HolonError> {
-        Ok(self
-            .descriptor_registry_root
-            .read()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-            .as_ref()
-            .map(|id| TransientReference::from_temporary_id(self.context_handle(), id)))
-    }
-
-    /// Returns the transaction id.
+    /// Returns this transaction's identity.
     pub fn tx_id(&self) -> TxId {
         self.tx_id
     }

@@ -1,7 +1,9 @@
-//! Session-owned prepared schema and explicit transaction-local snapshots.
+//! Session-owned prepared results and Commit registry-owner capture/restoration.
 use super::{space_manager::HolonSpaceManager, transactions::TransactionContext};
 use crate::{
-    descriptors::{resolve_core_descriptor, DerivedDescriptor, EffectiveHolonDescriptor},
+    descriptors::{
+        resolve_core_descriptor, DerivedDescriptor, Descriptor, EffectiveHolonDescriptor,
+    },
     HolonReference, ReadableHolon, TransientReference, WritableHolon,
 };
 use core_types::{HolonError, HolonId, TemporaryId};
@@ -155,7 +157,7 @@ impl EffectiveHolonDescriptorRegistry {
         self.get_derived(&target)?.ok_or(HolonError::ObsoleteSession)
     }
 
-    /// Drops selected entries without disposing detached Commit copies or the
+    /// Drops selected entries without disposing guest-received snapshots or the
     /// carrier used by an in-flight construction. Old HolonType handles retain
     /// their existing lifetime until that subsystem migrates to shared retirement.
     pub(super) fn reset_session(&self) -> Result<(), HolonError> {
@@ -272,88 +274,169 @@ impl EffectiveHolonDescriptorRegistry {
         context.import_transient_holons(super::HolonPool::from_parts(holons, Default::default()))
     }
 
-    /// Shallow-clones the registry and its members. Only registry entries are rebound;
-    /// each descriptor's saved schema references retain their original identities.
-    pub fn snapshot_into(
+    /// Projects the retained owner's state without moving results into the agent pool.
+    /// Retry if selected entries or the Session change while projection reads the pool.
+    /// The projector is transport-only: it must not acquire descriptors or perform I/O.
+    pub fn capture<T>(
         &self,
-        destination: &Arc<TransactionContext>,
-    ) -> Result<Option<TransientReference>, HolonError> {
-        self.snapshot_with_checkpoint(destination, &mut || {})
+        mut project: impl FnMut(&Arc<TransactionContext>, &TemporaryId) -> Result<T, HolonError>,
+    ) -> Result<Option<T>, HolonError> {
+        self.capture_with_checkpoint(&mut project, &mut || {})
     }
 
-    fn snapshot_with_checkpoint(
+    fn capture_with_checkpoint<T>(
         &self,
-        destination: &Arc<TransactionContext>,
+        project: &mut impl FnMut(&Arc<TransactionContext>, &TemporaryId) -> Result<T, HolonError>,
         checkpoint: &mut impl FnMut(),
-    ) -> Result<Option<TransientReference>, HolonError> {
+    ) -> Result<Option<T>, HolonError> {
         loop {
             let space = self
                 .space
                 .upgrade()
                 .ok_or_else(|| HolonError::ServiceNotAvailable("Session space".into()))?;
             let session = space.session()?;
-            let result = self.capture_into(destination);
+            let (context, root, entries, derived) = {
+                let state = self.state.lock().map_err(lock_error)?;
+                (
+                    state.context.clone(),
+                    state.root.clone(),
+                    state.entries.clone(),
+                    state
+                        .derived_entries
+                        .iter()
+                        .map(|(key, (id, _))| (key.clone(), id.clone()))
+                        .collect::<HashMap<_, _>>(),
+                )
+            };
+            let result = match (&context, &root) {
+                (Some(context), Some(root)) => {
+                    // Publication checks this too. Recheck the selected payloads at egress.
+                    (|| {
+                        for id in entries.values().chain(derived.values()) {
+                            let result =
+                                TransientReference::from_temporary_id(context.context_handle(), id);
+                            Self::ensure_saved_references(&result.into())?;
+                        }
+                        project(context, root)
+                    })()
+                    .map(Some)
+                }
+                _ => Ok(None),
+            };
             checkpoint();
             match session.check_active() {
-                Ok(()) => {
-                    let result = result?;
-                    match &result {
-                        Some(root) => destination.set_descriptor_registry_root(root)?,
-                        None => destination.clear_descriptor_registry_root()?,
-                    }
-                    return Ok(result);
-                }
                 Err(HolonError::ObsoleteSession) => continue,
                 Err(error) => return Err(error),
+                Ok(()) => {}
+            }
+            let unchanged = {
+                let state = self.state.lock().map_err(lock_error)?;
+                state.root == root
+                    && state.entries == entries
+                    && state.derived_entries.len() == derived.len()
+                    && state
+                        .derived_entries
+                        .iter()
+                        .all(|(key, (id, _))| derived.get(key) == Some(id))
+            };
+            if unchanged {
+                return result;
             }
         }
     }
 
-    fn capture_into(
-        &self,
-        destination: &Arc<TransactionContext>,
-    ) -> Result<Option<TransientReference>, HolonError> {
-        let source = {
-            let state = self.state.lock().map_err(lock_error)?;
-            state.root.as_ref().map(|id| {
-                HolonReference::from(TransientReference::from_temporary_id(
-                    state.context.as_ref().expect("registry owner").context_handle(),
-                    id,
-                ))
-            })
-        };
-        let Some(source) = source else {
-            return Ok(None);
-        };
-        // Freeze membership before cloning entries. Clone default population may
-        // prepare and publish additional Session descriptors reentrantly; those
-        // later entries belong to a subsequent snapshot, never this copied root.
-        let mut root = destination.clone_holon(&source)?;
-        for relationship in [
-            CoreRelationshipTypeName::PreparedDescriptors,
-            CoreRelationshipTypeName::PreparedDerivedDescriptors,
+    /// Restores a request-local registry owner and rebuilds its saved-ID indexes once.
+    /// Binding supplies only the transported transient pool. No source reads, Extends
+    /// traversal, or semantic construction is needed to index completed results.
+    pub fn restore(
+        agent: &Arc<TransactionContext>,
+        owner_id: super::transactions::TxId,
+        root_id: TemporaryId,
+        bind: impl FnOnce(&Arc<TransactionContext>) -> Result<super::HolonPool, HolonError>,
+    ) -> Result<Arc<Self>, HolonError> {
+        if agent.descriptor_registry().is_some() {
+            return Err(HolonError::InvalidParameter(
+                "Space already has a descriptor registry".into(),
+            ));
+        }
+        if owner_id == agent.tx_id() {
+            return Err(HolonError::InvalidParameter(
+                "Registry and agent transactions must be distinct".into(),
+            ));
+        }
+        let space = agent.space_manager();
+        let owner = space
+            .get_transaction_manager()
+            .open_private_restricted_cache_read_transaction_with_id(space.clone(), owner_id)?;
+        // Own cleanup before binding: malformed input must not leave pool/context cycles.
+        let registry = Arc::new(Self::new(&space));
+        registry.state.lock().map_err(lock_error)?.context = Some(owner.clone());
+        owner.import_transient_holons(bind(&owner)?)?;
+        let root = TransientReference::from_temporary_id(owner.context_handle(), &root_id);
+        let session = space.session()?;
+        let mut entries = HashMap::new();
+        let mut derived_entries = HashMap::new();
+        let mut admitted = std::collections::HashSet::new();
+        for (relationship, derived) in [
+            (CoreRelationshipTypeName::PreparedDescriptors, false),
+            (CoreRelationshipTypeName::PreparedDerivedDescriptors, true),
         ] {
             let members = root
-                .related_holons(relationship.clone())?
+                .related_holons(relationship)?
                 .read()
                 .map_err(lock_error)?
                 .get_members()
                 .clone();
-            if members.is_empty() {
-                continue;
+            for member in members {
+                let HolonReference::Transient(reference) = &member else {
+                    return Err(HolonError::InvalidParameter(
+                        "Registry entries must be transient results".into(),
+                    ));
+                };
+                if reference.tx_id() != owner_id {
+                    return Err(HolonError::InvalidParameter(
+                        "Registry result has a different owner".into(),
+                    ));
+                }
+                Self::ensure_saved_references(&member)?;
+                let target = if derived {
+                    DerivedDescriptor::from_constructed_holon(member.clone())
+                        .lineage()?
+                        .first()
+                        .ok_or_else(|| {
+                            HolonError::InvalidParameter("Missing derived source".into())
+                        })?
+                        .holon_id()?
+                } else {
+                    EffectiveHolonDescriptor::from_constructed_holon(member.clone())
+                        .described_holon_type()?
+                        .holon()
+                        .holon_id()?
+                };
+                let duplicate = if derived {
+                    derived_entries
+                        .insert(target, (reference.temporary_id(), session.clone()))
+                        .is_some()
+                } else {
+                    entries.insert(target, reference.temporary_id()).is_some()
+                };
+                if duplicate {
+                    return Err(HolonError::InvalidParameter(
+                        "Duplicate descriptor identity in registry snapshot".into(),
+                    ));
+                }
+                admitted.insert(reference.temporary_id());
             }
-            let mut copies = Vec::with_capacity(members.len());
-            for member in &members {
-                Self::ensure_saved_references(member)?;
-                let copy = destination.clone_holon(member)?;
-                copy.mark_as_immutable()?;
-                copies.push(copy.into());
-            }
-            root.remove_related_holons(relationship.clone(), members)?;
-            root.add_related_holons(relationship, copies)?;
         }
-        root.mark_as_immutable()?;
-        Ok(Some(root))
+        {
+            let mut state = registry.state.lock().map_err(lock_error)?;
+            state.root = Some(root_id);
+            state.entries = entries;
+            state.derived_entries = derived_entries;
+            state.admitted = admitted;
+        }
+        space.attach_descriptor_registry(&registry);
+        Ok(registry)
     }
 }
 impl Drop for EffectiveHolonDescriptorRegistry {
@@ -416,35 +499,23 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_copies_only_registry_and_results_and_preserves_saved_targets(
-    ) -> Result<(), HolonError> {
-        let (registry, destination, descriptor, target) = fixture()?;
-        registry.publish(target.clone(), &descriptor)?;
-        let root = registry.snapshot_into(&destination)?.unwrap();
-        let members = root
-            .related_holons(CoreRelationshipTypeName::PreparedDescriptors)?
-            .read()
-            .unwrap()
-            .get_members()
-            .clone();
-        assert_eq!(members.len(), 1);
-        let HolonReference::Transient(copy) = &members[0] else {
-            panic!("expected transient copy")
-        };
-        assert_eq!(copy.tx_id(), destination.tx_id());
-        assert_eq!(destination.lookup().transient_count()?, 2);
-        let prepared = EffectiveHolonDescriptor::find_in_context(
-            &destination,
-            &HolonReference::smart_from_id(destination.space_read_handle(), target.clone()),
-        )?
-        .unwrap();
-        for (_, collection) in prepared.holon().all_related_holons()?.iter() {
-            for member in collection.read().unwrap().get_members() {
-                assert!(matches!(member, HolonReference::Smart(_)));
-                assert_eq!(member.holon_id()?, target);
-            }
-        }
-        destination.dispose()?;
+    fn capture_preserves_registry_owner_and_does_not_populate_agent_pool() -> Result<(), HolonError>
+    {
+        let (registry, agent, descriptor, target) = fixture()?;
+        registry.publish(target, &descriptor)?;
+        let owner = registry.context()?;
+        let before = agent.lookup().transient_count()?;
+        let (owner_id, root_id, count) = registry
+            .capture(|context, root| {
+                Ok((context.tx_id(), root.clone(), context.lookup().transient_count()?))
+            })?
+            .unwrap();
+        assert_eq!(owner_id, owner.tx_id());
+        assert_ne!(owner_id, agent.tx_id());
+        assert_eq!(Some(root_id), registry.state.lock().unwrap().root);
+        assert_eq!(count, 2);
+        assert_eq!(agent.lookup().transient_count()?, before);
+        agent.dispose()?;
         assert!(descriptor.holon().key()?.is_none());
         drop(registry);
         assert!(descriptor.holon().key().is_err());
@@ -626,15 +697,8 @@ mod tests {
         assert_eq!(property.effective_constraints()?.len(), 3);
         assert_eq!(property.effective_validation_bindings()?.len(), 1);
         assert_eq!(lineage_edge_reads(&target), before + 1);
-        let destination = space.get_transaction_manager().open_public_transaction(space.clone())?;
-        registry.snapshot_into(&destination)?;
-        let copied = DerivedDescriptor::find_in_context(&destination, &target)?
-            .expect("transportable partition");
-        assert_eq!(copied.effective_constraints()?.len(), 3);
-        assert_ne!(
-            copied.holon().transaction_context().unwrap().tx_id(),
-            result.holon().transaction_context().unwrap().tx_id()
-        );
+        let projected_count = registry.capture(|context, _| context.lookup().transient_count())?;
+        assert_eq!(projected_count, Some(allocated));
         assert_eq!(lineage_edge_reads(&target), before + 1);
         assert_eq!(first.instance_type_kind()?, Some(parent.clone()));
         crate::descriptors::test_support::replace_saved_relationship(
@@ -656,22 +720,12 @@ mod tests {
             registry.publish_derived(ids[0].clone(), &result, &old_session),
             Err(HolonError::ObsoleteSession)
         ));
-        // Detached Commit copies do not inherit the host retirement token.
-        assert_eq!(
-            copied.value_kind()?,
-            crate::descriptors::ValueDescriptorKind::BaseValue(base_types::BaseValueKind::String)
-        );
-        assert_eq!(copied.instance_type_kind()?, Some(parent));
-        assert_eq!(copied.effective_constraints()?[0].member.holon_id()?, ids[2]);
-        let restored = crate::descriptors::ComputedEffectiveSchema::from_derived(&copied)?;
-        assert_eq!(restored.contributions(R::Constraints)[0].member.holon_id()?, ids[2]);
         let old_lineage_reads = lineage_edge_reads(&target);
         assert_eq!(first.effective_constraints()?.len(), 3);
         assert_eq!(second.effective_validation_bindings()?.len(), 1);
         assert_eq!(property.effective_constraints()?.len(), 3);
         assert_eq!(lineage_edge_reads(&target), old_lineage_reads + 1);
         assert_eq!(first.effective_constraints()?[0].member.holon_id()?, ids[3]);
-        destination.dispose()?;
         context.dispose()?;
         assert_eq!(first.effective_constraints()?.len(), 3);
         drop(registry);
@@ -679,23 +733,51 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn reset_during_capture_retries_without_selecting_the_old_snapshot() -> Result<(), HolonError> {
+    fn reset_during_capture_retries_without_shipping_the_old_owner_state() -> Result<(), HolonError>
+    {
         let (registry, caller, descriptor, target) = fixture()?;
         registry.publish(target, &descriptor)?;
-        let destination = caller.open_isolated_transaction()?;
         let space = caller.space_manager();
         let mut once = true;
-        let result = registry.snapshot_with_checkpoint(&destination, &mut || {
-            if once {
-                once = false;
-                space.reset_session().unwrap();
-            }
-        })?;
+        let result = registry.capture_with_checkpoint(
+            &mut |context, root| Ok((context.tx_id(), root.clone())),
+            &mut || {
+                if once {
+                    once = false;
+                    space.reset_session().unwrap();
+                }
+            },
+        )?;
         assert!(result.is_none());
-        assert!(destination.descriptor_registry_root()?.is_none());
         assert!(caller.is_open());
         Ok(())
     }
+    #[test]
+    fn publication_during_capture_retries_the_registry_selection() -> Result<(), HolonError> {
+        let (registry, _, descriptor, target) = fixture()?;
+        registry.publish(target.clone(), &descriptor)?;
+        let replacement = registry.context()?.clone_holon(descriptor.holon())?;
+        replacement.mark_as_immutable()?;
+        let replacement = EffectiveHolonDescriptor::from_constructed_holon(replacement.into());
+        let mut projections = 0;
+        let mut once = true;
+        registry.capture_with_checkpoint(
+            &mut |_, _| {
+                projections += 1;
+                Ok(())
+            },
+            &mut || {
+                if once {
+                    once = false;
+                    registry.publish(target.clone(), &replacement).unwrap();
+                }
+            },
+        )?;
+        assert_eq!(projections, 2);
+        assert_eq!(registry.get(&target)?.unwrap().holon(), replacement.holon());
+        Ok(())
+    }
+
     #[test]
     fn a_saved_source_does_not_admit_a_product_with_volatile_dependencies() -> Result<(), HolonError>
     {

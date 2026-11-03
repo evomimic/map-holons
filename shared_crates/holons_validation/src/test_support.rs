@@ -23,6 +23,7 @@ struct FixtureStorage {
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     reads: std::sync::atomic::AtomicUsize,
     node_reads: std::sync::atomic::AtomicUsize,
+    key_lookup_keys: std::sync::Mutex<Vec<MapString>>,
     key_lookup_reads: std::sync::atomic::AtomicUsize,
     lineage_reads: std::sync::atomic::AtomicUsize,
     keyed_lineages: std::sync::Mutex<HashMap<MapString, Vec<LocalId>>>,
@@ -33,6 +34,14 @@ struct FixtureStorage {
     reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::DerivedDescriptor, HolonError> {
+        holons_core::descriptors::construct_derived_descriptor(context, target)
+    }
+
     fn relationship_cache_policy(
         &self,
         _: &Arc<TransactionContext>,
@@ -150,6 +159,7 @@ impl HolonServiceApi for FixtureStorage {
         key: &MapString,
     ) -> Result<holons_core::SmartReference, HolonError> {
         self.key_lookup_reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.key_lookup_keys.lock().unwrap().push(key.clone());
         use type_names::ToPropertyName;
         for (id, holon) in &self.holons {
             if holon.property_map().get(&"Key".to_property_name())
@@ -170,6 +180,9 @@ pub(super) struct Fixture {
     pub context: Arc<TransactionContext>,
     pub nodes: BTreeMap<String, HolonReference>,
     saved_storage: Option<Arc<FixtureStorage>>,
+    _registry: Arc<
+        holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry,
+    >,
 }
 
 pub(super) fn subject_rules(
@@ -194,13 +207,17 @@ impl Fixture {
             ServiceRoutingPolicy::BlockExternal,
         );
         let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
-        Ok(Self { context, nodes: BTreeMap::new(), saved_storage: None })
+        let registry = Arc::new(holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry::new(&manager));
+        manager.attach_descriptor_registry(&registry);
+        Ok(Self { context, nodes: BTreeMap::new(), saved_storage: None, _registry: registry })
     }
 
     pub fn new() -> Result<Self, HolonError> {
         let mut fixture = Self::empty()?;
         for key in [
             "TypeDescriptor",
+            "DerivedDescriptor.HolonType",
+            "EffectiveHolonDescriptorRegistry.HolonType",
             "MetaTypeDescriptor.HolonType",
             "BaseValueValueType.ValueType",
             "ValueArrayValueType.ValueType",
@@ -389,6 +406,12 @@ impl Fixture {
         })
     }
 
+    pub fn saved_key_lookup_keys(&self) -> Vec<MapString> {
+        self.saved_storage
+            .as_ref()
+            .map_or_else(Vec::new, |storage| storage.key_lookup_keys.lock().unwrap().clone())
+    }
+
     pub fn backend_reads_for(&self, edge: &CoreRelationshipTypeName) -> usize {
         self.backend_reads_for_name(&edge.as_relationship_name())
     }
@@ -476,7 +499,9 @@ impl Fixture {
             .into_iter()
             .map(|(key, id)| (key, HolonReference::smart_from_id(context.space_read_handle(), id)))
             .collect();
-        Ok(Self { context, nodes, saved_storage: Some(storage) })
+        let registry = Arc::new(holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry::new(&manager));
+        manager.attach_descriptor_registry(&registry);
+        Ok(Self { context, nodes, saved_storage: Some(storage), _registry: registry })
     }
 
     /// Restores an update snapshot for a saved schema definition without requiring its

@@ -33,8 +33,8 @@ use crate::descriptors::accessor_helpers::{
     descriptor_label, related_members, require_single_related,
 };
 use crate::descriptors::{
-    classify_holon_type, equals_or_extends, require_holon_type, same_definition, Descriptor,
-    HolonDescriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
+    classify_holon_type, require_holon_type, same_definition, Descriptor, HolonDescriptor,
+    OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -240,7 +240,7 @@ fn require_string_subject(operator: &ResolvedOperator) -> Result<(), HolonError>
         )
         .0,
     )?;
-    if equals_or_extends(subject_type.holon(), &string_type)? {
+    if subject_type.equals_or_extends(&string_type)? {
         return Ok(());
     }
     Err(HolonError::UnsupportedOperator {
@@ -289,7 +289,7 @@ fn validate_literal_operand(
         CoreRelationshipTypeName::ValueType,
     )?);
 
-    if !equals_or_extends(declared_type.holon(), required_type.holon())? {
+    if !declared_type.equals_or_extends(required_type.holon())? {
         return Err(HolonError::IncompatibleLiteralType {
             declared: descriptor_label(declared_type.holon()),
             required: descriptor_label(required_type.holon()),

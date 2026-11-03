@@ -32,8 +32,8 @@ pub enum EffectiveValue {
 /// Abstract property families can contribute constraints and bindings; concrete
 /// properties are leaves. Effective Instance TypeKind is retained as its exact lineage-anchor identity.
 ///
-/// Saved wrappers share registered products; staged/transient wrappers acquire
-/// fresh products without memoization. See [`super::DerivedDescriptor`] for the
+/// Saved wrappers share registered products. Mutable wrappers share products during
+/// frozen validation and acquire fresh products outside it. See [`super::DerivedDescriptor`] for the
 /// backing payload and its authoritative specification location.
 pub struct PropertyDescriptor {
     holon: HolonReference,
@@ -41,6 +41,10 @@ pub struct PropertyDescriptor {
 }
 
 impl PropertyDescriptor {
+    /// Projects validation vocabulary from the same acquired payload as ordinary accessors.
+    pub fn effective_schema(&self) -> Result<super::ComputedEffectiveSchema, HolonError> {
+        self.derived_fields.read(&self.holon, super::ComputedEffectiveSchema::from_derived)
+    }
     /// Wraps an already-resolved descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
         Self { holon, derived_fields: Default::default() }

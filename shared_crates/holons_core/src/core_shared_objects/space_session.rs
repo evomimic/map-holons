@@ -3,7 +3,7 @@ use core_types::HolonError;
 use std::sync::Mutex;
 
 /// One shared retirement token for registered products and in-flight derived preparation.
-/// Detached Commit copies deliberately carry no host Session token.
+/// Guest-restored registries acquire their request-local token, not the host token.
 #[derive(Debug, Default)]
 pub struct SpaceSession {
     retired: Mutex<bool>,

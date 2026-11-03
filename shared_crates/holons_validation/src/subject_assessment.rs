@@ -194,9 +194,8 @@ pub(crate) fn compatible_binding(
     }
     if let Some(expected) = registration.native_kind {
         holons_core::assert_reference_transaction_compatible(governing, &context.context)?;
-        return Ok(holons_core::descriptors::value_kind::classify_value_kind_for_validation(
-            governing,
-        )? == ValueDescriptorKind::BaseValue(expected));
+        return Ok(ValueDescriptor::from_holon(governing.clone()).value_kind()?
+            == ValueDescriptorKind::BaseValue(expected));
     }
     Ok(true)
 }
@@ -364,7 +363,7 @@ pub(crate) fn assess_holon(
             _ => return Err(HolonError::EmptyField("TypeName".into()).into()),
         }
     }
-    for (name, target) in crate::schema_rules::authored_targets(subject)? {
+    for (name, target) in crate::schema_rules::authored_targets(subject, packages)? {
         if !declared_names.contains(&name.to_string()) {
             // Delivered checks assess declaredness per subject; none reads a combined graph-only bucket.
             finding(collector, CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() }, None,
@@ -469,9 +468,7 @@ fn assess_value(
         &values.context,
     )?;
     let facts = PreparedRuleSubject::Value {
-        expected: holons_core::descriptors::value_kind::classify_value_kind_for_validation(
-            descriptor.holon(),
-        )?,
+        expected: descriptor.value_kind()?,
         actual: value.kind(),
         descriptor_identity: descriptor.holon().reference_id_string(),
     };

@@ -1,9 +1,10 @@
+use holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry;
 use std::sync::Arc;
 
 use hdk::prelude::*;
 
 use crate::dances_guest::dancer::dispatch_dance;
-use crate::init_guest_context;
+use crate::guest_context::init_guest_context_with_registry;
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -21,7 +22,15 @@ use holons_core::{
 /// This function is responsible for ingress binding, runtime dispatch, and egress projection.
 #[hdk_extern]
 pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
-    let DanceRequestEnvelope { request, session } = envelope;
+    let DanceRequestEnvelope { request, session, descriptor_registry } = envelope;
+    if descriptor_registry.is_some()
+        && !matches!(&request, DanceEnvelopeRequest::Legacy(request) if request.dance_name.0 == "commit")
+    {
+        return Ok(create_error_response_envelope(
+            HolonError::InvalidParameter("Registry transaction state is Commit-only".into()),
+            session,
+        ));
+    }
     let request = match request {
         DanceEnvelopeRequest::Invocation { invocation } => {
             return Ok(execute_invocation_envelope(invocation, session))
@@ -69,10 +78,11 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     };
 
     let hydration_started_at = performance_timestamp_micros();
-    let context = match initialize_context_from_session_state(session_state) {
-        Ok(ctx) => ctx,
-        Err(error) => return Ok(create_error_response_envelope(error, session)),
-    };
+    let (context, _registry) =
+        match initialize_context_from_session_state(session_state, descriptor_registry) {
+            Ok(ctx) => ctx,
+            Err(error) => return Ok(create_error_response_envelope(error, session)),
+        };
     let hydration_micros = elapsed_micros(hydration_started_at);
 
     // ---- bind wire -> runtime ----
@@ -143,8 +153,8 @@ fn execute_invocation_envelope(
     let context = session
         .as_ref()
         .ok_or_else(|| HolonError::InvalidParameter("Missing SessionStateWire".into()))
-        .and_then(initialize_context_from_session_state);
-    let context = match context {
+        .and_then(|state| initialize_context_from_session_state(state, None));
+    let (context, _registry) = match context {
         Ok(context) => context,
         Err(error) => {
             return DanceResponseEnvelope {
@@ -229,7 +239,8 @@ fn create_error_response_envelope(
 
 fn initialize_context_from_session_state(
     session_state: &SessionStateWire,
-) -> Result<Arc<TransactionContext>, HolonError> {
+    registry: Option<holons_boundary::DescriptorRegistryWire>,
+) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
     info!("==Initializing context from session state==");
     debug!("session_state: {:#?}", session_state);
 
@@ -246,12 +257,13 @@ fn initialize_context_from_session_state(
     let transient_holons = session_state.get_transient_holons().clone();
     let staged_holons = session_state.get_staged_holons().clone();
 
-    let context = init_guest_context(
+    let (context, registry) = init_guest_context_with_registry(
         transient_holons,
         staged_holons,
         local_space_holon_id.clone(),
         tx_id,
         session_state.is_restricted_cache_read(),
+        registry,
     )?;
 
     let bootstrap_provisioning = session_state.is_bootstrap_provisioning();
@@ -263,7 +275,7 @@ fn initialize_context_from_session_state(
     if bootstrap_provisioning {
         context.enable_bootstrap_provisioning();
     }
-    Ok(context)
+    Ok((context, registry))
 }
 
 /// Restores the session_state wire payload from context.

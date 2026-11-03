@@ -1,4 +1,4 @@
-//! Guest preparation, Session reuse, and Commit-local shallow projection.
+//! Guest preparation, Session reuse, and Commit registry-owner transport.
 use holons_core::descriptors::{ComputedEffectiveSchema, Descriptor, EffectiveHolonDescriptor};
 use holons_prelude::prelude::*;
 use holons_test::{init_test_runtime, DancesTestCase};
@@ -6,6 +6,33 @@ use map_commands_contract::{
     HolonAction, HolonCommand, MapCommand, MapResult, ReadableHolonAction, SpaceCommand,
 };
 use map_commands_runtime::ExecutionPolicy;
+
+/// Models the guest ingress boundary without borrowing the host registry's ownership.
+fn restore_registry_request(
+    agent: &std::sync::Arc<holons_core::core_shared_objects::transactions::TransactionContext>,
+    wire: holons_boundary::DescriptorRegistryWire,
+) -> (
+    std::sync::Arc<holons_core::core_shared_objects::transactions::TransactionContext>,
+    std::sync::Arc<
+        holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry,
+    >,
+) {
+    use holons_core::core_shared_objects::{
+        space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+    };
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        std::sync::Arc::new(holons_client::ClientHolonService::development_default()),
+        agent.get_space_holon().unwrap().map(|reference| reference.holon_id().unwrap()),
+        ServiceRoutingPolicy::Combined,
+    );
+    let context = space
+        .get_transaction_manager()
+        .open_public_transaction_with_id(space.clone(), agent.tx_id())
+        .unwrap();
+    let registry = wire.restore(&context).unwrap();
+    (context, registry)
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn guest_construction_returns_a_retained_sealed_schema_graph() {
@@ -228,12 +255,19 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
     assert!(shared.iter().all(|identity| identity == &shared[0]));
     assert_eq!(owner.lookup().transient_count().unwrap() - before, i64::from(!already_prepared));
 
-    let snapshot =
-        runtime.session().descriptor_registry().snapshot_into(&contexts[0]).unwrap().unwrap();
-    assert_eq!(snapshot.tx_id(), contexts[0].tx_id());
-    let copy =
-        EffectiveHolonDescriptor::find_in_context(&contexts[0], target.holon()).unwrap().unwrap();
-    assert_ne!(
+    let agent_count = contexts[0].lookup().transient_count().unwrap();
+    let wire =
+        holons_boundary::DescriptorRegistryWire::capture(runtime.session().descriptor_registry())
+            .unwrap()
+            .unwrap();
+    let (snapshot, _received_registry) = restore_registry_request(&contexts[0], wire);
+    assert_eq!(contexts[0].lookup().transient_count().unwrap(), agent_count);
+    let received_target = HolonReference::smart_from_id(
+        snapshot.space_read_handle(),
+        target.holon().holon_id().unwrap(),
+    );
+    let copy = EffectiveHolonDescriptor::acquire(received_target).unwrap();
+    assert_eq!(
         copy.holon().full_reference_id_string(),
         descriptor.holon().full_reference_id_string()
     );
@@ -245,8 +279,20 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
             .iter()
             .all(|member| matches!(member, HolonReference::Smart(_))));
     }
-    // Commit ships the shallow snapshot through the existing transient pool transport.
+    // Agent graphs can reference a prepared result without taking ownership of it.
+    // Guest ingress must install the registry before binding this cross-owner reference.
+    let mut carrier = contexts[1].mutation().new_holon(None).unwrap();
+    carrier.add_related_holons("PreparedResult", vec![references[0].clone()]).unwrap();
+    let carrier_id = carrier.temporary_id();
+    // Commit ships a separate registry-owner transaction; no received results enter the agent pool.
     let committed = contexts[1].commit().unwrap();
+    let rebound_carrier =
+        TransientReference::from_temporary_id(contexts[1].context_handle(), &carrier_id);
+    let received = rebound_carrier.related_holons("PreparedResult").unwrap();
+    assert_eq!(
+        received.read().unwrap().get_members()[0].full_reference_id_string(),
+        references[0].full_reference_id_string()
+    );
     assert_eq!(
         committed.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
         Some(BaseValue::StringValue("Complete".into()))
@@ -356,8 +402,29 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     );
     PropertyDescriptor::from_holon(saved_property.clone()).effective_constraints().unwrap();
     assert_eq!(owner.lookup().transient_count().unwrap(), before);
-    let snapshot = context.open_isolated_transaction().unwrap();
-    registry.snapshot_into(&snapshot).unwrap();
+    use holons_trust_channel::envelopes::dance_envelope_adapter::DanceEnvelopeAdapter;
+    let ordinary = DanceEnvelopeAdapter::build_request_envelope(
+        &context,
+        holon_dance_builders::build_get_all_holons_dance_request().unwrap(),
+    )
+    .unwrap();
+    assert!(ordinary.descriptor_registry.is_none());
+    let commit_envelope = DanceEnvelopeAdapter::build_request_envelope(
+        &context,
+        holon_dance_builders::build_commit_dance_request().unwrap(),
+    )
+    .unwrap();
+    let wire = commit_envelope.descriptor_registry.unwrap();
+    assert_eq!(wire.owner.get_tx_id(), Some(owner.tx_id()));
+    assert_ne!(wire.owner.get_tx_id(), commit_envelope.session.as_ref().unwrap().get_tx_id());
+    assert!(!commit_envelope
+        .session
+        .as_ref()
+        .unwrap()
+        .get_transient_holons()
+        .holons
+        .contains_key(&wire.root));
+    let (snapshot, _received_registry) = restore_registry_request(&context, wire);
     let copied =
         holons_core::descriptors::DerivedDescriptor::find_in_context(&snapshot, &saved_value)
             .unwrap()
@@ -367,16 +434,16 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
         value.supported_operators().unwrap().len()
     );
     assert_eq!(copied.value_kind().unwrap(), value.value_kind().unwrap());
-    let old_kind = value.instance_type_kind().unwrap();
+    let old_kind = value.instance_type_kind().unwrap().map(|kind| kind.holon_id().unwrap());
     context.space_read_handle().reset_session().unwrap();
     assert!(matches!(value_result.value_kind(), Err(HolonError::ObsoleteSession)));
     assert!(matches!(property_result.effective_constraints(), Err(HolonError::ObsoleteSession)));
-    // Captured Commit-local products remain readable after the host Session retires.
+    // Received products remain readable after the host Session retires.
     assert_eq!(copied.value_kind().unwrap(), value.value_kind().unwrap());
-    assert_eq!(old_kind, value.instance_type_kind().unwrap());
-    assert_eq!(copied.instance_type_kind().unwrap(), old_kind);
+    assert_eq!(old_kind, value.instance_type_kind().unwrap().map(|kind| kind.holon_id().unwrap()));
+    assert_eq!(copied.instance_type_kind().unwrap().map(|kind| kind.holon_id().unwrap()), old_kind);
     assert!(property.effective_validation_bindings().is_ok());
-    // A real, nonempty guest Commit validates using the captured products and
+    // A real, nonempty guest Commit validates using the transported registry and
     // retires the current host Session only after its persistence response arrives.
     let name_property: HolonReference = context
         .lookup()
@@ -413,6 +480,10 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
         staged_proof.validation_findings().unwrap()
     );
     assert!(matches!(before_commit.value_kind(), Err(HolonError::ObsoleteSession)));
+    assert!(
+        registry.is_empty().unwrap(),
+        "Commit response must not republish its received registry"
+    );
     assert_eq!(value.value_kind().unwrap(), copied.value_kind().unwrap());
     snapshot.dispose().unwrap();
     context.dispose().unwrap();

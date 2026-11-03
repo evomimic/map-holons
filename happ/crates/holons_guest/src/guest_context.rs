@@ -1,6 +1,7 @@
 use crate::guest_shared_objects::GuestHolonService;
 use core_types::{HolonError, HolonId};
 use holons_boundary::session_state::SerializableHolonPool;
+use holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry;
 use holons_core::{
     core_shared_objects::{
         space_manager::HolonSpaceManager,
@@ -46,6 +47,27 @@ pub fn init_guest_context(
     tx_id: TxId,
     restricted_cache_read: bool,
 ) -> Result<Arc<TransactionContext>, HolonError> {
+    Ok(init_guest_context_with_registry(
+        transient_holons,
+        staged_holons,
+        local_space_holon_id,
+        tx_id,
+        restricted_cache_read,
+        None,
+    )?
+    .0)
+}
+
+/// Restore the registry before binding agent pools that may reference its published results.
+/// The returned strong owner is retained by the request, since the space association is weak.
+pub(crate) fn init_guest_context_with_registry(
+    transient_holons: SerializableHolonPool,
+    staged_holons: SerializableHolonPool,
+    local_space_holon_id: Option<HolonId>,
+    tx_id: TxId,
+    restricted_cache_read: bool,
+    registry: Option<holons_boundary::DescriptorRegistryWire>,
+) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
     info!("\n ========== Initializing GUEST CONTEXT ============");
 
     // Step 1: Create the GuestHolonService and expose it as HolonServiceApi.
@@ -78,13 +100,24 @@ pub fn init_guest_context(
             .open_public_transaction_with_id(Arc::clone(&space_manager), tx_id)?
     };
 
-    // Step 4: Load staged and transient holons into the transaction.
+    let registry = match registry {
+        Some(wire) => wire.restore(&transaction_context)?,
+        None => {
+            // Cold requests can prepare saved products too. Retain their ordinary
+            // registry for this request without inventing a validation-owned cache.
+            let registry = Arc::new(EffectiveHolonDescriptorRegistry::new(&space_manager));
+            space_manager.attach_descriptor_registry(&registry);
+            registry
+        }
+    };
+
+    // Step 4: Bind agent pools only after the registry owner is discoverable.
     let bound_staged_holons = staged_holons.bind(&transaction_context)?;
     let bound_transient_holons = transient_holons.bind(&transaction_context)?;
 
     transaction_context.import_staged_holons(bound_staged_holons)?;
     transaction_context.import_transient_holons(bound_transient_holons)?;
 
-    // Step 5: Return the transaction context directly.
-    Ok(transaction_context)
+    // Retain the registry alongside the agent context for this request.
+    Ok((transaction_context, Some(registry)))
 }

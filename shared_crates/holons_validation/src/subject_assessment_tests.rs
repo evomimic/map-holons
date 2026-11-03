@@ -216,6 +216,61 @@ fn subject_gate_replaces_all_outcomes_and_accepts_corrected_retry() -> Result<()
 }
 
 #[test]
+fn frozen_validation_scope_surrounds_preparation_and_retires_on_every_exit(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("DerivedDescriptor.HolonType")?;
+    let mut candidate = fixture.staged_subject("frozen-scope-subject")?;
+    let target = fixture.nodes["Title.PropertyType"].clone();
+    // The first assessment is rejected; the corrected retry is accepted. Both
+    // must enter the same accessor path before preparation and retire on return.
+    for accepted in [false, true] {
+        if accepted {
+            candidate.with_property_value("Title", "corrected")?;
+        }
+        let mut retained = None;
+        let mut probe = Ok(());
+        let report = validate_commit_candidates_with_profile(
+            &fixture.context,
+            std::slice::from_ref(&candidate),
+            |event| {
+                if matches!(event, AssessmentEvent::Phase(AssessmentPhase::Construction)) {
+                    probe = (|| -> Result<(), HolonError> {
+                        let result =
+                            holons_core::descriptors::DerivedDescriptor::acquire(target.clone())?;
+                        let before = fixture.context.lookup().transient_count()?;
+                        holons_core::descriptors::PropertyDescriptor::from_holon(target.clone())
+                            .effective_constraints()?;
+                        assert_eq!(fixture.context.lookup().transient_count()?, before);
+                        retained = Some(result);
+                        Ok(())
+                    })();
+                }
+            },
+        )?;
+        probe?;
+        assert_eq!(report.is_accepted(), accepted);
+        assert!(matches!(retained.unwrap().lineage(), Err(HolonError::ObsoleteSession)));
+    }
+    // A foreign candidate triggers an operational error after scope entry.
+    let foreign = readiness_fixture()?.staged_subject("foreign")?;
+    let mut retained = None;
+    let mut probe = Ok(());
+    let result = validate_commit_candidates_with_profile(&fixture.context, &[foreign], |event| {
+        if matches!(event, AssessmentEvent::Phase(AssessmentPhase::Construction)) {
+            probe = holons_core::descriptors::DerivedDescriptor::acquire(target.clone())
+                .map(|result| retained = Some(result));
+        }
+    });
+    probe?;
+    assert!(matches!(result, Err(HolonError::CrossTransactionReference { .. })));
+    assert!(matches!(retained.unwrap().lineage(), Err(HolonError::ObsoleteSession)));
+    // The error leaves no active scope behind.
+    let _next = fixture.context.begin_frozen_validation()?;
+    Ok(())
+}
+
+#[test]
 fn subject_gate_rejects_removed_attachment_default_without_refilling() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     fixture
@@ -3013,16 +3068,26 @@ fn encountered_missing_lineage_root_reports_its_prerequisite_finding() -> Result
 }
 
 #[test]
-fn saved_assessment_uses_bound_definitions_without_keyed_anchor_lookup() -> Result<(), HolonError> {
+fn saved_assessment_uses_bound_definitions_without_kind_anchor_lookup() -> Result<(), HolonError> {
     let fixture = readiness_fixture()?.saved_snapshot()?;
     let mut subject = fixture.staged_subject("bound-definition-consumer")?;
     subject.with_property_value("Title", "complete")?;
-    let reads_before = fixture.saved_key_lookup_reads();
+    let reads_before = fixture.saved_key_lookup_keys().len();
     let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
     assert!(report.is_accepted(), "{report:#?}");
-    assert_eq!(fixture.saved_key_lookup_reads(), reads_before);
+    // Complete derived construction resolves only its carrier types. Classification
+    // itself must use bound lineage metadata rather than rediscovering kind anchors.
+    let keys = fixture.saved_key_lookup_keys();
+    assert!(
+        keys[reads_before..].iter().all(|key| matches!(
+            key.0.as_str(),
+            "DerivedDescriptor.HolonType" | "EffectiveHolonDescriptorRegistry.HolonType"
+        )),
+        "{keys:?}"
+    );
 
     // Removing anchor discovery must retain findings for encountered missing inputs.
+    let prepared_reads = fixture.saved_key_lookup_reads();
     subject.remove_property_value("Title")?;
     let report = validate_commit_candidates(&fixture.context, &[subject])?;
     assert!(
@@ -3032,11 +3097,11 @@ fn saved_assessment_uses_bound_definitions_without_keyed_anchor_lookup() -> Resu
         )),
         "{report:#?}"
     );
-    assert_eq!(fixture.saved_key_lookup_reads(), reads_before);
+    assert_eq!(fixture.saved_key_lookup_reads(), prepared_reads);
 
     // Positive control after assessment proves the fixture counter observes keyed lookup.
     fixture.context.lookup().get_saved_holon_by_key(&"Contract".into())?;
-    assert_eq!(fixture.saved_key_lookup_reads(), reads_before + 1);
+    assert_eq!(fixture.saved_key_lookup_reads(), prepared_reads + 1);
     Ok(())
 }
 

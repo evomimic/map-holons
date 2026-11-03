@@ -32,6 +32,23 @@ pub struct SessionStateWire {
 }
 
 impl SessionStateWire {
+    /// Projects one transaction's pools without changing their reference ownership.
+    pub fn from_context(
+        context: &std::sync::Arc<
+            holons_core::core_shared_objects::transactions::TransactionContext,
+        >,
+    ) -> Result<Self, core_types::HolonError> {
+        let mut state = Self::new(
+            SerializableHolonPool::from(context.export_transient_holons()?),
+            SerializableHolonPool::from(context.export_staged_holons()?),
+            context.get_space_holon()?.map(HolonReferenceWire::from),
+            Some(context.tx_id()),
+        );
+        state.set_bootstrap_provisioning(context.is_bootstrap_provisioning());
+        state.set_restricted_cache_read(context.is_restricted_cache_read());
+        Ok(state)
+    }
+
     /// Creates a new session state with the provided staged and transient holons and local holon space.
     pub fn new(
         transient_holons: SerializableHolonPool,

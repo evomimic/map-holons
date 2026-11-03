@@ -6,6 +6,7 @@
 //! - Host commit ingress blocks overlapping external mutations.
 //! - Read/query ingress may remain available during commit ingress and after `Committed`.
 
+mod frozen_validation_scope;
 mod host_commit_execution_guard;
 mod lookup_facade;
 mod mutation_facade;
@@ -33,6 +34,8 @@ pub(crate) use crate::reference_layer::{
 };
 pub(crate) use crate::{SmartReference, TransientReference};
 
+pub use frozen_validation_scope::FrozenValidationScope;
+pub(crate) use frozen_validation_scope::FrozenValidationToken;
 pub use host_commit_execution_guard::HostCommitExecutionGuard;
 pub use lookup_facade::LookupFacade;
 pub use mutation_facade::MutationFacade;

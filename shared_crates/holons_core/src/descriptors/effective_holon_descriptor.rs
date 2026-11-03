@@ -26,7 +26,7 @@ use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
 /// The destination payload also includes effective Instance TypeKind, which is
 /// not yet stored here. Migration to DerivedDescriptor acquisition and shared
 /// Session retirement is pending; current `pull` still leaves prior results
-/// readable. Commit-local copies remain distinct from Session-owned results.
+/// readable. Guest-received registry state remains distinct from host Session-owned results.
 /// See map-dev-docs `docs/core/core-runtime/descriptors/descriptors-design-spec.md`,
 /// "Derived payload inventory by descriptor kind".
 pub struct EffectiveHolonDescriptor {
@@ -52,7 +52,7 @@ impl EffectiveHolonDescriptor {
         context.get_holon_service().pull_effective_holon_descriptor_internal(&context, target)
     }
 
-    /// Reads this instance's Commit-local prepared contract without initiating construction.
+    /// Reads this instance's space-registry prepared contract without initiating construction.
     /// Persistence uses this after assessment, when all candidate decisions are already fixed.
     pub fn find_for_instance(source: &HolonReference) -> Result<Option<Self>, HolonError> {
         let Some(context) = source.transaction_context() else {
@@ -62,8 +62,7 @@ impl EffectiveHolonDescriptor {
         Self::find_in_context(&context, descriptor.holon())
     }
 
-    /// Reads existing preparation from the reference's actual owner or Session.
-    /// Saved references have no transaction-local snapshot to inspect.
+    /// Reads existing preparation through the reference's owner or space registry.
     pub(crate) fn find_prepared(target: &HolonReference) -> Result<Option<Self>, HolonError> {
         if let Some(context) = target.transaction_context() {
             return Self::find_in_context(&context, target);
@@ -87,7 +86,7 @@ impl EffectiveHolonDescriptor {
         space.open_descriptor_construction_context()
     }
 
-    /// Finds saved entries in a Commit-local snapshot without following Extends.
+    /// Finds saved entries in the installed space registry without following Extends.
     pub fn find_in_context(
         context: &Arc<TransactionContext>,
         target: &HolonReference,
@@ -95,22 +94,10 @@ impl EffectiveHolonDescriptor {
         if !matches!(target, HolonReference::Smart(_)) {
             return Ok(None);
         }
-        let Some(root) = context.descriptor_registry_root()? else {
-            return Ok(None);
-        };
-        let members = root
-            .related_holons(CoreRelationshipTypeName::PreparedDescriptors)?
-            .read()
-            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
-            .get_members()
-            .clone();
-        for member in members {
-            let descriptor = Self::from_constructed_holon(member);
-            if same_definition(descriptor.described_holon_type()?.holon(), target)? {
-                return Ok(Some(descriptor));
-            }
+        match context.descriptor_registry() {
+            Some(registry) => registry.get(&target.holon_id()?),
+            None => Ok(None),
         }
-        Ok(None)
     }
 
     /// Filters the prepared outbound vocabulary by this instance's lifecycle state.

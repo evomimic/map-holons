@@ -357,12 +357,7 @@ impl HolonServiceApi for ClientHolonService {
         staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
         // Build commit dance request
-        let mut request = holon_dance_builders::build_commit_dance_request()?;
-        if let Some(registry) = context.descriptor_registry() {
-            if let Some(root) = registry.snapshot_into(context)? {
-                request.body = holons_core::dances::RequestBody::TransientReference(root);
-            }
-        }
+        let request = holon_dance_builders::build_commit_dance_request()?;
 
         // Run the dance (sync → async → sync)
         let response =

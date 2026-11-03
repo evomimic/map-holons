@@ -37,8 +37,9 @@ use crate::{
 /// One resolved Extends lineage supplies all products. Targets are not eagerly
 /// materialized, and preparation does not evaluate constraints or validation.
 /// Effective Instance TypeKind is represented by its anchor identity, independently
-/// of `DerivedValueKind`. Registered results share the space Session retirement
-/// token; detached Commit results follow their own transaction lifetime.
+/// of `DerivedValueKind`. Registered saved results share the space Session token.
+/// Mutable inputs share completed products only during frozen validation; direct
+/// holders become obsolete when their assessment scope ends.
 ///
 /// See map-dev-docs `docs/core/core-runtime/descriptors/descriptors-design-spec.md`,
 /// "Derived payload inventory by descriptor kind"; the space Session lifecycle
@@ -47,10 +48,11 @@ use crate::{
 pub struct DerivedDescriptor {
     holon: HolonReference,
     session: Option<Arc<crate::core_shared_objects::space_session::SpaceSession>>,
+    validation: Option<Arc<crate::core_shared_objects::transactions::FrozenValidationToken>>,
 }
 
 /// Wrapper-private memoization. Only saved definitions and saved dependencies are retained;
-/// mutable inputs are recomputed so edits through another reference cannot leave stale products.
+/// mutable inputs consult their owner's frozen scope or are recomputed outside it.
 /// Failed acquisition never populates the cell. This runtime state is not serialized.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct DerivedFields(Arc<Mutex<Option<DerivedDescriptor>>>);
@@ -96,7 +98,15 @@ impl DerivedFields {
 impl DerivedDescriptor {
     /// Wraps a complete result returned by the trusted construction service.
     pub fn from_constructed_holon(holon: HolonReference) -> Self {
-        Self { holon, session: None }
+        Self { holon, session: None, validation: None }
+    }
+
+    pub(crate) fn in_frozen_validation(
+        mut self,
+        token: Arc<crate::core_shared_objects::transactions::FrozenValidationToken>,
+    ) -> Self {
+        self.validation = Some(token);
+        self
     }
 
     pub(crate) fn in_session(
@@ -108,6 +118,9 @@ impl DerivedDescriptor {
     }
 
     fn check_active(&self) -> Result<(), HolonError> {
+        if let Some(validation) = &self.validation {
+            validation.check_active()?;
+        }
         if let Some(session) = &self.session {
             session.check_active()?;
         }
@@ -135,7 +148,16 @@ impl DerivedDescriptor {
                 space.open_descriptor_construction_context()?
             }
         };
-        context.get_holon_service().acquire_derived_descriptor_internal(&context, target)
+        let acquire = || {
+            context
+                .get_holon_service()
+                .acquire_derived_descriptor_internal(&context, target.clone())
+        };
+        if matches!(target, HolonReference::Smart(_)) {
+            acquire()
+        } else {
+            context.acquire_frozen_derived(&target, acquire)
+        }
     }
 
     fn read<T>(&self, read: impl FnOnce() -> Result<T, HolonError>) -> Result<T, HolonError> {
@@ -202,7 +224,7 @@ impl DerivedDescriptor {
         self.read(|| self.supports_operator_by_name_unchecked(name))
     }
 
-    /// Finds a saved-derived product in a transported Commit snapshot without walking Extends.
+    /// Finds a saved-derived product in the installed space registry without walking Extends.
     pub fn find_in_context(
         context: &Arc<TransactionContext>,
         target: &HolonReference,
@@ -210,19 +232,12 @@ impl DerivedDescriptor {
         if !matches!(target, HolonReference::Smart(_)) {
             return Ok(None);
         }
-        let Some(root) = context.descriptor_registry_root()? else {
-            return Ok(None);
-        };
-        for member in members(&root.into(), R::PreparedDerivedDescriptors)? {
-            let result = Self::from_constructed_holon(member);
-            if result.lineage()?.first().is_some_and(|first| first == target) {
-                return Ok(Some(result));
-            }
+        match context.descriptor_registry() {
+            Some(registry) => registry.get_derived(&target.holon_id()?),
+            None => Ok(None),
         }
-        Ok(None)
     }
 
-    /// Returns the source and its ancestors in self-first order, without traversal.
     fn lineage_unchecked(&self) -> Result<Vec<HolonReference>, HolonError> {
         members(&self.holon, R::DerivedLineage)
     }
@@ -386,7 +401,10 @@ pub fn construct_derived_descriptor(
     context: &Arc<TransactionContext>,
     target: HolonReference,
 ) -> Result<DerivedDescriptor, HolonError> {
-    let lineage = ancestors(&target)?;
+    let lineage = match context.frozen_descriptor_lineage(&target)? {
+        Some(lineage) => lineage,
+        None => ancestors(&target)?,
+    };
     let (instance_kind, value_kind) = super::value_kind::prepare_kind_products(&target, &lineage)?;
 
     let mut products = Vec::new();
@@ -513,6 +531,122 @@ mod tests {
         let value = ValueDescriptor::from_holon(child.into());
         assert_eq!(value.effective_constraints()?.len(), 2);
         assert!(value.effective_validation_bindings()?.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn frozen_validation_shares_mutable_products_and_retires_them() -> Result<(), HolonError> {
+        let context = build_context();
+        let transient = new_test_holon(&context, "transient-property")?;
+        let staged =
+            context.mutation().stage_new_holon(new_test_holon(&context, "staged-property")?)?;
+        for mut target in [HolonReference::from(transient), HolonReference::from(staged)] {
+            let first_constraint: HolonReference =
+                context.mutation().stage_new_holon(new_test_holon(&context, "first")?)?.into();
+            target.add_related_holons(R::Constraints, vec![first_constraint])?;
+            let property = PropertyDescriptor::from_holon(target.clone());
+            let retained = {
+                let _scope = context.begin_frozen_validation()?;
+                assert_eq!(property.effective_constraints()?.len(), 1);
+                let first = DerivedDescriptor::acquire(target.clone())?;
+                let allocated = context.lookup().transient_count()?;
+                // Independent wrappers and direct acquisition select the same product.
+                let independent = PropertyDescriptor::from_holon(target.clone());
+                assert_eq!(independent.effective_constraints()?.len(), 1);
+                assert_eq!(first.holon(), DerivedDescriptor::acquire(target.clone())?.holon());
+                assert_eq!(context.lookup().transient_count()?, allocated);
+                // Derived outputs and other transient output allocation remain permitted.
+                new_test_holon(&context, "validation-output")?;
+                assert!(context.begin_frozen_validation().is_err());
+                first
+            };
+            assert!(matches!(retained.lineage(), Err(HolonError::ObsoleteSession)));
+            let extra: HolonReference =
+                context.mutation().stage_new_holon(new_test_holon(&context, "extra")?)?.into();
+            target.add_related_holons(R::Constraints, vec![extra])?;
+            assert_eq!(property.effective_constraints()?.len(), 2);
+            {
+                let _retry = context.begin_frozen_validation()?;
+                let next = DerivedDescriptor::acquire(target.clone())?;
+                assert_ne!(next.holon(), retained.holon());
+                assert_eq!(next.effective_constraints()?.len(), 2);
+            }
+            // Outside validation, even unchanged inputs are acquired fresh.
+            let first = DerivedDescriptor::acquire(target.clone())?;
+            let second = DerivedDescriptor::acquire(target)?;
+            assert_ne!(first.holon(), second.holon());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn frozen_validation_error_exit_retires_results_and_allows_corrected_retry(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut target: HolonReference = new_test_holon(&context, "property")?.into();
+        let mut retained = None;
+        let outcome = (|| -> Result<(), HolonError> {
+            let _scope = context.begin_frozen_validation()?;
+            retained = Some(DerivedDescriptor::acquire(target.clone())?);
+            Err(HolonError::InvalidState("assessment failed".into()))
+        })();
+        assert!(outcome.is_err());
+        assert!(matches!(retained.unwrap().lineage(), Err(HolonError::ObsoleteSession)));
+        // A failed construction is not retained, and correction is observed next assessment.
+        target.add_related_holons(R::Extends, vec![target.clone()])?;
+        {
+            let _scope = context.begin_frozen_validation()?;
+            assert!(matches!(
+                DerivedDescriptor::acquire(target.clone()),
+                Err(HolonError::CyclicExtends { .. })
+            ));
+        }
+        target.remove_related_holons(R::Extends, vec![target.clone()])?;
+        let _retry = context.begin_frozen_validation()?;
+        assert_eq!(DerivedDescriptor::acquire(target)?.lineage()?.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn diagnosed_frozen_lineage_is_not_walked_again_by_acquisition() -> Result<(), HolonError> {
+        use crate::core_shared_objects::{holon::SavedHolon, read_observations::CacheReadProbe};
+        use base_types::{BaseValue, MapInteger};
+        use core_types::{HolonId, LocalId, PropertyMap, PropertyName};
+        let id = HolonId::Local(LocalId(vec![42; 39]));
+        let parent = SavedHolon::new(
+            id.local_id().clone(),
+            PropertyMap::from([
+                (PropertyName("Key".into()), BaseValue::StringValue("TypeDescriptor".into())),
+                (
+                    PropertyName("DefinesInstanceTypeKind".into()),
+                    BaseValue::BooleanValue(false.into()),
+                ),
+            ]),
+            None,
+            MapInteger(1),
+        );
+        let context = super::super::test_support::build_context_with_saved_holons(
+            vec![parent],
+            Default::default(),
+        );
+        let parent = HolonReference::smart_from_id(context.space_read_handle(), id);
+        let mut child: HolonReference = new_test_holon(&context, "child")?.into();
+        child.add_related_holons(R::Extends, vec![parent])?;
+        let diagnosis = super::super::ExtendsLineageDiagnosis::assess(&child)?;
+        let lineage = diagnosis.valid_lineage().expect("valid diagnosed lineage");
+        let _scope = context.begin_frozen_validation()?;
+        context.retain_frozen_descriptor_lineage(lineage)?;
+        let probe = CacheReadProbe::start(true);
+        let property = PropertyDescriptor::from_holon(child.clone());
+        property.effective_constraints()?;
+        ValueDescriptor::from_holon(child).effective_validation_bindings()?;
+        let reads = probe.finish();
+        assert!(
+            !reads
+                .iter()
+                .any(|read| read.relationship.as_ref() == Some(&R::Extends.as_relationship_name())),
+            "acquisition must reuse diagnosed lineage rather than reading Extends again"
+        );
         Ok(())
     }
 }

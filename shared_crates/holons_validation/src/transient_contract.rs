@@ -107,7 +107,14 @@ fn validate_contract(
     if descriptor.header().is_abstract_type()? {
         return Err(invalid("Transient holon has an abstract describing type"));
     }
-    let computed = holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?;
+    let computed = match EffectiveHolonDescriptor::find_for_instance(subject)? {
+        Some(prepared) => {
+            holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&prepared)?
+        }
+        // Contract checks also run while descriptor infrastructure is being built.
+        // Reuse an existing EHD, but never initiate its construction recursively.
+        None => holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?,
+    };
     let keyless = computed.effective_key_rule()?.is_keyless()?;
     if keyless != subject.key()?.is_none() {
         return Err(invalid(
@@ -128,20 +135,16 @@ fn validate_contract(
                 return Err(invalid("Missing required transient property"))
             }
             None => {}
-            Some(value) => {
-                match holons_core::descriptors::value_kind::classify_value_kind_for_validation(
-                    property.value_type()?.holon(),
-                )? {
-                    ValueDescriptorKind::BaseValue(kind) if kind == value.kind() => {}
-                    ValueDescriptorKind::AnyBaseValue => {}
-                    other => {
-                        return Err(HolonError::UnexpectedValueType(
-                            format!("{:?}", value.kind()),
-                            format!("{other:?}"),
-                        ))
-                    }
+            Some(value) => match property.value_type()?.value_kind()? {
+                ValueDescriptorKind::BaseValue(kind) if kind == value.kind() => {}
+                ValueDescriptorKind::AnyBaseValue => {}
+                other => {
+                    return Err(HolonError::UnexpectedValueType(
+                        format!("{:?}", value.kind()),
+                        format!("{other:?}"),
+                    ))
                 }
-            }
+            },
         }
     }
     let mut names = HashSet::new();
