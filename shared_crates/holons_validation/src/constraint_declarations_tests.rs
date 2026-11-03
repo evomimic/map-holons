@@ -136,7 +136,7 @@ fn bounded_configuration_boundaries_are_declarations_without_evaluators() -> Res
                 }
             }
 
-            let mut assessment = ConstraintDeclarationAssessment::new();
+            let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
             let mut collector = ValidationCollector::default();
             assert_eq!(
                 assessment.assess_constraint(&constraint, &mut collector)?,
@@ -213,7 +213,7 @@ fn cardinality_and_presence_only_uniqueness_have_distinct_configuration_contract
         }
 
         let mut collector = ValidationCollector::default();
-        let mut assessment = ConstraintDeclarationAssessment::new();
+        let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
         assert_eq!(
             assessment.assess_constraint(&constraint, &mut collector)?,
             accepted,
@@ -249,8 +249,9 @@ fn broader_local_constraints_preserve_inherited_obligations_and_check_reusable_r
     fixture.link("Child", CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
     fixture.link("Child", CoreRelationshipTypeName::Constraints, "Broader")?;
 
-    let mut assessment = ConstraintDeclarationAssessment::new();
-    let mut products = DescriptorRuleProducts::default();
+    let diagnoses = fixture.diagnoses();
+    let mut assessment = ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
+    let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     let mut collector = ValidationCollector::default();
     let mut attachment_count = 0;
     for key in ["StringValueType.ValueType", "Child"] {
@@ -299,9 +300,11 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
         } else {
             contributions.effective[0].declared_on = subject.clone();
         }
-        let mut products = DescriptorRuleProducts::default();
+        let diagnoses = fixture.diagnoses();
+        let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
         let mut collector = ValidationCollector::default();
-        let mut assessment = ConstraintDeclarationAssessment::new();
+        let mut assessment =
+            ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
         assert!(!assessment.assess_contributions(
             lineage,
             &contributions,
@@ -335,7 +338,8 @@ fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
     )?;
 
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new().assess_constraint(&constraint, &mut collector)?);
+    assert!(ConstraintDeclarationAssessment::new(fixture.diagnoses())
+        .assess_constraint(&constraint, &mut collector)?);
     assert_eq!(collector.observations().effective_constraint_count, 0);
     assert!(collector.into_report().is_accepted());
     let mut subject = fixture.staged_subject("configured-value")?;
@@ -397,8 +401,9 @@ fn extension_owned_constraint_and_dependency_owned_reuse_do_not_change_ownership
 
     let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes["ExtensionDescriptor"])?;
     let mut collector = ValidationCollector::default();
-    let mut products = DescriptorRuleProducts::default();
-    let mut assessment = ConstraintDeclarationAssessment::new();
+    let diagnoses = fixture.diagnoses();
+    let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
+    let mut assessment = ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
     assert!(assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut products,
@@ -429,10 +434,11 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
     let subject = fixture.nodes["IntegerValueType.ValueType"].clone();
     let diagnosis = ExtendsLineageDiagnosis::assess(&subject)?;
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new();
+    let diagnoses = fixture.diagnoses();
+    let mut assessment = ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
     assert!(!assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
-        &mut DescriptorRuleProducts::default(),
+        &mut DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses)),
         &mut collector
     )?);
     assert!(!assessment.assess_constraint(&constraint, &mut collector)?);
@@ -456,11 +462,12 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
         "IntegerValueType.ValueType",
     )?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new().assess_descriptor(
-        diagnosis.valid_lineage().unwrap(),
-        &mut DescriptorRuleProducts::default(),
-        &mut collector
-    )?);
+    assert!(ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses))
+        .assess_descriptor(
+            diagnosis.valid_lineage().unwrap(),
+            &mut DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses)),
+            &mut collector
+        )?);
     assert!(collector.into_report().is_accepted());
     Ok(())
 }
@@ -479,7 +486,7 @@ fn malformed_describing_selections_are_findings() -> Result<(), HolonError> {
     let wrong = configured(&mut fixture, "Wrong", "StringValueType.ValueType")?;
 
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new();
+    let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
     for constraint in [&missing, &multiple, &wrong] {
         assert!(!assessment.assess_constraint(constraint, &mut collector)?);
     }
@@ -512,7 +519,7 @@ fn declaration_reads_exact_configuration_and_deduplicates_each_definition() -> R
     replacement.with_property_value("Minimum", -1_i64)?;
 
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new();
+    let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
     assert!(assessment.assess_constraint(&fixture.nodes["Configured"], &mut collector).unwrap());
     assert!(!assessment.assess_constraint(&replacement.into(), &mut collector).unwrap());
     assert_eq!(collector.observations().constraint_declaration_count, 2);
@@ -559,7 +566,8 @@ fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), Hol
     let fixture = fixture.saved_snapshot()?;
 
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new()
+    let diagnoses = fixture.diagnoses();
+    assert!(!ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses))
         .assess_constraint(&fixture.nodes["Configured"], &mut collector)?);
 
     let mut replacement = fixture.stage_update_of("Extension.ConstraintType")?;
@@ -577,7 +585,7 @@ fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), Hol
         Ok(())
     })?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new()
+    assert!(ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses))
         .assess_constraint(&configured.into(), &mut collector)?);
     assert!(collector.into_report().is_accepted());
     Ok(())
@@ -597,7 +605,7 @@ fn bound_diagnostics_distinguish_negative_integers_from_wrong_value_kinds() -> R
             .with_property_value("MinimumIsInclusive", true)?;
 
         let mut collector = ValidationCollector::default();
-        assert!(!ConstraintDeclarationAssessment::new()
+        assert!(!ConstraintDeclarationAssessment::new(fixture.diagnoses())
             .assess_constraint(&constraint, &mut collector)?);
         let report = collector.into_report();
         assert_eq!(report.violation_count(), 1);
@@ -619,7 +627,8 @@ fn malformed_inclusivity_does_not_invent_an_equal_endpoint_interval_failure(
         .with_property_value("MaximumIsInclusive", true)?;
 
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new().assess_constraint(&constraint, &mut collector)?);
+    assert!(!ConstraintDeclarationAssessment::new(fixture.diagnoses())
+        .assess_constraint(&constraint, &mut collector)?);
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 1);
     assert!(report.violations[0].message.contains("MinimumIsInclusive must be Boolean"));
@@ -638,13 +647,15 @@ fn shared_invalid_constraint_findings_keep_their_subject_in_either_candidate_ord
             fixture.link(key, CoreRelationshipTypeName::Constraints, "SharedInvalid")?;
         }
 
-        let mut assessment = ConstraintDeclarationAssessment::new();
+        let diagnoses = fixture.diagnoses();
+        let mut assessment =
+            ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
         let mut collector = ValidationCollector::default();
         for key in order {
             let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[key])?;
             assert!(!assessment.assess_descriptor(
                 diagnosis.valid_lineage().unwrap(),
-                &mut DescriptorRuleProducts::default(),
+                &mut DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses)),
                 &mut collector
             )?);
         }
@@ -670,7 +681,7 @@ fn declaration_backend_errors_remain_operational_through_plain_references() -> R
         "Unreadable",
         HolonError::EmptyField("injected backend failure".into()),
     )])?;
-    let mut assessment = ConstraintDeclarationAssessment::new();
+    let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
     let mut collector = ValidationCollector::default();
     assert!(
         matches!(assessment.assess_constraint(&fixture.nodes["Unreadable"], &mut collector), Err(HolonError::EmptyField(message)) if message == "injected backend failure")

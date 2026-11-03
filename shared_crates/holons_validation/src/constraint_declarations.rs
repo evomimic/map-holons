@@ -40,22 +40,16 @@ struct CheckedConstraint {
 /// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it
 /// neither evaluates attached constraints nor replaces the shared subject validators.
-#[derive(Default)]
 pub struct ConstraintDeclarationAssessment {
     checked: Vec<CheckedConstraint>,
-    diagnoses: Option<std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>>,
+    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
 }
 
 impl ConstraintDeclarationAssessment {
-    pub(crate) fn with_diagnoses(
+    pub(crate) fn new(
         diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
     ) -> Self {
-        Self { diagnoses: Some(diagnoses), ..Self::default() }
-    }
-
-    /// Creates an empty Schema-scoped declaration workset over an unchanged input snapshot.
-    pub fn new() -> Self {
-        Self::default()
+        Self { diagnoses, checked: Vec::new() }
     }
 
     /// Checks a configured holon once, including owned constraints with no attachments.
@@ -187,23 +181,7 @@ impl ConstraintDeclarationAssessment {
         let mut checked =
             CheckedConstraint { constraint: constraint.clone(), constraint_type, valid: false };
         if let Some(constraint_type) = checked.constraint_type.clone() {
-            let diagnosis = match &self.diagnoses {
-                Some(diagnoses) => diagnoses.get(&constraint_type)?,
-                None => {
-                    #[cfg(test)]
-                    {
-                        std::sync::Arc::new(holons_core::ExtendsLineageDiagnosis::assess(
-                            &constraint_type,
-                        )?)
-                    }
-                    #[cfg(not(test))]
-                    {
-                        return Err(HolonError::InvalidState(
-                            "Shared structural diagnoses were not supplied".into(),
-                        ));
-                    }
-                }
-            };
+            let diagnosis = self.diagnoses.get(&constraint_type)?;
             if let Some(lineage) = diagnosis.valid_lineage() {
                 let root = CoreDefinitionRole::ConstraintType;
                 if lineage.contains_role(root)

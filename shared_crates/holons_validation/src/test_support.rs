@@ -188,6 +188,11 @@ pub(super) fn subject_rules(
 }
 
 impl Fixture {
+    /// Opens structural evidence for one unchanged assessment; share it across its consumers.
+    pub fn diagnoses(&self) -> Arc<crate::structural_diagnoses::StructuralDiagnoses> {
+        Arc::new(crate::structural_diagnoses::StructuralDiagnoses::new(&self.context))
+    }
+
     /// Opens an empty schema snapshot for bootstrap precondition tests.
     pub fn empty() -> Result<Self, HolonError> {
         let manager = Arc::new(HolonSpaceManager::new_with_managers(

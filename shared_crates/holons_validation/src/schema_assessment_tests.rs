@@ -519,9 +519,21 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![subject];
     let expected = assess_commit_candidates(&fixture.context, &candidates)?.report;
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let mut product_start = None;
+    let mut product_end = None;
     let mut events = Vec::new();
     let actual =
         crate::validate_commit_candidates_with_profile(&fixture.context, &candidates, |event| {
+            match &event {
+                crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts) => {
+                    product_start = Some(probe.snapshot())
+                }
+                crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation) => {
+                    product_end = Some(probe.snapshot())
+                }
+                _ => {}
+            }
             events.push(event)
         })?;
     assert_eq!(actual, expected);
@@ -554,10 +566,28 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         .collect();
     assert_eq!(metrics.len(), 1);
     let metrics = metrics[0];
+    let start = product_start.unwrap();
+    let end = product_end.unwrap();
+    let product_diagnoses = end.0.get("structural_diagnoses").copied().unwrap_or(0)
+        - start.0.get("structural_diagnoses").copied().unwrap_or(0);
+    let resolutions = end.0.get("schema_resolution_requests").copied().unwrap_or(0)
+        - start.0.get("schema_resolution_requests").copied().unwrap_or(0);
+    let edges: usize = events
+        .iter()
+        .filter_map(|event| match event {
+            crate::AssessmentEvent::PreparationEdge { requests, .. } => Some(*requests),
+            _ => None,
+        })
+        .sum();
+    assert_eq!(product_diagnoses, 0, "products reuse only diagnoses required before acquisition");
+    // Resolution count follows the fixture's exact prediagnosed identities, not a fixed target.
+    assert!(resolutions > 0);
     assert_eq!(metrics.package_roots, 1);
     assert_eq!(metrics.subjects, 1);
     assert_eq!(metrics.affected_schemas, 0);
-    assert!(metrics.distinct_content > 1);
+    assert_eq!(metrics.distinct_content, 19);
+    assert_eq!(metrics.constructed_schema_products, 19);
+    assert_eq!(edges, 188);
     assert!(metrics.identity_role_visits >= metrics.distinct_content);
     assert_eq!(metrics.contract_consumers, 1);
     assert!(!events.iter().any(|event| matches!(

@@ -267,10 +267,12 @@ impl DescriptorPackages {
                     "FreshEffectiveSchema",
                     "PreparedDefinition",
                     || {
-                        let diagnosis = diagnoses.get(&reference)?;
-                        match diagnosis.valid_lineage() {
-                            Some(lineage) => holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage),
-                            None => Err(diagnosed_lineage_error(&diagnosis, &reference)),
+                        match diagnoses.existing(&reference)? {
+                            Some(diagnosis) => match diagnosis.valid_lineage() {
+                                Some(lineage) => holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage),
+                                None => Err(diagnosed_lineage_error(&diagnosis, &reference)),
+                            },
+                            None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
                         }
                     },
                 ),

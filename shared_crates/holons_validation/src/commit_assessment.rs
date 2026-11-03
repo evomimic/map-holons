@@ -263,7 +263,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                 };
             let prerequisites =
                 StructuralPrerequisites { describing_type, subject_lineage, governing_lineage };
-            let mut products = DescriptorRuleProducts::with_diagnoses(Arc::clone(&diagnoses));
+            let mut products = DescriptorRuleProducts::new(Arc::clone(&diagnoses));
             products.prepare_structure(&prerequisites);
             crate::assessment_phase::observe_operation(
                 observer,
@@ -467,8 +467,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     continue;
                 }
                 let descriptor = identity.definition_reference(context, &descriptor);
-                let mut products =
-                    DescriptorRuleProducts::with_diagnoses(Arc::clone(&packages.diagnoses));
+                let mut products = DescriptorRuleProducts::new(Arc::clone(&packages.diagnoses));
                 let diagnosis = packages.diagnoses.get(&descriptor)?;
                 if diagnosis.valid_lineage().is_none() {
                     continue;
@@ -567,15 +566,14 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         let declaration_start = collector.violations().len();
         for view in &workset.schemas {
             let mut declarations =
-                ConstraintDeclarationAssessment::with_diagnoses(Arc::clone(&packages.diagnoses));
+                ConstraintDeclarationAssessment::new(Arc::clone(&packages.diagnoses));
             for descriptor in &view.staged_components {
                 declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
                 let diagnosis = packages.diagnoses.get(descriptor)?;
                 let Some(lineage) = diagnosis.valid_lineage() else {
                     continue;
                 };
-                let mut products =
-                    DescriptorRuleProducts::with_diagnoses(Arc::clone(&packages.diagnoses));
+                let mut products = DescriptorRuleProducts::new(Arc::clone(&packages.diagnoses));
                 declarations.assess_contributions(
                     lineage,
                     &packages.constraint_contributions(descriptor)?,
@@ -602,7 +600,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         }
         // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
         let mut orphan_declarations =
-            ConstraintDeclarationAssessment::with_diagnoses(Arc::clone(&packages.diagnoses));
+            ConstraintDeclarationAssessment::new(Arc::clone(&packages.diagnoses));
         for subject in &mut prepared {
             if !declaration_members
                 .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)

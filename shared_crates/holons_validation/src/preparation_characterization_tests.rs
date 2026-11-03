@@ -285,9 +285,7 @@ fn mutual_description_with_later_peer_failure() -> Result<(), HolonError> {
     for subject in [a.clone(), b.clone()] {
         let reference = subject.into();
         let pre = holons_core::StructuralPrerequisites::assess(&reference)?;
-        let mut prod = DescriptorRuleProducts::with_diagnoses(std::sync::Arc::new(
-            crate::structural_diagnoses::StructuralDiagnoses::new(&fixture.context),
-        ));
+        let mut prod = DescriptorRuleProducts::new(fixture.diagnoses());
         prod.prepare_structure(&pre);
         prod.prepare_kind(&pre, &holons_core::DescriptorKindSemantics::new(&fixture.context))?;
         prod.prepare_effective_schema(

@@ -57,37 +57,23 @@ impl Default for ContractInterpretation {
 /// Each bound handler translates only its own entries into the common finding model.
 /// Prepare each family once per subject, using the same unchanged input
 /// snapshot that supplied its kernel products. Discard the products on a read error.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct DescriptorRuleProducts {
-    diagnoses: Option<std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>>,
+    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<PreparedDiagnostic>>,
 }
 
 impl DescriptorRuleProducts {
-    pub(crate) fn with_diagnoses(
+    pub(crate) fn new(
         diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
     ) -> Self {
-        Self { diagnoses: Some(diagnoses), ..Self::default() }
+        Self { diagnoses, diagnostics: BTreeMap::new() }
     }
     fn diagnose(
         &self,
         member: &HolonReference,
     ) -> Result<std::sync::Arc<holons_core::ExtendsLineageDiagnosis>, HolonError> {
-        match &self.diagnoses {
-            Some(diagnoses) => diagnoses.get(member),
-            None => {
-                #[cfg(test)]
-                {
-                    holons_core::ExtendsLineageDiagnosis::assess(member).map(std::sync::Arc::new)
-                }
-                #[cfg(not(test))]
-                {
-                    Err(HolonError::InvalidState(
-                        "Shared structural diagnoses were not supplied".into(),
-                    ))
-                }
-            }
-        }
+        self.diagnoses.get(member)
     }
 
     pub(crate) fn violation(&mut self, rule: CoreValidationRuleName, message: String) {
@@ -401,18 +387,18 @@ impl DescriptorRuleProducts {
                     .chain(index.unnamed.iter())
                 {
                     if matches!(entry.source_collection, CoreRelationshipTypeName::SourceOf) {
-                        let diagnosis = self.diagnose(&entry.member)?;
-                        let Some(lineage) = diagnosis.valid_lineage() else {
-                            self.unresolved(
-                                ContractMemberKindCompatibility,
-                                format!(
-                                    "Navigation candidate {} has an unusable lineage.",
-                                    entry.member.reference_id_string()
-                                ),
-                            );
-                            continue;
+                        let diagnosis = self.diagnoses.existing(&entry.member)?;
+                        let direction = match diagnosis.as_ref().and_then(|d| d.valid_lineage()) {
+                            Some(lineage) => {
+                                holons_core::descriptors::classify_relationship_direction_in_lineage(
+                                    lineage,
+                                )
+                            }
+                            None => holons_core::descriptors::classify_relationship_direction(
+                                &entry.member,
+                            ),
                         };
-                        match holons_core::descriptors::classify_relationship_direction_in_lineage(lineage) {
+                        match direction {
                             Ok(_) => {},
                             Err(HolonError::WrongDescriptorKind { .. }) => self.violation(ContractMemberKindCompatibility, format!("Navigation candidate {} has no declared/inverse relationship category.", entry.member.reference_id_string())),
                             Err(error) => return Err(error),
@@ -427,11 +413,12 @@ impl DescriptorRuleProducts {
                     .flat_map(|(_, entries)| entries.iter())
                     .chain(index.unnamed.iter())
                 {
-                    if !self
-                        .diagnose(&entry.member)?
-                        .valid_lineage()
-                        .is_some_and(|lineage| lineage.contains_role(role))
-                    {
+                    let diagnosis = self.diagnoses.existing(&entry.member)?;
+                    let compatible = match diagnosis.as_ref().and_then(|d| d.valid_lineage()) {
+                        Some(lineage) => lineage.contains_role(role),
+                        None => holons_core::descriptors::extends_role(&entry.member, role)?,
+                    };
+                    if !compatible {
                         self.violation(ContractMemberKindCompatibility, format!("Effective {} member {} declared on {} has an incompatible descriptor category.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string()));
                     }
                 }
@@ -508,16 +495,7 @@ impl DescriptorRuleProducts {
                 self.check_member_kind(&member, definition.expected_kind, namespace, kind_roots)?;
             if !member_usable {
                 if namespace == "property" {
-                    interpretation.unusable_properties.insert(
-                        self.diagnoses
-                            .as_ref()
-                            .ok_or_else(|| {
-                                HolonError::InvalidState(
-                                    "Shared structural diagnoses were not supplied".into(),
-                                )
-                            })?
-                            .identity(&member)?,
-                    );
+                    interpretation.unusable_properties.insert(self.diagnoses.identity(&member)?);
                 }
                 if self.diagnose(&member)?.defects.iter().any(|defect| {
                     matches!(
@@ -541,16 +519,7 @@ impl DescriptorRuleProducts {
                     )?;
                 }
                 if namespace == "property" && !usable {
-                    interpretation.unusable_values.insert(
-                        self.diagnoses
-                            .as_ref()
-                            .ok_or_else(|| {
-                                HolonError::InvalidState(
-                                    "Shared structural diagnoses were not supplied".into(),
-                                )
-                            })?
-                            .identity(&member)?,
-                    );
+                    interpretation.unusable_values.insert(self.diagnoses.identity(&member)?);
                 }
             }
         }

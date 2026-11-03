@@ -21,6 +21,14 @@ impl StructuralDiagnoses {
     pub fn identity(&self, reference: &HolonReference) -> Result<DefinitionIdentity, HolonError> {
         DefinitionIdentity::for_reference(reference, &self.context)
     }
+    /// Looks up exact structural evidence without triggering diagnosis.
+    pub fn existing(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<Option<Arc<ExtendsLineageDiagnosis>>, HolonError> {
+        let identity = self.identity(reference)?;
+        self.entries.borrow().get(&identity).cloned().transpose()
+    }
     /// Shares the first diagnosis or required-read error for this exact definition.
     pub fn get(
         &self,
