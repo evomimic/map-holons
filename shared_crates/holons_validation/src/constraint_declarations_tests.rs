@@ -752,3 +752,29 @@ fn staged_schema_member_keeps_declaration_checks_without_scanning_saved_members(
     }
     Ok(())
 }
+
+#[test]
+fn unused_staged_constraint_and_rule_keep_independent_declaration_coverage(
+) -> Result<(), HolonError> {
+    let mut fixture = fixture_with_commit_roots()?;
+    let mut constraint = configured(&mut fixture, "UnusedInvalidConstraint", CARDINALITY)?;
+    constraint.with_property_value("Minimum", -1_i64)?;
+    let rule_type = type_names::CoreDefinitionRole::Rule.key();
+    fixture.node(rule_type)?;
+    fixture.link(rule_type, CoreRelationshipTypeName::Extends, "HolonType.TypeDescriptor")?;
+    fixture.node("UnusedRule")?;
+    fixture.link("UnusedRule", CoreRelationshipTypeName::DescribedBy, rule_type)?;
+    let HolonReference::Staged(constraint) = constraint else { unreachable!() };
+    let HolonReference::Staged(rule) = fixture.nodes["UnusedRule"].clone() else { unreachable!() };
+    for candidates in [[constraint.clone(), rule.clone()], [rule.clone(), constraint.clone()]] {
+        let report = validate_commit_candidates(&fixture.context, &candidates)?;
+        assert!(!report.is_accepted());
+        assert!(constraint.validation_findings()?.iter().any(|finding| matches!(
+            &finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-CONSTRAINT-003"
+        )));
+        assert!(rule.validation_findings()?.iter().any(|finding| matches!(
+            &finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership"
+        )));
+    }
+    Ok(())
+}

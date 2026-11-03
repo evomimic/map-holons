@@ -30,6 +30,7 @@ struct FixtureStorage {
     read_errors: HashMap<HolonId, HolonError>,
     relationship_read_overrides:
         std::sync::Mutex<HashMap<(HolonId, RelationshipName), Option<HolonError>>>,
+    reads_by_source: std::sync::Mutex<HashMap<(HolonId, RelationshipName), usize>>,
     reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
@@ -99,6 +100,8 @@ impl HolonServiceApi for FixtureStorage {
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
         self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        *self.reads_by_source.lock().unwrap().entry((source.clone(), name.clone())).or_default() +=
+            1;
         *self.reads_by_relationship.lock().unwrap().entry(name.clone()).or_default() += 1;
         if let Some(Some(error)) =
             self.relationship_read_overrides.lock().unwrap().get(&(source.clone(), name.clone()))
@@ -368,6 +371,43 @@ impl Fixture {
             .unwrap()
             .insert((source, edge.as_relationship_name()), error);
         Ok(())
+    }
+
+    /// Counts exact backend membership attempts, including failed and requested-empty reads.
+    pub fn backend_reads_for_source(&self, key: &str, edge: &CoreRelationshipTypeName) -> usize {
+        let source = self.nodes[key].holon_id().unwrap();
+        self.saved_storage.as_ref().map_or(0, |storage| {
+            *storage
+                .reads_by_source
+                .lock()
+                .unwrap()
+                .get(&(source, edge.as_relationship_name()))
+                .unwrap_or(&0)
+        })
+    }
+
+    /// Starts an assessment-only membership inventory without changing cache state.
+    pub fn reset_backend_membership_reads(&self) {
+        if let Some(storage) = &self.saved_storage {
+            storage.reads_by_source.lock().unwrap().clear();
+        }
+    }
+
+    /// Lists exact fixture membership attempts in stable semantic-key order.
+    pub fn backend_membership_inventory(&self) -> Vec<(String, String, usize)> {
+        let Some(storage) = &self.saved_storage else { return Vec::new() };
+        let reads = storage.reads_by_source.lock().unwrap();
+        let mut inventory = Vec::new();
+        for (key, reference) in &self.nodes {
+            let id = reference.holon_id().unwrap();
+            for ((source, name), count) in reads.iter() {
+                if source == &id {
+                    inventory.push((key.clone(), name.to_string(), *count));
+                }
+            }
+        }
+        inventory.sort();
+        inventory
     }
 
     /// Counts backend node fetch attempts, including failed reads.

@@ -3102,3 +3102,6 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
     }
     Ok(())
 }
+
+#[path = "preparation_characterization_tests.rs"]
+mod preparation_characterization;
