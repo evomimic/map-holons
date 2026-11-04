@@ -10,7 +10,7 @@
 // those are handled by the resolver in Pass 2.
 
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::warn;
 
 use holons_prelude::prelude::CorePropertyTypeName::{Key, StartUtf8ByteOffset};
 use holons_prelude::prelude::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
@@ -74,9 +74,7 @@ impl LoaderHolonMapper {
             return Ok(output); // empty output
         }
 
-        for (index, loader_reference) in members.iter().enumerate() {
-            debug!("Pass1: staging target from LoaderHolon #{}", index);
-
+        for loader_reference in members.iter() {
             match Self::build_target_staged(context, loader_reference) {
                 Ok((staged_reference, loader_key)) => {
                     output.staged_sources.push((staged_reference, loader_key.clone()));
@@ -137,25 +135,14 @@ impl LoaderHolonMapper {
         let key = MapString((&key_value).into());
 
         // ── Create the empty transient under a short write lock, then immediately release it.
-        let mut target_transient: TransientReference = {
-            debug!(
-                "Pass-1: staging instance from LoaderHolon temp_id={:?}, key_prop_raw={:?}, create_empty_key=\"{}\"",
-                loader_id,
-                key_value,
-                key.0,
-            );
-            context.mutation().new_holon(Some(key.clone()))?
-        };
+        let mut target_transient: TransientReference =
+            { context.mutation().new_holon(Some(key.clone()))? };
 
         // Apply each property explicitly (mutating the transient holon) — no service lock is held now.
         // Filter out loader-only properties (e.g., StartUtf8ByteOffset).
         let skip_loader_only_prop: PropertyName = StartUtf8ByteOffset.as_property_name();
         for (property_name, property_value) in properties.into_iter() {
             if property_name == skip_loader_only_prop {
-                debug!(
-                    "Pass-1: skipping loader-only property {:?} on LoaderHolon temp_id={:?}",
-                    property_name, loader_id
-                );
                 continue;
             }
             target_transient.with_property_value(&property_name, property_value)?;

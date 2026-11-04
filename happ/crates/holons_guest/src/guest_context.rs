@@ -11,10 +11,6 @@ use holons_core::{
     HolonServiceApi,
 };
 use std::sync::Arc;
-use tracing::{
-    info,
-    // warn,
-};
 
 /// Initializes a new guest-side context with a `HolonSpaceManager` configured for Holochain execution.
 ///
@@ -68,8 +64,6 @@ pub(crate) fn init_guest_context_with_registry(
     restricted_cache_read: bool,
     registry: Option<holons_boundary::DescriptorRegistryWire>,
 ) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
-    info!("\n ========== Initializing GUEST CONTEXT ============");
-
     // Step 1: Create the GuestHolonService and expose it as HolonServiceApi.
     let guest_holon_service: Arc<dyn HolonServiceApi + Send + Sync> =
         Arc::new(GuestHolonService::new());

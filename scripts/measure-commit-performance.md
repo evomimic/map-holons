@@ -14,6 +14,14 @@ nix develop
 npm run sweet:commit-perf -- --runs 5 --samples 6 --mode create --readiness-cases --output /tmp/commit-perf/visualizer-usage
 ```
 
+The capture command explicitly builds `commit-performance-profiling`, including
+loader timing. Ordinary hApp builds omit diagnostic clock host calls and detailed
+Commit/adapter timing events. `WASM_LOG` controls host-side output, not whether a
+profiling-enabled guest pays the instrumentation cost: the guest subscriber
+accepts every level. Rebuild the ordinary hApp before measuring normal startup.
+Routine per-read/per-target events and whole-session/response dumps are removed
+from both configurations; aggregate profiling records and error reports remain.
+
 Each capture writes `metadata.json`, `working-tree.patch`, raw `run-*.log` files,
 and `measurements.json`. Metadata records resolved runtime versions, package
 substrate, anchor evidence policy, artifact and source hashes, revision, working

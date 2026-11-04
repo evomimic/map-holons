@@ -101,6 +101,7 @@ impl HolonCacheAccess for CacheRequestRouter {
                 )),
             }
         }
+        #[cfg(not(target_arch = "wasm32"))]
         tracing::info!(target: "map_profile", requested = ids.len(), distinct = seen.len(), errors = errors.len(), "saved cache population routes");
         errors
     }

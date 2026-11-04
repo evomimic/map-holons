@@ -4,7 +4,6 @@ use std::{
     hash::{Hash, Hasher},
     sync::{Arc, RwLock},
 };
-use tracing::trace;
 use type_names::relationship_names::CoreRelationshipTypeName;
 use type_names::CorePropertyTypeName;
 
@@ -130,7 +129,6 @@ impl SmartReference {
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.space_read_handle.get_rc_holon(&self.holon_id)?;
-        trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
     }
@@ -298,8 +296,6 @@ impl ReadableHolonImpl for SmartReference {
                 return Ok(Some(value.clone()));
             }
         }
-
-        trace!("unable to get value for {:?} property from smart_property_values. Fetching rc_holon from HolonsCache", property_name);
 
         // Get rc_holon from HolonCacheManager
         let holon = self.get_rc_holon()?;

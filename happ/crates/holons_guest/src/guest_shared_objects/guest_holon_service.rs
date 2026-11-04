@@ -503,7 +503,6 @@ impl HolonServiceApi for GuestHolonService {
             HashMap::new();
 
         let smartlinks = expand_all_from_source(source_id.local_id())?;
-        debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {
             let (canonical_key, reference) = self.reference_from_smartlink(context, &smartlink)?;
@@ -564,21 +563,11 @@ impl HolonServiceApi for GuestHolonService {
         holon_id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
-        let started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
-        let result = match get_holon(&local_id)? {
+        match get_holon(&local_id)? {
             Some(stored) => Ok(Holon::Saved(saved_holon_from_stored(stored))),
             // No holon_node fetched for the specified holon_id
             None => Err(HolonError::HolonNotFound(local_id.to_string())),
-        };
-
-        if let (Some(started_at), Ok(completed_at)) = (started_at, sys_time()) {
-            info!(
-                "[PERF-674] persisted holon fetch: elapsed_ms={}",
-                completed_at.as_micros().saturating_sub(started_at) / 1_000,
-            );
         }
-
-        result
     }
 
     fn fetch_related_holons_internal(
@@ -595,7 +584,6 @@ impl HolonServiceApi for GuestHolonService {
 
         // fetch the smartlinks for this relationship (if any)
         let smartlinks = expand_from_source(&local_id, relationship_name)?;
-        debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
         for smartlink in smartlinks {
             let (canonical_key, holon_reference) =
@@ -753,19 +741,25 @@ impl HolonServiceApi for GuestHolonService {
         context: &Arc<TransactionContext>,
         theme: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
-        let started = sys_time().ok();
+        let _started = crate::performance::timestamp_micros();
         let loaded = holons_core::dances::loaded_theme::resolve_theme(theme.clone())?;
-        let resolved = sys_time().ok();
+        let _resolved = crate::performance::timestamp_micros();
+        #[cfg(any(
+            feature = "commit-performance-profiling",
+            feature = "descriptor-performance-profiling"
+        ))]
         let bindings = loaded.data.bindings.len();
         let body = loaded.into_projection(context)?;
-        let finished = sys_time().ok();
+        let _finished = crate::performance::timestamp_micros();
         // Bounded diagnostics contain counts/timings, never token values or reference payloads.
+        #[cfg(any(
+            feature = "commit-performance-profiling",
+            feature = "descriptor-performance-profiling"
+        ))]
         tracing::info!(
             bindings,
-            resolve_us =
-                started.zip(resolved).map(|(a, b)| b.as_micros().saturating_sub(a.as_micros())),
-            projection_us =
-                resolved.zip(finished).map(|(a, b)| b.as_micros().saturating_sub(a.as_micros())),
+            resolve_us = _started.zip(_resolved).map(|(a, b)| b.saturating_sub(a)),
+            projection_us = _resolved.zip(_finished).map(|(a, b)| b.saturating_sub(a)),
             "LoadTheme guest projection"
         );
         Ok(body)

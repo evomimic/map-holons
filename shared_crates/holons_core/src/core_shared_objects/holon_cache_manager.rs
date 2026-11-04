@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock, Weak};
-use tracing::{debug, info};
+#[cfg(not(target_arch = "wasm32"))]
+use tracing::info;
 
 use super::{holon_cache::HolonCache, Holon};
 use crate::core_shared_objects::transactions::PrivateReadTransaction;
@@ -111,7 +112,7 @@ impl HolonCacheAccess for HolonCacheManager {
         let missing: Vec<_> =
             distinct.iter().filter(|id| self.cache.get(id).is_none()).cloned().collect();
         let mut errors = Vec::new();
-        let mut populated = 0;
+        let mut _populated = 0;
         if !missing.is_empty() {
             let fetched = self
                 .transactions
@@ -150,7 +151,7 @@ impl HolonCacheAccess for HolonCacheManager {
                             })
                         };
                         match result {
-                            Ok(()) => populated += 1,
+                            Ok(()) => _populated += 1,
                             Err(error) => {
                                 errors.push(CachePopulationError::new(vec![id.clone()], error))
                             }
@@ -159,7 +160,8 @@ impl HolonCacheAccess for HolonCacheManager {
                 }
             }
         }
-        info!(target: "map_profile", requested = ids.len(), distinct = distinct.len(), hits = distinct.len() - missing.len(), missing = missing.len(), populated, errors = errors.len(), "saved cache population");
+        #[cfg(not(target_arch = "wasm32"))]
+        info!(target: "map_profile", requested = ids.len(), distinct = distinct.len(), hits = distinct.len() - missing.len(), missing = missing.len(), populated = _populated, errors = errors.len(), "saved cache population");
         errors
     }
 
@@ -172,14 +174,10 @@ impl HolonCacheAccess for HolonCacheManager {
         // Attempt to retrieve the holon from the cache
         if let Some(cached) = self.cache.get(holon_id) {
             super::read_observations::record(holon_id, None, "hit");
-            info!("[PERF-674] holon cache hit");
-            debug!("Holon {:?} retrieved from cache.", holon_id);
             return Ok(cached.clone());
         }
         super::read_observations::record(holon_id, None, "missing");
         // If not found, resolve it from the HolonService
-        info!("[PERF-674] holon cache miss");
-        debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
         let holon = {
             let context = self.transactions.open()?;
             self.holon_service.fetch_holon_internal(&context, holon_id)?
@@ -189,7 +187,6 @@ impl HolonCacheAccess for HolonCacheManager {
 
         // Insert the resolved holon into the cache
         let arc_holon = self.cache.insert_if_absent(holon_id.clone(), arc_holon)?;
-        debug!("Holon with HolonId {:?} fetched and cached.", holon_id);
 
         Ok(arc_holon)
     }

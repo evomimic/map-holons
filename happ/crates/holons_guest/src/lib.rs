@@ -10,3 +10,5 @@ pub use holons_core::query_layer::*;
 pub use persistence_layer::*;
 
 pub(crate) mod read_cost;
+
+pub(crate) mod performance;

@@ -16,7 +16,6 @@
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tracing::{debug, info};
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::query_layer::{Node, NodeCollection, QueryPathMap};
@@ -47,7 +46,6 @@ pub fn commit_dance(
     context: &Arc<TransactionContext>,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered commit_dance");
     let commit_response = context.commit()?;
     Ok(ResponseBody::HolonReference(commit_response.into()))
 }
@@ -74,7 +72,6 @@ pub fn delete_holon_dance(
     context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered delete_holon dance");
     match request.dance_type {
         DanceType::DeleteMethod(holon_id) => {
             // Call the new `delete_holon_api` function
@@ -103,7 +100,6 @@ pub fn get_all_holons_dance(
     // TODO: add support for descriptor parameter
     //
     //
-    info!("----- Entered get_all_holons dance ----");
     Ok(ResponseBody::HolonCollection(context.lookup().get_all_holons()?))
 }
 
@@ -122,7 +118,6 @@ pub fn get_holon_by_id_dance(
     context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered get_holon_by_id_dance.");
     let holon_id = match request.body {
         RequestBody::HolonId(id) => id,
         _ => {
@@ -131,7 +126,6 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    debug!("asking transaction context to fetch holon");
     let holon = context.fetch_holon_internal(&holon_id)?;
 
     let holon = holon.clone();
@@ -183,7 +177,6 @@ pub fn load_holons_dance(
     context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered load holons dance");
     // Validate dance type
     if request.dance_type != DanceType::Standalone {
         return Err(HolonError::InvalidParameter(
@@ -223,8 +216,6 @@ pub fn query_relationships_dance(
     _context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("Entered query_relationships_dance");
-
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
             let expression = match request.body {
@@ -278,8 +269,6 @@ pub fn fetch_all_related_holons_dance(
     _context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("Entered fetch_all_related_holons_dance");
-
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
             if request.body != RequestBody::None {

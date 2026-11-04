@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, RwLock};
-use tracing::debug;
 
 use super::holon_cache_manager::CacheReadTransactions;
 use super::relationship_fetch::{FetchedRelationship, RelationshipPolicyBinding};
@@ -275,10 +274,6 @@ impl RelationshipCache {
         #[cfg(not(target_arch = "wasm32"))]
         tracing::debug!(target: "map_profile", cache = "miss");
         // Cache miss: Fetch related holons from the HolonServiceApi
-        debug!(
-        "Cache miss for source_holon_id: {:?}, relationship_name: {:?}. Fetching from HolonServiceApi.",
-        source_holon_id, relationship_name
-    );
         let context = transactions.open()?;
         if retained_policy.is_none() {
             holon_service.prepare_relationship_policy_internal(

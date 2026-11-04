@@ -41,12 +41,6 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let is_load_holons = dance_name.0 == "load_holons";
     let total_started_at = performance_timestamp_micros();
 
-    if is_load_holons {
-        info!("[PERF-688] guest_dance_adapter: load_holons_entered");
-    }
-
-    info!("\n\n\n***********************  Entered dance_adapter() with {}", request.summarize());
-
     // ---- ingress validation ----
     let validation_started_at = performance_timestamp_micros();
     if let Err(status_code) = validate_request(&request) {
@@ -108,7 +102,9 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let response_session = restore_session_state_from_context(&context);
     let session_export_micros = elapsed_micros(session_export_started_at);
 
-    if is_load_holons || dance_name.0 == "commit" {
+    if cfg!(feature = "commit-performance-profiling")
+        && (is_load_holons || dance_name.0 == "commit")
+    {
         info!(
             "[PERF-688] guest_dance_adapter: validation_ms={} hydration_ms={} request_binding_ms={} dispatch_ms={} response_projection_ms={} session_export_ms={} total_ms={}",
             validation_micros / 1_000,
@@ -121,16 +117,10 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         );
     }
 
-    if dance_name.0 == "commit" {
+    if cfg!(feature = "commit-performance-profiling") && dance_name.0 == "commit" {
         info!("[commit-adapter] hydration_us={} request_binding_us={} dispatch_us={} response_projection_us={} session_export_us={} total_us={}",
             hydration_micros, request_binding_micros, dispatch_micros, response_projection_micros,
             session_export_micros, elapsed_micros(total_started_at));
-    }
-
-    info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);
-
-    if is_load_holons {
-        info!("[PERF-688] guest_dance_adapter: load_holons_returning");
     }
 
     Ok(DanceResponseEnvelope {
@@ -204,7 +194,7 @@ fn execute_invocation_envelope(
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
-    sys_time().ok().map(|timestamp| timestamp.as_micros())
+    crate::performance::timestamp_micros()
 }
 
 fn elapsed_micros(started_at: Option<i64>) -> i64 {
@@ -241,9 +231,6 @@ fn initialize_context_from_session_state(
     session_state: &SessionStateWire,
     registry: Option<holons_boundary::DescriptorRegistryWire>,
 ) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
-    info!("==Initializing context from session state==");
-    debug!("session_state: {:#?}", session_state);
-
     let tx_id = session_state.get_tx_id().ok_or(HolonError::InvalidWireFormat {
         wire_type: "SessionStateWire".to_string(),
         reason: "Missing tx_id".to_string(),

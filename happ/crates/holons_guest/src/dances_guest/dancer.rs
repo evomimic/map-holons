@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use base_types::MapString;
 use core_types::HolonError;
-use hdk::prelude::*;
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
@@ -68,7 +67,6 @@ impl Dancer {
 
     #[allow(dead_code)]
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
-        info!("checking that dance_name: {:#?} is dispatchable", request.dance_name.0.as_str());
         self.dispatch_table.contains_key(request.dance_name.0.as_str())
     }
 

@@ -24,7 +24,7 @@ use hdk::prelude::*;
 use holochain_serialized_bytes::encode;
 use holons_guest_integrity::{type_conversions::*, HolonNode};
 use holons_integrity::EntryTypes;
-use integrity_core_types::{short_hex, HolonNodeModel, LocalId};
+use integrity_core_types::{HolonNodeModel, LocalId};
 use pvl_validation::{validate_holon_node_decoded, validate_holon_node_size};
 
 // ---------------------------------------------------------------------------
@@ -148,10 +148,6 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
                     .map_err(holon_error_from_wasm_error)?;
 
             let version_metadata = VersionMetadata::root(local_id_from_action_hash(action_hash));
-            debug!(
-                "persist_holon: PublishRoot -> create_entry, version_id={}",
-                short_hex(&version_metadata.version_id, 8)
-            );
 
             Ok(StoredHolonNode::new(holon_node, version_metadata))
         }
@@ -171,12 +167,6 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
             let version_metadata = VersionMetadata::derived(
                 local_id_from_action_hash(action_hash),
                 lineage_id.clone(),
-            );
-            debug!(
-                "persist_holon: PublishVersion -> update_entry rooted at {}, {} predecessor(s), version_id={}",
-                lineage_id,
-                predecessor_ids.len(),
-                short_hex(&version_metadata.version_id, 8)
             );
 
             Ok(StoredHolonNode::new(holon_node, version_metadata))
