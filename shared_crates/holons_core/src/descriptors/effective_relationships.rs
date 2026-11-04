@@ -211,7 +211,7 @@ fn collect_declared_from_relationship_members(
 pub(crate) fn effective_inverse_relationships(
     endpoint: &HolonDescriptor,
 ) -> Result<Vec<InverseRelationshipDescriptor>, HolonError> {
-    let set = collect_inverse_candidates(endpoint)?;
+    let set = collect_source_index_candidates(endpoint)?;
 
     if set.requires_materialized_source_index {
         return Err(HolonError::UnsupportedStagedTraversal {
@@ -407,6 +407,8 @@ pub(crate) fn resolve_available_relationship(
     })
 }
 
+/// Combines the declared contract with both directions of the indexed outbound
+/// vocabulary, matching the relationships exposed by prepared navigation.
 fn collect_candidates(endpoint: &HolonDescriptor) -> Result<CandidateSet, HolonError> {
     let mut candidates: Vec<NavigationCandidate> = Vec::new();
 
@@ -425,7 +427,24 @@ fn collect_candidates(endpoint: &HolonDescriptor) -> Result<CandidateSet, HolonE
         );
     }
 
-    let inverse_set = collect_inverse_candidates(endpoint)?;
+    let inverse_set = collect_source_index_candidates(endpoint)?;
+    // SourceOf contributes both directions to outbound navigation. A declared
+    // relationship indexed on an ancestor can be navigable without appearing in
+    // this type's authored InstanceRelationships (for example InstanceKeyRule).
+    for declared in inverse_set.declared_descriptors {
+        let name = declared.base_relationship_name()?;
+        push_unique(
+            &mut candidates,
+            NavigationCandidate {
+                name,
+                descriptor_id: declared.holon().reference_id_string(),
+                qualified: QualifiedRelationship {
+                    descriptor: RelationshipDescriptor::from_holon(declared.holon().clone()),
+                    descriptor_direction: RelationshipDirection::Declared,
+                },
+            },
+        );
+    }
     for inverse in inverse_set.inverse_descriptors {
         let name = inverse.base_relationship_name()?;
         push_unique(
@@ -447,14 +466,16 @@ fn collect_candidates(endpoint: &HolonDescriptor) -> Result<CandidateSet, HolonE
     })
 }
 
-struct InverseCandidateSet {
+struct SourceIndexCandidates {
+    declared_descriptors: Vec<DeclaredRelationshipDescriptor>,
     inverse_descriptors: Vec<InverseRelationshipDescriptor>,
     requires_materialized_source_index: bool,
 }
 
-fn collect_inverse_candidates(
+fn collect_source_index_candidates(
     endpoint: &HolonDescriptor,
-) -> Result<InverseCandidateSet, HolonError> {
+) -> Result<SourceIndexCandidates, HolonError> {
+    let mut declared_descriptors = Vec::new();
     let mut inverse_descriptors = Vec::new();
     let mut seen_inverse_refs = HashSet::new();
 
@@ -474,10 +495,13 @@ fn collect_inverse_candidates(
             let inverse = match InverseRelationshipDescriptor::try_from_holon(member.clone()) {
                 Ok(inverse) => inverse,
                 Err(error @ HolonError::WrongDescriptorKind { .. }) => {
-                    if DeclaredRelationshipDescriptor::try_from_holon(member).is_ok() {
-                        continue;
+                    match DeclaredRelationshipDescriptor::try_from_holon(member) {
+                        Ok(declared) => {
+                            declared_descriptors.push(declared);
+                            continue;
+                        }
+                        Err(_) => return Err(error),
                     }
-                    return Err(error);
                 }
                 Err(error) => return Err(error),
             };
@@ -486,7 +510,8 @@ fn collect_inverse_candidates(
             }
         }
     }
-    Ok(InverseCandidateSet {
+    Ok(SourceIndexCandidates {
+        declared_descriptors,
         inverse_descriptors,
         requires_materialized_source_index: !has_index && !endpoint.holon().is_saved(),
     })
@@ -600,6 +625,56 @@ mod tests {
             bind_relationship_policy(&source, &relationship_name("ValueType")),
             Err(HolonError::AmbiguousRelationshipTraversal { .. })
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn policy_binding_accepts_declared_source_of_navigation_on_the_describing_lineage(
+    ) -> Result<(), HolonError> {
+        use crate::core_shared_objects::holon::SavedHolon;
+        use crate::descriptors::test_support::build_context_with_saved_holons;
+        use base_types::{BaseValue, MapInteger};
+        use core_types::{HolonId, LocalId, PropertyMap, PropertyName};
+        use std::collections::HashMap;
+        let id = |n| HolonId::Local(LocalId(vec![n; 39]));
+        let saved = |n, key: &str, name: &str| {
+            SavedHolon::new(
+                LocalId(vec![n; 39]),
+                PropertyMap::from([
+                    (PropertyName("Key".into()), BaseValue::StringValue(key.into())),
+                    (PropertyName("TypeName".into()), BaseValue::StringValue(name.into())),
+                    (PropertyName("IsDefinitional".into()), BaseValue::BooleanValue(true.into())),
+                ]),
+                None,
+                MapInteger(1),
+            )
+        };
+        let context = build_context_with_saved_holons(
+            vec![
+                saved(1, "Book.Example", "Book.Example"),
+                saved(2, "Book.HolonType", "Book"),
+                saved(3, "InstanceKeyRule.RelationshipType", "InstanceKeyRule"),
+                saved(4, "DeclaredRelationshipType.HolonType", "DeclaredRelationshipType"),
+                saved(7, "HolonType.TypeDescriptor", "HolonType"),
+            ],
+            HashMap::from([
+                ((id(1), relationship_name("DescribedBy")), vec![id(2)]),
+                ((id(2), relationship_name("Extends")), vec![id(7)]),
+                ((id(7), relationship_name("SourceOf")), vec![id(3)]),
+                ((id(3), relationship_name("Extends")), vec![id(4)]),
+                ((id(3), relationship_name("SourceType")), vec![id(7)]),
+            ]),
+        );
+        let source = HolonReference::smart_from_id(context.space_read_handle(), id(1));
+        let computed =
+            super::super::ComputedEffectiveSchema::resolve(source.holon_descriptor()?.holon())?;
+        assert!(computed
+            .navigable_relationships()?
+            .iter()
+            .any(|entry| entry.member.holon_id().is_ok_and(|member| member == id(3))));
+        let binding = bind_relationship_policy(&source, &relationship_name("InstanceKeyRule"))?;
+        assert_eq!(binding.descriptor_id, id(3));
+        assert_eq!(binding.policy, crate::RelationshipCachePolicy::Reuse);
         Ok(())
     }
 
