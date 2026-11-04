@@ -35,6 +35,7 @@ final-status-level = "slow"
 # remains separate and non-required. `ci-rest` is the complement of the named
 # groups, so new test binaries still run by default. Keep commit membership in
 # both filters synchronized; existing per-test exclusions remain unchanged.
+# Use explicit binary names: a bare binary(commit_) selector is not a prefix match.
 # Lib unit tests and fixture_authoring_tests are left out because they already run in the
 # light tier. Rebalance from the PASS [ ...s ] durations.
 
@@ -63,11 +64,11 @@ inherits = "ci"
 # ~2,200 individual relationship dance calls. Keep the full scenario in local pre-merge runs;
 # the loader Core-successor test remains in CI. Re-enable when snapshot/read optimizations
 # preserve the rejection no-write guarantee and bring runtime within the CI timeout.
-default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection)) & not (binary(commit_) | binary(=canonical_loader_tests) | binary(=core_successor_tests) | binary(=key_uniqueness_tests))"
+default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection)) & not (binary(=commit_conflict_tests) | binary(=commit_disposition_tests) | binary(=commit_incomplete_tests) | binary(=commit_performance_tests) | binary(=canonical_loader_tests) | binary(=core_successor_tests) | binary(=key_uniqueness_tests))"
 
 # Commit and canonical-loader workloads consumed about 73 minutes in run 650;
 # separating them leaves headroom under each job's 120-minute build/test budget.
 # The same base exclusions as ci-rest prevent re-enabling intentionally skipped tests.
 [profile.ci-commit]
 inherits = "ci"
-default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection)) & (binary(commit_) | binary(=canonical_loader_tests) | binary(=core_successor_tests) | binary(=key_uniqueness_tests))"
+default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection)) & (binary(=commit_conflict_tests) | binary(=commit_disposition_tests) | binary(=commit_incomplete_tests) | binary(=commit_performance_tests) | binary(=canonical_loader_tests) | binary(=core_successor_tests) | binary(=key_uniqueness_tests))"
