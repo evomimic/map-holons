@@ -287,6 +287,14 @@ pub fn smartlink_seed_retrieval_for_test(
 #[path = "../../../../crates/holons_guest/src/read_cost.rs"]
 mod read_cost;
 
+// The directly compiled storage source also uses this private clock surface.
+// Storage probes time their own operations; production diagnostic clocks stay off.
+mod performance {
+    pub(crate) fn timestamp_micros() -> Option<i64> {
+        None
+    }
+}
+
 /// Explicit HDK strategy experiment on an already populated disposable conductor.
 /// Times only get_links, not query construction, result comparison, or the zome roundtrip.
 #[hdk_extern]
