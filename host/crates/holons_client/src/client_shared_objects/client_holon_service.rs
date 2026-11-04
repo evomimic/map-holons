@@ -100,7 +100,6 @@ impl ClientHolonService {
         &self,
         context: &Arc<TransactionContext>,
         target: HolonReference,
-        pull: bool,
     ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
         if !matches!(target, HolonReference::Smart(_)) {
             return self.construct_effective_holon_descriptor_internal(context, target);
@@ -117,10 +116,8 @@ impl ClientHolonService {
         let mut active =
             flights.lock().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
         loop {
-            if !pull {
-                if let Some(descriptor) = registry.get(&target_id)? {
-                    return Ok(descriptor);
-                }
+            if let Some(descriptor) = registry.get(&target_id)? {
+                return Ok(descriptor);
             }
             if active.insert(owner.tx_id()) {
                 break;
@@ -132,11 +129,8 @@ impl ClientHolonService {
         let result = (|| {
             let _preparation = self.enter_relationship_semantics_resolution();
             let descriptor = self.construct_effective_holon_descriptor_internal(&owner, target)?;
-            registry.publish_in_session(target_id, &descriptor, &session)?;
-            if pull {
-                self.prepared_generation.fetch_add(1, Ordering::AcqRel);
-            }
-            Ok(descriptor)
+            registry.publish_in_session(target_id.clone(), &descriptor, &session)?;
+            registry.get(&target_id)?.ok_or(HolonError::ObsoleteSession)
         })();
         let cleanup = registry.prune_envelopes();
         flights
@@ -665,7 +659,7 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         target: HolonReference,
     ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
-        self.acquire_descriptor(context, target, false)
+        self.acquire_descriptor(context, target)
     }
 
     fn pull_effective_holon_descriptor_internal(
@@ -673,7 +667,8 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         target: HolonReference,
     ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
-        self.acquire_descriptor(context, target, true)
+        context.space_read_handle().reset_session()?;
+        self.acquire_descriptor(context, target)
     }
 
     fn construct_effective_holon_descriptor_internal(

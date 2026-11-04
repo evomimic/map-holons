@@ -75,16 +75,35 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         {
             return Ok(descriptor);
         }
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(registry) = context.descriptor_registry() {
+                let id = target.holon_id()?;
+                let session = context.space_read_handle().session()?;
+                let owner = registry.context()?;
+                let result = self.construct_effective_holon_descriptor_internal(&owner, target);
+                return match result {
+                    Ok(result) => {
+                        registry.publish_in_session(id.clone(), &result, &session)?;
+                        registry.get(&id)?.ok_or(HolonError::ObsoleteSession)
+                    }
+                    Err(error) => {
+                        let _ = registry.prune_envelopes();
+                        Err(error)
+                    }
+                };
+            }
+        }
         self.construct_effective_holon_descriptor_internal(context, target)
     }
 
-    /// Explicit pull selects a new projection while previously returned handles remain immutable.
+    /// Explicit pull resets the saved Session and reacquires the same exact descriptor version.
     fn pull_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
         target: HolonReference,
     ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
-        self.construct_effective_holon_descriptor_internal(context, target)
+        context.space_read_handle().reset_session()?;
+        self.acquire_effective_holon_descriptor_internal(context, target)
     }
 
     /// Constructs a retained schema graph. Clients delegate one typed Dance to

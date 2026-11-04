@@ -138,6 +138,7 @@ impl HolonServiceApi for Store {
             "VisualizerDiscoveryLevel.Projection" => 151,
             "VisualizerDiscoveryCandidate.Projection" => 152,
             "VisualizerUsageResolution.Projection" => 153,
+            "EffectiveHolonDescriptorRegistry.HolonType" => 154,
             _ => return Err(HolonError::InvalidParameter(format!("Unexpected anchor {key}"))),
         };
         let HolonReference::Smart(value) = reference(context, n) else { unreachable!() };

@@ -13,7 +13,7 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
 
 /// One immutable derived Holon schema graph retained by its owning Session or candidate context.
-/// Collections are read from relationships; the wrapper retains no resolution cache.
+/// Collections are read from relationships; the shared derived handle enforces retirement.
 ///
 /// # Prepared HolonType payload
 ///
@@ -23,14 +23,14 @@ use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
 /// the two partitions without removing occurrences. Supporting state identifies
 /// the described type and carries prepared relationship policies and origins.
 ///
-/// The destination payload also includes effective Instance TypeKind, which is
-/// not yet stored here. Migration to DerivedDescriptor acquisition and shared
-/// Session retirement is pending; current `pull` still leaves prior results
-/// readable. Guest-received registry state remains distinct from host Session-owned results.
+/// Effective Instance TypeKind is prepared from the same lineage. Saved results
+/// share the space Session token; mutable inputs are reusable only in frozen
+/// validation. Direct holders report retirement; HolonDescriptor reacquires lazily.
 /// See map-dev-docs `docs/core/core-runtime/descriptors/descriptors-design-spec.md`,
 /// "Derived payload inventory by descriptor kind".
+#[derive(Debug, Clone)]
 pub struct EffectiveHolonDescriptor {
-    holon: HolonReference,
+    derived: DerivedDescriptor,
 }
 
 impl EffectiveHolonDescriptor {
@@ -42,14 +42,24 @@ impl EffectiveHolonDescriptor {
             }
         }
         let context = Self::construction_owner(&target)?;
-        context.get_holon_service().acquire_effective_holon_descriptor_internal(&context, target)
+        let acquire = || {
+            context
+                .get_holon_service()
+                .acquire_effective_holon_descriptor_internal(&context, target.clone())
+        };
+        if matches!(target, HolonReference::Smart(_)) {
+            acquire()
+        } else {
+            context.acquire_frozen_effective(&target, acquire)
+        }
     }
 
-    /// Explicitly pulls a new selected view; this wrapper continues to describe its original snapshot.
+    /// Ends the saved cache Session and reacquires this exact descriptor version.
+    /// Existing direct results report retirement; ordinary wrappers reacquire lazily.
     pub fn pull(&self) -> Result<Self, HolonError> {
         let target = self.described_holon_type()?.holon().clone();
-        let context = Self::construction_owner(&self.holon)?;
-        context.get_holon_service().pull_effective_holon_descriptor_internal(&context, target)
+        target.space_read_handle().reset_session()?;
+        Self::acquire(target)
     }
 
     /// Reads this instance's space-registry prepared contract without initiating construction.
@@ -105,12 +115,10 @@ impl EffectiveHolonDescriptor {
         &self,
         source: &HolonReference,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        Ok(crate::reference_layer::available_relationships::available_relationships_from_effective(
-            source, self,
-        )?
-        .into_iter()
-        .map(|entry| entry.descriptor)
-        .collect())
+        self.derived.read(|| {
+            let entries = crate::reference_layer::available_relationships::available_relationships_from_effective(source, self)?;
+            Ok(entries.into_iter().map(|entry| entry.descriptor).collect())
+        })
     }
 
     /// Returns available maximum-one navigation without reading the plural collection.
@@ -118,12 +126,10 @@ impl EffectiveHolonDescriptor {
         &self,
         source: &HolonReference,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        Ok(crate::reference_layer::available_relationships::available_relationships_from_effective_partition(
-            source, self, Some(true),
-        )?
-        .into_iter()
-        .map(|entry| entry.descriptor)
-        .collect())
+        self.derived.read(|| {
+            let entries = crate::reference_layer::available_relationships::available_relationships_from_effective_partition(source, self, Some(true))?;
+            Ok(entries.into_iter().map(|entry| entry.descriptor).collect())
+        })
     }
 
     /// Returns available finite-many or unbounded navigation, warming only plural targets.
@@ -131,83 +137,89 @@ impl EffectiveHolonDescriptor {
         &self,
         source: &HolonReference,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        Ok(crate::reference_layer::available_relationships::available_relationships_from_effective_partition(
-            source, self, Some(false),
-        )?
-        .into_iter()
-        .map(|entry| entry.descriptor)
-        .collect())
+        self.derived.read(|| {
+            let entries = crate::reference_layer::available_relationships::available_relationships_from_effective_partition(source, self, Some(false))?;
+            Ok(entries.into_iter().map(|entry| entry.descriptor).collect())
+        })
     }
 
     pub fn allows_property(
         &self,
         name: impl type_names::ToPropertyName,
     ) -> Result<PropertyDescriptor, HolonError> {
-        self.get_property_by_name(name)
+        self.derived.read(|| self.get_property_by_name(name))
     }
     pub fn affords_dance(
         &self,
         name: impl type_names::ToDanceName,
     ) -> Result<DanceDescriptor, HolonError> {
-        self.get_dance_by_name(name)
+        self.derived.read(|| self.get_dance_by_name(name))
     }
     pub fn affords_command(
         &self,
         name: impl type_names::ToCommandName,
     ) -> Result<CommandDescriptor, HolonError> {
-        self.get_command_by_name(name)
+        self.derived.read(|| self.get_command_by_name(name))
     }
 
     pub fn get_property_by_name(
         &self,
         name: impl type_names::ToPropertyName,
     ) -> Result<PropertyDescriptor, HolonError> {
-        let name = name.to_property_name();
-        for descriptor in self.instance_properties()? {
-            if descriptor.property_name()? == name {
-                return Ok(descriptor);
+        self.derived.read(|| {
+            let name = name.to_property_name();
+            for descriptor in self.instance_properties()? {
+                if descriptor.property_name()? == name {
+                    return Ok(descriptor);
+                }
             }
-        }
-        Err(self.missing("property", name.to_string()))
+            Err(self.missing("property", name.to_string()))
+        })
     }
 
     pub fn get_relationship_by_name(
         &self,
         name: impl ToRelationshipName,
     ) -> Result<RelationshipDescriptor, HolonError> {
-        let name = name.to_relationship_name();
-        for descriptor in self.navigable_relationships()? {
-            if descriptor.base_relationship_name()? == name {
-                return Ok(descriptor);
+        self.derived.read(|| {
+            let name = name.to_relationship_name();
+            for descriptor in self.navigable_relationships()? {
+                if descriptor.base_relationship_name()? == name {
+                    return Ok(descriptor);
+                }
             }
-        }
-        Err(self.missing("relationship", name.to_string()))
+            Err(self.missing("relationship", name.to_string()))
+        })
     }
 
     pub fn get_dance_by_name(
         &self,
         name: impl type_names::ToDanceName,
     ) -> Result<DanceDescriptor, HolonError> {
-        let name = name.to_dance_name();
-        for descriptor in self.afforded_dances()? {
-            if descriptor.dance_name()? == name {
-                return Ok(descriptor);
+        self.derived.read(|| {
+            let name = name.to_dance_name();
+            for descriptor in self.afforded_dances()? {
+                if descriptor.dance_name()? == name {
+                    return Ok(descriptor);
+                }
             }
-        }
-        Err(self.missing("dance", name.to_string()))
+            Err(self.missing("dance", name.to_string()))
+        })
     }
 
     pub fn get_command_by_name(
         &self,
         name: impl type_names::ToCommandName,
     ) -> Result<CommandDescriptor, HolonError> {
-        let name = name.to_command_name();
-        for descriptor in self.afforded_commands()? {
-            if descriptor.command_name()? == name {
-                return Ok(descriptor);
+        self.derived.read(|| {
+            let name = name.to_command_name();
+            for descriptor in self.afforded_commands()? {
+                if descriptor.command_name()? == name {
+                    return Ok(descriptor);
+                }
             }
-        }
-        Err(self.missing("command", name.to_string()))
+            Err(self.missing("command", name.to_string()))
+        })
     }
 
     fn missing(&self, kind: &str, name: String) -> HolonError {
@@ -217,79 +229,145 @@ impl EffectiveHolonDescriptor {
             descriptor: self
                 .described_holon_type()
                 .map(|descriptor| accessor_helpers::descriptor_label(descriptor.holon()))
-                .unwrap_or_else(|_| self.holon.reference_id_string()),
+                .unwrap_or_else(|_| self.holon().reference_id_string()),
         }
     }
 
     /// Wraps the successful result of the typed construction service without revalidation.
     /// Arbitrary references must use `try_from_holon` instead.
     pub fn from_constructed_holon(holon: HolonReference) -> Self {
-        Self { holon }
+        Self { derived: DerivedDescriptor::from_constructed_holon(holon) }
     }
 
     /// Narrows a readable transient result by its describing type.
     pub fn try_from_holon(holon: HolonReference) -> Result<Self, HolonError> {
         require_transient_type(&holon, CoreHolonTypeName::EffectiveHolonDescriptor)?;
-        Ok(Self { holon })
+        Self::from_prepared_holon(holon)
     }
 
-    /// Returns the retained result reference, suitable for ordinary transport.
+    /// Trusted command/transport narrowing of an already prepared result. Recovers
+    /// Session retirement without repeating schema discovery or construction.
+    pub fn from_prepared_holon(holon: HolonReference) -> Result<Self, HolonError> {
+        let result = Self::from_constructed_holon(holon);
+        // Transport/narrowing must recover the selected result's token rather
+        // than turn a Session-owned result into an unrestricted snapshot.
+        if let Some(registry) = result.holon().space_read_handle().descriptor_registry() {
+            if let Some(owner) = result.holon().transaction_context() {
+                if registry.owned_context(owner.tx_id()).is_some() {
+                    let target = result.described_holon_type()?;
+                    if let Some(selected) = Self::find_prepared(target.holon())? {
+                        if selected.holon() == result.holon() {
+                            return Ok(selected);
+                        }
+                    }
+                    return Err(HolonError::ObsoleteSession);
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Trusted construction/transport access to the retained result reference.
+    /// Semantic consumers use the guarded accessors rather than reading this carrier.
     pub fn holon(&self) -> &HolonReference {
-        &self.holon
+        self.derived.holon()
+    }
+
+    pub(crate) fn in_session(
+        mut self,
+        session: Arc<crate::core_shared_objects::space_session::SpaceSession>,
+    ) -> Self {
+        self.derived = self.derived.in_session(session);
+        self
+    }
+
+    pub(crate) fn in_frozen_validation(
+        mut self,
+        token: Arc<crate::core_shared_objects::transactions::FrozenValidationToken>,
+    ) -> Self {
+        self.derived = self.derived.in_frozen_validation(token);
+        self
+    }
+
+    fn targets(&self, name: CoreRelationshipTypeName) -> Result<Vec<HolonReference>, HolonError> {
+        self.derived.read(|| targets(self.holon(), name))
+    }
+
+    fn single(&self, name: CoreRelationshipTypeName) -> Result<HolonReference, HolonError> {
+        self.derived.read(|| single(self.holon(), name))
+    }
+
+    /// Nearest Instance TypeKind anchor from the constructor's retained lineage.
+    pub fn instance_type_kind(&self) -> Result<Option<HolonReference>, HolonError> {
+        self.derived.read(|| self.derived.instance_type_kind())
     }
 
     /// Returns the authoritative type whose schema was resolved.
     pub fn described_holon_type(&self) -> Result<HolonDescriptor, HolonError> {
-        // Construction established target eligibility using its retained lineage.
-        Ok(HolonDescriptor::from_holon(single(
-            &self.holon,
-            CoreRelationshipTypeName::DescribedHolonType,
-        )?))
+        self.derived.read(|| {
+            // Construction established target eligibility using its retained lineage.
+            Ok(HolonDescriptor::from_holon(
+                self.single(CoreRelationshipTypeName::DescribedHolonType)?,
+            ))
+        })
     }
 
     /// Reads selected property occurrences without revalidating their definitions.
     pub fn instance_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::EffectiveInstanceProperties)?
-            .into_iter()
-            .map(PropertyDescriptor::from_holon)
-            .collect())
+        self.derived.read(|| {
+            Ok(self
+                .targets(CoreRelationshipTypeName::EffectiveInstanceProperties)?
+                .into_iter()
+                .map(PropertyDescriptor::from_holon)
+                .collect())
+        })
     }
 
     /// Reads projected declaration roles without reclassifying the source schema.
     pub fn instance_relationships(
         &self,
     ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::EffectiveInstanceRelationships)?
-            .into_iter()
-            .map(DeclaredRelationshipDescriptor::from_projected_holon)
-            .collect())
+        self.derived.read(|| {
+            Ok(self
+                .targets(CoreRelationshipTypeName::EffectiveInstanceRelationships)?
+                .into_iter()
+                .map(DeclaredRelationshipDescriptor::from_projected_holon)
+                .collect())
+        })
     }
 
     /// Composes singular then plural outbound references without deduplication. Maximum-zero
     /// definitions remain in the instance contract but are absent from navigation.
     pub fn navigable_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        let mut relationships = self.singular_navigable_relationships()?;
-        relationships.extend(self.plural_navigable_relationships()?);
-        Ok(relationships)
+        self.derived.read(|| {
+            let mut relationships = self.singular_navigable_relationships()?;
+            relationships.extend(self.plural_navigable_relationships()?);
+            Ok(relationships)
+        })
     }
 
     /// Reads maximum-one navigation references, retaining contributed duplicates.
     pub fn singular_navigable_relationships(
         &self,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::SingularNavigableRelationships)?
-            .into_iter()
-            .map(RelationshipDescriptor::from_holon)
-            .collect())
+        self.derived.read(|| {
+            Ok(self
+                .targets(CoreRelationshipTypeName::SingularNavigableRelationships)?
+                .into_iter()
+                .map(RelationshipDescriptor::from_holon)
+                .collect())
+        })
     }
 
     /// Reads finite-many or unbounded navigation references, retaining contributed duplicates.
     pub fn plural_navigable_relationships(
         &self,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        let members = targets(&self.holon, CoreRelationshipTypeName::PluralNavigableRelationships)?;
-        self.warm_saved_targets(&members);
-        Ok(members.into_iter().map(RelationshipDescriptor::from_holon).collect())
+        self.derived.read(|| {
+            let members = self.targets(CoreRelationshipTypeName::PluralNavigableRelationships)?;
+            self.warm_saved_targets(&members);
+            Ok(members.into_iter().map(RelationshipDescriptor::from_holon).collect())
+        })
     }
 
     /// Advisory population leaves occurrence order, duplicates, and ordinary read errors intact.
@@ -309,109 +387,136 @@ impl EffectiveHolonDescriptor {
         if ids.is_empty() {
             return;
         }
-        for error in self.holon.space_read_handle().ensure_cached(&ids) {
+        for error in self.holon().space_read_handle().ensure_cached(&ids) {
             tracing::warn!(?error, "Unable to warm saved navigation targets");
         }
     }
 
     pub fn prepared_schema(&self) -> Result<PreparedSchema, HolonError> {
-        PreparedSchema::read(&self.holon)
+        self.derived.read(|| self.derived.read(|| PreparedSchema::read(self.holon())))
     }
 
     /// Reads resolved Dance affordances from the completed graph.
     pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::EffectiveAffordsDance)?
-            .into_iter()
-            .map(DanceDescriptor::from_holon)
-            .collect())
+        self.derived.read(|| {
+            Ok(self
+                .targets(CoreRelationshipTypeName::EffectiveAffordsDance)?
+                .into_iter()
+                .map(DanceDescriptor::from_holon)
+                .collect())
+        })
     }
 
     pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
-        Ok(targets(&self.holon, CoreRelationshipTypeName::EffectiveAffordsCommand)?
-            .into_iter()
-            .map(CommandDescriptor::from_holon)
-            .collect())
+        self.derived.read(|| {
+            Ok(self
+                .targets(CoreRelationshipTypeName::EffectiveAffordsCommand)?
+                .into_iter()
+                .map(CommandDescriptor::from_holon)
+                .collect())
+        })
     }
 
     pub fn effective_constraints(&self) -> Result<Vec<HolonReference>, HolonError> {
-        targets(&self.holon, CoreRelationshipTypeName::EffectiveConstraints)
+        self.derived.read(|| self.targets(CoreRelationshipTypeName::EffectiveConstraints))
     }
 
     pub fn effective_validation_bindings(&self) -> Result<Vec<HolonReference>, HolonError> {
-        targets(&self.holon, CoreRelationshipTypeName::EffectiveValidationBindings)
+        self.derived.read(|| self.targets(CoreRelationshipTypeName::EffectiveValidationBindings))
     }
 
     pub fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
-        Ok(KeyRuleDescriptor::from_holon(single(
-            &self.holon,
-            CoreRelationshipTypeName::EffectiveInstanceKeyRule,
-        )?))
+        self.derived.read(|| {
+            Ok(KeyRuleDescriptor::from_holon(
+                self.single(CoreRelationshipTypeName::EffectiveInstanceKeyRule)?,
+            ))
+        })
     }
 
     /// Explicitly validates contribution sequences against their projected result products.
     /// Construction and ordinary projection reads never call this method.
     /// Uses only retained references and source occurrences, never the target lineage.
     pub fn validate_contributions(&self) -> Result<(), HolonError> {
-        let contributions = self.contributions()?;
-        // Construction leaves this collection empty. There is no claimed
-        // Holon-based occurrence sequence to compare with the direct products.
-        if contributions.is_empty() {
-            return Ok(());
-        }
-        let context = self.holon.transaction_context();
-        let mut grouped = std::collections::HashMap::<String, Vec<(i64, HolonReference)>>::new();
-        for record in contributions {
-            record.validate_provenance()?;
-            let name = record.collection()?.base_relationship_name()?.to_string();
-            grouped.entry(name).or_default().push((record.position()?, record.member()?.member));
-        }
-        for (source, result, _, _, _) in collections() {
-            let mut records =
-                grouped.remove(&source.to_relationship_name().to_string()).unwrap_or_default();
-            records.sort_by_key(|(position, _)| *position);
-            for (index, (position, _)) in records.iter().enumerate() {
-                if *position != index as i64 {
+        self.derived.read(|| {
+            let contributions = self.contributions()?;
+            // Construction leaves this collection empty. There is no claimed
+            // Holon-based occurrence sequence to compare with the direct products.
+            if contributions.is_empty() {
+                return Ok(());
+            }
+            let context = self.holon().transaction_context();
+            let mut grouped =
+                std::collections::HashMap::<String, Vec<(i64, HolonReference)>>::new();
+            for record in contributions {
+                record.validate_provenance()?;
+                let name = record.collection()?.base_relationship_name()?.to_string();
+                grouped
+                    .entry(name)
+                    .or_default()
+                    .push((record.position()?, record.member()?.member));
+            }
+            for (source, result, _, _, _) in collections() {
+                let mut records =
+                    grouped.remove(&source.to_relationship_name().to_string()).unwrap_or_default();
+                records.sort_by_key(|(position, _)| *position);
+                for (index, (position, _)) in records.iter().enumerate() {
+                    if *position != index as i64 {
+                        return Err(HolonError::InvalidParameter(
+                            "Contribution positions must be contiguous and unique".into(),
+                        ));
+                    }
+                }
+                let direct = self
+                    .targets(result)?
+                    .into_iter()
+                    .map(|member| {
+                        DefinitionIdentity::for_optional_context(&member, context.as_ref())
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                if records.is_empty() && direct.is_empty() {
+                    continue;
+                }
+                let expected = records
+                    .into_iter()
+                    .map(|(_, member)| {
+                        DefinitionIdentity::for_optional_context(&member, context.as_ref())
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let mut actual_counts = std::collections::HashMap::new();
+                let mut expected_counts = std::collections::HashMap::new();
+                for member in &direct {
+                    *actual_counts.entry(member.clone()).or_insert(0_usize) += 1;
+                }
+                for member in &expected {
+                    *expected_counts.entry(member.clone()).or_insert(0_usize) += 1;
+                }
+                if actual_counts != expected_counts || direct != expected {
                     return Err(HolonError::InvalidParameter(
-                        "Contribution positions must be contiguous and unique".into(),
+                        "Contribution sequence does not match the effective product".into(),
                     ));
                 }
             }
-            let direct = targets(&self.holon, result)?
-                .into_iter()
-                .map(|member| DefinitionIdentity::for_optional_context(&member, context.as_ref()))
-                .collect::<Result<Vec<_>, _>>()?;
-            if records.is_empty() && direct.is_empty() {
-                continue;
-            }
-            let expected = records
-                .into_iter()
-                .map(|(_, member)| {
-                    DefinitionIdentity::for_optional_context(&member, context.as_ref())
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let mut actual_counts = std::collections::HashMap::new();
-            let mut expected_counts = std::collections::HashMap::new();
-            for member in &direct {
-                *actual_counts.entry(member.clone()).or_insert(0_usize) += 1;
-            }
-            for member in &expected {
-                *expected_counts.entry(member.clone()).or_insert(0_usize) += 1;
-            }
-            if actual_counts != expected_counts || direct != expected {
-                return Err(HolonError::InvalidParameter(
-                    "Contribution sequence does not match the effective product".into(),
-                ));
-            }
-        }
-        Ok(())
+            Ok(())
+        })
     }
 
     /// Reads distinct contribution records. Position is scoped to each source collection.
     pub fn contributions(&self) -> Result<Vec<EffectiveSchemaContribution>, HolonError> {
-        targets(&self.holon, CoreRelationshipTypeName::EffectiveContributions)?
-            .into_iter()
-            .map(|holon| Ok(EffectiveSchemaContribution { holon }))
-            .collect()
+        self.derived.read(|| {
+            self.targets(CoreRelationshipTypeName::EffectiveContributions)?
+                .into_iter()
+                .map(|holon| Ok(EffectiveSchemaContribution { holon }))
+                .collect()
+        })
+    }
+}
+
+impl super::derived_descriptor::DerivedProduct for EffectiveHolonDescriptor {
+    fn acquire_product(target: HolonReference) -> Result<Self, HolonError> {
+        Self::acquire(target)
+    }
+    fn retained_result(&self) -> &DerivedDescriptor {
+        &self.derived
     }
 }
 
@@ -609,8 +714,45 @@ pub(super) fn materialize_effective_schema(
                 .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
         ),
     )?;
+    let (instance_kind, value_kind) =
+        super::value_kind::prepare_kind_products(&computed.target, &computed.lineage)?;
+    result.add_related_references(
+        CoreRelationshipTypeName::DerivedLineage,
+        computed.lineage.clone(),
+    )?;
+    result.with_property_value(
+        CorePropertyTypeName::DerivedInstanceTypeKind,
+        MapString(
+            serde_json::to_string(&instance_kind)
+                .map_err(|e| HolonError::InvalidParameter(e.to_string()))?,
+        ),
+    )?;
+    // HolonType's specialized products above remain authoritative. The common
+    // carrier supplies lineage/kind and leaves unrelated category products empty.
+    result.with_property_value(
+        CorePropertyTypeName::DerivedOrigins,
+        MapString("[[],[],[]]".into()),
+    )?;
+    result.with_property_value(
+        CorePropertyTypeName::DerivedValueKind,
+        MapString(
+            serde_json::to_string(&value_kind)
+                .map_err(|e| HolonError::InvalidParameter(e.to_string()))?,
+        ),
+    )?;
+    result.with_property_value(
+        CorePropertyTypeName::DerivedRelationshipPolicy,
+        MapString("null".into()),
+    )?;
+    for name in [
+        CoreRelationshipTypeName::DerivedConstraints,
+        CoreRelationshipTypeName::DerivedValidationBindings,
+        CoreRelationshipTypeName::DerivedOperators,
+    ] {
+        result.add_related_references(name, vec![])?;
+    }
     result.mark_as_immutable()?;
-    let result = Ok(EffectiveHolonDescriptor { holon: result.into() });
+    let result = Ok(EffectiveHolonDescriptor::from_constructed_holon(result.into()));
     checkpoint("finalize", "");
     result
 }
@@ -905,11 +1047,18 @@ mod tests {
     #[test]
     fn unsaved_schema_result_is_keyless_sealed_and_walks_target_lineage_once(
     ) -> Result<(), HolonError> {
-        let (context, parent, target) = fixture()?;
+        let (context, mut parent, mut target) = fixture()?;
+        parent.with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
+        target.with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, false)?;
         let target_before = inheritance::lineage_edge_reads(&target);
         let parent_before = inheritance::lineage_edge_reads(&parent);
         let result = construct_effective_holon_descriptor(&context, target.clone())?;
         assert!(result.holon().key()?.is_none());
+        assert_eq!(result.instance_type_kind()?.as_ref(), Some(&parent));
+        // A completed result retains the chosen anchor; reading it never walks
+        // the edited lineage or reclassifies a previously constructed snapshot.
+        target.with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
+        assert_eq!(result.instance_type_kind()?.as_ref(), Some(&parent));
         assert!(same_definition(result.described_holon_type()?.holon(), &target)?);
         assert!(result.instance_properties()?.is_empty());
         assert!(result.instance_relationships()?.is_empty());

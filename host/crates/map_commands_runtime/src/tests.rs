@@ -1745,7 +1745,7 @@ fn malformed_usage_is_an_error_not_an_absent_match() {
 }
 
 #[tokio::test]
-async fn session_descriptor_context_allows_reads_without_becoming_an_authoring_transaction() {
+async fn session_descriptor_context_restricts_reads_to_admitted_products() {
     let runtime = build_test_runtime();
     let owner = runtime.session().descriptor_registry().context().unwrap();
     let target: HolonReference =
@@ -1758,7 +1758,13 @@ async fn session_descriptor_context_allows_reads_without_becoming_an_authoring_t
         target: target.clone(),
         action: HolonAction::Read(ReadableHolonAction::GetKey),
     });
-    assert!(runtime.execute_command(read, ExecutionPolicy::default()).await.is_ok());
+    // An unpublished construction carrier is private, even when a read routes
+    // through the Session owner's own transaction. Published reads are covered
+    // by the real descriptor/Commit integration test.
+    assert!(matches!(
+        runtime.execute_command(read, ExecutionPolicy::default()).await,
+        Err(HolonError::ObsoleteSession)
+    ));
     let clone = MapCommand::Holon(HolonCommand {
         context: routed.clone(),
         target,

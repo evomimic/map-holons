@@ -10,12 +10,16 @@ use std::{
 use core_types::{HolonError, TemporaryId};
 
 use super::TransactionContext;
-use crate::{descriptors::DerivedDescriptor, HolonReference};
+use crate::{
+    descriptors::{DerivedDescriptor, EffectiveHolonDescriptor},
+    HolonReference,
+};
 
 #[derive(Default)]
 struct FrozenDerivedEntry {
     lineage: Option<Vec<HolonReference>>,
     result: Option<DerivedDescriptor>,
+    effective: Option<EffectiveHolonDescriptor>,
 }
 
 /// Exact mutable reference identity; staged candidates never alias saved predecessors.
@@ -132,13 +136,41 @@ impl TransactionContext {
         Ok(FrozenValidationScope { context: self, state })
     }
 
-    /// Shares completed mutable-source products only within the current frozen scope.
-    /// Construction runs without a cache lock and retains the source transaction owner.
     pub(crate) fn acquire_frozen_derived(
         &self,
         target: &HolonReference,
         construct: impl FnOnce() -> Result<DerivedDescriptor, HolonError>,
     ) -> Result<DerivedDescriptor, HolonError> {
+        self.acquire_frozen_product(
+            target,
+            construct,
+            |entry| &mut entry.result,
+            DerivedDescriptor::in_frozen_validation,
+        )
+    }
+
+    pub(crate) fn acquire_frozen_effective(
+        &self,
+        target: &HolonReference,
+        construct: impl FnOnce() -> Result<EffectiveHolonDescriptor, HolonError>,
+    ) -> Result<EffectiveHolonDescriptor, HolonError> {
+        self.acquire_frozen_product(
+            target,
+            construct,
+            |entry| &mut entry.effective,
+            EffectiveHolonDescriptor::in_frozen_validation,
+        )
+    }
+
+    /// Shares completed mutable-source products only within the current frozen scope.
+    /// Construction runs without a cache lock and retains the source transaction owner.
+    fn acquire_frozen_product<D: Clone>(
+        &self,
+        target: &HolonReference,
+        construct: impl FnOnce() -> Result<D, HolonError>,
+        slot: impl Fn(&mut FrozenDerivedEntry) -> &mut Option<D>,
+        attach: impl FnOnce(D, Arc<FrozenValidationToken>) -> D,
+    ) -> Result<D, HolonError> {
         let state = self.frozen_validation.lock().map_err(lock_error)?.clone();
         let Some(state) = state else { return construct() };
         let id = self.frozen_descriptor_id(target)?.ok_or_else(|| {
@@ -149,15 +181,15 @@ impl TransactionContext {
             .entries
             .lock()
             .map_err(lock_error)?
-            .get(&id)
-            .and_then(|entry| entry.result.as_ref())
+            .get_mut(&id)
+            .and_then(|entry| slot(entry).clone())
         {
-            return Ok(result.clone());
+            return Ok(result);
         }
-        let result = construct()?.in_frozen_validation(state.token.clone());
+        let result = attach(construct()?, state.token.clone());
         let mut entries = state.entries.lock().map_err(lock_error)?;
         state.token.check_active()?;
-        Ok(entries.entry(id).or_default().result.get_or_insert(result).clone())
+        Ok(slot(entries.entry(id).or_default()).get_or_insert(result).clone())
     }
 }
 

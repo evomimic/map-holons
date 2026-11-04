@@ -9,7 +9,7 @@ schema "MAP Descriptor Runtime Schema-v0.1.0" {
 
 holon EffectiveHolonDescriptor.HolonType {
   type MetaHolonType.MetaTypeDescriptor
-  extends HolonType.TypeDescriptor
+  extends DerivedDescriptor.HolonType
   instance_keyrule NoneRule.KeyRuleType
   header {
     description: "Transaction-scoped derived schema result."
@@ -786,7 +786,7 @@ holon DerivedDescriptor.HolonType {
   extends HolonType.TypeDescriptor
   instance_keyrule NoneRule.KeyRuleType
   header {
-    description: "Sealed derived products for value, property and relationship descriptors; targets retain authoritative identities."
+    description: "Sealed derived products and shared lineage for descriptor runtime categories; targets retain authoritative identities."
     display_name: "DerivedDescriptors"
     plural: "DerivedDescriptors"
   }

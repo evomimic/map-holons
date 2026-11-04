@@ -17,7 +17,7 @@ use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 struct RegistryState {
     context: Option<Arc<TransactionContext>>,
     root: Option<TemporaryId>,
-    entries: HashMap<HolonId, TemporaryId>,
+    entries: HashMap<HolonId, (TemporaryId, Arc<super::space_session::SpaceSession>)>,
     derived_entries: HashMap<HolonId, (TemporaryId, Arc<super::space_session::SpaceSession>)>,
     admitted: std::collections::HashSet<TemporaryId>,
 }
@@ -77,7 +77,7 @@ impl EffectiveHolonDescriptorRegistry {
 
     pub fn get(&self, target: &HolonId) -> Result<Option<EffectiveHolonDescriptor>, HolonError> {
         let state = self.state.lock().map_err(lock_error)?;
-        Ok(state.entries.get(target).map(|id| {
+        Ok(state.entries.get(target).map(|(id, session)| {
             EffectiveHolonDescriptor::from_constructed_holon(
                 TransientReference::from_temporary_id(
                     state.context.as_ref().expect("entry owner").context_handle(),
@@ -85,6 +85,7 @@ impl EffectiveHolonDescriptorRegistry {
                 )
                 .into(),
             )
+            .in_session(session.clone())
         }))
     }
 
@@ -136,7 +137,7 @@ impl EffectiveHolonDescriptorRegistry {
     }
 
     /// Publishes a HolonType result only into the Session that initiated construction.
-    /// This protects the shared carrier without migrating the HolonType wrapper.
+    /// Returned handles share this same retirement token.
     pub fn publish_in_session(
         &self,
         target: HolonId,
@@ -157,15 +158,11 @@ impl EffectiveHolonDescriptorRegistry {
         self.get_derived(&target)?.ok_or(HolonError::ObsoleteSession)
     }
 
-    /// Drops selected entries without disposing guest-received snapshots or the
-    /// carrier used by an in-flight construction. Old HolonType handles retain
-    /// their existing lifetime until that subsystem migrates to shared retirement.
+    /// Drops selected entries while the shared Session token retires both result kinds.
+    /// The retained owner also supports any in-flight construction.
     pub(super) fn reset_session(&self) -> Result<(), HolonError> {
         let mut state = self.state.lock().map_err(lock_error)?;
-        let retired: Vec<_> = state.derived_entries.values().map(|(id, _)| id.clone()).collect();
-        for id in retired {
-            state.admitted.remove(&id);
-        }
+        state.admitted.clear();
         state.derived_entries.clear();
         state.entries.clear();
         state.root = None;
@@ -222,7 +219,7 @@ impl EffectiveHolonDescriptorRegistry {
             let previous = if derived {
                 state.derived_entries.get(&target).map(|(id, _)| id)
             } else {
-                state.entries.get(&target)
+                state.entries.get(&target).map(|(id, _)| id)
             };
             let relationship = if derived {
                 CoreRelationshipTypeName::PreparedDerivedDescriptors
@@ -239,7 +236,7 @@ impl EffectiveHolonDescriptorRegistry {
             if derived {
                 state.derived_entries.insert(target, (reference.temporary_id(), session.clone()));
             } else {
-                state.entries.insert(target, reference.temporary_id());
+                state.entries.insert(target, (reference.temporary_id(), session.clone()));
             }
             Ok(())
         };
@@ -300,7 +297,11 @@ impl EffectiveHolonDescriptorRegistry {
                 (
                     state.context.clone(),
                     state.root.clone(),
-                    state.entries.clone(),
+                    state
+                        .entries
+                        .iter()
+                        .map(|(key, (id, _))| (key.clone(), id.clone()))
+                        .collect::<HashMap<_, _>>(),
                     state
                         .derived_entries
                         .iter()
@@ -332,7 +333,8 @@ impl EffectiveHolonDescriptorRegistry {
             let unchanged = {
                 let state = self.state.lock().map_err(lock_error)?;
                 state.root == root
-                    && state.entries == entries
+                    && state.entries.len() == entries.len()
+                    && state.entries.iter().all(|(key, (id, _))| entries.get(key) == Some(id))
                     && state.derived_entries.len() == derived.len()
                     && state
                         .derived_entries
@@ -418,7 +420,7 @@ impl EffectiveHolonDescriptorRegistry {
                         .insert(target, (reference.temporary_id(), session.clone()))
                         .is_some()
                 } else {
-                    entries.insert(target, reference.temporary_id()).is_some()
+                    entries.insert(target, (reference.temporary_id(), session.clone())).is_some()
                 };
                 if duplicate {
                     return Err(HolonError::InvalidParameter(
@@ -576,6 +578,48 @@ mod tests {
         assert!(registry
             .reference_owner(first_reference.tx_id(), &first_reference.temporary_id())
             .is_some());
+        // Reset also revokes older publications from this same Session, not only
+        // the currently selected ID for each descriptor.
+        owner.space_read_handle().reset_session()?;
+        assert!(registry
+            .reference_owner(first_reference.tx_id(), &first_reference.temporary_id())
+            .is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn holon_type_handles_retire_and_wrappers_reacquire_the_exact_saved_version(
+    ) -> Result<(), HolonError> {
+        let (registry, caller, first, target) = fixture()?;
+        registry.publish(target.clone(), &first)?;
+        let saved = HolonReference::smart_from_id(caller.space_read_handle(), target.clone());
+        let wrapper = crate::descriptors::HolonDescriptor::from_holon(saved.clone());
+        let selected = wrapper.effective_descriptor()?;
+        let before = registry.context()?.lookup().transient_count()?;
+        assert_eq!(selected.effective_constraints()?.len(), 1);
+        assert_eq!(wrapper.effective_descriptor()?.holon(), selected.holon());
+        assert_eq!(registry.context()?.lookup().transient_count()?, before);
+
+        caller.space_read_handle().reset_session()?;
+        assert!(matches!(selected.effective_constraints(), Err(HolonError::ObsoleteSession)));
+        assert!(matches!(selected.described_holon_type(), Err(HolonError::ObsoleteSession)));
+        assert!(registry.get(&target)?.is_none());
+        let owner = registry.context()?;
+        let mut next = owner.mutation().new_holon(None)?;
+        next.add_related_holons(CoreRelationshipTypeName::DescribedHolonType, vec![saved.clone()])?;
+        next.add_related_holons(
+            CoreRelationshipTypeName::EffectiveConstraints,
+            vec![saved.clone(), saved],
+        )?;
+        next.mark_as_immutable()?;
+        registry.publish(
+            target.clone(),
+            &EffectiveHolonDescriptor::from_constructed_holon(next.into()),
+        )?;
+        let replacement = wrapper.effective_descriptor()?;
+        assert_ne!(replacement.holon(), selected.holon());
+        assert_eq!(replacement.described_holon_type()?.holon().holon_id()?, target);
+        assert_eq!(replacement.effective_constraints()?.len(), 2);
         Ok(())
     }
 

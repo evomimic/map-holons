@@ -26,9 +26,13 @@ use crate::{
 ///
 /// # Prepared payload
 ///
-/// - Shared: self-first `DerivedLineage`, inherited `DerivedConstraints` and
-///   `DerivedValidationBindings`, collection-aligned `DerivedOrigins`, and
-///   `DerivedInstanceTypeKind` (an optional index into that exact lineage).
+/// - Shared: self-first `DerivedLineage` and `DerivedInstanceTypeKind` (an
+///   optional index into that exact lineage), with private retirement metadata.
+/// - HolonType: EffectiveHolonDescriptor specializes this handle with instance
+///   properties/relationships, singular/plural navigation, Dances, Commands,
+///   constraints, bindings, key rule, prepared policies and declaring origins.
+/// - ValueType/PropertyType: inherited `DerivedConstraints` and
+///   `DerivedValidationBindings`, with collection-aligned `DerivedOrigins`.
 /// - ValueType: additionally `DerivedOperators` and `DerivedValueKind`; array
 ///   classification is a projection of the prepared native value kind.
 /// - PropertyType: consumes constraints and bindings; the generic carrier's
@@ -58,25 +62,46 @@ pub struct DerivedDescriptor {
 /// Wrapper-private memoization. Only saved definitions and saved dependencies are retained;
 /// mutable inputs consult their owner's frozen scope or are recomputed outside it.
 /// Failed acquisition never populates the cell. This runtime state is not serialized.
-#[derive(Debug, Clone, Default)]
-pub(crate) struct DerivedFields(Arc<Mutex<Option<DerivedDescriptor>>>);
+#[derive(Debug, Clone)]
+pub(crate) struct DerivedFields<D = DerivedDescriptor>(Arc<Mutex<Option<D>>>);
 
-impl DerivedFields {
-    pub(crate) fn acquire(&self, target: &HolonReference) -> Result<DerivedDescriptor, HolonError> {
+impl<D> Default for DerivedFields<D> {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(None)))
+    }
+}
+
+/// Shared acquisition and retirement contract for specialized descriptor products.
+pub(crate) trait DerivedProduct: Clone {
+    fn acquire_product(target: HolonReference) -> Result<Self, HolonError>;
+    fn retained_result(&self) -> &DerivedDescriptor;
+}
+
+impl DerivedProduct for DerivedDescriptor {
+    fn acquire_product(target: HolonReference) -> Result<Self, HolonError> {
+        Self::acquire(target)
+    }
+    fn retained_result(&self) -> &DerivedDescriptor {
+        self
+    }
+}
+
+impl<D: DerivedProduct> DerivedFields<D> {
+    pub(crate) fn acquire(&self, target: &HolonReference) -> Result<D, HolonError> {
         if matches!(target, HolonReference::Smart(_)) {
             let mut memo = self.0.lock().map_err(lock_error)?;
             if let Some(result) = memo.as_ref() {
-                match result.check_active() {
+                match result.retained_result().check_active() {
                     Ok(()) => return Ok(result.clone()),
                     Err(HolonError::ObsoleteSession) => *memo = None,
                     Err(error) => return Err(error),
                 }
             }
         }
-        let result = DerivedDescriptor::acquire(target.clone())?;
+        let result = D::acquire_product(target.clone())?;
         if matches!(target, HolonReference::Smart(_))
-            && result.session.is_some()
-            && result.has_saved_dependencies()?
+            && result.retained_result().session.is_some()
+            && result.retained_result().has_saved_dependencies()?
         {
             *self.0.lock().map_err(lock_error)? = Some(result.clone());
         }
@@ -87,7 +112,7 @@ impl DerivedFields {
     pub(crate) fn read<T>(
         &self,
         target: &HolonReference,
-        read: impl Fn(&DerivedDescriptor) -> Result<T, HolonError>,
+        read: impl Fn(&D) -> Result<T, HolonError>,
     ) -> Result<T, HolonError> {
         loop {
             let result = self.acquire(target).and_then(|derived| read(&derived));
@@ -128,7 +153,7 @@ impl DerivedDescriptor {
         self
     }
 
-    fn check_active(&self) -> Result<(), HolonError> {
+    pub(super) fn check_active(&self) -> Result<(), HolonError> {
         if let Some(validation) = &self.validation {
             validation.check_active()?;
         }
@@ -171,7 +196,10 @@ impl DerivedDescriptor {
         }
     }
 
-    fn read<T>(&self, read: impl FnOnce() -> Result<T, HolonError>) -> Result<T, HolonError> {
+    pub(super) fn read<T>(
+        &self,
+        read: impl FnOnce() -> Result<T, HolonError>,
+    ) -> Result<T, HolonError> {
         self.check_active()?;
         let result = read();
         self.check_active()?;
@@ -738,6 +766,42 @@ mod tests {
             let first = DerivedDescriptor::acquire(target.clone())?;
             let second = DerivedDescriptor::acquire(target)?;
             assert_ne!(first.holon(), second.holon());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn holon_type_products_share_the_frozen_scope_and_retry_after_edits() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let transient = new_test_holon(&context, "frozen-holon-type")?;
+        let staged =
+            context.mutation().stage_new_holon(new_test_holon(&context, "staged-holon-type")?)?;
+        for mut target in [HolonReference::from(transient), HolonReference::from(staged)] {
+            let wrapper = super::super::HolonDescriptor::from_holon(target.clone());
+            let selected = {
+                let _scope = context.begin_frozen_validation()?;
+                let first = wrapper.effective_descriptor()?;
+                let allocated = context.lookup().transient_count()?;
+                let independent = super::super::HolonDescriptor::from_holon(target.clone());
+                assert_eq!(first.holon(), independent.effective_descriptor()?.holon());
+                assert_eq!(context.lookup().transient_count()?, allocated);
+                first
+            };
+            assert!(matches!(selected.instance_properties(), Err(HolonError::ObsoleteSession)));
+            let constraint: HolonReference = context
+                .mutation()
+                .stage_new_holon(new_test_holon(&context, "extra-holon-constraint")?)?
+                .into();
+            target.add_related_holons(R::Constraints, vec![constraint])?;
+            {
+                let _retry = context.begin_frozen_validation()?;
+                let next = wrapper.effective_descriptor()?;
+                assert_ne!(next.holon(), selected.holon());
+                assert_eq!(next.effective_constraints()?.len(), 1);
+            }
+            let fresh = wrapper.effective_descriptor()?;
+            assert_ne!(fresh.holon(), wrapper.effective_descriptor()?.holon());
         }
         Ok(())
     }

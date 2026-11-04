@@ -73,7 +73,7 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
         contexts.push(context);
     }
     assert_eq!(references[0].full_reference_id_string(), references[1].full_reference_id_string());
-    let descriptor = EffectiveHolonDescriptor::from_constructed_holon(references[0].clone());
+    let descriptor = EffectiveHolonDescriptor::try_from_holon(references[0].clone()).unwrap();
     let singular = descriptor.singular_navigable_relationships().unwrap();
     let MapResult::Collection(plural_collection) = runtime
         .execute_command(
@@ -171,7 +171,22 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
         "prepared structural policy must retain immutable Constraints membership"
     );
     let target = descriptor.described_holon_type().unwrap();
+    let wrapper = holons_core::descriptors::HolonDescriptor::from_holon(target.holon().clone());
+    let selected = wrapper.effective_descriptor().unwrap();
+    assert_eq!(selected.holon(), descriptor.holon());
     let direct = ComputedEffectiveSchema::resolve(target.holon()).unwrap();
+    let expected_kind = direct
+        .lineage
+        .iter()
+        .find(|ancestor| {
+            holons_core::descriptors::HolonDescriptor::from_holon((*ancestor).clone())
+                .header()
+                .defines_instance_type_kind()
+                .unwrap()
+        })
+        .unwrap();
+    assert_eq!(descriptor.instance_type_kind().unwrap().as_ref(), Some(expected_kind));
+    assert_eq!(wrapper.instance_type_kind().unwrap().as_ref(), Some(expected_kind));
     let prepared = ComputedEffectiveSchema::from_prepared(&descriptor).unwrap();
     for source in [
         CoreRelationshipTypeName::InstanceProperties,
@@ -310,7 +325,15 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
         pulled.holon().full_reference_id_string(),
         descriptor.holon().full_reference_id_string()
     );
-    assert!(descriptor.instance_properties().is_ok());
+    assert!(matches!(descriptor.instance_properties(), Err(HolonError::ObsoleteSession)));
+    assert!(matches!(selected.instance_properties(), Err(HolonError::ObsoleteSession)));
+    assert_eq!(wrapper.effective_descriptor().unwrap().holon(), pulled.holon());
+    assert_eq!(
+        copy.instance_type_kind().unwrap().map(|kind| kind.holon_id().unwrap()),
+        Some(expected_kind.holon_id().unwrap())
+    );
+    assert_eq!(pulled.described_holon_type().unwrap().holon(), target.holon());
+    assert!(EffectiveHolonDescriptor::try_from_holon(references[0].clone()).is_err());
 
     let descriptor_owner = match &references[0] {
         HolonReference::Transient(reference) => reference.tx_id(),
@@ -320,9 +343,21 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
         runtime.session().dispose_transaction(&context.tx_id()).await.unwrap();
     }
     let owner_context = runtime.session().get_transaction(&descriptor_owner).unwrap();
+    let retired_read = HolonCommand {
+        context: owner_context.clone(),
+        target: references[0].clone(),
+        action: HolonAction::Read(ReadableHolonAction::GetRelatedHolons {
+            name: CoreRelationshipTypeName::EffectiveInstanceProperties.to_relationship_name(),
+            hint: holons_core::RelationshipReadHint::SchemaDefault,
+        }),
+    };
+    assert!(matches!(
+        runtime.execute_command(MapCommand::Holon(retired_read), ExecutionPolicy::default()).await,
+        Err(HolonError::ObsoleteSession)
+    ));
     let read = HolonCommand {
         context: owner_context.clone(),
-        target: holons_boundary::HolonReferenceWire::from(&references[0])
+        target: holons_boundary::HolonReferenceWire::from(pulled.holon())
             .bind(&owner_context)
             .unwrap(),
         action: HolonAction::Read(ReadableHolonAction::GetInstanceProperties),
@@ -331,13 +366,13 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
         runtime.execute_command(MapCommand::Holon(read), ExecutionPolicy::default()).await.unwrap(),
         MapResult::Collection(_)
     ));
-    assert!(!descriptor.instance_properties().unwrap().is_empty());
+    assert!(!pulled.instance_properties().unwrap().is_empty());
     eprintln!(
         "effective Holon descriptor: Session acquisition, reuse and snapshot completed in {:?}",
         started.elapsed()
     );
     drop(runtime);
-    assert!(descriptor.instance_properties().is_err());
+    assert!(pulled.instance_properties().is_err());
 }
 
 /// The non-HolonType trial keeps the public wrapper API while reusing one
@@ -488,6 +523,8 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
         .get_saved_holon_by_key(&MapString("HolonSpace.HolonType".into()))
         .unwrap()
         .into();
+    let holon_type = holons_core::descriptors::HolonDescriptor::from_holon(space_type.clone());
+    let before_holon_commit = holon_type.effective_descriptor().unwrap();
     let mut created = context.mutation().new_holon(Some("SessionResetProof".into())).unwrap();
     created.with_descriptor(space_type).unwrap();
     created.with_property_value("HolonSpaceName", "SessionResetProof").unwrap();
@@ -500,6 +537,7 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     );
     assert!(context.is_open());
     assert!(before_commit.value_kind().is_ok());
+    assert!(before_holon_commit.instance_properties().is_ok());
     // HolonSpace requires all three properties. Correct the rejected candidate
     // in place; failed validation must preserve both staged work and the Session.
     staged_proof.with_property_value("DisplayName", "Session reset proof").unwrap();
@@ -512,11 +550,13 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
         staged_proof.validation_findings().unwrap()
     );
     assert!(matches!(before_commit.value_kind(), Err(HolonError::ObsoleteSession)));
+    assert!(matches!(before_holon_commit.instance_properties(), Err(HolonError::ObsoleteSession)));
     assert!(
         registry.is_empty().unwrap(),
         "Commit response must not republish its received registry"
     );
     assert_eq!(value.value_kind().unwrap(), copied.value_kind().unwrap());
+    assert!(!holon_type.effective_descriptor().unwrap().instance_properties().unwrap().is_empty());
     snapshot.dispose().unwrap();
     context.dispose().unwrap();
     assert!(value.supported_operators().unwrap().len() >= 3);

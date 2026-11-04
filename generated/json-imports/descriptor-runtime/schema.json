@@ -38,7 +38,7 @@
           "name": "Extends",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "DerivedDescriptor.HolonType"
             }
           ]
         },
@@ -2384,7 +2384,7 @@
         "TypeName": "DerivedDescriptor",
         "TypeNamePlural": "DerivedDescriptors",
         "DisplayName": "DerivedDescriptors",
-        "Description": "Sealed derived products for value, property and relationship descriptors; targets retain authoritative identities."
+        "Description": "Sealed derived products and shared lineage for descriptor runtime categories; targets retain authoritative identities."
       },
       "relationships": [
         {

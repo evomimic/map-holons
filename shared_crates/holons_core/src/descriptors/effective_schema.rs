@@ -220,7 +220,13 @@ impl ComputedEffectiveSchema {
         target: &HolonReference,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
-        let lineage = ancestors(target)?;
+        let lineage = match target.transaction_context() {
+            Some(context) => context
+                .frozen_descriptor_lineage(target)?
+                .map(Ok)
+                .unwrap_or_else(|| ancestors(target))?,
+            None => ancestors(target)?,
+        };
         checkpoint("lineage", "");
         Self::from_members(lineage, checkpoint)
     }
