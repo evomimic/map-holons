@@ -31,9 +31,10 @@ fail-fast = false
 final-status-level = "slow"
 
 # CI sweettest groups, selected by MAP_NEXTEST_PROFILE=ci-<name> (see .github/workflows/ci.yml):
-# `ci-storage` and `ci-rest` are the required heavy shards; `ci-dance` is the separate,
-# non-required dance job. `ci-rest` is the complement of the other two, so a new test file
-# always runs somewhere; keep its exclusion list in step when moving binaries between groups.
+# `ci-storage`, `ci-commit`, and `ci-rest` are required heavy shards. `ci-dance`
+# remains separate and non-required. `ci-rest` is the complement of the named
+# groups, so new test binaries still run by default. Keep commit membership in
+# both filters synchronized; existing per-test exclusions remain unchanged.
 # Lib unit tests and fixture_authoring_tests are left out because they already run in the
 # light tier. Rebalance from the PASS [ ...s ] durations.
 
@@ -62,4 +63,11 @@ inherits = "ci"
 # ~2,200 individual relationship dance calls. Keep the full scenario in local pre-merge runs;
 # the loader Core-successor test remains in CI. Re-enable when snapshot/read optimizations
 # preserve the rejection no-write guarantee and bring runtime within the CI timeout.
-default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection))"
+default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection)) & not (binary(commit_) | binary(=canonical_loader_tests) | binary(=core_successor_tests) | binary(=key_uniqueness_tests))"
+
+# Commit and canonical-loader workloads consumed about 73 minutes in run 650;
+# separating them leaves headroom under each job's 120-minute build/test budget.
+# The same base exclusions as ci-rest prevent re-enabling intentionally skipped tests.
+[profile.ci-commit]
+inherits = "ci"
+default-filter = "kind(test) & not (binary(dance_tests) | binary(holon_storage_tests) | binary(pvl_validation_tests) | binary(fixture_authoring_tests)) & not (binary(commit_incomplete_tests) & test(=incomplete_commit_repeats_error_then_completes_relationship_retry)) & not (binary(=core_successor_tests) & test(=rekeyed_core_successor_commits_after_independent_rejection)) & (binary(commit_) | binary(=canonical_loader_tests) | binary(=core_successor_tests) | binary(=key_uniqueness_tests))"

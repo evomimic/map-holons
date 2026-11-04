@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [storage, rest]
+        shard: [storage, commit, rest]
     steps:
       - uses: actions/checkout@v5
 
@@ -87,7 +87,7 @@ jobs:
         with:
           name: holochain-ci
 
-      # Also cache the hApp WASM workspace; both shards restore, one saves. Save even when tests
+      # Also cache the hApp WASM workspace; all shards restore, one saves. Save even when tests
       # fail, so a red run does not throw away the ~17 minute sweettest build.
       - uses: Swatinem/rust-cache@v2
         with:
