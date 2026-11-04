@@ -1118,6 +1118,35 @@ mod tests {
     }
 
     #[test]
+    fn saved_usage_schema_anchor_remains_readable_after_commit() -> Result<(), HolonError> {
+        use crate::core_shared_objects::holon::SavedHolon;
+        use crate::ReadableHolon;
+        use base_types::{BaseValue, MapInteger};
+        use core_types::{HolonId, PropertyMap, PropertyName};
+        let key = "VisualizerUsage.HolonType";
+        let local_id = LocalId(vec![37; 39]);
+        let saved = SavedHolon::new(
+            local_id.clone(),
+            PropertyMap::from([(PropertyName("Key".into()), BaseValue::StringValue(key.into()))]),
+            None,
+            MapInteger(1),
+        );
+        let context = crate::descriptors::test_support::build_context_with_saved_holons(
+            vec![saved],
+            Default::default(),
+        );
+        context.transition_to_committed()?;
+        let anchor = crate::dahn::usage::anchor(&context, key)?;
+        assert_eq!(anchor.holon_id()?, HolonId::Local(local_id));
+        assert!(!context.is_open());
+        assert!(matches!(
+            context.lookup().get_saved_holon_by_key(&key.into()),
+            Err(HolonError::TransactionAlreadyCommitted { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
     fn retained_transient_lookups_are_allowed_after_commit_but_not_disposal() {
         let context = build_context();
         let key = base_types::MapString::from("retained-presentation-configuration");

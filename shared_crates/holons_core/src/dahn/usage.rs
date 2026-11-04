@@ -32,9 +32,12 @@ pub fn single(reference: &HolonReference, name: &str) -> Result<HolonReference, 
     }
 }
 
-/// Resolve a schema anchor through the transaction lookup surface.
+/// Resolve a saved schema anchor through the owning Space.
+///
+/// Selection can read retained subjects from a committed loader. Its schema anchors
+/// are saved state, so lookup must not require reopening that subject transaction.
 pub fn anchor(context: &Arc<TransactionContext>, key: &str) -> Result<HolonReference, HolonError> {
-    Ok(context.lookup().get_saved_holon_by_key(&MapString::from(key))?.into())
+    Ok(context.space_read_handle().get_saved_holon_by_key(&MapString::from(key))?.into())
 }
 
 impl VisualizerUsage {

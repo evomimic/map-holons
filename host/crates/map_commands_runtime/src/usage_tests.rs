@@ -2467,3 +2467,21 @@ fn slot_usage_lookup_errors_are_not_discovery_misses() -> Result<(), HolonError>
         .any(|(_, n)| n == "HasApplicableVisualizer"));
     Ok(())
 }
+
+#[test]
+fn automatic_visualizer_selection_reads_a_committed_load_response() -> Result<(), HolonError> {
+    let (store, space, caller) = setup();
+    associated_usage(&store, 200, 20, 1);
+    let mut response = caller.mutation().new_holon(Some("completed-load-result".into()))?;
+    response.with_descriptor(reference(&caller, 1))?;
+    caller.commit()?;
+    assert!(!caller.is_open());
+    let mut selection_request = request(&caller, 2, 30);
+    selection_request.subject = response.into();
+    let service = UsageTransactions::default();
+    service.begin(&space, &caller)?;
+    let selected = service.select_visualizer(&caller, selection_request)?;
+    assert_eq!(selected.selected, reference(&caller, 20));
+    assert!(!caller.is_open());
+    Ok(())
+}
