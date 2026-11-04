@@ -58,7 +58,7 @@ const PERSON_TO_BOOK_RELATIONSHIP: &str = "AuthorOf";
 /// - `Expand(AuthorOf) -> Filter(AnyOf) -> OrderBy(Title) -> Limit(1)` from
 ///   [Ada, Bob]: [Roads];
 /// - failures: a LessThan predicate (`NotImplemented`), the same after a
-///   completed `Distinct`, nested `AnyOf` (`NotImplemented`), a selector the
+///   completed `Distinct`, the same in a nested `AnyOf`, a selector the
 ///   declared type lacks on empty input, a SeedPredicate selecting Title on
 ///   the root type, an integer-typed literal (`IncompatibleLiteralType`), and a
 ///   misplaced SeedPredicate (`InvalidParameter`).
@@ -233,7 +233,14 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
     let late_distinct = author.authoring.next(late_distinct, late_less_than)?;
     let late_less_than_query = author.query("LateLessThan", late_distinct)?;
 
-    let nested_leaf = author.contains("NestedLeaf", "Title", "x")?;
+    // Nesting is supported since QRY-F3; an unsupported operator still fails at depth.
+    let nested_operand = author.literal(
+        "NestedLeaf",
+        &types.map_string,
+        MapString("x".to_string()).to_base_value(),
+    )?;
+    let nested_leaf =
+        author.comparison("NestedLeaf", "Title", &types.less_than, vec![nested_operand])?;
     let inner = author.any_of("Inner", vec![nested_leaf])?;
     let outer_leaf = author.contains("OuterLeaf", "Title", "y")?;
     let outer = author.any_of("Outer", vec![outer_leaf, inner])?;
@@ -342,7 +349,12 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
                 HolonErrorKind::NotImplemented,
                 "a LessThan predicate after a completed Distinct",
             ),
-            (&nested_query, books(&[&roads]), HolonErrorKind::NotImplemented, "a nested AnyOf"),
+            (
+                &nested_query,
+                books(&[&roads]),
+                HolonErrorKind::NotImplemented,
+                "a LessThan predicate in a nested AnyOf",
+            ),
             (
                 &undeclared_query,
                 books(&[]),
@@ -423,6 +435,8 @@ pub(super) struct PredicateTypes {
     pub(super) filter: TestReference,
     pub(super) comparison: TestReference,
     pub(super) any_of: TestReference,
+    pub(super) all_of: TestReference,
+    pub(super) not: TestReference,
     pub(super) literal: TestReference,
     pub(super) seed: TestReference,
     pub(super) contains: TestReference,
@@ -449,6 +463,8 @@ impl PredicateTypes {
             filter: lookup(&query(QueryHolonTypeName::Filter))?,
             comparison: lookup(&query(QueryHolonTypeName::ComparisonPredicate))?,
             any_of: lookup(&query(QueryHolonTypeName::AnyOf))?,
+            all_of: lookup(&query(QueryHolonTypeName::AllOf))?,
+            not: lookup(&query(QueryHolonTypeName::Not))?,
             literal: lookup(&query(QueryHolonTypeName::LiteralOperand))?,
             seed: lookup(&query(QueryHolonTypeName::SeedHolons))?,
             contains: lookup(&operator(CoreOperatorTypeName::ContainsOperator))?,
@@ -575,6 +591,34 @@ impl PredicateAuthoring<'_, '_> {
             self.types.any_of.clone(),
         )?;
         self.relate(any_of, QueryRelationshipTypeName::Predicates, predicates)
+    }
+
+    pub(super) fn all_of(
+        &mut self,
+        label: &str,
+        predicates: Vec<TestReference>,
+    ) -> Result<TestReference, HolonError> {
+        let all_of = self.authoring.described(
+            &format!("AllOf.{}{label}", self.prefix),
+            PropertyMap::new(),
+            self.types.all_of.clone(),
+        )?;
+        self.relate(all_of, QueryRelationshipTypeName::Predicates, predicates)
+    }
+
+    /// A `Not` over `predicates`; any count can be authored, so malformed
+    /// negations are expressible.
+    pub(super) fn not(
+        &mut self,
+        label: &str,
+        predicates: Vec<TestReference>,
+    ) -> Result<TestReference, HolonError> {
+        let not = self.authoring.described(
+            &format!("Not.{}{label}", self.prefix),
+            PropertyMap::new(),
+            self.types.not.clone(),
+        )?;
+        self.relate(not, QueryRelationshipTypeName::Predicate, predicates)
     }
 
     pub(super) fn filter(
