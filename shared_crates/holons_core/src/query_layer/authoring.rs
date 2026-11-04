@@ -1,7 +1,8 @@
 //! Narrow transient constructors for predicate-bearing query definitions.
 //!
 //! These build the canonical holonic representation of a `LiteralOperand`, a
-//! `ComparisonPredicate`, an `AnyOf`, and a `Filter`, each described by its
+//! `ComparisonPredicate`, the composites `Not`, `AllOf` and `AnyOf`, and a
+//! `Filter`, each described by its
 //! canonical Query Schema descriptor resolved by key. Construction uses
 //! descriptor lookups only to produce that representation; it is not a
 //! substitute for execution-time validation, which revalidates the whole
@@ -80,22 +81,41 @@ pub fn new_comparison_predicate<P: ToPropertyName, O: ToOperatorName>(
     Ok(predicate)
 }
 
+/// Builds a transient `Not` negating `predicate`.
+///
+/// The child must be a `QueryPredicate` (or an extension of it).
+pub fn new_not(
+    context: &Arc<TransactionContext>,
+    predicate: HolonReference,
+) -> Result<TransientReference, HolonError> {
+    require_predicates(std::slice::from_ref(&predicate))?;
+    let mut not = new_described(context, "not", QueryHolonTypeName::Not)?;
+    not.add_related_holons(QueryRelationshipTypeName::Predicate, vec![predicate])?;
+    Ok(not)
+}
+
+/// Builds a transient `AllOf` over `predicates`, in order.
+///
+/// An empty group is refused: the absence of a filter is expressed by omitting
+/// the filter, never by an empty conjunction. Each child must be a
+/// `QueryPredicate` (or an extension of it).
+pub fn new_all_of(
+    context: &Arc<TransactionContext>,
+    predicates: Vec<HolonReference>,
+) -> Result<TransientReference, HolonError> {
+    new_group(context, "all-of", QueryHolonTypeName::AllOf, predicates)
+}
+
 /// Builds a transient `AnyOf` over `predicates`, in order.
 ///
 /// An empty group is refused: the absence of a filter is expressed by omitting
-/// the filter, never by an empty disjunction.
+/// the filter, never by an empty disjunction. Each child must be a
+/// `QueryPredicate` (or an extension of it).
 pub fn new_any_of(
     context: &Arc<TransactionContext>,
     predicates: Vec<HolonReference>,
 ) -> Result<TransientReference, HolonError> {
-    if predicates.is_empty() {
-        return Err(HolonError::InvalidParameter(
-            "AnyOf requires one or more Predicates".to_string(),
-        ));
-    }
-    let mut any_of = new_described(context, "any-of", QueryHolonTypeName::AnyOf)?;
-    any_of.add_related_holons(QueryRelationshipTypeName::Predicates, predicates)?;
-    Ok(any_of)
+    new_group(context, "any-of", QueryHolonTypeName::AnyOf, predicates)
 }
 
 /// Builds a transient `Filter` expression applying `predicate`.
@@ -106,6 +126,32 @@ pub fn new_filter(
     let mut filter = new_described(context, "filter", QueryHolonTypeName::Filter)?;
     filter.add_related_holons(QueryRelationshipTypeName::Predicate, vec![predicate])?;
     Ok(filter)
+}
+
+/// A transient `AllOf` or `AnyOf` group over one or more `predicates`.
+fn new_group(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: QueryHolonTypeName,
+    predicates: Vec<HolonReference>,
+) -> Result<TransientReference, HolonError> {
+    if predicates.is_empty() {
+        return Err(HolonError::InvalidParameter(format!(
+            "{} requires one or more Predicates",
+            type_name.as_holon_name()
+        )));
+    }
+    require_predicates(&predicates)?;
+    let mut group = new_described(context, key, type_name)?;
+    group.add_related_holons(QueryRelationshipTypeName::Predicates, predicates)?;
+    Ok(group)
+}
+
+fn require_predicates(predicates: &[HolonReference]) -> Result<(), HolonError> {
+    for predicate in predicates {
+        require_holon_type(predicate, &QueryHolonTypeName::QueryPredicate.as_holon_name())?;
+    }
+    Ok(())
 }
 
 /// A transient holon described by the canonical Query Schema type `type_name`.
@@ -374,5 +420,91 @@ mod tests {
             new_any_of(&world.context, Vec::new()),
             Err(HolonError::InvalidParameter(_))
         ));
+    }
+
+    #[test]
+    fn constructed_nested_definitions_validate_and_execute() {
+        let world = world();
+        let comparison = |property: &str, operator: CoreOperatorTypeName, operand| {
+            HolonReference::from(
+                new_comparison_predicate(
+                    &world.context,
+                    &book(&world),
+                    property,
+                    operator,
+                    vec![operand],
+                )
+                .unwrap(),
+            )
+        };
+        let status = comparison(
+            "Status",
+            CoreOperatorTypeName::EqualsOperator,
+            world.literal(&world.status, token("Published")),
+        );
+        let title =
+            comparison("Title", CoreOperatorTypeName::ContainsOperator, world.substring("atlas"));
+        let subtitle = comparison(
+            "Subtitle",
+            CoreOperatorTypeName::ContainsOperator,
+            world.substring("draft"),
+        );
+        let not: HolonReference = new_not(&world.context, subtitle.clone()).unwrap().into();
+        let any_of: HolonReference =
+            new_any_of(&world.context, vec![title.clone(), not.clone()]).unwrap().into();
+        let all_of: HolonReference =
+            new_all_of(&world.context, vec![status.clone(), any_of.clone()]).unwrap().into();
+        let filter_expression: HolonReference =
+            new_filter(&world.context, all_of.clone()).unwrap().into();
+        let definitions = [&filter_expression, &all_of, &any_of, &not, &status, &title, &subtitle];
+        let snapshot =
+            || -> Vec<_> { definitions.iter().map(|holon| holon.into_model().unwrap()).collect() };
+        let before = snapshot();
+
+        let predicate = validate(
+            &require_single_related(&filter_expression, QueryRelationshipTypeName::Predicate)
+                .unwrap(),
+            &book(&world),
+        )
+        .unwrap();
+        let member = |key: &str, title: &str, subtitle: Option<&str>, status: &str| {
+            let mut values = vec![("Title", text(title)), ("Status", token(status))];
+            if let Some(subtitle) = subtitle {
+                values.push(("Subtitle", text(subtitle)));
+            }
+            world.member(key, &world.book, &values)
+        };
+        let atlas_draft = member("atlas-draft", "Atlas", Some("draft"), "Published");
+        let roads = member("roads", "Roads", None, "Published");
+        let roads_draft = member("roads-draft", "Roads", Some("draft"), "Published");
+        let unpublished = member("unpublished", "Atlas", None, "Draft");
+        assert_eq!(
+            filter(&[roads_draft, atlas_draft.clone(), unpublished, roads.clone()], &predicate)
+                .unwrap(),
+            vec![atlas_draft, roads]
+        );
+        assert_eq!(snapshot(), before, "definitions are unchanged");
+    }
+
+    #[test]
+    fn an_empty_all_of_is_refused() {
+        let world = world();
+        assert!(matches!(
+            new_all_of(&world.context, Vec::new()),
+            Err(HolonError::InvalidParameter(detail)) if detail.starts_with("AllOf")
+        ));
+    }
+
+    #[test]
+    fn composite_children_must_be_predicates() {
+        let world = world();
+        let literal = world.substring("x");
+        let wrong_kind = |result: Result<TransientReference, HolonError>| matches!(&result, Err(HolonError::WrongDescriptorKind { expected, .. }) if expected == "QueryPredicate");
+        assert!(wrong_kind(new_not(&world.context, literal.clone())));
+        assert!(wrong_kind(new_all_of(
+            &world.context,
+            vec![world.contains("Title", "x"), literal.clone()]
+        )));
+        assert!(wrong_kind(new_any_of(&world.context, vec![literal])));
     }
 }

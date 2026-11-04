@@ -358,6 +358,80 @@
       ]
     },
     {
+      "key": "Not.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Not",
+        "TypeNamePlural": "NotPredicates",
+        "DisplayName": "Not",
+        "DisplayNamePlural": "Not Predicates",
+        "Description": "Negation of exactly one child predicate. True exactly when its child is false; an absent optional value makes a comparison false, so its negation is true. A missing or additional child is invalid."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Not.HolonType)-[Predicate]->(QueryPredicate.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AllOf.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "AllOf",
+        "TypeNamePlural": "AllOfPredicates",
+        "DisplayName": "All Of",
+        "DisplayNamePlural": "All Of Predicates",
+        "Description": "Conjunction of one or more ordered child predicates. True exactly when every child is true; every child is validated and evaluated, so a false branch never hides another branch's error. An empty group is invalid."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(AllOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "LiteralOperand.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
@@ -2961,6 +3035,241 @@
           "target": [
             {
               "$ref": "AnyOf.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Not.HolonType)-[Predicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Predicate",
+        "TypeNamePlural": "Predicates",
+        "DisplayName": "Predicate",
+        "DisplayNamePlural": "Predicates",
+        "Description": "The single child predicate a Not negates.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Not.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryPredicate.HolonType)-[PredicateForNot]->(Not.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicateForNot]->(Not.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PredicateForNot",
+        "TypeNamePlural": "PredicateForNot",
+        "DisplayName": "Predicate For Not",
+        "DisplayNamePlural": "Predicate For Not",
+        "Description": "Inverse of Predicate, from a predicate to the Not predicates negating it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Not.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(AllOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Predicates",
+        "TypeNamePlural": "Predicates",
+        "DisplayName": "Predicates",
+        "DisplayNamePlural": "Predicates",
+        "Description": "Ordered child predicates of an AllOf.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "AllOf.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryPredicate.HolonType)-[PredicatesForAllOf]->(AllOf.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[PredicatesForAllOf]->(AllOf.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PredicatesForAllOf",
+        "TypeNamePlural": "PredicatesForAllOf",
+        "DisplayName": "Predicates For All Of",
+        "DisplayNamePlural": "Predicates For All Of",
+        "Description": "Inverse of Predicates, from a predicate to the AllOf groups containing it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "AllOf.HolonType"
             }
           ]
         },
