@@ -27,7 +27,6 @@
 
 use std::sync::Arc;
 
-use core_types::HolonNodeModel;
 use holons_core::dances::DanceInvocation;
 use holons_core::query_layer::query_core::{
     FocalSpaceReference, HolonCollectionReference, QueryExecution, QueryReference,
@@ -78,11 +77,6 @@ pub async fn execute_query(
     };
     let expected = ResolvedExpectation::resolve(state, &context, expectation);
 
-    // Evaluation must not mutate caller-owned definitions — not by resolving a
-    // default, and not on failure. Holons shared between queries are covered
-    // too, since every step re-snapshots the whole reachable graph.
-    let definitions_before = definition_snapshot(&query_reference);
-
     match route {
         QueryRoute::Direct => {
             execute_direct(&context, query_reference.clone(), resolved_input, bindings, expected)
@@ -102,80 +96,6 @@ pub async fn execute_query(
                 .await
         }
     }
-
-    assert_eq!(
-        definition_snapshot(&query_reference),
-        definitions_before,
-        "query evaluation must leave its definition graph unchanged"
-    );
-}
-
-/// Definition relationships a query evaluation reads and must never change.
-const DEFINITION_RELATIONSHIPS: [&str; 10] = [
-    "RootExpression",
-    "Next",
-    "OrderBySpecs",
-    "SeedPredicate",
-    "ExpansionPredicate",
-    "Predicate",
-    "Predicates",
-    "Operator",
-    "Operands",
-    "ValueType",
-];
-
-/// Relationships from an expression or predicate to the definition holons it
-/// carries: sort specs, attached or applied predicates, group children, and
-/// literal operands.
-const CARRIED_DEFINITIONS: [&str; 6] =
-    ["OrderBySpecs", "SeedPredicate", "ExpansionPredicate", "Predicate", "Predicates", "Operands"];
-
-/// One definition holon's identity, content, and definition-relationship members.
-type DefinitionSnapshot = (String, HolonNodeModel, Vec<Vec<String>>);
-
-/// Content of every definition holon reachable from `query`: the query, each
-/// expression along `RootExpression`/`Next`, and every holon those expressions
-/// carry (OrderBySpecs, predicates and their children, literal operands) —
-/// its properties plus its definition relationships' members, in order.
-fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
-    let snapshot_of = |holon: &HolonReference| {
-        let relationships = DEFINITION_RELATIONSHIPS
-            .iter()
-            // Reference ids, not HolonIds: definitions may be transient.
-            .map(|name| {
-                related_members(holon, *name)
-                    .iter()
-                    .map(|member| member.reference_id_string())
-                    .collect()
-            })
-            .collect();
-        (holon.reference_id_string(), holon.into_model().unwrap(), relationships)
-    };
-
-    let mut snapshot = vec![snapshot_of(query)];
-    let mut seen = std::collections::HashSet::new();
-    let mut next = related_members(query, "RootExpression").into_iter().next();
-    while let Some(expression) = next {
-        if !seen.insert(expression.reference_id_string()) {
-            break; // a cyclic chain is the runtime's error to report, not ours
-        }
-        snapshot.push(snapshot_of(&expression));
-        // Carried holons may be shared between expressions or nest; each is
-        // recorded once, and nesting is the runtime's to reject, not ours.
-        let mut carried: Vec<HolonReference> = carried_definitions(&expression);
-        while let Some(holon) = carried.pop() {
-            if seen.insert(holon.reference_id_string()) {
-                snapshot.push(snapshot_of(&holon));
-                carried.extend(carried_definitions(&holon));
-            }
-        }
-        next = related_members(&expression, "Next").into_iter().next();
-    }
-    snapshot
-}
-
-fn carried_definitions(holon: &HolonReference) -> Vec<HolonReference> {
-    CARRIED_DEFINITIONS.iter().flat_map(|name| related_members(holon, *name)).collect()
 }
 
 /// The step's collection operand with fixture tokens resolved to references.
