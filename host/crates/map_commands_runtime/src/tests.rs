@@ -111,12 +111,12 @@ impl HolonServiceApi for TestHolonService {
 
 fn build_test_space_manager() -> Arc<HolonSpaceManager> {
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
-    Arc::new(HolonSpaceManager::new_with_managers(
+    HolonSpaceManager::new_with_managers(
         None,
         holon_service,
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ))
+    )
 }
 
 fn build_test_runtime() -> Runtime {
@@ -254,10 +254,14 @@ async fn usage_commands_validate_retained_subject_after_commit() {
     };
     // This fixture deliberately lacks a valid composition contract. Admission must reach
     // semantic validation instead of rejecting the archived caller's lifecycle.
-    let expected = dahn_selection::usage_subject_type(&request())
+    let expected = dahn_selection::choose_visualizer(&context, request(), subject.clone())
         .expect_err("incomplete composition contract");
     for action in [
-        TransactionAction::SelectVisualizerUsage { request: request(), selected: subject.clone() },
+        TransactionAction::SelectVisualizerUsage {
+            request: request(),
+            selected: subject.clone(),
+            usage: None,
+        },
         TransactionAction::RecordVisualizerUse {
             request: request(),
             selected: subject.clone(),
@@ -1741,7 +1745,7 @@ fn malformed_usage_is_an_error_not_an_absent_match() {
 }
 
 #[tokio::test]
-async fn session_descriptor_context_allows_reads_without_becoming_an_authoring_transaction() {
+async fn session_descriptor_context_restricts_reads_to_admitted_products() {
     let runtime = build_test_runtime();
     let owner = runtime.session().descriptor_registry().context().unwrap();
     let target: HolonReference =
@@ -1754,7 +1758,13 @@ async fn session_descriptor_context_allows_reads_without_becoming_an_authoring_t
         target: target.clone(),
         action: HolonAction::Read(ReadableHolonAction::GetKey),
     });
-    assert!(runtime.execute_command(read, ExecutionPolicy::default()).await.is_ok());
+    // An unpublished construction carrier is private, even when a read routes
+    // through the Session owner's own transaction. Published reads are covered
+    // by the real descriptor/Commit integration test.
+    assert!(matches!(
+        runtime.execute_command(read, ExecutionPolicy::default()).await,
+        Err(HolonError::ObsoleteSession)
+    ));
     let clone = MapCommand::Holon(HolonCommand {
         context: routed.clone(),
         target,

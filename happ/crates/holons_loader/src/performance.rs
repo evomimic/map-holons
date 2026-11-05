@@ -1,12 +1,14 @@
-//! Best-effort guest timing shared by the loader controller and resolver.
+//! Opt-in guest timing shared by the loader controller and resolver.
+//! The Commit profiling build forwards `performance-profiling`; ordinary loads
+//! retain semantic counters without issuing diagnostic clock host calls.
 //! Unit tests exercise deterministic counters without invoking Holochain HDK.
 
 pub(crate) fn performance_timestamp_micros() -> Option<i64> {
-    #[cfg(not(test))]
+    #[cfg(all(not(test), feature = "performance-profiling"))]
     {
         hdk::prelude::sys_time().ok().map(|timestamp| timestamp.as_micros())
     }
-    #[cfg(test)]
+    #[cfg(any(test, not(feature = "performance-profiling")))]
     {
         None
     }

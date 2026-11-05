@@ -7,8 +7,7 @@ use core_types::{HolonError, RelationshipName};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     descriptors::{resolve_describing_type, schema_dependencies},
-    ContractContributions, DefinitionIdentity, DescribingTypeResolution, HolonReference,
-    ReadableHolon,
+    DefinitionIdentity, DescribingTypeResolution, HolonReference, ReadableHolon,
 };
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -76,6 +75,7 @@ pub(crate) fn dependency_cycles(
 /// and retain undeclared names so they cannot evade the fixed Commit check.
 pub(crate) fn authored_targets(
     source: &HolonReference,
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<Vec<(RelationshipName, HolonReference)>, HolonError> {
     if let HolonReference::Smart(saved) = source {
         let DescribingTypeResolution::Unique(descriptor) = resolve_describing_type(source)? else {
@@ -83,7 +83,7 @@ pub(crate) fn authored_targets(
                 HolonError::MissingDescribedBy { holon: source.reference_id_string() }.into()
             );
         };
-        let contract = ContractContributions::resolve(&descriptor)?;
+        let contract = packages.effective_schema(&descriptor)?.contract_contributions();
         let names = crate::descriptor_package::declared_names(&contract)?;
         saved.prepare_relationships(&names)?;
         let mut result = Vec::new();

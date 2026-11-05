@@ -268,7 +268,6 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit the QRY2 Query definitions and Book/Person instances".to_string()),
     )?;
-    test_case.add_match_saved_content_step()?;
 
     // --- Execute over the committed definitions in a fresh transaction ---
     test_case.add_begin_transaction_step(

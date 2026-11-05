@@ -27,7 +27,7 @@ pub mod dances {
     pub use crate::context_binding::{
         DanceRequestWire, DanceTypeWire, DanceV2InvocationWire, RequestBodyWire,
     };
-    pub use crate::context_binding::{DanceResponseWire, ResponseBodyWire};
+    pub use crate::context_binding::{DanceResponseWire, ResponseBodyWire, SavedHolonFetchWire};
     pub use crate::session_state::SessionStateWire;
 }
 

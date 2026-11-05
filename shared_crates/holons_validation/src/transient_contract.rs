@@ -76,7 +76,7 @@ impl ConstructionSubject {
                 "EffectiveHolonDescriptor.HolonType",
                 "DeclaredRelationshipType.RelationshipType",
             )),
-            (Self::Result, "NavigableRelationships") => {
+            (Self::Result, "SingularNavigableRelationships" | "PluralNavigableRelationships") => {
                 Some(("EffectiveHolonDescriptor.HolonType", "RelationshipType.TypeDescriptor"))
             }
             (Self::Result, "EffectiveAffordsDance") => {
@@ -107,7 +107,14 @@ fn validate_contract(
     if descriptor.header().is_abstract_type()? {
         return Err(invalid("Transient holon has an abstract describing type"));
     }
-    let computed = holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?;
+    let computed = match EffectiveHolonDescriptor::find_for_instance(subject)? {
+        Some(prepared) => {
+            holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&prepared)?
+        }
+        // Contract checks also run while descriptor infrastructure is being built.
+        // Reuse an existing EHD, but never initiate its construction recursively.
+        None => holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?,
+    };
     let keyless = computed.effective_key_rule()?.is_keyless()?;
     if keyless != subject.key()?.is_none() {
         return Err(invalid(
@@ -217,11 +224,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn construction_defers_only_six_explicit_target_checks() {
+    fn construction_defers_only_explicit_target_checks() {
         let deferred = [
             "EffectiveInstanceProperties",
             "EffectiveInstanceRelationships",
-            "NavigableRelationships",
+            "SingularNavigableRelationships",
+            "PluralNavigableRelationships",
             "EffectiveAffordsDance",
             "EffectiveAffordsCommand",
         ];

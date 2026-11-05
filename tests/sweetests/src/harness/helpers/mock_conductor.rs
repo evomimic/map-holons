@@ -198,6 +198,7 @@ pub async fn assert_unanchored_ordinary_session_is_rejected(backend: &MockConduc
             .expect("the fixed test transaction id must be valid"),
     );
     let envelope = DanceRequestEnvelope {
+        descriptor_registry: None,
         request: holons_boundary::envelopes::DanceEnvelopeRequest::Legacy(DanceRequestWire {
             dance_name: MapString("get_all_holons".into()),
             dance_type: DanceTypeWire::Standalone,

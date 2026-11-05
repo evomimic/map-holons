@@ -1,5 +1,5 @@
 use crate::descriptors::{
-    accessor_helpers, equals_or_extends, resolve_core_descriptor, Descriptor, TypeHeader,
+    accessor_helpers, equals_or_extends, resolve_core_descriptor_for, Descriptor, TypeHeader,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use base_types::MapString;
@@ -31,8 +31,7 @@ impl KeyRuleDescriptor {
         let Some(strategy) = self.strategy()? else {
             return Ok(false);
         };
-        let context = self.holon.resolution_context()?;
-        let none_rule = resolve_core_descriptor(&context, "NoneRule.KeyRuleType")?;
+        let none_rule = resolve_core_descriptor_for(&self.holon, "NoneRule.KeyRuleType")?;
         equals_or_extends(&strategy, &none_rule)
     }
 
@@ -67,8 +66,7 @@ impl KeyRuleDescriptor {
 
     /// Resolves the selected strategy without replacing a configured rule instance.
     fn strategy(&self) -> Result<Option<HolonReference>, HolonError> {
-        let context = self.holon.resolution_context()?;
-        let key_rule_type = resolve_core_descriptor(&context, "KeyRuleType.HolonType")?;
+        let key_rule_type = resolve_core_descriptor_for(&self.holon, "KeyRuleType.HolonType")?;
         if equals_or_extends(&self.holon, &key_rule_type)? {
             return Ok(Some(self.holon.clone()));
         }
@@ -144,6 +142,7 @@ const _: fn() = || {
 mod tests {
     use super::*;
     use crate::core_shared_objects::transactions::TransactionContext;
+    use crate::descriptors::resolve_core_descriptor;
     use crate::descriptors::test_support::{
         build_context, build_key_rule_context, new_descriptor_holon,
     };

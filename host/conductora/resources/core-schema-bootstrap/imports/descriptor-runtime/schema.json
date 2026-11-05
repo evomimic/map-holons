@@ -46,7 +46,7 @@
           "name": "Extends",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "DerivedDescriptor.HolonType"
             }
           ]
         },
@@ -87,7 +87,10 @@
               "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType)"
             },
             {
-              "$ref": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)"
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor)"
             },
             {
               "$ref": "(EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType)"
@@ -645,16 +648,16 @@
       ]
     },
     {
-      "key": "(EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "key": "(EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "NavigableRelationships",
-        "TypeNamePlural": "NavigableRelationships",
-        "DisplayName": "NavigableRelationships",
-        "Description": "Derived schema result relationship NavigableRelationships.",
+        "TypeName": "SingularNavigableRelationships",
+        "TypeNamePlural": "SingularNavigableRelationships",
+        "DisplayName": "SingularNavigableRelationships",
+        "Description": "Derived schema result relationship SingularNavigableRelationships.",
         "IsDefinitional": true,
         "IsOrdered": false,
-        "AllowsDuplicates": false,
+        "AllowsDuplicates": true,
         "DeletionSemantic": "Block",
         "TargetBinding": "Version"
       },
@@ -695,7 +698,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
+              "$ref": "(RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
             }
           ]
         },
@@ -718,16 +721,154 @@
       ]
     },
     {
-      "key": "(RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "key": "(RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "NavigableInEffectiveHolonDescriptor",
-        "TypeNamePlural": "NavigableInEffectiveHolonDescriptor",
-        "DisplayName": "NavigableInEffectiveHolonDescriptor",
-        "Description": "Inverse discovery for NavigableRelationships.",
+        "TypeName": "SingularNavigableInEffectiveHolonDescriptor",
+        "TypeNamePlural": "SingularNavigableInEffectiveHolonDescriptor",
+        "DisplayName": "SingularNavigableInEffectiveHolonDescriptor",
+        "Description": "Inverse discovery for SingularNavigableRelationships.",
         "IsDefinitional": true,
         "IsOrdered": false,
-        "AllowsDuplicates": false,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PluralNavigableRelationships",
+        "TypeNamePlural": "PluralNavigableRelationships",
+        "DisplayName": "PluralNavigableRelationships",
+        "Description": "Derived schema result relationship PluralNavigableRelationships.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PluralNavigableInEffectiveHolonDescriptor",
+        "TypeNamePlural": "PluralNavigableInEffectiveHolonDescriptor",
+        "DisplayName": "PluralNavigableInEffectiveHolonDescriptor",
+        "Description": "Inverse discovery for PluralNavigableRelationships.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": true,
         "DeletionSemantic": "Block",
         "TargetBinding": "Version"
       },
@@ -2437,6 +2578,9 @@
           "target": [
             {
               "$ref": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType)"
+            },
+            {
+              "$ref": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDerivedDescriptors]->(DerivedDescriptor.HolonType)"
             }
           ]
         },
@@ -2556,6 +2700,1278 @@
           "target": [
             {
               "$ref": "EffectiveHolonDescriptorRegistry.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DerivedDescriptor.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DerivedDescriptor",
+        "TypeNamePlural": "DerivedDescriptors",
+        "DisplayName": "DerivedDescriptors",
+        "Description": "Sealed derived products and shared lineage for descriptor runtime categories; targets retain authoritative identities."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "NoneRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DerivedOrigins.PropertyType"
+            },
+            {
+              "$ref": "DerivedValueKind.PropertyType"
+            },
+            {
+              "$ref": "DerivedInstanceTypeKind.PropertyType"
+            },
+            {
+              "$ref": "DerivedRelationshipPolicy.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DerivedDescriptor.HolonType)-[DerivedLineage]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(DerivedDescriptor.HolonType)-[DerivedConstraints]->(Constraint.HolonType)"
+            },
+            {
+              "$ref": "(DerivedDescriptor.HolonType)-[DerivedValidationBindings]->(ValidationRule.HolonType)"
+            },
+            {
+              "$ref": "(DerivedDescriptor.HolonType)-[DerivedOperators]->(OperatorType.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DerivedOrigins.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DerivedOrigins",
+        "TypeNamePlural": "DerivedOrigins",
+        "DisplayName": "DerivedOrigins",
+        "Description": "Collection-aligned declaring-lineage indexes; preserves every inherited occurrence without contribution holons.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedLineage]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DerivedLineage",
+        "TypeNamePlural": "DerivedLineage",
+        "DisplayName": "DerivedLineage",
+        "Description": "Derived descriptor relationship DerivedLineage.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[LineageOfDerivedDescriptor]->(DerivedDescriptor.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[LineageOfDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LineageOfDerivedDescriptor",
+        "TypeNamePlural": "LineageOfDerivedDescriptor",
+        "DisplayName": "LineageOfDerivedDescriptor",
+        "Description": "Inverse discovery for DerivedLineage.",
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedConstraints]->(Constraint.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DerivedConstraints",
+        "TypeNamePlural": "DerivedConstraints",
+        "DisplayName": "DerivedConstraints",
+        "Description": "Derived descriptor relationship DerivedConstraints.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Constraint.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Constraint.HolonType)-[ConstraintInDerivedDescriptor]->(DerivedDescriptor.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Constraint.HolonType)-[ConstraintInDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ConstraintInDerivedDescriptor",
+        "TypeNamePlural": "ConstraintInDerivedDescriptor",
+        "DisplayName": "ConstraintInDerivedDescriptor",
+        "Description": "Inverse discovery for DerivedConstraints.",
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Constraint.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedValidationBindings]->(ValidationRule.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DerivedValidationBindings",
+        "TypeNamePlural": "DerivedValidationBindings",
+        "DisplayName": "DerivedValidationBindings",
+        "Description": "Derived descriptor relationship DerivedValidationBindings.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ValidationRule.HolonType)-[ValidationBindingInDerivedDescriptor]->(DerivedDescriptor.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValidationRule.HolonType)-[ValidationBindingInDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValidationBindingInDerivedDescriptor",
+        "TypeNamePlural": "ValidationBindingInDerivedDescriptor",
+        "DisplayName": "ValidationBindingInDerivedDescriptor",
+        "Description": "Inverse discovery for DerivedValidationBindings.",
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedOperators]->(OperatorType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DerivedOperators",
+        "TypeNamePlural": "DerivedOperators",
+        "DisplayName": "DerivedOperators",
+        "Description": "Derived descriptor relationship DerivedOperators.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(OperatorType.HolonType)-[OperatorInDerivedDescriptor]->(DerivedDescriptor.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OperatorType.HolonType)-[OperatorInDerivedDescriptor]->(DerivedDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OperatorInDerivedDescriptor",
+        "TypeNamePlural": "OperatorInDerivedDescriptor",
+        "DisplayName": "OperatorInDerivedDescriptor",
+        "Description": "Inverse discovery for DerivedOperators.",
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDerivedDescriptors]->(DerivedDescriptor.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreparedDerivedDescriptors",
+        "TypeNamePlural": "PreparedDerivedDescriptors",
+        "DisplayName": "PreparedDerivedDescriptors",
+        "Description": "Derived descriptor relationship PreparedDerivedDescriptors.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptorRegistry.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DerivedDescriptor.HolonType)-[DerivedDescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DerivedDescriptor.HolonType)-[DerivedDescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DerivedDescriptorRegistryFor",
+        "TypeNamePlural": "DerivedDescriptorRegistryFor",
+        "DisplayName": "DerivedDescriptorRegistryFor",
+        "Description": "Inverse discovery for PreparedDerivedDescriptors.",
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "EffectiveHolonDescriptorRegistry.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstructDerivedDescriptorRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstructDerivedDescriptorRequest",
+        "TypeNamePlural": "ConstructDerivedDescriptorRequests",
+        "DisplayName": "Construct Effective Descriptor Request",
+        "Description": "Request for the resolved schema of exactly one descriptor."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "NoneRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ConstructDerivedDescriptorRequest.HolonType)-[RequestedDescriptor]->(TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstructDerivedDescriptorResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "ConstructDerivedDescriptorResponse",
+        "TypeNamePlural": "ConstructDerivedDescriptorResponses",
+        "DisplayName": "Construct Effective Descriptor Response",
+        "Description": "Response carrying a transient resolved schema graph."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "ResponseBody",
+          "target": [
+            {
+              "$ref": "DerivedDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstructDerivedDescriptor.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "ConstructDerivedDescriptor",
+        "TypeNamePlural": "ConstructDerivedDescriptorDances",
+        "DisplayName": "Construct Effective Descriptor",
+        "Description": "Resolve the complete schema of a descriptor once in the authoritative Space.",
+        "DanceDescription": "Constructs a transaction-scoped resolved schema without allocating contribution Holons.",
+        "RequiredExecutionContext": "SpaceAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequestType",
+          "target": [
+            {
+              "$ref": "ConstructDerivedDescriptorRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "ConstructDerivedDescriptorResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstructDerivedDescriptor.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "ConstructDerivedDescriptor"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "ConstructDerivedDescriptor.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ConstructDerivedDescriptorRequest.HolonType)-[RequestedDescriptor]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestedDescriptor",
+        "TypeNamePlural": "RequestedDescriptor",
+        "DisplayName": "RequestedDescriptor",
+        "Description": "Derived schema result relationship RequestedDescriptor.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ConstructDerivedDescriptorRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[RequestedByDerivedDescriptorRequest]->(ConstructDerivedDescriptorRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[RequestedByDerivedDescriptorRequest]->(ConstructDerivedDescriptorRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestedByDerivedDescriptorRequest",
+        "TypeNamePlural": "RequestedByDerivedDescriptorRequest",
+        "DisplayName": "RequestedByDerivedDescriptorRequest",
+        "Description": "Inverse discovery for RequestedDescriptor.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ConstructDerivedDescriptorRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DerivedValueKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DerivedValueKind",
+        "TypeNamePlural": "DerivedValueKinds",
+        "DisplayName": "Derived Value Kind",
+        "Description": "Prepared native value-kind projection or semantic classification error. Computed from the same lineage as inherited collections.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DerivedInstanceTypeKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DerivedInstanceTypeKind",
+        "TypeNamePlural": "DerivedInstanceTypeKinds",
+        "DisplayName": "Derived Instance TypeKind",
+        "Description": "Prepared optional Instance TypeKind anchor index into DerivedLineage, or its semantic resolution error. Does not author a TypeKind classification.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DerivedRelationshipPolicy.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DerivedRelationshipPolicy",
+        "TypeNamePlural": "DerivedRelationshipPolicies",
+        "DisplayName": "Derived Relationship Policy",
+        "Description": "Prepared relationship direction and final membership cache policy, or semantic classification error, resolved from the retained descriptor lineage.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         },

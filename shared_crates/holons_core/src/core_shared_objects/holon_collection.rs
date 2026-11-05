@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::slice::{Iter, IterMut};
 use std::vec::IntoIter;
-use tracing::{debug, warn};
+use tracing::warn;
 
 use super::holon::state::AccessType;
 use crate::reference_layer::{HolonReference, ReadableHolon};
@@ -297,7 +297,6 @@ impl HolonCollectionApi for HolonCollection {
     fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let index: Option<&usize> = self.keyed_index.get(key);
-        debug!("Found {:?} at index: {:?}", key, index);
         if let Some(index) = index {
             Ok(Some(self.members[*index].clone()))
         } else {

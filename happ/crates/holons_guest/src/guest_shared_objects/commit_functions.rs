@@ -28,7 +28,7 @@ use base_types::MapString;
 use core_types::{CanonicalKey, HolonError, HolonId, KeyMatch, OccurrenceId, TemporaryId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::TransientReference;
-use integrity_core_types::{short_hex, LocalId, PropertyMap, RelationshipName};
+use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 use sha2::{Digest, Sha256};
 pub use type_names::CorePropertyTypeName::{
     CommitRequestStatus, CommitsAttempted, ValidationViolationCount,
@@ -53,9 +53,10 @@ pub enum CommitOutcome {
 
 type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>;
 
-/// Detailed diagnostics require an explicit build feature in addition to enabled logging.
+/// Detailed diagnostics require an explicit build feature. Guest subscribers accept all levels;
+/// `enabled!` cannot be used to avoid their formatting or host-call costs.
 fn commit_profiling_enabled() -> bool {
-    cfg!(feature = "commit-performance-profiling") && tracing::enabled!(tracing::Level::INFO)
+    cfg!(feature = "commit-performance-profiling")
 }
 
 /// Temporary aggregate timings for locating relationship-commit hot spots.
@@ -191,7 +192,11 @@ impl InverseDedupContext {
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
-    sys_time().ok().map(|timestamp| timestamp.as_micros())
+    if commit_profiling_enabled() {
+        crate::performance::timestamp_micros()
+    } else {
+        None
+    }
 }
 
 fn record_elapsed_micros(started_at: Option<i64>, total: &mut i64) {
@@ -302,8 +307,6 @@ pub fn commit(
     context: &Arc<TransactionContext>,
     staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
-    info!("Entering commit...");
-
     // Clone bound handles once so assessment and Pass 1 share exactly the same workset.
     // Pass 2 still scans the complete Nursery for previously committed sources on retry.
     let mut candidates = Vec::new();
@@ -527,13 +530,10 @@ pub fn commit(
     // === FIRST PASS: Commit Staged Holons ===
     {
         let pass_started_at = performance_timestamp_micros();
-        info!("\n\nStarting FIRST PASS... commit staged holons...");
 
         let mut saved_holons: Vec<HolonReference> = Vec::new();
         for staged_reference in &candidates {
             staged_reference.is_accessible(AccessType::Commit)?;
-
-            trace!("Committing {:?}", staged_reference.temporary_id());
 
             match commit_holon(staged_reference, context, &mut performance_metrics) {
                 Ok(CommitOutcome::Saved { establishes_key_index_entry }) => {
@@ -554,7 +554,6 @@ pub fn commit(
                 }
                 Ok(CommitOutcome::NoAction) => {
                     no_action_targets.remember(staged_reference)?;
-                    trace!("No action required for {:?}", staged_reference.temporary_id());
                 }
                 Err(error) => {
                     let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -661,8 +660,6 @@ pub fn commit(
                 continue;
             }
 
-            debug!("COMMITTING {:#?} relationship", name.0.clone());
-
             // Resolve descriptor metadata before locking the staged collection.
             // `holon_descriptor()` reads `DescribedBy`, which may be the same
             // collection currently being committed.
@@ -735,6 +732,7 @@ pub fn commit(
         }
     }
 
+    #[cfg(feature = "commit-performance-profiling")]
     info!("[commit-relationship-preparation] descriptor_resolutions={} descriptor_resolution_us={} endpoint_resolutions={} endpoint_resolution_us={}",
         performance_metrics.relationship_descriptor_resolution_count,
         performance_metrics.relationship_descriptor_resolution_micros,
@@ -748,7 +746,7 @@ pub fn commit(
         None => "Unknown".to_string(),
     };
 
-    info!("Commit completed: all staged holons processed and commit response constructed.");
+    #[cfg(feature = "commit-performance-profiling")]
     info!(
         "[PERF-688] guest_commit: validation_ms={} validation_candidates={} pass_1_ms={} pass_2_ms={} holon_persists={} holon_persist_ms={} inverse_resolutions={} inverse_resolution_ms={} smartlink_attempts={} smartlink_total_ms={} smartlink_expansions={} smartlink_expansion_ms={} smartlink_expansion_links={} smartlink_action_creates={} smartlink_action_create_ms={} semantic_forward_attempts={} semantic_inverse_attempts={} keyed_owns_index_attempts={} smartlink_inserted={} smartlink_already_present={} owns_key_lookups={} owns_key_lookup_ms={} owns_key_lookup_links={} lineage_target_materializations={} lineage_target_materialization_ms={} exact_historical_get_details_calls={} exact_historical_batch_requests=0 exact_historical_read_ms={} inverse_dedup_expansions={} inverse_dedup_expansion_ms={} inverse_dedup_candidates={} inverse_dedup_membership_checks={} inverse_dedup_skips={}",
         performance_metrics.validation_micros / 1_000,
@@ -802,10 +800,10 @@ fn ensure_rejected_diagnostics(
     Ok(())
 }
 
-/// Logs a one-line summary of the commit response, plus the saved ids behind `debug!`.
+/// Logs a bounded, one-line summary of the commit response.
 ///
 /// Emitted at every exit from `commit`, so an incomplete commit is never reported more thinly
-/// than a successful one. Only ids, counts, and statuses are logged: a commit response can carry
+/// than a successful one. Only counts and statuses are logged: a commit response can carry
 /// user content, and property values have no place in a log.
 fn log_commit_response(
     status: &str,
@@ -822,11 +820,6 @@ fn log_commit_response(
         rejected_count,
         failed_count
     );
-
-    if !saved_ids.is_empty() {
-        let rendered: Vec<String> = saved_ids.iter().map(|id| short_hex(id, 8)).collect();
-        debug!("Commit response saved holons: [{}]", rendered.join(", "));
-    }
 }
 
 /// Records a persistence failure without changing staged lifecycle or validation outcomes.
@@ -880,7 +873,6 @@ fn commit_holon(
         match staged_state {
             // === CREATE NEW NODE ============================================================
             StagedState::ForCreate => {
-                trace!("StagedState::ForCreate — publishing a new HolonNode lineage");
                 staged_holon.prepare_full_relationship_commit_scope()?;
                 let persist_started_at = performance_timestamp_micros();
                 let stored = persist_holon(HolonWriteRequest::PublishRoot {
@@ -892,11 +884,6 @@ fn commit_holon(
                     &mut performance_metrics.holon_persist_micros,
                 );
 
-                debug!(
-                    "Committed root (Create): version_id={} lineage=self",
-                    short_hex(&stored.version_metadata.version_id, 8)
-                );
-
                 staged_holon.to_committed(stored.version_metadata.version_id)?;
                 Ok(CommitOutcome::Saved { establishes_key_index_entry: true })
             }
@@ -906,18 +893,12 @@ fn commit_holon(
                 let source_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_touched_relationship_commit_scope()?;
 
-                debug!(
-                    "Committed graph-only edit (no action): reusing source anchor {}",
-                    short_hex(&source_id, 8)
-                );
-
                 staged_holon.to_committed(source_id)?;
                 Ok(CommitOutcome::Saved { establishes_key_index_entry: false })
             }
 
             // === VERSION-PRODUCING UPDATE ==================================================
             StagedState::ForUpdateNewVersion => {
-                trace!("StagedState::ForUpdateNewVersion — publishing the next HolonNode version");
                 let predecessor_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_full_relationship_commit_scope()?;
                 // Storage decides how a version is written: it resolves the lineage this
@@ -937,12 +918,6 @@ fn commit_holon(
                 // The lineage is logged alongside the predecessor precisely because they differ
                 // once a lineage is more than one version deep: the new version is rooted at the
                 // lineage, not at the holon it supersedes.
-                debug!(
-                    "Committed version (Update): version_id={} lineage_id={} predecessor={}",
-                    short_hex(&stored.version_metadata.version_id, 8),
-                    stored.version_metadata.lineage_root(),
-                    short_hex(&predecessor_id, 8)
-                );
 
                 let new_local_id = stored.version_metadata.version_id;
 
@@ -956,13 +931,7 @@ fn commit_holon(
             )),
 
             // === ALREADY COMMITTED OR NO-OP ================================================
-            StagedState::Committed(_) | StagedState::ForUpdate => {
-                debug!(
-                    "Skipping commit for holon in {:?} state (no action required)",
-                    staged_state
-                );
-                Ok(CommitOutcome::NoAction)
-            }
+            StagedState::Committed(_) | StagedState::ForUpdate => Ok(CommitOutcome::NoAction),
         }
     } else {
         Err(HolonError::InvalidParameter(format!(
@@ -1277,39 +1246,16 @@ fn save_smartlinks_for_collection(
         &mut performance_metrics.relationship_descriptor_resolution_micros,
     );
     let source_id = source.source_local_id();
-    debug!(
-        "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
-        source_id,
-        name.0 .0.clone()
-    );
-    trace!(
-        "Relationship source ref_kind={} ref_id={} source_key={:?}",
-        source.source_reference.reference_kind_string(),
-        source.source_reference.reference_id_string(),
-        source.source_key
-    );
 
     let members = collection.get_members();
-    debug!("Relationship {:?} has {} members to commit", name.0 .0, members.len());
 
     // Resolve targets first so schema and endpoint errors are reported before
     // any SmartLink write for this relationship collection.
     let endpoints_started_at = performance_timestamp_micros();
     let mut resolved_targets = Vec::with_capacity(members.len());
     for (target_index, holon_reference) in members.iter().enumerate() {
-        // Avoid deep Debug formatting here because runtime-bound references can recurse heavily in wasm.
-        debug!(
-            "Target index={} ref_kind={} ref_id={}",
-            target_index,
-            holon_reference.reference_kind_string(),
-            holon_reference.reference_id_string()
-        );
-
         let target_id = match no_action_targets.resolve(holon_reference) {
-            Ok(id) => {
-                debug!("Resolved holon_id for index {}: {:?}", target_index, id);
-                id
-            }
+            Ok(id) => id,
             Err(err) => {
                 warn!(
                     "Failed to get holon_id for relationship {:?} at index {}: {:?}",
@@ -1321,10 +1267,7 @@ fn save_smartlinks_for_collection(
         let target_local_id = require_local_target(&name, target_index, target_id)?;
 
         let key_option = match holon_reference.key() {
-            Ok(k) => {
-                debug!("Resolved key for index {}: {:?}", target_index, k);
-                k
-            }
+            Ok(k) => k,
             Err(err) => {
                 error!(
                     "Error getting key for relationship {:?} at index {}: {:?}",
@@ -1345,7 +1288,7 @@ fn save_smartlinks_for_collection(
     );
     let inverse_canonical_key = canonical_key_from_optional_key(source.source_key.clone())?;
 
-    for (target_index, resolved_target) in resolved_targets.iter().enumerate() {
+    for resolved_target in resolved_targets.iter() {
         // Persist both directions from one resolved endpoint pair so the forward
         // and inverse SmartLinks stay anchored to the same committed source.
         //
@@ -1368,10 +1311,6 @@ fn save_smartlinks_for_collection(
             target_property_cache_candidates: Vec::new(),
         };
 
-        debug!(
-            "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
-            target_index, name.0 .0, source_id, forward_smartlink.target_id
-        );
         persist_smartlink(
             smartlink_write_context,
             forward_smartlink,
@@ -1406,10 +1345,6 @@ fn save_smartlinks_for_collection(
             target_property_cache_candidates: Vec::new(),
         };
 
-        debug!(
-            "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
-            target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
-        );
         persist_smartlink(
             smartlink_write_context,
             inverse_smartlink,
@@ -1537,12 +1472,12 @@ mod tests {
         use holons_core::core_shared_objects::{
             space_manager::HolonSpaceManager, ServiceRoutingPolicy,
         };
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let mut references = Vec::new();
         for (key, source, committed) in [
@@ -1588,12 +1523,12 @@ mod tests {
             space_manager::HolonSpaceManager, ServiceRoutingPolicy,
         };
 
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let transient = context.mutation().new_holon(Some("unchanged-target".into()))?;
         let target = context.mutation().stage_new_holon(transient)?;

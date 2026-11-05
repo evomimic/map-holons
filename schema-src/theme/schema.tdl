@@ -1,5 +1,6 @@
 schema "MAP Theme Schema-v0.1.0" {
   depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Dance Schema-v0.1.0"
   depends_on "MAP Design Tokens Schema-v0.1.0"
   depends_on "MAP Meta Design System Schema-v0.1.0"
   header {
@@ -1431,5 +1432,184 @@ instance Demo1.WarmParchmentTheme.ViewControlTextColor.ThemeTokenAssignment {
   PresentationValue "#fff5e3"
   relationships {
     ForDesignToken -> ViewControlTextColor.DesignToken
+  }
+}
+
+
+holon LoadTheme.DanceType {
+  header {
+    description: "Loads the selected Theme in its authoritative Space and returns consolidated semantic token bindings."
+    display_name: "LoadTheme"
+    display_plural: "LoadTheme results"
+    plural: "LoadThemeResults"
+  }
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+  RequiredExecutionContext SpaceAuthoritative
+  DanceDescription "Load the affording Theme's token bindings as one browser-independent projection."
+  relationships {
+    DanceAffordedBy -> Theme.HolonType
+    Response -> LoadThemeResponse.DanceResponseType
+  }
+}
+
+instance GuestLoadTheme.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "GuestLoadTheme"
+  relationships {
+    ForDance -> LoadTheme.DanceType
+  }
+}
+
+holon LoadThemeResponse.DanceResponseType {
+  header {
+    description: "Canonical response containing the complete browser-independent Theme projection."
+    display_name: "LoadThemeResponse"
+    display_plural: "LoadThemeResponse results"
+    plural: "LoadThemeResponseResults"
+  }
+  type MetaDanceResponseType.MetaHolonType
+  extends DanceResponseType.HolonType
+  relationships {
+    ResponseBody -> LoadedTheme.Projection
+  }
+}
+
+holon LoadedTheme.Projection {
+  header {
+    description: "Transient Theme and MDS identities plus ordered token references and consolidated scalar binding data."
+    display_name: "LoadedTheme"
+    display_plural: "LoadedTheme results"
+    plural: "LoadedThemeResults"
+  }
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  relationships {
+    InstanceProperties -> LoadedThemeData.PropertyType
+    InstanceRelationships -> [
+      (LoadedTheme.Projection)-[LoadedThemeSource]->(Theme.HolonType),
+      (LoadedTheme.Projection)-[LoadedMetaDesignSystem]->(MetaDesignSystem.HolonType),
+      (LoadedTheme.Projection)-[LoadedDesignTokens]->(DesignToken.HolonType)
+    ]
+  }
+}
+
+property LoadedThemeData.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    display_name: "Loaded Theme Data"
+    display_plural: "Loaded Theme Data"
+    plural: "LoadedThemeData"
+    description: "Consolidated JSON scalar metadata: Theme/MDS keys and ordered token version keys, semantic names and presentation values. Token references are carried in matching order by LoadedDesignTokens."
+  }
+}
+
+relationship (LoadedTheme.Projection)-[LoadedThemeSource]->(Theme.HolonType) {
+  header {
+    description: "Exact Theme version whose bindings were loaded."
+    display_name: "LoadedThemeSource"
+    display_plural: "LoadedThemeSource results"
+    plural: "LoadedThemeSourceResults"
+  }
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source LoadedTheme.Projection
+  target Theme.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> LoadedThemeProjectionOf
+  }
+}
+
+inverse relationship (Theme.HolonType)-[LoadedThemeProjectionOf]->(LoadedTheme.Projection) {
+  header {
+    description: "Transient loading projections sourced from this Theme."
+    display_name: "LoadedThemeProjectionOf"
+    display_plural: "LoadedThemeProjectionOf results"
+    plural: "LoadedThemeProjectionOfResults"
+  }
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Theme.HolonType
+  target LoadedTheme.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (LoadedTheme.Projection)-[LoadedMetaDesignSystem]->(MetaDesignSystem.HolonType) {
+  header {
+    description: "Exact MetaDesignSystem governing the loaded Theme."
+    display_name: "LoadedMetaDesignSystem"
+    display_plural: "LoadedMetaDesignSystem results"
+    plural: "LoadedMetaDesignSystemResults"
+  }
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source LoadedTheme.Projection
+  target MetaDesignSystem.HolonType
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> LoadedMetaDesignSystemProjectionOf
+  }
+}
+
+inverse relationship (MetaDesignSystem.HolonType)-[LoadedMetaDesignSystemProjectionOf]->(LoadedTheme.Projection) {
+  header {
+    description: "Transient Theme projections for this MetaDesignSystem."
+    display_name: "LoadedMetaDesignSystemProjectionOf"
+    display_plural: "LoadedMetaDesignSystemProjectionOf results"
+    plural: "LoadedMetaDesignSystemProjectionOfResults"
+  }
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source MetaDesignSystem.HolonType
+  target LoadedTheme.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (LoadedTheme.Projection)-[LoadedDesignTokens]->(DesignToken.HolonType) {
+  header {
+    description: "Exact token versions in the same order as the consolidated scalar bindings."
+    display_name: "LoadedDesignTokens"
+    display_plural: "LoadedDesignTokens results"
+    plural: "LoadedDesignTokensResults"
+  }
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source LoadedTheme.Projection
+  target DesignToken.HolonType
+  deletion_semantic Allow
+  ordered
+  duplicates
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> LoadedDesignTokenProjectionOf
+  }
+}
+
+inverse relationship (DesignToken.HolonType)-[LoadedDesignTokenProjectionOf]->(LoadedTheme.Projection) {
+  header {
+    description: "Transient projections containing a binding for this DesignToken version."
+    display_name: "LoadedDesignTokenProjectionOf"
+    display_plural: "LoadedDesignTokenProjectionOf results"
+    plural: "LoadedDesignTokenProjectionOfResults"
+  }
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source DesignToken.HolonType
+  target LoadedTheme.Projection
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
   }
 }

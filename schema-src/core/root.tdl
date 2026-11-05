@@ -112,6 +112,7 @@ abstract holon MetaTypeDescriptor.HolonType {
   relationships {
     ValidationBindings -> [
       AtMostOneDirectParent.ValidationRule,
+      AbstractPropertyParent.ValidationRule,
       AcyclicExtendsLineage.ValidationRule,
       ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule,
       UniqueTypeDescriptorRoot.ValidationRule,

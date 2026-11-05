@@ -39,8 +39,10 @@ pub enum MapResultWire {
     Reference(HolonReferenceWire),
 
     VisualizerSelection(VisualizerSelectionWire),
+    LoadedTheme(LoadedThemeWire),
     VisualizerDiscovery(VisualizerDiscoveryWire),
     VisualizerUsageSelection(VisualizerUsageSelectionWire),
+    VisualizerUsagePersistence(VisualizerUsagePersistenceWire),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
@@ -76,12 +78,23 @@ pub struct VisualizerSelectionWire {
     pub selected: HolonReferenceWire,
     pub requested_kind: VisualizerKindWire,
     pub alternatives_available: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<VisualizerUsageSelectionWire>,
 }
 
 /// Wire-safe qualified relationship discovery result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct QualifiedRelationshipWire {
     pub descriptor: HolonReferenceWire,
+}
+
+/// Complete projection; conversion projects handles without reading source holons.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LoadedThemeWire {
+    pub theme: HolonReferenceWire,
+    pub meta_design_system: HolonReferenceWire,
+    pub tokens: Vec<HolonReferenceWire>,
+    pub data: holons_core::dances::ThemeData,
 }
 
 impl From<MapResult> for MapResultWire {
@@ -94,6 +107,12 @@ impl From<MapResult> for MapResultWire {
                 })
             }
             MapResult::ValidationFindings(findings) => MapResultWire::ValidationFindings(findings),
+            MapResult::LoadedTheme(loaded) => MapResultWire::LoadedTheme(LoadedThemeWire {
+                theme: (&loaded.theme).into(),
+                meta_design_system: (&loaded.meta_design_system).into(),
+                tokens: loaded.tokens.iter().map(HolonReferenceWire::from).collect(),
+                data: loaded.data,
+            }),
             MapResult::None => MapResultWire::None,
             MapResult::UndoComplete => MapResultWire::UndoComplete,
             MapResult::RedoComplete => MapResultWire::RedoComplete,
@@ -101,6 +120,13 @@ impl From<MapResult> for MapResultWire {
             MapResult::RedoToMarkerComplete => MapResultWire::RedoToMarkerComplete,
             MapResult::TransactionCreated { tx_id } => MapResultWire::TransactionCreated { tx_id },
             MapResult::Reference(r) => MapResultWire::Reference(HolonReferenceWire::from(&r)),
+            MapResult::VisualizerUsagePersistence(status) => {
+                Self::VisualizerUsagePersistence(VisualizerUsagePersistenceWire {
+                    batch_id: status.batch_id,
+                    state: status.state,
+                    error: status.error,
+                })
+            }
             MapResult::VisualizerUsageSelection(selection) => {
                 Self::VisualizerUsageSelection(VisualizerUsageSelectionWire {
                     usage: selection.usage.into(),
@@ -113,6 +139,11 @@ impl From<MapResult> for MapResultWire {
                     selected: HolonReferenceWire::from(&selection.selected),
                     requested_kind: selection.requested_kind.into(),
                     alternatives_available: selection.alternatives_available,
+                    usage: selection.usage.map(|usage| VisualizerUsageSelectionWire {
+                        usage: usage.usage.into(),
+                        initialized: usage.initialized,
+                        report_session: usage.report_session,
+                    }),
                 })
             }
             MapResult::VisualizerDiscovery(discovery) => {
@@ -260,4 +291,12 @@ pub struct VisualizerUsageSelectionWire {
     pub usage: HolonReferenceWire,
     pub initialized: bool,
     pub report_session: String,
+}
+
+/// Transport status contains no background transaction or bound reference handles.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerUsagePersistenceWire {
+    pub batch_id: base_types::MapString,
+    pub state: String,
+    pub error: Option<String>,
 }

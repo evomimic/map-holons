@@ -363,7 +363,7 @@ pub(crate) fn assess_holon(
             _ => return Err(HolonError::EmptyField("TypeName".into()).into()),
         }
     }
-    for (name, target) in crate::schema_rules::authored_targets(subject)? {
+    for (name, target) in crate::schema_rules::authored_targets(subject, packages)? {
         if !declared_names.contains(&name.to_string()) {
             // Delivered checks assess declaredness per subject; none reads a combined graph-only bucket.
             finding(collector, CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() }, None,

@@ -12,15 +12,36 @@ use super::space_manager::HolonSpaceManager;
 
 /// A read capability bound to a holon space rather than a caller transaction.
 ///
-/// Saved references retain this handle.  A cache miss is executed using a fresh,
-/// restricted transaction owned by the space; that transaction is deliberately
-/// not exposed through the reference API.
+/// Saved references retain this handle. Cache managers own the private execution
+/// contexts needed to fill saved-state caches.
 #[derive(Clone, Debug)]
 pub struct SpaceReadHandle {
     space_manager: Arc<HolonSpaceManager>,
 }
 
 impl SpaceReadHandle {
+    /// Populates explicit saved identities through a restricted cache-read context.
+    /// Success is implicit and ordinarily evictable; no retention leases are returned.
+    pub fn ensure_cached(
+        &self,
+        ids: &[HolonId],
+    ) -> Vec<super::cache_population::CachePopulationError> {
+        if ids.is_empty() {
+            return Vec::new();
+        }
+        self.space_manager.get_cache_access().ensure_cached(ids)
+    }
+
+    /// Captures the owning space's current Session without inspecting cache residency.
+    pub fn session(&self) -> Result<Arc<super::space_session::SpaceSession>, HolonError> {
+        self.space_manager.session()
+    }
+
+    /// Retires this space proxy's registered derived state without overriding read policies.
+    pub fn reset_session(&self) -> Result<(), HolonError> {
+        self.space_manager.reset_session()
+    }
+
     pub(crate) fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
         Self { space_manager }
     }
@@ -29,32 +50,15 @@ impl SpaceReadHandle {
         &self,
         holon_id: &HolonId,
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
-        let cache = self.space_manager.get_cache_access();
-        if let Some(cached) = cache.get_cached_rc_holon(holon_id)? {
-            return Ok(cached);
-        }
-        self.with_cache_context(|context| {
-            context
-                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
-                .get_rc_holon(&context, holon_id)
-        })
+        self.space_manager.get_cache_access().get_rc_holon(holon_id)
     }
 
     pub(crate) fn get_related_holons(
         &self,
-        source_holon_id: &HolonId,
-        relationship_name: &RelationshipName,
+        source: &HolonId,
+        name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        self.with_cache_context(|context| {
-            context.get_holon_service().prepare_relationship_policy_internal(
-                &context,
-                source_holon_id,
-                relationship_name,
-            )?;
-            context
-                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
-                .get_related_holons(&context, source_holon_id, relationship_name)
-        })
+        self.space_manager.get_cache_access().get_related_holons(source, name)
     }
 
     pub(crate) fn get_related_holons_with_hint(
@@ -63,25 +67,14 @@ impl SpaceReadHandle {
         name: &RelationshipName,
         hint: crate::RelationshipReadHint,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        self.with_cache_context(|context| {
-            context
-                .get_holon_service()
-                .prepare_relationship_policy_internal(&context, source, name)?;
-            context
-                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
-                .get_related_holons_with_hint(&context, source, name, hint)
-        })
+        self.space_manager.get_cache_access().get_related_holons_with_hint(source, name, hint)
     }
 
     pub(crate) fn retain_holon(
         &self,
         id: &HolonId,
     ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
-        self.with_cache_context(|context| {
-            context
-                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
-                .retain_holon(&context, id)
-        })
+        self.space_manager.get_cache_access().retain_holon(id)
     }
 
     pub(crate) fn prepare_relationships(
@@ -89,49 +82,48 @@ impl SpaceReadHandle {
         source: &HolonId,
         names: &[RelationshipName],
     ) -> Result<(), HolonError> {
-        self.with_cache_context(|context| {
-            for name in names {
-                context
-                    .get_holon_service()
-                    .prepare_relationship_policy_internal(&context, source, name)?;
-            }
-            context
-                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
-                .prepare_relationships(&context, source, names)
-        })
+        self.space_manager.get_cache_access().prepare_relationships(source, names)
     }
 
     pub(crate) fn get_all_related_holons(
         &self,
-        source_holon_id: &HolonId,
+        source: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        self.with_cache_context(|context| {
-            context
-                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
-                .get_all_related_holons(&context, source_holon_id)
-        })
+        self.space_manager.get_cache_access().get_all_related_holons(source)
     }
 
     pub(crate) fn same_space(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.space_manager, &other.space_manager)
     }
 
-    pub(crate) fn open_resolution_context(
+    /// Reads the associated Session registry without allocating an execution context.
+    pub(crate) fn descriptor_registry(
+        &self,
+    ) -> Option<Arc<super::descriptor_registry::EffectiveHolonDescriptorRegistry>> {
+        self.space_manager.descriptor_registry()
+    }
+
+    /// Resolves a saved semantic key through the existing service/Dance path.
+    /// Only the returned Space-bound reference escapes; temporary transport state is disposed.
+    pub(crate) fn get_saved_holon_by_key(
+        &self,
+        key: &base_types::MapString,
+    ) -> Result<crate::SmartReference, HolonError> {
+        let context = self
+            .space_manager
+            .get_transaction_manager()
+            .open_private_saved_read(self.space_manager.clone())?;
+        self.space_manager.get_holon_service().get_saved_holon_by_key_internal(&context, key)
+    }
+
+    /// Allocates an owner only for descriptor construction without a Session registry.
+    /// The returned transient graph retains this owner; it cannot be disposed at call exit.
+    /// Callers with an existing owner must use that owner instead.
+    pub(crate) fn open_descriptor_construction_context(
         &self,
     ) -> Result<Arc<super::transactions::TransactionContext>, HolonError> {
         self.space_manager
             .get_transaction_manager()
             .open_private_restricted_cache_read_transaction(Arc::clone(&self.space_manager))
-    }
-
-    fn with_cache_context<T>(
-        &self,
-        operation: impl FnOnce(Arc<super::transactions::TransactionContext>) -> Result<T, HolonError>,
-    ) -> Result<T, HolonError> {
-        let context = self
-            .space_manager
-            .get_transaction_manager()
-            .open_private_restricted_cache_read_transaction(Arc::clone(&self.space_manager))?;
-        operation(context)
     }
 }

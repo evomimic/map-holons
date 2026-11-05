@@ -9,10 +9,15 @@ use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
 /// Runtime wrapper for relationship descriptors.
 ///
-/// Relationship-specific structural and inverse-link behavior will accumulate
-/// here in later phases while the wrapper itself stays just a typed view.
+/// # Derived payload
+/// Acquires direction and final membership cache policy from one retained Extends
+/// lineage. Declared definitional membership reuses; otherwise inherited optional
+/// maximum age selects Fresh or bounded reuse. Local endpoint declarations remain
+/// references. Saved products follow the Space Session; mutable products share only
+/// within frozen validation. Private derived state is never serialized.
 pub struct RelationshipDescriptor {
     holon: HolonReference,
+    derived_fields: super::derived_descriptor::DerivedFields,
 }
 
 /// Physical target semantics selected by a completed relationship descriptor.
@@ -77,7 +82,7 @@ impl RelationshipDescriptor {
 
     /// Wraps an already-resolved descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
-        Self { holon }
+        Self { holon, derived_fields: Default::default() }
     }
 
     /// Projects the shared descriptor header view for this descriptor holon.
@@ -93,16 +98,21 @@ impl RelationshipDescriptor {
     /// Maximum age of cached mutable membership in milliseconds. Missing or zero
     /// requires fresh reads. This read policy is inherited along descriptor Extends.
     pub fn membership_cache_max_age_millis(&self) -> Result<u64, HolonError> {
-        match accessor_helpers::effective_property_value(
-            &self.holon,
-            "MembershipCacheMaxAgeMillis",
-        )? {
-            None => Ok(0),
-            Some(base_types::BaseValue::IntegerValue(value)) if value.0 >= 0 => Ok(value.0 as u64),
-            _ => Err(HolonError::InvalidParameter(
-                "MembershipCacheMaxAgeMillis must be a nonnegative integer".into(),
-            )),
-        }
+        self.derived_fields.read(&self.holon, |derived| {
+            super::derived_descriptor::relationship_max_age(&derived.lineage()?)?
+        })
+    }
+
+    /// Final policy for this exact declared or inverse relationship identity.
+    /// Cache entries retain this scalar so hot membership hits need no acquisition.
+    pub fn membership_cache_policy(&self) -> Result<crate::RelationshipCachePolicy, HolonError> {
+        self.derived_fields.read(&self.holon, |derived| Ok(derived.relationship_policy()?.policy))
+    }
+
+    /// Direction prepared with the same lineage as the final membership policy.
+    pub fn direction(&self) -> Result<super::RelationshipDirection, HolonError> {
+        self.derived_fields
+            .read(&self.holon, |derived| Ok(derived.relationship_policy()?.direction))
     }
 
     /// Returns whether related members have schema-significant order.
@@ -195,6 +205,60 @@ mod tests {
     use base_types::{MapEnumValue, MapString};
     use core_types::HolonError;
     use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
+
+    #[test]
+    fn derived_policy_preserves_direction_inheritance_and_frozen_reuse() -> Result<(), HolonError> {
+        use crate::RelationshipCachePolicy as Policy;
+        let context = build_context();
+        let mut anchor =
+            new_descriptor_holon(&context, "declared", "DeclaredRelationshipType", "Relationship")?;
+        anchor.with_property_value("MembershipCacheMaxAgeMillis", 150_i64)?;
+        let mut relation = new_descriptor_holon(&context, "relation", "Outgoing", "Relationship")?;
+        relation.with_property_value(CorePropertyTypeName::IsDefinitional, false)?;
+        relation
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.clone().into()])?;
+        let descriptor = RelationshipDescriptor::from_holon(relation.clone().into());
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::MaxAgeMillis(150));
+        relation.with_property_value("MembershipCacheMaxAgeMillis", 0_i64)?;
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::Fresh);
+        relation.with_property_value(CorePropertyTypeName::IsDefinitional, true)?;
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::Reuse);
+        let inverse =
+            new_descriptor_holon(&context, "inverse", "InverseRelationshipType", "Relationship")?;
+        relation.remove_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.into()])?;
+        relation.add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse.into()])?;
+        // Definitional on an inverse does not make incoming membership immutable.
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::Fresh);
+        relation.with_property_value("MembershipCacheMaxAgeMillis", 70_i64)?;
+        let _scope = context.begin_frozen_validation()?;
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::MaxAgeMillis(70));
+        let allocated = context.lookup().transient_count()?;
+        assert_eq!(
+            RelationshipDescriptor::from_holon(relation.into()).direction()?,
+            super::super::RelationshipDirection::Inverse
+        );
+        assert_eq!(context.lookup().transient_count()?, allocated);
+        Ok(())
+    }
+
+    #[test]
+    fn derived_policy_omission_is_fresh_and_invalid_age_is_not_published_as_fresh(
+    ) -> Result<(), HolonError> {
+        use crate::RelationshipCachePolicy as Policy;
+        let context = build_context();
+        let mut relation =
+            new_descriptor_holon(&context, "inverse", "InverseRelationshipType", "Relationship")?;
+        let descriptor = RelationshipDescriptor::from_holon(relation.clone().into());
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::Fresh);
+        relation.with_property_value("MembershipCacheMaxAgeMillis", -1_i64)?;
+        assert!(matches!(
+            descriptor.membership_cache_policy(),
+            Err(HolonError::InvalidParameter(_))
+        ));
+        relation.with_property_value("MembershipCacheMaxAgeMillis", 35_i64)?;
+        assert_eq!(descriptor.membership_cache_policy()?, Policy::MaxAgeMillis(35));
+        Ok(())
+    }
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {

@@ -16,7 +16,6 @@
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tracing::{debug, info};
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::query_layer::{Node, NodeCollection, QueryPathMap};
@@ -45,12 +44,8 @@ use core_types::HolonError;
 ///
 pub fn commit_dance(
     context: &Arc<TransactionContext>,
-    request: DanceRequest,
+    _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    if let RequestBody::TransientReference(root) = request.body {
-        context.set_descriptor_registry_root(&root)?;
-    }
-    info!("----- Entered commit_dance");
     let commit_response = context.commit()?;
     Ok(ResponseBody::HolonReference(commit_response.into()))
 }
@@ -77,7 +72,6 @@ pub fn delete_holon_dance(
     context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered delete_holon dance");
     match request.dance_type {
         DanceType::DeleteMethod(holon_id) => {
             // Call the new `delete_holon_api` function
@@ -106,7 +100,6 @@ pub fn get_all_holons_dance(
     // TODO: add support for descriptor parameter
     //
     //
-    info!("----- Entered get_all_holons dance ----");
     Ok(ResponseBody::HolonCollection(context.lookup().get_all_holons()?))
 }
 
@@ -125,7 +118,6 @@ pub fn get_holon_by_id_dance(
     context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered get_holon_by_id_dance.");
     let holon_id = match request.body {
         RequestBody::HolonId(id) => id,
         _ => {
@@ -134,11 +126,21 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    debug!("asking transaction context to fetch holon");
     let holon = context.fetch_holon_internal(&holon_id)?;
 
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))
+}
+
+/// Fetches explicit saved identities, preserving independent failures and successes.
+pub fn get_holons_by_ids_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    let RequestBody::SavedHolonIds(ids) = request.body else {
+        return Err(HolonError::InvalidParameter("Expected SavedHolonIds".into()));
+    };
+    Ok(ResponseBody::SavedHolonHydration(context.fetch_holons_internal(&ids)?))
 }
 
 /// Resolves an exact key in the current persisted holon space to its sole visible lineage head.
@@ -175,7 +177,6 @@ pub fn load_holons_dance(
     context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("----- Entered load holons dance");
     // Validate dance type
     if request.dance_type != DanceType::Standalone {
         return Err(HolonError::InvalidParameter(
@@ -215,22 +216,39 @@ pub fn query_relationships_dance(
     _context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("Entered query_relationships_dance");
-
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
-            let relationship_name =
-                match request.body {
-                    RequestBody::QueryExpression(expression) => expression.relationship_name,
-                    _ => return Err(HolonError::InvalidParameter(
-                        "Invalid RequestBody: expected QueryExpression with relationship name, \
-                        didn't get one"
-                            .to_string(),
-                    )),
-                };
-
-            let result_collection = evaluate_query(node_collection, relationship_name)?;
-            Ok(ResponseBody::NodeCollection(result_collection))
+            let expression = match request.body {
+                RequestBody::QueryExpression(expression) => expression,
+                _ => return Err(HolonError::InvalidParameter("Expected QueryExpression".into())),
+            };
+            if expression.include_relationship_descriptor {
+                if node_collection.members.len() != 1 {
+                    return Err(HolonError::InvalidParameter(
+                        "Descriptor-associated membership requires one source".into(),
+                    ));
+                }
+                let source = &node_collection.members[0].source_holon;
+                let descriptor = crate::descriptors::bind_relationship_policy(
+                    source,
+                    &expression.relationship_name,
+                )?;
+                let collection = source
+                    .related_holons(&expression.relationship_name)?
+                    .read()
+                    .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                    .clone();
+                Ok(ResponseBody::SavedRelationship(
+                    crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+                        collection,
+                        descriptor: Some(descriptor),
+                    },
+                ))
+            } else {
+                let result_collection =
+                    evaluate_query(node_collection, expression.relationship_name)?;
+                Ok(ResponseBody::NodeCollection(result_collection))
+            }
         }
         _ => Err(HolonError::InvalidParameter(
             "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),
@@ -251,8 +269,6 @@ pub fn fetch_all_related_holons_dance(
     _context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("Entered fetch_all_related_holons_dance");
-
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
             if request.body != RequestBody::None {
@@ -295,4 +311,33 @@ pub fn fetch_all_related_holons_dance(
             "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),
         )),
     }
+}
+
+/// Terminal guest adapter for the read-only Visualizer Usage service transport.
+pub fn resolve_visualizer_usage_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter(
+            "Expected standalone Usage resolution transport".into(),
+        ));
+    }
+    let RequestBody::TargetHolons(name, inputs) = request.body else {
+        return Err(HolonError::InvalidParameter("Expected Usage resolution inputs".into()));
+    };
+    let [visualizer, subject_type, slot] = inputs.as_slice() else {
+        return Err(HolonError::InvalidParameter(
+            "Usage resolution requires Visualizer, subject type and Slot".into(),
+        ));
+    };
+    if name.to_string() != "UsageResolutionInputs"
+        || inputs.iter().any(|r| !matches!(r, HolonReference::Smart(_)))
+    {
+        return Err(HolonError::InvalidParameter("Usage resolution requires saved inputs".into()));
+    }
+    context
+        .resolve_visualizer_usage(visualizer, subject_type, slot)?
+        .into_projection(context)
+        .map(ResponseBody::HolonReference)
 }

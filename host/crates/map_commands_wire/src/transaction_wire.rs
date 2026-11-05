@@ -78,6 +78,9 @@ pub enum TransactionActionWire {
     },
 
     SelectVisualizer(VisualizerSelectionRequestWire),
+    LoadTheme {
+        theme: HolonReferenceWire,
+    },
     ProjectVisualizerDiscovery {
         snapshot: MapString,
     },
@@ -94,6 +97,23 @@ pub enum TransactionActionWire {
         request: VisualizerSelectionRequestWire,
         candidate: HolonReferenceWire,
     },
+    /// Open an explicit startup or gesture round for independent Usage persistence.
+    BeginVisualizerUsageBatch,
+    InvalidateVisualizerBindings,
+    /// Hand off a closed round to background commit; never await backend completion.
+    SubmitVisualizerUsageBatch,
+    /// Inspect the status of a previously accepted background batch.
+    GetVisualizerUsagePersistence {
+        batch_id: MapString,
+    },
+    /// Explicitly retry retained work, including release of a known service pause.
+    RetryVisualizerUsagePersistence {
+        batch_id: MapString,
+    },
+    /// Capture a subsequent live Usage revision in the current round.
+    SaveVisualizerUsage {
+        usage: HolonReferenceWire,
+    },
     FindVisualizerUsage {
         request: VisualizerSelectionRequestWire,
         selected: HolonReferenceWire,
@@ -101,6 +121,15 @@ pub enum TransactionActionWire {
     SelectVisualizerUsage {
         request: VisualizerSelectionRequestWire,
         selected: HolonReferenceWire,
+        /// Explicit configuration choice bypasses default ancestry disambiguation.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        usage: Option<HolonReferenceWire>,
+    },
+    /// Fork configuration for the actual subject descriptor only on explicit request.
+    SpecializeVisualizerUsage {
+        request: VisualizerSelectionRequestWire,
+        selected: HolonReferenceWire,
+        usage: HolonReferenceWire,
     },
     RecordVisualizerUse {
         request: VisualizerSelectionRequestWire,
@@ -334,16 +363,45 @@ impl TransactionActionWire {
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
             }
+            TransactionActionWire::LoadTheme { theme } => {
+                Ok(TransactionAction::LoadTheme { theme: theme.bind(context)? })
+            }
+            TransactionActionWire::InvalidateVisualizerBindings => {
+                Ok(TransactionAction::InvalidateVisualizerBindings)
+            }
+            TransactionActionWire::BeginVisualizerUsageBatch => {
+                Ok(TransactionAction::BeginVisualizerUsageBatch)
+            }
+            TransactionActionWire::SubmitVisualizerUsageBatch => {
+                Ok(TransactionAction::SubmitVisualizerUsageBatch)
+            }
+            TransactionActionWire::GetVisualizerUsagePersistence { batch_id } => {
+                Ok(TransactionAction::GetVisualizerUsagePersistence { batch_id })
+            }
+            TransactionActionWire::RetryVisualizerUsagePersistence { batch_id } => {
+                Ok(TransactionAction::RetryVisualizerUsagePersistence { batch_id })
+            }
+            TransactionActionWire::SaveVisualizerUsage { usage } => {
+                Ok(TransactionAction::SaveVisualizerUsage { usage: usage.bind(context)? })
+            }
             TransactionActionWire::FindVisualizerUsage { request, selected } => {
                 Ok(TransactionAction::FindVisualizerUsage {
                     request: request.bind(context)?,
                     selected: selected.bind(context)?,
                 })
             }
-            TransactionActionWire::SelectVisualizerUsage { request, selected } => {
+            TransactionActionWire::SelectVisualizerUsage { request, selected, usage } => {
                 Ok(TransactionAction::SelectVisualizerUsage {
                     request: request.bind(context)?,
                     selected: selected.bind(context)?,
+                    usage: usage.map(|value| value.bind(context)).transpose()?,
+                })
+            }
+            TransactionActionWire::SpecializeVisualizerUsage { request, selected, usage } => {
+                Ok(TransactionAction::SpecializeVisualizerUsage {
+                    request: request.bind(context)?,
+                    selected: selected.bind(context)?,
+                    usage: usage.bind(context)?,
                 })
             }
             TransactionActionWire::RecordVisualizerUse {

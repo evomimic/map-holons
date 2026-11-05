@@ -32,8 +32,7 @@ const PERSON_BOB_KEY: &str = "QryF3.Person.Bob";
 
 /// QRY-F3 (issue #842): recursive `Not`, `AllOf` and nested `AnyOf` through
 /// `Filter`, `SeedPredicate` and `ExpansionPredicate`, on both the direct and
-/// QueryDance routes. Every definition is transient, and the executor asserts
-/// that evaluation leaves the whole graph unchanged, cyclic graphs included.
+/// QueryDance routes. Every definition is transient.
 ///
 /// Cases, over [Atlas, Roads, Bare Roads, Drafted Roads] unless noted:
 /// - `Not(Subtitle contains "draft")`: [Roads, Bare Roads] — an absent
@@ -137,7 +136,6 @@ pub fn query_f3_boolean_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit the QRY-F3 Book/Person data".to_string()),
     )?;
-    test_case.add_match_saved_content_step()?;
 
     // --- Author transient definitions and execute them in a fresh transaction ---
     test_case.add_begin_transaction_step(

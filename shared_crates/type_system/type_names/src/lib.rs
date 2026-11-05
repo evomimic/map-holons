@@ -1,3 +1,5 @@
+pub mod theme_names;
+pub use theme_names::*;
 pub mod command_names;
 pub mod core_definition_roles;
 pub mod holon_names;

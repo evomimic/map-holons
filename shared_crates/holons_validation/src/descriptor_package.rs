@@ -4,7 +4,8 @@ use crate::schema_view::SchemaWorkset;
 use core_types::{HolonError, RelationshipName};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext, ContractContributions,
-    DefinitionIdentity, EffectiveRelationshipMember, HolonReference, ReadableHolon,
+    DefinitionIdentity, EffectiveRelationshipMember, ExtendsLineageDiagnosis, HolonReference,
+    ReadableHolon,
 };
 use std::{
     cell::Cell,
@@ -39,6 +40,7 @@ pub(crate) struct DescriptorPackages {
     definitions: HashMap<DefinitionIdentity, PreparedDefinition>,
     _content: Vec<holons_core::core_shared_objects::holon_cache::SavedHolonRetention>,
     preparation: crate::PreparationMetrics,
+    diagnoses: HashMap<DefinitionIdentity, ExtendsLineageDiagnosis>,
 }
 
 /// Shared kernel products; configuration and other domain values remain on the holons.
@@ -83,7 +85,7 @@ impl DescriptorPackages {
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
     ) -> Result<Self, HolonError> {
-        Self::construct_with_observer(context, roots, subjects, workset, &mut |_| {})
+        Self::construct_with_observer(context, roots, subjects, workset, &[], &mut |_| {})
     }
 
     pub fn construct_with_observer(
@@ -91,9 +93,17 @@ impl DescriptorPackages {
         roots: &[HolonReference],
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
+        diagnosed: &[ExtendsLineageDiagnosis],
         observer: &mut impl FnMut(crate::AssessmentEvent),
     ) -> Result<Self, HolonError> {
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageDiscovery));
+        let mut diagnoses = HashMap::new();
+        for diagnosis in diagnosed {
+            let subject = &diagnosis.lineage[0];
+            diagnoses
+                .entry(DefinitionIdentity::for_reference(subject, context)?)
+                .or_insert_with(|| diagnosis.clone());
+        }
         let mut edge_demand: BTreeMap<(&str, String), (usize, usize)> = BTreeMap::new();
         let mut packages = HashMap::new();
         for root in roots {
@@ -131,9 +141,12 @@ impl DescriptorPackages {
                 continue;
             }
             observer(crate::AssessmentEvent::PreparationVisitStarted);
-            let distinct_content = content_seen.insert(identity);
+            let distinct_content = content_seen.insert(identity.clone());
             let mut type_name = "MissingDescribedBy".to_string();
             if distinct_content {
+                if !diagnoses.contains_key(&identity) {
+                    diagnoses.insert(identity.clone(), ExtendsLineageDiagnosis::assess(&selected)?);
+                }
                 definitions_to_prepare.push(selected.clone());
                 if let HolonReference::Smart(saved) = &selected {
                     observer(crate::AssessmentEvent::PreparationOperation {
@@ -253,20 +266,38 @@ impl DescriptorPackages {
                 role: "PreparedDefinition",
                 starting: true,
             });
-            // A schema-edit assessment must observe its candidate graph, including
-            // repeated declarations. Saved-only assessments can reuse the shipped snapshot.
-            let prepared = if workset.schemas.is_empty() {
-                holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
-                    context, &reference,
-                )?
-            } else {
-                None
-            };
-            let schema = match prepared {
-                Some(descriptor) => {
-                    holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
+            let identity = DefinitionIdentity::for_reference(&reference, context)?;
+            let diagnosis = &diagnoses[&identity];
+            // Diagnosis remains assessment evidence. Only valid lineages may seed
+            // the runtime's ordinary acquisition path; malformed graphs keep the
+            // existing kernel errors and prerequisite findings.
+            let schema = if let Some(lineage) = diagnosis.valid_lineage() {
+                use type_names::CoreDefinitionRole as Role;
+                if lineage.contains_role(Role::ValueType) {
+                    context.retain_frozen_descriptor_lineage(lineage)?;
+                    holons_core::ValueDescriptor::from_holon(reference.clone()).effective_schema()
+                } else if lineage.contains_role(Role::PropertyType) {
+                    context.retain_frozen_descriptor_lineage(lineage)?;
+                    holons_core::PropertyDescriptor::from_holon(reference.clone())
+                        .effective_schema()
+                } else {
+                    match holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
+                        context, &reference,
+                    )? {
+                        Some(prepared) => {
+                            holons_core::descriptors::ComputedEffectiveSchema::from_prepared(
+                                &prepared,
+                            )
+                        }
+                        None => {
+                            holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(
+                                lineage,
+                            )
+                        }
+                    }
                 }
-                None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+            } else {
+                holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference)
             }
             .map(Arc::new);
             // All name/navigation reads required by validation belong to preparation,
@@ -342,7 +373,22 @@ impl DescriptorPackages {
             definitions,
             _content: content,
             preparation,
+            diagnoses,
         })
+    }
+
+    pub fn valid_lineages(&self) -> impl Iterator<Item = holons_core::ValidExtendsLineage<'_>> {
+        self.diagnoses.values().filter_map(ExtendsLineageDiagnosis::valid_lineage)
+    }
+
+    /// Structural evidence is shared across preparation, package checks and declarations.
+    pub fn diagnosis(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<&ExtendsLineageDiagnosis, HolonError> {
+        self.diagnoses
+            .get(&DefinitionIdentity::for_reference(reference, &self.context)?)
+            .ok_or_else(|| HolonError::InvalidState("Definition was not diagnosed".into()))
     }
 
     /// Supplies reached binding contributions for construction-time role preparation.

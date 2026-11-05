@@ -25,7 +25,7 @@ export interface HolonViewAccess {
   descriptor(): Promise<HolonDescriptorHandle>;
   availableDances(): Promise<ReadonlyArray<HolonReference>>;
   availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>>;
-  availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
+  availableRelationships(multiplicity?: 'singular' | 'plural'): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
   expandRelationship(name: RelationshipName): Promise<HolonCollection>;
 }
 

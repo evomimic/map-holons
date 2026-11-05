@@ -9,6 +9,10 @@ use holons_core::TransientReference;
 
 use crate::ExecutionPolicy;
 
+/// Host execution/recovery coordinator spanning successive space cache Sessions.
+/// Its registry ownership prevents cycles; HolonSpaceManager owns cache retirement.
+/// The active/archived ClientSessions below are transaction recovery lifetimes,
+/// not the saved-state cache Sessions ended by reset.
 pub struct RuntimeSession {
     pub(crate) discoveries: crate::discovery_evidence::DiscoveryEvidence,
     pub(crate) usage_transactions: crate::usage_transactions::UsageTransactions,
@@ -252,6 +256,7 @@ impl RuntimeSession {
         let session = self.get_client_session(tx_id)?;
         self.admission(*tx_id)?.dispose()?;
         self.discoveries.release_transaction(tx_id)?;
+        self.usage_transactions.release_context(*tx_id)?;
         session.context().dispose()?;
         session.cleanup().await?;
         self.active_sessions
@@ -365,12 +370,12 @@ mod tests {
 
     fn build_test_space_manager() -> Arc<HolonSpaceManager> {
         let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
-        Arc::new(HolonSpaceManager::new_with_managers(
+        HolonSpaceManager::new_with_managers(
             None,
             holon_service,
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ))
+        )
     }
 
     fn tx_id(value: u64) -> TxId {

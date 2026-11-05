@@ -87,12 +87,12 @@ impl HolonServiceApi for NoStorage {
 
 /// Shared in-memory context for loader tests; every storage operation fails fast.
 pub(crate) fn context() -> Arc<TransactionContext> {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(NoStorage { fail_lookup: false, allow_commit: false }),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     context
 }
@@ -288,12 +288,12 @@ fn bootstrap_descriptor_absence_is_allowed_but_ambiguity_is_not() -> Result<(), 
 
 #[test]
 fn ordinary_descriptor_absence_is_an_error() {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(NoStorage { fail_lookup: false, allow_commit: false }),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     assert!(matches!(
         crate::response_descriptor::resolve_response_descriptor(
@@ -306,12 +306,12 @@ fn ordinary_descriptor_absence_is_an_error() {
 
 #[test]
 fn bootstrap_does_not_swallow_operational_descriptor_failure() {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(NoStorage { fail_lookup: true, allow_commit: false }),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     context.enable_bootstrap_provisioning();
     context.set_space_holon_id(HolonId::Local(LocalId(vec![1, 2, 3]))).unwrap();
@@ -326,12 +326,12 @@ fn bootstrap_does_not_swallow_operational_descriptor_failure() {
 
 #[test]
 fn retained_descriptor_can_type_response_after_successful_commit() -> Result<(), HolonError> {
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(NoStorage { fail_lookup: false, allow_commit: true }),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let key = "HolonLoadResponse.DanceResponseType";
     let descriptor = context.mutation().new_holon(Some(key.into()))?;

@@ -216,6 +216,61 @@ fn subject_gate_replaces_all_outcomes_and_accepts_corrected_retry() -> Result<()
 }
 
 #[test]
+fn frozen_validation_scope_surrounds_preparation_and_retires_on_every_exit(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("DerivedDescriptor.HolonType")?;
+    let mut candidate = fixture.staged_subject("frozen-scope-subject")?;
+    let target = fixture.nodes["Title.PropertyType"].clone();
+    // The first assessment is rejected; the corrected retry is accepted. Both
+    // must enter the same accessor path before preparation and retire on return.
+    for accepted in [false, true] {
+        if accepted {
+            candidate.with_property_value("Title", "corrected")?;
+        }
+        let mut retained = None;
+        let mut probe = Ok(());
+        let report = validate_commit_candidates_with_profile(
+            &fixture.context,
+            std::slice::from_ref(&candidate),
+            |event| {
+                if matches!(event, AssessmentEvent::Phase(AssessmentPhase::Construction)) {
+                    probe = (|| -> Result<(), HolonError> {
+                        let result =
+                            holons_core::descriptors::DerivedDescriptor::acquire(target.clone())?;
+                        let before = fixture.context.lookup().transient_count()?;
+                        holons_core::descriptors::PropertyDescriptor::from_holon(target.clone())
+                            .effective_constraints()?;
+                        assert_eq!(fixture.context.lookup().transient_count()?, before);
+                        retained = Some(result);
+                        Ok(())
+                    })();
+                }
+            },
+        )?;
+        probe?;
+        assert_eq!(report.is_accepted(), accepted);
+        assert!(matches!(retained.unwrap().lineage(), Err(HolonError::ObsoleteSession)));
+    }
+    // A foreign candidate triggers an operational error after scope entry.
+    let foreign = readiness_fixture()?.staged_subject("foreign")?;
+    let mut retained = None;
+    let mut probe = Ok(());
+    let result = validate_commit_candidates_with_profile(&fixture.context, &[foreign], |event| {
+        if matches!(event, AssessmentEvent::Phase(AssessmentPhase::Construction)) {
+            probe = holons_core::descriptors::DerivedDescriptor::acquire(target.clone())
+                .map(|result| retained = Some(result));
+        }
+    });
+    probe?;
+    assert!(matches!(result, Err(HolonError::CrossTransactionReference { .. })));
+    assert!(matches!(retained.unwrap().lineage(), Err(HolonError::ObsoleteSession)));
+    // The error leaves no active scope behind.
+    let _next = fixture.context.begin_frozen_validation()?;
+    Ok(())
+}
+
+#[test]
 fn subject_gate_rejects_removed_attachment_default_without_refilling() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     fixture
@@ -1005,6 +1060,7 @@ fn descriptor_rules_have_product_routes_and_no_native_value_kind() {
     use CoreValidationRuleName::*;
     for rule in [
         AtMostOneDirectParent,
+        AbstractPropertyParent,
         AcyclicExtendsLineage,
         ExtendsLineageTerminatesAtTypeDescriptor,
         UniqueTypeDescriptorRoot,
@@ -2596,6 +2652,10 @@ fn registrations_match_independent_core_placement_expectations() {
             ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
         ),
         (
+            "AbstractPropertyParent.ValidationRule",
+            ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
+        ),
+        (
             "AcyclicExtendsLineage.ValidationRule",
             ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
         ),
@@ -3008,16 +3068,26 @@ fn encountered_missing_lineage_root_reports_its_prerequisite_finding() -> Result
 }
 
 #[test]
-fn saved_assessment_uses_bound_definitions_without_keyed_anchor_lookup() -> Result<(), HolonError> {
+fn saved_assessment_uses_bound_definitions_without_kind_anchor_lookup() -> Result<(), HolonError> {
     let fixture = readiness_fixture()?.saved_snapshot()?;
     let mut subject = fixture.staged_subject("bound-definition-consumer")?;
     subject.with_property_value("Title", "complete")?;
-    let reads_before = fixture.saved_key_lookup_reads();
+    let reads_before = fixture.saved_key_lookup_keys().len();
     let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
     assert!(report.is_accepted(), "{report:#?}");
-    assert_eq!(fixture.saved_key_lookup_reads(), reads_before);
+    // Complete derived construction resolves only its carrier types. Classification
+    // itself must use bound lineage metadata rather than rediscovering kind anchors.
+    let keys = fixture.saved_key_lookup_keys();
+    assert!(
+        keys[reads_before..].iter().all(|key| matches!(
+            key.0.as_str(),
+            "DerivedDescriptor.HolonType" | "EffectiveHolonDescriptorRegistry.HolonType"
+        )),
+        "{keys:?}"
+    );
 
     // Removing anchor discovery must retain findings for encountered missing inputs.
+    let prepared_reads = fixture.saved_key_lookup_reads();
     subject.remove_property_value("Title")?;
     let report = validate_commit_candidates(&fixture.context, &[subject])?;
     assert!(
@@ -3027,11 +3097,11 @@ fn saved_assessment_uses_bound_definitions_without_keyed_anchor_lookup() -> Resu
         )),
         "{report:#?}"
     );
-    assert_eq!(fixture.saved_key_lookup_reads(), reads_before);
+    assert_eq!(fixture.saved_key_lookup_reads(), prepared_reads);
 
     // Positive control after assessment proves the fixture counter observes keyed lookup.
     fixture.context.lookup().get_saved_holon_by_key(&"Contract".into())?;
-    assert_eq!(fixture.saved_key_lookup_reads(), reads_before + 1);
+    assert_eq!(fixture.saved_key_lookup_reads(), prepared_reads + 1);
     Ok(())
 }
 
@@ -3099,6 +3169,98 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
             findings.iter().any(|finding| finding.message.contains(namespace)),
             "missing {namespace} conflict: {findings:?}"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn property_extension_requires_an_abstract_parent() -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    for (parent_key, abstract_parent, child_abstract, expected) in [
+        ("PropertyType.TypeDescriptor", true, false, false),
+        ("Title.PropertyType", true, false, false),
+        ("Title.PropertyType", true, true, false),
+        ("Title.PropertyType", false, false, true),
+        ("Title.PropertyType", false, true, true),
+        ("Contract", false, false, false),
+    ] {
+        let mut fixture = Fixture::new()?;
+        let roots = c2_kind_semantics(&mut fixture)?;
+        fixture
+            .nodes
+            .get_mut(parent_key)
+            .unwrap()
+            .with_property_value("IsAbstractType", abstract_parent)?;
+        fixture
+            .node("PropertyChild")?
+            .with_property_value("DefinesInstanceTypeKind", false)?
+            .with_property_value("IsAbstractType", child_abstract)?;
+        fixture.link("PropertyChild", CoreRelationshipTypeName::Extends, parent_key)?;
+        let subject = fixture.nodes["PropertyChild"].clone();
+        let prerequisites = StructuralPrerequisites::assess(&subject)?;
+        let mut products = DescriptorRuleProducts::default();
+        products.prepare_kind(&prerequisites, &roots)?;
+        let findings = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::AbstractPropertyParent,
+            &products,
+            &subject,
+        )?;
+        assert_eq!(
+            findings.len(),
+            usize::from(expected),
+            "parent={parent_key}, abstract={abstract_parent}, child abstract={child_abstract}"
+        );
+        if expected {
+            assert!(
+                matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-STRUCT-006")
+            );
+            assert!(findings[0].message.contains("only abstract property descriptors"));
+            // This prerequisite cannot be bypassed by omitting a validation binding.
+            let mut collector = ValidationCollector::default();
+            crate::subject_assessment::dispatch_descriptor(
+                &[],
+                &products,
+                &subject,
+                &mut collector,
+            )?;
+            assert!(collector
+                .into_report()
+                .violations
+                .iter()
+                .any(|finding| finding.rule_key.as_deref()
+                    == Some(CoreValidationRuleName::AbstractPropertyParent.as_str())));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn property_parent_abstractness_must_be_a_local_boolean() -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    for malformed in [false, true] {
+        let mut fixture = Fixture::new()?;
+        let roots = c2_kind_semantics(&mut fixture)?;
+        let parent = fixture.nodes.get_mut("Title.PropertyType").unwrap();
+        if malformed {
+            parent.with_property_value("IsAbstractType", "true")?;
+        } else {
+            parent.remove_property_value("IsAbstractType")?;
+        }
+        fixture.node("PropertyChild")?.with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link("PropertyChild", CoreRelationshipTypeName::Extends, "Title.PropertyType")?;
+        let subject = fixture.nodes["PropertyChild"].clone();
+        let prerequisites = StructuralPrerequisites::assess(&subject)?;
+        let mut products = DescriptorRuleProducts::default();
+        products.prepare_kind(&prerequisites, &roots)?;
+        let findings = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::AbstractPropertyParent,
+            &products,
+            &subject,
+        )?;
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
     }
     Ok(())
 }

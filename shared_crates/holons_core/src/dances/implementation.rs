@@ -52,6 +52,15 @@ impl DanceImplementation {
         bound_invocation: &BoundDanceInvocation,
     ) -> Result<DanceImplementationResult, HolonError> {
         let implementation_name = self.implementation_name()?;
+        if implementation_name
+            == CoreDanceImplementationName::ConstructDerivedDescriptor.as_command_name().0
+        {
+            return implementations::construct_derived_descriptor::invoke(
+                context,
+                bound_invocation,
+            )
+            .map(DanceImplementationResult::Body);
+        }
 
         if implementation_name
             == CoreDanceImplementationName::ConstructEffectiveHolonDescriptor.as_command_name().0
@@ -82,6 +91,20 @@ impl DanceImplementation {
             == DahnDanceImplementationName::LocalMaterializeVisualizer.as_implementation_name()
         {
             return implementations::materialize_visualizer::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
+        }
+
+        if implementation_name
+            == DahnDanceImplementationName::GuestLoadTheme.as_implementation_name()
+        {
+            return implementations::load_theme::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
+        }
+
+        if implementation_name
+            == DahnDanceImplementationName::GuestResolveVisualizerUsage.as_implementation_name()
+        {
+            return implementations::resolve_visualizer_usage::invoke(context, bound_invocation)
                 .map(DanceImplementationResult::Body);
         }
 

@@ -1,7 +1,7 @@
 import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
-  expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
+  expectLoadedTheme, expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
   expectRedoToMarkerComplete, expectReference, expectReferences, expectUndoComplete,
   expectUndoToMarkerComplete, expectValue, expectVisualizerSelection, expectVisualizerDiscovery, expectVisualizerUsageSelection,
 } from '../result-decoders';
@@ -12,6 +12,11 @@ import type {
   SmartReferenceWire, TransactionActionWire, TransientReferenceWire, TxId,
   VisualizerSelectionRequestWire, VisualizerSelectionWire, VisualizerDiscoveryWire,
 } from '../wire-types';
+
+/** One adapter command executes the canonical guest Dance and returns all fields together. */
+export function loadTheme(txId: TxId, theme: HolonReferenceWire): Promise<import('../wire-types').LoadedThemeWire> {
+  return runTransactionCommand(txId, { LoadTheme: { theme } }, expectLoadedTheme);
+}
 
 // ===========================================
 // Transaction Command Builders
@@ -492,10 +497,43 @@ export function findVisualizerUsage(txId: TxId, request: VisualizerSelectionRequ
   return runTransactionCommand(txId, { FindVisualizerUsage: { request, selected } }, result => result === 'None' ? null : expectVisualizerUsageSelection(result));
 }
 
-export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire) {
-  return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected } }, expectVisualizerUsageSelection);
+export function selectVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage?: HolonReferenceWire) {
+  return runTransactionCommand(txId, { SelectVisualizerUsage: { request, selected, ...(usage === undefined ? {} : { usage }) } }, expectVisualizerUsageSelection);
 }
 /** Caller reports a successfully admitted presentation; failed mounts must not report. */
 export function recordVisualizerUse(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire, origin: 'Automatic' | 'Explicit' | 'Exploratory', report: { session: string; occurrence_id: string; sequence: number }): Promise<void> {
   return runTransactionCommand(txId, { RecordVisualizerUse: { request, selected, usage, origin, report } }, expectNone);
+}
+
+/** Explicit Usage batch ownership, independent of subject transaction commit. */
+export function beginVisualizerUsageBatch(txId: TxId): Promise<void> {
+  return runTransactionCommand(txId, 'BeginVisualizerUsageBatch', expectNone);
+}
+export function submitVisualizerUsageBatch(txId: TxId): Promise<string | null> {
+  return runTransactionCommand(txId, 'SubmitVisualizerUsageBatch', result => {
+    if (result === 'None') return null;
+    const value = expectValue(result);
+    if (!('StringValue' in value)) throw new TypeError('Expected Usage batch identity');
+    return value.StringValue;
+  });
+}
+export function getVisualizerUsagePersistence(txId: TxId, batchId: string) {
+  return runTransactionCommand(txId, { GetVisualizerUsagePersistence: { batch_id: batchId } }, result => {
+    if (typeof result !== 'object' || result === null || !('VisualizerUsagePersistence' in result)) throw new TypeError('Expected Usage persistence status');
+    return result.VisualizerUsagePersistence;
+  });
+}
+export function retryVisualizerUsagePersistence(txId: TxId, batchId: string): Promise<void> {
+  return runTransactionCommand(txId, { RetryVisualizerUsagePersistence: { batch_id: batchId } }, expectNone);
+}
+export function saveVisualizerUsage(txId: TxId, usage: HolonReferenceWire): Promise<void> {
+  return runTransactionCommand(txId, { SaveVisualizerUsage: { usage } }, expectNone);
+}
+
+export function invalidateVisualizerBindings(txId: TxId): Promise<void> {
+  return runTransactionCommand(txId, 'InvalidateVisualizerBindings', expectNone);
+}
+
+export function specializeVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire) {
+  return runTransactionCommand(txId, { SpecializeVisualizerUsage: { request, selected, usage } }, expectVisualizerUsageSelection);
 }

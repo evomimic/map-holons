@@ -75,6 +75,8 @@ pub enum ReadableHolonActionWire {
     GetAvailableRelationships,
     GetAvailableRelationshipsFromEffective {
         descriptor: HolonReferenceWire,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        singular: Option<bool>,
     },
     GetEffectiveCardinality,
     GetPropertyIsArray,
@@ -86,6 +88,8 @@ pub enum ReadableHolonActionWire {
         name: RelationshipName,
     },
     GetInstanceProperties,
+    /// Plural navigation of a retained effective descriptor, warming saved targets.
+    GetPluralNavigableRelationships,
     GetPropertyValueKind,
 }
 
@@ -153,6 +157,9 @@ impl ReadableHolonActionWire {
             ReadableHolonActionWire::GetDescribedRelatedHolons { name } => {
                 ReadableHolonAction::GetDescribedRelatedHolons { name }
             }
+            ReadableHolonActionWire::GetPluralNavigableRelationships => {
+                ReadableHolonAction::GetPluralNavigableRelationships
+            }
             ReadableHolonActionWire::GetInstanceProperties => {
                 ReadableHolonAction::GetInstanceProperties
             }
@@ -206,11 +213,13 @@ impl ReadableHolonActionWire {
                 ReadableHolonAction::GetRelationshipIsOrdered
             }
             ReadableHolonActionWire::GetAvailableDances => ReadableHolonAction::GetAvailableDances,
-            ReadableHolonActionWire::GetAvailableRelationshipsFromEffective { descriptor } => {
-                ReadableHolonAction::GetAvailableRelationshipsFromEffective {
-                    descriptor: descriptor.bind(context)?,
-                }
-            }
+            ReadableHolonActionWire::GetAvailableRelationshipsFromEffective {
+                descriptor,
+                singular,
+            } => ReadableHolonAction::GetAvailableRelationshipsFromEffective {
+                descriptor: descriptor.bind(context)?,
+                singular,
+            },
             ReadableHolonActionWire::GetAvailableRelationships => {
                 ReadableHolonAction::GetAvailableRelationships
             }

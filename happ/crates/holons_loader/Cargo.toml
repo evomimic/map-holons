@@ -7,6 +7,9 @@ edition = "2021"
 name = "holons_loader"
 crate-type = ["rlib"]
 
+[features]
+performance-profiling = []
+
 [dependencies]
 holons_prelude = { workspace = true }
 core_types = { workspace = true }

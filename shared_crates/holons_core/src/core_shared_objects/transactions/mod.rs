@@ -6,6 +6,7 @@
 //! - Host commit ingress blocks overlapping external mutations.
 //! - Read/query ingress may remain available during commit ingress and after `Committed`.
 
+mod frozen_validation_scope;
 mod host_commit_execution_guard;
 mod lookup_facade;
 mod mutation_facade;
@@ -24,7 +25,7 @@ pub(crate) use crate::core_shared_objects::nursery_access_internal::NurseryAcces
 pub(crate) use crate::core_shared_objects::space_manager::HolonSpaceManager;
 pub(crate) use crate::core_shared_objects::transient_manager_access::TransientManagerAccess;
 pub(crate) use crate::core_shared_objects::{
-    holon::HolonCloneModel, Holon, HolonCacheAccess, HolonPool, Nursery, TransientHolonManager,
+    holon::HolonCloneModel, Holon, HolonPool, Nursery, TransientHolonManager,
 };
 pub(crate) use crate::dances::{DanceInitiator, DanceRequest, DanceResponse};
 pub(crate) use crate::reference_layer::{
@@ -33,6 +34,8 @@ pub(crate) use crate::reference_layer::{
 };
 pub(crate) use crate::{SmartReference, TransientReference};
 
+pub use frozen_validation_scope::FrozenValidationScope;
+pub(crate) use frozen_validation_scope::FrozenValidationToken;
 pub use host_commit_execution_guard::HostCommitExecutionGuard;
 pub use lookup_facade::LookupFacade;
 pub use mutation_facade::MutationFacade;
@@ -42,3 +45,5 @@ pub use transaction_context_handle::TransactionContextHandle;
 pub use transaction_lifecycle_state::TransactionLifecycleState;
 pub use transaction_manager::TransactionManager;
 pub use tx_id::TxId;
+
+pub(crate) use transaction_manager::PrivateReadTransaction;

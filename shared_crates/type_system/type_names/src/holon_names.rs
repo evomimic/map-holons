@@ -61,6 +61,10 @@ impl ToDanceName for &DanceName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreHolonTypeName {
+    DerivedDescriptor,
+    ConstructDerivedDescriptor,
+    ConstructDerivedDescriptorRequest,
+    ConstructDerivedDescriptorResponse,
     EffectiveHolonDescriptor,
     EffectiveHolonDescriptorRegistry,
     EffectiveSchemaContribution,

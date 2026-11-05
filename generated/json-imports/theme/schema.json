@@ -15,6 +15,9 @@
               "$ref": "MAP Core Schema-v0.0.7"
             },
             {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            },
+            {
               "$ref": "MAP Design Tokens Schema-v0.1.0"
             },
             {
@@ -3391,6 +3394,546 @@
           "target": [
             {
               "$ref": "ViewControlTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadTheme.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "LoadTheme",
+        "TypeNamePlural": "LoadThemeResults",
+        "DisplayName": "LoadTheme",
+        "DisplayNamePlural": "LoadTheme results",
+        "Description": "Loads the selected Theme in its authoritative Space and returns consolidated semantic token bindings.",
+        "DanceDescription": "Load the affording Theme's token bindings as one browser-independent projection.",
+        "RequiredExecutionContext": "SpaceAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "LoadThemeResponse.DanceResponseType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GuestLoadTheme.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "GuestLoadTheme"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "LoadTheme.DanceType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadThemeResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "LoadThemeResponse",
+        "TypeNamePlural": "LoadThemeResponseResults",
+        "DisplayName": "LoadThemeResponse",
+        "DisplayNamePlural": "LoadThemeResponse results",
+        "Description": "Canonical response containing the complete browser-independent Theme projection."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ResponseBody",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadedTheme.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadedTheme",
+        "TypeNamePlural": "LoadedThemeResults",
+        "DisplayName": "LoadedTheme",
+        "DisplayNamePlural": "LoadedTheme results",
+        "Description": "Transient Theme and MDS identities plus ordered token references and consolidated scalar binding data."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "LoadedThemeData.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(LoadedTheme.Projection)-[LoadedThemeSource]->(Theme.HolonType)"
+            },
+            {
+              "$ref": "(LoadedTheme.Projection)-[LoadedMetaDesignSystem]->(MetaDesignSystem.HolonType)"
+            },
+            {
+              "$ref": "(LoadedTheme.Projection)-[LoadedDesignTokens]->(DesignToken.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadedThemeData.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LoadedThemeData",
+        "TypeNamePlural": "LoadedThemeData",
+        "DisplayName": "Loaded Theme Data",
+        "DisplayNamePlural": "Loaded Theme Data",
+        "Description": "Consolidated JSON scalar metadata: Theme/MDS keys and ordered token version keys, semantic names and presentation values. Token references are carried in matching order by LoadedDesignTokens.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadedTheme.Projection)-[LoadedThemeSource]->(Theme.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadedThemeSource",
+        "TypeNamePlural": "LoadedThemeSourceResults",
+        "DisplayName": "LoadedThemeSource",
+        "DisplayNamePlural": "LoadedThemeSource results",
+        "Description": "Exact Theme version whose bindings were loaded.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Theme.HolonType)-[LoadedThemeProjectionOf]->(LoadedTheme.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Theme.HolonType)-[LoadedThemeProjectionOf]->(LoadedTheme.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadedThemeProjectionOf",
+        "TypeNamePlural": "LoadedThemeProjectionOfResults",
+        "DisplayName": "LoadedThemeProjectionOf",
+        "DisplayNamePlural": "LoadedThemeProjectionOf results",
+        "Description": "Transient loading projections sourced from this Theme.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadedTheme.Projection)-[LoadedMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadedMetaDesignSystem",
+        "TypeNamePlural": "LoadedMetaDesignSystemResults",
+        "DisplayName": "LoadedMetaDesignSystem",
+        "DisplayNamePlural": "LoadedMetaDesignSystem results",
+        "Description": "Exact MetaDesignSystem governing the loaded Theme.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "MetaDesignSystem.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(MetaDesignSystem.HolonType)-[LoadedMetaDesignSystemProjectionOf]->(LoadedTheme.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[LoadedMetaDesignSystemProjectionOf]->(LoadedTheme.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadedMetaDesignSystemProjectionOf",
+        "TypeNamePlural": "LoadedMetaDesignSystemProjectionOfResults",
+        "DisplayName": "LoadedMetaDesignSystemProjectionOf",
+        "DisplayNamePlural": "LoadedMetaDesignSystemProjectionOf results",
+        "Description": "Transient Theme projections for this MetaDesignSystem.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "MetaDesignSystem.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoadedTheme.Projection)-[LoadedDesignTokens]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadedDesignTokens",
+        "TypeNamePlural": "LoadedDesignTokensResults",
+        "DisplayName": "LoadedDesignTokens",
+        "DisplayNamePlural": "LoadedDesignTokens results",
+        "Description": "Exact token versions in the same order as the consolidated scalar bindings.",
+        "IsOrdered": true,
+        "AllowsDuplicates": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DesignToken.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DesignToken.HolonType)-[LoadedDesignTokenProjectionOf]->(LoadedTheme.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DesignToken.HolonType)-[LoadedDesignTokenProjectionOf]->(LoadedTheme.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadedDesignTokenProjectionOf",
+        "TypeNamePlural": "LoadedDesignTokenProjectionOfResults",
+        "DisplayName": "LoadedDesignTokenProjectionOf",
+        "DisplayNamePlural": "LoadedDesignTokenProjectionOf results",
+        "Description": "Transient projections containing a binding for this DesignToken version.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DesignToken.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "LoadedTheme.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

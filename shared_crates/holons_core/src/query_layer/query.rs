@@ -57,12 +57,15 @@ impl QueryPathMap {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryExpression {
     pub relationship_name: RelationshipName,
+    /// Cache retrieval requests the exact descriptor and derived policy with membership.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub include_relationship_descriptor: bool,
 }
 
 impl QueryExpression {
     /// Creates a new query expression describing a traversal of `relationship_name`.
     pub fn new(relationship_name: RelationshipName) -> Self {
-        Self { relationship_name }
+        Self { relationship_name, include_relationship_descriptor: false }
     }
 }
 

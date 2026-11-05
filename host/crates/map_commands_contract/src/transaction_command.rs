@@ -31,7 +31,9 @@ pub enum TransactionAction {
     Dispose,
 
     /// Verify the captured target before acquiring sources.
-    CheckLoadTarget { space: HolonReference },
+    CheckLoadTarget {
+        space: HolonReference,
+    },
 
     /// Undoes the last mutation in this transaction.
     UndoLast,
@@ -40,16 +42,24 @@ pub enum TransactionAction {
     RedoLast,
 
     /// Undoes mutations up to the specified marker.
-    UndoToMarker { marker_id: String },
+    UndoToMarker {
+        marker_id: String,
+    },
 
     /// Redoes mutations up to the specified marker.
-    RedoToMarker { marker_id: String },
+    RedoToMarker {
+        marker_id: String,
+    },
 
     /// Prepares a transient load request without staging or committing imported holons.
-    PrepareHolons { content_set: ContentSet },
+    PrepareHolons {
+        content_set: ContentSet,
+    },
 
     /// Loads holons from uploaded/imported file content.
-    LoadHolons { content_set: ContentSet },
+    LoadHolons {
+        content_set: ContentSet,
+    },
 
     /// Executes the retained legacy dance ingress within this transaction.
     ///
@@ -59,14 +69,27 @@ pub enum TransactionAction {
     Dance(DanceRequest),
 
     /// Executes the canonical new-world dance ingress within this transaction.
-    DanceV2 { invocation: DanceInvocation },
+    DanceV2 {
+        invocation: DanceInvocation,
+    },
+
+    /// Load the selected Theme through its canonical guest Dance.
+    LoadTheme {
+        theme: HolonReference,
+    },
 
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
-    SelectVisualizer { request: VisualizerSelectionRequest },
+    SelectVisualizer {
+        request: VisualizerSelectionRequest,
+    },
     /// Project a retained authoritative result into this open presentation context.
-    ProjectVisualizerDiscovery { snapshot: MapString },
+    ProjectVisualizerDiscovery {
+        snapshot: MapString,
+    },
     /// Release unprojected evidence when its information session closes.
-    ReleaseVisualizerDiscovery { snapshot: MapString },
+    ReleaseVisualizerDiscovery {
+        snapshot: MapString,
+    },
     /// Enumerates applicability without selecting or materializing an implementation.
     DiscoverVisualizers {
         request: VisualizerSelectionRequest,
@@ -74,11 +97,46 @@ pub enum TransactionAction {
         retain_evidence: bool,
     },
     /// Revalidates one explicit choice against the current request context.
-    ChooseVisualizer { request: VisualizerSelectionRequest, candidate: HolonReference },
+    ChooseVisualizer {
+        request: VisualizerSelectionRequest,
+        candidate: HolonReference,
+    },
     /// Find an existing usage without creating records or resuming pending writes.
-    FindVisualizerUsage { request: VisualizerSelectionRequest, selected: HolonReference },
-    /// Prepare persisted usage in an independent transaction; leave this transaction untouched.
-    SelectVisualizerUsage { request: VisualizerSelectionRequest, selected: HolonReference },
+    /// Open an explicit startup or gesture round for independent Usage persistence.
+    BeginVisualizerUsageBatch,
+    /// Retire derived selection bindings after a semantic context refresh.
+    InvalidateVisualizerBindings,
+    /// Hand off a closed round to background commit; never await backend completion.
+    SubmitVisualizerUsageBatch,
+    /// Inspect the status of a previously accepted background batch.
+    GetVisualizerUsagePersistence {
+        batch_id: MapString,
+    },
+    /// Explicitly retry retained work, including release of a known service pause.
+    RetryVisualizerUsagePersistence {
+        batch_id: MapString,
+    },
+    /// Capture a subsequent live Usage revision in the current round.
+    SaveVisualizerUsage {
+        usage: HolonReference,
+    },
+    FindVisualizerUsage {
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+    },
+    /// Select a live transient Usage and capture its independent persistence snapshot.
+    SelectVisualizerUsage {
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+        /// Explicit configuration choice bypasses default ancestry disambiguation.
+        usage: Option<HolonReference>,
+    },
+    /// Fork configuration for the actual subject descriptor only on explicit request.
+    SpecializeVisualizerUsage {
+        request: VisualizerSelectionRequest,
+        selected: HolonReference,
+        usage: HolonReference,
+    },
     /// Report successful presentation; failed/cancelled mounts must not invoke this action.
     RecordVisualizerUse {
         request: VisualizerSelectionRequest,
@@ -96,7 +154,9 @@ pub enum TransactionAction {
 
     /// Retrieves verified bytes for an opaque artifact capability issued by a
     /// materialization Dance in this transaction.
-    FetchArtifact { handle: MapString },
+    FetchArtifact {
+        handle: MapString,
+    },
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
@@ -106,24 +166,36 @@ pub enum TransactionAction {
     GetCommittedHolons,
 
     /// `get_saved_holon_by_key(key)` → `SmartReference`
-    GetSavedHolonByBaseKey { key: MapString },
+    GetSavedHolonByBaseKey {
+        key: MapString,
+    },
 
     /// `get_staged_holon_by_base_key(key)` → `StagedReference`
-    GetStagedHolonByBaseKey { key: MapString },
+    GetStagedHolonByBaseKey {
+        key: MapString,
+    },
 
     /// `get_staged_holons_by_base_key(key)` → `Vec<StagedReference>`
     ///
     /// This remains the deliberate reference-shaped plural exception.
-    GetStagedHolonsByBaseKey { key: MapString },
+    GetStagedHolonsByBaseKey {
+        key: MapString,
+    },
 
     /// `get_staged_holon_by_versioned_key(key)` → `StagedReference`
-    GetStagedHolonByVersionedKey { key: MapString },
+    GetStagedHolonByVersionedKey {
+        key: MapString,
+    },
 
     /// `get_transient_holon_by_base_key(key)` → `TransientReference`
-    GetTransientHolonByBaseKey { key: MapString },
+    GetTransientHolonByBaseKey {
+        key: MapString,
+    },
 
     /// `get_transient_holon_by_versioned_key(key)` → `TransientReference`
-    GetTransientHolonByVersionedKey { key: MapString },
+    GetTransientHolonByVersionedKey {
+        key: MapString,
+    },
 
     /// `staged_count()` → `i64`
     GetStagedCount,
@@ -133,48 +205,35 @@ pub enum TransactionAction {
 
     // ── Mutation actions (MutationFacade) ─────────────────────────────
     /// `new_holon(key)` → `TransientReference`
-    NewHolon { key: Option<MapString> },
+    NewHolon {
+        key: Option<MapString>,
+    },
 
     /// `stage_new_holon(transient_reference)` → `StagedReference`
-    StageNewHolon { source: TransientReference },
+    StageNewHolon {
+        source: TransientReference,
+    },
 
     /// `stage_new_from_clone(original, new_key)` → `StagedReference`
-    StageNewFromClone { original: HolonReference, new_key: MapString },
+    StageNewFromClone {
+        original: HolonReference,
+        new_key: MapString,
+    },
 
     /// `stage_new_version(current_version)` → `StagedReference`
-    StageNewVersion { current_version: SmartReference },
+    StageNewVersion {
+        current_version: SmartReference,
+    },
 
     /// `stage_new_version_from_id(holon_id)` → `StagedReference`
-    StageNewVersionFromId { holon_id: HolonId },
+    StageNewVersionFromId {
+        holon_id: HolonId,
+    },
 
     /// `delete_holon(local_id)` → `()`
-    DeleteHolon { local_id: LocalId },
-}
-
-/// DAHN-wide classification of the Visualizer required by a request.
-///
-/// A kind constrains the class of Visualizer that can satisfy a request; it
-/// is not a local composition Slot and does not imply one implementation per
-/// kind.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VisualizerKind {
-    TitleBar,
-    Canvas,
-    Node,
-    /// Visualizes an organizing semantic topology.
-    Structure,
-    RootedNavigation,
-    Collection,
-    PropertyMap,
-    /// Visualizes one descriptor-defined property within a PropertyMap visualizer.
-    /// The request subject is the bound `PropertyDescriptor` holon, never a
-    /// raw entry from a PropertyMap.
-    Property,
-    Value,
-    /// Composes action slots for an affording holon.
-    ActionBar,
-    /// Selects an individual action using its Dance descriptor as subject.
-    Action,
+    DeleteHolon {
+        local_id: LocalId,
+    },
 }
 
 impl TransactionAction {
@@ -203,7 +262,8 @@ impl TransactionAction {
             }
             // Selection only reads the retained subject and descriptor graph.
             // Materialization still creates invocation holons and requires an open context.
-            TransactionAction::ProjectVisualizerDiscovery { .. } => {
+            TransactionAction::LoadTheme { .. }
+            | TransactionAction::ProjectVisualizerDiscovery { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::ReleaseVisualizerDiscovery { .. } => {
@@ -217,7 +277,14 @@ impl TransactionAction {
             }
             // The caller only supplies retained evidence, including committed load results.
             // Writes are confined to an independent usage transaction, never this caller's nursery.
-            TransactionAction::SelectVisualizerUsage { .. }
+            TransactionAction::BeginVisualizerUsageBatch
+            | TransactionAction::InvalidateVisualizerBindings
+            | TransactionAction::SubmitVisualizerUsageBatch
+            | TransactionAction::GetVisualizerUsagePersistence { .. }
+            | TransactionAction::RetryVisualizerUsagePersistence { .. }
+            | TransactionAction::SaveVisualizerUsage { .. }
+            | TransactionAction::SpecializeVisualizerUsage { .. }
+            | TransactionAction::SelectVisualizerUsage { .. }
             | TransactionAction::RecordVisualizerUse { .. } => {
                 CommandLifecyclePolicy::holon_read_only()
             }
@@ -265,13 +332,25 @@ impl TransactionAction {
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
+            TransactionAction::LoadTheme { .. } => "load_theme",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::ProjectVisualizerDiscovery { .. } => "project_visualizer_discovery",
             TransactionAction::ReleaseVisualizerDiscovery { .. } => "release_visualizer_discovery",
             TransactionAction::DiscoverVisualizers { .. } => "discover_visualizers",
             TransactionAction::ChooseVisualizer { .. } => "choose_visualizer",
+            TransactionAction::InvalidateVisualizerBindings => "invalidate_visualizer_bindings",
+            TransactionAction::BeginVisualizerUsageBatch => "begin_visualizer_usage_batch",
+            TransactionAction::SubmitVisualizerUsageBatch => "submit_visualizer_usage_batch",
+            TransactionAction::GetVisualizerUsagePersistence { .. } => {
+                "get_visualizer_usage_persistence"
+            }
+            TransactionAction::RetryVisualizerUsagePersistence { .. } => {
+                "retry_visualizer_usage_persistence"
+            }
+            TransactionAction::SaveVisualizerUsage { .. } => "save_visualizer_usage",
             TransactionAction::FindVisualizerUsage { .. } => "find_visualizer_usage",
             TransactionAction::SelectVisualizerUsage { .. } => "select_visualizer_usage",
+            TransactionAction::SpecializeVisualizerUsage { .. } => "specialize_visualizer_usage",
             TransactionAction::RecordVisualizerUse { .. } => "record_visualizer_use",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",

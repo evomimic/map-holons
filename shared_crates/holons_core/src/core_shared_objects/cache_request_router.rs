@@ -2,7 +2,6 @@ use std::sync::{Arc, RwLock};
 // Removed `RefCell`/`Rc` in favor of thread-safe types
 
 use super::Holon;
-use crate::core_shared_objects::transactions::TransactionContext;
 use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
@@ -76,31 +75,41 @@ impl CacheRequestRouter {
     }
 }
 impl HolonCacheAccess for CacheRequestRouter {
-    fn get_cached_rc_holon(
-        &self,
-        holon_id: &HolonId,
-    ) -> Result<Option<Arc<RwLock<Holon>>>, HolonError> {
-        match Self::get_request_route(holon_id, &self.cache_routing_policy)? {
-            ServiceRoute::Local => self
-                .local_cache_manager
-                .read()
-                .map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Cache manager read lock poisoned: {e}"
-                    ))
-                })?
-                .get_cached_rc_holon(holon_id),
+    fn ensure_cached(&self, ids: &[HolonId]) -> Vec<super::cache_population::CachePopulationError> {
+        use super::cache_population::CachePopulationError;
+        let mut seen = std::collections::HashSet::new();
+        let mut local = Vec::new();
+        let mut errors = Vec::new();
+        for id in ids {
+            let first = seen.insert(id.clone());
+            match Self::get_request_route(id, &self.cache_routing_policy) {
+                Ok(ServiceRoute::Local) => local.push(id.clone()),
+                Err(error) if first => {
+                    errors.push(CachePopulationError::new(vec![id.clone()], error))
+                }
+                Err(_) => {}
+            }
         }
+        if !local.is_empty() {
+            // Release the router's manager lock before a guest call can re-enter.
+            let manager = self.local_cache_manager.read().map(|manager| manager.clone());
+            match manager {
+                Ok(manager) => errors.extend(manager.ensure_cached(&local)),
+                Err(error) => errors.push(CachePopulationError::new(
+                    local,
+                    HolonError::FailedToAcquireLock(error.to_string()),
+                )),
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        tracing::info!(target: "map_profile", requested = ids.len(), distinct = seen.len(), errors = errors.len(), "saved cache population routes");
+        errors
     }
 
     /// Retrieves a mutable reference (`Arc<RwLock<Holon>`) to the `Holon` identified by `holon_id`.
     /// Delegates to the `local_cache_manager` if the `ServiceRoute` is `Local`.
     /// Returns an error if the route is not `Local` or cannot be resolved.
-    fn get_rc_holon(
-        &self,
-        context: &Arc<TransactionContext>,
-        holon_id: &HolonId,
-    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
+    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Determine the routing policy for the request
         match CacheRequestRouter::get_request_route(holon_id, &self.cache_routing_policy)? {
             ServiceRoute::Local => {
@@ -113,7 +122,7 @@ impl HolonCacheAccess for CacheRequestRouter {
                             e
                         ))
                     })?
-                    .get_rc_holon(context, holon_id)
+                    .get_rc_holon(holon_id)
             } // ServiceRoute::Proxy(_) => {
               //     // Handle proxy-based requests (if supported in the future)
               //     Err(HolonError::NotImplemented(
@@ -128,7 +137,6 @@ impl HolonCacheAccess for CacheRequestRouter {
     /// Returns a thread-safe `Arc<RwLock<HolonCollection>>` or an error if not `Local`.
     fn get_related_holons(
         &self,
-        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
@@ -144,7 +152,7 @@ impl HolonCacheAccess for CacheRequestRouter {
                             e
                         ))
                     })?
-                    .get_related_holons(context, source_holon_id, relationship_name)
+                    .get_related_holons(source_holon_id, relationship_name)
             } // ServiceRoute::Proxy(_) => {
               //     // Handle proxy-based requests (if supported in the future)
               //     Err(HolonError::NotImplemented(
@@ -156,7 +164,6 @@ impl HolonCacheAccess for CacheRequestRouter {
 
     fn get_related_holons_with_hint(
         &self,
-        context: &Arc<TransactionContext>,
         source: &HolonId,
         name: &RelationshipName,
         hint: crate::RelationshipReadHint,
@@ -166,13 +173,12 @@ impl HolonCacheAccess for CacheRequestRouter {
                 .local_cache_manager
                 .read()
                 .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-                .get_related_holons_with_hint(context, source, name, hint),
+                .get_related_holons_with_hint(source, name, hint),
         }
     }
 
     fn retain_holon(
         &self,
-        context: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
         match Self::get_request_route(id, &self.cache_routing_policy)? {
@@ -180,13 +186,12 @@ impl HolonCacheAccess for CacheRequestRouter {
                 .local_cache_manager
                 .read()
                 .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-                .retain_holon(context, id),
+                .retain_holon(id),
         }
     }
 
     fn prepare_relationships(
         &self,
-        context: &Arc<TransactionContext>,
         source: &HolonId,
         names: &[RelationshipName],
     ) -> Result<(), HolonError> {
@@ -195,13 +200,12 @@ impl HolonCacheAccess for CacheRequestRouter {
                 .local_cache_manager
                 .read()
                 .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-                .prepare_relationships(context, source, names),
+                .prepare_relationships(source, names),
         }
     }
 
     fn get_all_related_holons(
         &self,
-        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         match CacheRequestRouter::get_request_route(source_holon_id, &self.cache_routing_policy)? {
@@ -214,7 +218,7 @@ impl HolonCacheAccess for CacheRequestRouter {
                         e
                     ))
                 })?
-                .get_all_related_holons(context, source_holon_id),
+                .get_all_related_holons(source_holon_id),
         }
     }
 }

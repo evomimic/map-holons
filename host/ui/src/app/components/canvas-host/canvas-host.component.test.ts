@@ -7,10 +7,10 @@ import { ApplicationSessionService } from '../../services/application-session.se
 import { CanvasNavigationGuard } from '../../services/canvas-navigation-guard';
 
 const fixture = vi.hoisted(() => {
-  const reference = { key: vi.fn(async () => 'Home'), versionedKey: vi.fn(async () => 'Home@1') };
+  const reference = { relatedHolons: vi.fn(async () => []), key: vi.fn(async () => 'Home'), versionedKey: vi.fn(async () => 'Home@1') };
   return {
     reference,
-    transaction: {
+    transaction: { withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(), recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {}, prepareVisualizerUsage: async () => ({}),
       bindPersistedReference: vi.fn(() => reference),
       getSavedHolonByBaseKey: vi.fn(async () => reference),
       commit: vi.fn(), abandon: vi.fn(), revert: vi.fn(),

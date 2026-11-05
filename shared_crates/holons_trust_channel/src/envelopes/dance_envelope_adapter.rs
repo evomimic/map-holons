@@ -4,7 +4,6 @@ use holons_boundary::HolonReferenceWire;
 use holons_boundary::envelopes::{
     DanceEnvelopeRequest, DanceEnvelopeResponse, DanceRequestEnvelope, DanceResponseEnvelope,
 };
-use holons_boundary::session_state::SerializableHolonPool;
 use holons_boundary::session_state::SessionStateWire;
 use holons_core::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -23,9 +22,22 @@ impl DanceEnvelopeAdapter {
         context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> Result<DanceRequestEnvelope, HolonError> {
+        let descriptor_registry = if request.dance_name.0 == "commit" {
+            context
+                .descriptor_registry()
+                .map(|registry| holons_boundary::DescriptorRegistryWire::capture(&registry))
+                .transpose()?
+                .flatten()
+        } else {
+            None
+        };
         let request_wire = DanceRequestWire::from(&request);
         let session = Some(Self::attach_session_state(context)?);
-        Ok(DanceRequestEnvelope { request: DanceEnvelopeRequest::Legacy(request_wire), session })
+        Ok(DanceRequestEnvelope {
+            request: DanceEnvelopeRequest::Legacy(request_wire),
+            session,
+            descriptor_registry,
+        })
     }
 
     /// Inbound: hydrate context from envelope session state, then bind response wire to runtime.
@@ -49,20 +61,7 @@ impl DanceEnvelopeAdapter {
     pub(crate) fn attach_session_state(
         context: &Arc<TransactionContext>,
     ) -> Result<SessionStateWire, HolonError> {
-        let mut session_state = SessionStateWire::default();
-
-        let staged_pool = context.export_staged_holons()?;
-        let transient_pool = context.export_transient_holons()?;
-
-        session_state.set_staged_holons(SerializableHolonPool::from(&staged_pool));
-        session_state.set_transient_holons(SerializableHolonPool::from(&transient_pool));
-        session_state
-            .set_local_holon_space(context.get_space_holon()?.map(HolonReferenceWire::from));
-        session_state.set_bootstrap_provisioning(context.is_bootstrap_provisioning());
-        session_state.set_restricted_cache_read(context.is_restricted_cache_read());
-        session_state.set_tx_id(context.tx_id());
-
-        Ok(session_state)
+        SessionStateWire::from_context(context)
     }
 
     /// Inbound: restores staged and transient state from the wire payload.

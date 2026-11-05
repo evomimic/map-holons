@@ -1,3 +1,5 @@
+pub mod derived_descriptor;
+pub use derived_descriptor::{construct_derived_descriptor, DerivedDescriptor};
 pub(crate) mod accessor_helpers;
 pub mod command_descriptor;
 mod constraint_applicability;
@@ -57,12 +59,14 @@ pub use constraint_applicability::{
 pub use constraint_contributions::ConstraintContributions;
 pub use contract_contributions::ContractContributions;
 pub use core_descriptor_lookup::resolve_core_descriptor;
+pub(crate) use core_descriptor_lookup::resolve_core_descriptor_for;
 pub use core_roles::{extends_role, has_role};
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
 pub use definition_identity::{lineage_contains, same_definition};
 pub use descriptor::Descriptor;
+pub(crate) use effective_relationships::bind_relationship_policy;
 pub use effective_relationships::{effective_relationship_declaration, QualifiedRelationship};
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;
@@ -106,3 +110,5 @@ pub use value_descriptor_subtypes::{
 mod reference_semantics_tests;
 
 pub use accessor_helpers::effective_property_value;
+
+pub mod value_kind;

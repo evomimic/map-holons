@@ -35,16 +35,24 @@ impl Graph {
         )
     }
     fn context(self) -> Arc<TransactionContext> {
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             Arc::new(self),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
     }
 }
 impl HolonServiceApi for Graph {
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::DerivedDescriptor, HolonError> {
+        holons_core::descriptors::construct_derived_descriptor(context, target)
+    }
+
     fn construct_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -79,6 +87,7 @@ impl HolonServiceApi for Graph {
             "ValueArrayValueType.ValueType" => 36,
             "KeyRuleType.HolonType" => 4,
             "NoneRule.KeyRuleType" => 37,
+            "DerivedDescriptor.HolonType" => 38,
             _ => return Err(HolonError::InvalidParameter(format!("Unknown fixture key {key}"))),
         };
         match Self::reference(context, id) {

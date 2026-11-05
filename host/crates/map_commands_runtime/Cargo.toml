@@ -14,6 +14,8 @@ base_types = { workspace = true }
 core_types = { workspace = true }
 type_names = { workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "net"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

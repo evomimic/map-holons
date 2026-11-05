@@ -10,6 +10,33 @@ use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use super::tx_id::TransactionIdGenerator;
 use super::{TransactionContext, TxId};
 
+/// Owns one bounded saved-read context for cache filling or saved-key lookup.
+///
+/// Temporary Dance graphs can contain references that strongly retain their context.
+/// Dropping the outer `Arc` alone would leave those pool/context cycles intact.
+/// On success, error, or unwinding, this guard calls `dispose` to clear the pools
+/// before releasing its context. Cleanup failures are logged. Returned saved
+/// content and cached relationship members must remain Space-bound and independent
+/// of this temporary execution context.
+pub(crate) struct PrivateReadTransaction {
+    context: Arc<TransactionContext>,
+}
+
+impl std::ops::Deref for PrivateReadTransaction {
+    type Target = Arc<TransactionContext>;
+    fn deref(&self) -> &Self::Target {
+        &self.context
+    }
+}
+
+impl Drop for PrivateReadTransaction {
+    fn drop(&mut self) {
+        if let Err(error) = self.context.dispose() {
+            tracing::warn!(?error, "Unable to dispose private saved-read transaction");
+        }
+    }
+}
+
 /// Owns transaction id generation and public transaction registration for a space.
 ///
 /// A **public** transaction is manager-addressable: another component may
@@ -117,6 +144,17 @@ impl TransactionManager {
     ) -> Result<Arc<TransactionContext>, HolonError> {
         let tx_id = self.id_generator.next_id();
         Ok(TransactionContext::new(tx_id, space_manager, true))
+    }
+
+    /// Opens an operation-bounded saved read. The guard disposes temporary pools
+    /// on every exit; only Space-bound saved results may escape this scope.
+    pub(crate) fn open_private_saved_read(
+        &self,
+        space: Arc<HolonSpaceManager>,
+    ) -> Result<PrivateReadTransaction, HolonError> {
+        Ok(PrivateReadTransaction {
+            context: self.open_private_restricted_cache_read_transaction(space)?,
+        })
     }
 
     /// Opens a restricted derived-state carrier. The Session owns its lifetime;
@@ -293,12 +331,12 @@ mod tests {
         // Step 1: Create the minimal Holon service stub.
         let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
         // Step 2: Build the space manager with a restrictive cache policy.
-        Arc::new(HolonSpaceManager::new_with_managers(
+        HolonSpaceManager::new_with_managers(
             None,
             holon_service,
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ))
+        )
     }
 
     #[test]

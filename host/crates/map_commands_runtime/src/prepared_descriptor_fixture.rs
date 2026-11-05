@@ -46,7 +46,7 @@ pub(crate) fn construct(
     }
     let navigation = schema.navigable_relationships()?;
     result.add_related_holons(
-        CoreRelationshipTypeName::NavigableRelationships,
+        CoreRelationshipTypeName::PluralNavigableRelationships,
         navigation.iter().map(|entry| entry.member.clone()).collect(),
     )?;
     let declared = schema

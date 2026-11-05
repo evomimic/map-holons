@@ -22,16 +22,6 @@ export function reportSuccessfulVisualizerUse(transaction: MapTransaction, reque
   catch { /* Preference capture never depends on browser storage availability. */ }
   sequences.set(prepared.reportSession, sequence);
   const report = { session: prepared.reportSession, occurrenceId, sequence };
-  const capture = async () => {
-    for (let attempt = 0; attempt < 3; ++attempt) {
-      try {
-        await transaction.recordVisualizerUse(request, selected, prepared.usage, 'explicit', report);
-        return;
-      } catch (error) {
-        if (attempt === 2) { console.warn('[DAHN] Unable to capture Visualizer defaults', error); return; }
-        await new Promise(resolve => setTimeout(resolve, [250, 1000][attempt]));
-      }
-    }
-  };
-  void capture();
+  void transaction.recordVisualizerUse(request, selected, prepared.usage, 'explicit', report)
+    .catch(error => console.warn('[DAHN] Unable to capture Visualizer defaults', error));
 }

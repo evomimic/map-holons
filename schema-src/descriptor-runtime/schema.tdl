@@ -9,7 +9,7 @@ schema "MAP Descriptor Runtime Schema-v0.1.0" {
 
 holon EffectiveHolonDescriptor.HolonType {
   type MetaHolonType.MetaTypeDescriptor
-  extends HolonType.TypeDescriptor
+  extends DerivedDescriptor.HolonType
   instance_keyrule NoneRule.KeyRuleType
   header {
     description: "Transaction-scoped derived schema result."
@@ -22,7 +22,8 @@ holon EffectiveHolonDescriptor.HolonType {
       (EffectiveHolonDescriptor.HolonType)-[DescribedHolonType]->(HolonType.TypeDescriptor),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceProperties]->(PropertyType.TypeDescriptor),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveInstanceRelationships]->(DeclaredRelationshipType.RelationshipType),
-      (EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor),
+      (EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsDance]->(DanceType.HolonType),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveAffordsCommand]->(CommandType.HolonType),
       (EffectiveHolonDescriptor.HolonType)-[EffectiveValidationBindings]->(ValidationRule.HolonType),
@@ -184,27 +185,27 @@ inverse relationship (DeclaredRelationshipType.RelationshipType)-[DeclarationInE
   }
 }
 
-def relationship (EffectiveHolonDescriptor.HolonType)-[NavigableRelationships]->(RelationshipType.TypeDescriptor) {
+def relationship (EffectiveHolonDescriptor.HolonType)-[SingularNavigableRelationships]->(RelationshipType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   extends DeclaredRelationshipType.RelationshipType
   source EffectiveHolonDescriptor.HolonType
   target RelationshipType.TypeDescriptor
   TargetBinding Version
   IsOrdered false
-  AllowsDuplicates false
+  AllowsDuplicates true
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
+    HasInverse -> (RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
   }
   header {
-    description: "Derived schema result relationship NavigableRelationships."
-    display_name: "NavigableRelationships"
-    plural: "NavigableRelationships"
+    description: "Derived schema result relationship SingularNavigableRelationships."
+    display_name: "SingularNavigableRelationships"
+    plural: "SingularNavigableRelationships"
   }
 }
 
-inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
+inverse relationship (RelationshipType.TypeDescriptor)-[SingularNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source RelationshipType.TypeDescriptor
@@ -212,15 +213,55 @@ inverse relationship (RelationshipType.TypeDescriptor)-[NavigableInEffectiveHolo
   TargetBinding Version
   IsDefinitional true
   IsOrdered false
-  AllowsDuplicates false
+  AllowsDuplicates true
   deletion_semantic Block
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }
   header {
-    description: "Inverse discovery for NavigableRelationships."
-    display_name: "NavigableInEffectiveHolonDescriptor"
-    plural: "NavigableInEffectiveHolonDescriptor"
+    description: "Inverse discovery for SingularNavigableRelationships."
+    display_name: "SingularNavigableInEffectiveHolonDescriptor"
+    plural: "SingularNavigableInEffectiveHolonDescriptor"
+  }
+}
+
+def relationship (EffectiveHolonDescriptor.HolonType)-[PluralNavigableRelationships]->(RelationshipType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source EffectiveHolonDescriptor.HolonType
+  target RelationshipType.TypeDescriptor
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)
+  }
+  header {
+    description: "Derived schema result relationship PluralNavigableRelationships."
+    display_name: "PluralNavigableRelationships"
+    plural: "PluralNavigableRelationships"
+  }
+}
+
+inverse relationship (RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source RelationshipType.TypeDescriptor
+  target EffectiveHolonDescriptor.HolonType
+  TargetBinding Version
+  IsDefinitional true
+  IsOrdered false
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for PluralNavigableRelationships."
+    display_name: "PluralNavigableInEffectiveHolonDescriptor"
+    plural: "PluralNavigableInEffectiveHolonDescriptor"
   }
 }
 
@@ -699,7 +740,10 @@ holon EffectiveHolonDescriptorRegistry.HolonType {
     plural: "Effective Holon Descriptor Registries"
   }
   relationships {
-    InstanceRelationships -> (EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType)
+    InstanceRelationships -> [
+      (EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDescriptors]->(EffectiveHolonDescriptor.HolonType),
+      (EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDerivedDescriptors]->(DerivedDescriptor.HolonType)
+    ]
   }
 }
 
@@ -733,5 +777,362 @@ inverse relationship (EffectiveHolonDescriptor.HolonType)-[DescriptorRegistryFor
   header {
     display_name: "Descriptor Registry For"
     description: "Registry selecting this prepared Holon descriptor."
+  }
+}
+
+
+holon DerivedDescriptor.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  instance_keyrule NoneRule.KeyRuleType
+  header {
+    description: "Sealed derived products and shared lineage for descriptor runtime categories; targets retain authoritative identities."
+    display_name: "DerivedDescriptors"
+    plural: "DerivedDescriptors"
+  }
+  relationships {
+    InstanceProperties -> [DerivedOrigins.PropertyType, DerivedValueKind.PropertyType, DerivedInstanceTypeKind.PropertyType, DerivedRelationshipPolicy.PropertyType]
+    InstanceRelationships -> [
+      (DerivedDescriptor.HolonType)-[DerivedLineage]->(TypeDescriptor),
+      (DerivedDescriptor.HolonType)-[DerivedConstraints]->(Constraint.HolonType),
+      (DerivedDescriptor.HolonType)-[DerivedValidationBindings]->(ValidationRule.HolonType),
+      (DerivedDescriptor.HolonType)-[DerivedOperators]->(OperatorType.HolonType)
+    ]
+  }
+}
+
+property DerivedOrigins.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Collection-aligned declaring-lineage indexes; preserves every inherited occurrence without contribution holons."
+    display_name: "DerivedOrigins"
+    plural: "DerivedOrigins"
+  }
+}
+
+def relationship (DerivedDescriptor.HolonType)-[DerivedLineage]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source DerivedDescriptor.HolonType
+  target TypeDescriptor
+  TargetBinding Version
+  IsOrdered true
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (TypeDescriptor)-[LineageOfDerivedDescriptor]->(DerivedDescriptor.HolonType)
+  }
+  header {
+    description: "Derived descriptor relationship DerivedLineage."
+    display_name: "DerivedLineage"
+    plural: "DerivedLineage"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[LineageOfDerivedDescriptor]->(DerivedDescriptor.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target DerivedDescriptor.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for DerivedLineage."
+    display_name: "LineageOfDerivedDescriptor"
+    plural: "LineageOfDerivedDescriptor"
+  }
+}
+
+def relationship (DerivedDescriptor.HolonType)-[DerivedConstraints]->(Constraint.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source DerivedDescriptor.HolonType
+  target Constraint.HolonType
+  TargetBinding Version
+  IsOrdered true
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (Constraint.HolonType)-[ConstraintInDerivedDescriptor]->(DerivedDescriptor.HolonType)
+  }
+  header {
+    description: "Derived descriptor relationship DerivedConstraints."
+    display_name: "DerivedConstraints"
+    plural: "DerivedConstraints"
+  }
+}
+
+inverse relationship (Constraint.HolonType)-[ConstraintInDerivedDescriptor]->(DerivedDescriptor.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Constraint.HolonType
+  target DerivedDescriptor.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for DerivedConstraints."
+    display_name: "ConstraintInDerivedDescriptor"
+    plural: "ConstraintInDerivedDescriptor"
+  }
+}
+
+def relationship (DerivedDescriptor.HolonType)-[DerivedValidationBindings]->(ValidationRule.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source DerivedDescriptor.HolonType
+  target ValidationRule.HolonType
+  TargetBinding Version
+  IsOrdered true
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (ValidationRule.HolonType)-[ValidationBindingInDerivedDescriptor]->(DerivedDescriptor.HolonType)
+  }
+  header {
+    description: "Derived descriptor relationship DerivedValidationBindings."
+    display_name: "DerivedValidationBindings"
+    plural: "DerivedValidationBindings"
+  }
+}
+
+inverse relationship (ValidationRule.HolonType)-[ValidationBindingInDerivedDescriptor]->(DerivedDescriptor.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source ValidationRule.HolonType
+  target DerivedDescriptor.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for DerivedValidationBindings."
+    display_name: "ValidationBindingInDerivedDescriptor"
+    plural: "ValidationBindingInDerivedDescriptor"
+  }
+}
+
+def relationship (DerivedDescriptor.HolonType)-[DerivedOperators]->(OperatorType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source DerivedDescriptor.HolonType
+  target OperatorType.HolonType
+  TargetBinding Version
+  IsOrdered true
+  AllowsDuplicates true
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (OperatorType.HolonType)-[OperatorInDerivedDescriptor]->(DerivedDescriptor.HolonType)
+  }
+  header {
+    description: "Derived descriptor relationship DerivedOperators."
+    display_name: "DerivedOperators"
+    plural: "DerivedOperators"
+  }
+}
+
+inverse relationship (OperatorType.HolonType)-[OperatorInDerivedDescriptor]->(DerivedDescriptor.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source OperatorType.HolonType
+  target DerivedDescriptor.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for DerivedOperators."
+    display_name: "OperatorInDerivedDescriptor"
+    plural: "OperatorInDerivedDescriptor"
+  }
+}
+
+def relationship (EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDerivedDescriptors]->(DerivedDescriptor.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source EffectiveHolonDescriptorRegistry.HolonType
+  target DerivedDescriptor.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> (DerivedDescriptor.HolonType)-[DerivedDescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType)
+  }
+  header {
+    description: "Derived descriptor relationship PreparedDerivedDescriptors."
+    display_name: "PreparedDerivedDescriptors"
+    plural: "PreparedDerivedDescriptors"
+  }
+}
+
+inverse relationship (DerivedDescriptor.HolonType)-[DerivedDescriptorRegistryFor]->(EffectiveHolonDescriptorRegistry.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source DerivedDescriptor.HolonType
+  target EffectiveHolonDescriptorRegistry.HolonType
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for PreparedDerivedDescriptors."
+    display_name: "DerivedDescriptorRegistryFor"
+    plural: "DerivedDescriptorRegistryFor"
+  }
+}
+
+holon ConstructDerivedDescriptorRequest.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  instance_keyrule NoneRule.KeyRuleType
+  header {
+    description: "Request for the resolved schema of exactly one descriptor."
+    display_name: "Construct Effective Descriptor Request"
+    plural: "ConstructDerivedDescriptorRequests"
+  }
+  relationships {
+    InstanceRelationships -> (ConstructDerivedDescriptorRequest.HolonType)-[RequestedDescriptor]->(TypeDescriptor)
+  }
+}
+
+holon ConstructDerivedDescriptorResponse.DanceResponseType {
+  type MetaDanceResponseType.MetaHolonType
+  extends DanceResponseType.HolonType
+  relationships {
+    ResponseBody -> DerivedDescriptor.HolonType
+    InstanceRelationships -> (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)
+  }
+  header {
+    description: "Response carrying a transient resolved schema graph."
+    display_name: "Construct Effective Descriptor Response"
+    plural: "ConstructDerivedDescriptorResponses"
+  }
+}
+
+holon ConstructDerivedDescriptor.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+  RequiredExecutionContext SpaceAuthoritative
+  DanceDescription "Constructs a transaction-scoped resolved schema without allocating contribution Holons."
+  relationships {
+    RequestType -> ConstructDerivedDescriptorRequest.HolonType
+    Response -> ConstructDerivedDescriptorResponse.DanceResponseType
+    DanceAffordedBy -> HolonSpace.HolonType
+  }
+  header {
+    description: "Resolve the complete schema of a descriptor once in the authoritative Space."
+    display_name: "Construct Effective Descriptor"
+    plural: "ConstructDerivedDescriptorDances"
+  }
+}
+
+instance ConstructDerivedDescriptor.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "ConstructDerivedDescriptor"
+  relationships {
+    ForDance -> ConstructDerivedDescriptor.DanceType
+  }
+}
+
+def relationship (ConstructDerivedDescriptorRequest.HolonType)-[RequestedDescriptor]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ConstructDerivedDescriptorRequest.HolonType
+  target TypeDescriptor
+  TargetBinding Version
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> (TypeDescriptor)-[RequestedByDerivedDescriptorRequest]->(ConstructDerivedDescriptorRequest.HolonType)
+  }
+  header {
+    description: "Derived schema result relationship RequestedDescriptor."
+    display_name: "RequestedDescriptor"
+    plural: "RequestedDescriptor"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[RequestedByDerivedDescriptorRequest]->(ConstructDerivedDescriptorRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target ConstructDerivedDescriptorRequest.HolonType
+  TargetBinding Version
+  IsDefinitional true
+  IsOrdered false
+  AllowsDuplicates false
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Inverse discovery for RequestedDescriptor."
+    display_name: "RequestedByDerivedDescriptorRequest"
+    plural: "RequestedByDerivedDescriptorRequest"
+  }
+}
+
+property DerivedValueKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Prepared native value-kind projection or semantic classification error. Computed from the same lineage as inherited collections."
+    display_name: "Derived Value Kind"
+    plural: "DerivedValueKinds"
+  }
+}
+
+property DerivedInstanceTypeKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Prepared optional Instance TypeKind anchor index into DerivedLineage, or its semantic resolution error. Does not author a TypeKind classification."
+    display_name: "Derived Instance TypeKind"
+    plural: "DerivedInstanceTypeKinds"
+  }
+}
+
+property DerivedRelationshipPolicy.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Prepared relationship direction and final membership cache policy, or semantic classification error, resolved from the retained descriptor lineage."
+    display_name: "Derived Relationship Policy"
+    plural: "DerivedRelationshipPolicies"
   }
 }

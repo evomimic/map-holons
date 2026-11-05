@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use base_types::MapString;
 use core_types::HolonError;
-use hdk::prelude::*;
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
@@ -47,10 +46,13 @@ impl Dancer {
             .insert("fetch_all_related_holons", fetch_all_related_holons_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
+        dispatch_table.insert("get_holons_by_ids", get_holons_by_ids_dance as DanceFunction);
         dispatch_table
             .insert("get_saved_holon_by_key", get_saved_holon_by_key_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
+        dispatch_table
+            .insert("resolve_visualizer_usage", resolve_visualizer_usage_dance as DanceFunction);
         // Add more functions (in alphabetical order) as needed
 
         Dancer { dispatch_table }
@@ -65,7 +67,6 @@ impl Dancer {
 
     #[allow(dead_code)]
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
-        info!("checking that dance_name: {:#?} is dispatchable", request.dance_name.0.as_str());
         self.dispatch_table.contains_key(request.dance_name.0.as_str())
     }
 

@@ -29,6 +29,7 @@ use type_names::{CoreDefinitionRole, CoreRelationshipTypeName, CoreValidationRul
 fn prepare_universal_contracts(
     context: &Arc<TransactionContext>,
     subjects: &mut [SubjectPreparation],
+    packages: &crate::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
     use std::collections::hash_map::Entry;
 
@@ -46,8 +47,12 @@ fn prepare_universal_contracts(
         let identity = DefinitionIdentity::for_reference(meta_type, context)?;
         let contract = match contracts.entry(identity) {
             Entry::Occupied(entry) => entry.into_mut(),
-            Entry::Vacant(entry) => entry
-                .insert(Arc::new(UniversalDescriptorContract::from_meta_type(context, meta_type)?)),
+            Entry::Vacant(entry) => {
+                entry.insert(Arc::new(UniversalDescriptorContract::from_effective_schema(
+                    context,
+                    packages.effective_schema(meta_type)?,
+                )?))
+            }
         };
         subject.universal_contract = Some(Arc::clone(contract));
     }
@@ -118,6 +123,7 @@ fn assess_commit_candidates_with_observer<'a>(
     candidates: &'a [StagedReference],
     mut observer: impl FnMut(crate::AssessmentEvent),
 ) -> Result<(PreparedAssessment<'a>, ValidationObservations), HolonError> {
+    let _frozen_validation = context.begin_frozen_validation()?;
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::Construction));
     if candidates.is_empty() {
         return Ok((PreparedAssessment::default(), ValidationObservations::default()));
@@ -127,6 +133,21 @@ fn assess_commit_candidates_with_observer<'a>(
     let collector = ValidationCollector::default();
     construct_assessment_with_observer(context, candidates, collector, &mut observer)?
         .assess(&mut observer)
+}
+
+/// Shares structural evidence without treating malformed graphs as valid derived input.
+fn diagnose_lineage(
+    context: &Arc<TransactionContext>,
+    reference: &HolonReference,
+    diagnoses: &mut HashMap<DefinitionIdentity, holons_core::ExtendsLineageDiagnosis>,
+) -> Result<holons_core::ExtendsLineageDiagnosis, HolonError> {
+    let identity = DefinitionIdentity::for_reference(reference, context)?;
+    if let Some(diagnosis) = diagnoses.get(&identity) {
+        return Ok(diagnosis.clone());
+    }
+    let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(reference)?;
+    diagnoses.insert(identity, diagnosis.clone());
+    Ok(diagnosis)
 }
 
 /// Checks constructor-owned ancestry before assessment, including updates assembled through
@@ -225,6 +246,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
     // Structural/kind products belong to definitions; each candidate still owns its conformance.
     let mut definition_products =
         HashMap::<DefinitionIdentity, (StructuralPrerequisites, DescriptorRuleProducts)>::new();
+    let mut lineage_diagnoses = HashMap::new();
     // Structural diagnosis always precedes classification and binding discovery.
     for candidate in candidates {
         let subject = HolonReference::from(candidate);
@@ -233,14 +255,14 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             products.clone()
         } else {
             let definition = identity.definition_reference(context, &subject);
-            let subject_lineage = holons_core::ExtendsLineageDiagnosis::assess(&definition)?;
+            let subject_lineage = diagnose_lineage(context, &definition, &mut lineage_diagnoses)?;
             let describing_type = resolve_describing_type(&definition)?;
             let governing_lineage =
                 if let DescribingTypeResolution::Unique(descriptor) = &describing_type {
                     if holons_core::same_definition(descriptor, &definition)? {
                         Some(subject_lineage.clone())
                     } else {
-                        Some(holons_core::ExtendsLineageDiagnosis::assess(descriptor)?)
+                        Some(diagnose_lineage(context, descriptor, &mut lineage_diagnoses)?)
                     }
                 } else {
                     None
@@ -323,11 +345,13 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         })
         .collect();
     let package_subjects: Vec<_> = prepared.iter().map(|subject| subject.subject.clone()).collect();
+    let diagnoses = lineage_diagnoses.into_values().collect::<Vec<_>>();
     let packages = crate::descriptor_package::DescriptorPackages::construct_with_observer(
         context,
         &package_roots,
         &package_subjects,
         &workset,
+        &diagnoses,
         observer,
     )?;
     crate::graph_only_deltas::classify_graph_only_delta_overlaps(
@@ -337,18 +361,9 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         &mut collector,
     )?;
     let binding_contributions = packages.binding_contributions();
-    let binding_roles = BindingRoleMemo::prepare(
-        context,
-        &binding_contributions,
-        prepared.iter().filter_map(|subject| {
-            subject
-                .prerequisites
-                .governing_lineage
-                .as_ref()
-                .and_then(|diagnosis| diagnosis.valid_lineage())
-        }),
-    )?;
-    prepare_universal_contracts(context, &mut prepared)?;
+    let binding_roles =
+        BindingRoleMemo::prepare(context, &binding_contributions, packages.valid_lineages())?;
+    prepare_universal_contracts(context, &mut prepared, &packages)?;
     Ok(ConstructedAssessment {
         context,
         candidates,
@@ -422,8 +437,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 }
                 let descriptor = identity.definition_reference(context, &descriptor);
                 let mut products = DescriptorRuleProducts::default();
-                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(&descriptor);
-                let diagnosis = diagnosis?;
+                let diagnosis = packages.diagnosis(&descriptor)?;
                 if diagnosis.valid_lineage().is_none() {
                     invalid.insert(identity);
                     blocked(
@@ -459,7 +473,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             let mut declarations = ConstraintDeclarationAssessment::new();
             for descriptor in &view.staged_components {
                 declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
-                let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(descriptor)?;
+                let diagnosis = packages.diagnosis(descriptor)?;
                 let Some(lineage) = diagnosis.valid_lineage() else {
                     continue;
                 };

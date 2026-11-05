@@ -22,7 +22,6 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
-use tracing::debug;
 
 use holons_prelude::prelude::*;
 
@@ -238,12 +237,6 @@ impl LoaderRefResolver {
         resolver_state.metrics.assembly.elapsed_micros += elapsed_micros(accounting_started_at);
         outcome.metrics = resolver_state.metrics;
 
-        debug!(
-            "Pass-2 complete: links_created={}, errors={}",
-            outcome.links_created,
-            outcome.errors.len()
-        );
-
         Ok(outcome)
     }
 
@@ -294,14 +287,8 @@ impl LoaderRefResolver {
 
         let described_by_refs: Vec<_> =
             queue.iter().filter(|reference| Self::is_described_by_by_name(reference)).collect();
-        debug!("Pass 2A: Processing {} DescribedBy relationships", described_by_refs.len());
 
         for relationship_reference in described_by_refs {
-            debug!(
-                "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
-                Self::brief_lrr_summary(relationship_reference),
-                Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
-            );
             match Self::resolve_endpoints(context, resolver_state, relationship_reference) {
                 Ok((source_endpoint, mut target_endpoints)) => {
                     // Enforce exactly one target for DescribedBy
@@ -335,7 +322,6 @@ impl LoaderRefResolver {
                         &target_endpoints[0],
                     );
                     if !seen.insert(edge_key) {
-                        debug!("Duplicate DescribedBy skipped (bootstrap)");
                         continue;
                     }
 
@@ -347,10 +333,6 @@ impl LoaderRefResolver {
                     ) {
                         Ok(n) => {
                             outcome.links_created += n;
-                            debug!(
-                                "[resolver] AFTER write_bootstrap_relationship(DescribedBy): links_created={}",
-                                n
-                            );
                         }
                         Err(e) => {
                             outcome.errors.push(Self::error_with_context(relationship_reference, e))
@@ -383,7 +365,6 @@ impl LoaderRefResolver {
             outcome,
             &extends,
             Self::is_extends_by_name,
-            "Pass 2B",
         );
     }
 
@@ -396,23 +377,11 @@ impl LoaderRefResolver {
         outcome: &mut ResolverOutcome,
         relationship_name: &RelationshipName,
         predicate: fn(&TransientReference) -> bool,
-        pass_label: &str,
     ) {
         let bootstrap_refs: Vec<_> =
             queue.iter().filter(|reference| predicate(reference)).collect();
-        debug!(
-            "{}: Processing {} {} relationships",
-            pass_label,
-            bootstrap_refs.len(),
-            relationship_name.0
-        );
 
         for relationship_reference in bootstrap_refs {
-            debug!(
-                "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
-                Self::brief_lrr_summary(relationship_reference),
-                Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
-            );
             match Self::resolve_endpoints(context, resolver_state, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
                     if let Err(error) = Self::validate_bootstrap_relationship_targets(
@@ -445,7 +414,6 @@ impl LoaderRefResolver {
                         if seen.insert(edge_key) {
                             unique_targets.push(target);
                         } else {
-                            debug!("Duplicate {} skipped (bootstrap)", relationship_name.0);
                         }
                     }
 
@@ -611,12 +579,6 @@ impl LoaderRefResolver {
         })?;
         let target_loader_refs = target_guard.get_members(); // &Vec<HolonReference>
 
-        debug!(
-            "[resolver] LRR endpoints: sources={}, targets={}",
-            source_loader_refs.len(),
-            target_loader_refs.len()
-        );
-
         // Validate cardinality
         // Exactly one ReferenceSource
         match source_loader_refs.len() {
@@ -644,19 +606,11 @@ impl LoaderRefResolver {
         // Dereference: LoaderHolonReference → actual HolonReference
         let source_holon =
             Self::resolve_loader_holon_reference(context, resolver_state, &source_loader_refs[0])?;
-        debug!(
-            "[resolver]   resolved source holon = {}",
-            Self::best_identifier_for_dedupe(&source_holon)
-        );
 
         let mut target_holons = Vec::with_capacity(target_loader_refs.len());
         for loader_ref in target_loader_refs.iter() {
             let resolved =
                 Self::resolve_loader_holon_reference(context, resolver_state, loader_ref)?;
-            debug!(
-                "[resolver]   resolved target holon = {}",
-                Self::best_identifier_for_dedupe(&resolved)
-            );
             target_holons.push(resolved);
         }
 
@@ -683,34 +637,23 @@ impl LoaderRefResolver {
         //   1) prefer staged holons in the current import
         //   2) fall back to already-saved local holons by key
         if let Some(BaseValue::StringValue(key)) = loader_ref.property_value(&holon_key_property)? {
-            debug!("[resolver] dereference LHR by holon_key='{}'", key.0);
             // Use the convenience API for the single expected staged match.
             match context.lookup().get_staged_holon_by_base_key(&key) {
                 Ok(staged) => {
-                    debug!("[resolver]   → FOUND staged holon for key='{}'", key.0);
                     return Ok(HolonReference::Staged(staged));
                 }
-                Err(HolonError::HolonNotFound(_)) => {
-                    debug!(
-                        "[resolver]   → NO staged holon for key='{}'; trying saved fallback",
-                        key.0
-                    );
-                }
+                Err(HolonError::HolonNotFound(_)) => {}
                 Err(e) => {
                     // Propagate duplicate/borrow/etc. from staged lookup.
-                    debug!("[resolver]   → lookup for key='{}' failed with: {:?}", key.0, e);
                     return Err(e);
                 }
             }
 
             match context.lookup().get_saved_holon_by_key(&key) {
                 Ok(saved_reference) => {
-                    debug!("[resolver]   → FOUND saved holon for key='{}'", key.0);
                     return Ok(HolonReference::Smart(saved_reference));
                 }
-                Err(HolonError::HolonNotFound(_)) => {
-                    debug!("[resolver]   → NO saved holon for key='{}'", key.0);
-                }
+                Err(HolonError::HolonNotFound(_)) => {}
                 Err(error) => return Err(error),
             }
 
@@ -737,7 +680,6 @@ impl LoaderRefResolver {
 
         // TODO: proxy_key / proxy_id resolution for external references
 
-        debug!("[resolver] dereference LHR: no HolonKey property present");
         Err(HolonError::EmptyField(
             "LoaderHolonReference has no holon_key(holon_id not yet supported); cannot dereference"
                 .into(),
@@ -935,15 +877,8 @@ impl LoaderRefResolver {
         relationship_reference: &TransientReference,
         seen_relationship_edge_keys: &mut HashSet<RelationshipEdgeKey>,
     ) -> Result<i64, HolonError> {
-        debug!("[resolver] Entering try_resolve_by_type_graph");
-
         let relationship_name = Self::extract_relationship_metadata(relationship_reference)?;
 
-        debug!(
-            "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
-            Self::brief_lrr_summary(relationship_reference),
-            Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
-        );
         let (source_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, resolver_state, relationship_reference)?;
 
@@ -1002,7 +937,6 @@ impl LoaderRefResolver {
             if seen_relationship_edge_keys.contains(&edge_key)
                 || !planned_edge_keys.insert(edge_key.clone())
             {
-                debug!("Duplicate relationship skipped (declared)");
                 continue;
             }
 
@@ -1020,13 +954,6 @@ impl LoaderRefResolver {
     // ─────────────────────────────────────────────────────────────────────
     // Low-level helpers
     // ─────────────────────────────────────────────────────────────────────
-
-    /// Short diagnostic summary for a LoaderRelationshipReference.
-    fn brief_lrr_summary(lrr: &TransientReference) -> String {
-        let name = Self::extract_relationship_metadata(lrr)
-            .unwrap_or_else(|_| RelationshipName(MapString("<unknown>".into())));
-        format!("name={}", name)
-    }
 
     /// Extract the LoaderHolon key from the LRR's ReferenceSource (if present).
     fn source_loader_key_of_lrr(lrr: &TransientReference) -> Option<MapString> {

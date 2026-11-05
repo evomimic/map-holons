@@ -22,12 +22,28 @@ use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToDanceName, To
 /// `EffectiveHolonDescriptor`; crate-private methods support kernel/bootstrap prerequisites.
 pub struct HolonDescriptor {
     holon: HolonReference,
+    derived_fields: super::derived_descriptor::DerivedFields<super::EffectiveHolonDescriptor>,
 }
 
 impl HolonDescriptor {
     /// Wraps an already-resolved descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
-        Self { holon }
+        Self { holon, derived_fields: Default::default() }
+    }
+
+    /// Acquires the complete HolonType payload on demand. Independent wrappers share
+    /// saved Session results or the mutable descriptor's frozen-validation result.
+    /// Retirement replaces the private handle on the next ordinary accessor call.
+    pub fn effective_descriptor(&self) -> Result<super::EffectiveHolonDescriptor, HolonError> {
+        self.derived_fields.read(&self.holon, |result| {
+            result.described_holon_type()?;
+            Ok(result.clone())
+        })
+    }
+
+    /// Effective Instance TypeKind prepared with the complete HolonType schema.
+    pub fn instance_type_kind(&self) -> Result<Option<HolonReference>, HolonError> {
+        self.derived_fields.read(&self.holon, |result| result.instance_type_kind())
     }
 
     /// Projects the shared descriptor header view for this descriptor holon.

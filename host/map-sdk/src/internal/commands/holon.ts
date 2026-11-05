@@ -409,6 +409,10 @@ export function readAvailableDances(txId: TxId, target: HolonReferenceWire) {
 export function readDescribedRelatedHolons(txId: TxId, target: HolonReferenceWire, name: RelationshipName) {
   return runHolonCommand(txId, target, { Read: { GetDescribedRelatedHolons: { name } } }, expectDescribedCollection);
 }
+export function readPluralNavigableRelationships(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetPluralNavigableRelationships' }, expectCollection);
+}
+
 export function readInstanceProperties(txId: TxId, target: HolonReferenceWire) {
   return runHolonCommand(txId, target, { Read: 'GetInstanceProperties' }, expectCollection);
 }
@@ -421,8 +425,8 @@ export function readValidationFindings(txId: TxId, target: HolonReferenceWire): 
 }
 
 /** Applies ordinary instance lifecycle policy to an already resolved schema. */
-export function readAvailableRelationshipsFromEffective(txId: TxId, target: HolonReferenceWire, descriptor: HolonReferenceWire): Promise<QualifiedRelationshipWire[]> {
-  return runHolonCommand(txId, target, { Read: { GetAvailableRelationshipsFromEffective: { descriptor } } }, expectQualifiedRelationships);
+export function readAvailableRelationshipsFromEffective(txId: TxId, target: HolonReferenceWire, descriptor: HolonReferenceWire, singular?: boolean): Promise<QualifiedRelationshipWire[]> {
+  return runHolonCommand(txId, target, { Read: { GetAvailableRelationshipsFromEffective: { descriptor, ...(singular === undefined ? {} : { singular }) } } }, expectQualifiedRelationships);
 }
 
 /** Acquires an opaque Session-owned schema handle through one Holon command. */

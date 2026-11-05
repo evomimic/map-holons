@@ -5,7 +5,7 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 const publish = (record: ReturnType<typeof vi.fn>, occurrenceId: string, session: string) => reportSuccessfulVisualizerUse(
   { recordVisualizerUse: record } as unknown as MapTransaction, {} as VisualizerSelectionRequest, {} as HolonReference,
   { usage: {} as HolonReference, reportSession: session, initialized: false } as VisualizerUsageSelection, occurrenceId);
-it('never awaits persistence and retries the original correlation within a bounded budget', async () => {
+it('captures once without awaiting persistence; retry policy belongs to the host', async () => {
   vi.useFakeTimers();
   const diagnostic = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const record = vi.fn().mockRejectedValue(new Error('offline'));
@@ -13,7 +13,7 @@ it('never awaits persistence and retries the original correlation within a bound
   expect(record).toHaveBeenCalledTimes(1);
   const original = record.mock.calls[0][4];
   await vi.runAllTimersAsync();
-  expect(record).toHaveBeenCalledTimes(3);
+  expect(record).toHaveBeenCalledTimes(1);
   expect(record.mock.calls.every(call => call[4] === original)).toBe(true);
   expect(diagnostic).toHaveBeenCalledOnce();
 });

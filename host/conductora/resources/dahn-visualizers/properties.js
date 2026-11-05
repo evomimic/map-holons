@@ -1,7 +1,6 @@
 let nextPropertiesId = 0;
 
 export default class PropertyMapVisualizerElement extends HTMLElement {
-  static compositionSlots = { property: 'DefaultPropertyMapVisualizer.PropertySlot' };
   // PropertyMap slot report: intrinsic content height at the granted width.
   getPreferredContentHeight() { return this.preferredContentHeight; }
   frame = null;

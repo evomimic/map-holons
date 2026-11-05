@@ -86,6 +86,7 @@ impl DanceInitiator for TrustChannel {
         };
         use holons_core::HolonError;
         let envelope = DanceRequestEnvelope {
+            descriptor_registry: None,
             request: DanceEnvelopeRequest::Invocation {
                 invocation: HolonReferenceWire::from(invocation.as_holon_reference()),
             },

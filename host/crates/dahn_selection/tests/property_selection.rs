@@ -22,10 +22,23 @@ struct Graph {
     anchors: Vec<u8>,
     holon_root: Option<u8>,
     unavailable: Vec<u8>,
+    visualizer_root: Option<u8>,
+    non_slot_owners: Vec<u8>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
-        self.edges.insert((source, name.into()), targets.into());
+        if name == "HasSlot" {
+            let descriptor = self
+                .edges
+                .get(&(source, "DescribedBy".into()))
+                .and_then(|values| values.first())
+                .copied()
+                .unwrap_or(source + 100);
+            self.edges.insert((source, "DescribedBy".into()), vec![descriptor]);
+            self.edges.insert((descriptor, name.into()), targets.into());
+        } else {
+            self.edges.insert((source, name.into()), targets.into());
+        }
     }
     fn reference(context: &Arc<TransactionContext>, id: u8) -> HolonReference {
         HolonReference::smart_with_key(
@@ -71,9 +84,16 @@ impl HolonServiceApi for Graph {
     fn relationship_cache_policy(
         &self,
         _: &Arc<TransactionContext>,
-        _: &HolonId,
-        _: &RelationshipName,
+        source: &HolonId,
+        name: &RelationshipName,
     ) -> Result<Option<RelationshipCachePolicy>, HolonError> {
+        if name.to_string() == "HasSlot" && self.non_slot_owners.contains(&source.local_id().0[0]) {
+            return Err(HolonError::DescriptorDeclarationNotFound {
+                kind: "relationship".into(),
+                name: "HasSlot".into(),
+                descriptor: format!("{source:?}"),
+            });
+        }
         Ok(Some(RelationshipCachePolicy::Fresh))
     }
     fn get_saved_holon_by_key_internal(
@@ -85,6 +105,7 @@ impl HolonServiceApi for Graph {
             "TableCollectionVisualizer.CollectionVisualizer" => 20,
             "Dancer.HolonType" => 40,
             "RootedNavigationVisualizer.HolonType" => 41,
+            "VisualizerUsage.HolonType" => 80,
             _ => panic!("unexpected canonical role lookup {key}"),
         };
         match Self::reference(context, id) {
@@ -111,6 +132,10 @@ impl HolonServiceApi for Graph {
             properties.insert(PropertyName(name.into()), BaseValue::StringValue(value.into()));
         }
         properties.insert(
+            PropertyName("CompositionRole".into()),
+            BaseValue::StringValue(format!("slot-{}", id.local_id().0[0]).into()),
+        );
+        properties.insert(
             PropertyName("DefinesInstanceTypeKind".into()),
             BaseValue::BooleanValue(self.anchors.contains(&id.local_id().0[0]).into()),
         );
@@ -118,6 +143,8 @@ impl HolonServiceApi for Graph {
             PropertyName("Key".into()),
             BaseValue::StringValue(MapString(if self.holon_root == Some(id.local_id().0[0]) {
                 "HolonType.TypeDescriptor".into()
+            } else if self.visualizer_root == Some(id.local_id().0[0]) {
+                "Visualizer.HolonType".into()
             } else {
                 format!("node-{}", id.local_id().0[0])
             })),
@@ -146,6 +173,12 @@ impl HolonServiceApi for Graph {
                             context.space_read_handle(),
                             HolonId::Local(LocalId(vec![*id])),
                             MapString("HolonType.TypeDescriptor".into()),
+                        )
+                    } else if self.visualizer_root == Some(*id) {
+                        HolonReference::smart_with_key(
+                            context.space_read_handle(),
+                            HolonId::Local(LocalId(vec![*id])),
+                            "Visualizer.HolonType".into(),
                         )
                     } else {
                         Self::reference(context, *id)
@@ -229,12 +262,12 @@ fn select(
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let result = dahn_selection::select_visualizer(
         &context,
@@ -305,12 +338,12 @@ fn select_collection(
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let collection = map_commands_contract::DescribedHolonCollection {
         members: HolonCollection::from_parts(
@@ -362,12 +395,12 @@ fn slot_select_kind(
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let result = dahn_selection::select_visualizer(
         &context,
@@ -475,10 +508,10 @@ fn node_selection_starts_at_described_type_and_falls_back_through_extends() {
     }
 }
 
-#[test]
-fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
+fn home_graph() -> Graph {
     let mut graph = Graph::default();
-    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(60, "DescribedBy", &[2]);
+    graph.edge(61, "DescribedBy", &[2]);
     graph.edge(44, "DescribedBy", &[45]);
     graph.edge(44, "AffordsDancer", &[43]);
     graph.edge(43, "DescribedBy", &[40]);
@@ -492,31 +525,88 @@ fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
     graph.edge(49, "DescribedBy", &[10]);
     graph.edge(51, "DescribedBy", &[42]);
     graph.edge(60, "ForMetaDesignSystem", &[61]);
-    for candidate in [20, 21, 22] {
+    for candidate in [46, 49] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    graph
+}
+
+fn home_select(graph: Graph) -> Result<Option<dahn_selection::HomeDancerSelection>, HolonError> {
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
-    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
-    let selected = dahn_selection::select_home_dancer(
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    dahn_selection::select_home_dancer(
         &context,
         dahn_selection::HomeDancerSelectionContext {
             active_holon_space: Graph::reference(&context, 44),
-            selected_theme: Graph::reference(&context, 1),
-            selected_meta_design_system: Graph::reference(&context, 1),
+            selected_theme: Graph::reference(&context, 60),
+            selected_meta_design_system: Graph::reference(&context, 61),
             runtime: dahn_selection::HomeDancerRuntime::Local,
             person: None,
         },
     )
-    .unwrap()
-    .unwrap();
+}
+
+#[test]
+fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
+    let selected = home_select(home_graph()).unwrap().unwrap();
     assert_eq!(selected.dancer.holon_id().unwrap().local_id().0, vec![43]);
     assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
     assert_eq!(selected.root_node_visualizer.holon_id().unwrap().local_id().0, vec![49]);
+}
+
+#[test]
+fn home_selection_excludes_unavailable_or_theme_incompatible_navigation_candidates() {
+    for unavailable in [false, true] {
+        let mut graph = home_graph();
+        graph.edge(45, "HasApplicableVisualizer", &[46, 49, 51, 52]);
+        graph.edge(52, "DescribedBy", &[41]);
+        graph.edge(52, "ImplementedBy", &[70]);
+        if unavailable {
+            graph.unavailable.push(52);
+        } else {
+            graph.edge(52, "ConsumesDesignToken", &[99]);
+        }
+        let selected = home_select(graph).unwrap().unwrap();
+        assert_eq!(
+            selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0,
+            vec![46]
+        );
+    }
+}
+
+#[test]
+fn home_selection_rejects_an_unavailable_or_theme_incompatible_root_node() {
+    for unavailable in [false, true] {
+        let mut graph = home_graph();
+        if unavailable {
+            graph.unavailable.push(49);
+        } else {
+            graph.edge(49, "ConsumesDesignToken", &[99]);
+        }
+        assert!(matches!(home_select(graph), Err(HolonError::NotImplemented(_))));
+    }
+}
+
+#[test]
+fn home_selection_reuses_the_slots_eligible_usage_before_broad_discovery() {
+    let mut graph = home_graph();
+    // Two broadly viable navigation candidates would be ambiguous without the Slot Usage.
+    graph.edge(45, "HasApplicableVisualizer", &[46, 49, 52]);
+    graph.edge(52, "DescribedBy", &[41]);
+    graph.edge(52, "ImplementedBy", &[70]);
+    graph.edge(47, "HasSelectedUsage", &[81]);
+    graph.edge(81, "DescribedBy", &[80]);
+    graph.edge(81, "UsesVisualizer", &[46]);
+    graph.edge(81, "ForSubjectType", &[45]);
+    graph.edge(81, "SelectedForSlot", &[47]);
+    graph.edge(46, "ApplicableToType", &[45]);
+    let selected = home_select(graph).unwrap().unwrap();
+    assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
 }
 
 fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
@@ -524,12 +614,12 @@ fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
     for candidate in [20, 21, 22] {
         graph.edge(candidate, "ImplementedBy", &[70]);
     }
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
 }
 fn candidate_request(context: &Arc<TransactionContext>) -> VisualizerSelectionRequest {
@@ -730,12 +820,12 @@ fn malformed_implementation_is_an_evaluation_error_not_a_rejection() {
     malformed.edge(1, "HasApplicableVisualizer", &[20]);
     malformed.edge(60, "ForMetaDesignSystem", &[61]);
     malformed.edge(20, "ImplementedBy", &[70, 71]);
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(malformed),
         None,
         ServiceRoutingPolicy::BlockExternal,
-    ));
+    );
     let malformed_context =
         space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
     assert!(
@@ -863,4 +953,40 @@ fn title_selection_preserves_subject_owner_theme_and_discovers_ancestor_alternat
             .selected,
         Graph::reference(&context, 22)
     );
+}
+
+#[test]
+fn composition_slots_stays_within_visualizer_type_ancestry() {
+    let mut graph = Graph::default();
+    graph.visualizer_root = Some(3);
+    graph.non_slot_owners = vec![4];
+    // A Visualizer's describing type and its family root can own Slots. The
+    // generic HolonType parent of that root has no HasSlot declaration.
+    for (source, name, targets) in [
+        (1, "DescribedBy", vec![2]),
+        (2, "Extends", vec![3]),
+        (3, "Extends", vec![4]),
+        (2, "HasSlot", vec![10]),
+        (3, "HasSlot", vec![11]),
+    ] {
+        graph.edges.insert((source, name.into()), targets);
+    }
+    let context = candidate_context(graph);
+    let slots = holons_core::dahn::composition_slots(&Graph::reference(&context, 1)).unwrap();
+    assert_eq!(
+        slots.iter().map(|slot| slot.holon_id().unwrap().local_id().0[0]).collect::<Vec<_>>(),
+        vec![10, 11]
+    );
+}
+
+#[test]
+fn composition_slots_propagates_resolution_errors_within_visualizer_family() {
+    let mut graph = Graph::default();
+    graph.visualizer_root = Some(3);
+    graph.non_slot_owners = vec![2];
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(2, "Extends", &[3]);
+    let context = candidate_context(graph);
+    assert!(matches!(holons_core::dahn::composition_slots(&Graph::reference(&context, 1)),
+        Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "HasSlot"));
 }

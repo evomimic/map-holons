@@ -1,9 +1,10 @@
+use holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry;
 use std::sync::Arc;
 
 use hdk::prelude::*;
 
 use crate::dances_guest::dancer::dispatch_dance;
-use crate::init_guest_context;
+use crate::guest_context::init_guest_context_with_registry;
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -21,7 +22,15 @@ use holons_core::{
 /// This function is responsible for ingress binding, runtime dispatch, and egress projection.
 #[hdk_extern]
 pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
-    let DanceRequestEnvelope { request, session } = envelope;
+    let DanceRequestEnvelope { request, session, descriptor_registry } = envelope;
+    if descriptor_registry.is_some()
+        && !matches!(&request, DanceEnvelopeRequest::Legacy(request) if request.dance_name.0 == "commit")
+    {
+        return Ok(create_error_response_envelope(
+            HolonError::InvalidParameter("Registry transaction state is Commit-only".into()),
+            session,
+        ));
+    }
     let request = match request {
         DanceEnvelopeRequest::Invocation { invocation } => {
             return Ok(execute_invocation_envelope(invocation, session))
@@ -31,12 +40,6 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let dance_name = request.dance_name.clone();
     let is_load_holons = dance_name.0 == "load_holons";
     let total_started_at = performance_timestamp_micros();
-
-    if is_load_holons {
-        info!("[PERF-688] guest_dance_adapter: load_holons_entered");
-    }
-
-    info!("\n\n\n***********************  Entered dance_adapter() with {}", request.summarize());
 
     // ---- ingress validation ----
     let validation_started_at = performance_timestamp_micros();
@@ -69,10 +72,11 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     };
 
     let hydration_started_at = performance_timestamp_micros();
-    let context = match initialize_context_from_session_state(session_state) {
-        Ok(ctx) => ctx,
-        Err(error) => return Ok(create_error_response_envelope(error, session)),
-    };
+    let (context, _registry) =
+        match initialize_context_from_session_state(session_state, descriptor_registry) {
+            Ok(ctx) => ctx,
+            Err(error) => return Ok(create_error_response_envelope(error, session)),
+        };
     let hydration_micros = elapsed_micros(hydration_started_at);
 
     // ---- bind wire -> runtime ----
@@ -98,7 +102,9 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let response_session = restore_session_state_from_context(&context);
     let session_export_micros = elapsed_micros(session_export_started_at);
 
-    if is_load_holons || dance_name.0 == "commit" {
+    if cfg!(feature = "commit-performance-profiling")
+        && (is_load_holons || dance_name.0 == "commit")
+    {
         info!(
             "[PERF-688] guest_dance_adapter: validation_ms={} hydration_ms={} request_binding_ms={} dispatch_ms={} response_projection_ms={} session_export_ms={} total_ms={}",
             validation_micros / 1_000,
@@ -111,16 +117,10 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         );
     }
 
-    if dance_name.0 == "commit" {
+    if cfg!(feature = "commit-performance-profiling") && dance_name.0 == "commit" {
         info!("[commit-adapter] hydration_us={} request_binding_us={} dispatch_us={} response_projection_us={} session_export_us={} total_us={}",
             hydration_micros, request_binding_micros, dispatch_micros, response_projection_micros,
             session_export_micros, elapsed_micros(total_started_at));
-    }
-
-    info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);
-
-    if is_load_holons {
-        info!("[PERF-688] guest_dance_adapter: load_holons_returning");
     }
 
     Ok(DanceResponseEnvelope {
@@ -143,8 +143,8 @@ fn execute_invocation_envelope(
     let context = session
         .as_ref()
         .ok_or_else(|| HolonError::InvalidParameter("Missing SessionStateWire".into()))
-        .and_then(initialize_context_from_session_state);
-    let context = match context {
+        .and_then(|state| initialize_context_from_session_state(state, None));
+    let (context, _registry) = match context {
         Ok(context) => context,
         Err(error) => {
             return DanceResponseEnvelope {
@@ -194,7 +194,7 @@ fn execute_invocation_envelope(
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
-    sys_time().ok().map(|timestamp| timestamp.as_micros())
+    crate::performance::timestamp_micros()
 }
 
 fn elapsed_micros(started_at: Option<i64>) -> i64 {
@@ -229,10 +229,8 @@ fn create_error_response_envelope(
 
 fn initialize_context_from_session_state(
     session_state: &SessionStateWire,
-) -> Result<Arc<TransactionContext>, HolonError> {
-    info!("==Initializing context from session state==");
-    debug!("session_state: {:#?}", session_state);
-
+    registry: Option<holons_boundary::DescriptorRegistryWire>,
+) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
     let tx_id = session_state.get_tx_id().ok_or(HolonError::InvalidWireFormat {
         wire_type: "SessionStateWire".to_string(),
         reason: "Missing tx_id".to_string(),
@@ -246,12 +244,13 @@ fn initialize_context_from_session_state(
     let transient_holons = session_state.get_transient_holons().clone();
     let staged_holons = session_state.get_staged_holons().clone();
 
-    let context = init_guest_context(
+    let (context, registry) = init_guest_context_with_registry(
         transient_holons,
         staged_holons,
         local_space_holon_id.clone(),
         tx_id,
         session_state.is_restricted_cache_read(),
+        registry,
     )?;
 
     let bootstrap_provisioning = session_state.is_bootstrap_provisioning();
@@ -263,7 +262,7 @@ fn initialize_context_from_session_state(
     if bootstrap_provisioning {
         context.enable_bootstrap_provisioning();
     }
-    Ok(context)
+    Ok((context, registry))
 }
 
 /// Restores the session_state wire payload from context.

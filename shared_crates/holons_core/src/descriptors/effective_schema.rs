@@ -73,12 +73,12 @@ impl ComputedEffectiveSchema {
     pub fn from_prepared(descriptor: &super::EffectiveHolonDescriptor) -> Result<Self, HolonError> {
         use super::Descriptor;
         let target = descriptor.described_holon_type()?.holon().clone();
-        let context = descriptor.holon().resolution_context()?;
+        let space = descriptor.holon().space_read_handle();
         let metadata = descriptor.prepared_schema()?;
         let lineage = metadata
             .lineage
             .iter()
-            .map(|id| HolonReference::smart_from_id(context.space_read_handle(), id.clone()))
+            .map(|id| HolonReference::smart_from_id(space.clone(), id.clone()))
             .collect::<Vec<_>>();
         let mut restored = Vec::new();
         for (index, (source, result, _, _, _)) in collections().into_iter().enumerate() {
@@ -102,10 +102,7 @@ impl ComputedEffectiveSchema {
                 .zip(origins)
                 .map(|(member, (origin, position))| EffectiveContribution {
                     member,
-                    declared_on: HolonReference::smart_from_id(
-                        context.space_read_handle(),
-                        origin.clone(),
-                    ),
+                    declared_on: HolonReference::smart_from_id(space.clone(), origin.clone()),
                     source_collection: source.clone(),
                     local_position: *position,
                 })
@@ -113,16 +110,18 @@ impl ComputedEffectiveSchema {
             restored.push(EffectiveCollection { source, result, occurrences });
         }
         let navigation = OnceLock::new();
-        let navigation_members = descriptor
-            .navigable_relationships()?
-            .into_iter()
+        if metadata.navigation_members.len() != metadata.navigation_origins.len() {
+            return Err(HolonError::InvalidParameter(
+                "Prepared navigation/origin length mismatch".into(),
+            ));
+        }
+        let navigation_members = metadata
+            .navigation_members
+            .iter()
             .zip(&metadata.navigation_origins)
-            .map(|(relationship, (origin, position, source_of))| EffectiveContribution {
-                member: relationship.holon().clone(),
-                declared_on: HolonReference::smart_from_id(
-                    context.space_read_handle(),
-                    origin.clone(),
-                ),
+            .map(|(member, (origin, position, source_of))| EffectiveContribution {
+                member: HolonReference::smart_from_id(space.clone(), member.clone()),
+                declared_on: HolonReference::smart_from_id(space.clone(), origin.clone()),
                 source_collection: if *source_of {
                     CoreRelationshipTypeName::SourceOf
                 } else {
@@ -200,6 +199,13 @@ impl ComputedEffectiveSchema {
         super::effective_holon_descriptor::materialize_effective_schema(context, self, |_, _| {})
     }
 
+    /// Reuses the prepared ValueType/PropertyType lineage and inherited commitments.
+    /// Other contract collections retain their kernel semantics; no second Extends
+    /// traversal or fabricated empty contract is introduced.
+    pub fn from_derived(descriptor: &super::DerivedDescriptor) -> Result<Self, HolonError> {
+        Self::from_members_with_derived(descriptor.lineage()?, &mut |_, _| {}, Some(descriptor))
+    }
+
     /// Resolves L(T), never L(D(T)); supports invalid but structurally traversable schemas.
     pub fn resolve(target: &HolonReference) -> Result<Self, HolonError> {
         Self::resolve_with_checkpoint(target, &mut |_, _| {})
@@ -214,7 +220,13 @@ impl ComputedEffectiveSchema {
         target: &HolonReference,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
-        let lineage = ancestors(target)?;
+        let lineage = match target.transaction_context() {
+            Some(context) => context
+                .frozen_descriptor_lineage(target)?
+                .map(Ok)
+                .unwrap_or_else(|| ancestors(target))?,
+            None => ancestors(target)?,
+        };
         checkpoint("lineage", "");
         Self::from_members(lineage, checkpoint)
     }
@@ -223,13 +235,29 @@ impl ComputedEffectiveSchema {
         lineage: Vec<HolonReference>,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
+        Self::from_members_with_derived(lineage, checkpoint, None)
+    }
+
+    fn from_members_with_derived(
+        lineage: Vec<HolonReference>,
+        checkpoint: &mut impl FnMut(&str, &str),
+        derived: Option<&super::DerivedDescriptor>,
+    ) -> Result<Self, HolonError> {
         let target = lineage
             .first()
             .ok_or_else(|| HolonError::InvalidParameter("Empty descriptor lineage".into()))?
             .clone();
         let mut resolved = Vec::new();
         for (source, result, _, _, _) in collections() {
-            let selected = relationship_targets_in_lineage(&lineage, source.clone())?;
+            let selected = match (derived, &source) {
+                (Some(derived), CoreRelationshipTypeName::Constraints) => {
+                    derived.effective_constraints()?
+                }
+                (Some(derived), CoreRelationshipTypeName::ValidationBindings) => {
+                    derived.effective_validation_bindings()?
+                }
+                _ => relationship_targets_in_lineage(&lineage, source.clone())?,
+            };
             let mut positions = HashMap::<DefinitionIdentity, usize>::new();
             let mut occurrences = Vec::with_capacity(selected.len());
             for contribution in selected {

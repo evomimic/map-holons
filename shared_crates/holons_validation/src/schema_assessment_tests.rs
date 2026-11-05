@@ -511,6 +511,31 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
 }
 
 #[test]
+fn frozen_preparation_supplies_all_value_products_before_consumption() -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?;
+    let mut subject = fixture.staged_subject("prepared-mutable-instance")?;
+    subject.with_property_value("Title", "complete")?;
+    let candidates = [subject];
+    let _scope = fixture.context.begin_frozen_validation()?;
+    let constructed = crate::commit_assessment::construct_assessment(
+        &fixture.context,
+        &candidates,
+        ValidationCollector::default(),
+    )?;
+    let outputs = fixture.context.lookup().transient_count()?;
+    // A new wrapper must reuse the same prepared product used by Commit consumers.
+    ValueDescriptor::from_holon(fixture.nodes["StringValueType.ValueType"].clone()).value_kind()?;
+    let report = constructed.assess(|_| {})?.0.into_report();
+    assert!(report.is_accepted(), "{report:?}");
+    assert_eq!(
+        fixture.context.lookup().transient_count()?,
+        outputs,
+        "consumption must not construct further derived products"
+    );
+    Ok(())
+}
+
+#[test]
 fn profiling_observes_preparation_without_changing_the_validation_report() -> Result<(), HolonError>
 {
     let fixture = readiness_fixture()?.saved_snapshot()?;

@@ -116,7 +116,7 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   const entry = popup.querySelector<HTMLButtonElement>('button')!;
   expect(entry.disabled).toBe(false); expect(entry.tabIndex).toBe(0);
   entry.click();
-  expect(activate).toHaveBeenCalledWith(tabs[1], 'HolonInspector.CollectionsSlot', expect.any(Function));
+  expect(activate).toHaveBeenCalledWith(tabs[1], 'collection', expect.any(Function));
   expect(popup.hidden).toBe(true); expect(document.activeElement).toBe(more);
   expect(controls[1].getAttribute('aria-selected')).toBe('true');
   expect(controls.map(control => control.tabIndex)).toEqual([0, -1, -1]);

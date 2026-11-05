@@ -116,7 +116,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         let Some(app_ws) = ws else {
-            return Err(HolonError::FailedToBorrow("AppSocket not initialized".into()));
+            return Err(HolonError::ServiceNotAvailable("AppSocket not initialized".into()));
         };
 
         // --- Make zome call ---
@@ -149,8 +149,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
                 succeeded = result.is_ok()
             );
         }
-        let extern_io = result
-            .map_err(|error| HolonError::ConductorError(format!("Zome call failed: {error:?}")))?;
+        let extern_io = result.map_err(map_conductor_error)?;
 
         let decode_started = Instant::now();
         let decoded = ExternIO::decode::<DanceResponseEnvelope>(&extern_io);
@@ -239,4 +238,40 @@ fn to_bytebuf(sb: SerializedBytes) -> ByteBuf {
     // SerializedBytes implements `.bytes()` which gives you a reference to its Vec<u8>
     let v: Vec<u8> = sb.bytes().to_vec();
     ByteBuf::from(v)
+}
+
+/// Preserve a known unavailable service without treating timeouts as failed commits.
+fn map_conductor_error(error: holochain_client::ConductorApiError) -> HolonError {
+    match error {
+        holochain_client::ConductorApiError::WebsocketError(
+            holochain_websocket::WebsocketError::Close(reason),
+        ) => HolonError::ServiceNotAvailable(reason),
+        holochain_client::ConductorApiError::IoError(ref io)
+            if matches!(
+                io.kind(),
+                std::io::ErrorKind::ConnectionRefused
+                    | std::io::ErrorKind::NotConnected
+                    | std::io::ErrorKind::BrokenPipe
+            ) =>
+        {
+            HolonError::ServiceNotAvailable(error.to_string())
+        }
+        other => HolonError::ConductorError(format!("Zome call failed: {other:?}")),
+    }
+}
+
+#[cfg(test)]
+mod persistence_error_tests {
+    use super::*;
+    #[test]
+    fn known_closed_service_is_distinct_from_unknown_commit_outcome() {
+        let closed = holochain_client::ConductorApiError::WebsocketError(
+            holochain_websocket::WebsocketError::Close("closed".into()),
+        );
+        assert!(matches!(map_conductor_error(closed), HolonError::ServiceNotAvailable(_)));
+        let unknown = holochain_client::ConductorApiError::WebsocketError(
+            holochain_websocket::WebsocketError::Other("unknown outcome".into()),
+        );
+        assert!(matches!(map_conductor_error(unknown), HolonError::ConductorError(_)));
+    }
 }

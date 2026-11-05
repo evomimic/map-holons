@@ -339,6 +339,9 @@
               "$ref": "AtMostOneDirectParent.ValidationRule"
             },
             {
+              "$ref": "AbstractPropertyParent.ValidationRule"
+            },
+            {
               "$ref": "AcyclicExtendsLineage.ValidationRule"
             },
             {

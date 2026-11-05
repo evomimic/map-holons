@@ -1,17 +1,24 @@
 use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
 
-use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::Holon;
 use crate::{HolonCollection, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
 pub trait HolonCacheAccess: Debug + Send + Sync {
-    /// Returns a resident saved holon without starting a cache-fill transaction.
-    fn get_cached_rc_holon(
-        &self,
-        holon_id: &HolonId,
-    ) -> Result<Option<Arc<RwLock<Holon>>>, HolonError>;
+    /// Populates explicit saved IDs, returning errors only. Entries remain evictable.
+    /// Cache misses run in a private restricted context owned by the cache manager.
+    fn ensure_cached(&self, ids: &[HolonId]) -> Vec<super::cache_population::CachePopulationError> {
+        if ids.is_empty() {
+            return Vec::new();
+        }
+        vec![super::cache_population::CachePopulationError::new(
+            ids.to_vec(),
+            HolonError::NotImplemented(
+                "saved cache population unsupported by cache adapter".into(),
+            ),
+        )]
+    }
 
     /// This method returns a mutable reference to the Holon identified by holon_id.
     /// If holon_id is `Local`, it retrieves the holon from the local cache. If the holon is not
@@ -19,11 +26,7 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// store and inserts it into the cache before returning the reference to that holon.
     /// If the holon_id is `External`, this method currently returns a `NotImplemented` HolonError
     ///
-    fn get_rc_holon(
-        &self,
-        context: &Arc<TransactionContext>,
-        holon_id: &HolonId,
-    ) -> Result<Arc<RwLock<Holon>>, HolonError>;
+    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError>;
 
     /// Retrieves related holons for the given source holon.
     ///
@@ -31,7 +34,6 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// - An `Arc<RwLock<HolonCollection>>` containing the related holons for thread-safe access.
     fn get_related_holons(
         &self,
-        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
@@ -39,7 +41,6 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// Reads membership with a caller freshness requirement.
     fn get_related_holons_with_hint(
         &self,
-        context: &Arc<TransactionContext>,
         source: &HolonId,
         name: &RelationshipName,
         hint: crate::RelationshipReadHint,
@@ -49,13 +50,12 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
                 "fresh relationship reads unsupported by cache adapter".into(),
             ));
         }
-        self.get_related_holons(context, source, name)
+        self.get_related_holons(source, name)
     }
 
     /// Retains content through a bounded read assessment. Adapters must opt in explicitly.
     fn retain_holon(
         &self,
-        _context: &Arc<TransactionContext>,
         _id: &HolonId,
     ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
         Err(HolonError::NotImplemented(
@@ -66,12 +66,11 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// Prepares explicit membership demand without discovering descriptor relationships.
     fn prepare_relationships(
         &self,
-        context: &Arc<TransactionContext>,
         source: &HolonId,
         names: &[RelationshipName],
     ) -> Result<(), HolonError> {
         for name in names {
-            self.get_related_holons(context, source, name)?;
+            self.get_related_holons(source, name)?;
         }
         Ok(())
     }
@@ -79,7 +78,6 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// Retrieves all relationships visible from a saved source.
     fn get_all_related_holons(
         &self,
-        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError>;
 }

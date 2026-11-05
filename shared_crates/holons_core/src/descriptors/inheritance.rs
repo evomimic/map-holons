@@ -19,7 +19,7 @@ pub(crate) fn lineage_edge_reads(reference: &HolonReference) -> usize {
 }
 
 /// Direction of a relationship type descriptor relative to its declared edge.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum RelationshipDirection {
     /// The descriptor names the canonical source-to-target relationship.
     Declared,

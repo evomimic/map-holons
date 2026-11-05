@@ -5,11 +5,11 @@ import type { HolonViewAccess } from '../contracts/holon-view';
 function fixture() {
   const property = (name: string, array: boolean) => ({ propertyName: async () => name, isArray: async () => array });
   const relationship = (label: string, maximum: number | null, direction = 'declared') => ({
-    direction, descriptor: { description: async () => 'Relationship description', displayName: async () => label, effectiveCardinality: async () => ({ minimum: 0, maximum }) },
+    direction, descriptor: { description: async () => 'Relationship description', displayName: async () => label, effectiveCardinality: () => { throw new Error('Must not resolve cardinality per relationship'); } },
   });
   return {
     availableProperties: vi.fn().mockResolvedValue([property('Name', false), property('Tags', true)]),
-    availableRelationships: vi.fn().mockResolvedValue([relationship('Hidden', 0), relationship('Parent', 1), relationship('Children', null), relationship('Sources', 3, 'inverse')]),
+    availableRelationships: vi.fn(async (multiplicity: string) => multiplicity === 'singular' ? [relationship('Parent', 1)] : [relationship('Children', null), relationship('Sources', 3, 'inverse')]),
     availableDances: vi.fn().mockResolvedValue([{ propertyValue: async () => ({ StringValue: 'Friendly dance' }), versionedKey: async () => 'UnknownDance@1' }]),
     propertyValue: vi.fn(() => { throw Error('Must not fetch values'); }),
     expandRelationship: vi.fn(() => { throw Error('Must not expand targets'); }),
@@ -26,6 +26,8 @@ describe('descriptor-driven Node classification', () => {
     expect(result.collections.map(x => x.label)).toEqual(['Tags', 'Children', 'Sources']);
     expect(result.collections[2]).toMatchObject({ relationship: { direction: 'inverse' } });
     expect(result.actions).toMatchObject([{ kind: 'action', label: 'Friendly dance' }]);
+    expect(view.availableRelationships).toHaveBeenCalledWith('singular');
+    expect(view.availableRelationships).toHaveBeenCalledWith('plural');
     expect(view.propertyValue).not.toHaveBeenCalled();
     expect(view.expandRelationship).not.toHaveBeenCalled();
   });

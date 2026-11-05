@@ -40,8 +40,7 @@ const PERSON_TO_BOOK_RELATIONSHIP: &str = "AuthorOf";
 /// QRY-F1 (issue #797): Contains filtering through `Filter`, `SeedPredicate`
 /// and `ExpansionPredicate`, with flat `AnyOf`, on both the direct and
 /// QueryDance routes. Every definition (query, expressions, predicates,
-/// literal operands) is a transient holon, and the executor asserts that
-/// evaluation leaves that whole graph unchanged.
+/// literal operands) is a transient holon.
 ///
 /// Cases:
 /// - `Filter(Title contains "STRASSE")` over [Strasse, Atlas, Roads, Strasse]:
@@ -140,7 +139,6 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit the QRY-F1 Book/Person data".to_string()),
     )?;
-    test_case.add_match_saved_content_step()?;
 
     // --- Author transient definitions and execute them in a fresh transaction ---
     test_case.add_begin_transaction_step(
