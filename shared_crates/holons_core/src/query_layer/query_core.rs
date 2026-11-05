@@ -562,19 +562,39 @@ fn seed_holons(
 
 /// Refuses a predicate attached at a point its expression kind does not own.
 ///
-/// Placement is a property of the expression, not of the attachment: both
-/// attachment points are checked whatever the kind, because a predicate on the
-/// "wrong" operator is ill-formed per schema but still constructible on a
-/// transient definition, and would otherwise pass through unfiltered.
+/// Transient and staged definitions may carry undeclared attachments. Saved
+/// definitions are navigated only over their effective declared contract; an
+/// attachment absent from that contract is not a relationship to probe.
 fn reject_misplaced_predicates(
     expression: &HolonReference,
     kind: &ExpressionKind,
 ) -> Result<(), HolonError> {
+    let navigable = if expression.is_saved() {
+        Some(
+            expression
+                .effective_descriptor()?
+                .navigable_relationships()?
+                .into_iter()
+                .map(|relationship| relationship.base_relationship_name())
+                .collect::<Result<HashSet<_>, _>>()?,
+        )
+    } else {
+        None
+    };
     for (relationship, owner) in [
         (QueryRelationshipTypeName::SeedPredicate, ExpressionKind::SeedHolons),
         (QueryRelationshipTypeName::ExpansionPredicate, ExpressionKind::Expand),
     ] {
-        if *kind != owner && !related_members(expression, relationship.clone())?.is_empty() {
+        if *kind == owner {
+            continue;
+        }
+        if navigable
+            .as_ref()
+            .is_some_and(|names| !names.contains(&relationship.clone().to_relationship_name()))
+        {
+            continue;
+        }
+        if !related_members(expression, relationship.clone())?.is_empty() {
             return Err(HolonError::InvalidParameter(format!(
                 "{} is attached to {}, which is not a {owner:?} expression",
                 relationship.to_relationship_name(),
@@ -728,8 +748,9 @@ mod tests {
     use super::*;
     use crate::core_shared_objects::holon::SavedHolon;
     use crate::descriptors::test_support::{
-        build_context, build_context_with_saved_holons, core_operator, new_descriptor_holon,
-        new_holon_type_descriptor, new_property_descriptor_holon, new_test_holon,
+        build_context, build_context_with_relationship_contracts, core_operator,
+        new_descriptor_holon, new_holon_type_descriptor, new_property_descriptor_holon,
+        new_test_holon,
     };
 
     /// Stages the canonical `<type_name>.HolonType` descriptor, optionally
@@ -1040,7 +1061,14 @@ mod tests {
             (rel(26, CoreRelationshipTypeName::TargetType), vec![id(BOOK)]),
             (author_of(24), vec![id(20), id(27)]),
         ]);
-        let context = build_context_with_saved_holons(snapshots, relationships);
+        let context = build_context_with_relationship_contracts(
+            snapshots,
+            relationships,
+            HashMap::new(),
+            [id(1), id(10), id(11), id(12), id(20), id(24), id(27), id(28), id(29), id(30)]
+                .into_iter()
+                .collect(),
+        );
         let space = HolonReference::smart_from_id(context.space_read_handle(), id(1));
         Fixture { context, space }
     }
@@ -1151,6 +1179,21 @@ mod tests {
 
     fn ids_of(members: &[HolonReference]) -> Vec<HolonId> {
         members.iter().map(|member| member.holon_id().unwrap()).collect()
+    }
+
+    #[test]
+    fn saved_reads_distinguish_undeclared_from_empty_relationships() {
+        let fixture = build_fixture();
+        assert!(related_members(&fixture.saved(28), "AuthoredBy").unwrap().is_empty());
+        assert!(matches!(
+            related_members(&fixture.saved(28), "SeedPredicate"),
+            Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "SeedPredicate"
+        ));
+        reject_misplaced_predicates(
+            &fixture.saved(28),
+            &ExpressionKind::Unsupported("Book".into()),
+        )
+        .expect("the placement check must not navigate undeclared saved relationships");
     }
 
     #[test]

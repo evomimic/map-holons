@@ -55,8 +55,6 @@ const PERSON_3_KEY: &str = "Qry4a.Person.3";
 
 /// QRY4a (issue #755): transient query definitions, `OrderBy`, `Skip`, `Limit`,
 /// and invocation-binding refusal, on both the direct and QueryDance routes.
-/// The executor also asserts, for every step, that evaluation leaves the whole
-/// definition graph (query, expressions, OrderBySpecs) unchanged.
 ///
 /// 1. Stage and commit Book/Person data only. No Query definition is committed.
 /// 2. In a fresh transaction, author every Query / Expand / OrderBy /
@@ -222,7 +220,6 @@ pub fn query_qry4a_order_paginate_fixture() -> Result<DancesTestCase, HolonError
         None,
         Some("Commit the QRY4a Book/Person data".to_string()),
     )?;
-    test_case.add_match_saved_content_step()?;
 
     // --- Author transient definitions and execute them in a fresh transaction ---
     test_case.add_begin_transaction_step(

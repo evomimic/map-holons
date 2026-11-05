@@ -45,12 +45,13 @@ default-filter = "binary(holon_storage_tests) | binary(pvl_validation_tests)"
 
 [profile.ci-dance]
 inherits = "ci"
-# TEMP (2026-10-20): both dance suites are skipped in CI, so this selects nothing and the `dance`
-# job is disabled. Each ran past 30 minutes on a hosted runner: one bootstrap plus scenarios
+# TEMP (2026-10-20): dance suites remain skipped in CI, so this selects nothing and the `dance`
+# job is disabled. Query scenarios now have a separate local selector; this split does not
+# re-enable CI coverage. Earlier suites ran past 30 minutes: one bootstrap plus scenarios
 # whose verification reads make one dance call per relationship read (e.g. pristine step 5 reads
 # ValidationBindings on all ~1,060 holons). Run them locally (`npm run sweet:dance`, or
 # `-E 'binary(dance_tests)'`); re-enable once they fit, see the sweettest optimisation notes.
-default-filter = "binary(dance_tests) & not test(=pristine_bootstrap_and_loader) & not test(=rstest_dance_test_suites::case_1_runtime_behavior_matrix)"
+default-filter = "binary(dance_tests) & not test(=query_runtime) & not test(=pristine_bootstrap_and_loader) & not test(=rstest_dance_test_suites::case_1_runtime_behavior_matrix)"
 
 [profile.ci-rest]
 inherits = "ci"

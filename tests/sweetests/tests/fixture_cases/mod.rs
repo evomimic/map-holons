@@ -36,3 +36,5 @@ pub use setup_book_and_authors_fixture::*;
 pub mod commit_graph_only_fixture;
 
 pub mod commit_key_uniqueness_fixture;
+
+pub mod query_boundary_fixture;

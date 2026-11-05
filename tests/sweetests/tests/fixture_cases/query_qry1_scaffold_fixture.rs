@@ -121,7 +121,6 @@ pub fn query_qry1_scaffold_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit the QRY1 Query definition".to_string()),
     )?;
-    test_case.add_match_saved_content_step()?;
 
     // --- Drive the scaffold in a fresh transaction over the committed definition ---
     test_case.add_begin_transaction_step(

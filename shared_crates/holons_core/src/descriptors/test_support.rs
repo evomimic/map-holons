@@ -7,7 +7,8 @@ use crate::descriptors::{
     PreparedSchema,
 };
 use crate::reference_layer::{
-    HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
+    HolonReference, HolonServiceApi, ReadableHolon, StagedReference, TransientReference,
+    WritableHolon,
 };
 use crate::HolonCollectionApi;
 use base_types::MapString;
@@ -25,6 +26,7 @@ use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeNa
 #[derive(Debug, Default)]
 struct TestHolonService {
     read_errors: HashMap<HolonId, HolonError>,
+    strict_relationship_sources: std::collections::HashSet<HolonId>,
     saved_holons: HashMap<HolonId, SavedHolon>,
     saved_relationships: std::sync::RwLock<HashMap<(HolonId, RelationshipName), Vec<HolonId>>>,
 }
@@ -111,6 +113,15 @@ impl HolonServiceApi for TestHolonService {
     ) -> Result<HolonCollection, HolonError> {
         if !self.saved_holons.contains_key(source_id) {
             return Err(HolonError::HolonNotFound(format!("test saved holon: {source_id:?}")));
+        }
+        // Resolve application relationships through production descriptor navigation.
+        // DescribedBy is needed to obtain that contract in the first place.
+        if self.strict_relationship_sources.contains(source_id)
+            && *relationship_name != CoreRelationshipTypeName::DescribedBy.as_relationship_name()
+        {
+            HolonReference::smart_from_id(context.space_read_handle(), source_id.clone())
+                .effective_descriptor()?
+                .get_relationship_by_name(relationship_name)?;
         }
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) = self
@@ -206,6 +217,23 @@ pub(crate) fn build_context_with_read_errors(
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
     read_errors: HashMap<HolonId, HolonError>,
 ) -> Arc<TransactionContext> {
+    build_context_with_relationship_contracts(
+        holons,
+        relationships,
+        read_errors,
+        Default::default(),
+    )
+}
+
+/// Uses production declaration lookup for selected saved source instances.
+/// Descriptor metadata stays minimal, while query subjects distinguish a missing
+/// declaration from a declared relationship with no members.
+pub(crate) fn build_context_with_relationship_contracts(
+    holons: Vec<SavedHolon>,
+    relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+    read_errors: HashMap<HolonId, HolonError>,
+    strict_relationship_sources: std::collections::HashSet<HolonId>,
+) -> Arc<TransactionContext> {
     let mut saved_holons: HashMap<HolonId, SavedHolon> = holons
         .into_iter()
         .map(|holon| (HolonId::Local(holon.get_local_id().unwrap()), holon))
@@ -256,6 +284,7 @@ pub(crate) fn build_context_with_read_errors(
         saved_holons,
         saved_relationships: std::sync::RwLock::new(relationships),
         read_errors,
+        strict_relationship_sources,
     });
     let space_manager = HolonSpaceManager::new_with_managers(
         None,
