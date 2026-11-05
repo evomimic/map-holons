@@ -101,12 +101,12 @@ fn registry_setup_replaces_the_session_without_two_active_owners() {
     use holons_core::core_shared_objects::{
         space_manager::HolonSpaceManager, ServiceRoutingPolicy,
     };
-    let space = Arc::new(HolonSpaceManager::new_with_managers(
+    let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(holons_client::ClientHolonService::development_default()),
         None,
         ServiceRoutingPolicy::Combined,
-    ));
+    );
     let runtime = Runtime::new(Arc::new(RuntimeSession::new(space.clone(), None)));
     let previous = Arc::downgrade(runtime.session().descriptor_registry());
     let replacement = fresh_session(runtime);

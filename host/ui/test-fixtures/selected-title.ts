@@ -23,7 +23,7 @@ export function selectedTitleContext(context: any = {}, TitleConstructor = Title
 }
 /** Tests unrelated to selection still supply actual selected Title Bar children. */
 export function withSelectedTitle(Implementation: any) {
-  if (!Implementation.compositionSlots?.titleBar) return Implementation;
+  if (typeof Implementation.prototype.setNodeInspectorAllocation !== 'function') return Implementation;
   return class extends Implementation {
     setContext(context: any) { super.setContext(selectedTitleContext(context)); }
   };

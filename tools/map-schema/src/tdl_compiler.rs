@@ -2269,25 +2269,92 @@ holon Example.HolonType {
     fn descriptor_runtime_owns_its_complete_contract_without_inverse_authoring() -> Result<()> {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
-        let document: Value = serde_json::from_str(&fs::read_to_string(out_dir.join("descriptor-runtime/schema.json"))?)?;
+        let document: Value = serde_json::from_str(&fs::read_to_string(
+            out_dir.join("descriptor-runtime/schema.json"),
+        )?)?;
         let holons = document["holons"].as_array().context("Descriptor Runtime holons")?;
         let runtime_key = "MAP Descriptor Runtime Schema-v0.1.0";
         let find = |key: &str| holons.iter().find(|holon| holon["key"] == key).unwrap();
         let targets = |holon: &Value, name: &str| -> Vec<String> {
-            holon["relationships"].as_array().unwrap().iter()
+            holon["relationships"]
+                .as_array()
+                .unwrap()
+                .iter()
                 .filter(|relationship| relationship["name"] == name)
                 .flat_map(|relationship| relationship["target"].as_array().unwrap())
-                .map(|target| target["$ref"].as_str().unwrap().to_owned()).collect()
+                .map(|target| target["$ref"].as_str().unwrap().to_owned())
+                .collect()
         };
-        assert_eq!(targets(find(runtime_key), "DependsOn"), vec!["MAP Core Schema-v0.0.7", "MAP Dance Schema-v0.1.0", "MAP Commands Schema-v0.1.0"]);
+        assert_eq!(
+            targets(find(runtime_key), "DependsOn"),
+            vec!["MAP Core Schema-v0.0.7", "MAP Dance Schema-v0.1.0", "MAP Commands Schema-v0.1.0"]
+        );
         let contract = targets(find("EffectiveHolonDescriptor.HolonType"), "InstanceRelationships");
-        for name in ["EffectiveInstanceProperties", "EffectiveInstanceRelationships", "NavigableRelationships", "EffectiveAffordsDance", "EffectiveAffordsCommand", "EffectiveValidationBindings", "EffectiveConstraints", "EffectiveInstanceKeyRule"] {
-            assert!(contract.iter().any(|key| key.contains(&format!("-[{name}]->"))), "missing {name}");
+        for name in [
+            "EffectiveInstanceProperties",
+            "EffectiveInstanceRelationships",
+            "SingularNavigableRelationships",
+            "PluralNavigableRelationships",
+            "EffectiveAffordsDance",
+            "EffectiveAffordsCommand",
+            "EffectiveValidationBindings",
+            "EffectiveConstraints",
+            "EffectiveInstanceKeyRule",
+        ] {
+            assert!(
+                contract.iter().any(|key| key.contains(&format!("-[{name}]->"))),
+                "missing {name}"
+            );
         }
+        assert!(!contract.iter().any(|key| key.contains("-[NavigableRelationships]->")));
+        for name in ["SingularNavigableRelationships", "PluralNavigableRelationships"] {
+            let key = format!(
+                "(EffectiveHolonDescriptor.HolonType)-[{name}]->(RelationshipType.TypeDescriptor)"
+            );
+            let pair = find(&key);
+            assert_eq!(pair["properties"]["AllowsDuplicates"], true);
+            assert_eq!(pair["properties"]["TargetBinding"], "Version");
+            assert_eq!(targets(pair, "HasInverse").len(), 1);
+        }
+        assert_eq!(
+            targets(
+                find("ConstructDerivedDescriptorResponse.DanceResponseType"),
+                "InstanceRelationships"
+            ),
+            vec!["(DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)"]
+        );
+        assert!(targets(find("DerivedDescriptor.HolonType"), "InstanceProperties")
+            .contains(&"DerivedValueKind.PropertyType".to_string()));
+        assert!(targets(find("DerivedDescriptor.HolonType"), "InstanceProperties")
+            .contains(&"DerivedInstanceTypeKind.PropertyType".to_string()));
+        let derived = targets(find("DerivedDescriptor.HolonType"), "InstanceRelationships");
+        assert_eq!(derived.len(), 4);
+        for (name, target) in [
+            ("DerivedLineage", "TypeDescriptor"),
+            ("DerivedConstraints", "Constraint.HolonType"),
+            ("DerivedValidationBindings", "ValidationRule.HolonType"),
+            ("DerivedOperators", "OperatorType.HolonType"),
+        ] {
+            let key = format!("(DerivedDescriptor.HolonType)-[{name}]->({target})");
+            assert!(derived.contains(&key));
+            assert_eq!(find(&key)["properties"]["IsOrdered"], true);
+            assert_eq!(find(&key)["properties"]["AllowsDuplicates"], true);
+        }
+        assert!(targets(find("EffectiveHolonDescriptorRegistry.HolonType"), "InstanceRelationships").contains(
+            &"(EffectiveHolonDescriptorRegistry.HolonType)-[PreparedDerivedDescriptors]->(DerivedDescriptor.HolonType)".into()
+        ));
         for holon in holons {
             assert!(targets(holon, "InstanceRelationshipFor").is_empty());
-            if holon["key"] != runtime_key && holon["key"] != "ConstructEffectiveHolonDescriptor.DanceImplementation" {
+            if holon["key"] != runtime_key
+                && holon["key"] != "ConstructEffectiveHolonDescriptor.DanceImplementation"
+                && holon["key"] != "ConstructDerivedDescriptor.DanceImplementation"
+            {
                 assert_eq!(targets(holon, "ComponentOf"), vec![runtime_key]);
+                assert!(
+                    holon["properties"]["DisplayName"].as_str().is_some(),
+                    "missing required DisplayName on {}",
+                    holon["key"]
+                );
             }
         }
         for path in ["dance/schema.json", "commands/schema.json"] {
@@ -2310,6 +2377,15 @@ holon Example.HolonType {
         for (key, parent) in [
             ("CanvasVisualizer.HolonType", "Visualizer.HolonType"),
             ("NodeVisualizer.HolonType", "Visualizer.HolonType"),
+            ("HolonInspector.NodeVisualizerType", "NodeVisualizer.HolonType"),
+            (
+                "DefaultPropertyMapVisualizer.PropertyMapVisualizerType",
+                "PropertyMapVisualizer.HolonType",
+            ),
+            (
+                "PathInspector.RootedNavigationVisualizerType",
+                "RootedNavigationVisualizer.HolonType",
+            ),
             ("StructureVisualizer.HolonType", "Visualizer.HolonType"),
             ("RootedNavigationVisualizer.HolonType", "StructureVisualizer.HolonType"),
             ("CollectionVisualizer.HolonType", "Visualizer.HolonType"),
@@ -2345,13 +2421,13 @@ holon Example.HolonType {
             .iter()
             .find(|holon| holon["key"] == "DefaultPropertyMapVisualizer.PropertyMapVisualizer")
             .context("default property-map visualizer")?;
-        assert_eq!(property_map["type"], "PropertyMapVisualizer.HolonType");
+        assert_eq!(property_map["type"], "DefaultPropertyMapVisualizer.PropertyMapVisualizerType");
 
         let holon_inspector = holons
             .iter()
             .find(|holon| holon["key"].as_str() == Some("HolonInspector.NodeVisualizer"))
             .context("Holon Inspector Node Visualizer holon")?;
-        assert_eq!(holon_inspector["type"], "NodeVisualizer.HolonType");
+        assert_eq!(holon_inspector["type"], "HolonInspector.NodeVisualizerType");
         let holon_inspector_relationships =
             holon_inspector["relationships"].as_array().context("Holon Inspector relationships")?;
         let applicable_to_type = holon_inspector_relationships
@@ -2368,7 +2444,16 @@ holon Example.HolonType {
             "HolonInspectorTypeScript.VisualizerImplementation"
         );
 
-        let slots = holon_inspector_relationships
+        assert!(holon_inspector_relationships
+            .iter()
+            .all(|relationship| relationship["name"] != "HasSlot"));
+        let holon_inspector_type = holons
+            .iter()
+            .find(|holon| holon["key"] == "HolonInspector.NodeVisualizerType")
+            .context("Holon Inspector type")?;
+        let slots = holon_inspector_type["relationships"]
+            .as_array()
+            .context("type relationships")?
             .iter()
             .find(|relationship| relationship["name"].as_str() == Some("HasSlot"))
             .context("Holon Inspector composition slots")?;
@@ -2380,6 +2465,13 @@ holon Example.HolonType {
         ] {
             assert!(slots["target"].as_array().unwrap().iter().any(|target| target["$ref"] == key));
         }
+        // The renderer selects both bars for the inspected subject, including occurrence controls.
+        for key in
+            ["HolonInspector.VisualizerControlsSlot", "LoadHolonsResult.VisualizerControlsSlot"]
+        {
+            let slot = holons.iter().find(|holon| holon["key"] == key).context("controls Slot")?;
+            assert_eq!(slot["properties"]["CompositionSubject"], "subject");
+        }
         let actions = holons
             .iter()
             .find(|holon| holon["key"] == "GenericActions.ActionBarVisualizer")
@@ -2390,7 +2482,7 @@ holon Example.HolonType {
             .iter()
             .find(|holon| holon["key"].as_str() == Some("PathInspector.RootedNavigationVisualizer"))
             .context("Path Inspector RootedNavigation Visualizer holon")?;
-        assert_eq!(path_inspector["type"], "RootedNavigationVisualizer.HolonType");
+        assert_eq!(path_inspector["type"], "PathInspector.RootedNavigationVisualizerType");
 
         let house_troupe_out_dir = temp_out_dir();
         let house_troupe_source = fixture_dir()
@@ -2496,8 +2588,8 @@ holon Example.HolonType {
         assert_eq!(accepts_constraints["target"][0]["$ref"], "OneOrMore.CardinalityConstraint");
         let visualizer_type = holons
             .iter()
-            .find(|holon| holon["key"].as_str() == Some("Visualizer.HolonType"))
-            .context("Visualizer descriptor")?;
+            .find(|holon| holon["key"].as_str() == Some("MetaVisualizerType.MetaHolonType"))
+            .context("Visualizer meta-type descriptor")?;
         let has_slot = visualizer_type["relationships"]
             .as_array()
             .and_then(|relationships| {
@@ -2506,12 +2598,12 @@ holon Example.HolonType {
                         && relationship["target"].as_array().is_some_and(|targets| {
                             targets.iter().any(|target| {
                                 target["$ref"]
-                                    == "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
+                                    == "(MetaVisualizerType.MetaHolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
                             })
                         })
                 })
             })
-            .context("HasSlot instance contract")?;
+            .context("HasSlot meta-type instance contract")?;
         assert!(!has_slot["target"].as_array().unwrap().is_empty());
 
         let visualizer_usage_type = holons
@@ -2591,8 +2683,8 @@ holon Example.HolonType {
 
         for (key, expected_inverse) in [
             (
-                "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
-                "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(Visualizer.HolonType)",
+                "(MetaVisualizerType.MetaHolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
+                "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(MetaVisualizerType.MetaHolonType)",
             ),
             (
                 "(VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType)",

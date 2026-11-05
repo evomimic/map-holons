@@ -16,12 +16,12 @@ use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
 
 use super::{
-    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess, HolonCloneModel,
-    HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
-    HolonStagingBehavior, HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery,
-    NurseryAccess, NurseryAccessInternal, SmartReference, TransactionContextHandle,
-    TransactionLifecycleState, TransientHolonBehavior, TransientHolonManager,
-    TransientManagerAccess, TransientReference, TxId,
+    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCloneModel, HolonPool, HolonReference,
+    HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager, HolonStagingBehavior,
+    HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery, NurseryAccess,
+    NurseryAccessInternal, SmartReference, TransactionContextHandle, TransactionLifecycleState,
+    TransientHolonBehavior, TransientHolonManager, TransientManagerAccess, TransientReference,
+    TxId,
 };
 use crate::core_shared_objects::SpaceReadHandle;
 
@@ -30,6 +30,8 @@ use crate::core_shared_objects::SpaceReadHandle;
 pub(super) enum TransactionOperation {
     /// Create transient working state only; this does not stage or persist a holon.
     CreateTransient,
+    /// Read retained transient working state; no access to the committed nursery.
+    ReadTransient,
     /// Read saved or transaction-visible state without creating a durable change.
     ReadState,
     /// Create a pending durable change or directly mutate persisted holon-space state.
@@ -58,7 +60,9 @@ pub struct TransactionContext {
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
     restricted_cache_read: bool,
-    descriptor_registry_root: std::sync::RwLock<Option<core_types::TemporaryId>>,
+    /// Reuse of mutable descriptor inputs is confined to one frozen assessment.
+    pub(super) frozen_validation:
+        std::sync::Mutex<Option<Arc<super::frozen_validation_scope::FrozenValidationState>>>,
 }
 
 impl fmt::Debug for TransactionContext {
@@ -86,7 +90,7 @@ impl TransactionContext {
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
             restricted_cache_read,
-            descriptor_registry_root: Default::default(),
+            frozen_validation: Default::default(),
         })
     }
 
@@ -113,37 +117,7 @@ impl TransactionContext {
         self.space_manager.descriptor_registry()
     }
 
-    /// Installs a registry snapshot already present in this transaction's transient pool.
-    pub fn set_descriptor_registry_root(
-        &self,
-        root: &TransientReference,
-    ) -> Result<(), HolonError> {
-        if root.tx_id() != self.tx_id() {
-            return Err(HolonError::InvalidParameter(
-                "Registry root belongs to another transaction".into(),
-            ));
-        }
-        *self
-            .descriptor_registry_root
-            .write()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))? =
-            Some(root.temporary_id());
-        Ok(())
-    }
-
-    /// Returns the Commit-local registry root, retaining its actual owner binding.
-    pub fn descriptor_registry_root(
-        self: &Arc<Self>,
-    ) -> Result<Option<TransientReference>, HolonError> {
-        Ok(self
-            .descriptor_registry_root
-            .read()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-            .as_ref()
-            .map(|id| TransientReference::from_temporary_id(self.context_handle(), id)))
-    }
-
-    /// Returns the transaction id.
+    /// Returns this transaction's identity.
     pub fn tx_id(&self) -> TxId {
         self.tx_id
     }
@@ -235,6 +209,7 @@ impl TransactionContext {
     /// | Operation | `Open` + no host commit ingress | `Open` + host commit ingress | `Committed` |
     /// | --- | --- | --- | --- |
     /// | `CreateTransient` | Allowed | Allowed | Allowed |
+    /// | `ReadTransient` | Allowed | Allowed | Allowed |
     /// | `ReadState` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
     /// | `MutateState` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
     /// | `HostMutationEntry` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
@@ -264,7 +239,7 @@ impl TransactionContext {
         }
 
         match operation {
-            TransactionOperation::CreateTransient => {
+            TransactionOperation::CreateTransient | TransactionOperation::ReadTransient => {
                 if raw_state == TransactionLifecycleState::Open.as_u8()
                     || raw_state == TransactionLifecycleState::Committed.as_u8()
                 {
@@ -414,6 +389,22 @@ impl TransactionContext {
         Ok(response)
     }
 
+    /// Populates saved state through the space-owned restricted cache-read context.
+    pub fn ensure_cached(
+        self: &Arc<Self>,
+        ids: &[HolonId],
+    ) -> Vec<crate::core_shared_objects::cache_population::CachePopulationError> {
+        self.space_read_handle().ensure_cached(ids)
+    }
+
+    pub(crate) fn fetch_holons_internal(
+        self: &Arc<Self>,
+        ids: &[HolonId],
+    ) -> Result<Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        self.get_holon_service().fetch_holons_internal(self, ids)
+    }
+
     pub(crate) fn fetch_holon_internal(
         self: &Arc<Self>,
         id: &HolonId,
@@ -421,10 +412,15 @@ impl TransactionContext {
         self.get_holon_service().fetch_holon_internal(self, id)
     }
 
-    pub(crate) fn new_transient_from_clone_model(
+    /// Materialize a retained runtime clone model in this transaction.
+    ///
+    /// This performs ordinary default completion. Callers that capture a live
+    /// snapshot may defer this work until the destination transaction needs it.
+    pub fn new_transient_from_clone_model(
         &self,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError> {
+        self.assert_allowed(TransactionOperation::CreateTransient)?;
         let transient_service =
             Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>;
         transient_service.new_from_clone_model(holon_clone_model)
@@ -459,6 +455,29 @@ impl TransactionContext {
         visualizer: &HolonReference,
     ) -> Result<bool, HolonError> {
         self.get_holon_service().visualizer_artifact_available_internal(self, visualizer)
+    }
+
+    /// Resolve Theme presentation data through the execution-context service.
+    pub fn load_theme(
+        self: &Arc<Self>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        self.get_holon_service().load_theme_internal(self, theme)
+    }
+
+    /// Resolve committed Usage configuration through the execution-context service.
+    pub fn resolve_visualizer_usage(
+        self: &Arc<Self>,
+        visualizer: &HolonReference,
+        subject_type: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<crate::dances::VisualizerUsageResolution, HolonError> {
+        self.get_holon_service().resolve_visualizer_usage_internal(
+            self,
+            visualizer,
+            subject_type,
+            slot,
+        )
     }
 
     /// Materializes the executable artifact for a selected Visualizer through
@@ -600,6 +619,14 @@ impl TransactionContext {
         }
     }
 
+    /// Constructs value/property products through the context-specific service strategy.
+    pub fn construct_derived_descriptor(
+        self: &Arc<Self>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        self.get_holon_service().construct_derived_descriptor_internal(self, target)
+    }
+
     /// Resolves the complete effective schema through this context's service.
     /// Population runs in the guest even when initiated by a host consumer.
     pub fn construct_effective_holon_descriptor(
@@ -705,13 +732,6 @@ impl TransactionContext {
         _key: crate::reference_layer::staged_reference::StagedRefAccessKey,
     ) -> Arc<dyn NurseryAccess + Send + Sync> {
         Arc::clone(&self.nursery) as Arc<dyn NurseryAccess + Send + Sync>
-    }
-
-    pub(crate) fn cache_access(
-        &self,
-        _key: crate::reference_layer::smart_reference::SmartRefAccessKey,
-    ) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.space_manager().get_cache_access()
     }
 
     // Internal privileged accessors for reference resolution.
@@ -917,12 +937,12 @@ mod tests {
     fn build_context_with_status(response_status: &'static str) -> Arc<TransactionContext> {
         let holon_service: Arc<dyn HolonServiceApi> =
             Arc::new(TestHolonService { response_status });
-        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+        let space_manager = HolonSpaceManager::new_with_managers(
             None,
             holon_service,
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
 
         space_manager
             .get_transaction_manager()
@@ -1095,6 +1115,71 @@ mod tests {
             context.assert_allowed(TransactionOperation::CreateTransient).is_ok(),
             "transient creation should remain allowed during host commit ingress"
         );
+    }
+
+    #[test]
+    fn saved_usage_schema_anchor_remains_readable_after_commit() -> Result<(), HolonError> {
+        use crate::core_shared_objects::holon::SavedHolon;
+        use crate::ReadableHolon;
+        use base_types::{BaseValue, MapInteger};
+        use core_types::{HolonId, PropertyMap, PropertyName};
+        let key = "VisualizerUsage.HolonType";
+        let local_id = LocalId(vec![37; 39]);
+        let saved = SavedHolon::new(
+            local_id.clone(),
+            PropertyMap::from([(PropertyName("Key".into()), BaseValue::StringValue(key.into()))]),
+            None,
+            MapInteger(1),
+        );
+        let context = crate::descriptors::test_support::build_context_with_saved_holons(
+            vec![saved],
+            Default::default(),
+        );
+        context.transition_to_committed()?;
+        let anchor = crate::dahn::usage::anchor(&context, key)?;
+        assert_eq!(anchor.holon_id()?, HolonId::Local(local_id));
+        assert!(!context.is_open());
+        assert!(matches!(
+            context.lookup().get_saved_holon_by_key(&key.into()),
+            Err(HolonError::TransactionAlreadyCommitted { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn retained_transient_lookups_are_allowed_after_commit_but_not_disposal() {
+        let context = build_context();
+        let key = base_types::MapString::from("retained-presentation-configuration");
+        let transient = context.mutation().new_holon(Some(key.clone())).unwrap();
+        let versioned_key = transient.versioned_key().unwrap();
+        context.transition_to_committed().unwrap();
+        assert_eq!(context.lookup().get_transient_holon_by_base_key(&key).unwrap(), transient);
+        assert_eq!(
+            context.lookup().get_transient_holon_by_versioned_key(&versioned_key).unwrap(),
+            transient
+        );
+        assert_eq!(context.lookup().transient_count().unwrap(), 1);
+        assert!(matches!(
+            context.lookup().staged_count(),
+            Err(HolonError::TransactionAlreadyCommitted { .. })
+        ));
+        assert!(matches!(
+            context.lookup().get_saved_holon_by_key(&key),
+            Err(HolonError::TransactionAlreadyCommitted { .. })
+        ));
+        context.dispose().unwrap();
+        assert!(matches!(
+            context.lookup().get_transient_holon_by_base_key(&key),
+            Err(HolonError::TransactionNotOpen { .. })
+        ));
+        assert!(matches!(
+            context.lookup().get_transient_holon_by_versioned_key(&versioned_key),
+            Err(HolonError::TransactionNotOpen { .. })
+        ));
+        assert!(matches!(
+            context.lookup().transient_count(),
+            Err(HolonError::TransactionNotOpen { .. })
+        ));
     }
 
     #[test]

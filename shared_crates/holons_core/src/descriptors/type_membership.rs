@@ -9,11 +9,9 @@ use base_types::MapString;
 use core_types::HolonError;
 use type_names::holon_type_descriptor_key;
 
-use super::{equals_or_extends, resolve_core_descriptor, same_definition, walk_extends_chain};
+use super::{equals_or_extends, resolve_core_descriptor_for, same_definition, walk_extends_chain};
 use super::{Descriptor, TypeHeader};
-use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::{HolonReference, ReadableHolon};
-use std::sync::Arc;
 
 /// Returns true when `holon` is described by `expected` or by a descriptor
 /// that extends it.
@@ -24,7 +22,7 @@ pub fn has_type(holon: &HolonReference, expected: &HolonReference) -> Result<boo
 /// Requires `holon` to have the canonical concrete holon type `type_name`.
 ///
 /// The canonical descriptor is resolved by its key (`<TypeName>.HolonType`) in
-/// `holon`'s resolution context. A holon of any other type is reported as
+/// `holon`'s saved Space or bound transaction scope. A holon of any other type is reported as
 /// `WrongDescriptorKind`, naming its own describing type.
 pub fn require_holon_type(holon: &HolonReference, type_name: &MapString) -> Result<(), HolonError> {
     if has_type(holon, &canonical_holon_type(holon, type_name)?)? {
@@ -47,12 +45,7 @@ pub fn classify_holon_type<T: Clone>(
     candidates: &[(MapString, T)],
 ) -> Result<Option<T>, HolonError> {
     let descriptor = holon.holon_descriptor()?;
-    classify_lineage(
-        descriptor.holon(),
-        &holon.resolution_context()?,
-        candidates,
-        holon_type_descriptor_key,
-    )
+    classify_lineage(descriptor.holon(), holon, candidates, holon_type_descriptor_key)
 }
 
 /// Classifies a descriptor by the nearest supported type in its own lineage.
@@ -66,12 +59,12 @@ pub fn classify_descriptor_lineage<T: Clone>(
     candidates: &[(MapString, T)],
     canonical_key: fn(&MapString) -> MapString,
 ) -> Result<Option<T>, HolonError> {
-    classify_lineage(descriptor, &descriptor.resolution_context()?, candidates, canonical_key)
+    classify_lineage(descriptor, descriptor, candidates, canonical_key)
 }
 
 fn classify_lineage<T: Clone>(
     start: &HolonReference,
-    context: &Arc<TransactionContext>,
+    scope: &HolonReference,
     candidates: &[(MapString, T)],
     canonical_key: fn(&MapString) -> MapString,
 ) -> Result<Option<T>, HolonError> {
@@ -81,7 +74,8 @@ fn classify_lineage<T: Clone>(
         let Some((name, candidate)) = candidates.iter().find(|(name, _)| *name == type_name) else {
             continue;
         };
-        if same_definition(&ancestor, &resolve_core_descriptor(context, &canonical_key(name).0)?)? {
+        if same_definition(&ancestor, &resolve_core_descriptor_for(scope, &canonical_key(name).0)?)?
+        {
             return Ok(Some(candidate.clone()));
         }
     }
@@ -89,12 +83,12 @@ fn classify_lineage<T: Clone>(
 }
 
 /// Resolves the canonical descriptor of concrete holon type `type_name` in
-/// `holon`'s resolution context.
+/// `holon`'s saved Space or bound transaction scope.
 fn canonical_holon_type(
     holon: &HolonReference,
     type_name: &MapString,
 ) -> Result<HolonReference, HolonError> {
-    resolve_core_descriptor(&holon.resolution_context()?, &holon_type_descriptor_key(type_name).0)
+    resolve_core_descriptor_for(holon, &holon_type_descriptor_key(type_name).0)
 }
 
 #[cfg(test)]

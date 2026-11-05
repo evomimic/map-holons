@@ -356,19 +356,22 @@ fn has_rule_code(findings: &[core_types::CommitValidationViolation], expected: &
 
 #[test]
 fn saved_restoration_attempt_does_not_diagnose_lineage() -> Result<(), HolonError> {
-    let mut fixture = Fixture::empty()?;
+    let mut fixture = Fixture::new()?;
     fixture.node("SavedSupportingDefinition")?;
     let fixture = fixture.saved_snapshot()?;
-    let mut prepared = fixture.context.mutation().new_holon(None)?;
+    let registry = fixture.context.descriptor_registry().unwrap();
+    let owner = registry.context()?;
+    let mut prepared = owner.mutation().new_holon(None)?;
     prepared.add_related_holons(
         R::DescribedHolonType,
         vec![fixture.nodes["SavedSupportingDefinition"].clone()],
     )?;
-    // An incomplete transported result exercises the restoration error boundary as well:
-    // neither a successful lookup nor failed restoration justifies fresh source diagnosis.
-    let mut root = fixture.context.mutation().new_holon(None)?;
-    root.add_related_holons(R::PreparedDescriptors, vec![prepared.into()])?;
-    fixture.context.set_descriptor_registry_root(&root)?;
+    prepared.mark_as_immutable()?;
+    // A published incomplete product exercises restoration failure without source diagnosis.
+    registry.publish(
+        fixture.nodes["SavedSupportingDefinition"].holon_id()?,
+        &holons_core::EffectiveHolonDescriptor::from_constructed_holon(prepared.into()),
+    )?;
     let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
     let packages = crate::descriptor_package::DescriptorPackages::construct(
         &fixture.context,

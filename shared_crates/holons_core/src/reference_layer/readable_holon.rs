@@ -230,11 +230,15 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
         use crate::descriptors::Descriptor;
         let source = self.holon_reference_impl();
-        let context = source.resolution_context()?;
-        context.get_holon_service().acquire_effective_holon_descriptor_internal(
-            &context,
-            self.holon_descriptor()?.holon().clone(),
-        )
+        let target = self.holon_descriptor()?.holon().clone();
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(context) = source.transaction_context() {
+                return context
+                    .get_holon_service()
+                    .acquire_effective_holon_descriptor_internal(&context, target);
+            }
+        }
+        crate::descriptors::HolonDescriptor::from_holon(target).effective_descriptor()
     }
 
     fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {

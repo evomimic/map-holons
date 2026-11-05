@@ -8,8 +8,6 @@ crate-type = ["rlib"]
 name = "holons_core"
 
 [features]
-# Diagnostic WASM build only; native and production defaults remain unchanged.
-diagnostic-large-holon-cache = []
 descriptor-performance-profiling = []
 
 [dependencies]

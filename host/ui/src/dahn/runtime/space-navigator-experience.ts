@@ -42,7 +42,7 @@ export class SpaceNavigatorExperience {
   private readonly information: VisualizerInformationRegion;
 
   constructor(private readonly binding: SpaceNavigatorBinding) {
-    this.element = new ExplorationTabs((anchor, signal) => this.realize(anchor, signal));
+    this.element = new ExplorationTabs((anchor, signal) => this.realize(anchor, signal), work => binding.transaction.withVisualizerUsageBatch(() => semanticWork(binding.transaction).realize(work)));
     this.information = new VisualizerInformationRegion(binding, this.element, reference => {
       if (!semanticWork(binding.transaction).paused) void this.element.open(reference);
     });
@@ -58,6 +58,39 @@ export class SpaceNavigatorExperience {
     Object.assign(home.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
     home.addEventListener('click', () => { if (!semanticWork(binding.transaction).paused) void this.element.open(binding.holonSpace); });
     this.element.actions.append(home);
+    const saves = document.createElement('details');
+    const summary = document.createElement('summary'); summary.textContent = 'Appearance saves';
+    const status = document.createElement('div'); status.setAttribute('role', 'status');
+    const refresh = document.createElement('button'); refresh.type = 'button'; refresh.textContent = 'Check save status';
+    const check = async () => {
+      const batches = binding.transaction.visualizerUsageBatches ?? [];
+      status.replaceChildren();
+      if (!batches.length) { status.textContent = 'No appearance changes to save.'; return; }
+      const records = await Promise.all(batches.map(id => binding.transaction.visualizerUsagePersistence(id)));
+      if (!saves.isConnected) return;
+      for (const record of records) {
+        if (!record) continue;
+        const row = document.createElement('div');
+        const message = document.createElement('span');
+        message.textContent = record.state === 'saved' ? 'Appearance changes saved.'
+          : record.state === 'service_paused' ? 'Appearance changes are unsaved; the service is unavailable.'
+          : record.state === 'failed' ? 'Appearance changes could not be saved.' : 'Appearance changes are waiting to be saved.';
+        row.append(message);
+        if (record.state === 'failed' || record.state === 'service_paused') {
+          const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry save';
+          retry.addEventListener('click', () => {
+            retry.disabled = true;
+            void binding.transaction.retryVisualizerUsagePersistence(record.batchId).then(check).catch(error => { message.textContent = `Unable to retry appearance save: ${error instanceof Error ? error.message : String(error)}`; retry.disabled = false; });
+          });
+          row.append(retry);
+        }
+        status.append(row);
+      }
+    };
+    const inspectSaves = () => { void check().catch(error => { status.textContent = `Unable to check appearance saves: ${error instanceof Error ? error.message : String(error)}`; }); };
+    saves.addEventListener('toggle', () => { if (saves.open) inspectSaves(); });
+    refresh.addEventListener('click', inspectSaves);
+    saves.append(summary, status, refresh); this.element.actions.append(saves);
   }
 
   private rootActions: readonly ActionActivation[] = [];
@@ -195,7 +228,7 @@ export class SpaceNavigatorExperience {
     this.first = false;
     const { transaction, dancer, materialized, theme, canvas } = this.binding;
     const work = semanticWork(transaction);
-    return work.realize(async () => {
+    return (async () => {
       signal.throwIfAborted();
       let selectedPath = this.binding.initialNavigationVisualizer;
       let selectedNode = this.binding.initialNodeVisualizer;
@@ -214,6 +247,13 @@ export class SpaceNavigatorExperience {
       const tag = defineCustomElementOnce('map-rooted-navigation-visualizer', implementation as CustomElementConstructor);
       const nodeSlot = await materialized.slot(selectedPath, 'node');
       if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' })).selected;
+      if (initial) {
+        await transaction.prepareVisualizerUsage({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' }, selectedNode);
+        const roots = await dancer.relatedHolons('HasExperienceVisualizerSlot');
+        for (const slot of roots) if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') {
+          await transaction.prepareVisualizerUsage({ subject: anchor, slot, owner: { dancer }, theme: theme.reference, requestedKind: 'rootedNavigation' }, selectedPath);
+        }
+      }
       signal.throwIfAborted();
       const actionInteractions: ActionInteractions | undefined = this.binding.actionInteractions && {
         openLoadHolons: binding => this.binding.actionInteractions!.openLoadHolons({
@@ -250,15 +290,16 @@ export class SpaceNavigatorExperience {
             break;
           }
         }
+        await transaction.recordSelectedVisualizerUse(selectedNode, 'initial-root-node');
         const retainedNavigation = navigation;
         const retainedElement = element;
-        return { element, title, canDismiss: () => retainedNavigation.canDismiss(), dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };
+        return { element, title, onPresented: () => { if (!element!.querySelector('[data-dahn-region-state="unavailable"]')) transaction.confirmVisualizerUsagePresentation(); }, canDismiss: () => retainedNavigation.canDismiss(), dispose: () => { retainedNavigation.dispose(); retainedElement.remove(); } };
       } catch (error) {
         if (navigation) navigation.dispose();
         else root.collectionActivation.dispose();
         element?.remove();
         throw error;
       }
-    });
+    })();
   }
 }

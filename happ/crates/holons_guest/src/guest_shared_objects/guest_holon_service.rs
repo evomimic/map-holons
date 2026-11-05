@@ -369,6 +369,14 @@ fn smartlink_reference_properties(
 }
 
 impl HolonServiceApi for GuestHolonService {
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::DerivedDescriptor, HolonError> {
+        holons_core::descriptors::construct_derived_descriptor(context, target)
+    }
+
     fn construct_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -495,7 +503,6 @@ impl HolonServiceApi for GuestHolonService {
             HashMap::new();
 
         let smartlinks = expand_all_from_source(source_id.local_id())?;
-        debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {
             let (canonical_key, reference) = self.reference_from_smartlink(context, &smartlink)?;
@@ -527,6 +534,24 @@ impl HolonServiceApi for GuestHolonService {
         Ok(RelationshipMap::new(relationship_map))
     }
 
+    /// Hydrates exact saved IDs while isolating storage/decode failures per identity.
+    fn fetch_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Result<Vec<holons_core::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        let mut seen = std::collections::HashSet::new();
+        Ok(ids
+            .iter()
+            .filter(|id| seen.insert((*id).clone()))
+            .map(|id| holons_core::core_shared_objects::cache_population::SavedHolonFetch {
+                id: id.clone(),
+                result: self.fetch_holon_internal(context, id),
+            })
+            .collect())
+    }
+
     /// gets the exact HolonNode version named by the supplied id from the local persistent store,
     /// then "inflates" it into a Holon and returns it
     ///
@@ -538,21 +563,11 @@ impl HolonServiceApi for GuestHolonService {
         holon_id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
-        let started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
-        let result = match get_holon(&local_id)? {
+        match get_holon(&local_id)? {
             Some(stored) => Ok(Holon::Saved(saved_holon_from_stored(stored))),
             // No holon_node fetched for the specified holon_id
             None => Err(HolonError::HolonNotFound(local_id.to_string())),
-        };
-
-        if let (Some(started_at), Ok(completed_at)) = (started_at, sys_time()) {
-            info!(
-                "[PERF-674] persisted holon fetch: elapsed_ms={}",
-                completed_at.as_micros().saturating_sub(started_at) / 1_000,
-            );
         }
-
-        result
     }
 
     fn fetch_related_holons_internal(
@@ -569,7 +584,6 @@ impl HolonServiceApi for GuestHolonService {
 
         // fetch the smartlinks for this relationship (if any)
         let smartlinks = expand_from_source(&local_id, relationship_name)?;
-        debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
         for smartlink in smartlinks {
             let (canonical_key, holon_reference) =
@@ -722,6 +736,35 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_set(context, set)
     }
 
+    fn load_theme_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let _started = crate::performance::timestamp_micros();
+        let loaded = holons_core::dances::loaded_theme::resolve_theme(theme.clone())?;
+        let _resolved = crate::performance::timestamp_micros();
+        #[cfg(any(
+            feature = "commit-performance-profiling",
+            feature = "descriptor-performance-profiling"
+        ))]
+        let bindings = loaded.data.bindings.len();
+        let body = loaded.into_projection(context)?;
+        let _finished = crate::performance::timestamp_micros();
+        // Bounded diagnostics contain counts/timings, never token values or reference payloads.
+        #[cfg(any(
+            feature = "commit-performance-profiling",
+            feature = "descriptor-performance-profiling"
+        ))]
+        tracing::info!(
+            bindings,
+            resolve_us = _started.zip(_resolved).map(|(a, b)| b.saturating_sub(a)),
+            projection_us = _resolved.zip(_finished).map(|(a, b)| b.saturating_sub(a)),
+            "LoadTheme guest projection"
+        );
+        Ok(body)
+    }
+
     fn invoke_load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -764,25 +807,31 @@ impl GuestHolonService {
         if status != "Complete" {
             let message = if status == "Rejected" {
                 let mut findings = Vec::new();
-                for reference in staged_references {
-                    for finding in reference.validation_findings()? {
-                        findings.push(format!(
-                            "{}: {:?}",
-                            reference.key()?.map(|key| key.0).unwrap_or_default(),
-                            finding
+                for staged in staged_references {
+                    let key = staged
+                        .key()?
+                        .map(|key| key.0)
+                        .unwrap_or_else(|| staged.reference_id_string());
+                    for finding in staged.validation_findings()? {
+                        let dependency = matches!(
+                            finding.kind,
+                            core_types::CommitValidationViolationKind::UnresolvedLocalDependency
+                        );
+                        findings.push((
+                            dependency,
+                            format!("{key}: {:?}: {}", finding.kind, finding.message),
                         ));
-                        if findings.len() == 8 {
-                            break;
-                        }
-                    }
-                    if findings.len() == 8 {
-                        break;
                     }
                 }
-                format!(
-                    "Core Schema bootstrap commit was rejected by semantic validation: {}",
-                    findings.join("; ")
-                )
+                let count = findings.len();
+                findings.sort();
+                let details = findings
+                    .into_iter()
+                    .take(20)
+                    .map(|(_, text)| text)
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                format!("Core Schema bootstrap commit was rejected by semantic validation ({count} staged findings): {details}")
             } else {
                 format!("Core Schema bootstrap commit did not complete (status: {status})")
             };
@@ -890,12 +939,12 @@ mod lineage_evidence_tests {
     #[test]
     fn saved_key_evidence_allows_absent_space_only_during_bootstrap() -> Result<(), HolonError> {
         let service = Arc::new(GuestHolonService::new());
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
+        let space = HolonSpaceManager::new_with_managers(
             None,
             service.clone(),
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
         let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
         let key = MapString("unclaimed".into());
         assert!(matches!(

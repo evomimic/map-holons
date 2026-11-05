@@ -48,9 +48,9 @@ fn prepare_universal_contracts(
         let contract = match contracts.entry(identity) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                entry.insert(Arc::new(UniversalDescriptorContract::from_contributions(
+                entry.insert(Arc::new(UniversalDescriptorContract::from_effective_schema(
                     context,
-                    &packages.effective_schema(meta_type)?.contract_contributions(),
+                    packages.effective_schema(meta_type)?,
                 )?))
             }
         };
@@ -123,6 +123,7 @@ fn assess_commit_candidates_with_observer<'a>(
     candidates: &'a [StagedReference],
     mut observer: impl FnMut(crate::AssessmentEvent),
 ) -> Result<(PreparedAssessment<'a>, ValidationObservations), HolonError> {
+    let _frozen_validation = context.begin_frozen_validation()?;
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::Construction));
     if candidates.is_empty() {
         return Ok((PreparedAssessment::default(), ValidationObservations::default()));
@@ -371,18 +372,13 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         },
     )?;
     let binding_contributions = packages.binding_contributions();
+    let stored_diagnoses = packages.diagnoses.snapshot()?;
     let binding_roles =
         crate::assessment_phase::observe_operation(observer, "BindingRoles", "Assessment", || {
             BindingRoleMemo::prepare(
                 context,
                 &binding_contributions,
-                prepared.iter().filter_map(|subject| {
-                    subject
-                        .prerequisites
-                        .governing_lineage
-                        .as_ref()
-                        .and_then(|diagnosis| diagnosis.valid_lineage())
-                }),
+                stored_diagnoses.iter().filter_map(|diagnosis| diagnosis.valid_lineage()),
             )
         })?;
     crate::assessment_phase::observe_operation(

@@ -39,6 +39,7 @@ pub enum RequestBody {
     TargetHolons(RelationshipName, Vec<HolonReference>),
     TransientReference(TransientReference),
     HolonId(HolonId),
+    SavedHolonIds(Vec<HolonId>),
     Key(MapString),
     ParameterValues(PropertyMap),
     StagedRef(StagedReference),

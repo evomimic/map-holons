@@ -400,6 +400,15 @@ instance AtMostOneDirectParent.ValidationRule {
   rule_of "MAP Core Schema-v0.0.7"
 }
 
+instance AbstractPropertyParent.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-STRUCT-006"
+  ValidationRuleDescription "Only abstract property descriptors may be extended; concrete property definitions are leaves."
+  rule_of "MAP Core Schema-v0.0.7"
+}
+
 instance AcyclicExtendsLineage.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon

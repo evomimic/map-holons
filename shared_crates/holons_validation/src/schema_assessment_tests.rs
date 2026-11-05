@@ -512,6 +512,31 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
 }
 
 #[test]
+fn frozen_preparation_supplies_all_value_products_before_consumption() -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?;
+    let mut subject = fixture.staged_subject("prepared-mutable-instance")?;
+    subject.with_property_value("Title", "complete")?;
+    let candidates = [subject];
+    let _scope = fixture.context.begin_frozen_validation()?;
+    let constructed = crate::commit_assessment::construct_assessment(
+        &fixture.context,
+        &candidates,
+        ValidationCollector::default(),
+    )?;
+    let outputs = fixture.context.lookup().transient_count()?;
+    // A new wrapper must reuse the same prepared product used by Commit consumers.
+    ValueDescriptor::from_holon(fixture.nodes["StringValueType.ValueType"].clone()).value_kind()?;
+    let report = constructed.assess(|_| {})?.0.into_report();
+    assert!(report.is_accepted(), "{report:?}");
+    assert_eq!(
+        fixture.context.lookup().transient_count()?,
+        outputs,
+        "consumption must not construct further derived products"
+    );
+    Ok(())
+}
+
+#[test]
 fn profiling_observes_preparation_without_changing_the_validation_report() -> Result<(), HolonError>
 {
     let fixture = readiness_fixture()?.saved_snapshot()?;
@@ -579,9 +604,10 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
             _ => None,
         })
         .sum();
-    assert_eq!(product_diagnoses, 0, "products reuse only diagnoses required before acquisition");
-    // Resolution count follows the fixture's exact prediagnosed identities, not a fixed target.
-    assert!(resolutions > 0);
+    // Every non-restored definition needs category routing on the consolidated foundation.
+    // The two previously diagnosed identities are reused; discovery remains unchanged.
+    assert_eq!(product_diagnoses, metrics.distinct_content - 2);
+    assert_eq!(resolutions, 0, "valid diagnosed lineages seed all fresh products");
     assert_eq!(metrics.package_roots, 1);
     assert_eq!(metrics.subjects, 1);
     assert_eq!(metrics.affected_schemas, 0);
@@ -648,7 +674,10 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
                 );
             } else {
                 assert_eq!(active.take(), Some((*operation, *role)));
-                if matches!(*operation, "FreshEffectiveSchema" | "SavedRestoration") {
+                if matches!(
+                    *operation,
+                    "FreshEffectiveSchema" | "SavedRestoration" | "DerivedAcquisition"
+                ) {
                     contracts += 1;
                 }
                 if *operation == "MembershipPrefetch" {

@@ -33,7 +33,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
         raise ValueError("No captured run logs were found")
     if anchor_evidence_policy not in ["per-new-version", "retired"]:
         raise ValueError(f"Unknown anchor evidence policy: {anchor_evidence_policy}")
-    if instrumentation not in ["historical", "822-v2"]:
+    if instrumentation not in ["historical", "822-v2", "822-v3"]:
         raise ValueError(f"Unknown instrumentation: {instrumentation}")
     if preparation_substrate not in ["broad-readiness", "broad-preparation", "declared-demand"]:
         raise ValueError(f"Unknown preparation substrate: {preparation_substrate}")
@@ -105,7 +105,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                 if int(fields["sample_end"]) != sample["sample"]:
                     raise ValueError(f"Mismatched sample in {log}")
                 required = ["commit-baseline.command_us", "commit-adapter.total_us", "commit-transport.conductor_call_us", "commit-construction.elapsed_us", "commit-preparation.distinct_content", "guest_commit.validation_ms", "commit-preparation-operation.EffectiveContract.PreparedDefinition.elapsed_us", "commit-preparation-operation.ContentRetention.SavedContent.exact_node_reads"]
-                if instrumentation == "822-v2":
+                if instrumentation in ["822-v2", "822-v3"]:
                     if sample.get("instrumentation") != instrumentation:
                         raise ValueError(f"Missing instrumentation marker in {log}; rebuild with npm run build:commit-perf -w map-happ and retry without --skip-build")
                     required.remove("commit-preparation-operation.EffectiveContract.PreparedDefinition.elapsed_us")
@@ -113,7 +113,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                     for phase in ASSESSMENT_PHASES:
                         required += [f"commit-logical-reads.{phase}.requests", f"commit-logical-reads.{phase}.distinct_memberships"]
                         required += [f"commit-logical-reads.{phase}.{field}" for field in ["membership_requests", "content_requests", "hits", "misses"]]
-                        required += [f"commit-derivation.{phase}.{operation}" for operation in DERIVATION_OPERATIONS]
+                        required += [f"commit-derivation.{phase}.{operation}" for operation in (DERIVATION_OPERATIONS if instrumentation == "822-v2" else [operation for operation in DERIVATION_OPERATIONS if operation not in ["snapshot_lookups", "registry_entries_examined"]] + ["registry_lookups", "frozen_product_reuses", "derived_registry_lookups", "derived_registry_hits", "derived_builder_attempts", "derived_builder_successes", "derived_projection_attempts", "derived_projection_successes"])]
                     if preparation_substrate == "broad-readiness":
                         required += [f"commit-preparation-operation.{operation}.Assessment.elapsed_us"
                                      for operation in ["ReadinessDiscovery", "DependencyGrouping"]]
@@ -126,6 +126,14 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                         if preparation_substrate == "broad-preparation":
                             required += ["commit-preparation-edge.Commitment.Extends.requests",
                                          "commit-preparation.identity_role_visits"]
+                if instrumentation == "822-v3":
+                    required += ["commit-registry-capture.elapsed_us",
+                                 "commit-registry-ingress.restoration_us",
+                                 "commit-registry-ingress.index_rebuild_us",
+                                 "commit-registry-ingress.holon_types",
+                                 "commit-registry-ingress.derived",
+                                 "commit-registry-ingress.logical_reads",
+                                 "commit-registry-ingress.cache_misses"]
                 if host_snapshot_policy == "required":
                     required += [f"commit-host-snapshot.{field}" for field in ["construction_us", "entries", "shipped_holons"]]
                 if mode == "graph-only-overlap":
@@ -206,7 +214,7 @@ def main():
     parser.add_argument("--readiness-cases", action="store_true")
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")
     parser.add_argument("--link-profile", action="store_true", help="Capture read-only persisted link-query timings after Commit samples; replaces the retired --index-mode experiment")
-    parser.add_argument("--instrumentation", choices=["822-v2", "historical"], default="822-v2")
+    parser.add_argument("--instrumentation", choices=["822-v2", "822-v3", "historical"], default="822-v3")
     parser.add_argument("--preparation-substrate", choices=["broad-readiness", "broad-preparation", "declared-demand"], default="broad-preparation")
     parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
     parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
@@ -265,8 +273,8 @@ def main():
             "guest_cache_state": args.guest_cache_state,
             "session_product_reuse": args.session_product_reuse,
             "startup_timeout_secs": env.get("MAP_SWEET_STARTUP_TIMEOUT_SECS", "10 (upstream default)"),
-            "host_snapshot_policy": "required",
-            "host_snapshot_observation": "ClientHolonService::commit_internal via Sweettest mock conductor; construction expected, production envelope encoding unavailable",
+            "host_snapshot_policy": "optional" if args.instrumentation == "822-v3" else "required",
+            "host_snapshot_observation": "registry-owner capture and ingress measured; Sweettest conductor owns encoding, so separate encoding timing is unavailable" if args.instrumentation == "822-v3" else "ClientHolonService::commit_internal via Sweettest mock conductor; construction expected, production envelope encoding unavailable",
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),
             "revision": output("git", "rev-parse", "HEAD"),
             "branch": output("git", "branch", "--show-current"),
@@ -302,10 +310,10 @@ def main():
                 return result.returncode
             # Validate each run before spending time on another conductor capture.
             summarize([path], args.samples, args.variant, args.assessment, args.mode,
-                      args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required", args.expected_guest_cache_capacity)
+                      args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, metadata["host_snapshot_policy"], args.expected_guest_cache_capacity)
             logs.append(path)
         result = summarize(logs, args.samples, args.variant, args.assessment, args.mode,
-                           args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, "required", args.expected_guest_cache_capacity)
+                           args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, metadata["host_snapshot_policy"], args.expected_guest_cache_capacity)
     (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
     for condition, metrics in result["summary"].items():
         value = metrics["commit-baseline.command_us"]

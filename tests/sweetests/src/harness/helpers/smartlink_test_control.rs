@@ -54,3 +54,22 @@ impl SmartLinkTestControl {
             .await
     }
 }
+
+impl SmartLinkTestControl {
+    /// Opt-in timing probe; does not alter production retrieval policy or stored content.
+    pub async fn measure_get_strategy(
+        &self,
+        source: LocalId,
+        relationship: RelationshipName,
+        samples: u32,
+    ) -> (Vec<(u32, String, u64, usize)>, Vec<String>) {
+        self.backend
+            .conductor
+            .call(
+                &self.backend.cell.zome("holons_test_probes"),
+                "smartlink_measure_get_strategy_for_test",
+                (source, relationship, samples),
+            )
+            .await
+    }
+}

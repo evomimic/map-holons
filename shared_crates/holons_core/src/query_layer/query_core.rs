@@ -562,19 +562,39 @@ fn seed_holons(
 
 /// Refuses a predicate attached at a point its expression kind does not own.
 ///
-/// Placement is a property of the expression, not of the attachment: both
-/// attachment points are checked whatever the kind, because a predicate on the
-/// "wrong" operator is ill-formed per schema but still constructible on a
-/// transient definition, and would otherwise pass through unfiltered.
+/// Transient and staged definitions may carry undeclared attachments. Saved
+/// definitions are navigated only over their effective declared contract; an
+/// attachment absent from that contract is not a relationship to probe.
 fn reject_misplaced_predicates(
     expression: &HolonReference,
     kind: &ExpressionKind,
 ) -> Result<(), HolonError> {
+    let navigable = if expression.is_saved() {
+        Some(
+            expression
+                .effective_descriptor()?
+                .navigable_relationships()?
+                .into_iter()
+                .map(|relationship| relationship.base_relationship_name())
+                .collect::<Result<HashSet<_>, _>>()?,
+        )
+    } else {
+        None
+    };
     for (relationship, owner) in [
         (QueryRelationshipTypeName::SeedPredicate, ExpressionKind::SeedHolons),
         (QueryRelationshipTypeName::ExpansionPredicate, ExpressionKind::Expand),
     ] {
-        if *kind != owner && !related_members(expression, relationship.clone())?.is_empty() {
+        if *kind == owner {
+            continue;
+        }
+        if navigable
+            .as_ref()
+            .is_some_and(|names| !names.contains(&relationship.clone().to_relationship_name()))
+        {
+            continue;
+        }
+        if !related_members(expression, relationship.clone())?.is_empty() {
             return Err(HolonError::InvalidParameter(format!(
                 "{} is attached to {}, which is not a {owner:?} expression",
                 relationship.to_relationship_name(),
@@ -728,8 +748,9 @@ mod tests {
     use super::*;
     use crate::core_shared_objects::holon::SavedHolon;
     use crate::descriptors::test_support::{
-        build_context, build_context_with_saved_holons, core_operator, new_descriptor_holon,
-        new_holon_type_descriptor, new_property_descriptor_holon, new_test_holon,
+        build_context, build_context_with_relationship_contracts, core_operator,
+        new_descriptor_holon, new_holon_type_descriptor, new_property_descriptor_holon,
+        new_test_holon,
     };
 
     /// Stages the canonical `<type_name>.HolonType` descriptor, optionally
@@ -1040,7 +1061,14 @@ mod tests {
             (rel(26, CoreRelationshipTypeName::TargetType), vec![id(BOOK)]),
             (author_of(24), vec![id(20), id(27)]),
         ]);
-        let context = build_context_with_saved_holons(snapshots, relationships);
+        let context = build_context_with_relationship_contracts(
+            snapshots,
+            relationships,
+            HashMap::new(),
+            [id(1), id(10), id(11), id(12), id(20), id(24), id(27), id(28), id(29), id(30)]
+                .into_iter()
+                .collect(),
+        );
         let space = HolonReference::smart_from_id(context.space_read_handle(), id(1));
         Fixture { context, space }
     }
@@ -1151,6 +1179,21 @@ mod tests {
 
     fn ids_of(members: &[HolonReference]) -> Vec<HolonId> {
         members.iter().map(|member| member.holon_id().unwrap()).collect()
+    }
+
+    #[test]
+    fn saved_reads_distinguish_undeclared_from_empty_relationships() {
+        let fixture = build_fixture();
+        assert!(related_members(&fixture.saved(28), "AuthoredBy").unwrap().is_empty());
+        assert!(matches!(
+            related_members(&fixture.saved(28), "SeedPredicate"),
+            Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "SeedPredicate"
+        ));
+        reject_misplaced_predicates(
+            &fixture.saved(28),
+            &ExpressionKind::Unsupported("Book".into()),
+        )
+        .expect("the placement check must not navigate undeclared saved relationships");
     }
 
     #[test]
@@ -3563,6 +3606,165 @@ mod tests {
             "unexpected result: {result:?}"
         );
         assert_failed_without_result(&instance);
+    }
+
+    // ---- QRY-F3 recursive Boolean composition --------------------------------
+
+    /// `Status = Published` and either an `atlas` Title or no `draft` Subtitle.
+    fn nested_predicate(world: &PredicateWorld) -> HolonReference {
+        world.all_of(vec![
+            world.equals("Status", &world.status, token("Published")),
+            world.any_of(vec![
+                world.contains("Title", "atlas"),
+                world.not(vec![world.contains("Subtitle", "draft")]),
+            ]),
+        ])
+    }
+
+    #[test]
+    fn a_nested_filter_keeps_order_duplicates_and_the_declared_type() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let book = |key: &str, title: &str, subtitle: &str, status: &str| {
+            world.member(
+                key,
+                &world.book,
+                &[("Title", text(title)), ("Subtitle", text(subtitle)), ("Status", token(status))],
+            )
+        };
+        let atlas = book("atlas", "Atlas", "draft", "Published");
+        let roads = book("roads", "Roads", "final", "Published");
+        let drafted = book("drafted", "Roads", "draft", "Published");
+        let unpublished = book("unpublished", "Atlas", "final", "Draft");
+        let filter = filter_of(&fixture, "filter", nested_predicate(&world));
+        let definition = filter.into_model().unwrap();
+
+        let (instance, result) = run_typed(
+            &fixture,
+            &filter,
+            &world.book,
+            &[roads.clone(), drafted, atlas.clone(), unpublished, roads.clone()],
+        );
+        let result = result.expect("a nested Filter executes");
+        assert_eq!(result_members(&result), vec![roads.clone(), atlas, roads]);
+        assert_eq!(element_type_of(result.as_holon_reference()), world.book);
+        assert_step(&step_records(&instance)[0], ExecutionStatus::Complete, true);
+        assert_eq!(filter.into_model().unwrap(), definition, "the definition is unchanged");
+    }
+
+    #[test]
+    fn an_invalid_nested_predicate_fails_even_for_empty_input() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let mut cyclic = world.not(vec![]);
+        cyclic
+            .add_related_holons(QueryRelationshipTypeName::Predicate, vec![cyclic.clone()])
+            .unwrap();
+
+        for (key, predicate) in [
+            ("childless", world.any_of(vec![world.contains("Title", "x"), world.not(vec![])])),
+            ("empty", world.all_of(vec![world.contains("Title", "x"), world.all_of(vec![])])),
+            ("cyclic", world.all_of(vec![cyclic])),
+        ] {
+            let filter = filter_of(&fixture, key, predicate);
+            let (instance, result) = run_typed(&fixture, &filter, &world.book, &[]);
+            assert!(
+                matches!(
+                    result,
+                    Err(HolonError::MissingRequiredRelationship { .. })
+                        | Err(HolonError::InvalidParameter(_))
+                ),
+                "{key}: the definition is rejected before any member is read: {result:?}"
+            );
+            assert_failed_without_result(&instance);
+        }
+    }
+
+    #[test]
+    fn nested_attachments_are_validated_against_their_declared_types() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let buried_title = || world.not(vec![world.all_of(vec![world.contains("Title", "x")])]);
+
+        // Seeds declare the root type, which declares no Title.
+        let mut seed = fixture.described_as("seed", Q::SeedHolons);
+        seed.add_related_holons(QueryRelationshipTypeName::SeedPredicate, vec![buried_title()])
+            .unwrap();
+        let execution = fixture
+            .query_with_root(&seed)
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+        assert!(matches!(
+            execution.run(),
+            Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "Title"
+        ));
+        assert_failed_without_result(&instance);
+
+        // AuthoredBy targets Person, which declares no Title.
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        expand
+            .add_related_holons(QueryRelationshipTypeName::ExpansionPredicate, vec![buried_title()])
+            .unwrap();
+        let (instance, result) = run_typed(&fixture, &expand, &fixture.saved(BOOK), &[]);
+        assert!(
+            matches!(&result, Err(HolonError::DescriptorDeclarationNotFound { name, descriptor, .. })
+                if name == "Title" && descriptor.contains("Person")),
+            "unexpected result: {result:?}"
+        );
+        assert_failed_without_result(&instance);
+    }
+
+    #[test]
+    fn a_nested_filter_composes_with_distinct_in_either_order() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let a = world.member(
+            "a",
+            &world.book,
+            &[("Title", text("Atlas")), ("Status", token("Published"))],
+        );
+        let b =
+            world.member("b", &world.book, &[("Title", text("Atlas")), ("Status", token("Draft"))]);
+        let input = [a.clone(), b.clone(), a.clone(), b];
+
+        let mut filter_first = filter_of(&fixture, "filter", nested_predicate(&world));
+        chain(&mut filter_first, &fixture.described_as("distinct", Q::Distinct));
+        let (_, result) = run_typed(&fixture, &filter_first, &world.book, &input);
+        assert_eq!(result_members(&result.unwrap()), vec![a.clone()]);
+
+        let mut distinct_first = fixture.described_as("distinct-2", Q::Distinct);
+        chain(&mut distinct_first, &filter_of(&fixture, "filter-2", nested_predicate(&world)));
+        let (_, result) = run_typed(&fixture, &distinct_first, &world.book, &input);
+        assert_eq!(result_members(&result.unwrap()), vec![a]);
+    }
+
+    #[test]
+    fn a_failing_nested_filter_stops_the_chain_and_leaves_its_predecessor_complete() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        // The first branch is true; the second must still read the required Title.
+        let member = world.member("untitled", &world.book, &[("Subtitle", text("map"))]);
+        let predicate = world.any_of(vec![
+            world.contains("Subtitle", "map"),
+            world.not(vec![world.contains("Title", "x")]),
+        ]);
+        let definition = predicate.into_model().unwrap();
+        let mut distinct = fixture.described_as("distinct", Q::Distinct);
+        let mut filter = filter_of(&fixture, "filter", predicate.clone());
+        chain(&mut filter, &fixture.paginate("limit", Q::Limit, Some(1)));
+        chain(&mut distinct, &filter);
+
+        let (instance, result) = run_typed(&fixture, &distinct, &world.book, &[member]);
+        assert!(matches!(result, Err(HolonError::EmptyField(_))));
+        let records = step_records(&instance);
+        assert_eq!(records.len(), 2, "the step after the failure does not execute");
+        assert_step(&records[0], ExecutionStatus::Complete, true);
+        assert_step(&records[1], ExecutionStatus::Failed, false);
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+        assert_eq!(predicate.into_model().unwrap(), definition, "the definition is unchanged");
     }
 
     #[test]

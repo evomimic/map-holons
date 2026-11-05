@@ -31,8 +31,16 @@ impl UniversalDescriptorContract {
         Self::from_contributions(context, &contributions)
     }
 
-    /// Uses the exact meta-type's prepared contributions without rediscovering inheritance.
-    pub fn from_contributions(
+    /// Uses the exact prepared meta-type contract without repeating inheritance reads.
+    pub fn from_effective_schema(
+        context: &Arc<TransactionContext>,
+        schema: &super::ComputedEffectiveSchema,
+    ) -> Result<Self, HolonError> {
+        assert_reference_transaction_compatible(&schema.target, context)?;
+        Self::from_contributions(context, &schema.contract_contributions())
+    }
+
+    fn from_contributions(
         context: &Arc<TransactionContext>,
         contributions: &super::ContractContributions,
     ) -> Result<Self, HolonError> {

@@ -146,6 +146,30 @@ impl DescriptorRuleProducts {
         };
         let subject = (subject_lineage.subject()).clone();
         let is_descriptor = roots.is_descriptor(subject_lineage)?;
+        // Reuse the diagnosed lineage: a concrete property is a leaf definition,
+        // while abstract property families may still specialize one another.
+        if let Some(parent) = subject_lineage.members().get(1) {
+            if subject_lineage.contains_role_from(parent, CoreDefinitionRole::PropertyType)? {
+                match parent.property_value(CorePropertyTypeName::IsAbstractType)? {
+                    Some(BaseValue::BooleanValue(value)) if value.0 => {}
+                    Some(BaseValue::BooleanValue(_)) => self.violation(
+                        AbstractPropertyParent,
+                        format!(
+                            "Descriptor {} extends concrete property {}; only abstract property descriptors may be extended.",
+                            subject.reference_id_string(), parent.reference_id_string()
+                        ),
+                    ),
+                    _ => self.unresolved(
+                        AbstractPropertyParent,
+                        format!(
+                            "Cannot establish whether property parent {} is abstract; a local Boolean IsAbstractType value is required.",
+                            parent.reference_id_string()
+                        ),
+                    ),
+                }
+            }
+        }
+
         if is_descriptor {
             let local_anchor = match subject
                 .property_value(CorePropertyTypeName::DefinesInstanceTypeKind)?

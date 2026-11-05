@@ -177,6 +177,16 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             prerequisite: true,
             applicability: SubjectApplicability::AnySubject,
         },
+        AbstractPropertyParent => RuleRegistration {
+            implementation: Some(DescriptorProduct),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaTypeDescriptor,
+            native_kind: None,
+            code: "DS-STRUCT-006",
+            prerequisite: true,
+            applicability: SubjectApplicability::AnySubject,
+        },
         AcyclicExtendsLineage => RuleRegistration {
             implementation: Some(DescriptorProduct),
             level: Holon,

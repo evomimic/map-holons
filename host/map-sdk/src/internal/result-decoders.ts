@@ -7,6 +7,7 @@ import type {
   HolonId,
   HolonReferenceWire,
   MapResultWire,
+  LoadedThemeWire,
   QualifiedRelationshipWire,
   VisualizerSelectionWire,
   VisualizerDiscoveryWire,
@@ -256,4 +257,10 @@ export function expectVisualizerDiscovery(result: MapResultWire): VisualizerDisc
 export function expectVisualizerUsageSelection(result: MapResultWire): VisualizerUsageSelectionWire {
   if (typeof result === 'object' && result !== null && 'VisualizerUsageSelection' in result) return result.VisualizerUsageSelection;
   throw unexpectedResultVariant('VisualizerUsageSelection', result);
+}
+
+/** Decode the complete Theme result without reading reference fields through IPC. */
+export function expectLoadedTheme(result: MapResultWire): LoadedThemeWire {
+  if (typeof result === 'object' && 'LoadedTheme' in result) return result.LoadedTheme;
+  throw unexpectedResultVariant('LoadedTheme', result);
 }

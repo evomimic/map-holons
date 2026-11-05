@@ -40,6 +40,7 @@ export async function composeNodeActions(transaction: MapTransaction, runtime: M
     const present = element.visualizerOperations?.['PresentActions.VisualizerOperator'];
     if (!present) throw new Error('Selected ActionBar does not fulfill PresentActions');
     await bindVisualizerInformationControl(element, transaction, context.target.reference, owner, slot, selection.selected);
+    await transaction.recordSelectedVisualizerUse(selection.selected, `actions-${crypto.randomUUID()}`);
     return { element, present };
   };
   const subjectBar = await selectBar(slot), controlsBar = await selectBar(controlsSlot);

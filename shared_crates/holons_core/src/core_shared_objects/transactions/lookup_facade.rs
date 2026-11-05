@@ -71,7 +71,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
-        self.context.assert_allowed(TransactionOperation::ReadState)?;
+        self.context.assert_allowed(TransactionOperation::ReadTransient)?;
         self.transient_service.get_transient_holon_by_base_key(key)
     }
 
@@ -80,7 +80,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
-        self.context.assert_allowed(TransactionOperation::ReadState)?;
+        self.context.assert_allowed(TransactionOperation::ReadTransient)?;
         self.transient_service.get_transient_holon_by_versioned_key(key)
     }
 
@@ -94,7 +94,7 @@ impl LookupFacade {
 
     // Gets total count of Transient Holons present in the TransientHolonManager
     pub fn transient_count(&self) -> Result<i64, HolonError> {
-        self.context.assert_allowed(TransactionOperation::ReadState)?;
+        self.context.assert_allowed(TransactionOperation::ReadTransient)?;
         self.transient_service.transient_count()
     }
 }

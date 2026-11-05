@@ -1,4 +1,4 @@
-use super::{HolonReference, SmartReference, TransientReference};
+use super::{HolonReference, ReadableHolon, SmartReference, TransientReference};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::RelationshipMap;
@@ -42,8 +42,8 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// `Some` is authoritative for the enclosing cache lifetime. `None` means
     /// unresolved: fetch fresh for this read and retry policy resolution later.
     /// Called after a fetch, with no cache lock held, only when no policy is retained.
-    /// The default resolves declared policies. Request-local guests override it
-    /// with unconditional reuse; clients also resolve inverse descriptor policies.
+    /// This callback must be local: no schema acquisition, ancestry traversal or transport.
+    /// Ordinary client associations arrive with membership; request-local guests reuse it.
     fn relationship_cache_policy(
         &self,
         _context: &Arc<TransactionContext>,
@@ -75,16 +75,35 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         {
             return Ok(descriptor);
         }
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(registry) = context.descriptor_registry() {
+                let id = target.holon_id()?;
+                let session = context.space_read_handle().session()?;
+                let owner = registry.context()?;
+                let result = self.construct_effective_holon_descriptor_internal(&owner, target);
+                return match result {
+                    Ok(result) => {
+                        registry.publish_in_session(id.clone(), &result, &session)?;
+                        registry.get(&id)?.ok_or(HolonError::ObsoleteSession)
+                    }
+                    Err(error) => {
+                        let _ = registry.prune_envelopes();
+                        Err(error)
+                    }
+                };
+            }
+        }
         self.construct_effective_holon_descriptor_internal(context, target)
     }
 
-    /// Explicit pull selects a new projection while previously returned handles remain immutable.
+    /// Explicit pull resets the saved Session and reacquires the same exact descriptor version.
     fn pull_effective_holon_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
         target: HolonReference,
     ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
-        self.construct_effective_holon_descriptor_internal(context, target)
+        context.space_read_handle().reset_session()?;
+        self.acquire_effective_holon_descriptor_internal(context, target)
     }
 
     /// Constructs a retained schema graph. Clients delegate one typed Dance to
@@ -95,6 +114,47 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         _target: HolonReference,
     ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
         Err(HolonError::NotImplemented("construct_effective_holon_descriptor_internal".into()))
+    }
+
+    /// Value/property products share the same service boundary as effective Holon schemas.
+    fn acquire_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        if let Some(result) =
+            crate::descriptors::DerivedDescriptor::find_in_context(context, &target)?
+        {
+            return Ok(result);
+        }
+        if matches!(target, HolonReference::Smart(_)) {
+            if let Some(registry) = context.descriptor_registry() {
+                let id = target.holon_id()?;
+                if let Some(result) = registry.get_derived(&id)? {
+                    return Ok(result);
+                }
+                let session = context.space_read_handle().session()?;
+                let owner = registry.context()?;
+                let result = self.construct_derived_descriptor_internal(&owner, target);
+                return match result {
+                    Ok(result) => registry.publish_derived(id, &result, &session),
+                    Err(error) => {
+                        let _ = registry.prune_envelopes();
+                        Err(error)
+                    }
+                };
+            }
+        }
+        self.construct_derived_descriptor_internal(context, target)
+    }
+
+    fn construct_derived_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::DerivedDescriptor, HolonError> {
+        let _ = (context, target);
+        Err(HolonError::NotImplemented("construct_derived_descriptor_internal".into()))
     }
 
     /// This function commits the staged holons to the persistent store
@@ -123,12 +183,69 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         id: &HolonId,
     ) -> Result<Holon, HolonError>;
 
+    /// Fetches exact saved nodes in one supported-route transport operation.
+    /// Per-ID failures preserve independent successes; unsupported providers do not
+    /// silently fall back to one transport operation per identity.
+    fn fetch_holons_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _ids: &[HolonId],
+    ) -> Result<Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        Err(HolonError::NotImplemented("bulk saved hydration".into()))
+    }
+
     fn fetch_related_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
+
+    /// Retrieves membership and its descriptor association in the same operation.
+    /// A client obtains the association from its guest, never by host-side discovery.
+    fn fetch_related_holons_with_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<crate::core_shared_objects::relationship_fetch::FetchedRelationship, HolonError>
+    {
+        Ok(crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+            collection: self.fetch_related_holons_internal(context, source, name)?,
+            descriptor: None,
+        })
+    }
+
+    /// Retrieves a complete set; only `unresolved` names need descriptor binding.
+    /// Retained associations survive membership expiry, including bulk preparation.
+    fn fetch_relationship_set_with_descriptors_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+        _unresolved: &[RelationshipName],
+    ) -> Result<
+        Vec<(
+            RelationshipName,
+            crate::core_shared_objects::relationship_fetch::FetchedRelationship,
+        )>,
+        HolonError,
+    > {
+        Ok(self
+            .fetch_relationship_set_internal(context, source, names)?
+            .into_iter()
+            .map(|(name, collection)| {
+                (
+                    name,
+                    crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+                        collection,
+                        descriptor: None,
+                    },
+                )
+            })
+            .collect())
+    }
 
     /// Fetches complete memberships for exactly the requested names, including empty sets.
     /// Providers may consolidate transport without changing selection or freshness semantics.
@@ -159,6 +276,22 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         _visualizer: &HolonReference,
     ) -> Result<bool, HolonError> {
         Ok(false)
+    }
+
+    /// Resolve committed Visualizer configuration in the current authorized space.
+    /// Native clients delegate this read-only operation to the guest in one Dance.
+    fn resolve_visualizer_usage_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        visualizer: &HolonReference,
+        subject_type: &HolonReference,
+        slot: &HolonReference,
+    ) -> Result<crate::dances::VisualizerUsageResolution, HolonError> {
+        crate::dances::visualizer_usage_resolution::resolve_visualizer_usage(
+            visualizer,
+            subject_type,
+            slot,
+        )
     }
 
     /// Materializes the executable artifact for a selected Visualizer.
@@ -242,6 +375,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &Arc<TransactionContext>,
         load_set: TransientReference,
     ) -> Result<TransientReference, HolonError>;
+
+    /// Load a Theme through the Space-authoritative canonical Dance.
+    fn load_theme_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _theme: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        Err(HolonError::NotImplemented("Space-authoritative LoadTheme".into()))
+    }
 
     /// Executes a validated canonical loader invocation in the authoritative Space.
     fn invoke_load_holons_internal(

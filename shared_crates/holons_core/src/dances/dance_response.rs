@@ -51,6 +51,8 @@ pub enum ResponseBody {
     Holon(Holon),
     HolonCollection(HolonCollection),
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
+    SavedHolonHydration(Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>),
+    SavedRelationship(crate::core_shared_objects::relationship_fetch::FetchedRelationship),
     HolonReference(HolonReference),
     NodeCollection(NodeCollection),
     // SmartCollection(SmartCollection),
@@ -133,6 +135,14 @@ impl DanceResponse {
 
     fn body_summary(&self) -> String {
         match &self.body {
+            ResponseBody::SavedHolonHydration(entries) => {
+                format!("SavedHolonHydration(count={})", entries.len())
+            }
+            ResponseBody::SavedRelationship(fetched) => format!(
+                "SavedRelationship(count={}, descriptor={:?})",
+                fetched.collection.get_members().len(),
+                fetched.descriptor
+            ),
             ResponseBody::None => "None".to_string(),
             ResponseBody::Holon(holon) => {
                 // Holon summaries are bounded and useful for test logging.
@@ -167,6 +177,8 @@ impl From<HolonError> for ResponseStatusCode {
     fn from(error: HolonError) -> Self {
         match error {
             // 500-ish (internal / infrastructure)
+            HolonError::CacheResetAfterCommit(_) => ResponseStatusCode::ServerError,
+            HolonError::ObsoleteSession => ResponseStatusCode::Conflict,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::ConductorError(_) => ResponseStatusCode::ServerError,

@@ -25,6 +25,24 @@ export function isDescribedHolonCollectionWire(value: unknown): value is Describ
   return isRecord(value) && isHolonCollectionWire(value['members']) && isHolonReferenceWire(value['element_type']);
 }
 
+export interface LoadedThemeWire {
+  theme: HolonReferenceWire;
+  meta_design_system: HolonReferenceWire;
+  tokens: HolonReferenceWire[];
+  data: {
+    theme_key: string; theme_versioned_key: string;
+    meta_design_system_key: string; meta_design_system_versioned_key: string;
+    bindings: { token_versioned_key: string; token_name: string; presentation_value: string }[];
+  };
+}
+export function isLoadedThemeWire(value: unknown): value is LoadedThemeWire {
+  if (!isRecord(value) || !isHolonReferenceWire(value['theme']) || !isHolonReferenceWire(value['meta_design_system']) || !Array.isArray(value['tokens']) || !value['tokens'].every(isHolonReferenceWire) || !isRecord(value['data'])) return false;
+  const data = value['data'];
+  return ['theme_key', 'theme_versioned_key', 'meta_design_system_key', 'meta_design_system_versioned_key'].every(key => typeof data[key] === 'string' && data[key].length > 0)
+    && Array.isArray(data['bindings']) && data['bindings'].length === value['tokens'].length
+    && data['bindings'].every(binding => isRecord(binding) && typeof binding['token_versioned_key'] === 'string' && binding['token_versioned_key'].length > 0 && typeof binding['token_name'] === 'string' && binding['token_name'].length > 0 && typeof binding['presentation_value'] === 'string');
+}
+
 export interface QualifiedRelationshipWire {
   descriptor: HolonReferenceWire;
 }
@@ -33,12 +51,14 @@ export interface VisualizerSelectionWire {
   selected: HolonReferenceWire;
   requested_kind: VisualizerKindWire;
   alternatives_available: boolean;
+  usage?: VisualizerUsageSelectionWire;
 }
 
 function isVisualizerSelectionWire(value: unknown): value is VisualizerSelectionWire {
   return isRecord(value) && isHolonReferenceWire(value['selected']) &&
     isVisualizerKindWire(value['requested_kind']) &&
-    typeof value['alternatives_available'] === 'boolean';
+    typeof value['alternatives_available'] === 'boolean' &&
+    (value['usage'] === undefined || isVisualizerUsageSelectionWire(value['usage']));
 }
 
 function isQualifiedRelationshipWire(
@@ -70,8 +90,10 @@ export type MapResultWire =
   | { TransactionCreated: { tx_id: number } }
   | { Reference: HolonReferenceWire }
   | { VisualizerSelection: VisualizerSelectionWire }
+  | { LoadedTheme: LoadedThemeWire }
   | { VisualizerDiscovery: VisualizerDiscoveryWire }
   | { VisualizerUsageSelection: VisualizerUsageSelectionWire }
+  | { VisualizerUsagePersistence: VisualizerUsagePersistenceWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { DescribedCollection: DescribedHolonCollectionWire }
@@ -101,7 +123,9 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
       (value.EffectiveCardinality['maximum'] === null ||
         (Number.isSafeInteger(value.EffectiveCardinality['maximum']) && (value.EffectiveCardinality['maximum'] as number) >= (value.EffectiveCardinality['minimum'] as number)))) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
+    (hasSingleKey(value, 'LoadedTheme') && isLoadedThemeWire(value.LoadedTheme)) ||
     (hasSingleKey(value, 'VisualizerSelection') && isVisualizerSelectionWire(value.VisualizerSelection)) ||
+    (hasSingleKey(value, 'VisualizerUsagePersistence') && isVisualizerUsagePersistenceWire(value.VisualizerUsagePersistence)) ||
     (hasSingleKey(value, 'VisualizerUsageSelection') && isVisualizerUsageSelectionWire(value.VisualizerUsageSelection)) ||
     (hasSingleKey(value, 'VisualizerDiscovery') && isVisualizerDiscoveryWire(value.VisualizerDiscovery)) ||
     (hasSingleKey(value, 'References') &&
@@ -154,4 +178,15 @@ export interface VisualizerUsageSelectionWire {
 }
 export function isVisualizerUsageSelectionWire(value: unknown): value is VisualizerUsageSelectionWire {
   return isRecord(value) && isHolonReferenceWire(value['usage']) && typeof value['initialized'] === 'boolean' && typeof value['report_session'] === 'string';
+}
+
+export interface VisualizerUsagePersistenceWire {
+  batch_id: string;
+  state: 'queued' | 'saving' | 'saved' | 'failed' | 'service_paused';
+  error: string | null;
+}
+export function isVisualizerUsagePersistenceWire(value: unknown): value is VisualizerUsagePersistenceWire {
+  return isRecord(value) && typeof value['batch_id'] === 'string' &&
+    ['queued', 'saving', 'saved', 'failed', 'service_paused'].includes(value['state'] as string) &&
+    (value['error'] === null || typeof value['error'] === 'string');
 }

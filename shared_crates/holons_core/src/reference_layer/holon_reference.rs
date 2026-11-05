@@ -1,4 +1,3 @@
-use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::core_shared_objects::{
@@ -134,14 +133,12 @@ impl HolonReference {
         }
     }
 
-    /// Gets an execution context suitable for descriptor resolution. Saved
-    /// references obtain a fresh restricted context for their owning space;
-    /// transaction-local phases retain their bound context.
-    pub(crate) fn resolution_context(&self) -> Result<Arc<TransactionContext>, HolonError> {
+    /// Returns this reference's Space binding without allocating a transaction.
+    pub(crate) fn space_read_handle(&self) -> crate::core_shared_objects::SpaceReadHandle {
         match self {
-            Self::Smart(reference) => reference.resolution_context(),
-            Self::Staged(reference) => Ok(reference.bound_context()),
-            Self::Transient(reference) => Ok(reference.bound_context()),
+            Self::Smart(reference) => reference.space_read_handle(),
+            Self::Staged(reference) => reference.bound_context().space_read_handle(),
+            Self::Transient(reference) => reference.bound_context().space_read_handle(),
         }
     }
 
@@ -509,7 +506,6 @@ impl WritableHolonImpl for HolonReference {
         property: PropertyName,
         value: BaseValue,
     ) -> Result<&mut Self, HolonError> {
-        info!("Entered HolonReference::with_property_value_impl");
         match self {
             HolonReference::Transient(transient_reference) => {
                 transient_reference.with_property_value_impl(property, value)?;

@@ -1,15 +1,18 @@
-use base_types::BaseValue;
-use core_types::{HolonError, PropertyName, RelationshipName};
-use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::descriptors::{equals_or_extends, walk_extends_chain, PropertyDescriptor};
-use holons_core::{Descriptor, HolonReference, ReadableHolon};
-use map_commands_contract::{
+use super::contract::{
     VisualizerAssessment, VisualizerCandidate, VisualizerDiscovery, VisualizerKind,
     VisualizerOwner, VisualizerSelection, VisualizerSelectionRequest,
 };
+use crate::core_shared_objects::transactions::TransactionContext;
+use crate::descriptors::{equals_or_extends, walk_extends_chain, PropertyDescriptor};
+use crate::{Descriptor, HolonReference, ReadableHolon};
+use base_types::BaseValue;
+use core_types::{HolonError, PropertyName, RelationshipName};
 use std::sync::Arc;
 
-fn members(reference: &HolonReference, name: &str) -> Result<Vec<HolonReference>, HolonError> {
+pub(crate) fn members(
+    reference: &HolonReference,
+    name: &str,
+) -> Result<Vec<HolonReference>, HolonError> {
     Ok(reference
         .related_holons(RelationshipName(name.into()))?
         .read()
@@ -53,19 +56,26 @@ fn required_text(reference: &HolonReference, name: &str) -> Result<String, Holon
 }
 
 /// Context resolution is shared; assessment does not choose among viable candidates.
-struct AssessmentContext {
+#[derive(Clone)]
+pub(crate) struct AssessmentContext {
     accepted: Vec<HolonReference>,
     tokens: Vec<HolonReference>,
     slot: HolonReference,
-    start: HolonReference,
+    pub(crate) start: HolonReference,
 }
 
-fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, HolonError> {
+pub(crate) fn resolve(
+    request: &VisualizerSelectionRequest,
+) -> Result<AssessmentContext, HolonError> {
     let (owner, relation) = match &request.owner {
         VisualizerOwner::Visualizer(owner) => (owner, "HasSlot"),
         VisualizerOwner::Dancer(owner) => (owner, "HasExperienceVisualizerSlot"),
     };
-    if !members(owner, relation)?.contains(&request.slot) {
+    let slots = match &request.owner {
+        VisualizerOwner::Visualizer(_) => super::composition_slots(owner)?,
+        VisualizerOwner::Dancer(_) => members(owner, relation)?,
+    };
+    if !slots.contains(&request.slot) {
         return Err(HolonError::InvalidParameter(
             "Requested slot does not belong to its stated composition owner".into(),
         ));
@@ -76,27 +86,11 @@ fn resolve(request: &VisualizerSelectionRequest) -> Result<AssessmentContext, Ho
     }
     let mds = one(&request.theme, "ForMetaDesignSystem")?;
     let tokens = members(&mds, "DefinesDesignToken")?;
-    let start = match request.requested_kind {
-        VisualizerKind::Property | VisualizerKind::Action => request.subject.clone(),
-        VisualizerKind::Value => {
-            PropertyDescriptor::from_holon(request.subject.clone()).value_type()?.holon().clone()
-        }
-        VisualizerKind::TitleBar
-        | VisualizerKind::Node
-        | VisualizerKind::PropertyMap
-        | VisualizerKind::ActionBar
-        | VisualizerKind::RootedNavigation
-        | VisualizerKind::Structure => request.subject.holon_descriptor()?.holon().clone(),
-        _ => {
-            return Err(HolonError::InvalidParameter(
-                "Use the dedicated Canvas or Collection selection contract".into(),
-            ))
-        }
-    };
+    let start = usage_subject_type(request)?;
     Ok(AssessmentContext { accepted, tokens, start, slot: request.slot.clone() })
 }
 
-fn assess(
+pub(crate) fn assess(
     context: &Arc<TransactionContext>,
     facts: &AssessmentContext,
     candidate: &HolonReference,
@@ -109,7 +103,7 @@ fn assess(
             break;
         }
     }
-    if !compatible || !crate::operators::fulfills_operators(&facts.slot, candidate)? {
+    if !compatible || !super::operators::fulfills_operators(&facts.slot, candidate)? {
         return Ok(VisualizerAssessment::IncompatibleSlot);
     }
     if members(candidate, "ConsumesDesignToken")?.iter().any(|token| !facts.tokens.contains(token))
@@ -146,13 +140,23 @@ fn at_level(
     context: &Arc<TransactionContext>,
     facts: &AssessmentContext,
     descriptor: &HolonReference,
+    mut metadata: Option<(&mut super::PreparedSelectionMetadata, usize)>,
 ) -> Result<Vec<VisualizerCandidate>, HolonError> {
+    let declarations = if let Some((metadata, _)) = metadata.as_mut() {
+        metadata.declarations(descriptor)?
+    } else {
+        members(descriptor, "HasApplicableVisualizer")?
+    };
     let mut candidates: Vec<VisualizerCandidate> = Vec::new();
-    for visualizer in members(descriptor, "HasApplicableVisualizer")? {
+    for visualizer in declarations {
         if candidates.iter().any(|c| c.visualizer == visualizer) {
             continue;
         }
-        let assessment = assess(context, facts, &visualizer)?;
+        let assessment = if let Some((metadata, scope)) = metadata.as_mut() {
+            metadata.assess(context, *scope, facts, &visualizer)?
+        } else {
+            assess(context, facts, &visualizer)?
+        };
         // Applicability declarations can offer several presentation kinds.
         // Only types accepted by this actual slot enter its choice population.
         if assessment == VisualizerAssessment::IncompatibleSlot {
@@ -194,16 +198,140 @@ pub fn select_visualizer(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
 ) -> Result<VisualizerSelection, HolonError> {
-    let facts = resolve(&request)?;
+    select_visualizer_with_subject_type(context, request).map(|(selection, _)| selection)
+}
+
+/// Return the exact descriptor resolved by selection, for immediate Usage preparation.
+/// The result does not authorize a later selection or bypass current eligibility checks.
+pub fn select_visualizer_with_subject_type(
+    context: &Arc<TransactionContext>,
+    request: VisualizerSelectionRequest,
+) -> Result<(VisualizerSelection, HolonReference), HolonError> {
+    select_with_metadata(context, request, None)
+}
+
+/// Resolve an actual request using metadata prepared within its current composition.
+pub fn select_visualizer_with_metadata(
+    context: &Arc<TransactionContext>,
+    request: VisualizerSelectionRequest,
+    metadata: &mut super::PreparedSelectionMetadata,
+) -> Result<(VisualizerSelection, HolonReference), HolonError> {
+    select_with_metadata(context, request, Some(metadata))
+}
+
+/// Request-local applicability facts for a configuration already associated with the Slot.
+struct SlotUsageCandidate {
+    visualizer: HolonReference,
+    scope: HolonReference,
+    applicability: Vec<HolonReference>,
+    scope_seen: bool,
+    assessed: bool,
+}
+
+/// Restrict ordinary selection to applicable, eligible configurations already used in this Slot.
+/// Check retained Visualizers' own declarations rather than enumerating unrelated candidates.
+fn select_slot_usage(
+    context: &Arc<TransactionContext>,
+    facts: &AssessmentContext,
+    mut metadata: Option<(&mut super::PreparedSelectionMetadata, usize)>,
+) -> Result<Option<HolonReference>, HolonError> {
+    let usages = members(&facts.slot, "HasSelectedUsage")?;
+    if usages.is_empty() {
+        return Ok(None);
+    }
+    let usage_type = super::usage::anchor(context, "VisualizerUsage.HolonType")?;
+    let mut associated = Vec::new();
+    for usage in usages {
+        let usage = super::usage::VisualizerUsage::from_holon_with_type(usage, &usage_type)?;
+        if !usage.selected_slots()?.contains(&facts.slot) {
+            return Err(HolonError::InvalidState(
+                "Slot Usage inverse membership disagrees with SelectedForSlot".into(),
+            ));
+        }
+        let visualizer = usage.visualizer()?;
+        associated.push(SlotUsageCandidate {
+            applicability: members(&visualizer, "ApplicableToType")?,
+            visualizer,
+            scope: usage.subject_type()?,
+            scope_seen: false,
+            assessed: false,
+        });
+    }
+    // Preserve nearest-applicability policy and stop immediately on success or
+    // ambiguity. Ancestors beyond a resolved declaration cannot change that choice.
     for descriptor in walk_extends_chain(&facts.start) {
         let descriptor = descriptor?;
-        if let Some(selected) = sole_viable(&at_level(context, &facts, &descriptor)?, &descriptor)?
-        {
-            return Ok(VisualizerSelection {
+        let mut candidates: Vec<VisualizerCandidate> = Vec::new();
+        for usage in &mut associated {
+            usage.scope_seen |= usage.scope == descriptor;
+            if usage.assessed || !usage.applicability.contains(&descriptor) {
+                continue;
+            }
+            usage.assessed = true;
+            // Configuration outside the nearest direct applicability boundary is inapplicable.
+            if !usage.scope_seen || candidates.iter().any(|c| c.visualizer == usage.visualizer) {
+                continue;
+            }
+            let assessment = if let Some((metadata, compatibility)) = metadata.as_mut() {
+                metadata.assess(context, *compatibility, facts, &usage.visualizer)?
+            } else {
+                assess(context, facts, &usage.visualizer)?
+            };
+            if assessment == VisualizerAssessment::Viable {
+                candidates.push(VisualizerCandidate {
+                    visualizer: usage.visualizer.clone(),
+                    declared_on: vec![descriptor.clone()],
+                    assessment,
+                });
+            }
+        }
+        if let Some(selected) = sole_viable(&candidates, &descriptor)? {
+            return Ok(Some(selected));
+        }
+        if associated.iter().all(|usage| usage.assessed) || boundary(&descriptor)? {
+            break;
+        }
+    }
+    Ok(None)
+}
+
+fn select_with_metadata(
+    context: &Arc<TransactionContext>,
+    request: VisualizerSelectionRequest,
+    mut metadata: Option<&mut super::PreparedSelectionMetadata>,
+) -> Result<(VisualizerSelection, HolonReference), HolonError> {
+    let (facts, scope) = if let Some(metadata) = metadata.as_deref_mut() {
+        metadata.resolve(context, &request)?
+    } else {
+        (resolve(&request)?, None)
+    };
+    if let Some(selected) = select_slot_usage(context, &facts, metadata.as_deref_mut().zip(scope))?
+    {
+        return Ok((
+            VisualizerSelection {
                 selected,
                 requested_kind: request.requested_kind,
                 alternatives_available: false,
-            });
+                usage: None,
+            },
+            facts.start.clone(),
+        ));
+    }
+    for descriptor in walk_extends_chain(&facts.start) {
+        let descriptor = descriptor?;
+        if let Some(selected) = sole_viable(
+            &at_level(context, &facts, &descriptor, metadata.as_deref_mut().zip(scope))?,
+            &descriptor,
+        )? {
+            return Ok((
+                VisualizerSelection {
+                    selected,
+                    requested_kind: request.requested_kind,
+                    alternatives_available: false,
+                    usage: None,
+                },
+                facts.start.clone(),
+            ));
         }
         if boundary(&descriptor)? {
             break;
@@ -223,10 +351,10 @@ pub fn discover_visualizers(
     let facts = resolve(&request)?;
     let mut candidates: Vec<VisualizerCandidate> = Vec::new();
     let mut ancestry = Vec::new();
-    let mut stop_reason = map_commands_contract::DiscoveryStopReason::LineageExhausted;
+    let mut stop_reason = super::contract::DiscoveryStopReason::LineageExhausted;
     for descriptor in walk_extends_chain(&facts.start) {
         let descriptor = descriptor?;
-        for candidate in at_level(context, &facts, &descriptor)? {
+        for candidate in at_level(context, &facts, &descriptor, None)? {
             if let Some(previous) =
                 candidates.iter_mut().find(|c| c.visualizer == candidate.visualizer)
             {
@@ -238,7 +366,7 @@ pub fn discover_visualizers(
         let stop = boundary(&descriptor)?;
         ancestry.push(descriptor);
         if stop {
-            stop_reason = map_commands_contract::DiscoveryStopReason::HolonTypeBoundary;
+            stop_reason = super::contract::DiscoveryStopReason::HolonTypeBoundary;
             break;
         }
     }
@@ -280,6 +408,7 @@ pub fn choose_visualizer(
                 selected: candidate,
                 requested_kind: request.requested_kind,
                 alternatives_available: false,
+                usage: None,
             });
         }
         if boundary(&descriptor)? {
@@ -296,5 +425,22 @@ pub fn choose_visualizer(
 pub fn usage_subject_type(
     request: &VisualizerSelectionRequest,
 ) -> Result<HolonReference, HolonError> {
-    Ok(resolve(request)?.start)
+    let start = match request.requested_kind {
+        VisualizerKind::Property | VisualizerKind::Action => request.subject.clone(),
+        VisualizerKind::Value => {
+            PropertyDescriptor::from_holon(request.subject.clone()).value_type()?.holon().clone()
+        }
+        VisualizerKind::TitleBar
+        | VisualizerKind::Node
+        | VisualizerKind::PropertyMap
+        | VisualizerKind::ActionBar
+        | VisualizerKind::RootedNavigation
+        | VisualizerKind::Structure => request.subject.holon_descriptor()?.holon().clone(),
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Use the dedicated Canvas or Collection selection contract".into(),
+            ))
+        }
+    };
+    Ok(start)
 }

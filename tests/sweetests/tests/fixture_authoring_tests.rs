@@ -50,11 +50,13 @@ fn all_fixtures_author_without_a_conductor() {
         .unwrap();
     load_holons_internal_fixture::loader_incremental_fixture().unwrap();
     load_inverse_oriented_book_person_instances_fixture::load_inverse_oriented_book_person_instances_fixture().unwrap();
+    query_boundary_fixture::query_boundary_fixture().unwrap();
     query_qry1_scaffold_fixture::query_qry1_scaffold_fixture().unwrap();
     query_qry2_seed_expand_fixture::query_qry2_seed_expand_fixture().unwrap();
     query_qry4a_order_paginate_fixture::query_qry4a_order_paginate_fixture().unwrap();
     query_f1_filter_fixture::query_f1_filter_fixture().unwrap();
     query_f2_equality_fixture::query_f2_equality_fixture().unwrap();
+    query_f3_boolean_fixture::query_f3_boolean_fixture().unwrap();
     simple_add_remove_properties_fixture::simple_add_remove_properties_fixture().unwrap();
     simple_add_remove_related_holons_fixture::simple_add_remove_related_holons_fixture().unwrap();
     simple_create_holon_fixture::simple_create_holon_fixture().unwrap();

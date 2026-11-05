@@ -235,20 +235,14 @@ impl DescriptorPackages {
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts));
         let mut definitions = HashMap::new();
         for reference in definitions_to_prepare {
-            // A schema-edit assessment must observe its candidate graph, including
-            // repeated declarations. Saved-only assessments can reuse the shipped snapshot.
             let prepared = crate::assessment_phase::observe_operation(
                 observer,
-                if workset.schemas.is_empty() { "SnapshotLookup" } else { "SnapshotBypass" },
+                "RegistryLookup",
                 "PreparedDefinition",
                 || {
-                    if workset.schemas.is_empty() {
-                        holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
-                            context, &reference,
-                        )
-                    } else {
-                        Ok(None)
-                    }
+                    holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
+                        context, &reference,
+                    )
                 },
             )?;
             let schema = match prepared {
@@ -257,25 +251,55 @@ impl DescriptorPackages {
                     "SavedRestoration",
                     "PreparedDefinition",
                     || {
-                        holons_core::descriptors::ComputedEffectiveSchema::from_prepared(
-                            &descriptor,
-                        )
+                        holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
                     },
                 ),
-                None => crate::assessment_phase::observe_operation(
-                    observer,
-                    "FreshEffectiveSchema",
-                    "PreparedDefinition",
-                    || {
-                        match diagnoses.existing(&reference)? {
-                            Some(diagnosis) => match diagnosis.valid_lineage() {
-                                Some(lineage) => holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage),
-                                None => Err(diagnosed_lineage_error(&diagnosis, &reference)),
-                            },
-                            None => holons_core::descriptors::ComputedEffectiveSchema::resolve(&reference),
+                None => {
+                    let diagnosis = crate::assessment_phase::observe_operation(
+                        observer,
+                        "StructuralDiagnosis",
+                        "CategoryRouting",
+                        || diagnoses.get(&reference),
+                    )?;
+                    match diagnosis.valid_lineage() {
+                        None => Err(diagnosed_lineage_error(&diagnosis, &reference)),
+                        Some(lineage) => {
+                            use type_names::CoreDefinitionRole as Role;
+                            if lineage.contains_role(Role::ValueType) {
+                                context.retain_frozen_descriptor_lineage(lineage)?;
+                                crate::assessment_phase::observe_operation(
+                                    observer,
+                                    "DerivedAcquisition",
+                                    "ValueType",
+                                    || {
+                                        holons_core::ValueDescriptor::from_holon(reference.clone())
+                                            .effective_schema()
+                                    },
+                                )
+                            } else if lineage.contains_role(Role::PropertyType) {
+                                context.retain_frozen_descriptor_lineage(lineage)?;
+                                crate::assessment_phase::observe_operation(
+                                    observer,
+                                    "DerivedAcquisition",
+                                    "PropertyType",
+                                    || {
+                                        holons_core::PropertyDescriptor::from_holon(reference.clone())
+                                            .effective_schema()
+                                    },
+                                )
+                            } else {
+                                crate::assessment_phase::observe_operation(
+                                    observer,
+                                    "FreshEffectiveSchema",
+                                    "PreparedDefinition",
+                                    || {
+                                        holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage)
+                                    },
+                                )
+                            }
                         }
-                    },
-                ),
+                    }
+                }
             }
             .map(Arc::new);
             // All name/navigation reads required by validation belong to preparation,

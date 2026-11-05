@@ -414,17 +414,15 @@ pub(crate) fn put_smartlink_cached(
     let bucket_key = SmartLinkBucketKey::from_prepared(&prepared);
     let identity = SmartLinkIdentity::from_prepared(&prepared);
     let cache_miss = !context.buckets.contains_key(&bucket_key);
-    let expansion_started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
+    let expansion_started_at = crate::performance::timestamp_micros();
     let bucket = context.bucket_for(bucket_key, || {
         expand_from_source(&prepared.source_id, &prepared.relationship_name)
     })?;
     let expansion_micros = cache_miss.then(|| {
-        sys_time()
-            .ok()
-            .map(|completed_at| {
-                completed_at
-                    .as_micros()
-                    .saturating_sub(expansion_started_at.unwrap_or(completed_at.as_micros()))
+        expansion_started_at
+            .and_then(|started_at| {
+                crate::performance::timestamp_micros()
+                    .map(|completed_at| completed_at.saturating_sub(started_at))
             })
             .unwrap_or_default()
     });
@@ -439,13 +437,13 @@ pub(crate) fn put_smartlink_cached(
         });
     }
 
-    let action_create_started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
+    let action_create_started_at = crate::performance::timestamp_micros();
     let smartlink_id = create_prepared_smartlink(&prepared, validated_tag)?;
     bucket.insert(identity, CachedSmartLink::from_inserted(&prepared, smartlink_id.clone()));
-    let action_create_micros = sys_time()
-        .ok()
-        .zip(action_create_started_at)
-        .map(|(completed_at, started_at)| completed_at.as_micros().saturating_sub(started_at));
+    let action_create_micros = action_create_started_at.and_then(|started_at| {
+        crate::performance::timestamp_micros()
+            .map(|completed_at| completed_at.saturating_sub(started_at))
+    });
     Ok(CachedPutSmartLinkOutcome {
         outcome: PutSmartLinkOutcome::Inserted(smartlink_id),
         expansion_micros,

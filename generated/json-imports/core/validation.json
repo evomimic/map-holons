@@ -1204,6 +1204,26 @@
       ]
     },
     {
+      "key": "AbstractPropertyParent.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DeterminismClass": "Deterministic",
+        "SemanticAuthority": "DS-STRUCT-006",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Only abstract property descriptors may be extended; concrete property definitions are leaves."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "AcyclicExtendsLineage.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {

@@ -14,7 +14,7 @@ use crate::performance::{elapsed_micros, performance_timestamp_micros};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 // use uuid::Uuid;
 
 use holons_prelude::prelude::*;
@@ -567,7 +567,8 @@ impl HolonLoaderController {
         response_reference.add_related_holons("HasValidationSource", source_carriers)?;
         response_reference.add_related_holons("HasDiagnostic", diagnostics)?;
 
-        info!(
+        if cfg!(feature = "performance-profiling") {
+            info!(
             "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={} {}",
             elapsed_micros(load_started_at) / 1_000,
             total_bundles,
@@ -581,7 +582,12 @@ impl HolonLoaderController {
             guest_commit_micros / 1_000,
             resolver_metrics,
         );
-        debug!("HolonLoaderController::load_set - done");
+        } else {
+            info!(
+                "Loader complete: bundles={} loader_holons={} staged_holons={} links_created={}",
+                total_bundles, total_loader_holons, total_holons_staged, links_created
+            );
+        }
         Ok(response_reference)
     }
 
@@ -801,8 +807,6 @@ impl HolonLoaderController {
         summary: String,
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
-        debug!("Building HolonLoadResponse for run_id={}", run_id);
-
         // 1) Create the transient under a short-lived write lock, then DROP the lock
         let response_reference = {
             let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
@@ -871,11 +875,6 @@ impl HolonLoaderController {
             response_reference
                 .add_related_holons(CoreRelationshipTypeName::HasLoadError, error_refs)?;
         }
-
-        debug!(
-            "HolonLoadResponse built: staged={}, committed={}, links_created={}, errors={}",
-            holons_staged, holons_committed, links_created, errors_encountered
-        );
 
         Ok(response_reference)
     }

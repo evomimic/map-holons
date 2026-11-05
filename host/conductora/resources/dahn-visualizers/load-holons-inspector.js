@@ -375,7 +375,6 @@ var LoadHolonsInspector = class extends HTMLElement {
       this.setNodeInspectorAllocation(this.allocation);
     });
   }
-  static compositionSlots = { visualizerActions: "LoadHolonsResult.VisualizerControlsSlot", titleBar: "LoadHolonsResult.TitleBarSlot", propertyMap: "LoadHolonsResult.PropertyMapSlot", action: "LoadHolonsResult.ActionsSlot" };
   static usesOwnedResultSummary = true;
   setNodeOwnedSummary(content) {
     this.propertyVisualizer = content;
@@ -492,7 +491,7 @@ var LoadHolonsInspector = class extends HTMLElement {
             if (this.allocation) this.applyNodePresentation(this.allocation);
             return;
           }
-          context.collectionActivation.activate(affordance, "LoadHolonsResult.CollectionsSlot", (update) => {
+          context.collectionActivation.activate(affordance, "collection", (update) => {
             if (update.placement === "source") return;
             this.activeCollection = update.state === "unresolved" ? void 0 : affordance;
             this.presentationState = selectInspectorView(this.presentationState, update.state === "unresolved" ? "properties" : "collection");

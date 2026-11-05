@@ -14,7 +14,7 @@ export class SemanticWork {
   private readonly refresh = new Set<() => void>();
   private epoch = 0;
 
-  constructor(private readonly limit = 4, private readonly backgroundLimit = 2) {
+  constructor(private readonly limit = 4, private readonly backgroundLimit = 2, private readonly onSemanticChange?: () => void) {
     if (!Number.isInteger(limit) || !Number.isInteger(backgroundLimit)
       || backgroundLimit < 1 || limit <= backgroundLimit) throw new Error('Reserve capacity for interactive work');
   }
@@ -49,6 +49,7 @@ export class SemanticWork {
   /** Refresh every occurrence in this transaction after a semantic change. */
   invalidate(): void {
     ++this.epoch;
+    this.onSemanticChange?.();
     for (const refresh of this.refresh) refresh();
   }
 
@@ -98,6 +99,6 @@ export class SemanticWork {
 /** Shared across occurrences so background discovery cannot saturate a transaction. */
 export function semanticWork(transaction: MapTransaction): SemanticWork {
   let scheduler = schedulers.get(transaction);
-  if (!scheduler) { scheduler = new SemanticWork(); schedulers.set(transaction, scheduler); }
+  if (!scheduler) { scheduler = new SemanticWork(4, 2, () => transaction.invalidateVisualizerBindings?.()); schedulers.set(transaction, scheduler); }
   return scheduler;
 }

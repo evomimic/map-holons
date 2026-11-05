@@ -24,6 +24,8 @@ pub enum CoreValidationRuleName {
     BaseValueKindMatchesEnum,
     /// DS-STRUCT-002: at most one direct Extends parent.
     AtMostOneDirectParent,
+    /// DS-STRUCT-006: concrete property definitions cannot be extended.
+    AbstractPropertyParent,
     /// DS-STRUCT-003: Extends lineage has no cycle.
     AcyclicExtendsLineage,
     /// DS-STRUCT-004: parented lineage reaches TypeDescriptor.
@@ -88,6 +90,7 @@ impl CoreValidationRuleName {
             Self::BaseValueKindMatchesBytes => "BaseValueKindMatchesBytes.ValidationRule",
             Self::BaseValueKindMatchesEnum => "BaseValueKindMatchesEnum.ValidationRule",
             Self::AtMostOneDirectParent => "AtMostOneDirectParent.ValidationRule",
+            Self::AbstractPropertyParent => "AbstractPropertyParent.ValidationRule",
             Self::AcyclicExtendsLineage => "AcyclicExtendsLineage.ValidationRule",
             Self::ExtendsLineageTerminatesAtTypeDescriptor => {
                 "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule"

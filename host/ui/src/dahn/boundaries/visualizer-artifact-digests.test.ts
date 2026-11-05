@@ -58,8 +58,8 @@ it('withdraws Connections First and gives generic and loader Nodes independent T
   const schema = JSON.parse(await readFile(resolve(repository, 'generated/json-imports/dahn/schema.json'), 'utf8'));
   const targets = (key: string, name: string): string[] => schema.holons.find((record: any) => record.key === key)?.relationships?.find((edge: any) => edge.name === name)?.target.map((target: any) => target.$ref) ?? [];
   expect(schema.holons.some((record: any) => record.key.startsWith('ConnectionsFirstInspector'))).toBe(false);
-  expect(targets('HolonInspector.NodeVisualizer', 'HasSlot')).toContain('HolonInspector.TitleBarSlot');
-  expect(targets('LoadHolons.NodeVisualizer', 'HasSlot')).toContain('LoadHolonsResult.TitleBarSlot');
+  expect(targets('HolonInspector.NodeVisualizerType', 'HasSlot')).toContain('HolonInspector.TitleBarSlot');
+  expect(targets('LoadHolons.NodeVisualizerType', 'HasSlot')).toContain('LoadHolonsResult.TitleBarSlot');
   expect(targets('HolonInspector.VisualizerControlsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
   expect(targets('LoadHolonsResult.VisualizerControlsSlot', 'UsesNodeActionsContract')).toEqual(['NodeActions.Contract']);
   expect(targets('NodeActions.Contract', 'StandardNodeActions')).toHaveLength(4);

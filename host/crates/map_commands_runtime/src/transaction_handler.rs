@@ -96,6 +96,21 @@ pub async fn handle_transaction(
                 }
             }
         }
+        TransactionAction::LoadTheme { theme } => {
+            let body = context.load_theme(&theme)?;
+            let started = std::time::Instant::now();
+            let loaded = holons_core::dances::LoadedTheme::from_projection(&body)?;
+            if std::env::var_os("MAP_PROFILE").is_some() {
+                tracing::info!(target: "map_profile", projection_ms = started.elapsed().as_secs_f64() * 1000.0,
+                    bindings = loaded.data.bindings.len(), "LoadTheme local response decoding");
+            }
+            if loaded.theme != theme {
+                return Err(HolonError::InvalidParameter(
+                    "LoadTheme returned a different Theme".into(),
+                ));
+            }
+            Ok(MapResult::LoadedTheme(loaded))
+        }
         TransactionAction::SelectCollectionVisualizer { collection, parent_visualizer, slot } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::select_collection_visualizer(
                 context,
@@ -125,19 +140,77 @@ pub async fn handle_transaction(
                 context, request, candidate,
             )?))
         }
+        TransactionAction::InvalidateVisualizerBindings => {
+            session.usage_transactions.invalidate_bindings()?;
+            Ok(MapResult::None)
+        }
+        TransactionAction::BeginVisualizerUsageBatch => {
+            session.usage_transactions.begin(session.space_manager(), context)?;
+            Ok(MapResult::None)
+        }
+        TransactionAction::SubmitVisualizerUsageBatch => {
+            Ok(match session.usage_transactions.submit(context)? {
+                Some(id) => MapResult::Value(BaseValue::StringValue(id.to_string().into())),
+                None => MapResult::None,
+            })
+        }
+        TransactionAction::SaveVisualizerUsage { usage } => {
+            session.usage_transactions.capture(context, &usage)?;
+            Ok(MapResult::None)
+        }
+        TransactionAction::GetVisualizerUsagePersistence { batch_id } => {
+            let id = batch_id
+                .0
+                .parse()
+                .map_err(|_| HolonError::InvalidParameter("Invalid Usage batch identity".into()))?;
+            use crate::usage_persistence::SaveStatus;
+            let (state, error) = match session.usage_transactions.status(id)? {
+                SaveStatus::Queued => ("queued", None),
+                SaveStatus::Saving => ("saving", None),
+                SaveStatus::Saved => ("saved", None),
+                SaveStatus::Failed(error) => ("failed", Some(error)),
+                SaveStatus::ServicePaused(error) => ("service_paused", Some(error)),
+            };
+            Ok(MapResult::VisualizerUsagePersistence(
+                map_commands_contract::VisualizerUsagePersistence {
+                    batch_id,
+                    state: state.into(),
+                    error,
+                },
+            ))
+        }
+        TransactionAction::RetryVisualizerUsagePersistence { batch_id } => {
+            let id = batch_id
+                .0
+                .parse()
+                .map_err(|_| HolonError::InvalidParameter("Invalid Usage batch identity".into()))?;
+            session.usage_transactions.retry(id)?;
+            Ok(MapResult::None)
+        }
         TransactionAction::FindVisualizerUsage { request, selected } => {
             Ok(match session.usage_transactions.find(context, request, selected)? {
                 Some(usage) => MapResult::VisualizerUsageSelection(usage),
                 None => MapResult::None,
             })
         }
-        TransactionAction::SelectVisualizerUsage { request, selected } => {
-            Ok(MapResult::VisualizerUsageSelection(session.usage_transactions.select(
-                session.space_manager(),
-                context,
-                request,
-                selected,
-            )?))
+        TransactionAction::SelectVisualizerUsage { request, selected, usage } => {
+            let selection = match usage {
+                Some(usage) => {
+                    session.usage_transactions.select_existing(context, request, selected, usage)?
+                }
+                None => session.usage_transactions.select(
+                    session.space_manager(),
+                    context,
+                    request,
+                    selected,
+                )?,
+            };
+            Ok(MapResult::VisualizerUsageSelection(selection))
+        }
+        TransactionAction::SpecializeVisualizerUsage { request, selected, usage } => {
+            Ok(MapResult::VisualizerUsageSelection(
+                session.usage_transactions.specialize(context, request, selected, usage)?,
+            ))
         }
         TransactionAction::RecordVisualizerUse { request, selected, usage, origin, report } => {
             session.usage_transactions.record(
@@ -151,9 +224,9 @@ pub async fn handle_transaction(
             )?;
             Ok(MapResult::None)
         }
-        TransactionAction::SelectVisualizer { request } => {
-            Ok(MapResult::VisualizerSelection(dahn_selection::select_visualizer(context, request)?))
-        }
+        TransactionAction::SelectVisualizer { request } => Ok(MapResult::VisualizerSelection(
+            session.usage_transactions.select_visualizer(context, request)?,
+        )),
         TransactionAction::FetchArtifact { handle } => {
             Ok(MapResult::Value(BaseValue::BytesValue(context.fetch_artifact(&handle)?)))
         }

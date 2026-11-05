@@ -80,3 +80,30 @@ describe('MaterializedVisualizerRuntime', () => {
     );
   });
 });
+
+it('resolves an inherited type-owned Slot without importing the Visualizer module', async () => {
+  const ref = (key: string, role?: string, edges: Record<string, any[]> = {}): any => ({
+    identity: key, equals: (other: any) => other.identity === key,
+    propertyValue: async () => role === undefined ? null : { StringValue: role },
+    relatedHolons: async (name: string) => edges[name] ?? [],
+  });
+  const inherited = ref('inherited', 'details');
+  const overridden = ref('overridden', 'details');
+  const base = ref('base', undefined, { HasSlot: [inherited] });
+  const concrete = ref('concrete', undefined, { Extends: [base] });
+  const parent = ref('parent', undefined, { DescribedBy: [concrete] });
+  const materialize = vi.fn();
+  const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }));
+  await expect(runtime.slot(parent, 'details')).resolves.toBe(inherited);
+  concrete.relatedHolons = async (name: string) => ({ HasSlot: [overridden], Extends: [base] })[name] ?? [];
+  await expect(runtime.slot(parent, 'details')).resolves.toBe(overridden);
+  expect(materialize).not.toHaveBeenCalled();
+});
+
+it('rejects ambiguous type-owned roles instead of using an ancestor Slot', async () => {
+  const slot = () => ({ propertyValue: async () => ({ StringValue: 'details' }) });
+  const descriptor = { relatedHolons: async () => [slot(), slot()] };
+  const parent = { relatedHolons: async () => [descriptor] };
+  const runtime = new MaterializedVisualizerRuntime(null as never);
+  await expect(runtime.slot(parent as never, 'details')).rejects.toThrow('Duplicate composition role');
+});

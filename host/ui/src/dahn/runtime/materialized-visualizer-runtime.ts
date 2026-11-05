@@ -1,3 +1,4 @@
+import { extractString } from '../deps/map-sdk';
 import type { HolonReference } from '../deps';
 import type {
   MaterializedVisualizerCache,
@@ -25,17 +26,27 @@ export class MaterializedVisualizerRuntime {
     private readonly importModule: VisualizerModuleImporter = importEsModule,
   ) {}
 
-  /** Resolve an implementation-declared composition point within its owner's HasSlot. */
-  async slot(parent: HolonReference, role: string, cache = this.cache): Promise<HolonReference> {
-    const implementation = await this.realize(parent, cache) as { compositionSlots?: Record<string, string> };
-    const key = implementation.compositionSlots?.[role];
-    if (!key) throw new Error(`Selected Visualizer does not declare composition slot ${role}`);
-    const matches: HolonReference[] = [];
-    for (const slot of await parent.relatedHolons('HasSlot')) {
-      if (await slot.key() === key) matches.push(slot);
+  /** Resolve a semantic role from the selected Visualizer's TDL type definition. */
+  async slot(parent: HolonReference, role: string): Promise<HolonReference> {
+    const descriptors = await parent.relatedHolons('DescribedBy');
+    if (descriptors.length !== 1) throw new Error('Expected one Visualizer type');
+    let descriptor: HolonReference | undefined = [...descriptors][0];
+    const visited: HolonReference[] = [];
+    while (descriptor !== undefined) {
+      if (visited.some(item => item.equals(descriptor!))) throw new Error('Cycle in Visualizer type ancestry');
+      visited.push(descriptor);
+      const matches: HolonReference[] = [];
+      for (const slot of await descriptor.relatedHolons('HasSlot')) {
+        const value = await slot.propertyValue('CompositionRole');
+        if (value !== null && extractString(value) === role) matches.push(slot);
+      }
+      if (matches.length > 1) throw new Error(`Duplicate composition role ${role}`);
+      if (matches.length === 1) return matches[0];
+      const parents = await descriptor.relatedHolons('Extends');
+      if (parents.length > 1) throw new Error('Multiple Visualizer type parents');
+      descriptor = [...parents][0];
     }
-    if (matches.length !== 1) throw new Error(`Expected one owned composition slot ${key}, found ${matches.length}`);
-    return matches[0];
+    throw new Error(`Selected Visualizer type does not declare composition slot ${role}`);
   }
 
   /** Admission checks actual callable bindings for the slot's complete contract. */

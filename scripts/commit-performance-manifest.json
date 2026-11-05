@@ -17,7 +17,7 @@
     {"name": "registry-eight-miss", "args": ["--mode", "create", "--registry-population", "8"]},
     {"name": "registry-thirtytwo-hit", "args": ["--mode", "create", "--registry-population", "32", "--governor-reuse"]},
     {"name": "registry-eight-hit", "args": ["--mode", "create", "--registry-population", "8", "--governor-reuse"]},
-    {"name": "registry-thirtytwo-bypass", "args": ["--mode", "descriptor", "--registry-population", "32"]}
+    {"name": "registry-thirtytwo-affected-schema", "args": ["--mode", "descriptor", "--registry-population", "32"]}
   ],
   "bootstrap": {"runs": 5}
 }

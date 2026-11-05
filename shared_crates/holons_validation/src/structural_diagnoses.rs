@@ -29,6 +29,10 @@ impl StructuralDiagnoses {
         let identity = self.identity(reference)?;
         self.entries.borrow().get(&identity).cloned().transpose()
     }
+    /// Copies stored evidence without diagnosing additional definitions.
+    pub fn snapshot(&self) -> Result<Vec<Arc<ExtendsLineageDiagnosis>>, HolonError> {
+        self.entries.borrow().values().cloned().collect()
+    }
     /// Shares the first diagnosis or required-read error for this exact definition.
     pub fn get(
         &self,

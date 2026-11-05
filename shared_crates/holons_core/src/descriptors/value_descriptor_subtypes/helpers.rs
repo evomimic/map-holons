@@ -1,12 +1,7 @@
-use crate::descriptors::inheritance::effective_relationship_targets;
-use crate::descriptors::{
-    accessor_helpers, lineage_contains, Descriptor, OperatorDescriptor, ResolvedOperator,
-    TypeHeader,
-};
+use crate::descriptors::{accessor_helpers, OperatorDescriptor, ResolvedOperator, TypeHeader};
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
 use core_types::HolonError;
-use type_names::CoreRelationshipTypeName;
 
 pub(crate) fn value_type_name(holon: &HolonReference) -> Result<String, HolonError> {
     Ok(TypeHeader::new(holon).type_name()?.to_string())
@@ -45,10 +40,7 @@ pub(crate) fn unsupported_operator_error(
 pub(crate) fn supported_operators(
     holon: &HolonReference,
 ) -> Result<Vec<OperatorDescriptor>, HolonError> {
-    Ok(effective_relationship_targets(holon, CoreRelationshipTypeName::AffordsOperator)?
-        .into_iter()
-        .map(|member| OperatorDescriptor::from_holon(member.member))
-        .collect())
+    super::super::ValueDescriptor::from_holon(holon.clone()).supported_operators()
 }
 
 /// Returns whether `holon` affords this exact operator descriptor.
@@ -60,8 +52,7 @@ pub(crate) fn supports_operator(
     holon: &HolonReference,
     operator_descriptor: &OperatorDescriptor,
 ) -> Result<bool, HolonError> {
-    let supported = supported_operators(holon)?;
-    lineage_contains(supported.iter().map(|operator| operator.holon()), operator_descriptor.holon())
+    super::super::ValueDescriptor::from_holon(holon.clone()).supports_operator(operator_descriptor)
 }
 
 /// Returns the single authored operand of a binary operator.

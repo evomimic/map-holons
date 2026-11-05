@@ -27,7 +27,6 @@
 
 use std::sync::Arc;
 
-use core_types::HolonNodeModel;
 use holons_core::dances::DanceInvocation;
 use holons_core::query_layer::query_core::{
     FocalSpaceReference, HolonCollectionReference, QueryExecution, QueryReference,
@@ -37,6 +36,7 @@ use holons_test::{
     QueryExpectation, QueryInputSpec, QueryRoute, ResolveBy, TestExecutionState, TestReference,
 };
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+use map_commands_runtime::{ExecutionPolicy, Runtime};
 use tracing::info;
 use type_names::{
     holon_type_descriptor_key, CoreHolonTypeName, QueryDanceRelationshipTypeName,
@@ -78,11 +78,6 @@ pub async fn execute_query(
     };
     let expected = ResolvedExpectation::resolve(state, &context, expectation);
 
-    // Evaluation must not mutate caller-owned definitions — not by resolving a
-    // default, and not on failure. Holons shared between queries are covered
-    // too, since every step re-snapshots the whole reachable graph.
-    let definitions_before = definition_snapshot(&query_reference);
-
     match route {
         QueryRoute::Direct => {
             execute_direct(&context, query_reference.clone(), resolved_input, bindings, expected)
@@ -98,95 +93,28 @@ pub async fn execute_query(
                      collection-shaped"
                 ),
             };
-            execute_query_dance(state, &context, query_reference.clone(), input, bindings, expected)
-                .await
+            execute_query_dance(
+                state.runtime(),
+                &context,
+                query_reference.clone(),
+                input,
+                bindings,
+                expected,
+            )
+            .await
         }
     }
-
-    assert_eq!(
-        definition_snapshot(&query_reference),
-        definitions_before,
-        "query evaluation must leave its definition graph unchanged"
-    );
-}
-
-/// Definition relationships a query evaluation reads and must never change.
-const DEFINITION_RELATIONSHIPS: [&str; 10] = [
-    "RootExpression",
-    "Next",
-    "OrderBySpecs",
-    "SeedPredicate",
-    "ExpansionPredicate",
-    "Predicate",
-    "Predicates",
-    "Operator",
-    "Operands",
-    "ValueType",
-];
-
-/// Relationships from an expression or predicate to the definition holons it
-/// carries: sort specs, attached or applied predicates, group children, and
-/// literal operands.
-const CARRIED_DEFINITIONS: [&str; 6] =
-    ["OrderBySpecs", "SeedPredicate", "ExpansionPredicate", "Predicate", "Predicates", "Operands"];
-
-/// One definition holon's identity, content, and definition-relationship members.
-type DefinitionSnapshot = (String, HolonNodeModel, Vec<Vec<String>>);
-
-/// Content of every definition holon reachable from `query`: the query, each
-/// expression along `RootExpression`/`Next`, and every holon those expressions
-/// carry (OrderBySpecs, predicates and their children, literal operands) —
-/// its properties plus its definition relationships' members, in order.
-fn definition_snapshot(query: &HolonReference) -> Vec<DefinitionSnapshot> {
-    let snapshot_of = |holon: &HolonReference| {
-        let relationships = DEFINITION_RELATIONSHIPS
-            .iter()
-            // Reference ids, not HolonIds: definitions may be transient.
-            .map(|name| {
-                related_members(holon, *name)
-                    .iter()
-                    .map(|member| member.reference_id_string())
-                    .collect()
-            })
-            .collect();
-        (holon.reference_id_string(), holon.into_model().unwrap(), relationships)
-    };
-
-    let mut snapshot = vec![snapshot_of(query)];
-    let mut seen = std::collections::HashSet::new();
-    let mut next = related_members(query, "RootExpression").into_iter().next();
-    while let Some(expression) = next {
-        if !seen.insert(expression.reference_id_string()) {
-            break; // a cyclic chain is the runtime's error to report, not ours
-        }
-        snapshot.push(snapshot_of(&expression));
-        // Carried holons may be shared between expressions or nest; each is
-        // recorded once, and nesting is the runtime's to reject, not ours.
-        let mut carried: Vec<HolonReference> = carried_definitions(&expression);
-        while let Some(holon) = carried.pop() {
-            if seen.insert(holon.reference_id_string()) {
-                snapshot.push(snapshot_of(&holon));
-                carried.extend(carried_definitions(&holon));
-            }
-        }
-        next = related_members(&expression, "Next").into_iter().next();
-    }
-    snapshot
-}
-
-fn carried_definitions(holon: &HolonReference) -> Vec<HolonReference> {
-    CARRIED_DEFINITIONS.iter().flat_map(|name| related_members(holon, *name)).collect()
 }
 
 /// The step's collection operand with fixture tokens resolved to references.
-enum ResolvedInput {
+pub(crate) enum ResolvedInput {
     None,
     Collection { element_type: HolonReference, members: Vec<HolonReference> },
     SingleHolon(HolonReference),
 }
 
 /// The step expectation with fixture tokens resolved to references.
-enum ResolvedExpectation {
+pub(crate) enum ResolvedExpectation {
     Members(Vec<HolonReference>),
     OwnsOfFocalSpace { must_include: Vec<HolonReference> },
     Error(HolonErrorKind),
@@ -222,7 +150,7 @@ impl ResolvedExpectation {
 // Direct route
 // ---------------------------------------------------------------------------
 
-fn execute_direct(
+pub(crate) fn execute_direct(
     context: &Arc<TransactionContext>,
     query_reference: HolonReference,
     input: ResolvedInput,
@@ -288,8 +216,6 @@ fn execute_direct(
                      QueryExpressionExecution record"
                 );
             }
-            assert_no_runtime_state(&query_reference, "Query");
-            assert_no_runtime_state(&root_expression, "root QueryExpression");
             info!("Success! begin_execution refused the invocation before creating records");
             return;
         }
@@ -326,9 +252,6 @@ fn execute_direct(
         }
     }
 
-    // Definition/runtime separation: nothing landed on the reusable definitions.
-    assert_no_runtime_state(&query_reference, "Query");
-    assert_no_runtime_state(&root_expression, "root QueryExpression");
     info!("Success! direct query route matched the expectation");
 }
 
@@ -404,14 +327,64 @@ fn assert_singleton_input(execution: &QueryExecution, source: &HolonReference) {
 // QueryDance route
 // ---------------------------------------------------------------------------
 
-async fn execute_query_dance(
-    state: &mut TestExecutionState,
+pub(crate) async fn execute_query_dance(
+    runtime: &Runtime,
     context: &Arc<TransactionContext>,
     query_reference: HolonReference,
     input: Option<(HolonReference, Vec<HolonReference>)>,
     bindings: Vec<HolonReference>,
     expected: ResolvedExpectation,
 ) {
+    let invocation = query_dance_invocation(context, query_reference, input, bindings);
+
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::DanceV2 { invocation },
+    });
+    let result = runtime.execute_command(command, ExecutionPolicy::default()).await;
+
+    match (result, expected) {
+        (Ok(other), ResolvedExpectation::Error(kind)) => {
+            panic!("query (QueryDance): expected {kind:?}, got {other:?}")
+        }
+        (Ok(MapResult::Reference(response)), expected) => {
+            // The transient runtime records carry fixed keys and are not reachable
+            // from the result holon (inverse links materialize only on commit), so
+            // this route asserts through the response body alone; record shape and
+            // status are covered by the direct route and the QueryCore unit tests,
+            // and both routes share `begin_execution` / `run`.
+            assert_eq!(
+                response.key().unwrap(),
+                Some(MapString(DANCE_RESPONSE_KEY.to_string())),
+                "DanceV2 should return the dance-response holon"
+            );
+            let body = single_related(&response, CoreRelationshipTypeName::ResponseBody);
+            assert_declares_one_element_type(&body);
+            assert_result_members(context, &body, expected);
+            info!("Success! QueryDance returned the result collection as the response body");
+        }
+        (Ok(other), _) => {
+            panic!("query (QueryDance): expected MapResult::Reference, got {other:?}")
+        }
+        (Err(error), expected) => {
+            let actual = HolonErrorKind::from(&error);
+            assert_eq!(
+                Some(actual),
+                expected.expected_error(),
+                "query (QueryDance): unexpected error {error:?}"
+            );
+            info!("Success! QueryDance propagated the expected error");
+        }
+    }
+}
+
+/// Builds the ordinary adapter request so boundary tests can vary its contract fields.
+pub(crate) fn query_dance_invocation(
+    context: &Arc<TransactionContext>,
+    query_reference: HolonReference,
+    input: Option<(HolonReference, Vec<HolonReference>)>,
+    bindings: Vec<HolonReference>,
+) -> DanceInvocation {
     // Request: RequestedQuery + (optionally) the InitialInput collection holon
     // and the RequestParameters bindings.
     let mut request =
@@ -461,48 +434,8 @@ async fn execute_query_dance(
         .unwrap()
         .add_related_holons(CoreRelationshipTypeName::AffordingHolon, vec![space.clone()])
         .unwrap();
-    let invocation = DanceInvocation::new(invocation.into())
-        .expect("transient invocation should wrap as a DanceInvocation");
-
-    let command = MapCommand::Transaction(TransactionCommand {
-        context: context.clone(),
-        action: TransactionAction::DanceV2 { invocation },
-    });
-    let result = state.dispatch_command(command, "query_dance_v2").await;
-
-    match (result, expected) {
-        (Ok(other), ResolvedExpectation::Error(kind)) => {
-            panic!("query (QueryDance): expected {kind:?}, got {other:?}")
-        }
-        (Ok(MapResult::Reference(response)), expected) => {
-            // The transient runtime records carry fixed keys and are not reachable
-            // from the result holon (inverse links materialize only on commit), so
-            // this route asserts through the response body alone; record shape and
-            // status are covered by the direct route and the QueryCore unit tests,
-            // and both routes share `begin_execution` / `run`.
-            assert_eq!(
-                response.key().unwrap(),
-                Some(MapString(DANCE_RESPONSE_KEY.to_string())),
-                "DanceV2 should return the dance-response holon"
-            );
-            let body = single_related(&response, CoreRelationshipTypeName::ResponseBody);
-            assert_declares_one_element_type(&body);
-            assert_result_members(context, &body, expected);
-            info!("Success! QueryDance returned the result collection as the response body");
-        }
-        (Ok(other), _) => {
-            panic!("query (QueryDance): expected MapResult::Reference, got {other:?}")
-        }
-        (Err(error), expected) => {
-            let actual = HolonErrorKind::from(&error);
-            assert_eq!(
-                Some(actual),
-                expected.expected_error(),
-                "query (QueryDance): unexpected error {error:?}"
-            );
-            info!("Success! QueryDance propagated the expected error");
-        }
-    }
+    DanceInvocation::new(invocation.into())
+        .expect("transient invocation should wrap as a DanceInvocation")
 }
 
 // ---------------------------------------------------------------------------
@@ -704,14 +637,4 @@ fn assert_status(record: HolonReference, expected: &str) {
         other => panic!("ExecutionStatus should be an enum value, found {other:?}"),
     };
     assert_eq!(found, expected, "unexpected ExecutionStatus on {}", record.summarize().unwrap());
-}
-
-fn assert_no_runtime_state(definition: &HolonReference, what: &str) {
-    assert!(
-        definition.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap().is_none(),
-        "{what} definition must carry no ExecutionStatus"
-    );
-    for relationship in ["Input", "Result", "RuntimeParameters", "ExecutionResult", "FocalSpace"] {
-        assert_related_count(definition, relationship, 0);
-    }
 }

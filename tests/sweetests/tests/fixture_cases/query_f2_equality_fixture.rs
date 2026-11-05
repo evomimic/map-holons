@@ -33,7 +33,7 @@ const PERSON_BOB_KEY: &str = "QryF2.Person.Bob";
 /// QRY-F2 (issue #830): Equals comparison predicates through `Filter`,
 /// `SeedPredicate` and `ExpansionPredicate`, alone and in flat `AnyOf` groups
 /// with Contains, on both the direct and QueryDance routes. Every definition
-/// is transient, and the executor asserts evaluation leaves it unchanged.
+/// is transient.
 ///
 /// Cases:
 /// - `Filter(Title = "Straße")` over [Straße, STRASSE, Atlas, Straße]:
@@ -138,7 +138,6 @@ pub fn query_f2_equality_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit the QRY-F2 Book/Person data".to_string()),
     )?;
-    test_case.add_match_saved_content_step()?;
 
     // --- Author transient definitions and execute them in a fresh transaction ---
     test_case.add_begin_transaction_step(

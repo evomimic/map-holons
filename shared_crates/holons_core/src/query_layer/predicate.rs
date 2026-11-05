@@ -11,10 +11,12 @@
 //!   selected property through ordinary bound reference access.
 //!
 //! Supported forms are a `ComparisonPredicate` whose operator is Contains or
-//! Equals, and a flat `AnyOf` of such leaves. Every other predicate form,
-//! nested `AnyOf`, and comparison through any other operator fail with
-//! `NotImplemented`; nothing is ever answered with unfiltered members. Neither
-//! phase writes to the definitions.
+//! Equals, and the composites `Not`, `AllOf` and `AnyOf`, nested to any depth.
+//! Any other predicate form, and comparison through any other operator, fails
+//! with `NotImplemented` wherever it appears. Malformed child cardinalities,
+//! children that are not predicates, and cycles are definition errors. Nothing
+//! is ever answered with unfiltered members, and neither phase writes to the
+//! definitions.
 //!
 //! Authored literals are checked for declared-type compatibility, runtime
 //! representation, and the existing supported value checks (such as enum
@@ -33,9 +35,8 @@ use crate::descriptors::accessor_helpers::{
     descriptor_label, related_members, require_single_related,
 };
 use crate::descriptors::{
-    classify_holon_type, equals_or_extends, require_holon_type, resolve_core_descriptor,
-    same_definition, Descriptor, HolonDescriptor, OperatorDescriptor, OperatorKind,
-    ResolvedOperator, ValueDescriptor,
+    classify_holon_type, lineage_contains, require_holon_type, same_definition, Descriptor,
+    HolonDescriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -46,8 +47,11 @@ use crate::reference_layer::{HolonReference, ReadableHolon};
 #[derive(Debug, Clone)]
 pub(crate) enum ResolvedPredicate {
     Comparison(ResolvedComparison),
-    /// A flat disjunction of one or more comparison leaves.
-    AnyOf(Vec<ResolvedComparison>),
+    Not(Box<ResolvedPredicate>),
+    /// A conjunction of one or more predicates, in authored order.
+    AllOf(Vec<ResolvedPredicate>),
+    /// A disjunction of one or more predicates, in authored order.
+    AnyOf(Vec<ResolvedPredicate>),
 }
 
 /// One validated `ComparisonPredicate`: the selected property contract, the
@@ -65,49 +69,99 @@ pub(crate) struct ResolvedComparison {
 #[derive(Debug, Clone, Copy)]
 enum PredicateKind {
     Comparison,
+    Composite(Composite),
+}
+
+/// The Boolean composites, each over its child predicates.
+#[derive(Debug, Clone, Copy)]
+enum Composite {
+    Not,
+    AllOf,
     AnyOf,
 }
 
 /// Validates `predicate` against `element_type` without reading any candidate.
 ///
-/// Every `AnyOf` child is validated before anything executes, so an invalid
-/// or unsupported branch fails the whole predicate.
+/// Every reachable child is validated, depth-first in authored order, before
+/// anything executes, so an invalid or unsupported branch fails the whole
+/// predicate even when another branch would decide its Boolean result.
 pub(crate) fn validate(
     predicate: &HolonReference,
     element_type: &HolonDescriptor,
 ) -> Result<ResolvedPredicate, HolonError> {
-    match classify(predicate)? {
+    resolve(predicate, element_type, &mut Vec::new())
+}
+
+/// Resolves `predicate`, whose ancestors from the root (exclusive) are
+/// `ancestors`.
+fn resolve(
+    predicate: &HolonReference,
+    element_type: &HolonDescriptor,
+    ancestors: &mut Vec<HolonReference>,
+) -> Result<ResolvedPredicate, HolonError> {
+    let composite = match classify(predicate)? {
         PredicateKind::Comparison => {
-            Ok(ResolvedPredicate::Comparison(validate_comparison(predicate, element_type)?))
+            return Ok(ResolvedPredicate::Comparison(validate_comparison(predicate, element_type)?))
         }
-        PredicateKind::AnyOf => {
+        PredicateKind::Composite(composite) => composite,
+    };
+    let (relationship, children) = match composite {
+        Composite::Not => (
+            QueryRelationshipTypeName::Predicate,
+            vec![require_single_related(predicate, QueryRelationshipTypeName::Predicate)?],
+        ),
+        Composite::AllOf | Composite::AnyOf => {
             let children = related_members(predicate, QueryRelationshipTypeName::Predicates)?;
             // Schema cardinality is OneOrMore, but transient definitions are
             // not checked against it.
             if children.is_empty() {
                 return Err(HolonError::InvalidParameter(format!(
-                    "AnyOf {} requires one or more Predicates",
+                    "{composite:?} {} requires one or more Predicates",
                     predicate.summarize()?
                 )));
             }
-            let mut leaves = Vec::with_capacity(children.len());
-            for child in &children {
-                match classify(child)? {
-                    PredicateKind::Comparison => {
-                        leaves.push(validate_comparison(child, element_type)?)
-                    }
-                    // Flat groups only; refusing every nested group also
-                    // leaves no path by which a cycle could be reached.
-                    PredicateKind::AnyOf => {
-                        return Err(HolonError::NotImplemented(
-                            "nested AnyOf predicate composition".to_string(),
-                        ))
-                    }
-                }
-            }
-            Ok(ResolvedPredicate::AnyOf(leaves))
+            (QueryRelationshipTypeName::Predicates, children)
         }
+    };
+
+    ancestors.push(predicate.clone());
+    let resolved = children
+        .iter()
+        .map(|child| resolve_child(predicate, &relationship, child, element_type, ancestors))
+        .collect::<Result<Vec<_>, _>>();
+    ancestors.pop();
+    let mut resolved = resolved?;
+
+    Ok(match composite {
+        Composite::Not => ResolvedPredicate::Not(Box::new(resolved.remove(0))),
+        Composite::AllOf => ResolvedPredicate::AllOf(resolved),
+        Composite::AnyOf => ResolvedPredicate::AnyOf(resolved),
+    })
+}
+
+/// Resolves one child of `parent`, whose path from the root (inclusive) is
+/// `ancestors`.
+///
+/// A cycle is a child that is the same definition as one of its own
+/// ancestors. One definition reused in separate branches, or repeated within
+/// one group, is not a cycle and is resolved at each occurrence.
+fn resolve_child(
+    parent: &HolonReference,
+    relationship: &QueryRelationshipTypeName,
+    child: &HolonReference,
+    element_type: &HolonDescriptor,
+    ancestors: &mut Vec<HolonReference>,
+) -> Result<ResolvedPredicate, HolonError> {
+    require_holon_type(child, &QueryHolonTypeName::QueryPredicate.as_holon_name())?;
+    if lineage_contains(ancestors.iter(), child)? {
+        return Err(HolonError::InvalidParameter(format!(
+            "QueryPredicate {} revisits {} through {}; the predicate graph is cyclic",
+            parent.summarize()?,
+            child.summarize()?,
+            relationship.as_relationship_name()
+        )));
     }
+    resolve(child, element_type, ancestors)
 }
 
 /// Retains the occurrences of `members` that `predicate` matches, in input
@@ -128,15 +182,24 @@ pub(crate) fn filter(
 impl ResolvedPredicate {
     /// Evaluates this predicate against one candidate.
     ///
-    /// `AnyOf` evaluates every leaf before combining them, so a true branch
-    /// never hides another branch's read, presence, or representation error.
+    /// Groups evaluate every child before combining them, with no
+    /// short-circuit, so neither a true `AnyOf` branch nor a false `AllOf`
+    /// branch hides another branch's read, presence, or representation error.
     pub(crate) fn matches(&self, member: &HolonReference) -> Result<bool, HolonError> {
         match self {
             Self::Comparison(leaf) => leaf.matches(member),
-            Self::AnyOf(leaves) => {
+            Self::Not(child) => Ok(!child.matches(member)?),
+            Self::AllOf(children) => {
+                let mut matched = true;
+                for child in children {
+                    matched &= child.matches(member)?;
+                }
+                Ok(matched)
+            }
+            Self::AnyOf(children) => {
                 let mut matched = false;
-                for leaf in leaves {
-                    matched |= leaf.matches(member)?;
+                for child in children {
+                    matched |= child.matches(member)?;
                 }
                 Ok(matched)
             }
@@ -162,7 +225,9 @@ impl ResolvedComparison {
 fn classify(predicate: &HolonReference) -> Result<PredicateKind, HolonError> {
     let supported = [
         (QueryHolonTypeName::ComparisonPredicate, PredicateKind::Comparison),
-        (QueryHolonTypeName::AnyOf, PredicateKind::AnyOf),
+        (QueryHolonTypeName::Not, PredicateKind::Composite(Composite::Not)),
+        (QueryHolonTypeName::AllOf, PredicateKind::Composite(Composite::AllOf)),
+        (QueryHolonTypeName::AnyOf, PredicateKind::Composite(Composite::AnyOf)),
     ]
     .map(|(type_name, kind)| (type_name.as_holon_name(), kind));
     match classify_holon_type(predicate, &supported)? {
@@ -233,15 +298,15 @@ fn read_property_name(predicate: &HolonReference) -> Result<PropertyName, HolonE
 /// that operator resolution applies.
 fn require_string_subject(operator: &ResolvedOperator) -> Result<(), HolonError> {
     let subject_type = operator.subject_type();
-    let string_type = resolve_core_descriptor(
-        &subject_type.holon().resolution_context()?,
+    let string_type = crate::descriptors::resolve_core_descriptor_for(
+        subject_type.holon(),
         &value_type_descriptor_key(
             &CoreValueTypeName::MapStringValueType.as_value_name(),
             &CoreValueTypeName::StringValueType,
         )
         .0,
     )?;
-    if equals_or_extends(subject_type.holon(), &string_type)? {
+    if subject_type.equals_or_extends(&string_type)? {
         return Ok(());
     }
     Err(HolonError::UnsupportedOperator {
@@ -290,7 +355,7 @@ fn validate_literal_operand(
         CoreRelationshipTypeName::ValueType,
     )?);
 
-    if !equals_or_extends(declared_type.holon(), required_type.holon())? {
+    if !declared_type.equals_or_extends(required_type.holon())? {
         return Err(HolonError::IncompatibleLiteralType {
             declared: descriptor_label(declared_type.holon()),
             required: descriptor_label(required_type.holon()),
@@ -701,25 +766,379 @@ mod tests {
     }
 
     #[test]
-    fn nested_and_unsupported_children_are_not_implemented() {
+    fn an_unsupported_predicate_form_is_not_implemented_at_any_depth() {
         let world = world();
-        let nested = world.any_of(vec![
-            world.contains("Title", "x"),
-            world.any_of(vec![world.contains("Title", "y")]),
+        let mut exists_type =
+            new_holon_type_descriptor(&world.context, "Exists.HolonType", "Exists").unwrap();
+        exists_type
+            .add_related_holons(
+                CoreRelationshipTypeName::Extends,
+                vec![canonical_type(&world.context, "QueryPredicate")],
+            )
+            .unwrap();
+        let mut exists =
+            crate::descriptors::test_support::new_test_holon(&world.context, "exists").unwrap();
+        exists.with_descriptor(exists_type.into()).unwrap();
+        let exists: HolonReference = exists.into();
+
+        for predicate in [
+            exists.clone(),
+            world.any_of(vec![world.contains("Title", "x"), exists.clone()]),
+            world.all_of(vec![world.not(vec![world.any_of(vec![exists])])]),
+        ] {
+            let error = validate(&predicate, &book(&world)).unwrap_err();
+            assert!(
+                matches!(&error, HolonError::NotImplemented(detail) if detail.contains("Exists")),
+                "unexpected error: {error:?}"
+            );
+        }
+    }
+
+    // ---- Recursive composition ----------------------------------------------
+
+    /// Books with every combination of a `map` Title and a `map` Subtitle:
+    /// [both, title only, subtitle only, neither].
+    fn title_subtitle_members(world: &PredicateWorld) -> [HolonReference; 4] {
+        [
+            world.member("tt", &world.book, &[("Title", text("Map")), ("Subtitle", text("map"))]),
+            world.member("tf", &world.book, &[("Title", text("Map")), ("Subtitle", text("x"))]),
+            world.member("ft", &world.book, &[("Title", text("x")), ("Subtitle", text("map"))]),
+            world.member("ff", &world.book, &[("Title", text("x")), ("Subtitle", text("x"))]),
+        ]
+    }
+
+    fn evaluate(
+        world: &PredicateWorld,
+        predicate: &HolonReference,
+        members: &[HolonReference],
+    ) -> Vec<bool> {
+        let predicate = validate(predicate, &book(world)).unwrap();
+        matches_of(&predicate, members).unwrap()
+    }
+
+    #[test]
+    fn not_negates_its_child() {
+        let world = world();
+        let members = title_subtitle_members(&world);
+        assert_eq!(
+            evaluate(&world, &world.not(vec![world.contains("Title", "map")]), &members),
+            vec![false, false, true, true]
+        );
+    }
+
+    #[test]
+    fn all_of_is_true_only_when_every_child_is() {
+        let world = world();
+        let members = title_subtitle_members(&world);
+        let all_of =
+            world.all_of(vec![world.contains("Title", "map"), world.contains("Subtitle", "map")]);
+        assert_eq!(evaluate(&world, &all_of, &members), vec![true, false, false, false]);
+    }
+
+    #[test]
+    fn any_of_combines_composite_children() {
+        let world = world();
+        let members = title_subtitle_members(&world);
+        // Title without Subtitle, or neither.
+        let any_of = world.any_of(vec![
+            world.all_of(vec![
+                world.contains("Title", "map"),
+                world.not(vec![world.contains("Subtitle", "map")]),
+            ]),
+            world.not(vec![world
+                .any_of(vec![world.contains("Title", "map"), world.contains("Subtitle", "map")])]),
         ]);
-        let error = validate(&nested, &book(&world)).unwrap_err();
+        assert_eq!(evaluate(&world, &any_of, &members), vec![false, true, false, true]);
+    }
+
+    #[test]
+    fn singleton_groups_and_double_negation_behave_as_their_child() {
+        let world = world();
+        let members = title_subtitle_members(&world);
+        let leaf = || world.contains("Title", "map");
+        let expected = evaluate(&world, &leaf(), &members);
+        for predicate in [
+            world.all_of(vec![leaf()]),
+            world.any_of(vec![leaf()]),
+            world.not(vec![world.not(vec![leaf()])]),
+        ] {
+            assert_eq!(evaluate(&world, &predicate, &members), expected);
+        }
+    }
+
+    #[test]
+    fn nested_mixed_operator_composition() {
+        let world = world();
+        // Published, and either an atlas Title or no draft Subtitle.
+        let predicate = world.all_of(vec![
+            world.equals("Status", &world.status, token("Published")),
+            world.any_of(vec![
+                world.contains("Title", "atlas"),
+                world.not(vec![world.contains("Subtitle", "draft")]),
+            ]),
+        ]);
+        let member = |key: &str, title: &str, subtitle: Option<&str>, status: &str| {
+            let mut values = vec![("Title", text(title)), ("Status", token(status))];
+            if let Some(subtitle) = subtitle {
+                values.push(("Subtitle", text(subtitle)));
+            }
+            world.member(key, &world.book, &values)
+        };
+        let members = [
+            member("atlas-draft", "Atlas", Some("draft"), "Published"),
+            member("roads-final", "Roads", Some("final"), "Published"),
+            member("roads-bare", "Roads", None, "Published"),
+            member("roads-draft", "Roads", Some("draft"), "Published"),
+            member("atlas-unpublished", "Atlas", None, "Draft"),
+        ];
+        assert_eq!(evaluate(&world, &predicate, &members), vec![true, true, true, false, false]);
+    }
+
+    #[test]
+    fn filter_keeps_order_and_duplicates_with_a_nested_predicate() {
+        let world = world();
+        let predicate = validate(
+            &world.all_of(vec![
+                world.contains("Title", "map"),
+                world.not(vec![world.contains("Subtitle", "old")]),
+            ]),
+            &book(&world),
+        )
+        .unwrap();
+        let a = world.member("a", &world.book, &[("Title", text("Map A"))]);
+        let b =
+            world.member("b", &world.book, &[("Title", text("Map B")), ("Subtitle", text("old"))]);
+        let c = world.member("c", &world.book, &[("Title", text("Roadmap"))]);
+        let input = vec![c.clone(), a.clone(), b, a.clone()];
+        assert_eq!(filter(&input, &predicate).unwrap(), vec![c, a.clone(), a]);
+    }
+
+    // ---- Recursive composition: missing values and errors -------------------
+
+    #[test]
+    fn negating_an_absent_optional_value_is_true() {
+        let world = world();
+        let bare = world.member("bare", &world.book, &[("Title", text("t"))]);
+        // Even the empty substring needs a value, so the leaf is false.
+        let predicate = world.not(vec![world.contains("Subtitle", "")]);
+        assert_eq!(evaluate(&world, &predicate, &[bare]), vec![true]);
+    }
+
+    #[test]
+    fn required_absence_fails_under_every_composite() {
+        let world = world();
+        let untitled = world.member("untitled", &world.book, &[("Subtitle", text("map"))]);
+        let title = || world.contains("Title", "x");
+        let subtitle = || world.contains("Subtitle", "map");
+        for predicate in [
+            world.not(vec![title()]),
+            world.all_of(vec![subtitle(), title()]),
+            world.any_of(vec![subtitle(), title()]),
+        ] {
+            let predicate = validate(&predicate, &book(&world)).unwrap();
+            assert!(
+                matches!(predicate.matches(&untitled), Err(HolonError::EmptyField(name)) if name == "Title")
+            );
+        }
+    }
+
+    #[test]
+    fn a_false_all_of_branch_does_not_hide_a_later_error() {
+        let world = world();
+        let predicate = validate(
+            &world.all_of(vec![
+                world.equals("PageCount", &world.integer, number(1)),
+                world.contains("Title", "x"),
+            ]),
+            &book(&world),
+        )
+        .unwrap();
+        // The first child is false; the second must still read the required Title.
+        let member = world.member("untitled", &world.book, &[("PageCount", number(2))]);
+        assert!(matches!(predicate.matches(&member), Err(HolonError::EmptyField(_))));
+    }
+
+    #[test]
+    fn a_true_any_of_branch_does_not_hide_a_nested_error() {
+        let world = world();
+        let predicate = validate(
+            &world.any_of(vec![
+                world.contains("Subtitle", "map"),
+                world.not(vec![world.all_of(vec![world.contains("Title", "x")])]),
+            ]),
+            &book(&world),
+        )
+        .unwrap();
+        let member = world.member("untitled", &world.book, &[("Subtitle", text("map"))]);
+        assert!(matches!(predicate.matches(&member), Err(HolonError::EmptyField(_))));
+    }
+
+    #[test]
+    fn a_representation_error_propagates_through_not() {
+        let world = world();
+        let predicate =
+            validate(&world.not(vec![world.contains("Subtitle", "x")]), &book(&world)).unwrap();
+        let member = world.member("a", &world.book, &[("Subtitle", number(3))]);
+        assert!(matches!(predicate.matches(&member), Err(HolonError::ValueKindMismatch { .. })));
+    }
+
+    // ---- Recursive composition: definition validation -----------------------
+
+    #[test]
+    fn not_requires_exactly_one_child() {
+        let world = world();
+        let error = validate(&world.not(vec![]), &book(&world)).unwrap_err();
         assert!(
-            matches!(&error, HolonError::NotImplemented(detail) if detail.contains("nested AnyOf")),
+            matches!(&error, HolonError::MissingRequiredRelationship { relationship, .. } if relationship == "Predicate"),
             "unexpected error: {error:?}"
         );
 
-        let not = canonical_type(&world.context, "Not");
-        let mut negation =
-            crate::descriptors::test_support::new_test_holon(&world.context, "not").unwrap();
-        negation.with_descriptor(not).unwrap();
-        let error = validate(&world.any_of(vec![negation.into()]), &book(&world)).unwrap_err();
+        let two = world.not(vec![world.contains("Title", "a"), world.contains("Title", "b")]);
+        let error = validate(&two, &book(&world)).unwrap_err();
         assert!(
-            matches!(&error, HolonError::NotImplemented(detail) if detail.contains("Not")),
+            matches!(&error, HolonError::MultipleRelatedHolons { relationship, .. } if relationship == "Predicate"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn an_empty_group_is_invalid_at_any_depth() {
+        let world = world();
+        for predicate in [
+            world.all_of(vec![]),
+            world.all_of(vec![world.contains("Title", "x"), world.any_of(vec![])]),
+            world.not(vec![world.all_of(vec![])]),
+        ] {
+            let error = validate(&predicate, &book(&world)).unwrap_err();
+            assert!(
+                matches!(&error, HolonError::InvalidParameter(detail) if detail.contains("requires one or more Predicates")),
+                "unexpected error: {error:?}"
+            );
+        }
+    }
+
+    fn assert_cyclic(world: &PredicateWorld, predicate: &HolonReference) {
+        let error = validate(predicate, &book(world)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::InvalidParameter(detail) if detail.contains("cyclic")),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn a_self_referencing_composite_is_cyclic() {
+        let world = world();
+        let mut not = world.not(vec![]);
+        not.add_related_holons(QueryRelationshipTypeName::Predicate, vec![not.clone()]).unwrap();
+        assert_cyclic(&world, &not);
+
+        let mut all_of = world.all_of(vec![world.contains("Title", "x")]);
+        all_of
+            .add_related_holons(QueryRelationshipTypeName::Predicates, vec![all_of.clone()])
+            .unwrap();
+        assert_cyclic(&world, &all_of);
+    }
+
+    #[test]
+    fn a_multi_node_cycle_is_rejected() {
+        let world = world();
+        // AllOf -> Not -> AnyOf -> AllOf, entered below the root.
+        let mut all_of = world.all_of(vec![world.contains("Title", "x")]);
+        let any_of = world.any_of(vec![world.contains("Title", "y"), all_of.clone()]);
+        let not = world.not(vec![any_of]);
+        all_of.add_related_holons(QueryRelationshipTypeName::Predicates, vec![not]).unwrap();
+        assert_cyclic(&world, &world.not(vec![all_of]));
+    }
+
+    #[test]
+    fn a_shared_child_is_not_a_cycle() {
+        let world = world();
+        let members = title_subtitle_members(&world);
+        let shared = world.contains("Title", "map");
+        // Reused in separate branches.
+        let branches = world.any_of(vec![
+            world.all_of(vec![shared.clone(), world.contains("Subtitle", "map")]),
+            world.all_of(vec![shared.clone(), world.not(vec![world.contains("Subtitle", "map")])]),
+        ]);
+        assert_eq!(evaluate(&world, &branches, &members), vec![true, true, false, false]);
+        // Repeated within one group.
+        let repeated = world.all_of(vec![shared.clone(), shared]);
+        assert_eq!(evaluate(&world, &repeated, &members), vec![true, true, false, false]);
+    }
+
+    #[test]
+    fn an_unsupported_operator_fails_although_another_branch_decides() {
+        let world = world();
+        let less_than = world.comparison(
+            "Title",
+            &world.less_than,
+            vec![world.literal(&world.text, text("x"))],
+        );
+        let error = validate(
+            &world.any_of(vec![world.contains("Title", ""), world.not(vec![less_than])]),
+            &book(&world),
+        )
+        .unwrap_err();
+        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+    }
+
+    #[test]
+    fn a_deep_invalid_leaf_fails_validation() {
+        let world = world();
+        let deep = |leaf: HolonReference| {
+            world.all_of(vec![
+                world.contains("Title", "x"),
+                world.not(vec![world.any_of(vec![world.contains("Subtitle", "y"), leaf])]),
+            ])
+        };
+
+        let error = validate(&deep(world.contains("Missing", "x")), &book(&world)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { name, .. } if name == "Missing"),
+            "unexpected error: {error:?}"
+        );
+        let error = validate(&deep(world.contains("PageCount", "1")), &book(&world)).unwrap_err();
+        assert!(
+            matches!(error, HolonError::UnsupportedOperator { .. }),
+            "unexpected error: {error:?}"
+        );
+        let error =
+            validate(&deep(world.equals("Title", &world.integer, number(1))), &book(&world))
+                .unwrap_err();
+        assert!(
+            matches!(error, HolonError::IncompatibleLiteralType { .. }),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn a_child_that_is_not_a_predicate_is_rejected() {
+        let world = world();
+        let literal = world.substring("x");
+        for predicate in [
+            world.any_of(vec![world.contains("Title", "x"), literal.clone()]),
+            world.not(vec![literal]),
+        ] {
+            let error = validate(&predicate, &book(&world)).unwrap_err();
+            assert!(
+                matches!(&error, HolonError::WrongDescriptorKind { expected, .. } if expected == "QueryPredicate"),
+                "unexpected error: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn nested_selectors_resolve_on_the_declared_type() {
+        let world = world();
+        let novel = PredicateWorld::descriptor(&world.novel);
+        let narrator = || world.not(vec![world.all_of(vec![world.contains("Narrator", "x")])]);
+        validate(&narrator(), &novel).expect("Narrator is declared on Novel");
+        validate(&world.not(vec![world.contains("Title", "x")]), &novel)
+            .expect("Title is inherited from Book");
+
+        let error = validate(&narrator(), &book(&world)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { name, .. } if name == "Narrator"),
             "unexpected error: {error:?}"
         );
     }
@@ -988,6 +1407,32 @@ mod tests {
         assert!(matches!(
             validate(&predicate.into(), &book(&world)).unwrap(),
             ResolvedPredicate::Comparison(_)
+        ));
+    }
+
+    #[test]
+    fn an_extension_of_all_of_is_evaluated_as_one() {
+        let world = world();
+        let mut extension_type =
+            new_holon_type_descriptor(&world.context, "Every.HolonType", "Every").unwrap();
+        extension_type
+            .add_related_holons(
+                CoreRelationshipTypeName::Extends,
+                vec![canonical_type(&world.context, "AllOf")],
+            )
+            .unwrap();
+        let mut predicate =
+            crate::descriptors::test_support::new_test_holon(&world.context, "every").unwrap();
+        predicate.with_descriptor(extension_type.into()).unwrap();
+        predicate
+            .add_related_holons(
+                QueryRelationshipTypeName::Predicates,
+                vec![world.contains("Title", "x")],
+            )
+            .unwrap();
+        assert!(matches!(
+            validate(&predicate.into(), &book(&world)).unwrap(),
+            ResolvedPredicate::AllOf(_)
         ));
     }
 

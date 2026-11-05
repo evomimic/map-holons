@@ -636,12 +636,12 @@ async fn runtime_over(backend: Arc<MockConductorConfig>) -> Runtime {
         Arc::new(ClientHolonService::development_default());
     let dance_initiator = Arc::new(TrustChannel::new(backend));
 
-    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+    let space_manager = HolonSpaceManager::new_with_managers(
         Some(dance_initiator),
         holon_service,
         None,
         ServiceRoutingPolicy::Combined,
-    ));
+    );
 
     let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager), None));
 

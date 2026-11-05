@@ -197,6 +197,14 @@
               "$ref": "MAP DAHN Schema-v0.1.0"
             }
           ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(MetaVisualizerType.MetaHolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
+            }
+          ]
         }
       ]
     },
@@ -248,9 +256,6 @@
             },
             {
               "$ref": "(Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
             },
             {
               "$ref": "(Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)"
@@ -452,7 +457,7 @@
     },
     {
       "key": "HolonInspector.NodeVisualizer",
-      "type": "NodeVisualizer.HolonType",
+      "type": "HolonInspector.NodeVisualizerType",
       "properties": {
         "DisplayName": "Holon Inspector",
         "VisualizerDescription": "Uses a titled card with an action bar, name-and-value rows, a side rail for single connections, and tabs for related collections. Sections can be expanded to give them more room."
@@ -541,35 +546,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "HolonInspector.TitleBarSlot"
-            },
-            {
-              "$ref": "HolonInspector.PropertyMapSlot"
-            },
-            {
-              "$ref": "HolonInspector.ActionsSlot"
-            },
-            {
-              "$ref": "HolonInspector.VisualizerControlsSlot"
-            },
-            {
-              "$ref": "HolonInspector.CollectionsSlot"
-            },
-            {
-              "$ref": "HolonInspector.SingleValueSlot"
-            },
-            {
-              "$ref": "LoadHolons.DiagnosticsSlot"
-            },
-            {
-              "$ref": "LoadHolons.CommittedHolonsSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -606,6 +582,10 @@
       "key": "HolonInspector.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "propertyMap",
+        "CompositionRole": "propertyMap",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Show the details recorded for this item."
       },
       "relationships": [
@@ -623,6 +603,10 @@
       "key": "HolonInspector.ActionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "actionBar",
+        "CompositionRole": "action",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Show the actions available for this item and provide access to them."
       },
       "relationships": [
@@ -648,6 +632,10 @@
       "key": "HolonInspector.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "actionBar",
+        "CompositionRole": "visualizerActions",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present the centrally declared Visualizer controls within the title band."
       },
       "relationships": [
@@ -681,6 +669,10 @@
       "key": "HolonInspector.CollectionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "collection",
+        "CompositionRole": "collection",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present a group of related items so you can examine its members and open an item."
       },
       "relationships": [
@@ -698,6 +690,10 @@
       "key": "HolonInspector.SingleValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "node",
+        "CompositionRole": "singleValue",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Inspect the item reached through a connection that has a single destination."
       },
       "relationships": [
@@ -810,7 +806,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:258f459b327a0dd1ec2f16fe1b21e61267cce3ddb03bd51e91f21ae33c2685c4",
+        "VisualizerArtifactDigest": "sha256:9de27a68c7966a817d354cbaee63deadf0999c273fa4ebc48d857fb92ad3b9ac",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -905,7 +901,7 @@
     },
     {
       "key": "PathInspector.RootedNavigationVisualizer",
-      "type": "RootedNavigationVisualizer.HolonType",
+      "type": "PathInspector.RootedNavigationVisualizerType",
       "properties": {
         "DisplayName": "Path Inspector",
         "VisualizerDescription": "Arranges item cards along the path you explore. Single connections extend to the right; opening an item from a collection extends downward. Earlier steps stay in view, with pan and zoom controls for longer paths."
@@ -967,14 +963,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "PathInspector.RootNodeSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -988,6 +976,10 @@
       "key": "PathInspector.RootNodeSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "node",
+        "CompositionRole": "node",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Show an item’s details, provide access to its actions, and let you explore its connections."
       },
       "relationships": [
@@ -1014,7 +1006,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:30d563a96abf35995bbf332d524601692f68820355ba4a000585085b3973f227",
+        "VisualizerArtifactDigest": "sha256:2717f8816c649d4fb93ebacbb50e391772f127ce2823ee976f5a3a6959b8e167",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1109,7 +1101,7 @@
     },
     {
       "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizer",
-      "type": "PropertyMapVisualizer.HolonType",
+      "type": "DefaultPropertyMapVisualizer.PropertyMapVisualizerType",
       "properties": {
         "DisplayName": "Default Property Map",
         "VisualizerDescription": "Stacks the item’s properties in a scrollable list, with a divider between rows and a cue when more details are below."
@@ -1174,14 +1166,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "DefaultPropertyMapVisualizer.PropertySlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -1195,6 +1179,10 @@
       "key": "DefaultPropertyMapVisualizer.PropertySlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "property",
+        "CompositionRole": "property",
+        "CompositionSubject": "scalarProperties",
         "VisualizerSlotDescription": "Identify one property and present its value."
       },
       "relationships": [
@@ -1213,7 +1201,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:4abe578766bed7591d72efef0541254117e145ff9b650b2956c83c96dc1abbb3",
+        "VisualizerArtifactDigest": "sha256:2a77eca9141a2066b8f8bd528085b6cef2d30a12348439641c22994d62c0c769",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1221,7 +1209,7 @@
     },
     {
       "key": "GenericProperty.PropertyVisualizer",
-      "type": "PropertyVisualizer.HolonType",
+      "type": "GenericProperty.PropertyVisualizerType",
       "properties": {
         "DisplayName": "Generic Property",
         "VisualizerDescription": "Places the property name on the left and its value on the right. Long text wraps within its column."
@@ -1250,14 +1238,6 @@
           ]
         },
         {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "GenericProperty.ValueSlot"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -1271,6 +1251,10 @@
       "key": "GenericProperty.ValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "value",
+        "CompositionRole": "value",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present this property’s value in a form suited to its value type."
       },
       "relationships": [
@@ -1289,7 +1273,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:0a97ea338742bdbbbf4da51a921ee8c1b2a388ff60ced7c06d2ee63ab1ae2a4e",
+        "VisualizerArtifactDigest": "sha256:ef7f7be233db9a2c6e54f19688694537fcb0681150166e266922519ddaecfbd9",
         "VisualizerImplementationKey": "dahn.property",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1536,7 +1520,7 @@
     },
     {
       "key": "LoadHolons.ActionVisualizer",
-      "type": "ActionVisualizer.HolonType",
+      "type": "LoadHolons.ActionVisualizerType",
       "properties": {
         "DisplayName": "Load Holons",
         "VisualizerDescription": "Uses a labeled button to select data from your computer, then opens a load-results view where you can review progress, problems, and saved items."
@@ -1547,17 +1531,6 @@
           "target": [
             {
               "$ref": "LoadHolons.DanceType"
-            }
-          ]
-        },
-        {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "LoadHolons.DiagnosticsSlot"
-            },
-            {
-              "$ref": "LoadHolons.CommittedHolonsSlot"
             }
           ]
         },
@@ -1575,6 +1548,10 @@
       "key": "LoadHolons.DiagnosticsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "collection",
+        "CompositionRole": "diagnostics",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present the problems and validation findings from a data load so you can review what needs attention."
       },
       "relationships": [
@@ -1592,6 +1569,10 @@
       "key": "LoadHolons.CommittedHolonsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "collection",
+        "CompositionRole": "committed",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present the items saved by a data load so you can examine them and open an item."
       },
       "relationships": [
@@ -1610,7 +1591,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:89f2c4d9e1941dc5527d3461e7a9c44a477a54a0722f8864230edd7631187c50",
+        "VisualizerArtifactDigest": "sha256:3807fa07cd0134aa26f019bdec264b51d7dfeab1a7fcb4eb204ad0feb13dc5b8",
         "VisualizerImplementationKey": "dahn.load-holons-action",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1755,6 +1736,18 @@
           "target": [
             {
               "$ref": "VisualizerSlotDescription.PropertyType"
+            },
+            {
+              "$ref": "CompositionRole.PropertyType"
+            },
+            {
+              "$ref": "CompositionSubject.PropertyType"
+            },
+            {
+              "$ref": "CompositionKind.PropertyType"
+            },
+            {
+              "$ref": "CompositionActivation.PropertyType"
             }
           ]
         },
@@ -1782,7 +1775,7 @@
         "TypeNamePlural": "VisualizerUsages",
         "DisplayName": "Visualizer Usage",
         "DisplayNamePlural": "Visualizer Usages",
-        "Description": "The local space agent's use and personalized configuration of a selected Visualizer for one subject descriptor. Preparation alone does not record successful use. Empty override relationships preserve neutral default presentation."
+        "Description": "The local space agent's use and personalized configuration of a selected Visualizer at one configuration scope in a subject descriptor lineage. Subtypes reuse defaults until a subtype-specific configuration is requested. Preparation alone does not record successful use. Empty override relationships preserve neutral default presentation."
       },
       "relationships": [
         {
@@ -2063,7 +2056,7 @@
       ]
     },
     {
-      "key": "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
+      "key": "(MetaVisualizerType.MetaHolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "HasSlot",
@@ -2095,7 +2088,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "Visualizer.HolonType"
+              "$ref": "MetaVisualizerType.MetaHolonType"
             }
           ]
         },
@@ -2111,7 +2104,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(Visualizer.HolonType)"
+              "$ref": "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(MetaVisualizerType.MetaHolonType)"
             }
           ]
         },
@@ -2126,14 +2119,14 @@
       ]
     },
     {
-      "key": "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(Visualizer.HolonType)",
+      "key": "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(MetaVisualizerType.MetaHolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "SlotForVisualizer",
         "TypeNamePlural": "SlotForVisualizerRelationships",
         "DisplayName": "SlotForVisualizer Relationship",
         "DisplayNamePlural": "SlotForVisualizer Relationships",
-        "Description": "Inverse of HasSlot. Each first-cut VisualizerSlot belongs to exactly one Visualizer.",
+        "Description": "Inverse of HasSlot. Each composition Slot belongs to a Visualizer type definition.",
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -2165,7 +2158,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "Visualizer.HolonType"
+              "$ref": "MetaVisualizerType.MetaHolonType"
             }
           ]
         },
@@ -2173,7 +2166,7 @@
           "name": "Constraints",
           "target": [
             {
-              "$ref": "ExactlyOne.CardinalityConstraint"
+              "$ref": "OneOrMore.CardinalityConstraint"
             }
           ]
         }
@@ -3166,7 +3159,7 @@
     },
     {
       "key": "LoadHolons.NodeVisualizer",
-      "type": "NodeVisualizer.HolonType",
+      "type": "LoadHolons.NodeVisualizerType",
       "properties": {
         "DisplayName": "Load Holons",
         "VisualizerDescription": "Groups load-result details above tabbed result collections, with a side rail for related items. The title bar supports the same exploration and expansion controls as Holon Inspector."
@@ -3177,26 +3170,6 @@
           "target": [
             {
               "$ref": "HolonLoadResponse.DanceResponseType"
-            }
-          ]
-        },
-        {
-          "name": "HasSlot",
-          "target": [
-            {
-              "$ref": "LoadHolonsResult.TitleBarSlot"
-            },
-            {
-              "$ref": "LoadHolonsResult.PropertyMapSlot"
-            },
-            {
-              "$ref": "LoadHolonsResult.ActionsSlot"
-            },
-            {
-              "$ref": "LoadHolonsResult.VisualizerControlsSlot"
-            },
-            {
-              "$ref": "LoadHolonsResult.CollectionsSlot"
             }
           ]
         },
@@ -3238,7 +3211,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:9e08c914cc775b9502d388dba30b9a54ca0006e7ab19b9d2173f84d4dd207941",
+        "VisualizerArtifactDigest": "sha256:9f1bf7200dac15ea1862bb8bdfdea93d44818ddd6bc15670b39c59a1c3dffae9",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3248,6 +3221,10 @@
       "key": "LoadHolonsResult.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "propertyMap",
+        "CompositionRole": "propertyMap",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Explain the outcome of this data load, including its status and result counts."
       },
       "relationships": [
@@ -3265,6 +3242,10 @@
       "key": "LoadHolonsResult.ActionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "actionBar",
+        "CompositionRole": "action",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Provide access to the actions available for this load result."
       },
       "relationships": [
@@ -3290,6 +3271,10 @@
       "key": "LoadHolonsResult.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "actionBar",
+        "CompositionRole": "visualizerActions",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present the centrally declared Visualizer controls within the title band."
       },
       "relationships": [
@@ -3323,6 +3308,10 @@
       "key": "LoadHolonsResult.CollectionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "demand",
+        "CompositionKind": "collection",
+        "CompositionRole": "collection",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Present a group of items related to this load result so you can examine them and open an item."
       },
       "relationships": [
@@ -8118,6 +8107,10 @@
       "key": "HolonInspector.TitleBarSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "titleBar",
+        "CompositionRole": "titleBar",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Selected TitleBarSlot with independent inspection and bounded presentation."
       },
       "relationships": [
@@ -8143,6 +8136,10 @@
       "key": "LoadHolonsResult.TitleBarSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
+        "CompositionActivation": "presentation",
+        "CompositionKind": "titleBar",
+        "CompositionRole": "titleBar",
+        "CompositionSubject": "subject",
         "VisualizerSlotDescription": "Selected TitleBarSlot with independent inspection and bounded presentation."
       },
       "relationships": [
@@ -8886,6 +8883,1304 @@
           "target": [
             {
               "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolveVisualizerUsage.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "ResolveVisualizerUsage",
+        "TypeNamePlural": "ResolveVisualizerUsageDances",
+        "DisplayName": "Resolve Visualizer Usage",
+        "DisplayNamePlural": "Resolve Visualizer Usage Dances",
+        "Description": "Visualizer-afforded guest resolution. A miss returns the direct applicability descriptor for lazy default creation.",
+        "DanceDescription": "Resolve the nearest committed configuration for a selected Visualizer along the actual subject descriptor's Extends lineage.",
+        "RequiredExecutionContext": "SpaceAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequestType",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsageRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsageResponse.DanceResponseType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GuestResolveVisualizerUsage.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "GuestResolveVisualizerUsage"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsage.DanceType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolveVisualizerUsageRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ResolveVisualizerUsageRequest",
+        "TypeNamePlural": "ResolveVisualizerUsageRequests",
+        "DisplayName": "Resolve Visualizer Usage Request",
+        "DisplayNamePlural": "Resolve Visualizer Usage Requests",
+        "Description": "Actual semantic subject descriptor and Slot for configuration lookup on the affording Visualizer. Agent Space comes from the authorized execution context."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSubjectType]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSlot]->(VisualizerSlot.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerUsageResolution.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerUsageResolution",
+        "TypeNamePlural": "VisualizerUsageResolutions",
+        "DisplayName": "Visualizer Usage Resolution",
+        "DisplayNamePlural": "Visualizer Usage Resolutions",
+        "Description": "Read-only Usage resolution: optional existing configuration and its bound descriptor, direct applicability default scope, and ordered actual-first search lineage."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(VisualizerUsageResolution.Projection)-[ResolvedUsage]->(VisualizerUsage.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerUsageResolution.Projection)-[ResolvedUsageType]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(VisualizerUsageResolution.Projection)-[DefaultUsageType]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(VisualizerUsageResolution.Projection)-[UsageSearchPath]->(TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolveVisualizerUsageResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "ResolveVisualizerUsageResponse",
+        "TypeNamePlural": "ResolveVisualizerUsageResponses",
+        "DisplayName": "Resolve Visualizer Usage Response",
+        "DisplayNamePlural": "Resolve Visualizer Usage Responses",
+        "Description": "Resolved inherited Visualizer configuration or an explicit miss with its default initialization scope."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ResponseBody",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageSubjectType",
+        "TypeNamePlural": "UsageSubjectTypeRelationships",
+        "DisplayName": "UsageSubjectType",
+        "DisplayNamePlural": "UsageSubjectType Relationships",
+        "Description": "UsageSubjectType for Visualizer Usage resolution.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsageRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[UsageSubjectTypeOf]->(ResolveVisualizerUsageRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[UsageSubjectTypeOf]->(ResolveVisualizerUsageRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageSubjectTypeOf",
+        "TypeNamePlural": "UsageSubjectTypeOfRelationships",
+        "DisplayName": "UsageSubjectTypeOf",
+        "DisplayNamePlural": "UsageSubjectTypeOf Relationships",
+        "Description": "Inverse of UsageSubjectType.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsageRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageSlot",
+        "TypeNamePlural": "UsageSlotRelationships",
+        "DisplayName": "UsageSlot",
+        "DisplayNamePlural": "UsageSlot Relationships",
+        "Description": "UsageSlot for Visualizer Usage resolution.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsageRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[UsageSlotOf]->(ResolveVisualizerUsageRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[UsageSlotOf]->(ResolveVisualizerUsageRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageSlotOf",
+        "TypeNamePlural": "UsageSlotOfRelationships",
+        "DisplayName": "UsageSlotOf",
+        "DisplayNamePlural": "UsageSlotOf Relationships",
+        "Description": "Inverse of UsageSlot.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolveVisualizerUsageRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsageResolution.Projection)-[ResolvedUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResolvedUsage",
+        "TypeNamePlural": "ResolvedUsageRelationships",
+        "DisplayName": "ResolvedUsage",
+        "DisplayNamePlural": "ResolvedUsage Relationships",
+        "Description": "ResolvedUsage for Visualizer Usage resolution.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[ResolvedUsageOf]->(VisualizerUsageResolution.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[ResolvedUsageOf]->(VisualizerUsageResolution.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResolvedUsageOf",
+        "TypeNamePlural": "ResolvedUsageOfRelationships",
+        "DisplayName": "ResolvedUsageOf",
+        "DisplayNamePlural": "ResolvedUsageOf Relationships",
+        "Description": "Inverse of ResolvedUsage.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsageResolution.Projection)-[ResolvedUsageType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResolvedUsageType",
+        "TypeNamePlural": "ResolvedUsageTypeRelationships",
+        "DisplayName": "ResolvedUsageType",
+        "DisplayNamePlural": "ResolvedUsageType Relationships",
+        "Description": "ResolvedUsageType for Visualizer Usage resolution.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[ResolvedUsageTypeOf]->(VisualizerUsageResolution.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[ResolvedUsageTypeOf]->(VisualizerUsageResolution.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResolvedUsageTypeOf",
+        "TypeNamePlural": "ResolvedUsageTypeOfRelationships",
+        "DisplayName": "ResolvedUsageTypeOf",
+        "DisplayNamePlural": "ResolvedUsageTypeOf Relationships",
+        "Description": "Inverse of ResolvedUsageType.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsageResolution.Projection)-[DefaultUsageType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DefaultUsageType",
+        "TypeNamePlural": "DefaultUsageTypeRelationships",
+        "DisplayName": "DefaultUsageType",
+        "DisplayNamePlural": "DefaultUsageType Relationships",
+        "Description": "DefaultUsageType for Visualizer Usage resolution.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[DefaultUsageTypeOf]->(VisualizerUsageResolution.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[DefaultUsageTypeOf]->(VisualizerUsageResolution.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DefaultUsageTypeOf",
+        "TypeNamePlural": "DefaultUsageTypeOfRelationships",
+        "DisplayName": "DefaultUsageTypeOf",
+        "DisplayNamePlural": "DefaultUsageTypeOf Relationships",
+        "Description": "Inverse of DefaultUsageType.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsageResolution.Projection)-[UsageSearchPath]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageSearchPath",
+        "TypeNamePlural": "UsageSearchPathRelationships",
+        "DisplayName": "UsageSearchPath",
+        "DisplayNamePlural": "UsageSearchPath Relationships",
+        "Description": "UsageSearchPath for Visualizer Usage resolution.",
+        "IsOrdered": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[UsageSearchPathOf]->(VisualizerUsageResolution.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[UsageSearchPathOf]->(VisualizerUsageResolution.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageSearchPathOf",
+        "TypeNamePlural": "UsageSearchPathOfRelationships",
+        "DisplayName": "UsageSearchPathOf",
+        "DisplayNamePlural": "UsageSearchPathOf Relationships",
+        "Description": "Inverse of UsageSearchPath.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsageResolution.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionRole.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CompositionRole",
+        "TypeNamePlural": "CompositionRoleValues",
+        "DisplayName": "CompositionRole",
+        "DisplayNamePlural": "CompositionRole values",
+        "Description": "Role identifier within the owning Visualizer type."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CompositionSubject",
+        "TypeNamePlural": "CompositionSubjectValues",
+        "DisplayName": "CompositionSubject",
+        "DisplayNamePlural": "CompositionSubject values",
+        "Description": "Subject binding: subject, owner, or scalarProperties."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CompositionKind",
+        "TypeNamePlural": "CompositionKindValues",
+        "DisplayName": "CompositionKind",
+        "DisplayNamePlural": "CompositionKind values",
+        "Description": "Visualizer kind required for a demanded composition Slot."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionActivation.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CompositionActivation",
+        "TypeNamePlural": "CompositionActivationValues",
+        "DisplayName": "CompositionActivation",
+        "DisplayNamePlural": "CompositionActivation values",
+        "Description": "Activation policy: presentation for the current presentation; demand for later explicit activation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspector.NodeVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "HolonInspector",
+        "TypeNamePlural": "HolonInspectorNodeVisualizerTypes",
+        "DisplayName": "HolonInspector.NodeVisualizer type",
+        "DisplayNamePlural": "HolonInspector.NodeVisualizer types",
+        "Description": "Composition grammar for HolonInspector.NodeVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "NodeVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "HolonInspector.TitleBarSlot"
+            },
+            {
+              "$ref": "HolonInspector.PropertyMapSlot"
+            },
+            {
+              "$ref": "HolonInspector.ActionsSlot"
+            },
+            {
+              "$ref": "HolonInspector.VisualizerControlsSlot"
+            },
+            {
+              "$ref": "HolonInspector.CollectionsSlot"
+            },
+            {
+              "$ref": "HolonInspector.SingleValueSlot"
+            },
+            {
+              "$ref": "LoadHolons.DiagnosticsSlot"
+            },
+            {
+              "$ref": "LoadHolons.CommittedHolonsSlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PathInspector.RootedNavigationVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PathInspector",
+        "TypeNamePlural": "PathInspectorRootedNavigationVisualizerTypes",
+        "DisplayName": "PathInspector.RootedNavigationVisualizer type",
+        "DisplayNamePlural": "PathInspector.RootedNavigationVisualizer types",
+        "Description": "Composition grammar for PathInspector.RootedNavigationVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "RootedNavigationVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "PathInspector.RootNodeSlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "DefaultPropertyMapVisualizer",
+        "TypeNamePlural": "DefaultPropertyMapVisualizerPropertyMapVisualizerTypes",
+        "DisplayName": "DefaultPropertyMapVisualizer.PropertyMapVisualizer type",
+        "DisplayNamePlural": "DefaultPropertyMapVisualizer.PropertyMapVisualizer types",
+        "Description": "Composition grammar for DefaultPropertyMapVisualizer.PropertyMapVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyMapVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.PropertySlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericProperty.PropertyVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "GenericProperty",
+        "TypeNamePlural": "GenericPropertyPropertyVisualizerTypes",
+        "DisplayName": "GenericProperty.PropertyVisualizer type",
+        "DisplayNamePlural": "GenericProperty.PropertyVisualizer types",
+        "Description": "Composition grammar for GenericProperty.PropertyVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "GenericProperty.ValueSlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolons.ActionVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "LoadHolons",
+        "TypeNamePlural": "LoadHolonsActionVisualizerTypes",
+        "DisplayName": "LoadHolons.ActionVisualizer type",
+        "DisplayNamePlural": "LoadHolons.ActionVisualizer types",
+        "Description": "Composition grammar for LoadHolons.ActionVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ActionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "LoadHolons.DiagnosticsSlot"
+            },
+            {
+              "$ref": "LoadHolons.CommittedHolonsSlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolons.NodeVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "LoadHolons",
+        "TypeNamePlural": "LoadHolonsNodeVisualizerTypes",
+        "DisplayName": "LoadHolons.NodeVisualizer type",
+        "DisplayNamePlural": "LoadHolons.NodeVisualizer types",
+        "Description": "Composition grammar for LoadHolons.NodeVisualizer. Slots are activated by the current presentation request."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "NodeVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "LoadHolonsResult.TitleBarSlot"
+            },
+            {
+              "$ref": "LoadHolonsResult.PropertyMapSlot"
+            },
+            {
+              "$ref": "LoadHolonsResult.ActionsSlot"
+            },
+            {
+              "$ref": "LoadHolonsResult.VisualizerControlsSlot"
+            },
+            {
+              "$ref": "LoadHolonsResult.CollectionsSlot"
             }
           ]
         }

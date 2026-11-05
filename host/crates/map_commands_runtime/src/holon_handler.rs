@@ -25,7 +25,28 @@ fn handle_read(
     target: HolonReference,
     action: ReadableHolonAction,
 ) -> Result<MapResult, HolonError> {
-    match action {
+    // SDK collection reads use ordinary relationship commands on the prepared
+    // carrier. Admission enforces the same retirement boundary without schema
+    // discovery, including when a command routes through the carrier's own tx.
+    let retained_session = if let HolonReference::Transient(reference) = &target {
+        if let Some(registry) = context.descriptor_registry() {
+            if registry.owned_context(reference.tx_id()).is_some() {
+                let session = context.space_read_handle().session()?;
+                if registry.reference_owner(reference.tx_id(), &reference.temporary_id()).is_none()
+                {
+                    return Err(HolonError::ObsoleteSession);
+                }
+                Some(session)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    let result = match action {
         ReadableHolonAction::GetValidationFindings => match target {
             HolonReference::Staged(reference) => {
                 Ok(MapResult::ValidationFindings(reference.validation_findings()?))
@@ -60,7 +81,7 @@ fn handle_read(
         }
         ReadableHolonAction::GetInstanceProperties => {
             let members =
-                holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(target)
+                holons_core::descriptors::EffectiveHolonDescriptor::from_prepared_holon(target)?
                     .instance_properties()?
                     .into_iter()
                     .map(|property| property.holon().clone())
@@ -133,7 +154,7 @@ fn handle_read(
         }
         ReadableHolonAction::GetEffectiveMember { collection, name } => {
             let descriptor =
-                holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(target);
+                holons_core::descriptors::EffectiveHolonDescriptor::from_prepared_holon(target)?;
             let member = match collection {
                 collection_name
                     if collection_name
@@ -189,7 +210,7 @@ fn handle_read(
                 .effective_cardinality()?,
         )),
         ReadableHolonAction::GetHasInstanceKey => Ok(MapResult::Value(BaseValue::BooleanValue(
-            (!holons_core::descriptors::EffectiveHolonDescriptor::from_constructed_holon(target)
+            (!holons_core::descriptors::EffectiveHolonDescriptor::from_prepared_holon(target)?
                 .effective_key_rule()?
                 .is_keyless()?)
             .into(),
@@ -220,6 +241,19 @@ fn handle_read(
                 BTreeMap::new(),
             )))
         }
+        ReadableHolonAction::GetPluralNavigableRelationships => {
+            let members =
+                holons_core::descriptors::EffectiveHolonDescriptor::try_from_holon(target)?
+                    .plural_navigable_relationships()?
+                    .into_iter()
+                    .map(|descriptor| descriptor.holon().clone())
+                    .collect();
+            Ok(MapResult::Collection(HolonCollection::from_parts(
+                CollectionState::Fetched,
+                members,
+                BTreeMap::new(),
+            )))
+        }
         ReadableHolonAction::GetAvailableProperties => {
             let members = target
                 .effective_descriptor()?
@@ -233,11 +267,16 @@ fn handle_read(
                 BTreeMap::new(),
             )))
         }
-        ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor } => {
+        ReadableHolonAction::GetAvailableRelationshipsFromEffective { descriptor, singular } => {
             let descriptor =
                 holons_core::descriptors::EffectiveHolonDescriptor::try_from_holon(descriptor)?;
+            let relationships = match singular {
+                Some(true) => descriptor.available_singular_relationships(&target)?,
+                Some(false) => descriptor.available_plural_relationships(&target)?,
+                None => descriptor.available_relationships(&target)?,
+            };
             Ok(MapResult::QualifiedRelationships(
-                descriptor.available_relationships(&target)?.into_iter().map(Into::into).collect(),
+                relationships.into_iter().map(Into::into).collect(),
             ))
         }
         ReadableHolonAction::GetAvailableRelationships => Ok(MapResult::QualifiedRelationships(
@@ -248,7 +287,11 @@ fn handle_read(
                 .map(Into::into)
                 .collect(),
         )),
+    };
+    if let Some(session) = retained_session {
+        session.check_active()?;
     }
+    result
 }
 
 fn handle_write(

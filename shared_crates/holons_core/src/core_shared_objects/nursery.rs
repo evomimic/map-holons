@@ -552,12 +552,12 @@ mod tests {
             source_predecessor_id,
             described,
         });
-        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+        let space_manager = HolonSpaceManager::new_with_managers(
             None,
             holon_service,
             None,
             ServiceRoutingPolicy::BlockExternal,
-        ));
+        );
 
         space_manager
             .get_transaction_manager()
@@ -811,12 +811,12 @@ mod tests {
                 source_predecessor_id: None,
                 described: false,
             });
-            let manager = Arc::new(HolonSpaceManager::new_with_managers(
+            let manager = HolonSpaceManager::new_with_managers(
                 None,
                 service,
                 None,
                 ServiceRoutingPolicy::Combined,
-            ));
+            );
             let context =
                 manager.get_transaction_manager().open_public_transaction(manager.clone())?;
             let mut identities = std::collections::HashSet::new();

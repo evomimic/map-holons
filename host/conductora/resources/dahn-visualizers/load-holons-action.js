@@ -1,5 +1,4 @@
 export default class LoadHolonsAction extends HTMLElement {
-  static compositionSlots = { diagnostics: 'LoadHolons.DiagnosticsSlot', committed: 'LoadHolons.CommittedHolonsSlot' };
   setContext(context) {
     const button = document.createElement('button');
     button.type = 'button';

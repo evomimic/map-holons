@@ -15,13 +15,13 @@ export async function classifyNodeAffordances(holon: HolonViewAccess): Promise<N
     if (await property.isArray()) collections.push({ kind: 'property', label: await property.propertyName(), property });
     else scalarProperties.push(property);
   }
-  for (const relationship of await holon.availableRelationships()) {
-    const { maximum } = await relationship.descriptor.effectiveCardinality();
-    if (maximum === 0) continue;
-    const label = await relationship.descriptor.displayName();
-    const description = (await relationship.descriptor.description())?.trim() || undefined;
-    if (maximum === 1) singularRelationships.push({ label, description, relationship });
-    else collections.push({ kind: 'relationship', label, description, relationship });
+  for (const multiplicity of ['singular', 'plural'] as const) {
+    for (const relationship of await holon.availableRelationships(multiplicity)) {
+      const label = await relationship.descriptor.displayName();
+      const description = (await relationship.descriptor.description())?.trim() || undefined;
+      if (multiplicity === 'singular') singularRelationships.push({ label, description, relationship });
+      else collections.push({ kind: 'relationship', label, description, relationship });
+    }
   }
   for (const dance of await holon.availableDances()) {
     const id = await dance.versionedKey();

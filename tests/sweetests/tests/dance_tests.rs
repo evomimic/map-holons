@@ -19,6 +19,7 @@
 
 mod execution_steps;
 mod fixture_cases;
+mod query_contract;
 
 use execution_steps::dance_test_runner::{
     boot_dance_test_suite, run_dance_test_suite, run_dance_test_suite_on, DanceTestSuite,
@@ -48,6 +49,7 @@ use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
 use fixture_cases::query_f1_filter_fixture::*;
 use fixture_cases::query_f2_equality_fixture::*;
+use fixture_cases::query_f3_boolean_fixture::*;
 use fixture_cases::query_qry1_scaffold_fixture::*;
 use fixture_cases::query_qry2_seed_expand_fixture::*;
 use fixture_cases::query_qry4a_order_paginate_fixture::*;
@@ -84,6 +86,17 @@ async fn cross_schema_dependency_gap_acceptance() {
     run_dance_test_suite(DanceTestSuite {
         name: "cross_schema_dependency_gap",
         test_cases: vec![commit_cross_schema_dependency_gap_fixture().unwrap()],
+    })
+    .await;
+}
+
+/// Isolates historical descriptor membership from preceding matrix scenarios.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused membership history diagnosis; covered by runtime_behavior_matrix"]
+async fn schema_successor_membership_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "schema_successor_membership",
+        test_cases: vec![commit_schema_successor_membership_fixture().unwrap()],
     })
     .await;
 }
@@ -220,13 +233,66 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             frozen_member_head_redirect_fixture().unwrap(),
             frozen_member_head_redirect_cross_tx_fixture().unwrap(),
             cross_transaction_staged_target_diagnostic_fixture().unwrap(),
+        ],
+    }
+}
+
+/// Small real-storage and adapter contract; exhaustive semantics live in query-layer units.
+#[tokio::test(flavor = "multi_thread")]
+async fn query_runtime() {
+    let (runtime, tx_id) = boot_dance_test_suite().await;
+    run_dance_test_suite_on(
+        &runtime,
+        tx_id,
+        DanceTestSuite {
+            name: "query_storage_boundaries",
+            test_cases: vec![
+                query_qry1_scaffold_fixture().unwrap(),
+                fixture_cases::query_boundary_fixture::query_boundary_fixture().unwrap(),
+            ],
+        },
+    )
+    .await;
+    query_contract::run(&runtime).await;
+}
+
+/// Exhaustive live-storage matrix for explicit diagnosis; semantic coverage also lives in unit tests.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "extended semantic matrix; query_runtime covers storage and adapter contracts"]
+async fn query_semantic_matrix() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "query_runtime",
+        test_cases: vec![
             query_qry1_scaffold_fixture().unwrap(),
             query_qry2_seed_expand_fixture().unwrap(),
             query_qry4a_order_paginate_fixture().unwrap(),
             query_f1_filter_fixture().unwrap(),
             query_f2_equality_fixture().unwrap(),
+            query_f3_boolean_fixture().unwrap(),
         ],
-    }
+    })
+    .await;
+}
+
+/// Select one existing query fixture after a failure without rerunning its siblings.
+/// These diagnostic selectors add no work to the normal dance suite.
+#[rstest]
+#[case::scaffold(query_qry1_scaffold_fixture)]
+#[case::seed_expand(query_qry2_seed_expand_fixture)]
+#[case::order_paginate(query_qry4a_order_paginate_fixture)]
+#[case::filter(query_f1_filter_fixture)]
+#[case::equality(query_f2_equality_fixture)]
+#[case::boolean(query_f3_boolean_fixture)]
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused extended diagnosis; query_semantic_matrix covers all six fixtures"]
+async fn query_fixture(
+    #[case] build: fn() -> Result<holons_test::DancesTestCase, core_types::HolonError>,
+) {
+    run_dance_test_suite(DanceTestSuite {
+        name: "query_fixture",
+        test_cases: vec![build().unwrap()],
+    })
+    .await;
 }
 
 /// Focused Issue 706 acceptance using the committed shared Book/Person fixture.

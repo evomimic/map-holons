@@ -17,6 +17,7 @@ import type { HolonReference, TransientHolonReference } from './references';
 import type {
   AvailableRelationshipHandle,
   HolonDescriptorHandle,
+  EffectiveHolonDescriptorHandle,
   PropertyDescriptorHandle,
   ValueDescriptorHandle,
 } from './descriptors';
@@ -84,7 +85,7 @@ export interface ReadableHolon {
   holonDescriptor(): Promise<HolonDescriptorHandle>;
   availableDances(): Promise<ReadonlyArray<HolonReference>>;
   availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>>;
-  availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
+  availableRelationships(effective?: EffectiveHolonDescriptorHandle, multiplicity?: 'singular' | 'plural'): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
 }
 
 /**

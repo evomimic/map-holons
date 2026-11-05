@@ -190,6 +190,35 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
+    fn fetch_holons_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        ids: &[HolonId],
+    ) -> Result<Vec<holons_core::core_shared_objects::cache_population::SavedHolonFetch>, HolonError>
+    {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let request = holon_dance_builders::build_get_holons_by_ids_dance_request(ids.to_vec());
+        let started = std::time::Instant::now();
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await });
+        tracing::info!(target: "map_profile", requested = ids.len(), guest_invocations = 1, elapsed_us = started.elapsed().as_micros(), "bulk saved hydration");
+        let response = response?;
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(response.error.unwrap_or_else(|| {
+                HolonError::Misc(format!(
+                    "GetHolonsByIds dance failed: {:?} — {}",
+                    response.status_code, response.description.0
+                ))
+            }));
+        }
+        match response.body {
+            ResponseBody::SavedHolonHydration(entries) => Ok(entries),
+            _ => Err(HolonError::InvalidParameter("Expected SavedHolonHydration".into())),
+        }
+    }
+
     fn fetch_holon_internal(
         &self,
         context: &Arc<TransactionContext>,

@@ -14,6 +14,14 @@ nix develop
 npm run sweet:commit-perf -- --runs 5 --samples 6 --mode create --readiness-cases --output /tmp/commit-perf/visualizer-usage
 ```
 
+The capture command explicitly builds `commit-performance-profiling`, including
+loader timing. Ordinary hApp builds omit diagnostic clock host calls and detailed
+Commit/adapter timing events. `WASM_LOG` controls host-side output, not whether a
+profiling-enabled guest pays the instrumentation cost: the guest subscriber
+accepts every level. Rebuild the ordinary hApp before measuring normal startup.
+Routine per-read/per-target events and whole-session/response dumps are removed
+from both configurations; aggregate profiling records and error reports remain.
+
 Each capture writes `metadata.json`, `working-tree.patch`, raw `run-*.log` files,
 and `measurements.json`. Metadata records resolved runtime versions, package
 substrate, anchor evidence policy, artifact and source hashes, revision, working
@@ -195,55 +203,33 @@ phase probes, captured at operation boundaries. They require no extra content re
 requests that phase-wide inventories alone cannot separate. Inventory timings include observation
 overhead and must not be used as latency measurements.
 
-Usage workloads emit exact governor presence at `before-command` and `shipped-snapshot` boundaries.
-The latter inspects only frozen transient memberships and exact IDs after the command timer stops.
-Pre-command membership alone is not proof of shipped membership: snapshot construction may cause
-reentrant preparation. The parser keeps the two boundaries separate. Registry population flags seed
-a Session once per run; they do not maintain a fixed population across samples. Compare observed
-snapshot entries, membership flags, lookup requests, and entries examined, not seeded case names.
+Historical `822-v2` usage workloads emit governor presence at `before-command` and
+`shipped-snapshot`. New `822-v3` workloads record host `before-command` and `after-command`
+membership; neither claims to measure transported membership. Guest ingress records actual
+received HolonType and derived entry counts. Registry setup seeds a Session once per run and
+does not maintain a fixed population across samples.
 
-### Diagnostic saved-content capacity comparison
+### Historical saved-content capacity comparison
 
-The nominal production content-cache capacity is 99; retained content and relationship membership
-have separate storage. `build:commit-perf-large-cache` enables a WASM-only diagnostic capacity of
-1024. Host content-cache defaults remain unchanged. This is a counterfactual experiment, not a new
-production default or a replacement for the 99-capacity baseline. Quick_cache may round its nominal
-capacity into shard capacities.
+Both host and guest now use the 10,000-entry production default. The diagnostic large-cache
+feature is retired. Earlier 99/1024 captures remain readable with their original metadata and
+capacity expectations. Their NameIndexes reads and sample-1 snapshot spike remain historical
+evidence; they are not a matched latency comparison for the consolidated foundation.
 
-Build each variant explicitly, then run one usage capture with six samples. Use
-`--expected-guest-cache-capacity 99` or `1024` respectively: the parser checks the value emitted by
-the guest instrumentation marker and records the expectation in metadata. Earlier captures without
-this field remain readable using their original metadata. The experiment should use normal profiling,
-not the read-inventory build, so observation overhead remains comparable between variants.
+### Consolidated foundation observations
 
-Compare NameIndexes exact node reads and the frequency of the observed high-read mode before
-interpreting total latency. Report sample index 1's host snapshot preparation separately. Absence
-of high-read samples at larger capacity supports cache-pressure sensitivity; it does not isolate
-hash seeding as the cause, since capacity can also change shard geometry and eviction behavior.
-Keep these runs apart from baseline/final results, and rebuild ordinary profiling after the experiment.
+New captures use `822-v3` with `broad-preparation`. Historical `822-v2` logs retain
+snapshot lookup/scan and host snapshot observations. The new format requires registry-owner
+capture and guest restoration/index rebuild measurements; absent legacy observations are unavailable,
+not zero. Production transport continues to report envelope encoding separately. Sweettest's
+conductor owns that encoding, so its separate duration remains unavailable.
 
+`registry-thirtytwo-affected-schema` replaces `registry-thirtytwo-bypass`: exact saved entries
+may restore during Schema assessment. Compare actual received HolonType and derived populations,
+restorations and builds rather than asserting the historical bypass. Category-level
+`DerivedAcquisition` spans include complete payload work, including ValueType `AffordsOperator`.
 
-### 2026-11-02 guest cache decision
-
-The architect approved a nominal saved-content capacity of 10,000 for guests. Ordinary guest
-builds now request 10,000; the host default remains 99 because the approval followed the guest-only
-experiment. The existing diagnostic build continues to request 1024 on WASM. Retained saved content,
-relationship memberships, and staged/transient pools remain separate. New captures default to
-`--expected-guest-cache-capacity 10000`; archived 99/1024 captures retain their recorded expectations.
-Record this configuration change separately from preparation narrowing and incoming descriptor/registry
-changes when comparing performance. Historical baseline and capacity-experiment records are unchanged.
-
-## Step A checkpoint
-
-The current guest emits `substrate=broad-preparation`. Capture with
-`--preparation-substrate broad-preparation` (the current CLI default). This labels broad
-package preparation with scoped guards and no readiness discovery; it is not declared demand.
-The parser requires the package Extends edge counter and identity/role visits, rejects
-readiness discovery/grouping spans and readiness edges, and retains the historical
-`broad-readiness` requirements for older captures. `InterpretationGuards` reports candidate
-contract guard decisions separately from supporting contract checks and candidate evaluation.
-
-Use `usage`, `no-op`, `mixed`, and `shared-type`, one run of six samples each, at capacity
-10,000. Compare prepared definitions and package edges with the cache checkpoint. Derivation
-counts may fall; cache and foundation must match before comparing latency or backend reads.
-Do not use the manifest runner's two-sample `--smoke` shortcut for this checkpoint.
+The foundation includes main's trace removal, host/guest cache default, registry transport/indexing,
+derived reuse, and per-reference reuse. Non-restored package definitions now require a shared
+diagnosis for category routing; this additional work belongs to the foundation segment. Step C
+will narrow demand and remove remaining assessment-time derivation.

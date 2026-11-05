@@ -1,5 +1,5 @@
+use crate::{HolonReference, ReadableHolon};
 use core_types::{HolonError, RelationshipName};
-use holons_core::{HolonReference, ReadableHolon};
 
 fn members(subject: &HolonReference, name: &str) -> Result<Vec<HolonReference>, HolonError> {
     Ok(subject
@@ -12,7 +12,7 @@ fn members(subject: &HolonReference, name: &str) -> Result<Vec<HolonReference>, 
 
 /// A fixed Operator identity promises its entire input domain and behavior.
 /// Selection reads semantic records only; callable and behavioral checks are separate.
-pub(crate) fn fulfills_operators(
+pub fn fulfills_operators(
     slot: &HolonReference,
     candidate: &HolonReference,
 ) -> Result<bool, HolonError> {

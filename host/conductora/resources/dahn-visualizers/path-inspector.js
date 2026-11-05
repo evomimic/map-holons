@@ -76,7 +76,6 @@ function applyNodePresentation(element, input) {
 
 // host/conductora/visualizer-src/path-inspector.js
 var PathInspectorElement = class extends HTMLElement {
-  static compositionSlots = { node: "PathInspector.RootNodeSlot" };
   getVisualizerComposition() {
     return [
       ...this.viewControls ? [{

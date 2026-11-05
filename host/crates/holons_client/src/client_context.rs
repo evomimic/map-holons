@@ -47,10 +47,10 @@ pub fn init_client_runtime_with_holon_service(
     initiator: Option<Arc<dyn DanceInitiator>>,
     holon_service: Arc<dyn HolonServiceApi>,
 ) -> Arc<HolonSpaceManager> {
-    Arc::new(HolonSpaceManager::new_with_managers(
+    HolonSpaceManager::new_with_managers(
         initiator,
         holon_service,
         None,
         ServiceRoutingPolicy::Combined,
-    ))
+    )
 }

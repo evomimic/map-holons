@@ -145,34 +145,16 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
             .await
             .unwrap();
         let command_us = started.elapsed().as_micros();
-        // Inspect the frozen, actually shipped snapshot outside the measured command.
-        // These are transient memberships and exact IDs; this does not hydrate saved content.
-        let mut shipped_governor = false;
-        let mut shipped_entries = 0;
-        if let Some(root) = context.descriptor_registry_root().unwrap() {
-            let entries = root
-                .related_holons("PreparedDescriptors")
-                .unwrap()
-                .read()
-                .unwrap()
-                .get_members()
-                .clone();
-            shipped_entries = entries.len();
-            for entry in entries {
-                let targets = entry
-                    .related_holons("DescribedHolonType")
-                    .unwrap()
-                    .read()
-                    .unwrap()
-                    .get_members()
-                    .clone();
-                assert_eq!(targets.len(), 1);
-                shipped_governor |= targets[0].holon_id().unwrap() == governor_id;
-            }
-        }
+        // This is the post-command host registry, not the transported ingress population.
+        // The guest's registry-ingress event records the actual received counts.
+        let registry = runtime.session().descriptor_registry();
+        let (holon_types, derived) = registry.population().unwrap();
         info!(
-            "[commit-governor] sample={} boundary=shipped-snapshot present={} entries={}",
-            sample, shipped_governor, shipped_entries
+            "[commit-governor] sample={} boundary=after-command present={} entries={} derived={}",
+            sample,
+            registry.get(&governor_id).unwrap().is_some(),
+            holon_types,
+            derived
         );
 
         let MapResult::Reference(response) = response else {

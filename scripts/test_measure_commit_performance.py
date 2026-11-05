@@ -44,13 +44,29 @@ def complete_run():
 
 
 class CaptureTests(unittest.TestCase):
+    def test_foundation_requires_replacement_registry_observations(self):
+        content = complete_run().replace("version=822-v2", "version=822-v3")
+        content = content.replace("snapshot_lookups=0", "registry_lookups=0 derived_registry_lookups=0 derived_registry_hits=0 derived_builder_attempts=0 derived_builder_successes=0 derived_projection_attempts=0 derived_projection_successes=0").replace("registry_entries_examined=0", "frozen_product_reuses=0")
+        content = "\n".join(line for line in content.splitlines() if "[commit-host-snapshot]" not in line)
+        replacement = ("[commit-registry-capture] elapsed_us=3\n"
+                       "[commit-registry-ingress] restoration_us=2 index_rebuild_us=1 holon_types=0 derived=0 logical_reads=0 cache_misses=0\n")
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "run.log"
+            log.write_text(content)
+            with self.assertRaisesRegex(ValueError, "Missing measurements"):
+                measure.summarize([log], instrumentation="822-v3")
+            log.write_text(content.replace("[PERF-688]", replacement + "[PERF-688]"))
+            result = measure.summarize([log], instrumentation="822-v3")
+            self.assertEqual(result["samples"][0]["host_snapshot"], "unavailable")
+            self.assertNotIn("commit-derivation.PreparedProducts.registry_entries_examined", result["samples"][0]["metrics"])
+
     def test_missing_guest_instrumentation_stops_after_first_run(self):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "capture"
             def capture(command, *, stdout, stderr, env):
                 stdout.write("\n".join(line for line in complete_run().splitlines() if "[commit-instrumentation]" not in line))
                 return SimpleNamespace(returncode=0)
-            with patch.object(measure.sys, "argv", ["measure", "--runs", "5", "--output", str(destination)]), \
+            with patch.object(measure.sys, "argv", ["measure", "--instrumentation", "822-v2", "--runs", "5", "--output", str(destination)]), \
                  patch.dict(measure.os.environ, {}, clear=True), \
                  patch.object(measure, "output", return_value=""), \
                  patch.object(measure.platform, "platform", return_value="test-platform"), \
@@ -87,7 +103,7 @@ class CaptureTests(unittest.TestCase):
     def test_link_profile_wires_separate_output_and_records_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "capture"
-            argv = ["measure", "--preparation-substrate", "broad-readiness", "--runs", "1", "--link-profile", "--semantic-revision", "semantic-test", "--output", str(destination)]
+            argv = ["measure", "--instrumentation", "822-v2", "--preparation-substrate", "broad-readiness", "--runs", "1", "--link-profile", "--semantic-revision", "semantic-test", "--output", str(destination)]
 
             def capture(command, *, stdout, stderr, env):
                 self.assertIn("holons_client=info", env["RUST_LOG"])
@@ -123,7 +139,7 @@ class CaptureTests(unittest.TestCase):
         for mode in ["visualizer-slot", "descriptor"]:
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 destination = Path(directory) / "capture"
-                argv = ["measure", "--preparation-substrate", "broad-readiness", "--runs", "1", "--mode", mode, "--output", str(destination)]
+                argv = ["measure", "--instrumentation", "822-v2", "--preparation-substrate", "broad-readiness", "--runs", "1", "--mode", mode, "--output", str(destination)]
                 if mode == "visualizer-slot":
                     argv.append("--readiness-cases")
 
