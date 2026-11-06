@@ -1,97 +1,10 @@
-//! Scenario and evidence controls for Commit preparation and interpretation guards.
+//! Scenario controls for Commit preparation and interpretation guards.
 //!
-//! The two ignored evidence tests are temporary. Run them explicitly with `--ignored`
-//! for the baseline and again after Step C. In the final verification step, delete them and
-//! `backend_membership_inventory` when the generic zero-query test replaces them;
-//! retain the exact-source `reads_by_source` counter. Kept scenario tests change
-//! assertions in Step A without being renamed.
+//! Omitted-versus-required read faults are covered by the active omitted-membership control.
 use super::*;
 use crate::commit_assessment::{assess_commit_candidates, validate_commit_candidates};
 use holons_core::core_shared_objects::holon::ValidationState;
 use type_names::CoreRelationshipTypeName as R;
-
-#[test]
-#[ignore = "temporary baseline evidence; rerun after Step C"]
-fn broad_preparation_incidental_empty_reads_abort_and_preserve_outcomes() -> Result<(), HolonError>
-{
-    // These memberships have no semantic consumer on these categories. A retained
-    // required edge is included as a paired control, not a proposed removal.
-    for (source, edge) in [
-        ("Contract", R::ValueType),
-        ("StringValueType.ValueType", R::InstanceProperties),
-        ("StringValueType.ValueType", R::RuleOf),
-        ("Title.PropertyType", R::DescribedBy),
-    ] {
-        let fixture = readiness_fixture()?.saved_snapshot()?;
-        fixture.control_saved_relationship_reads(source, edge.clone(), None)?;
-        let mut subject = fixture.staged_subject("read-control")?;
-        subject.with_property_value("Title", "valid")?;
-        assert!(validate_commit_candidates(&fixture.context, &[subject.clone()])?.is_accepted());
-        assert!(fixture.backend_reads_for_source(source, &edge) > 0, "{source} {edge:?}");
-        let before = fixture.backend_reads_for_source(source, &edge);
-        let error = HolonError::InvalidState(format!("injected {source} {edge:?}"));
-        fixture.control_saved_relationship_reads(source, edge.clone(), Some(error.clone()))?;
-        for report_only in [true, false] {
-            let result = if report_only {
-                assess_commit_candidates(&fixture.context, &[subject.clone()]).map(|a| a.report)
-            } else {
-                validate_commit_candidates(&fixture.context, &[subject.clone()])
-            };
-            assert_eq!(result.unwrap_err(), error);
-            assert_eq!(subject.validation_state()?, ValidationState::Validated);
-            assert!(subject.validation_findings()?.is_empty());
-        }
-        assert!(fixture.backend_reads_for_source(source, &edge) >= before + 2);
-    }
-    Ok(())
-}
-
-#[test]
-#[ignore = "temporary baseline evidence; rerun after Step C"]
-fn exact_empty_membership_reads_cover_each_candidate_mode() -> Result<(), HolonError> {
-    for mode in ["instance", "definition", "mixed", "no-op", "graph-only"] {
-        let fixture = saved_instance_fixture()?;
-        let mut instance = fixture.staged_subject("inventory-instance")?;
-        instance.with_property_value("Title", "valid")?;
-        let definition = fixture.stage_update_of_with("Title.PropertyType", |model| {
-            use type_names::ToPropertyName;
-            model.properties.insert(
-                "IsValueRequired".to_property_name(),
-                BaseValue::BooleanValue(MapBoolean(false)),
-            );
-            Ok(())
-        })?;
-        let alias = fixture.stage_update_of("SavedInstance")?;
-        if mode == "graph-only" {
-            let handle = alias.get_holon_to_commit(&fixture.context)?;
-            let mut holon = handle.write().unwrap();
-            let Holon::Staged(staged) = &mut *holon else { unreachable!() };
-            staged.note_relationship_mutation(false)?;
-        }
-        let candidates = match mode {
-            "instance" => vec![instance],
-            "definition" => vec![definition],
-            "mixed" => vec![definition, instance],
-            _ => vec![alias],
-        };
-        fixture.control_saved_relationship_reads("StringValueType.ValueType", R::RuleOf, None)?;
-        fixture.reset_backend_membership_reads();
-        let report = assess_commit_candidates(&fixture.context, &candidates)?.report;
-        assert_eq!(
-            report.is_accepted(),
-            !matches!(mode, "definition" | "mixed"),
-            "{mode}: {report:?}"
-        );
-        assert!(
-            fixture.backend_reads_for_source("StringValueType.ValueType", &R::RuleOf) > 0,
-            "{mode}"
-        );
-        for (source, relationship, count) in fixture.backend_membership_inventory() {
-            println!("[fixture-membership] mode={mode} source={source} relationship={relationship} requests={count}");
-        }
-    }
-    Ok(())
-}
 
 #[test]
 fn unusable_property_selection_beside_invalid_sibling_value() -> Result<(), HolonError> {
