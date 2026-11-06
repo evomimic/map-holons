@@ -38,7 +38,7 @@ use base_types::{MapBytes, MapString};
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::dances::{RequestBody, ResponseBody, ResponseStatusCode};
 use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
@@ -504,6 +504,62 @@ impl HolonServiceApi for ClientHolonService {
         let bind_descriptor =
             !foundational_relationship(name) && !self.resolving_relationship_semantics();
         self.fetch_relationship(context, source, name, bind_descriptor)
+    }
+
+    fn fetch_all_relationships_with_descriptors_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+        unresolved: &[RelationshipName],
+    ) -> Result<
+        Vec<(
+            RelationshipName,
+            holons_core::core_shared_objects::relationship_fetch::FetchedRelationship,
+        )>,
+        HolonError,
+    > {
+        let source_reference = HolonReference::Smart(SmartReference::new_from_id(
+            context.space_read_handle(),
+            source.clone(),
+        ));
+        let nodes =
+            NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
+        let mut request =
+            holon_dance_builders::build_fetch_all_related_holons_dance_request(nodes)?;
+        let unresolved: Vec<_> = unresolved
+            .iter()
+            .filter(|name| {
+                !foundational_relationship(name) && !self.resolving_relationship_semantics()
+            })
+            .cloned()
+            .collect();
+        request.body =
+            RequestBody::RelationshipSet { names: names.to_vec(), unresolved: unresolved.clone() };
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(response.error.unwrap_or_else(|| {
+                HolonError::Misc(format!(
+                    "FetchAllRelatedHolons dance failed: {}",
+                    response.description.0
+                ))
+            }));
+        }
+        match response.body {
+            ResponseBody::SavedRelationshipSet(entries)
+                if unresolved.iter().all(|name| {
+                    entries
+                        .iter()
+                        .any(|(actual, fetched)| actual == name && fetched.descriptor.is_some())
+                }) =>
+            {
+                Ok(entries)
+            }
+            _ => Err(HolonError::InvalidState(
+                "Expected descriptor-associated relationship set".into(),
+            )),
+        }
     }
 
     fn fetch_relationship_set_with_descriptors_internal(

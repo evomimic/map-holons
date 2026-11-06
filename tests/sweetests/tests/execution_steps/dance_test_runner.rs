@@ -184,6 +184,7 @@ pub async fn run_dance_test_case(
                 execute_begin_transaction(&mut test_execution_state, expected_error).await
             }
             DanceTestStep::Commit {
+                rejection_verification,
                 candidates,
                 retry_participants,
                 expected_status,
@@ -194,6 +195,7 @@ pub async fn run_dance_test_case(
                     &mut test_execution_state,
                     candidates,
                     retry_participants,
+                    rejection_verification,
                     expected_status,
                     expected_error,
                 )

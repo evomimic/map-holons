@@ -502,6 +502,37 @@ impl FixtureHolons {
         Ok(())
     }
 
+    /// Freezes the complete new-root workset without advancing any fixture heads.
+    pub(crate) fn rejection_subjects(&self) -> Result<Vec<TestReference>, HolonError> {
+        let mut keys = BTreeSet::new();
+        let mut subjects = Vec::new();
+        for holon in self.holons.values().filter(|holon| holon.state() == TestHolonState::Staged) {
+            if holon.staging_source != StagingSource::NewRoot {
+                return Err(HolonError::InvalidParameter(
+                    "Fixture-scoped rejection supports new roots only".into(),
+                ));
+            }
+            let key = holon.head_snapshot.snapshot().key()?.ok_or_else(|| {
+                HolonError::InvalidParameter("Fixture-scoped rejection requires keyed roots".into())
+            })?;
+            if key.0.is_empty() || !keys.insert(key.0) {
+                return Err(HolonError::InvalidParameter(
+                    "Fixture-scoped rejection requires unique nonempty keys".into(),
+                ));
+            }
+            subjects.push(TestReference::new(
+                holon.head_snapshot.as_source(),
+                holon.head_snapshot.clone(),
+            ));
+        }
+        if subjects.is_empty() {
+            return Err(HolonError::InvalidParameter(
+                "Fixture-scoped rejection requires a nonempty new-root workset".into(),
+            ));
+        }
+        Ok(subjects)
+    }
+
     /// Derives declarations only when staging unambiguously established new roots.
     pub fn derive_create_only_declarations(
         &self,
@@ -708,6 +739,102 @@ mod tests {
     }
 
     #[test]
+    fn bounded_rejection_freezes_subjects_and_preserves_heads() {
+        use crate::{DanceTestStep, DancesTestCase, RejectionVerification};
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let a = mint_staged_token(&context, &mut fixtures, "a");
+        let b = mint_staged_token(&context, &mut fixtures, "b");
+        let mut case = DancesTestCase::default();
+        case.add_commit_step_with_rejection_checks(&fixtures, vec![], None).unwrap();
+        let DanceTestStep::Commit {
+            candidates, retry_participants, rejection_verification, ..
+        } = &case.steps[0]
+        else {
+            panic!("Commit")
+        };
+        assert!(candidates.is_empty() && retry_participants.is_empty());
+        let RejectionVerification::FixtureScoped { subjects, .. } = rejection_verification else {
+            panic!("bounded checks")
+        };
+        assert_eq!(subjects.len(), 2);
+        assert!(subjects.iter().any(|token| token.expected_id() == a.expected_id()));
+        assert!(subjects.iter().any(|token| token.expected_id() == b.expected_id()));
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&a).unwrap().expected_id(),
+            a.expected_id()
+        );
+        let captured: Vec<_> = subjects.iter().map(|token| token.expected_id()).collect();
+        case.add_commit_step(&mut fixtures, ExpectedCommitStatus::Complete, None, None).unwrap();
+        let DanceTestStep::Commit {
+            rejection_verification: RejectionVerification::FixtureScoped { subjects, .. },
+            ..
+        } = &case.steps[0]
+        else {
+            panic!("bounded checks")
+        };
+        assert_eq!(subjects.iter().map(|token| token.expected_id()).collect::<Vec<_>>(), captured);
+        assert_ne!(
+            fixtures.resolve_target_token_to_head(&a).unwrap().expected_id(),
+            a.expected_id()
+        );
+    }
+
+    #[test]
+    fn bounded_rejection_rejects_unsupported_worksets_atomically() {
+        use crate::{DancesTestCase, NamedRelationshipSubject};
+        use holons_prelude::prelude::*;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        let mut case = DancesTestCase::default();
+        assert!(case.add_commit_step_with_rejection_checks(&fixtures, vec![], None).is_err());
+        let a = mint_staged_token(&context, &mut fixtures, "same");
+        let b = mint_staged_token(&context, &mut fixtures, "same");
+        assert!(case.add_commit_step_with_rejection_checks(&fixtures, vec![], None).is_err());
+        let b_id = fixtures.fixture_id_for_token(&b).unwrap();
+        fixtures.holons.remove(&b_id);
+        let a_id = fixtures.fixture_id_for_token(&a).unwrap();
+        fixtures.holons.get_mut(&a_id).unwrap().staging_source =
+            StagingSource::Version { source: a_id.clone() };
+        assert!(case.add_commit_step_with_rejection_checks(&fixtures, vec![], None).is_err());
+        fixtures.holons.get_mut(&a_id).unwrap().staging_source = StagingSource::NewRoot;
+        let guard = NamedRelationshipSubject {
+            source: a.clone(),
+            relationship: "Instances".to_relationship_name(),
+        };
+        assert!(case.add_commit_step_with_rejection_checks(&fixtures, vec![guard], None).is_err());
+        assert!(case.steps.is_empty());
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&a).unwrap().expected_id(),
+            a.expected_id()
+        );
+        let source = context.mutation().new_holon(None).unwrap();
+        let unkeyed = ExpectedSnapshot::new(source.clone(), TestHolonState::Staged);
+        fixtures.create_fixture_holon(unkeyed.clone()).unwrap();
+        fixtures
+            .mint_test_reference(SourceSnapshot::new(source, TestHolonState::Transient), unkeyed);
+        assert!(case.add_commit_step_with_rejection_checks(&fixtures, vec![], None).is_err());
+        assert!(case.steps.is_empty());
+    }
+
+    #[test]
+    fn bounded_rejection_refuses_retained_relationship_retries() {
+        use crate::DancesTestCase;
+        let context = init_fixture_context();
+        let mut fixtures = FixtureHolons::new(context.clone());
+        mint_staged_token(&context, &mut fixtures, "partial");
+        let mut case = DancesTestCase::default();
+        case.add_commit_step(&mut fixtures, ExpectedCommitStatus::Incomplete, None, None).unwrap();
+        let new_root = mint_staged_token(&context, &mut fixtures, "new-root");
+        assert!(case.add_commit_step_with_rejection_checks(&fixtures, vec![], None).is_err());
+        assert_eq!(case.steps.len(), 1);
+        assert_eq!(
+            fixtures.resolve_target_token_to_head(&new_root).unwrap().expected_id(),
+            new_root.expected_id()
+        );
+    }
+
+    #[test]
     fn rejected_commit_step_preserves_heads_for_corrected_retry() {
         use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
 
@@ -723,7 +850,7 @@ mod tests {
         assert_eq!(head.expected_id(), staged_token.expected_id());
         assert_eq!(head.expected_snapshot().state(), TestHolonState::Staged);
         assert!(
-            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { candidates, .. }) if candidates.is_empty())
+            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { candidates, rejection_verification: crate::RejectionVerification::ExistingPersistenceSnapshot, .. }) if candidates.is_empty())
         );
 
         // The same token can feed a correction step; a subsequent accepted Commit advances it.

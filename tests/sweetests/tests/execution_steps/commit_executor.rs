@@ -1,11 +1,12 @@
+use super::rejection_verification_executor::RejectionObservations;
 use core_types::{TemporaryId, ValidationSubjectPath};
 use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
 use holons_test::{
     classify, disposition_report, error_delta_report, match_saved_holons, new_error_occurrences,
     ExecutionHandle, ExecutionReference, ExpectedCommitCarrierFinding, ExpectedCommitStatus,
     ExpectedDisposition, ExpectedRejectedHolon, ExpectedRetryParticipant,
-    ExpectedValidationSubject, ObservedCandidate, ResolveBy, ResolvedCommitCandidate,
-    TestExecutionState,
+    ExpectedValidationSubject, ObservedCandidate, RejectionVerification, ResolveBy,
+    ResolvedCommitCandidate, TestExecutionState,
 };
 use integrity_core_types::HolonErrorKind;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
@@ -90,6 +91,7 @@ pub async fn execute_commit(
     state: &mut TestExecutionState,
     declarations: Vec<ResolvedCommitCandidate>,
     retry_participants: Vec<ExpectedRetryParticipant>,
+    rejection_verification: RejectionVerification,
     expected_status: ExpectedCommitStatus,
     expected_error: Option<HolonErrorKind>,
 ) {
@@ -104,8 +106,32 @@ pub async fn execute_commit(
         .iter()
         .filter(|reference| reference.is_live_validation_candidate().unwrap())
         .collect();
-    let before_rejection = (expected_status == ExpectedCommitStatus::Rejected)
-        .then(|| persistence_snapshot(&context, &candidates).expect("pre-Commit persisted state"));
+    let before_rejection = (expected_status == ExpectedCommitStatus::Rejected
+        && matches!(&rejection_verification, RejectionVerification::ExistingPersistenceSnapshot))
+    .then(|| persistence_snapshot(&context, &candidates).expect("pre-Commit persisted state"));
+    let bounded_observations =
+        match &rejection_verification {
+            RejectionVerification::FixtureScoped { subjects, unchanged_relationships } => {
+                assert_eq!(expected_status, ExpectedCommitStatus::Rejected);
+                assert!(staged.iter().all(|reference| !reference.is_committed().unwrap()),
+                "fixture-scoped rejection does not support retained committed retry participants");
+                assert!(
+                    expected_error.is_none()
+                        && declarations.is_empty()
+                        && retry_participants.is_empty()
+                );
+                Some(
+                    RejectionObservations::capture(
+                        state,
+                        subjects,
+                        unchanged_relationships,
+                        &candidates,
+                    )
+                    .await,
+                )
+            }
+            RejectionVerification::ExistingPersistenceSnapshot => None,
+        };
     let excluded: Vec<_> = staged
         .iter()
         .filter(|reference| !reference.is_live_validation_candidate().unwrap())
@@ -367,14 +393,21 @@ pub async fn execute_commit(
             if expected_status == ExpectedCommitStatus::Rejected {
                 assert_eq!(commit_count.0, 0, "rejection must not save holons");
                 assert!(context.is_open(), "rejection must leave the transaction open");
-                assert_eq!(
-                    Some(
-                        persistence_snapshot(&context, &candidates)
-                            .expect("post-Commit persisted state")
-                    ),
-                    before_rejection,
-                    "semantic rejection must not write nodes or SmartLinks"
-                );
+                match &rejection_verification {
+                    RejectionVerification::ExistingPersistenceSnapshot => {
+                        assert_eq!(
+                            Some(
+                                persistence_snapshot(&context, &candidates)
+                                    .expect("post-Commit persisted state")
+                            ),
+                            before_rejection,
+                            "semantic rejection must not write nodes or SmartLinks"
+                        );
+                    }
+                    RejectionVerification::FixtureScoped { subjects, .. } => {
+                        bounded_observations.as_ref().unwrap().verify(state, subjects).await;
+                    }
+                }
                 let rejected = commit_response_ref
                     .related_holons(CoreRelationshipTypeName::RejectedHolons)
                     .expect("RejectedHolons relationship");

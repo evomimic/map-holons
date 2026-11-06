@@ -11,6 +11,7 @@ use crate::descriptors::Descriptor;
 use crate::reference_layer::{HolonReference, HolonServiceApi};
 use crate::{HolonCacheAccess, HolonCollection, ReadableHolon, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
+use type_names::{CoreRelationshipTypeName, ToRelationshipName};
 
 #[derive(Debug, Clone)]
 pub struct HolonCacheManager {
@@ -47,6 +48,50 @@ impl CacheReadTransactions {
         self.space
             .upgrade()
             .ok_or_else(|| HolonError::ServiceNotAvailable("Cache owning Space".into()))
+    }
+
+    /// Uses only resident DescribedBy membership and existing Session preparation.
+    /// A miss must leave schema discovery to the ordinary provider boundary.
+    pub(super) fn prepared_relationship_binding(
+        &self,
+        cache: &RelationshipCache,
+        service: &dyn HolonServiceApi,
+        source: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<Option<super::relationship_fetch::RelationshipPolicyBinding>, HolonError> {
+        let Some(registry) = self.space()?.descriptor_registry() else {
+            return Ok(None);
+        };
+        let Some(described_by) = cache.resident_membership(
+            service,
+            source,
+            &CoreRelationshipTypeName::DescribedBy.to_relationship_name(),
+        )?
+        else {
+            return Ok(None);
+        };
+        let members = described_by
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        let [descriptor] = members.as_slice() else {
+            return Ok(None);
+        };
+        match registry.get(&descriptor.holon_id()?)? {
+            Some(prepared) => {
+                // Descriptor sources can add SourceOf candidates along their own
+                // Extends lineage, beyond their describing type's preparation.
+                // Keep that broader binding at the existing guest boundary.
+                if prepared.declares_relationship(
+                    &CoreRelationshipTypeName::Extends.to_relationship_name(),
+                )? {
+                    return Ok(None);
+                }
+                prepared.saved_relationship_binding(name)
+            }
+            None => Ok(None),
+        }
     }
 
     /// Opens an unregistered restricted context with cleanup bound to the returned guard.
@@ -248,19 +293,29 @@ impl HolonCacheAccess for HolonCacheManager {
             crate::core_shared_objects::SpaceReadHandle::new(self.transactions.space()?),
             source_holon_id.clone(),
         );
-        let relationship_names = {
+        let descriptor = source.holon_descriptor()?;
+        let prepared =
+            crate::descriptors::EffectiveHolonDescriptor::find_prepared(descriptor.holon())?;
+        let prepared_bindings = prepared
+            .as_ref()
+            .map(|prepared| prepared.saved_content_relationship_bindings())
+            .transpose()?;
+        let needs_ancestry_binding = prepared
+            .as_ref()
+            .map(|prepared| {
+                prepared.declares_relationship(
+                    &CoreRelationshipTypeName::Extends.to_relationship_name(),
+                )
+            })
+            .transpose()?
+            .unwrap_or(false);
+        let relationship_names = if let Some(bindings) = &prepared_bindings {
+            bindings.iter().map(|(name, _)| name.clone()).collect()
+        } else {
             let mut seen = HashSet::new();
             let mut names = Vec::new();
-            // Complete content reads and saved clones must retain the authored
-            // contract even when presentation navigation omits a declaration.
-            let descriptor = source.holon_descriptor()?;
-            let declared = match crate::descriptors::EffectiveHolonDescriptor::find_prepared(
-                descriptor.holon(),
-            )? {
-                Some(prepared) => prepared.instance_relationships()?,
-                None => crate::descriptors::effective_relationships::effective_declared_relationships_for_holon(&source)?,
-            };
-            for relationship in declared {
+            // Bootstrap remains usable before effective preparation is available.
+            for relationship in crate::descriptors::effective_relationships::effective_declared_relationships_for_holon(&source)? {
                 let name = relationship.base_relationship_name()?;
                 if seen.insert(name.clone()) {
                     names.push(name);
@@ -277,13 +332,23 @@ impl HolonCacheAccess for HolonCacheManager {
             names
         };
 
-        let mut relationship_map = RelationshipMap::new_empty();
-        for name in relationship_names {
-            let collection = self.get_related_holons(source_holon_id, &name)?;
-            relationship_map.insert(name, collection);
-        }
+        // A descriptor source may have additional binding candidates on its
+        // own ancestry. Reuse its prepared names, leaving policy binding to the guest.
+        let bindings = prepared_bindings.as_deref().unwrap_or_default();
+        let bindings = if needs_ancestry_binding { &[] } else { bindings };
 
-        Ok(relationship_map)
+        let cache = self
+            .relationship_cache
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .clone();
+        cache.all_related_holons(
+            &self.transactions,
+            self.holon_service.as_ref(),
+            source_holon_id,
+            &relationship_names,
+            bindings,
+        )
     }
 }
 

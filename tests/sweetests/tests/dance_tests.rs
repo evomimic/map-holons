@@ -79,6 +79,17 @@ async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     run_dance_test_suite(suite).await;
 }
 
+/// Focused rerun for the fixture-scoped rejection contract; default coverage is in the matrix.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused bounded rejection verification; covered by runtime_behavior_matrix"]
+async fn commit_validation_correction_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "commit_validation_correction",
+        test_cases: vec![commit_validation_fixture().unwrap()],
+    })
+    .await;
+}
+
 /// Isolates inherited-member rejection from preceding runtime-matrix scenarios.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "focused schema rejection diagnosis; covered by runtime_behavior_matrix"]

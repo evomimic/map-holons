@@ -40,6 +40,7 @@ pub enum RequestBodyWire {
     TransientReference(TransientReferenceWire),
     HolonId(HolonId),
     SavedHolonIds(Vec<HolonId>),
+    RelationshipSet { names: Vec<RelationshipName>, unresolved: Vec<RelationshipName> },
     Key(MapString),
     ParameterValues(PropertyMap),
     StagedRef(StagedReferenceWire),
@@ -147,6 +148,9 @@ impl DanceTypeWire {
 impl RequestBodyWire {
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<RequestBody, HolonError> {
         match self {
+            RequestBodyWire::RelationshipSet { names, unresolved } => {
+                Ok(RequestBody::RelationshipSet { names, unresolved })
+            }
             RequestBodyWire::None => Ok(RequestBody::None),
             RequestBodyWire::Holon(holon_wire) => Ok(RequestBody::Holon(holon_wire.bind(context)?)),
             RequestBodyWire::TargetHolons(name, wires) => {
@@ -173,6 +177,9 @@ impl RequestBodyWire {
     /// Intentionally avoids overly-verbose Debug dumps for common cases.
     pub fn summarize(&self) -> String {
         match self {
+            RequestBodyWire::RelationshipSet { names, unresolved } => {
+                format!("RelationshipSet(count={}, unresolved={})", names.len(), unresolved.len())
+            }
             RequestBodyWire::None => "  None".to_string(),
 
             RequestBodyWire::Holon(holon_wire) => {
@@ -244,6 +251,12 @@ impl From<&DanceType> for DanceTypeWire {
 impl From<&RequestBody> for RequestBodyWire {
     fn from(body: &RequestBody) -> Self {
         match body {
+            RequestBody::RelationshipSet { names, unresolved } => {
+                RequestBodyWire::RelationshipSet {
+                    names: names.clone(),
+                    unresolved: unresolved.clone(),
+                }
+            }
             RequestBody::None => RequestBodyWire::None,
             RequestBody::Holon(holon) => RequestBodyWire::Holon(HolonWire::from(holon)),
             RequestBody::TargetHolons(relationship_name, references) => {

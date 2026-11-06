@@ -3,7 +3,10 @@ use crate::context_binding::query_wire::NodeCollectionWire;
 use crate::context_binding::HolonWire;
 use crate::HolonReferenceWire;
 use base_types::MapString;
-use core_types::HolonError;
+use core_types::{HolonError, RelationshipName};
+use holons_core::core_shared_objects::relationship_fetch::{
+    FetchedRelationship, RelationshipPolicyBinding,
+};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
 use serde::{Deserialize, Serialize};
@@ -27,10 +30,12 @@ pub struct DanceResponseWire {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseBodyWire {
     SavedHolonHydration(Vec<super::saved_holon_fetch_wire::SavedHolonFetchWire>),
+    SavedRelationshipSet(
+        Vec<(RelationshipName, HolonCollectionWire, Option<RelationshipPolicyBinding>)>,
+    ),
     SavedRelationship {
         collection: HolonCollectionWire,
-        descriptor:
-            Option<holons_core::core_shared_objects::relationship_fetch::RelationshipPolicyBinding>,
+        descriptor: Option<RelationshipPolicyBinding>,
     },
     None,
     Holon(HolonWire),
@@ -78,12 +83,25 @@ impl ResponseBodyWire {
                 ))
             }
             ResponseBodyWire::SavedRelationship { collection, descriptor } => {
-                Ok(ResponseBody::SavedRelationship(
-                    holons_core::core_shared_objects::relationship_fetch::FetchedRelationship {
-                        collection: collection.bind(context)?,
-                        descriptor,
-                    },
-                ))
+                Ok(ResponseBody::SavedRelationship(FetchedRelationship {
+                    collection: collection.bind(context)?,
+                    descriptor,
+                }))
+            }
+            ResponseBodyWire::SavedRelationshipSet(entries) => {
+                let fetched = entries
+                    .into_iter()
+                    .map(|(name, collection, descriptor)| {
+                        Ok((
+                            name,
+                            FetchedRelationship {
+                                collection: collection.bind(context)?,
+                                descriptor,
+                            },
+                        ))
+                    })
+                    .collect::<Result<_, HolonError>>()?;
+                Ok(ResponseBody::SavedRelationshipSet(fetched))
             }
             ResponseBodyWire::None => Ok(ResponseBody::None),
             ResponseBodyWire::Holon(holon_wire) => {
@@ -116,6 +134,9 @@ impl ResponseBodyWire {
             }
             ResponseBodyWire::SavedRelationship { collection, descriptor } => {
                 format!("SavedRelationship({}, descriptor={descriptor:?})", collection.summarize())
+            }
+            ResponseBodyWire::SavedRelationshipSet(entries) => {
+                format!("SavedRelationshipSet(count={})", entries.len())
             }
             ResponseBodyWire::None => "None".to_string(),
 
@@ -167,6 +188,18 @@ impl From<&ResponseBody> for ResponseBodyWire {
                 collection: HolonCollectionWire::from(&fetched.collection),
                 descriptor: fetched.descriptor.clone(),
             },
+            ResponseBody::SavedRelationshipSet(entries) => ResponseBodyWire::SavedRelationshipSet(
+                entries
+                    .iter()
+                    .map(|(name, fetched)| {
+                        (
+                            name.clone(),
+                            HolonCollectionWire::from(&fetched.collection),
+                            fetched.descriptor.clone(),
+                        )
+                    })
+                    .collect(),
+            ),
             ResponseBody::None => ResponseBodyWire::None,
             ResponseBody::Holon(holon) => ResponseBodyWire::Holon(HolonWire::from(holon)),
             ResponseBody::HolonCollection(collection) => {
@@ -210,5 +243,44 @@ mod tests {
             serde_json::from_str(&encoded).expect("response wire must deserialize");
 
         assert_eq!(decoded.error, Some(error));
+    }
+    #[test]
+    fn relationship_set_wire_preserves_empty_sets_and_policy_bindings() {
+        use core_types::{HolonId, RelationshipName};
+        use holons_core::core_shared_objects::relationship_fetch::{
+            FetchedRelationship, RelationshipPolicyBinding,
+        };
+        use holons_core::{HolonCollection, RelationshipCachePolicy};
+        let binding = RelationshipPolicyBinding {
+            descriptor_id: HolonId::Local(LocalId(vec![2; 39])),
+            policy: RelationshipCachePolicy::MaxAgeMillis(100),
+        };
+        let runtime = ResponseBody::SavedRelationshipSet(vec![
+            (
+                RelationshipName("Empty".into()),
+                FetchedRelationship {
+                    collection: HolonCollection::new_existing(),
+                    descriptor: Some(binding.clone()),
+                },
+            ),
+            (
+                RelationshipName("Foundational".into()),
+                FetchedRelationship {
+                    collection: HolonCollection::new_existing(),
+                    descriptor: None,
+                },
+            ),
+        ]);
+        let projected = ResponseBodyWire::from(&runtime);
+        let encoded = serde_json::to_string(&projected).unwrap();
+        let decoded: ResponseBodyWire = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(decoded, projected);
+        let ResponseBodyWire::SavedRelationshipSet(entries) = decoded else {
+            panic!("expected membership set");
+        };
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].2, Some(binding));
+        assert!(entries[0].1.members.is_empty());
+        assert!(entries[1].2.is_none());
     }
 }

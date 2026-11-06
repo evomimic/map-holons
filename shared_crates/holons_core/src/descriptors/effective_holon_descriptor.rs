@@ -1,8 +1,9 @@
 //! Reference-backed effective Holon schema, prepared eagerly and owned by its runtime context.
 use std::sync::Arc;
 
+use crate::core_shared_objects::relationship_fetch::RelationshipPolicyBinding;
 use base_types::{BaseValue, MapString};
-use core_types::HolonError;
+use core_types::{HolonError, RelationshipName};
 use type_names::{
     CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, ToRelationshipName,
 };
@@ -394,6 +395,99 @@ impl EffectiveHolonDescriptor {
 
     pub fn prepared_schema(&self) -> Result<PreparedSchema, HolonError> {
         self.derived.read(|| self.derived.read(|| PreparedSchema::read(self.holon())))
+    }
+
+    /// Tests the authored instance contract, independently of broader navigation.
+    pub(crate) fn declares_relationship(
+        &self,
+        name: &RelationshipName,
+    ) -> Result<bool, HolonError> {
+        self.derived.read(|| {
+            let members = self.targets(CoreRelationshipTypeName::EffectiveInstanceRelationships)?;
+            Ok(!self
+                .relationship_bindings_for_members(members, &self.prepared_schema()?, Some(name))?
+                .is_empty())
+        })
+    }
+
+    /// Projects complete saved content vocabulary without hydrating descriptor targets.
+    /// Declared contract members survive navigation filtering; inverse members use
+    /// the already-filtered navigation products (including maximum-zero exclusion).
+    pub(crate) fn saved_content_relationship_bindings(
+        &self,
+    ) -> Result<Vec<(RelationshipName, RelationshipPolicyBinding)>, HolonError> {
+        self.derived.read(|| {
+            let mut members =
+                self.targets(CoreRelationshipTypeName::EffectiveInstanceRelationships)?;
+            members.extend(self.targets(CoreRelationshipTypeName::SingularNavigableRelationships)?);
+            members.extend(self.targets(CoreRelationshipTypeName::PluralNavigableRelationships)?);
+            self.relationship_bindings_for_members(members, &self.prepared_schema()?, None)
+        })
+    }
+
+    /// Reads a saved named association from existing preparation only. The full
+    /// navigation provenance also retains definitions omitted by presentation.
+    pub(crate) fn saved_relationship_binding(
+        &self,
+        name: &RelationshipName,
+    ) -> Result<Option<RelationshipPolicyBinding>, HolonError> {
+        self.derived.read(|| {
+            let mut members =
+                self.targets(CoreRelationshipTypeName::EffectiveInstanceRelationships)?;
+            let prepared = self.prepared_schema()?;
+            members.extend(prepared.navigation_members.iter().map(|id| {
+                HolonReference::smart_from_id(self.holon().space_read_handle(), id.clone())
+            }));
+            Ok(self
+                .relationship_bindings_for_members(members, &prepared, Some(name))?
+                .into_iter()
+                .find(|(candidate, _)| candidate == name)
+                .map(|(_, binding)| binding))
+        })
+    }
+
+    fn relationship_bindings_for_members(
+        &self,
+        members: Vec<HolonReference>,
+        prepared: &PreparedSchema,
+        requested_name: Option<&RelationshipName>,
+    ) -> Result<Vec<(RelationshipName, RelationshipPolicyBinding)>, HolonError> {
+        let mut seen = std::collections::HashSet::new();
+        let mut bindings = Vec::new();
+        for member in members {
+            let identity = member.full_reference_id_string();
+            if !seen.insert(identity.clone()) {
+                continue;
+            }
+            // Recover exact IDs from bound references, never by parsing display identities.
+            let descriptor_id = member.holon_id()?;
+            let mut entries =
+                prepared.relationships.iter().filter(|entry| entry.identity == identity);
+            let entry = entries.next().ok_or_else(|| {
+                HolonError::InvalidState(format!(
+                    "Missing prepared relationship metadata for {identity}"
+                ))
+            })?;
+            if entries.next().is_some() {
+                return Err(HolonError::InvalidState(format!(
+                    "Duplicate prepared relationship metadata for {identity}"
+                )));
+            }
+            if requested_name.is_some_and(|name| name != &entry.name) {
+                continue;
+            }
+            if bindings.iter().any(|(name, _)| name == &entry.name) {
+                return Err(HolonError::AmbiguousRelationshipTraversal {
+                    relationship: entry.name.to_string(),
+                    descriptor: self.described_holon_type()?.holon().full_reference_id_string(),
+                });
+            }
+            bindings.push((
+                entry.name.clone(),
+                RelationshipPolicyBinding { descriptor_id, policy: entry.policy },
+            ));
+        }
+        Ok(bindings)
     }
 
     /// Reads resolved Dance affordances from the completed graph.

@@ -261,16 +261,42 @@ pub fn query_relationships_dance(
 /// *DanceRequest:*
 /// - dance_name: "fetch_all_related_holons"
 /// - dance_type: QueryMethod(NodeCollection)
-/// - request_body: None
+/// - request_body: None, or RelationshipSet for one saved source.
 ///
 /// *ResponseBody:*
 /// - NodeCollection -- same source nodes with `relationships` populated for all relationship names.
+/// - SavedRelationshipSet -- requested memberships (including empty sets), with policy bindings
+///   for unresolved names. This form uses one source-wide provider query.
 pub fn fetch_all_related_holons_dance(
-    _context: &Arc<TransactionContext>,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
+            if let RequestBody::RelationshipSet { names, unresolved } = &request.body {
+                if node_collection.members.len() != 1
+                    || unresolved.iter().any(|name| !names.contains(name))
+                {
+                    return Err(HolonError::InvalidParameter(
+                        "Relationship set requires one source and requested policy names".into(),
+                    ));
+                }
+                let source = &node_collection.members[0].source_holon;
+                let mut fetched =
+                    context.get_holon_service().fetch_all_relationships_with_descriptors_internal(
+                        context,
+                        &source.holon_id()?,
+                        names,
+                        &[],
+                    )?;
+                for (name, entry) in &mut fetched {
+                    if unresolved.contains(name) {
+                        entry.descriptor =
+                            Some(crate::descriptors::bind_relationship_policy(source, name)?);
+                    }
+                }
+                return Ok(ResponseBody::SavedRelationshipSet(fetched));
+            }
             if request.body != RequestBody::None {
                 return Err(HolonError::InvalidParameter(
                     "Invalid RequestBody: expected None".to_string(),
