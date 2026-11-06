@@ -226,6 +226,15 @@ class CaptureTests(unittest.TestCase):
             log.write_text(text.replace("substrate=broad-readiness", "substrate=declared-demand"))
             result = measure.summarize([log], instrumentation="822-v2", preparation_substrate="declared-demand")
             self.assertEqual(result["samples"][0]["host_snapshot"], "measured")
+            # Declared demand labels prefetch by consumer role rather than Commitment.
+            log.write_text(text.replace("substrate=broad-readiness", "substrate=declared-demand")
+                           .replace("operation=MembershipPrefetch role=Commitment", "operation=MembershipPrefetch role=Governing"))
+            result = measure.summarize([log], instrumentation="822-v2", preparation_substrate="declared-demand")
+            self.assertEqual(result["samples"][0]["metrics"]["commit-preparation-operation.MembershipPrefetch.Governing.elapsed_us"], 80)
+            log.write_text("\n".join(line for line in text.replace("substrate=broad-readiness", "substrate=declared-demand").splitlines()
+                                     if "operation=MembershipPrefetch" not in line))
+            with self.assertRaisesRegex(ValueError, "MembershipPrefetch"):
+                measure.summarize([log], instrumentation="822-v2", preparation_substrate="declared-demand")
 
     def test_step_a_requires_broad_package_counters_and_matching_marker(self):
         with tempfile.TemporaryDirectory() as directory:

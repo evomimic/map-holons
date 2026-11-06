@@ -141,7 +141,12 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                         metric = f"commit-graph-only.PreparedProducts.{field}"
                         if sample["metrics"].get(metric, 0) < minimum:
                             raise ValueError(f"Missing overlap branch evidence {metric} in {log}")
-                if variant == "prefetch":
+                if variant == "prefetch" and preparation_substrate == "declared-demand" and assessment == "standard":
+                    # Declared demand labels prefetch by consumer role; any role establishes eager prefetch.
+                    if not any(key.startswith("commit-preparation-operation.MembershipPrefetch.") and key.endswith(".elapsed_us")
+                               for key in sample["metrics"]):
+                        required.append("commit-preparation-operation.MembershipPrefetch.<consumer role>.elapsed_us")
+                elif variant == "prefetch":
                     required.append("commit-preparation-operation.MembershipPrefetch." + ("ValidatorRoot" if assessment in ["validator-package", "combined", "warm-probe"] else "Commitment") + ".elapsed_us")
                 elif any(key.startswith("commit-preparation-operation.MembershipPrefetch.") for key in sample["metrics"]):
                     raise ValueError(f"On-demand capture unexpectedly contains eager prefetch in {log}")
