@@ -99,7 +99,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "a0c25f2e93d8f5eb324aaa84167aa8a20baed59d28f83d50c8d5259fdb382939"
+      "sha256": "94f3d1cf33041fd69d83059018eb23ab4aece104e523bdee316f6df8fa95e80a"
     },
     {
       "path": "imports/dancer/schema.json",
@@ -2686,6 +2686,10 @@
     {
       "key": "DescriptorMetaTypeCorrespondence.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "DescriptorResetRequired.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "DesignToken.HolonType",

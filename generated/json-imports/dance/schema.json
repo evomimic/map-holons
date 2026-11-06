@@ -3347,6 +3347,9 @@
               "$ref": "CommitRequestStatus.PropertyType"
             },
             {
+              "$ref": "DescriptorResetRequired.PropertyType"
+            },
+            {
               "$ref": "ValidationViolationCount.PropertyType"
             }
           ]
@@ -4080,6 +4083,43 @@
           "target": [
             {
               "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DescriptorResetRequired.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DescriptorResetRequired",
+        "TypeNamePlural": "DescriptorResetRequiredValues",
+        "DisplayName": "descriptor_reset_required",
+        "DisplayNamePlural": "descriptor_reset_required",
+        "Description": "Guest persistence-effect verdict: false proves a Complete Commit cannot affect prepared descriptor products; missing or invalid evidence requires conservative Session reset when writes may have occurred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
             }
           ]
         }

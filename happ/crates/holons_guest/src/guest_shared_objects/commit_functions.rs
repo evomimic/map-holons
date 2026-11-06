@@ -18,7 +18,8 @@ use holons_core::{
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
     descriptors::{
-        resolve_inverse_relationship_name, ComputedEffectiveSchema, Descriptor, TargetBinding,
+        resolve_inverse_relationship_name, ComputedEffectiveSchema, Descriptor,
+        DescriptorCommitEffects, TargetBinding,
     },
     reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
@@ -321,10 +322,13 @@ pub fn commit(
         context.mutation().new_holon(Some(MapString("Commit Response".to_string())))?;
     response_reference
         .with_property_value(CommitRequestStatus, "Complete")?
-        .with_property_value(CommitsAttempted, attempted_count)?;
+        .with_property_value(CommitsAttempted, attempted_count)?
+        .with_property_value(CorePropertyTypeName::DescriptorResetRequired, true)?;
 
     if staged_references.is_empty() {
         info!("Stage empty, nothing to commit!");
+        response_reference
+            .with_property_value(CorePropertyTypeName::DescriptorResetRequired, false)?;
         response_reference.with_property_value(ValidationViolationCount, 0_i64)?;
         response_reference.add_related_holons(SavedHolons, Vec::new())?;
         log_commit_response("Complete", attempted_count, &[], 0, 0);
@@ -526,6 +530,7 @@ pub fn commit(
     let mut key_index_source_ids = key_index_retry_sources(context, staged_references)?;
     let mut failed_count = 0_usize;
     let mut no_action_targets = NoActionTargetAnchors::default();
+    let mut descriptor_effects = DescriptorCommitEffects::default();
 
     // === FIRST PASS: Commit Staged Holons ===
     {
@@ -543,6 +548,7 @@ pub fn commit(
                     })?;
                     saved_ids.push(holon_id.local_id().clone());
                     if establishes_key_index_entry {
+                        descriptor_effects.record_new_node(holon_id.local_id().clone());
                         key_index_source_ids.insert(holon_id.local_id().clone());
                     }
                     let saved_reference = HolonReference::smart_with_key(
@@ -697,6 +703,7 @@ pub fn commit(
                 &no_action_targets,
                 &mut smartlink_write_context,
                 &mut inverse_dedup_context,
+                &mut descriptor_effects,
                 &mut performance_metrics,
             ) {
                 first_error = Some(err);
@@ -782,6 +789,12 @@ pub fn commit(
         performance_metrics.inverse_dedup_membership_check_count,
         performance_metrics.inverse_dedup_skip_count,
     );
+    if final_status == "Complete" {
+        response_reference.with_property_value(
+            CorePropertyTypeName::DescriptorResetRequired,
+            descriptor_effects.reset_required(),
+        )?;
+    }
     log_commit_response(&final_status, attempted_count, &saved_ids, 0, failed_count);
 
     // Done — return the CommitResponse holon reference
@@ -950,6 +963,7 @@ fn commit_relationship(
     no_action_targets: &NoActionTargetAnchors,
     smartlink_write_context: &mut SmartLinkWriteContext,
     inverse_dedup_context: &mut InverseDedupContext,
+    descriptor_effects: &mut DescriptorCommitEffects,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
@@ -962,6 +976,7 @@ fn commit_relationship(
         no_action_targets,
         smartlink_write_context,
         inverse_dedup_context,
+        descriptor_effects,
         performance_metrics,
     )?;
 
@@ -1214,6 +1229,7 @@ fn save_smartlinks_for_collection(
     no_action_targets: &NoActionTargetAnchors,
     smartlink_write_context: &mut SmartLinkWriteContext,
     inverse_dedup_context: &mut InverseDedupContext,
+    descriptor_effects: &mut DescriptorCommitEffects,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     let descriptor_started_at = performance_timestamp_micros();
@@ -1311,6 +1327,7 @@ fn save_smartlinks_for_collection(
             target_property_cache_candidates: Vec::new(),
         };
 
+        descriptor_effects.record_relationship_write(&forward_smartlink.source_id, &name);
         persist_smartlink(
             smartlink_write_context,
             forward_smartlink,
@@ -1345,6 +1362,7 @@ fn save_smartlinks_for_collection(
             target_property_cache_candidates: Vec::new(),
         };
 
+        descriptor_effects.record_relationship_write(&inverse_smartlink.source_id, &inverse_name);
         persist_smartlink(
             smartlink_write_context,
             inverse_smartlink,

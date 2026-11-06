@@ -1140,6 +1140,7 @@ holon CommitResponse.Projection {
     InstanceProperties -> [
       CommitsAttempted.PropertyType,
       CommitRequestStatus.PropertyType,
+      DescriptorResetRequired.PropertyType,
       ValidationViolationCount.PropertyType
     ]
     InstanceRelationships -> [
@@ -1391,6 +1392,18 @@ enum CommitRequestStatus.MapEnumValueType {
   }
 }
 
+
+property DescriptorResetRequired.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBooleanValueType.BooleanValueType
+  header {
+    description: "Guest persistence-effect verdict: false proves a Complete Commit cannot affect prepared descriptor products; missing or invalid evidence requires conservative Session reset when writes may have occurred."
+    display_name: "descriptor_reset_required"
+    display_plural: "descriptor_reset_required"
+    plural: "DescriptorResetRequiredValues"
+  }
+}
 
 property CommitRequestStatus.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor

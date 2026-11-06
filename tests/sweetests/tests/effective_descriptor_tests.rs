@@ -511,7 +511,7 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     assert_eq!(copied.instance_type_kind().unwrap().map(|kind| kind.holon_id().unwrap()), old_kind);
     assert!(property.effective_validation_bindings().is_ok());
     // A real, nonempty guest Commit validates using the transported registry and
-    // retires the current host Session only after its persistence response arrives.
+    // preserves existing products when its persistence effects are descriptor-independent.
     let name_property: HolonReference = context
         .lookup()
         .get_saved_holon_by_key(&MapString("HolonSpaceName.PropertyType".into()))
@@ -542,12 +542,103 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     // in place; failed validation must preserve both staged work and the Session.
     staged_proof.with_property_value("DisplayName", "Session reset proof").unwrap();
     staged_proof.with_property_value("Description", "Checks local Commit adoption").unwrap();
+    let session_before_commit = context.space_read_handle().session().unwrap();
     let committed = context.commit().unwrap();
     assert_eq!(
         committed.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
         Some(BaseValue::StringValue("Complete".into())),
         "Commit findings: {:?}",
         staged_proof.validation_findings().unwrap()
+    );
+    assert_eq!(
+        committed.property_value(CorePropertyTypeName::DescriptorResetRequired).unwrap(),
+        Some(BaseValue::BooleanValue(false.into())),
+    );
+    assert!(session_before_commit.check_active().is_ok());
+    assert!(before_commit.value_kind().is_ok());
+    assert!(before_holon_commit.instance_properties().is_ok());
+    let allocated = owner.lookup().transient_count().unwrap();
+    assert_eq!(
+        ValueDescriptor::from_holon(saved_value.clone()).value_kind().unwrap(),
+        copied.value_kind().unwrap()
+    );
+    assert_eq!(holon_type.effective_descriptor().unwrap().holon(), before_holon_commit.holon());
+    assert_eq!(owner.lookup().transient_count().unwrap(), allocated);
+
+    // A new instance version initializes DescribedBy on a new exact identity too.
+    let update_tx = runtime.session().begin_transaction().await.unwrap();
+    let update_context = runtime.session().get_transaction(&update_tx).unwrap();
+    let mut updated = update_context
+        .mutation()
+        .stage_new_version_from_id(staged_proof.holon_id().unwrap())
+        .unwrap();
+    updated.with_property_value("Description", "Updated instance without schema effects").unwrap();
+    let versioned = update_context.commit().unwrap();
+    assert_eq!(
+        versioned.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue("Complete".into())),
+        "{:?}",
+        updated.validation_findings().unwrap()
+    );
+    assert_eq!(
+        versioned.property_value(CorePropertyTypeName::DescriptorResetRequired).unwrap(),
+        Some(BaseValue::BooleanValue(false.into()))
+    );
+    assert!(session_before_commit.check_active().is_ok());
+    assert_eq!(holon_type.effective_descriptor().unwrap().holon(), before_holon_commit.holon());
+
+    // A non-definitional relationship writes an inverse onto a saved Schema,
+    // but neither physical collection is a prepared descriptor input.
+    let graph_tx = runtime.session().begin_transaction().await.unwrap();
+    let graph_context = runtime.session().get_transaction(&graph_tx).unwrap();
+    let mut graph_update =
+        graph_context.mutation().stage_new_version_from_id(updated.holon_id().unwrap()).unwrap();
+    let available_schema: HolonReference = graph_context
+        .lookup()
+        .get_saved_holon_by_key(&MapString("MAP Core Schema-v0.0.7".into()))
+        .unwrap()
+        .into();
+    graph_update.add_related_holons("AvailableSchemas", vec![available_schema]).unwrap();
+    assert!(graph_update
+        .is_in_state(
+            &graph_context,
+            holons_core::core_shared_objects::holon::StagedState::ForUpdateGraphOnly
+        )
+        .unwrap());
+    let graph_response = graph_context.commit().unwrap();
+    assert_eq!(
+        graph_response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue("Complete".into())),
+        "{:?}",
+        graph_update.validation_findings().unwrap()
+    );
+    assert_eq!(graph_update.holon_id().unwrap(), updated.holon_id().unwrap());
+    assert_eq!(
+        graph_response.property_value(CorePropertyTypeName::DescriptorResetRequired).unwrap(),
+        Some(BaseValue::BooleanValue(false.into()))
+    );
+    assert!(session_before_commit.check_active().is_ok());
+    assert!(before_commit.value_kind().is_ok());
+    assert_eq!(holon_type.effective_descriptor().unwrap().holon(), before_holon_commit.holon());
+
+    // Schema version publication carries Extends/commitments and must retire both partitions.
+    let schema_tx = runtime.session().begin_transaction().await.unwrap();
+    let schema_context = runtime.session().get_transaction(&schema_tx).unwrap();
+    let mut schema_update = schema_context
+        .mutation()
+        .stage_new_version_from_id(saved_value.holon_id().unwrap())
+        .unwrap();
+    schema_update.with_property_value("Description", "Descriptor retention reset proof").unwrap();
+    let schema_response = schema_context.commit().unwrap();
+    assert_eq!(
+        schema_response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue("Complete".into())),
+        "{:?}",
+        schema_update.validation_findings().unwrap()
+    );
+    assert_eq!(
+        schema_response.property_value(CorePropertyTypeName::DescriptorResetRequired).unwrap(),
+        Some(BaseValue::BooleanValue(true.into()))
     );
     assert!(matches!(before_commit.value_kind(), Err(HolonError::ObsoleteSession)));
     assert!(matches!(before_holon_commit.instance_properties(), Err(HolonError::ObsoleteSession)));
@@ -557,6 +648,9 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     );
     assert_eq!(value.value_kind().unwrap(), copied.value_kind().unwrap());
     assert!(!holon_type.effective_descriptor().unwrap().instance_properties().unwrap().is_empty());
+    update_context.dispose().unwrap();
+    graph_context.dispose().unwrap();
+    schema_context.dispose().unwrap();
     snapshot.dispose().unwrap();
     context.dispose().unwrap();
     assert!(value.supported_operators().unwrap().len() >= 3);

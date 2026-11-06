@@ -997,6 +997,18 @@ mod tests {
     }
 
     #[test]
+    fn prepared_collection_inventory_requires_commit_reset() {
+        use type_names::ToRelationshipName;
+        let source_id = core_types::LocalId(vec![91; 39]);
+        for (source, _, _, _, _) in collections() {
+            let name = source.to_relationship_name();
+            let mut effects = crate::descriptors::DescriptorCommitEffects::default();
+            effects.record_relationship_write(&source_id, &name);
+            assert!(effects.reset_required(), "Untracked prepared input: {name}");
+        }
+    }
+
+    #[test]
     fn navigation_partitions_preserve_occurrences_and_omit_only_zero_maximum(
     ) -> Result<(), HolonError> {
         let (context, mut parent, target) = fixture()?;

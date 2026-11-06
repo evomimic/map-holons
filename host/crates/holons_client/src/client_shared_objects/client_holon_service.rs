@@ -291,52 +291,74 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
-        // Build commit dance request
-        let request = holon_dance_builders::build_commit_dance_request()?;
-
-        // Run the dance (sync → async → sync)
-        let response =
-            run_future_synchronously(async move { context.initiate_dance(request).await })?;
-
-        // Any non-OK status is an error
-        if response.status_code != ResponseStatusCode::OK {
-            return Err(HolonError::Misc(format!(
-                "Commit dance failed: {:?} — {}",
-                response.status_code, response.description.0
-            )));
-        }
-
-        // Extract HolonReference → TransientReference
-        match response.body {
-            ResponseBody::HolonReference(HolonReference::Transient(tref)) => {
-                let status =
-                    tref.property_value(type_names::CorePropertyTypeName::CommitRequestStatus)?;
-                let persisted = !tref
-                    .related_holons(type_names::CoreRelationshipTypeName::SavedHolons)?
-                    .read()
-                    .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
-                    .get_members()
-                    .is_empty();
-                // Incomplete can already have persisted nodes/edges. Conservatively
-                // retire its adopted view as well; never treat it like rejection.
-                if persisted
-                    || matches!(status, Some(base_types::BaseValue::StringValue(ref value)) if value.0 == "Incomplete" || (value.0 == "Complete" && !staged_references.is_empty()))
-                {
+        // A missing or unusable response may follow persistence. Keep evidence
+        // handling inside this boundary so binding/read errors cannot preserve stale state.
+        let outcome = (|| {
+            let request = holon_dance_builders::build_commit_dance_request()?;
+            let response =
+                run_future_synchronously(async move { context.initiate_dance(request).await })?;
+            if response.status_code != ResponseStatusCode::OK {
+                return Err(response.error.unwrap_or_else(|| {
+                    HolonError::Misc(format!(
+                        "Commit dance failed: {:?} — {}",
+                        response.status_code, response.description.0
+                    ))
+                }));
+            }
+            let tref = match response.body {
+                ResponseBody::HolonReference(HolonReference::Transient(tref)) => tref,
+                other => {
+                    return Err(HolonError::CommitFailure(format!(
+                        "Expected transient CommitResponse but received {other:?}"
+                    )))
+                }
+            };
+            let status =
+                tref.property_value(type_names::CorePropertyTypeName::CommitRequestStatus)?;
+            let persisted = !tref
+                .related_holons(type_names::CoreRelationshipTypeName::SavedHolons)?
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .get_members()
+                .is_empty();
+            let evidence =
+                tref.property_value(type_names::CorePropertyTypeName::DescriptorResetRequired)?;
+            let reset = match status {
+                Some(base_types::BaseValue::StringValue(ref value)) if value.0 == "Rejected" => {
+                    persisted
+                }
+                Some(base_types::BaseValue::StringValue(ref value)) if value.0 == "Complete" => {
+                    match evidence {
+                        Some(base_types::BaseValue::BooleanValue(value)) => value.0,
+                        // Preserve the demonstrably empty legacy path, but never
+                        // infer an empty persistence scope from SavedHolons alone.
+                        _ => persisted || !staged_references.is_empty(),
+                    }
+                }
+                _ => true,
+            };
+            Ok((tref, reset))
+        })();
+        match outcome {
+            Ok((response, reset)) => {
+                if reset {
                     context
                         .space_read_handle()
                         .reset_session()
                         .map_err(|error| HolonError::CacheResetAfterCommit(error.to_string()))?;
                 }
-                Ok(tref)
+                Ok(response)
             }
-            ResponseBody::HolonReference(other) => Err(HolonError::CommitFailure(format!(
-                "Expected TransientReference but received {:?}",
-                other
-            ))),
-            body => Err(HolonError::CommitFailure(format!(
-                "Commit returned unexpected ResponseBody: {:?}; expected HolonReference",
-                body
-            ))),
+            Err(error) => {
+                // Preserve the original uncertain outcome; reset failure must not
+                // imply that an already attempted Commit is safe to repeat.
+                if let Err(reset_error) = context.space_read_handle().reset_session() {
+                    tracing::warn!(
+                        "Session retirement after uncertain Commit failed: {reset_error}"
+                    );
+                }
+                Err(error)
+            }
         }
     }
 
