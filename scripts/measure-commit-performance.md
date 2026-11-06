@@ -197,8 +197,10 @@ when repeating comparable captures. Longer startup is not evidence that a measur
 was slower. A timeout at the larger allowance remains a setup failure to investigate.
 
 
-Inventory builds also emit `commit-operation-read` records for `NameIndexes`, with exact source
-identity, relationship (or Node), cache outcome, and request count. These are deltas of existing
+Inventory builds also emit `commit-operation-read` records for `NameIndexes`, `DerivedAcquisition`
+and `FreshEffectiveSchema`, with operation role, per-operation invocation number, exact source
+identity, relationship (or Node), cache outcome, and request count. Key lookups bypass the logical
+cache and do not appear in these records. These are deltas of existing
 phase probes, captured at operation boundaries. They require no extra content reads and attribute
 requests that phase-wide inventories alone cannot separate. Inventory timings include observation
 overhead and must not be used as latency measurements.
