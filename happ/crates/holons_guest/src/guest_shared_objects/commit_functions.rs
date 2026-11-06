@@ -368,6 +368,7 @@ pub fn commit(
         BTreeMap::new();
     let mut preparation_operation_start = None;
     let mut index_read_start = None;
+    let mut inventory_invocations: BTreeMap<(&str, &str), usize> = BTreeMap::new();
     let mut preparation_visit_start = None;
     let mut preparation_types: BTreeMap<String, PreparationTypeMetrics> = BTreeMap::new();
     let mut observe = |event| {
@@ -420,13 +421,27 @@ pub fn commit(
                 starting,
             } => {
                 let current = crate::persistence_layer::smartlink::relationship_read_metrics();
-                if cfg!(feature = "commit-read-inventory") && operation == "NameIndexes" {
+                if cfg!(feature = "commit-read-inventory")
+                    && matches!(
+                        operation,
+                        "NameIndexes" | "DerivedAcquisition" | "FreshEffectiveSchema"
+                    )
+                {
                     if starting {
                         index_read_start = logical_probe.as_ref().map(|probe| probe.snapshot());
                     } else if let (Some(before), Some(probe)) =
                         (index_read_start.take(), logical_probe.as_ref())
                     {
-                        emit_index_read_inventory(before, probe.snapshot());
+                        let invocation =
+                            inventory_invocations.entry((operation, role)).or_insert(0);
+                        *invocation += 1;
+                        emit_operation_read_inventory(
+                            operation,
+                            role,
+                            *invocation,
+                            before,
+                            probe.snapshot(),
+                        );
                     }
                 }
                 if starting {
@@ -1531,8 +1546,11 @@ fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKe
     CanonicalKey::new(key.map_or_else(String::new, |value| value.0))
 }
 
-/// Attribute logical content reads to name-index construction in diagnostic builds only.
-fn emit_index_read_inventory(
+/// Attribute logical reads to one preparation operation invocation in diagnostic builds only.
+fn emit_operation_read_inventory(
+    operation: &str,
+    role: &str,
+    invocation: usize,
     before: Vec<holons_core::core_shared_objects::read_observations::CacheReadObservation>,
     after: Vec<holons_core::core_shared_objects::read_observations::CacheReadObservation>,
 ) {
@@ -1555,7 +1573,7 @@ fn emit_index_read_inventory(
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
-        info!("[commit-operation-read] operation=NameIndexes source={} relationship={} outcome={} requests={}", source, read.relationship.map(|name| name.to_string()).unwrap_or_else(|| "Node".into()), read.outcome, requests);
+        info!("[commit-operation-read] operation={} role={} invocation={} source={} relationship={} outcome={} requests={}", operation, role, invocation, source, read.relationship.map(|name| name.to_string()).unwrap_or_else(|| "Node".into()), read.outcome, requests);
     }
 }
 
