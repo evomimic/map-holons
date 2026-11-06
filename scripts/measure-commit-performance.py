@@ -242,7 +242,7 @@ def main():
                            metadata.get("anchor_evidence_policy", "per-new-version"),
                            metadata.get("instrumentation", "historical"), metadata.get("preparation_substrate", "broad-readiness"), metadata.get("host_snapshot_policy", "optional"), metadata.get("expected_guest_cache_capacity"))
     else:
-        env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,holons_client=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
+        env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,holons_client=info,holons_trust_channel=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
         if "MAP_COMMIT_PERF_INDEX_MODE" in env or "MAP_COMMIT_PERF_INDEX_OUTPUT" in env:
             parser.error("MAP_COMMIT_PERF_INDEX_* is retired; unset it and use --link-profile")
         env.pop("MAP_COMMIT_PERF_REGISTRY", None)
