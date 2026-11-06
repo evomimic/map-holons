@@ -29,9 +29,7 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
 use tracing::info;
-use type_names::{
-    CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName, DanceName,
-};
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, DanceName};
 
 /// Verifies representative foundational descriptor access over loaded MAP core schema data.
 pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionState) {
@@ -914,126 +912,6 @@ pub async fn execute_verify_book_person_smartlink_commit_cache_links(
     assert_exact_related_keys(&person_2, PERSON_TO_BOOK_REL_INVERSE, &[BOOK_1]);
 
     info!("verified repeated Book/Person SmartLink traversal");
-}
-
-/// Verifies the Core-owned ValidationBindings contract and its inverse descriptor.
-///
-/// Checks the descriptor pair and all seven C1 family-root occurrences, including
-/// the ValidationBindingFor inverses materialized by Commit.
-pub async fn execute_verify_validation_bindings_descriptor_contract(
-    state: &mut TestExecutionState,
-) {
-    let holons = loaded_holons(state, "verify_validation_bindings_descriptor_contract").await;
-
-    let bindings = RelationshipDescriptor::from_holon(find_holon_by_key(
-        &holons,
-        "(TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType)",
-    ))
-    .try_into_declared_relationship_descriptor()
-    .expect("ValidationBindings should be a declared relationship descriptor");
-    assert_relationship_shape(
-        bindings.base_relationship_name(),
-        bindings.source_type(),
-        bindings.target_type(),
-        bindings.full_relationship_name(),
-        "ValidationBindings",
-        "TypeDescriptor",
-        "ValidationRule",
-        "(TypeDescriptor)-[ValidationBindings]->(ValidationRule)",
-    );
-
-    let bindings_inverse = bindings
-        .required_inverse()
-        .expect("ValidationBindings should have ValidationBindingFor inverse");
-    assert_relationship_shape(
-        bindings_inverse.base_relationship_name(),
-        bindings_inverse.source_type(),
-        bindings_inverse.target_type(),
-        bindings_inverse.full_relationship_name(),
-        "ValidationBindingFor",
-        "ValidationRule",
-        "TypeDescriptor",
-        "(ValidationRule)-[ValidationBindingFor]->(TypeDescriptor)",
-    );
-    assert_eq!(
-        bindings_inverse
-            .inverse_of()
-            .expect("ValidationBindingFor inverse_of")
-            .base_relationship_name()
-            .expect("ValidationBindingFor inverse_of base relationship name")
-            .to_string(),
-        "ValidationBindings"
-    );
-
-    let expected_bindings = [
-        ("PropertyType.TypeDescriptor", CoreValidationRuleName::RequiredPropertyPresence),
-        ("HolonType.TypeDescriptor", CoreValidationRuleName::NoUndescribedProperties),
-        ("HolonType.TypeDescriptor", CoreValidationRuleName::KeyUniqueness),
-        ("StringValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesString),
-        ("IntegerValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesInteger),
-        ("BooleanValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBoolean),
-        ("BytesValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBytes),
-        ("EnumValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesEnum),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AtMostOneDirectParent),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AbstractPropertyParent),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AcyclicExtendsLineage),
-        (
-            "MetaTypeDescriptor.HolonType",
-            CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
-        ),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::UniqueTypeDescriptorRoot),
-        (
-            "MetaTypeDescriptor.HolonType",
-            CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
-        ),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::InstanceKindAnchorsAreAbstract),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::TypeDescriptorRootKindException),
-        ("HolonType.TypeDescriptor", CoreValidationRuleName::DescribingCategoryCompatibility),
-        ("HolonType.TypeDescriptor", CoreValidationRuleName::DescriptorMetaTypeCorrespondence),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::NoInheritedMemberRedeclaration),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::UniqueSemanticMemberNames),
-        (
-            "MetaTypeDescriptor.HolonType",
-            CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
-        ),
-        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::ContractMemberKindCompatibility),
-        (
-            "MetaTypeDescriptor.HolonType",
-            CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
-        ),
-        ("Schema.HolonType", CoreValidationRuleName::SchemaDependenciesAcyclic),
-    ];
-    let mut by_descriptor = std::collections::BTreeMap::<&str, Vec<&str>>::new();
-    for (descriptor_key, rule_name) in expected_bindings {
-        let rule_key = rule_name.as_str();
-        by_descriptor.entry(descriptor_key).or_default().push(rule_key);
-        let rule = find_holon_by_key(&holons, rule_key);
-        assert_exact_related_keys(&rule, "ValidationBindingFor", &[descriptor_key]);
-    }
-    for (descriptor_key, rules) in by_descriptor {
-        let descriptor = find_holon_by_key(&holons, descriptor_key);
-        assert_exact_related_keys(&descriptor, "ValidationBindings", &rules);
-    }
-    assert_exact_related_keys(
-        &find_holon_by_key(&holons, "TypeDescriptor"),
-        "ValidationBindings",
-        &[],
-    );
-    assert_exact_related_keys(
-        &find_holon_by_key(&holons, "CrossSchemaDependenciesDeclared.ValidationRule"),
-        "ValidationBindingFor",
-        &[],
-    );
-    let occurrence_count: usize = holons
-        .get_members()
-        .iter()
-        .map(|holon| related_holon_members(holon, "ValidationBindings").len())
-        .sum();
-    assert_eq!(
-        occurrence_count,
-        expected_bindings.len(),
-        "expected exactly the authored local bindings"
-    );
 }
 
 /// Verifies the persisted anchoring rules after the stage-new-version

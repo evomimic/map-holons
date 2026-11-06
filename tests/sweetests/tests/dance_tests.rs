@@ -115,10 +115,9 @@ async fn schema_successor_membership_acceptance() {
 /// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
 /// so it shares this suite's bootstrap instead of paying for its own.
 ///
-/// Skipped in CI for now (`ci-dance` filter in `.config/nextest.toml`): it takes over 30 minutes
-/// on a hosted runner, about 2.5x local. Most of that is the whole-schema verification steps,
-/// which read relationships one dance call at a time; the ValidationBindings step reads every
-/// loaded holon (~1,060 reads).
+/// Skipped in CI for now by the `ci-dance` filter in `.config/nextest.toml`.
+/// Bootstrap provisioning, descriptor access, and incremental loader behavior are checked here;
+/// Commit validation and persisted graph behavior use their dedicated fixtures.
 #[tokio::test(flavor = "multi_thread")]
 async fn pristine_bootstrap_and_loader() {
     let (runtime, initial_tx_id) = boot_dance_test_suite().await;
