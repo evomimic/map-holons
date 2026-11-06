@@ -107,9 +107,7 @@ fn compatible_binding_in_view(
     level: crate::contexts::SubjectLevel,
     context: &ValueValidationContext,
 ) -> Result<bool, HolonError> {
-    use holons_core::{
-        DescribingTypeResolution, EffectiveRelationshipMember, ExtendsLineageDiagnosis,
-    };
+    use holons_core::{DescribingTypeResolution, EffectiveRelationshipMember};
     let key = crate::commitments::required_key(&binding.rule)?;
     let Some(registration) = CoreValidationRuleName::from_key(&key)
         .map(crate::registries::registration)
@@ -126,11 +124,10 @@ fn compatible_binding_in_view(
         member: binding.rule.clone(),
         declared_on: binding.declaring_descriptor.holon().clone(),
     };
-    let diagnosis = ExtendsLineageDiagnosis::assess(governing)?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &context.context,
         [&contribution],
-        diagnosis.valid_lineage(),
+        &crate::structural_diagnoses::StructuralDiagnoses::new(&context.context),
     )?;
     crate::subject_assessment::compatible_binding(
         binding,
@@ -140,6 +137,12 @@ fn compatible_binding_in_view(
         level,
         context,
         &roles,
+        &crate::descriptor_package::DescriptorPackages::construct(
+            &context.context,
+            &[governing.clone()],
+            &[],
+            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+        )?,
     )
 }
 
@@ -2308,7 +2311,7 @@ fn unsupported_bindings_prepare_no_family_reads() -> Result<(), HolonError> {
             crate::subject_assessment::BindingRoleMemo::prepare(
                 &fixture.context,
                 [&contribution],
-                std::iter::empty(),
+                &fixture.diagnoses(),
             )?;
             assert_eq!(
                 before,
@@ -2446,11 +2449,10 @@ fn direct_descriptor_dispatch_preserves_binding_provenance_and_diagnostic_kinds(
         &[],
         &workset,
     )?;
-    let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(governor)?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
         &packages.binding_contributions(),
-        diagnosis.valid_lineage(),
+        &fixture.diagnoses(),
     )?;
     let mut collector = ValidationCollector::default();
     let bindings = crate::subject_assessment::prepare_bindings(
@@ -2534,11 +2536,10 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
             .into_iter()
             .map(|member| EffectiveRelationshipMember { member, declared_on: declaring.clone() })
             .collect();
-    let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(&fixture.nodes["Contract"])?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
         &contributions,
-        diagnosis.valid_lineage(),
+        &fixture.diagnoses(),
     )?;
     let reads_after_preparation =
         (fixture.backend_node_reads(), fixture.backend_relationship_reads());
@@ -2558,7 +2559,13 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
                 &fixture.nodes["Contract"],
                 crate::contexts::SubjectLevel::Holon,
                 &ValueValidationContext::new(&fixture.context),
-                &roles
+                &roles,
+                &crate::descriptor_package::DescriptorPackages::construct(
+                    &fixture.context,
+                    &[],
+                    &[],
+                    &crate::schema_view::SchemaWorkset { schemas: Vec::new() }
+                )?
             )?,
             expected
         );
@@ -2599,7 +2606,7 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
         [&contribution],
-        std::iter::empty(),
+        &fixture.diagnoses(),
     )?;
     let reads_after_preparation =
         (fixture.backend_node_reads(), fixture.backend_relationship_reads());
@@ -2612,7 +2619,13 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
             &fixture.nodes["Contract"],
             crate::contexts::SubjectLevel::Holon,
             &ValueValidationContext::new(&fixture.context),
-            &roles
+            &roles,
+            &crate::descriptor_package::DescriptorPackages::construct(
+                &fixture.context,
+                &[],
+                &[],
+                &crate::schema_view::SchemaWorkset { schemas: Vec::new() }
+            )?
         ),
         Err(error)
     );
@@ -2825,11 +2838,10 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
             &[],
             &workset,
         )?;
-        let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(governor)?;
         let roles = crate::subject_assessment::BindingRoleMemo::prepare(
             &fixture.context,
             &packages.binding_contributions(),
-            diagnosis.valid_lineage(),
+            &fixture.diagnoses(),
         )?;
         // Construction has its own schema traversal; this trap tests the dispatch ordering.
         let error = HolonError::InvalidState(
@@ -2974,7 +2986,17 @@ fn abstract_descriptor_universal_contract_needs_no_backend_reads_after_construct
     // Category routing has already diagnosed these members during preparation.
     assert_eq!(derivations.0.get("structural_diagnoses").copied().unwrap_or(0), 0);
 
-    for operation in ["contract_contribution_resolutions", "constraint_contribution_resolutions"] {
+    for operation in [
+        "contract_contribution_resolutions",
+        "constraint_contribution_resolutions",
+        "schema_resolution_requests",
+        "schema_builder_attempts",
+        "derived_builder_attempts",
+        "derived_projection_attempts",
+        "saved_restoration_attempts",
+        "role_walks",
+        "name_index_builds",
+    ] {
         assert_eq!(
             derivations.0.get(operation).copied().unwrap_or(0),
             0,
@@ -3381,6 +3403,11 @@ fn structural_memo_lookup_preserves_absence_and_required_read_failure() -> Resul
     let expected = diagnoses.get(reference).unwrap_err();
     let reads = fixture.backend_reads_for_source("Contract", &CoreRelationshipTypeName::Extends);
     assert!(reads > 0);
+    diagnoses.seal();
+    assert_eq!(diagnoses.get(reference).unwrap_err(), expected);
+    assert!(
+        matches!(diagnoses.get(&fixture.nodes["Title.PropertyType"]), Err(HolonError::InvalidState(message)) if message.contains("structural diagnosis") && message.contains("assessment consumer"))
+    );
     assert_eq!(diagnoses.existing(reference).unwrap_err(), expected);
     assert_eq!(
         fixture.backend_reads_for_source("Contract", &CoreRelationshipTypeName::Extends),

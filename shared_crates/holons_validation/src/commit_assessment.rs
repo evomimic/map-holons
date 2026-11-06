@@ -205,6 +205,7 @@ pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     workset: SchemaWorkset,
     packages: crate::descriptor_package::DescriptorPackages,
     collector: ValidationCollector,
+    interpretations: HashMap<DefinitionIdentity, crate::descriptor_rules::ContractInterpretation>,
 }
 
 #[cfg(test)]
@@ -372,14 +373,9 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         },
     )?;
     let binding_contributions = packages.binding_contributions();
-    let stored_diagnoses = packages.diagnoses.snapshot()?;
     let binding_roles =
         crate::assessment_phase::observe_operation(observer, "BindingRoles", "Assessment", || {
-            BindingRoleMemo::prepare(
-                context,
-                &binding_contributions,
-                stored_diagnoses.iter().filter_map(|diagnosis| diagnosis.valid_lineage()),
-            )
+            BindingRoleMemo::prepare(context, &binding_contributions, &packages.diagnoses)
         })?;
     crate::assessment_phase::observe_operation(
         observer,
@@ -387,7 +383,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         "Assessment",
         || prepare_universal_contracts(context, &mut prepared, &packages),
     )?;
-    Ok(ConstructedAssessment {
+    ConstructedAssessment {
         context,
         candidates,
         values: ValueValidationContext::new(context),
@@ -396,26 +392,29 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         workset,
         packages,
         collector,
-    })
+        interpretations: HashMap::new(),
+    }
+    .prepare_checks(observer)
 }
 
 impl<'candidates> ConstructedAssessment<'_, 'candidates> {
-    /// Consumes prepared packages and records findings without installing outcomes.
-    pub(crate) fn assess(
-        self,
-        mut observer: impl FnMut(crate::AssessmentEvent),
-    ) -> Result<(PreparedAssessment<'candidates>, ValidationObservations), HolonError> {
-        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation));
+    /// Completes schema interpretation and declaration products before subject evaluation.
+    fn prepare_checks(
+        mut self,
+        observer: &mut impl FnMut(crate::AssessmentEvent),
+    ) -> Result<Self, HolonError> {
         let Self {
             context,
             candidates,
             values,
-            mut prepared,
+            prepared,
             binding_roles,
             workset,
             packages,
-            mut collector,
-        } = self;
+            collector,
+            ..
+        } = &mut self;
+        let mut collector = collector;
         let kinds = DescriptorKindSemantics::new(context);
         // Outcomes and scheduling retain every candidate, including saved-definition aliases.
         let prepared_index: HashMap<TemporaryId, usize> = prepared
@@ -430,7 +429,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             .collect();
         // Immutable product findings fan out to all candidates sharing a definition.
         let mut definition_candidates = HashMap::<DefinitionIdentity, Vec<usize>>::new();
-        for candidate in candidates {
+        for candidate in candidates.iter() {
             definition_candidates
                 .entry(DefinitionIdentity::for_reference(&candidate.into(), context)?)
                 .or_default()
@@ -442,7 +441,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         let mut interpretations = HashMap::new();
         // Effective contracts are checked once per exact definition.
         let operation = crate::assessment_phase::observe_operation_scope(
-            &mut observer,
+            observer,
             "ContractChecks",
             "Assessment",
         );
@@ -482,11 +481,11 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         }
         drop(operation);
         let operation = crate::assessment_phase::observe_operation_scope(
-            &mut observer,
+            observer,
             "BindingDispatch",
             "Assessment",
         );
-        for subject in &mut prepared {
+        for subject in prepared.iter_mut() {
             if let Some(governing) = subject
                 .prerequisites
                 .governing_lineage
@@ -507,7 +506,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         }
         drop(operation);
         let operation = crate::assessment_phase::observe_operation_scope(
-            &mut observer,
+            observer,
             "SchemaChecks",
             "Assessment",
         );
@@ -554,7 +553,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         // saved unstaged members are not reread.
         // Declaration coverage belongs to exact definitions.
         let operation = crate::assessment_phase::observe_operation_scope(
-            &mut observer,
+            observer,
             "DeclarationChecks",
             "Assessment",
         );
@@ -597,7 +596,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
         let mut orphan_declarations =
             ConstraintDeclarationAssessment::new(Arc::clone(&packages.diagnoses));
-        for subject in &mut prepared {
+        for subject in prepared.iter_mut() {
             if !declaration_members
                 .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)
             {
@@ -623,6 +622,28 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             &definition_candidates,
         )?;
         drop(operation);
+        self.packages.diagnoses.seal();
+        self.interpretations = interpretations;
+        Ok(self)
+    }
+
+    /// Consumes prepared packages and records findings without installing outcomes.
+    pub(crate) fn assess(
+        self,
+        mut observer: impl FnMut(crate::AssessmentEvent),
+    ) -> Result<(PreparedAssessment<'candidates>, ValidationObservations), HolonError> {
+        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation));
+        let Self {
+            context,
+            candidates,
+            values,
+            prepared,
+            binding_roles,
+            workset: _,
+            packages,
+            mut collector,
+            interpretations,
+        } = self;
         // Supporting facts and Schema checks complete before deterministic candidate assessment.
         let is_definition = |subject: &SubjectPreparation| {
             subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema

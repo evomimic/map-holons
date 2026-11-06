@@ -338,7 +338,7 @@ pub fn commit(
     let profile = commit_profiling_enabled();
     if profile {
         info!(
-            "[commit-instrumentation] version=822-v3 substrate=broad-preparation holon_cache_capacity={} read_detail={}",
+            "[commit-instrumentation] version=822-v3 substrate=declared-demand holon_cache_capacity={} read_detail={}",
             holons_core::core_shared_objects::holon_cache::HolonCache::DEFAULT_CAPACITY,
             if cfg!(feature = "commit-read-inventory") { "enabled" } else { "disabled" }
         );

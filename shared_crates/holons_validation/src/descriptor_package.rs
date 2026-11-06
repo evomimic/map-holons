@@ -29,41 +29,68 @@ pub(crate) struct DescriptorPackages {
     definitions: HashMap<DefinitionIdentity, PreparedDefinition>,
     _content: Vec<holons_core::core_shared_objects::holon_cache::SavedHolonRetention>,
     preparation: crate::PreparationMetrics,
+    properties: HashMap<DefinitionIdentity, PropertyFacts>,
+    value_kinds: HashMap<DefinitionIdentity, Result<holons_core::ValueDescriptorKind, HolonError>>,
     pub(crate) diagnoses: Arc<crate::structural_diagnoses::StructuralDiagnoses>,
 }
 
 /// Shared kernel products; configuration and other domain values remain on the holons.
 struct PreparedDefinition {
+    reference: HolonReference,
+    // Provenance distinguishes authored structural defects from acquisition/read failures.
+    lineage_defect: Option<HolonError>,
     constraints_consumed: Cell<bool>,
     bindings_consumed: Cell<bool>,
+    bindings_prepared: Cell<bool>,
     contract: Result<Arc<ContractContributions>, HolonError>,
     schema: Result<Arc<holons_core::descriptors::ComputedEffectiveSchema>, HolonError>,
 }
 
-/// Diagnostic type label without fetching content solely for profiling.
-fn cached_type_name(reference: &HolonReference) -> Option<String> {
-    match reference {
-        HolonReference::Smart(saved) => saved.smart_property_values().and_then(|properties| {
-            properties.iter().find_map(|(name, value)| {
-                if name.to_string() == "Key" {
-                    if let core_types::BaseValue::StringValue(key) = value {
-                        return Some(key.to_string());
-                    }
-                }
-                None
-            })
-        }),
-        _ => reference.key().ok().flatten().map(|key| key.to_string()),
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum PreparationRole {
-    Commitment,
+    Governing,
+    Defined,
+    Declaration,
+    Property,
+    PropertyMember,
+    Binding,
+    Value,
     RelationshipMember,
     Constraint,
     ConstraintType,
     Schema,
+    Evidence,
+    Retained,
+    DefaultMeta,
+    Obligations,
+}
+impl PreparationRole {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Governing => "Governing",
+            Self::Defined => "Defined",
+            Self::Declaration => "Declaration",
+            Self::Property => "Property",
+            Self::PropertyMember => "PropertyMember",
+            Self::Binding => "Binding",
+            Self::Value => "Value",
+            Self::RelationshipMember => "RelationshipMember",
+            Self::Constraint => "Constraint",
+            Self::ConstraintType => "ConstraintType",
+            Self::Schema => "Schema",
+            Self::Evidence => "Evidence",
+            Self::Retained => "Retained",
+            Self::DefaultMeta => "DefaultMeta",
+            Self::Obligations => "Obligations",
+        }
+    }
+}
+/// A usable declaration or an authored defect explaining the scoped guard.
+pub(crate) type Requiredness = Result<bool, String>;
+
+struct PropertyFacts {
+    required: Requiredness,
+    value_type: Option<HolonReference>,
 }
 
 impl DescriptorPackages {
@@ -108,245 +135,464 @@ impl DescriptorPackages {
         }
 
         use PreparationRole::*;
-        let mut pending: VecDeque<_> = roots
-            .iter()
-            .chain(subjects)
-            .cloned()
-            .map(|reference| (reference, Commitment))
-            .collect();
-        for schema in &workset.schemas {
-            pending.push_back((schema.schema.clone(), Schema));
-        }
+        let mut pending: VecDeque<_> = roots.iter().cloned().map(|r| (r, Governing)).collect();
+        // Subjects are declaration seeds, not automatically effective-contract roots.
+        pending.extend(subjects.iter().cloned().map(|r| (r, Declaration)));
+        pending.extend(workset.schemas.iter().map(|s| (s.schema.clone(), Schema)));
         let mut seen = HashSet::new();
         let mut content_seen = HashSet::new();
-        let mut definitions_to_prepare = Vec::new();
+        let mut prefetched = HashSet::new();
         let mut content = Vec::new();
+        let mut definitions = HashMap::new();
+        let mut properties = HashMap::new();
+        let mut value_kinds = HashMap::new();
         while let Some((reference, role)) = pending.pop_front() {
-            // Immutable products belong to definitions, never to a graph-only snapshot.
             let identity = DefinitionIdentity::for_reference(&reference, context)?;
-            let selected = identity.definition_reference(context, &reference);
+            let reference = identity.definition_reference(context, &reference);
             if !seen.insert((identity.clone(), role)) {
                 continue;
             }
             observer(crate::AssessmentEvent::PreparationVisitStarted);
-            let distinct_content = content_seen.insert(identity);
-            let mut type_name = "MissingDescribedBy".to_string();
+            let distinct_content = content_seen.insert(identity.clone());
             if distinct_content {
-                definitions_to_prepare.push(selected.clone());
-                if let HolonReference::Smart(saved) = &selected {
-                    let operation = crate::assessment_phase::observe_operation_scope(
+                if let HolonReference::Smart(saved) = &reference {
+                    content.push(crate::assessment_phase::observe_operation(
                         observer,
                         "ContentRetention",
                         "SavedContent",
-                    );
-                    let retained = saved.retain_content();
-                    drop(operation);
-                    content.push(retained?);
+                        || saved.retain_content(),
+                    )?);
                 }
             }
-            // Preserve the current preparation closure over definition relationships.
-            let mut edges = vec![
-                R::DescribedBy,
-                R::Extends,
-                R::InstanceProperties,
-                R::InstanceRelationships,
-                R::ValueType,
-                R::Constraints,
-                R::ValidationBindings,
-                R::ComponentOf,
-                R::RuleOf,
-            ];
+            let mut edges = Vec::new();
             match role {
-                RelationshipMember => edges.extend([R::SourceType, R::TargetType]),
-                ConstraintType => edges.push(R::ApplicableToDescriptorTypes),
-                Schema => edges.push(R::DependsOn),
-                _ => {}
-            }
-            let role_name = match role {
-                Commitment => "Commitment",
-                RelationshipMember => "RelationshipMember",
-                Constraint => "Constraint",
-                ConstraintType => "ConstraintType",
-                Schema => "Schema",
-            };
-            if let HolonReference::Smart(saved) = &selected {
-                let operation = crate::assessment_phase::observe_operation_scope(
-                    observer,
-                    "MembershipPrefetch",
-                    role_name,
-                );
-                let preparation = saved.prepare_relationships(
-                    &edges.iter().map(|edge| edge.as_relationship_name()).collect::<Vec<_>>(),
-                );
-                drop(operation);
-                preparation?;
-            }
-            let operation = crate::assessment_phase::observe_operation_scope(
-                observer,
-                "RelationshipTraversal",
-                role_name,
-            );
-            for edge in edges {
-                let members = targets(&selected, edge.clone())?;
-                if matches!(edge, R::DescribedBy) {
-                    type_name = match members.as_slice() {
-                        [] => "MissingDescribedBy".to_string(),
-                        [descriptor] => cached_type_name(descriptor)
-                            .unwrap_or_else(|| "UnlabeledDescribedBy".to_string()),
-                        _ => "MultipleDescribedBy".to_string(),
-                    };
-                }
-                let demand = edge_demand
-                    .entry((role_name, edge.as_relationship_name().to_string()))
-                    .or_default();
-                demand.0 += 1;
-                demand.1 += members.len();
-                // C2 checks these endpoint/applicability identities without requiring the
-                // referenced holon's full contract.
-                if matches!(edge, R::SourceType | R::TargetType | R::ApplicableToDescriptorTypes) {
-                    continue;
-                }
-                let next_role = match edge {
-                    R::InstanceRelationships => RelationshipMember,
-                    R::Constraints => Constraint,
-                    R::DescribedBy if role == Constraint => ConstraintType,
-                    R::ComponentOf | R::RuleOf | R::DependsOn => Schema,
-                    // Inherited declaration fields still need the member's specialized demand.
-                    R::Extends if matches!(role, RelationshipMember | ConstraintType) => role,
-                    _ => Commitment,
-                };
-                pending.extend(members.into_iter().map(|reference| (reference, next_role)));
-            }
-            drop(operation);
-            observer(crate::AssessmentEvent::PreparationVisitFinished {
-                type_name,
-                distinct_content,
-            });
-        }
-        let mut preparation = crate::PreparationMetrics {
-            package_roots: packages.len(),
-            subjects: subjects.len(),
-            affected_schemas: workset.schemas.len(),
-            distinct_content: definitions_to_prepare.len(),
-            requested_schema_products: definitions_to_prepare.len(),
-            identity_role_visits: seen.len(),
-            ..Default::default()
-        };
-        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts));
-        let mut definitions = HashMap::new();
-        for reference in definitions_to_prepare {
-            let prepared = crate::assessment_phase::observe_operation(
-                observer,
-                "RegistryLookup",
-                "PreparedDefinition",
-                || {
-                    holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
-                        context, &reference,
-                    )
-                },
-            )?;
-            let schema = match prepared {
-                Some(descriptor) => crate::assessment_phase::observe_operation(
-                    observer,
-                    "SavedRestoration",
-                    "PreparedDefinition",
-                    || {
-                        holons_core::descriptors::ComputedEffectiveSchema::from_prepared(&descriptor)
-                    },
-                ),
-                None => {
-                    let diagnosis = crate::assessment_phase::observe_operation(
-                        observer,
-                        "StructuralDiagnosis",
-                        "CategoryRouting",
-                        || diagnoses.get(&reference),
-                    )?;
-                    match diagnosis.valid_lineage() {
-                        None => Err(diagnosed_lineage_error(&diagnosis, &reference)),
-                        Some(lineage) => {
-                            use type_names::CoreDefinitionRole as Role;
-                            if lineage.contains_role(Role::ValueType) {
-                                context.retain_frozen_descriptor_lineage(lineage)?;
-                                crate::assessment_phase::observe_operation(
-                                    observer,
-                                    "DerivedAcquisition",
-                                    "ValueType",
-                                    || {
-                                        holons_core::ValueDescriptor::from_holon(reference.clone())
-                                            .effective_schema()
-                                    },
-                                )
-                            } else if lineage.contains_role(Role::PropertyType) {
-                                context.retain_frozen_descriptor_lineage(lineage)?;
-                                crate::assessment_phase::observe_operation(
-                                    observer,
-                                    "DerivedAcquisition",
-                                    "PropertyType",
-                                    || {
-                                        holons_core::PropertyDescriptor::from_holon(reference.clone())
-                                            .effective_schema()
-                                    },
-                                )
-                            } else {
-                                crate::assessment_phase::observe_operation(
-                                    observer,
-                                    "FreshEffectiveSchema",
-                                    "PreparedDefinition",
-                                    || {
-                                        holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage)
-                                    },
-                                )
+                Declaration => {
+                    let diagnosis = diagnoses.get(&reference)?;
+                    if let Some(lineage) = diagnosis.valid_lineage() {
+                        if lineage.contains_role(type_names::CoreDefinitionRole::TypeDescriptor) {
+                            pending.push_back((reference.clone(), Defined));
+                            if let Some(parent) = lineage.members().get(1) {
+                                pending.push_back((parent.clone(), Obligations));
                             }
                         }
                     }
+                    // Unused staged constraints still have declaration consumers.
+                    if let holons_core::DescribingTypeResolution::Unique(governor) =
+                        holons_core::resolve_describing_type(&reference)?
+                    {
+                        if diagnoses
+                            .get(&governor)?
+                            .encountered_role(type_names::CoreDefinitionRole::ConstraintType)
+                        {
+                            pending.push_back((reference.clone(), Constraint));
+                        }
+                    }
                 }
+                Schema => edges.extend([R::DependsOn, R::DescribedBy]),
+                Constraint | Binding => edges.push(R::DescribedBy),
+                PropertyMember => {
+                    diagnoses.get(&reference)?;
+                    edges.push(R::ValueType);
+                }
+                ConstraintType => {
+                    diagnoses.get(&reference)?;
+                    edges.extend([
+                        R::Extends,
+                        R::ApplicableToDescriptorTypes,
+                        R::InstanceProperties,
+                    ]);
+                }
+                RelationshipMember => {
+                    diagnoses.get(&reference)?;
+                    edges.extend([R::Extends, R::SourceType, R::TargetType]);
+                }
+                Evidence => {
+                    diagnoses.get(&reference)?;
+                }
+                Property => edges.extend([R::DescribedBy, R::ValueType]),
+                _ => {}
             }
-            .map(Arc::new);
-            // All name/navigation reads required by validation belong to preparation,
-            // and the same cached projection is consumed during assessment.
-            crate::assessment_phase::observe_operation(
-                observer,
-                "NameIndexes",
-                "PreparedDefinition",
-                || -> Result<(), HolonError> {
-                    if let Ok(schema) = &schema {
+            let needs_product =
+                matches!(role, Governing | Defined | Property | Value | DefaultMeta | Obligations);
+            if needs_product && !definitions.contains_key(&identity) {
+                let prepared = crate::assessment_phase::observe_operation(
+                    observer,
+                    "RegistryLookup",
+                    "PreparedDefinition",
+                    || {
+                        holons_core::descriptors::EffectiveHolonDescriptor::find_in_context(
+                            context, &reference,
+                        )
+                    },
+                )?;
+                let mut lineage_defect = None;
+                let schema = match prepared {
+                    Some(descriptor) => crate::assessment_phase::observe_operation(
+                        observer,
+                        "SavedRestoration",
+                        "PreparedDefinition",
+                        || {
+                            holons_core::descriptors::ComputedEffectiveSchema::from_prepared(
+                                &descriptor,
+                            )
+                        },
+                    ),
+                    None => {
+                        let diagnosis = crate::assessment_phase::observe_operation(
+                            observer,
+                            "StructuralDiagnosis",
+                            "CategoryRouting",
+                            || diagnoses.get(&reference),
+                        )?;
+                        match diagnosis.valid_lineage() {
+                            None => {
+                                let error = diagnosed_lineage_error(&diagnosis, &reference);
+                                lineage_defect = Some(error.clone());
+                                Err(error)
+                            }
+                            Some(lineage) => {
+                                use type_names::CoreDefinitionRole as Role;
+                                for member in lineage.members() {
+                                    let member_id =
+                                        DefinitionIdentity::for_reference(member, context)?;
+                                    if content_seen.insert(member_id.clone()) {
+                                        if let HolonReference::Smart(saved) = member {
+                                            let retained =
+                                                crate::assessment_phase::observe_operation(
+                                                    observer,
+                                                    "ContentRetention",
+                                                    "SavedContent",
+                                                    || saved.retain_content(),
+                                                )?;
+                                            content.push(retained);
+                                        }
+                                    }
+                                    if let HolonReference::Smart(saved) = member {
+                                        let mut collections = holons_core::descriptors::ComputedEffectiveSchema::source_collections();
+                                        if lineage.contains_role(Role::PropertyType)
+                                            || lineage.contains_role(Role::ValueType)
+                                        {
+                                            collections.push(R::AffordsOperator);
+                                        }
+                                        let names: Vec<_> = collections
+                                            .iter()
+                                            .map(|edge| edge.as_relationship_name())
+                                            .filter(|name| {
+                                                prefetched.insert((member_id.clone(), name.clone()))
+                                            })
+                                            .collect();
+                                        if !names.is_empty() {
+                                            crate::assessment_phase::observe_operation(
+                                                observer,
+                                                "MembershipPrefetch",
+                                                role.label(),
+                                                || saved.prepare_relationships(&names),
+                                            )?;
+                                        }
+                                    }
+                                }
+                                if lineage.contains_role(Role::ValueType) {
+                                    context.retain_frozen_descriptor_lineage(lineage)?;
+                                    crate::assessment_phase::observe_operation(
+                                        observer,
+                                        "DerivedAcquisition",
+                                        "ValueType",
+                                        || {
+                                            holons_core::ValueDescriptor::from_holon(
+                                                reference.clone(),
+                                            )
+                                            .effective_schema()
+                                        },
+                                    )
+                                } else if lineage.contains_role(Role::PropertyType) {
+                                    context.retain_frozen_descriptor_lineage(lineage)?;
+                                    crate::assessment_phase::observe_operation(
+                                        observer,
+                                        "DerivedAcquisition",
+                                        "PropertyType",
+                                        || {
+                                            holons_core::PropertyDescriptor::from_holon(
+                                                reference.clone(),
+                                            )
+                                            .effective_schema()
+                                        },
+                                    )
+                                } else {
+                                    crate::assessment_phase::observe_operation(
+                                        observer,
+                                        "FreshEffectiveSchema",
+                                        "PreparedDefinition",
+                                        || {
+                                            holons_core::descriptors::ComputedEffectiveSchema::from_valid_lineage(lineage)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                };
+                let schema = schema.map(Arc::new);
+                let contract = crate::assessment_phase::observe_operation(
+                    observer,
+                    "ContributionProjection",
+                    "PreparedDefinition",
+                    || {
+                        schema
+                            .as_ref()
+                            .map(|schema| Arc::new(schema.contract_contributions()))
+                            .map_err(Clone::clone)
+                    },
+                );
+                definitions.insert(
+                    DefinitionIdentity::for_reference(&reference, context)?,
+                    PreparedDefinition {
+                        reference: reference.clone(),
+                        lineage_defect,
+                        constraints_consumed: Cell::new(false),
+                        bindings_consumed: Cell::new(false),
+                        bindings_prepared: Cell::new(false),
+                        contract,
+                        schema,
+                    },
+                );
+            }
+            if needs_product {
+                if let Some(Ok(schema)) =
+                    definitions.get(&identity).map(|d: &PreparedDefinition| &d.schema)
+                {
+                    for member in &schema.lineage {
+                        if content_seen.insert(DefinitionIdentity::for_reference(member, context)?)
+                        {
+                            if let HolonReference::Smart(saved) = member {
+                                content.push(crate::assessment_phase::observe_operation(
+                                    observer,
+                                    "ContentRetention",
+                                    "SavedContent",
+                                    || saved.retain_content(),
+                                )?);
+                            }
+                        }
+                    }
+                    for edge in
+                        holons_core::descriptors::ComputedEffectiveSchema::source_collections()
+                    {
+                        for entry in schema.contributions(edge) {
+                            if content_seen
+                                .insert(DefinitionIdentity::for_reference(&entry.member, context)?)
+                            {
+                                if let HolonReference::Smart(saved) = &entry.member {
+                                    content.push(crate::assessment_phase::observe_operation(
+                                        observer,
+                                        "ContentRetention",
+                                        "SavedContent",
+                                        || saved.retain_content(),
+                                    )?);
+                                }
+                            }
+                        }
+                    }
+                    if role != DefaultMeta {
+                        for entry in schema.contributions(R::Constraints) {
+                            pending.push_back((entry.member.clone(), Constraint));
+                        }
+                    }
+                    if matches!(role, Governing | Property | Value) {
+                        definitions[&identity].bindings_prepared.set(true);
+                        for entry in schema.contributions(R::ValidationBindings) {
+                            // Reject unknown keys without acquiring family or declaring-role inputs.
+                            if crate::commitments::required_key(&entry.member)
+                                .ok()
+                                .and_then(|key| type_names::CoreValidationRuleName::from_key(&key))
+                                .map(crate::registries::registration)
+                                .is_some_and(|r| r.implementation.is_some())
+                            {
+                                pending.push_back((entry.member.clone(), Binding));
+                                pending.push_back((entry.declared_on.clone(), Evidence));
+                            } else {
+                                pending.push_back((entry.member.clone(), Retained));
+                            }
+                        }
+                    }
+                    // Universal minimum checks consume the exact governing meta-type's contributions.
+                    if role == Governing {
+                        for member in &schema.lineage {
+                            if matches!(member.key()?, Some(key) if key.to_string() == type_names::CoreDefinitionRole::MetaTypeDescriptor.key())
+                            {
+                                pending.push_back((member.clone(), DefaultMeta));
+                            }
+                        }
+                    }
+                    let derived_category = diagnoses.existing(&reference)?.is_some_and(|d| {
+                        d.encountered_role(type_names::CoreDefinitionRole::PropertyType)
+                            || d.encountered_role(type_names::CoreDefinitionRole::ValueType)
+                    });
+                    if matches!(role, Governing | Defined) && !derived_category {
+                        let defines_instances = schema.defines_holon_instances()?;
+                        let navigation = crate::assessment_phase::observe_operation_scope(
+                            observer,
+                            "Navigation",
+                            role.label(),
+                        );
+                        if defines_instances {
+                            for ancestor in &schema.lineage {
+                                if let HolonReference::Smart(saved) = ancestor {
+                                    saved.prepare_relationships(&[
+                                        R::SourceOf.as_relationship_name()
+                                    ])?;
+                                }
+                                for member in targets(ancestor, R::SourceOf)? {
+                                    if let HolonReference::Smart(saved) = &member {
+                                        if content_seen.insert(DefinitionIdentity::for_reference(
+                                            &member, context,
+                                        )?) {
+                                            content.push(saved.retain_content()?);
+                                        }
+                                        saved.prepare_relationships(&[
+                                            R::SourceType.as_relationship_name()
+                                        ])?;
+                                    }
+                                    pending.push_back((member, Evidence));
+                                }
+                            }
+                            // Declared navigation candidates also need endpoint applicability.
+                            for entry in schema.contributions(R::InstanceRelationships) {
+                                if let HolonReference::Smart(saved) = &entry.member {
+                                    saved.prepare_relationships(&[
+                                        R::SourceType.as_relationship_name()
+                                    ])?;
+                                }
+                            }
+                        }
+                        drop(navigation);
+                        let indexes = crate::assessment_phase::observe_operation_scope(
+                            observer,
+                            "NameIndexes",
+                            role.label(),
+                        );
                         for vocabulary in [
                             holons_core::descriptors::EffectiveVocabulary::Properties,
                             holons_core::descriptors::EffectiveVocabulary::Dances,
                             holons_core::descriptors::EffectiveVocabulary::Commands,
                         ] {
-                            let _ = schema.name_index(vocabulary); // Results, including errors, remain cached.
+                            let _ = schema.name_index(vocabulary);
                         }
-                        if schema.defines_holon_instances()? {
+                        if defines_instances {
                             let _ = schema.name_index(
                                 holons_core::descriptors::EffectiveVocabulary::Relationships,
                             );
                         }
+                        drop(indexes);
+                        for entry in schema.contributions(R::InstanceProperties) {
+                            pending.push_back((
+                                entry.member.clone(),
+                                // Only governing contracts need property conformance facts.
+                                if role == Governing { Property } else { PropertyMember },
+                            ));
+                        }
+                        for entry in schema.contributions(R::InstanceRelationships) {
+                            pending.push_back((entry.member.clone(), RelationshipMember));
+                        }
+                        for edge in [R::AffordsDance, R::AffordsCommand] {
+                            for entry in schema.contributions(edge) {
+                                pending.push_back((entry.member.clone(), Evidence));
+                            }
+                        }
                     }
-                    Ok(())
-                },
-            )?;
-            let contract = crate::assessment_phase::observe_operation(
-                observer,
-                "ContributionProjection",
-                "PreparedDefinition",
-                || {
-                    schema
-                        .as_ref()
-                        .map(|schema| Arc::new(schema.contract_contributions()))
-                        .map_err(Clone::clone)
-                },
-            );
-            definitions.insert(
-                DefinitionIdentity::for_reference(&reference, context)?,
-                PreparedDefinition {
-                    constraints_consumed: Cell::new(false),
-                    bindings_consumed: Cell::new(false),
-                    contract,
-                    schema,
+                    if role == Value
+                        || diagnoses.existing(&reference)?.is_some_and(|d| {
+                            d.encountered_role(type_names::CoreDefinitionRole::ValueType)
+                        })
+                    {
+                        value_kinds.entry(identity.clone()).or_insert_with(|| {
+                            holons_core::ValueDescriptor::from_holon(reference.clone()).value_kind()
+                        });
+                    }
+                }
+            }
+            if let HolonReference::Smart(saved) = &reference {
+                if !edges.is_empty() {
+                    crate::assessment_phase::observe_operation(
+                        observer,
+                        "MembershipPrefetch",
+                        role.label(),
+                        || {
+                            saved.prepare_relationships(
+                                &edges.iter().map(|e| e.as_relationship_name()).collect::<Vec<_>>(),
+                            )
+                        },
+                    )?;
+                }
+            }
+            for edge in edges {
+                let members = targets(&reference, edge.clone())?;
+                let demand = edge_demand
+                    .entry((role.label(), edge.as_relationship_name().to_string()))
+                    .or_default();
+                demand.0 += 1;
+                demand.1 += members.len();
+                // Endpoint/applicability checks consume exact identities, not target content.
+                if matches!(edge, R::SourceType | R::TargetType | R::ApplicableToDescriptorTypes) {
+                    continue;
+                }
+                let next = match (role, &edge) {
+                    (Property, R::ValueType) => Value,
+                    (PropertyMember, R::ValueType) => Evidence,
+                    (Binding, R::DescribedBy) => Evidence,
+                    (Property, R::DescribedBy) => {
+                        if reference
+                            .property_value(type_names::CorePropertyTypeName::IsValueRequired)?
+                            .is_none()
+                        {
+                            DefaultMeta
+                        } else {
+                            Retained
+                        }
+                    }
+                    (Schema, R::DescribedBy) => Governing,
+                    (Schema, R::DependsOn) => Schema,
+                    (Constraint, R::DescribedBy) => ConstraintType,
+                    (ConstraintType, R::Extends) => ConstraintType,
+                    (RelationshipMember, R::Extends) => RelationshipMember,
+                    _ => Retained,
+                };
+                pending.extend(members.into_iter().map(|r| (r, next)));
+            }
+            observer(crate::AssessmentEvent::PreparationVisitFinished {
+                type_name: role.label().into(),
+                distinct_content,
+            });
+        }
+        observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts));
+        // Requiredness and concrete ValueType selection are independent facts.
+        let mut defaults = HashMap::new();
+        let mut property_requests: Vec<_> =
+            seen.iter().filter(|(_, role)| *role == Property).collect();
+        property_requests
+            .sort_by_key(|(identity, _)| definitions[identity].reference.reference_id_string());
+        for (identity, _) in property_requests {
+            let reference = definitions[identity].reference.clone();
+            let required = prepare_requiredness(&reference, context, &definitions, &mut defaults)?;
+            let targets = targets(&reference, R::ValueType)?;
+            properties.insert(
+                identity.clone(),
+                PropertyFacts {
+                    required,
+                    value_type: match targets.as_slice() {
+                        [target] => Some(target.clone()),
+                        _ => None,
+                    },
                 },
             );
         }
+        let mut preparation = crate::PreparationMetrics {
+            package_roots: packages.len(),
+            subjects: subjects.len(),
+            affected_schemas: workset.schemas.len(),
+            distinct_content: content_seen.len(),
+            requested_schema_products: definitions.len(),
+            identity_role_visits: seen.len(),
+            ..Default::default()
+        };
         preparation.constructed_schema_products =
             definitions.values().filter(|definition| definition.schema.is_ok()).count();
         for root in roots {
@@ -368,13 +614,60 @@ impl DescriptorPackages {
             _content: content,
             preparation,
             diagnoses,
+            properties,
+            value_kinds,
         })
+    }
+
+    pub fn requiredness(&self, reference: &HolonReference) -> Result<Requiredness, HolonError> {
+        Ok(self
+            .properties
+            .get(&self.diagnoses.identity(reference)?)
+            .ok_or_else(|| {
+                HolonError::InvalidState(format!(
+                    "Missing requiredness for {} (subject conformance)",
+                    reference.reference_id_string()
+                ))
+            })?
+            .required
+            .clone())
+    }
+    pub fn value_type(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<Option<&HolonReference>, HolonError> {
+        Ok(self
+            .properties
+            .get(&self.diagnoses.identity(reference)?)
+            .ok_or_else(|| {
+                HolonError::InvalidState(format!(
+                    "Missing ValueType selection for {} (subject conformance)",
+                    reference.reference_id_string()
+                ))
+            })?
+            .value_type
+            .as_ref())
+    }
+    pub fn value_kind(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<holons_core::ValueDescriptorKind, HolonError> {
+        self.value_kinds
+            .get(&self.diagnoses.identity(reference)?)
+            .ok_or_else(|| {
+                HolonError::InvalidState(format!(
+                    "Missing native kind for {} (value assessment)",
+                    reference.reference_id_string()
+                ))
+            })?
+            .clone()
     }
 
     /// Supplies reached binding contributions for construction-time role preparation.
     pub fn binding_contributions(&self) -> Vec<EffectiveRelationshipMember> {
         self.definitions
             .values()
+            .filter(|definition| definition.bindings_prepared.get())
             .filter_map(|definition| definition.schema.as_ref().ok())
             .flat_map(|schema| schema.contributions(R::ValidationBindings))
             .map(|entry| EffectiveRelationshipMember {
@@ -456,7 +749,13 @@ impl DescriptorPackages {
     ) -> Result<&PreparedDefinition, HolonError> {
         self.definitions
             .get(&DefinitionIdentity::for_reference(reference, &self.context)?)
-            .ok_or_else(|| HolonError::InvalidState("Definition was not prepared".into()).into())
+            .ok_or_else(|| {
+                HolonError::InvalidState(format!(
+                    "Definition {} has no prepared schema (contract consumer)",
+                    reference.reference_id_string()
+                ))
+                .into()
+            })
     }
 
     pub fn get(
@@ -517,4 +816,72 @@ fn diagnosed_lineage_error(
             "Diagnosed TypeDescriptor root has an Extends parent".into(),
         ),
     }
+}
+
+/// Requiredness is a concrete declaration, with an absent-value default on its meta-type.
+fn prepare_requiredness(
+    reference: &HolonReference,
+    context: &Arc<TransactionContext>,
+    definitions: &HashMap<DefinitionIdentity, PreparedDefinition>,
+    defaults: &mut HashMap<DefinitionIdentity, Result<Requiredness, HolonError>>,
+) -> Result<Requiredness, HolonError> {
+    use type_names::CorePropertyTypeName as P;
+    fn boolean(value: Option<core_types::BaseValue>) -> Result<Requiredness, HolonError> {
+        match value {
+            Some(core_types::BaseValue::BooleanValue(value)) => Ok(Ok(value.0)),
+            Some(other) => Ok(Err(format!("IsValueRequired requires Boolean; found {other:?}"))),
+            None => Ok(Err("IsValueRequired has no DefaultValue".into())),
+        }
+    }
+    if let Some(value) = reference.property_value(P::IsValueRequired)? {
+        return boolean(Some(value));
+    }
+    let meta = match holons_core::descriptors::resolve_describing_type(reference)? {
+        holons_core::DescribingTypeResolution::Unique(meta) => meta,
+        holons_core::DescribingTypeResolution::Missing => {
+            return Ok(Err("Requiredness default requires one DescribedBy; found none".into()))
+        }
+        holons_core::DescribingTypeResolution::Multiple(targets) => {
+            return Ok(Err(format!(
+                "Requiredness default requires one DescribedBy; found {}",
+                targets.len()
+            )))
+        }
+    };
+    let identity = DefinitionIdentity::for_reference(&meta, context)?;
+    defaults
+        .entry(identity.clone())
+        .or_insert_with(|| {
+            let definition = definitions.get(&identity).ok_or_else(|| {
+                HolonError::InvalidState(format!(
+                    "Missing requiredness default product for {}",
+                    meta.reference_id_string()
+                ))
+            })?;
+            if let Some(defect) = &definition.lineage_defect {
+                return Ok(Err(format!("Governing meta-type lineage is unusable: {defect}")));
+            }
+            let schema = definition.schema.as_ref().map_err(Clone::clone)?;
+            let matches = schema
+                .contributions(R::InstanceProperties)
+                .iter()
+                .filter_map(|entry| match entry.member.property_value(P::TypeName) {
+                    Ok(Some(core_types::BaseValue::StringValue(name)))
+                        if name.0 == P::IsValueRequired.as_property_name().to_string() =>
+                    {
+                        Some(Ok(&entry.member))
+                    }
+                    Err(error) => Some(Err(error)),
+                    _ => None,
+                })
+                .collect::<Result<Vec<_>, HolonError>>()?;
+            match matches.as_slice() {
+                [member] => boolean(member.property_value(P::DefaultValue)?),
+                _ => Ok(Err(format!(
+                    "Meta-type {} requires one IsValueRequired default member",
+                    meta.reference_id_string()
+                ))),
+            }
+        })
+        .clone()
 }

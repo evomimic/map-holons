@@ -10,9 +10,8 @@ use base_types::BaseValue;
 use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
     descriptors::{
-        effective_relationship_targets, same_definition, ContractContributions,
-        DescriptorKindSemantics, ExtendsLineageDefect, KindResolutionError,
-        StructuralPrerequisites,
+        same_definition, ContractContributions, DescriptorKindSemantics, ExtendsLineageDefect,
+        KindResolutionError, StructuralPrerequisites,
     },
     Descriptor, HolonReference, ReadableHolon,
 };
@@ -361,6 +360,13 @@ impl DescriptorRuleProducts {
                 seen.push(&entry.member);
             }
         }
+        // Derived property/value payloads have no HolonType navigation vocabulary.
+        if self.diagnoses.existing(&projection.target)?.is_some_and(|d| {
+            d.encountered_role(CoreDefinitionRole::PropertyType)
+                || d.encountered_role(CoreDefinitionRole::ValueType)
+        }) {
+            return Ok(interpretation);
+        }
         for (vocabulary, role) in [
             (EffectiveVocabulary::Dances, CoreDefinitionRole::DanceType),
             (EffectiveVocabulary::Commands, CoreDefinitionRole::CommandType),
@@ -556,10 +562,15 @@ impl DescriptorRuleProducts {
         relationship: CoreRelationshipTypeName,
         namespace: &str,
     ) -> Result<Vec<HolonReference>, HolonError> {
-        let targets = effective_relationship_targets(member, relationship.clone())?
-            .into_iter()
-            .map(|contribution| contribution.member)
-            .collect::<Vec<_>>();
+        let targets = if matches!(relationship, CoreRelationshipTypeName::ValueType) {
+            crate::assessment_support::targets(member, relationship.clone())?
+        } else {
+            self.diagnose(member)?
+                .encountered_relationship_targets(relationship.clone())?
+                .into_iter()
+                .map(|contribution| contribution.member)
+                .collect()
+        };
         if targets.len() != 1 {
             self.violation(
                 CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,

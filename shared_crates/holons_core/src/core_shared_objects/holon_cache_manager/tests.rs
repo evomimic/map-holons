@@ -881,7 +881,17 @@ fn retained_content_survives_eviction_pressure_until_last_lease_drops() -> Resul
     let id = HolonId::Local(LocalId(vec![1]));
     let first = manager.retain_holon(&id)?;
     let second = manager.retain_holon(&id)?;
+    let names = ["Frozen".to_relationship_name(), "FrozenEmpty".to_relationship_name()];
+    manager.prepare_relationships(&id, &names)?;
+    let before = service.count("FrozenEmpty");
     manager.cache.clear();
+    assert!(manager.get_related_holons(&id, &names[1])?.read().unwrap().get_members().is_empty());
+    manager.prepare_relationships(&id, &names)?;
+    assert_eq!(
+        service.count("FrozenEmpty"),
+        before,
+        "requested-empty membership survives cache eviction while retained"
+    );
     drop(first);
     assert!(manager.cache.get(&id).is_some());
     drop(second);

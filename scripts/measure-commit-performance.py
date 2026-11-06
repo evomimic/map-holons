@@ -215,7 +215,7 @@ def main():
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")
     parser.add_argument("--link-profile", action="store_true", help="Capture read-only persisted link-query timings after Commit samples; replaces the retired --index-mode experiment")
     parser.add_argument("--instrumentation", choices=["822-v2", "822-v3", "historical"], default="822-v3")
-    parser.add_argument("--preparation-substrate", choices=["broad-readiness", "broad-preparation", "declared-demand"], default="broad-preparation")
+    parser.add_argument("--preparation-substrate", choices=["broad-readiness", "broad-preparation", "declared-demand"], default="declared-demand")
     parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
     parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
     parser.add_argument("--governor-presence", default="unavailable", help="Governor entry presence established by workload setup")

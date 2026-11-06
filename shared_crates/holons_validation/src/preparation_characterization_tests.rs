@@ -390,3 +390,227 @@ fn saved_restoration_attempt_does_not_diagnose_lineage() -> Result<(), HolonErro
     ));
     Ok(())
 }
+
+#[test]
+fn omitted_memberships_do_not_fail_assessment_but_required_reads_do() -> Result<(), HolonError> {
+    for (source, edge, required) in [
+        ("Contract", R::ValueType, false),
+        ("StringValueType.ValueType", R::RuleOf, false),
+        // Complete derived payload acquisition still includes this collection.
+        ("StringValueType.ValueType", R::InstanceProperties, true),
+        ("Title.PropertyType", R::DescribedBy, true),
+    ] {
+        let fixture = readiness_fixture()?.saved_snapshot()?;
+        let mut subject = fixture.staged_subject("demand-read-control")?;
+        subject.with_property_value("Title", "valid")?;
+        subject.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+        let error = HolonError::InvalidState(format!("injected {source} {edge:?}"));
+        fixture.control_saved_relationship_reads(source, edge.clone(), Some(error.clone()))?;
+        for report_only in [true, false] {
+            let result = if report_only {
+                assess_commit_candidates(&fixture.context, &[subject.clone()]).map(|a| a.report)
+            } else {
+                validate_commit_candidates(&fixture.context, &[subject.clone()])
+            };
+            if required {
+                assert_eq!(result.err(), Some(error.clone()));
+            } else {
+                assert!(result?.is_accepted());
+            }
+            assert_eq!(subject.validation_state()?, ValidationState::Validated);
+            assert!(subject.validation_findings()?.is_empty());
+        }
+        assert_eq!(fixture.backend_reads_for_source(source, &edge) > 0, required);
+    }
+    Ok(())
+}
+
+#[test]
+fn additional_consumers_share_complete_products_in_either_request_order() -> Result<(), HolonError>
+{
+    let mut expected = None;
+    for reverse in [false, true] {
+        let fixture = readiness_fixture()?.saved_snapshot()?;
+        let mut roots =
+            vec![fixture.nodes["Contract"].clone(), fixture.nodes["Title.PropertyType"].clone()];
+        if reverse {
+            roots.reverse();
+        }
+        let probe =
+            holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+        let mut index_reads = None;
+        let packages = crate::descriptor_package::DescriptorPackages::construct_with_observer(
+            &fixture.context,
+            &roots,
+            &[],
+            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+            fixture.diagnoses(),
+            &mut |event| {
+                if let crate::AssessmentEvent::PreparationOperation {
+                    operation: "NameIndexes",
+                    starting,
+                    ..
+                } = event
+                {
+                    if starting {
+                        index_reads = Some(fixture.backend_relationship_reads());
+                    } else {
+                        assert_eq!(
+                            index_reads.take(),
+                            Some(fixture.backend_relationship_reads()),
+                            "indexes consume prepared memberships"
+                        );
+                    }
+                }
+            },
+        )?;
+        let counts = probe.finish().0;
+        assert!(packages.requiredness(&fixture.nodes["Title.PropertyType"])?.unwrap());
+        assert!(packages.value_type(&fixture.nodes["Title.PropertyType"])?.is_some());
+        let signature = (
+            packages.preparation_metrics().constructed_schema_products,
+            counts.get("derived_projection_attempts").copied().unwrap_or(0),
+            counts.get("schema_builder_attempts").copied().unwrap_or(0),
+        );
+        assert_eq!(signature.1, 3, "each derived product is projected once");
+        if let Some(expected) = &expected {
+            assert_eq!(&signature, expected);
+        } else {
+            expected = Some(signature);
+        }
+        assert_eq!(packages.preparation_metrics().constructed_schema_products, 4);
+        assert!(
+            matches!(packages.effective_schema(&fixture.nodes["Schema.HolonType"]), Err(HolonError::InvalidState(message)) if message.contains("Schema") || message.contains("contract consumer"))
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn requiredness_and_value_selection_are_concrete_declarations() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture
+        .nodes
+        .get_mut("Title.PropertyType")
+        .unwrap()
+        .remove_property_value("IsValueRequired")?;
+    fixture.nodes.get_mut("Title.PropertyType").unwrap().with_property_value("IsRequired", true)?;
+    fixture
+        .nodes
+        .get_mut("PropertyType.TypeDescriptor")
+        .unwrap()
+        .with_property_value("IsValueRequired", true)?;
+    fixture.node("PropertyMeta")?;
+    fixture.link("PropertyMeta", R::Extends, "HolonType.TypeDescriptor")?;
+    fixture
+        .node("RequirednessDefault")?
+        .with_property_value("TypeName", "IsValueRequired")?
+        .with_property_value("DefaultValue", false)?;
+    fixture.link("PropertyMeta", R::InstanceProperties, "RequirednessDefault")?;
+    fixture.link("Title.PropertyType", R::DescribedBy, "PropertyMeta")?;
+    let value = fixture.nodes["StringValueType.ValueType"].clone();
+    fixture
+        .nodes
+        .get_mut("Title.PropertyType")
+        .unwrap()
+        .remove_related_holons(R::ValueType, vec![value])?;
+    fixture.link("PropertyType.TypeDescriptor", R::ValueType, "StringValueType.ValueType")?;
+    // Neither inherited true nor the alias wins over the governing default.
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &[fixture.nodes["Contract"].clone()],
+        &[],
+        &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+    )?;
+    assert!(!packages.requiredness(&fixture.nodes["Title.PropertyType"])?.unwrap());
+    assert!(
+        packages.value_type(&fixture.nodes["Title.PropertyType"])?.is_none(),
+        "concrete properties do not inherit ValueType selection"
+    );
+    Ok(())
+}
+
+#[test]
+fn relationship_endpoints_require_identity_without_target_lineage() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("UnreadEndpoint")?;
+    fixture
+        .node("UnusedRelationship")?
+        .with_property_value("TypeName", "Unused")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("UnusedRelationship", R::Extends, "DeclaredRelationshipType.RelationshipType")?;
+    fixture.link("UnusedRelationship", R::SourceType, "Contract")?;
+    fixture.link("UnusedRelationship", R::TargetType, "UnreadEndpoint")?;
+    fixture.link("Contract", R::InstanceRelationships, "UnusedRelationship")?;
+    let fixture = fixture.saved_snapshot()?;
+    fixture.control_saved_relationship_reads(
+        "UnreadEndpoint",
+        R::Extends,
+        Some(HolonError::InvalidState("endpoint lineage has no consumer".into())),
+    )?;
+    let mut subject = fixture.staged_subject("identity-only-endpoint")?;
+    subject.with_property_value("Title", "valid")?;
+    let report = validate_commit_candidates(&fixture.context, &[subject])?;
+    assert!(report.is_accepted(), "{report:?}");
+    assert_eq!(fixture.backend_reads_for_source("UnreadEndpoint", &R::Extends), 0);
+    Ok(())
+}
+
+#[test]
+fn unusable_requiredness_preserves_independent_value_checks() -> Result<(), HolonError> {
+    for defect in 0..7 {
+        let mut fixture = readiness_fixture()?;
+        let mut subject = fixture.staged_subject("requiredness-guard")?;
+        subject.with_property_value("Key", 42_i64)?;
+        let property = fixture.nodes.get_mut("Title.PropertyType").unwrap();
+        if defect == 0 {
+            property.with_property_value("IsValueRequired", "invalid")?;
+        } else {
+            property.remove_property_value("IsValueRequired")?;
+        }
+        if defect >= 2 {
+            fixture.node("RequirednessMeta")?;
+            fixture.link(
+                "RequirednessMeta",
+                R::Extends,
+                if defect == 6 { "RequirednessMeta" } else { "HolonType.TypeDescriptor" },
+            )?;
+            let mut describers = vec![fixture.nodes["RequirednessMeta"].clone()];
+            if defect == 2 {
+                describers.push(fixture.nodes["Contract"].clone());
+            }
+            fixture
+                .nodes
+                .get_mut("Title.PropertyType")
+                .unwrap()
+                .add_related_holons(R::DescribedBy, describers)?;
+            if defect >= 4 {
+                fixture
+                    .node("RequirednessMember")?
+                    .with_property_value("TypeName", "IsValueRequired")?;
+                fixture.link("RequirednessMeta", R::InstanceProperties, "RequirednessMember")?;
+                if defect == 4 {
+                    fixture
+                        .nodes
+                        .get_mut("RequirednessMember")
+                        .unwrap()
+                        .with_property_value("DefaultValue", "invalid")?;
+                }
+            }
+        }
+        let report = validate_commit_candidates(&fixture.context, &[subject])?;
+        assert!(
+            report.violations.iter().any(|v| v.message.contains("Requiredness is unusable")),
+            "case {defect}: {report:?}"
+        );
+        if defect == 6 {
+            assert!(report
+                .violations
+                .iter()
+                .any(|v| v.message.contains("Governing meta-type lineage is unusable")));
+        }
+        assert!(report.violations.iter().any(|v| v.rule_key.as_deref()
+            == Some(CoreValidationRuleName::BaseValueKindMatchesString.as_str())));
+    }
+    Ok(())
+}

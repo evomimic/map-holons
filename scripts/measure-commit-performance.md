@@ -220,7 +220,7 @@ evidence; they are not a matched latency comparison for the consolidated foundat
 
 ### Consolidated foundation observations
 
-New captures use `822-v3` with `broad-preparation`. Historical `822-v2` logs retain
+New captures use `822-v3` with `declared-demand`; the `fed00431` foundation checkpoint uses `broad-preparation`. Historical `822-v2` logs retain
 snapshot lookup/scan and host snapshot observations. The new format requires registry-owner
 capture and guest restoration/index rebuild measurements; absent legacy observations are unavailable,
 not zero. Production transport continues to report envelope encoding separately. Sweettest's

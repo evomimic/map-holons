@@ -604,17 +604,19 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
             _ => None,
         })
         .sum();
-    // Every non-restored definition needs category routing on the consolidated foundation.
-    // The two previously diagnosed identities are reused; discovery remains unchanged.
-    assert_eq!(product_diagnoses, metrics.distinct_content - 2);
+    // Product acquisition interleaves with consumer discovery; final facts reuse its diagnoses.
+    assert_eq!(product_diagnoses, 0, "diagnosis finishes during demand discovery");
     assert_eq!(resolutions, 0, "valid diagnosed lineages seed all fresh products");
     assert_eq!(metrics.package_roots, 1);
     assert_eq!(metrics.subjects, 1);
     assert_eq!(metrics.affected_schemas, 0);
     assert_eq!(metrics.distinct_content, 19);
-    assert_eq!(metrics.constructed_schema_products, 19);
-    assert_eq!(edges, 188);
-    assert!(metrics.identity_role_visits >= metrics.distinct_content);
+    assert_eq!(
+        metrics.constructed_schema_products, 4,
+        "governor, two properties and shared value type"
+    );
+    assert_eq!(edges, 20, "declared discovery membership requests");
+    assert_eq!(metrics.identity_role_visits, 19);
     assert_eq!(metrics.contract_consumers, 1);
     assert!(!events.iter().any(|event| matches!(
         event,
@@ -646,7 +648,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
             _ => None,
         })
         .sum();
-    assert_eq!(described_by_requests, metrics.identity_role_visits);
+    assert_eq!(described_by_requests, 6);
     let typed_visits: Vec<_> = events
         .iter()
         .filter_map(|event| match event {
@@ -657,10 +659,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         })
         .collect();
     assert_eq!(typed_visits.len(), metrics.identity_role_visits);
-    assert_eq!(
-        typed_visits.iter().filter(|(_, distinct)| *distinct).count(),
-        metrics.distinct_content
-    );
+    assert_eq!(typed_visits.iter().filter(|(_, distinct)| *distinct).count(), 8);
     assert!(typed_visits.iter().all(|(name, _)| !name.is_empty()));
     let mut active = None;
     let mut contracts = 0;
@@ -687,7 +686,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         }
     }
     assert!(active.is_none());
-    assert_eq!(contracts, metrics.distinct_content);
+    assert_eq!(contracts, metrics.constructed_schema_products);
     assert!(prefetches > 0, "saved definitions must expose eager prefetch cost");
     Ok(())
 }
