@@ -8,6 +8,26 @@ use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use integrity_core_types::HolonErrorKind;
 
+/// One saved collection whose persisted occurrences must survive rejection unchanged.
+#[derive(Clone, Debug)]
+pub struct NamedRelationshipSubject {
+    pub source: TestReference,
+    pub relationship: RelationshipName,
+}
+
+/// Rejection persistence checks are independent of successful Commit dispositions.
+#[derive(Clone, Debug)]
+pub enum RejectionVerification {
+    /// Preserves the existing database-wide node and endpoint-relationship observations.
+    ExistingPersistenceSnapshot,
+    /// Checks new keyed roots and explicitly named saved collections only.
+    /// This establishes client-visible non-persistence, not substrate record absence.
+    FixtureScoped {
+        subjects: Vec<TestReference>,
+        unchanged_relationships: Vec<NamedRelationshipSubject>,
+    },
+}
+
 /// Expected `LoadCommitStatus` written by the loader controller onto the
 /// load response holon. Display values match the on-holon property strings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -317,6 +337,7 @@ pub enum DanceTestStep {
         description: String,
     },
     Commit {
+        rejection_verification: RejectionVerification,
         candidates: Vec<ResolvedCommitCandidate>,
         retry_participants: Vec<ExpectedRetryParticipant>,
         expected_status: ExpectedCommitStatus,
@@ -426,9 +447,6 @@ pub enum DanceTestStep {
     VerifyCoreSchemaValueSemantics {
         description: String,
     },
-    VerifyValidationBindingsDescriptorContract {
-        description: String,
-    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -519,6 +537,7 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 expected_error,
                 description,
+                ..
             } => {
                 write!(
                     f,
@@ -670,9 +689,6 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { description } => {
-                write!(f, "{description}")
-            }
-            DanceTestStep::VerifyValidationBindingsDescriptorContract { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {

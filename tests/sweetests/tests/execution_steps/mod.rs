@@ -20,6 +20,7 @@ pub mod persisted_read_support;
 pub mod print_database_executor;
 pub mod query_executor;
 pub mod query_relationships_executor;
+mod rejection_verification_executor;
 pub mod remove_properties_executor;
 pub mod remove_related_holon_executor;
 pub mod stage_new_from_clone_executor;

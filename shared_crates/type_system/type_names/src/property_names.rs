@@ -116,6 +116,7 @@ pub enum CorePropertyTypeName {
     Arity,
     CaseMatching,
     CommitRequestStatus,
+    DescriptorResetRequired,
     CommitsAttempted,
     ConstraintName,
     Context,

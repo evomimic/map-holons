@@ -204,3 +204,56 @@ fn descriptor_step_replaces_targets_and_preserves_authored_values() {
     );
     test_case.finalize(&fixture_context, &fixture_holons).unwrap();
 }
+
+/// The correction scenario opts into bounded checks without changing successful Commit policy.
+#[test]
+fn validation_correction_declares_both_roots_and_descriptor_inverse_guards() {
+    use holons_prelude::prelude::*;
+    use holons_test::RejectionVerification;
+    let case = commit_validation_fixture::commit_validation_fixture().unwrap();
+    let commits: Vec<_> = case
+        .steps
+        .iter()
+        .filter_map(|step| {
+            if let DanceTestStep::Commit { rejection_verification, expected_status, .. } = step {
+                Some((rejection_verification, expected_status))
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(commits.len(), 2);
+    let (RejectionVerification::FixtureScoped { subjects, unchanged_relationships }, status) =
+        commits[0]
+    else {
+        panic!("first Commit must declare bounded rejection checks");
+    };
+    assert_eq!(*status, ExpectedCommitStatus::Rejected);
+    let mut keys: Vec<_> = subjects
+        .iter()
+        .map(|token| token.expected_snapshot().snapshot().key().unwrap().unwrap().0)
+        .collect();
+    keys.sort();
+    assert_eq!(keys, ["Book.ValidationCorrection", "Person.ValidationCorrection"]);
+    let mut guards: Vec<_> = unchanged_relationships
+        .iter()
+        .map(|guard| {
+            (
+                guard.source.expected_snapshot().snapshot().key().unwrap().unwrap().0,
+                guard.relationship.to_string(),
+            )
+        })
+        .collect();
+    guards.sort();
+    assert_eq!(
+        guards,
+        vec![
+            ("Book.HolonType".into(), "Instances".into()),
+            ("Person.HolonType".into(), "Instances".into()),
+        ]
+    );
+    assert!(matches!(
+        commits[1],
+        (RejectionVerification::ExistingPersistenceSnapshot, ExpectedCommitStatus::Complete)
+    ));
+}

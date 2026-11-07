@@ -2,6 +2,8 @@ pub mod derived_descriptor;
 pub use derived_descriptor::{construct_derived_descriptor, DerivedDescriptor};
 pub(crate) mod accessor_helpers;
 pub mod command_descriptor;
+mod commit_effects;
+pub use commit_effects::DescriptorCommitEffects;
 mod constraint_applicability;
 mod constraint_contributions;
 mod contract_contributions;

@@ -1,11 +1,11 @@
-use super::described_instance_helpers::add_described_instance;
+use super::described_instance_helpers::{add_described_instance, saved};
 use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{BOOK_DESCRIPTOR_KEY, PERSON_DESCRIPTOR_KEY};
 use holons_test::{
     DancesTestCase, ExpectedCommitStatus, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, TestCaseInit,
+    ExpectedValidationSubject, NamedRelationshipSubject, TestCaseInit,
 };
 
 /// A required property rule inherited from the PropertyType family rejects a
@@ -17,6 +17,10 @@ pub fn commit_validation_fixture() -> Result<DancesTestCase, HolonError> {
     );
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
+    let book_descriptor =
+        saved(&fixture_context, &mut test_case, &mut fixture_holons, BOOK_DESCRIPTOR_KEY)?;
+    let person_descriptor =
+        saved(&fixture_context, &mut test_case, &mut fixture_holons, PERSON_DESCRIPTOR_KEY)?;
     let book = add_described_instance(
         &fixture_context,
         &mut test_case,
@@ -50,7 +54,20 @@ pub fn commit_validation_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         None,
     )?;
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
+    test_case.add_commit_step_with_rejection_checks(
+        &fixture_holons,
+        vec![
+            NamedRelationshipSubject {
+                source: book_descriptor,
+                relationship: "Instances".to_relationship_name(),
+            },
+            NamedRelationshipSubject {
+                source: person_descriptor,
+                relationship: "Instances".to_relationship_name(),
+            },
+        ],
+        None,
+    )?;
     test_case.add_verify_commit_rejection_step(
         vec![ExpectedRejectedHolon {
             token: book.clone(),

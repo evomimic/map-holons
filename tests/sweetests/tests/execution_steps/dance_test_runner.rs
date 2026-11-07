@@ -13,7 +13,6 @@ use super::descriptor_verification_executor::{
     execute_verify_book_person_smartlink_commit_cache_links,
     execute_verify_core_schema_descriptor_subtypes, execute_verify_core_schema_descriptors,
     execute_verify_core_schema_value_semantics, execute_verify_relationship_anchoring,
-    execute_verify_validation_bindings_descriptor_contract,
 };
 use super::ensure_database_count_executor::execute_ensure_database_count;
 use super::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
@@ -184,6 +183,7 @@ pub async fn run_dance_test_case(
                 execute_begin_transaction(&mut test_execution_state, expected_error).await
             }
             DanceTestStep::Commit {
+                rejection_verification,
                 candidates,
                 retry_participants,
                 expected_status,
@@ -194,6 +194,7 @@ pub async fn run_dance_test_case(
                     &mut test_execution_state,
                     candidates,
                     retry_participants,
+                    rejection_verification,
                     expected_status,
                     expected_error,
                 )
@@ -325,10 +326,6 @@ pub async fn run_dance_test_case(
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { .. } => {
                 execute_verify_core_schema_value_semantics(&mut test_execution_state).await
-            }
-            DanceTestStep::VerifyValidationBindingsDescriptorContract { .. } => {
-                execute_verify_validation_bindings_descriptor_contract(&mut test_execution_state)
-                    .await
             }
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&mut test_execution_state).await

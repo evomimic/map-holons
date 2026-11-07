@@ -7,6 +7,7 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{CollectionState, HolonCollection};
 use crate::reference_layer::HolonServiceApi;
 use crate::reference_layer::{HolonReference, ReadableHolon};
+use crate::RelationshipMap;
 use core_types::{HolonError, HolonId, RelationshipName};
 /// Selects whether a relationship read may reuse a cached collection for the
 /// lifetime of its enclosing cache manager.
@@ -102,6 +103,27 @@ impl RelationshipCache {
         Self { cache: Arc::new(RwLock::new(HashMap::new())) }
     }
 
+    /// Peeks without fetching or classification; used solely to discover existing
+    /// prepared associations. Empty and expired membership keep their usual meaning.
+    pub(super) fn resident_membership(
+        &self,
+        service: &dyn HolonServiceApi,
+        source: &HolonId,
+        name: &RelationshipName,
+    ) -> Result<Option<Arc<RwLock<HolonCollection>>>, HolonError> {
+        let generation = service.relationship_cache_generation();
+        let now = service.relationship_cache_time_millis();
+        let cache =
+            self.cache.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        Ok(cache
+            .get(source)
+            .and_then(|entries| entries.get(name))
+            .filter(|entry| entry.generation == generation)
+            .and_then(|entry| entry.membership.as_ref())
+            .filter(|membership| membership.is_unexpired(now))
+            .map(|membership| Arc::clone(&membership.collection)))
+    }
+
     /// Prepares requested saved memberships through the existing retention policy.
     /// A failed/incomplete provider response installs none of its new collections.
     pub(super) fn prepare(
@@ -111,6 +133,31 @@ impl RelationshipCache {
         source: &HolonId,
         names: &[RelationshipName],
     ) -> Result<(), HolonError> {
+        self.read_set(transactions, service, source, names, false, &[]).map(|_| ())
+    }
+
+    /// Returns valid resident memberships and fills misses from one source-wide query.
+    pub(super) fn all_related_holons(
+        &self,
+        transactions: &CacheReadTransactions,
+        service: &dyn HolonServiceApi,
+        source: &HolonId,
+        names: &[RelationshipName],
+        bindings: &[(RelationshipName, RelationshipPolicyBinding)],
+    ) -> Result<RelationshipMap, HolonError> {
+        self.read_set(transactions, service, source, names, true, bindings)
+    }
+
+    fn read_set(
+        &self,
+        transactions: &CacheReadTransactions,
+        service: &dyn HolonServiceApi,
+        source: &HolonId,
+        names: &[RelationshipName],
+        source_wide: bool,
+        bindings: &[(RelationshipName, RelationshipPolicyBinding)],
+    ) -> Result<RelationshipMap, HolonError> {
+        let mut result = RelationshipMap::new_empty();
         let now = service.relationship_cache_time_millis();
         let generation = service.relationship_cache_generation();
         let mut missing = Vec::new();
@@ -130,16 +177,39 @@ impl RelationshipCache {
                         descriptors.insert(name.clone(), descriptor.clone());
                     }
                 }
-                let resident = entry
-                    .and_then(|entry| entry.membership.as_ref())
-                    .is_some_and(|membership| membership.is_unexpired(now));
-                if !resident && !missing.contains(name) {
+                let membership = entry.and_then(|entry| entry.membership.as_ref());
+                if source_wide {
+                    let outcome = match membership {
+                        Some(membership) if membership.is_unexpired(now) => "hit",
+                        Some(_) => "expired",
+                        None => "missing",
+                    };
+                    super::read_observations::record(source, Some(name), outcome);
+                }
+                if let Some(membership) =
+                    membership.filter(|membership| membership.is_unexpired(now))
+                {
+                    result.insert(name.clone(), Arc::clone(&membership.collection));
+                } else if !missing.contains(name) {
                     missing.push(name.clone());
                 }
             }
         }
         if missing.is_empty() {
-            return Ok(());
+            return Ok(result);
+        }
+        for name in &missing {
+            if policies.contains_key(name) {
+                continue;
+            }
+            let binding = match bindings.iter().find(|(candidate, _)| candidate == name) {
+                Some((_, binding)) => Some(binding.clone()),
+                None => transactions.prepared_relationship_binding(self, service, source, name)?,
+            };
+            if let Some(binding) = binding {
+                policies.insert(name.clone(), binding.policy);
+                descriptors.insert(name.clone(), binding);
+            }
         }
         let context = transactions.open()?;
         for name in &missing {
@@ -152,12 +222,21 @@ impl RelationshipCache {
         let fetched_at = service.relationship_cache_time_millis();
         let unresolved: Vec<_> =
             missing.iter().filter(|name| !policies.contains_key(*name)).cloned().collect();
-        let mut fetched = service.fetch_relationship_set_with_descriptors_internal(
-            &context,
-            source,
-            &missing,
-            &unresolved,
-        )?;
+        let mut fetched = if source_wide {
+            service.fetch_all_relationships_with_descriptors_internal(
+                &context,
+                source,
+                &missing,
+                &unresolved,
+            )?
+        } else {
+            service.fetch_relationship_set_with_descriptors_internal(
+                &context,
+                source,
+                &missing,
+                &unresolved,
+            )?
+        };
         if fetched.len() != missing.len()
             || missing
                 .iter()
@@ -176,6 +255,7 @@ impl RelationshipCache {
                     None => service.relationship_cache_policy(&context, source, &name)?,
                 },
             };
+            result.insert(name.clone(), Arc::clone(&collection));
             if let Some(policy) = policy {
                 prepared.push((
                     name,
@@ -186,7 +266,7 @@ impl RelationshipCache {
         let mut cache =
             self.cache.write().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
         cache.entry(source.clone()).or_default().extend(prepared);
-        Ok(())
+        Ok(result)
     }
 
     /// Retrieves the `HolonCollection` containing references to all holons that are related
@@ -250,7 +330,7 @@ impl RelationshipCache {
             .and_then(|relationships| relationships.get(relationship_name))
             .filter(|entry| entry.generation == generation)
             .cloned();
-        let retained_policy = cached.as_ref().map(|entry| entry.policy);
+        let mut retained_policy = cached.as_ref().map(|entry| entry.policy);
         let mut miss_reason = "missing";
         if let Some(membership) = cached.as_ref().and_then(|entry| entry.membership.as_ref()) {
             if hint == RelationshipReadHint::SchemaDefault {
@@ -273,7 +353,21 @@ impl RelationshipCache {
 
         #[cfg(not(target_arch = "wasm32"))]
         tracing::debug!(target: "map_profile", cache = "miss");
-        // Cache miss: Fetch related holons from the HolonServiceApi
+        // Resolve existing preparation only after membership misses. This does
+        // not fetch schema, and never upgrades expired membership into a hit.
+        let prepared_binding = if retained_policy.is_none() {
+            transactions.prepared_relationship_binding(
+                self,
+                holon_service,
+                source_holon_id,
+                relationship_name,
+            )?
+        } else {
+            None
+        };
+        if let Some(binding) = &prepared_binding {
+            retained_policy = Some(binding.policy);
+        }
         let context = transactions.open()?;
         if retained_policy.is_none() {
             holon_service.prepare_relationship_policy_internal(
@@ -292,7 +386,10 @@ impl RelationshipCache {
                     source_holon_id,
                     relationship_name,
                 )?,
-                descriptor: cached.as_ref().and_then(|entry| entry.descriptor.clone()),
+                descriptor: cached
+                    .as_ref()
+                    .and_then(|entry| entry.descriptor.clone())
+                    .or(prepared_binding),
             }
         } else {
             holon_service.fetch_related_holons_with_descriptor_internal(

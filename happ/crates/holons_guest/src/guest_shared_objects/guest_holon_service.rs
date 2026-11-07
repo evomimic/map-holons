@@ -521,12 +521,7 @@ impl HolonServiceApi for GuestHolonService {
         for (map_name, holon_references) in reference_map {
             let mut collection = HolonCollection::new_existing();
             for (canonical_key, reference) in holon_references {
-                let key = canonical_key.ok_or_else(|| {
-                    HolonError::Misc(
-                        "Expected Smartlink to have a key, didn't get one.".to_string(),
-                    )
-                })?; // At least for now, all SmartLinks should be encoded with a key
-                collection.add_reference_with_key(Some(&key), &reference)?;
+                collection.add_reference_with_key(canonical_key.as_ref(), &reference)?;
             }
             relationship_map.insert(map_name, Arc::new(RwLock::new(collection)));
         }

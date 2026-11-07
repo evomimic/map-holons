@@ -53,6 +53,12 @@ pub enum ResponseBody {
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
     SavedHolonHydration(Vec<crate::core_shared_objects::cache_population::SavedHolonFetch>),
     SavedRelationship(crate::core_shared_objects::relationship_fetch::FetchedRelationship),
+    SavedRelationshipSet(
+        Vec<(
+            core_types::RelationshipName,
+            crate::core_shared_objects::relationship_fetch::FetchedRelationship,
+        )>,
+    ),
     HolonReference(HolonReference),
     NodeCollection(NodeCollection),
     // SmartCollection(SmartCollection),
@@ -137,6 +143,9 @@ impl DanceResponse {
         match &self.body {
             ResponseBody::SavedHolonHydration(entries) => {
                 format!("SavedHolonHydration(count={})", entries.len())
+            }
+            ResponseBody::SavedRelationshipSet(entries) => {
+                format!("SavedRelationshipSet(count={})", entries.len())
             }
             ResponseBody::SavedRelationship(fetched) => format!(
                 "SavedRelationship(count={}, descriptor={:?})",

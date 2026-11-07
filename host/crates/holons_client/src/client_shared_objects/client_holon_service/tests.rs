@@ -494,6 +494,7 @@ fn usage_resolution_delegates_once_without_client_relationship_discovery() -> Re
 #[derive(Debug)]
 struct CommitResetTransport {
     status: &'static str,
+    evidence: Option<base_types::BaseValue>,
     persisted: bool,
     reset_during_request: bool,
     during: std::sync::Mutex<
@@ -513,7 +514,28 @@ impl holons_core::dances::DanceInitiator for CommitResetTransport {
             context.space_read_handle().reset_session().unwrap();
         }
         *self.during.lock().unwrap() = Some(context.space_read_handle().session().unwrap());
+        if self.status == "TransportFailure" {
+            return holons_core::dances::DanceResponse::from_error(HolonError::ConductorError(
+                "unknown persistence outcome".into(),
+            ));
+        }
+        if self.status == "InvalidResponse" {
+            return holons_core::dances::DanceResponse::new(
+                ResponseStatusCode::OK,
+                "missing body".into(),
+                ResponseBody::None,
+                None,
+            );
+        }
         let mut response = context.mutation().new_holon(None).unwrap();
+        if let Some(evidence) = &self.evidence {
+            response
+                .with_property_value(
+                    type_names::CorePropertyTypeName::DescriptorResetRequired,
+                    evidence.clone(),
+                )
+                .unwrap();
+        }
         response
             .with_property_value(type_names::CorePropertyTypeName::CommitRequestStatus, self.status)
             .unwrap();
@@ -536,17 +558,35 @@ impl holons_core::dances::DanceInitiator for CommitResetTransport {
 
 #[test]
 fn local_commit_resets_current_session_only_when_persistence_may_have_changed() {
-    for (status, persisted, reset_during_request, should_reset) in [
-        ("Complete", true, false, true),
-        ("Complete", true, true, true),
-        ("Complete", false, false, false),
-        ("Rejected", false, false, false),
-        ("Incomplete", true, false, true),
+    use base_types::BaseValue;
+    for (status, persisted, reset_during_request, evidence, nonempty, should_reset) in [
+        ("Complete", true, false, "missing", false, true),
+        ("Complete", true, true, "reset", false, true),
+        ("Complete", false, false, "missing", false, false),
+        ("Complete", false, false, "missing", true, true),
+        ("Complete", true, false, "safe", true, false),
+        ("Complete", true, true, "safe", true, false),
+        ("Complete", false, false, "safe", true, false),
+        ("Complete", true, false, "malformed", true, true),
+        ("Complete", false, false, "reset", false, true),
+        ("Rejected", false, false, "reset", true, false),
+        ("Rejected", true, false, "safe", true, true),
+        ("Incomplete", true, false, "safe", true, true),
         // Partial graph persistence can occur without a newly saved node.
-        ("Incomplete", false, false, true),
+        ("Incomplete", false, false, "safe", false, true),
+        ("Unknown", false, false, "safe", false, true),
+        ("TransportFailure", false, false, "safe", true, true),
+        ("InvalidResponse", false, false, "safe", true, true),
     ] {
+        let evidence = match evidence {
+            "safe" => Some(BaseValue::BooleanValue(false.into())),
+            "reset" => Some(BaseValue::BooleanValue(true.into())),
+            "malformed" => Some(BaseValue::StringValue("false".into())),
+            _ => None,
+        };
         let transport = Arc::new(CommitResetTransport {
             status,
+            evidence,
             persisted,
             reset_during_request,
             during: Default::default(),
@@ -560,8 +600,21 @@ fn local_commit_resets_current_session_only_when_persistence_may_have_changed() 
         );
         let context =
             space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+        let candidates = if nonempty {
+            let transient = context.mutation().new_holon(Some("candidate".into())).unwrap();
+            vec![context.mutation().stage_new_holon(transient).unwrap()]
+        } else {
+            vec![]
+        };
         let before = space.session().unwrap();
-        client.commit_internal(&context, &[]).unwrap();
+        let result = client.commit_internal(&context, &candidates);
+        match status {
+            "TransportFailure" => assert!(matches!(result, Err(HolonError::ConductorError(_)))),
+            "InvalidResponse" => assert!(matches!(result, Err(HolonError::CommitFailure(_)))),
+            _ => {
+                result.unwrap();
+            }
+        }
         let during = transport.during.lock().unwrap().clone().unwrap();
         assert_eq!(during.check_active().is_err(), should_reset, "{status}/{persisted}");
         assert_eq!(before.check_active().is_err(), should_reset || reset_during_request);
