@@ -4,6 +4,7 @@ pub mod execution_holons;
 pub mod execution_reference;
 pub mod execution_state;
 pub mod persisted_graph_assertions;
+pub mod rejection_assertions;
 
 pub use commit_disposition::*;
 pub use equivalence_resolver::*;
@@ -11,3 +12,4 @@ pub use execution_holons::*;
 pub use execution_reference::*;
 pub use execution_state::*;
 pub use persisted_graph_assertions::*;
+pub use rejection_assertions::*;

@@ -217,6 +217,43 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         })
     }
 
+    /// Reads one source-wide membership snapshot and completes requested empty sets.
+    /// Transport providers attach descriptor policies for unresolved names in the same response.
+    fn fetch_all_relationships_with_descriptors_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+        _unresolved: &[RelationshipName],
+    ) -> Result<
+        Vec<(
+            RelationshipName,
+            crate::core_shared_objects::relationship_fetch::FetchedRelationship,
+        )>,
+        HolonError,
+    > {
+        let all = self.fetch_all_related_holons_internal(context, source)?;
+        names
+            .iter()
+            .map(|name| {
+                let collection = match all.get_collection_for_relationship(name) {
+                    Some(collection) => collection
+                        .read()
+                        .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                        .clone(),
+                    None => HolonCollection::new_existing(),
+                };
+                Ok((
+                    name.clone(),
+                    crate::core_shared_objects::relationship_fetch::FetchedRelationship {
+                        collection,
+                        descriptor: None,
+                    },
+                ))
+            })
+            .collect()
+    }
+
     /// Retrieves a complete set; only `unresolved` names need descriptor binding.
     /// Retained associations survive membership expiry, including bulk preparation.
     fn fetch_relationship_set_with_descriptors_internal(

@@ -646,6 +646,18 @@ mod tests {
     };
 
     #[test]
+    fn prepared_collection_inventory_requires_commit_reset() {
+        use type_names::ToRelationshipName;
+        let source_id = core_types::LocalId(vec![91; 39]);
+        for (source, _) in collections() {
+            let name = source.to_relationship_name();
+            let mut effects = crate::descriptors::DescriptorCommitEffects::default();
+            effects.record_relationship_write(&source_id, &name);
+            assert!(effects.reset_required(), "Untracked prepared input: {name}");
+        }
+    }
+
+    #[test]
     fn relationship_preparation_does_not_read_unused_value_property_collections(
     ) -> Result<(), HolonError> {
         use crate::core_shared_objects::{holon::SavedHolon, read_observations::CacheReadProbe};

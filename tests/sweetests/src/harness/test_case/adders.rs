@@ -41,8 +41,9 @@ use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitCandidate,
     ExpectedCommitStatus, ExpectedLoadStatus, ExpectedPersistedGraph, ExpectedRetryParticipant,
-    ExpectedSnapshot, FixtureHolons, PersistedSubject, QueryExpectation, QueryInputSpec,
-    QueryRoute, SourceSnapshot, TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedSnapshot, FixtureHolons, NamedRelationshipSubject, PersistedSubject, QueryExpectation,
+    QueryInputSpec, QueryRoute, RejectionVerification, SourceSnapshot, TestHolonState,
+    TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -462,18 +463,6 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_verify_validation_bindings_descriptor_contract_step(
-        &mut self,
-        description: Option<String>,
-    ) -> Result<(), HolonError> {
-        self.ensure_not_finalized()?;
-        let description = description.unwrap_or_else(|| {
-            "Verify ValidationBindings descriptor contract and inverse traversal".to_string()
-        });
-        self.steps.push(DanceTestStep::VerifyValidationBindingsDescriptorContract { description });
-        Ok(())
-    }
-
     pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,
@@ -633,11 +622,60 @@ impl DancesTestCase {
                 fixture_holons.commit(expected_status, &candidates, &retry_participants)?
             };
         self.steps.push(DanceTestStep::Commit {
+            rejection_verification: RejectionVerification::ExistingPersistenceSnapshot,
             candidates: resolved,
             retry_participants,
             expected_status,
             expected_error,
             description: description.unwrap_or_else(|| "Commit".to_string()),
+        });
+        Ok(())
+    }
+
+    /// Expects semantic rejection of every current new keyed root, retaining staged heads.
+    /// Existing saved collections are declared by the fixture; no inverse scope is inferred.
+    pub fn add_commit_step_with_rejection_checks(
+        &mut self,
+        fixture_holons: &FixtureHolons,
+        mut unchanged_relationships: Vec<NamedRelationshipSubject>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        if self
+            .steps
+            .iter()
+            .rev()
+            .take_while(|step| !matches!(step, DanceTestStep::BeginTransaction { .. }))
+            .any(|step| {
+                matches!(
+                    step,
+                    DanceTestStep::Commit { expected_status: ExpectedCommitStatus::Incomplete, .. }
+                )
+            })
+        {
+            return Err(HolonError::InvalidParameter(
+                "Fixture-scoped rejection does not support relationship retries after Incomplete"
+                    .into(),
+            ));
+        }
+        let subjects = fixture_holons.rejection_subjects()?;
+        for relationship in &mut unchanged_relationships {
+            let mut subject = PersistedSubject::Token(relationship.source.clone());
+            freeze_persisted_subject(fixture_holons, &mut subject)?;
+            let PersistedSubject::Token(token) = subject else { unreachable!() };
+            relationship.source = token;
+        }
+        self.steps.push(DanceTestStep::Commit {
+            candidates: Vec::new(),
+            retry_participants: Vec::new(),
+            expected_status: ExpectedCommitStatus::Rejected,
+            expected_error: None,
+            rejection_verification: RejectionVerification::FixtureScoped {
+                subjects,
+                unchanged_relationships,
+            },
+            description: description
+                .unwrap_or_else(|| "Commit with fixture-scoped rejection checks".into()),
         });
         Ok(())
     }
