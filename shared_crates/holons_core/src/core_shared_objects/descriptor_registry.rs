@@ -40,6 +40,12 @@ impl EffectiveHolonDescriptorRegistry {
         Ok(state.entries.is_empty() && state.derived_entries.is_empty())
     }
 
+    /// Returns selected entry counts without reading descriptor contents.
+    pub fn population(&self) -> Result<(usize, usize), HolonError> {
+        let state = self.state.lock().map_err(lock_error)?;
+        Ok((state.entries.len(), state.derived_entries.len()))
+    }
+
     pub fn context(&self) -> Result<Arc<TransactionContext>, HolonError> {
         let mut state = self.state.lock().map_err(lock_error)?;
         if let Some(context) = &state.context {
@@ -77,6 +83,10 @@ impl EffectiveHolonDescriptorRegistry {
 
     pub fn get(&self, target: &HolonId) -> Result<Option<EffectiveHolonDescriptor>, HolonError> {
         let state = self.state.lock().map_err(lock_error)?;
+        super::read_observations::record_derivation("registry_lookups", 1);
+        if state.entries.contains_key(target) {
+            super::read_observations::record_derivation("registry_hits", 1);
+        }
         Ok(state.entries.get(target).map(|(id, session)| {
             EffectiveHolonDescriptor::from_constructed_holon(
                 TransientReference::from_temporary_id(
@@ -91,6 +101,10 @@ impl EffectiveHolonDescriptorRegistry {
 
     pub fn get_derived(&self, target: &HolonId) -> Result<Option<DerivedDescriptor>, HolonError> {
         let state = self.state.lock().map_err(lock_error)?;
+        super::read_observations::record_derivation("derived_registry_lookups", 1);
+        if state.derived_entries.contains_key(target) {
+            super::read_observations::record_derivation("derived_registry_hits", 1);
+        }
         Ok(state.derived_entries.get(target).map(|(id, session)| {
             DerivedDescriptor::from_constructed_holon(
                 TransientReference::from_temporary_id(
@@ -356,6 +370,18 @@ impl EffectiveHolonDescriptorRegistry {
         root_id: TemporaryId,
         bind: impl FnOnce(&Arc<TransactionContext>) -> Result<super::HolonPool, HolonError>,
     ) -> Result<Arc<Self>, HolonError> {
+        Self::restore_with_observer(agent, owner_id, root_id, bind, &mut |_| {})
+    }
+
+    /// Observes transport restoration boundaries without adding a clock to shared code.
+    pub fn restore_with_observer(
+        agent: &Arc<TransactionContext>,
+        owner_id: super::transactions::TxId,
+        root_id: TemporaryId,
+        bind: impl FnOnce(&Arc<TransactionContext>) -> Result<super::HolonPool, HolonError>,
+        observer: &mut impl FnMut(&'static str),
+    ) -> Result<Arc<Self>, HolonError> {
+        observer("OwnerRestoration");
         if agent.descriptor_registry().is_some() {
             return Err(HolonError::InvalidParameter(
                 "Space already has a descriptor registry".into(),
@@ -374,6 +400,7 @@ impl EffectiveHolonDescriptorRegistry {
         let registry = Arc::new(Self::new(&space));
         registry.state.lock().map_err(lock_error)?.context = Some(owner.clone());
         owner.import_transient_holons(bind(&owner)?)?;
+        observer("IndexRebuild");
         let root = TransientReference::from_temporary_id(owner.context_handle(), &root_id);
         let session = space.session()?;
         let mut entries = HashMap::new();
@@ -438,6 +465,7 @@ impl EffectiveHolonDescriptorRegistry {
             state.admitted = admitted;
         }
         space.attach_descriptor_registry(&registry);
+        observer("Complete");
         Ok(registry)
     }
 }

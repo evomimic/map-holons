@@ -71,6 +71,14 @@ pub struct ComputedEffectiveSchema {
 impl ComputedEffectiveSchema {
     /// Restores occurrence evidence from a prepared saved-schema result without Extends reads.
     pub fn from_prepared(descriptor: &super::EffectiveHolonDescriptor) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::observe_attempt(
+            "saved_restoration_attempts",
+            "saved_restoration_successes",
+            || Self::restore_prepared(descriptor),
+        )
+    }
+
+    fn restore_prepared(descriptor: &super::EffectiveHolonDescriptor) -> Result<Self, HolonError> {
         use super::Descriptor;
         let target = descriptor.described_holon_type()?.holon().clone();
         let space = descriptor.holon().space_read_handle();
@@ -199,6 +207,11 @@ impl ComputedEffectiveSchema {
         super::effective_holon_descriptor::materialize_effective_schema(context, self, |_, _| {})
     }
 
+    /// Source collections read by complete effective-schema acquisition.
+    pub fn source_collections() -> Vec<CoreRelationshipTypeName> {
+        collections().into_iter().map(|(source, _, _, _, _)| source).collect()
+    }
+
     /// Reuses the prepared ValueType/PropertyType lineage and inherited commitments.
     /// Other contract collections retain their kernel semantics; no second Extends
     /// traversal or fabricated empty contract is introduced.
@@ -220,6 +233,10 @@ impl ComputedEffectiveSchema {
         target: &HolonReference,
         checkpoint: &mut impl FnMut(&str, &str),
     ) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::record_derivation(
+            "schema_resolution_requests",
+            1,
+        );
         let lineage = match target.transaction_context() {
             Some(context) => context
                 .frozen_descriptor_lineage(target)?
@@ -239,6 +256,21 @@ impl ComputedEffectiveSchema {
     }
 
     fn from_members_with_derived(
+        lineage: Vec<HolonReference>,
+        checkpoint: &mut impl FnMut(&str, &str),
+        derived: Option<&super::DerivedDescriptor>,
+    ) -> Result<Self, HolonError> {
+        let (attempts, successes) = if derived.is_some() {
+            ("derived_projection_attempts", "derived_projection_successes")
+        } else {
+            ("schema_builder_attempts", "schema_builder_successes")
+        };
+        crate::core_shared_objects::read_observations::observe_attempt(attempts, successes, || {
+            Self::build_from_members(lineage, checkpoint, derived)
+        })
+    }
+
+    fn build_from_members(
         lineage: Vec<HolonReference>,
         checkpoint: &mut impl FnMut(&str, &str),
         derived: Option<&super::DerivedDescriptor>,
@@ -354,6 +386,10 @@ impl ComputedEffectiveSchema {
         };
         cache
             .get_or_init(|| {
+                crate::core_shared_objects::read_observations::record_derivation(
+                    "name_index_builds",
+                    1,
+                );
                 let occurrences = match vocabulary {
                     EffectiveVocabulary::Properties => {
                         self.contributions(CoreRelationshipTypeName::InstanceProperties)
@@ -432,6 +468,154 @@ mod tests {
         )?;
         context.mutation().stage_new_holon(descriptor)?;
         Ok((context, parent, child))
+    }
+
+    #[test]
+    fn restored_and_computed_products_preserve_navigation_and_occurrence_evidence(
+    ) -> Result<(), HolonError> {
+        use crate::descriptors::{EffectiveHolonDescriptor, PreparedSchema};
+        use type_names::ToPropertyName;
+        let id = |n| HolonId::Local(LocalId(vec![n; 39]));
+        let records =
+            [(1, "HolonType.TypeDescriptor"), (2, "Governor"), (3, "Property"), (4, "Inverse")]
+                .into_iter()
+                .map(|(n, key)| {
+                    crate::core_shared_objects::SavedHolon::new(
+                        id(n).local_id().clone(),
+                        PropertyMap::from([
+                            (
+                                CorePropertyTypeName::Key.to_property_name(),
+                                BaseValue::StringValue(key.into()),
+                            ),
+                            (
+                                CorePropertyTypeName::TypeName.to_property_name(),
+                                BaseValue::StringValue(key.into()),
+                            ),
+                        ]),
+                        None,
+                        base_types::MapInteger(1),
+                    )
+                })
+                .collect();
+        let context = crate::descriptors::test_support::build_context_with_saved_holons(
+            records,
+            HashMap::from([
+                ((id(2), CoreRelationshipTypeName::Extends.as_relationship_name()), vec![id(1)]),
+                (
+                    (id(2), CoreRelationshipTypeName::InstanceProperties.as_relationship_name()),
+                    vec![id(3), id(3)],
+                ),
+                ((id(2), CoreRelationshipTypeName::SourceOf.as_relationship_name()), vec![id(4)]),
+                ((id(4), CoreRelationshipTypeName::SourceType.as_relationship_name()), vec![id(2)]),
+            ]),
+        );
+        let target = HolonReference::smart_from_id(context.space_read_handle(), id(2));
+        let computed = ComputedEffectiveSchema::resolve(&target)?;
+        let mut result = context.mutation().new_holon(None)?;
+        result.add_related_holons(CoreRelationshipTypeName::DescribedHolonType, vec![target])?;
+        for collection in &computed.collections {
+            result.add_related_holons(
+                collection.result.clone(),
+                collection.occurrences.iter().map(|e| e.member.clone()).collect(),
+            )?;
+        }
+        let navigation = computed.navigable_relationships()?;
+        let metadata = PreparedSchema {
+            lineage: computed
+                .lineage
+                .iter()
+                .map(ReadableHolon::holon_id)
+                .collect::<Result<_, _>>()?,
+            origins: computed
+                .collections
+                .iter()
+                .map(|c| {
+                    c.occurrences
+                        .iter()
+                        .map(|e| Ok((e.declared_on.holon_id()?, e.local_position)))
+                        .collect()
+                })
+                .collect::<Result<_, HolonError>>()?,
+            navigation_members: navigation
+                .iter()
+                .map(|e| e.member.holon_id())
+                .collect::<Result<_, _>>()?,
+            navigation_origins: navigation
+                .iter()
+                .map(|e| {
+                    Ok((
+                        e.declared_on.holon_id()?,
+                        e.local_position,
+                        matches!(e.source_collection, CoreRelationshipTypeName::SourceOf),
+                    ))
+                })
+                .collect::<Result<_, HolonError>>()?,
+            ..Default::default()
+        };
+        result.with_property_value(
+            CorePropertyTypeName::PreparedSchema,
+            MapString(serde_json::to_string(&metadata).unwrap()),
+        )?;
+        result.mark_as_immutable()?;
+        let prepared = EffectiveHolonDescriptor::from_constructed_holon(result.into());
+        let restored = ComputedEffectiveSchema::from_prepared(&prepared)?;
+        let signature = |entries: &[EffectiveContribution]| {
+            entries
+                .iter()
+                .map(|e| {
+                    (
+                        e.member.reference_id_string(),
+                        e.declared_on.reference_id_string(),
+                        e.source_collection.as_relationship_name().to_string(),
+                        e.local_position,
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        for source in ComputedEffectiveSchema::source_collections() {
+            assert_eq!(
+                signature(computed.contributions(source.clone())),
+                signature(restored.contributions(source))
+            );
+        }
+        assert_eq!(
+            signature(computed.navigable_relationships()?),
+            signature(restored.navigable_relationships()?)
+        );
+        for vocabulary in [
+            EffectiveVocabulary::Properties,
+            EffectiveVocabulary::Relationships,
+            EffectiveVocabulary::Dances,
+            EffectiveVocabulary::Commands,
+        ] {
+            let first = computed.name_index(vocabulary)?;
+            let second = restored.name_index(vocabulary)?;
+            assert_eq!(first.entries.len(), second.entries.len());
+            for (name, matches) in &first.entries {
+                assert_eq!(signature(matches), signature(&second.entries[name]));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn observation_distinguishes_failed_lineage_resolution_from_builder_work(
+    ) -> Result<(), HolonError> {
+        use crate::core_shared_objects::read_observations::DerivationProbe;
+        let (_context, _parent, mut child) = fixture()?;
+        let probe = DerivationProbe::start(true);
+        ComputedEffectiveSchema::resolve(&child.clone().into())?;
+        let counts = probe.finish().0;
+        assert_eq!(counts["schema_resolution_requests"], 1);
+        assert_eq!(counts["schema_builder_attempts"], 1);
+        assert_eq!(counts["schema_builder_successes"], 1);
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![child.clone().into()])?;
+        let probe = DerivationProbe::start(true);
+        assert!(ComputedEffectiveSchema::resolve(&child.into()).is_err());
+        let counts = probe.finish().0;
+        assert_eq!(counts["schema_resolution_requests"], 1);
+        assert!(!counts.contains_key("schema_builder_attempts"));
+        Ok(())
     }
 
     #[test]

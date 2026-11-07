@@ -18,6 +18,11 @@ impl ConstraintContributions {
     /// Reads both effective sets through the kernel's additive inheritance policy.
     /// Supply a lineage diagnosed from the same unchanged input snapshot.
     pub fn resolve(lineage: ValidExtendsLineage<'_>) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::record_derivation(
+            "constraint_contribution_resolutions",
+            1,
+        );
+
         let parent = lineage.members().get(1).cloned();
         let inherited = relationship_targets_in_lineage(
             &lineage.members()[1..],

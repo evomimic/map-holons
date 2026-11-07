@@ -50,6 +50,7 @@ pub fn init_guest_context(
         tx_id,
         restricted_cache_read,
         None,
+        false,
     )?
     .0)
 }
@@ -63,6 +64,7 @@ pub(crate) fn init_guest_context_with_registry(
     tx_id: TxId,
     restricted_cache_read: bool,
     registry: Option<holons_boundary::DescriptorRegistryWire>,
+    profile_commit: bool,
 ) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
     // Step 1: Create the GuestHolonService and expose it as HolonServiceApi.
     let guest_holon_service: Arc<dyn HolonServiceApi + Send + Sync> =
@@ -94,8 +96,26 @@ pub(crate) fn init_guest_context_with_registry(
             .open_public_transaction_with_id(Arc::clone(&space_manager), tx_id)?
     };
 
+    let profile = profile_commit && cfg!(feature = "commit-performance-profiling");
+    let started = profile.then(crate::performance::timestamp_micros).flatten();
+    let probe = holons_core::core_shared_objects::read_observations::CacheReadProbe::start(profile);
+    let mut index_started = None;
+    let mut index_us = 0;
     let registry = match registry {
-        Some(wire) => wire.restore(&transaction_context)?,
+        Some(wire) => wire.restore_with_observer(&transaction_context, &mut |phase| {
+            if profile {
+                if phase == "IndexRebuild" {
+                    index_started = crate::performance::timestamp_micros();
+                }
+                if phase == "Complete" {
+                    if let (Some(start), Some(end)) =
+                        (index_started, crate::performance::timestamp_micros())
+                    {
+                        index_us = end.saturating_sub(start);
+                    }
+                }
+            }
+        })?,
         None => {
             // Cold requests can prepare saved products too. Retain their ordinary
             // registry for this request without inventing a validation-owned cache.
@@ -104,6 +124,17 @@ pub(crate) fn init_guest_context_with_registry(
             registry
         }
     };
+    let reads =
+        holons_core::core_shared_objects::read_observations::CacheReadSummary::from_observations(
+            &probe.finish(),
+        );
+    if let (Some(start), Some(end)) =
+        (started, profile.then(crate::performance::timestamp_micros).flatten())
+    {
+        let (holon_types, derived) = registry.population()?;
+        hdk::prelude::info!("[commit-registry-ingress] restoration_us={} index_rebuild_us={} holon_types={} derived={} logical_reads={} cache_misses={}",
+            end.saturating_sub(start).saturating_sub(index_us), index_us, holon_types, derived, reads.requests, reads.misses);
+    }
 
     // Step 4: Bind agent pools only after the registry owner is discoverable.
     let bound_staged_holons = staged_holons.bind(&transaction_context)?;

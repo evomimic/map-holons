@@ -184,6 +184,7 @@ impl TransactionContext {
             .get_mut(&id)
             .and_then(|entry| slot(entry).clone())
         {
+            super::super::read_observations::record_derivation("frozen_product_reuses", 1);
             return Ok(result);
         }
         let result = attach(construct()?, state.token.clone());

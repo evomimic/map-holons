@@ -49,21 +49,25 @@ pub(crate) fn classify_graph_only_delta_overlaps(
             }
         }
         for (name, indices) in buckets {
-            if indices.len() > 1
-                && overlap_is_unsupported(context, &participants, &name, &indices, packages)?
-            {
-                let source_identity = HolonReference::smart_from_id(
-                    context.space_read_handle(),
-                    HolonId::Local(source.clone()),
-                )
-                .full_reference_id_string();
-                report_unsupported_overlap(
-                    &source_identity,
-                    &participants,
-                    &name,
-                    &indices,
-                    collector,
+            if indices.len() > 1 {
+                holons_core::core_shared_objects::read_observations::record_derivation(
+                    "graph_overlap_buckets",
+                    1,
                 );
+                if overlap_is_unsupported(context, &participants, &name, &indices, packages)? {
+                    let source_identity = HolonReference::smart_from_id(
+                        context.space_read_handle(),
+                        HolonId::Local(source.clone()),
+                    )
+                    .full_reference_id_string();
+                    report_unsupported_overlap(
+                        &source_identity,
+                        &participants,
+                        &name,
+                        &indices,
+                        collector,
+                    );
+                }
             }
         }
     }
@@ -132,6 +136,24 @@ fn overlap_is_unsupported(
         computed = holons_core::descriptors::ComputedEffectiveSchema::resolve(descriptor.holon())?;
         &computed
     };
+    // Target-binding interpretation requires a unique declared relationship identity.
+    // Check all contributions before lookup can select the first matching name.
+    let requested_name = name.to_string();
+    let mut selected = None;
+    for entry in schema.contributions(type_names::CoreRelationshipTypeName::InstanceRelationships) {
+        match entry.member.property_value(type_names::CorePropertyTypeName::TypeName)? {
+            Some(core_types::BaseValue::StringValue(member_name)) if !member_name.0.is_empty() => {
+                if member_name.0 == requested_name {
+                    let identity = DefinitionIdentity::for_reference(&entry.member, context)?;
+                    if selected.as_ref().is_some_and(|prior| prior != &identity) {
+                        return Ok(true);
+                    }
+                    selected = Some(identity);
+                }
+            }
+            _ => return Ok(true),
+        }
+    }
     let relationship = schema.get_relationship_by_name(name.clone());
     let relationship = match relationship {
         // Ungoverned assembly can bypass the mutation-time declaration check.
@@ -140,6 +162,10 @@ fn overlap_is_unsupported(
         other => other?,
     };
     let binding = relationship.try_into_declared_relationship_descriptor()?.target_binding()?;
+    holons_core::core_shared_objects::read_observations::record_derivation(
+        "graph_binding_interpretations",
+        1,
+    );
     let mut writes: HashMap<PersistedTarget, (DefinitionIdentity, Option<base_types::MapString>)> =
         HashMap::new();
     let mut unsupported = false;
@@ -164,6 +190,10 @@ fn overlap_is_unsupported(
                     HolonError::InvalidState(message)
                 })?;
             let definition = DefinitionIdentity::for_reference(target, context)?;
+            holons_core::core_shared_objects::read_observations::record_derivation(
+                "graph_target_identities",
+                1,
+            );
             let persisted = match binding {
                 TargetBinding::Version => PersistedTarget::Version(definition.clone()),
                 TargetBinding::Lineage => {
@@ -171,6 +201,10 @@ fn overlap_is_unsupported(
                 }
             };
             let write = (definition, target.key()?);
+            holons_core::core_shared_objects::read_observations::record_derivation(
+                "graph_target_keys",
+                1,
+            );
             if let Some(existing) = writes.get(&persisted) {
                 if existing != &write {
                     unsupported = true;

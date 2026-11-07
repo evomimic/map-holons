@@ -10,9 +10,8 @@ use base_types::BaseValue;
 use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
     descriptors::{
-        effective_relationship_targets, same_definition, ContractContributions,
-        DescriptorKindSemantics, ExtendsLineageDefect, KindResolutionError,
-        StructuralPrerequisites,
+        same_definition, ContractContributions, DescriptorKindSemantics, ExtendsLineageDefect,
+        KindResolutionError, StructuralPrerequisites,
     },
     Descriptor, HolonReference, ReadableHolon,
 };
@@ -36,16 +35,46 @@ struct PreparedDiagnostic {
     message: String,
 }
 
+/// Usability facts are independent of contract acceptance and scoped to their consumers.
+#[derive(Clone)]
+pub(crate) struct ContractInterpretation {
+    pub vocabulary_usable: bool,
+    pub unusable_properties: std::collections::HashSet<holons_core::DefinitionIdentity>,
+    pub unusable_values: std::collections::HashSet<holons_core::DefinitionIdentity>,
+}
+impl Default for ContractInterpretation {
+    fn default() -> Self {
+        Self {
+            vocabulary_usable: true,
+            unusable_properties: Default::default(),
+            unusable_values: Default::default(),
+        }
+    }
+}
+
 /// Findings prepared from kernel products, keyed by their canonical rule identity.
 /// Each bound handler translates only its own entries into the common finding model.
 /// Prepare each family once per subject, using the same unchanged input
 /// snapshot that supplied its kernel products. Discard the products on a read error.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct DescriptorRuleProducts {
+    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<PreparedDiagnostic>>,
 }
 
 impl DescriptorRuleProducts {
+    pub(crate) fn new(
+        diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    ) -> Self {
+        Self { diagnoses, diagnostics: BTreeMap::new() }
+    }
+    fn diagnose(
+        &self,
+        member: &HolonReference,
+    ) -> Result<std::sync::Arc<holons_core::ExtendsLineageDiagnosis>, HolonError> {
+        self.diagnoses.get(member)
+    }
+
     pub(crate) fn violation(&mut self, rule: CoreValidationRuleName, message: String) {
         self.diagnostics
             .entry(rule)
@@ -262,6 +291,15 @@ impl DescriptorRuleProducts {
         contributions: &ContractContributions,
         kind_roots: &DescriptorKindSemantics,
     ) -> Result<(), HolonError> {
+        self.prepare_contract_interpretation(contributions, kind_roots).map(|_| ())
+    }
+
+    fn prepare_contract_interpretation(
+        &mut self,
+        contributions: &ContractContributions,
+        kind_roots: &DescriptorKindSemantics,
+    ) -> Result<ContractInterpretation, HolonError> {
+        let mut interpretation = ContractInterpretation::default();
         self.prepare_namespace(
             &contributions.properties,
             &MemberNamespace {
@@ -273,6 +311,7 @@ impl DescriptorRuleProducts {
                 )],
             },
             kind_roots,
+            &mut interpretation,
         )?;
         self.prepare_namespace(
             &contributions.relationships,
@@ -285,19 +324,21 @@ impl DescriptorRuleProducts {
                 ],
             },
             kind_roots,
+            &mut interpretation,
         )?;
-        Ok(())
+        Ok(interpretation)
     }
 
     /// Validates a lossless projection without constructing any transient result graph.
-    pub fn prepare_effective_schema(
+    pub(crate) fn prepare_effective_schema(
         &mut self,
         projection: &holons_core::descriptors::ComputedEffectiveSchema,
         kind_roots: &DescriptorKindSemantics,
-    ) -> Result<(), HolonError> {
-        use holons_core::descriptors::{extends_role, EffectiveVocabulary};
+    ) -> Result<ContractInterpretation, HolonError> {
+        use holons_core::descriptors::EffectiveVocabulary;
         use CoreValidationRuleName::*;
-        self.prepare_contract(&projection.contract_contributions(), kind_roots)?;
+        let interpretation =
+            self.prepare_contract_interpretation(&projection.contract_contributions(), kind_roots)?;
         for source in [
             CoreRelationshipTypeName::AffordsDance,
             CoreRelationshipTypeName::AffordsCommand,
@@ -318,6 +359,13 @@ impl DescriptorRuleProducts {
                 }
                 seen.push(&entry.member);
             }
+        }
+        // Derived property/value payloads have no HolonType navigation vocabulary.
+        if self.diagnoses.existing(&projection.target)?.is_some_and(|d| {
+            d.encountered_role(CoreDefinitionRole::PropertyType)
+                || d.encountered_role(CoreDefinitionRole::ValueType)
+        }) {
+            return Ok(interpretation);
         }
         for (vocabulary, role) in [
             (EffectiveVocabulary::Dances, CoreDefinitionRole::DanceType),
@@ -369,7 +417,18 @@ impl DescriptorRuleProducts {
                     .chain(index.unnamed.iter())
                 {
                     if matches!(entry.source_collection, CoreRelationshipTypeName::SourceOf) {
-                        match holons_core::descriptors::classify_relationship_direction(&entry.member) {
+                        let diagnosis = self.diagnoses.existing(&entry.member)?;
+                        let direction = match diagnosis.as_ref().and_then(|d| d.valid_lineage()) {
+                            Some(lineage) => {
+                                holons_core::descriptors::classify_relationship_direction_in_lineage(
+                                    lineage,
+                                )
+                            }
+                            None => holons_core::descriptors::classify_relationship_direction(
+                                &entry.member,
+                            ),
+                        };
+                        match direction {
                             Ok(_) => {},
                             Err(HolonError::WrongDescriptorKind { .. }) => self.violation(ContractMemberKindCompatibility, format!("Navigation candidate {} has no declared/inverse relationship category.", entry.member.reference_id_string())),
                             Err(error) => return Err(error),
@@ -384,7 +443,12 @@ impl DescriptorRuleProducts {
                     .flat_map(|(_, entries)| entries.iter())
                     .chain(index.unnamed.iter())
                 {
-                    if !extends_role(&entry.member, role)? {
+                    let diagnosis = self.diagnoses.existing(&entry.member)?;
+                    let compatible = match diagnosis.as_ref().and_then(|d| d.valid_lineage()) {
+                        Some(lineage) => lineage.contains_role(role),
+                        None => holons_core::descriptors::extends_role(&entry.member, role)?,
+                    };
+                    if !compatible {
                         self.violation(ContractMemberKindCompatibility, format!("Effective {} member {} declared on {} has an incompatible descriptor category.", vocabulary.label(), entry.member.reference_id_string(), entry.declared_on.reference_id_string()));
                     }
                 }
@@ -392,7 +456,7 @@ impl DescriptorRuleProducts {
         }
         // Configured constraint and binding conformance remains owned by the
         // existing declaration/readiness and ordinary subject validators.
-        Ok(())
+        Ok(interpretation)
     }
 
     fn prepare_namespace(
@@ -400,6 +464,7 @@ impl DescriptorRuleProducts {
         contributions: &[holons_core::EffectiveRelationshipMember],
         definition: &MemberNamespace<'_>,
         kind_roots: &DescriptorKindSemantics,
+        interpretation: &mut ContractInterpretation,
     ) -> Result<(), HolonError> {
         use CoreValidationRuleName::*;
         let namespace = definition.name;
@@ -434,6 +499,7 @@ impl DescriptorRuleProducts {
                     if let Some((_, prior, first_owner)) =
                         names.iter().find(|(prior_name, _, _)| prior_name == &name.0)
                     {
+                        interpretation.vocabulary_usable = false;
                         self.violation(UniqueSemanticMemberNames, format!(
                             "Distinct {namespace} members {} and {} claim semantic name {}; declared on {} and {}, respectively.",
                             prior.reference_id_string(), member.reference_id_string(), name.0,
@@ -444,6 +510,7 @@ impl DescriptorRuleProducts {
                     }
                 }
                 other => {
+                    interpretation.vocabulary_usable = false;
                     let actual = other
                         .as_ref()
                         .map(|value| format!("{:?}", value.kind()))
@@ -454,18 +521,37 @@ impl DescriptorRuleProducts {
                     ));
                 }
             }
+            let member_usable =
+                self.check_member_kind(&member, definition.expected_kind, namespace, kind_roots)?;
+            if !member_usable {
+                if namespace == "property" {
+                    interpretation.unusable_properties.insert(self.diagnoses.identity(&member)?);
+                }
+                if self.diagnose(&member)?.defects.iter().any(|defect| {
+                    matches!(
+                        defect,
+                        ExtendsLineageDefect::Cycle { .. }
+                            | ExtendsLineageDefect::MultipleParents { .. }
+                    )
+                }) {
+                    continue;
+                }
+            }
             for (edge, target_kind) in definition.required_edges {
                 let targets = self.require_one_target(&member, edge.clone(), namespace)?;
+                let mut usable = targets.len() == 1;
                 if let (Some(expected), [target]) = (target_kind, targets.as_slice()) {
-                    self.check_member_kind(
+                    usable &= self.check_member_kind(
                         target,
                         *expected,
                         &format!("{namespace} {} target", edge.as_relationship_name()),
                         kind_roots,
                     )?;
                 }
+                if namespace == "property" && !usable {
+                    interpretation.unusable_values.insert(self.diagnoses.identity(&member)?);
+                }
             }
-            self.check_member_kind(&member, definition.expected_kind, namespace, kind_roots)?;
         }
         Ok(())
     }
@@ -476,10 +562,15 @@ impl DescriptorRuleProducts {
         relationship: CoreRelationshipTypeName,
         namespace: &str,
     ) -> Result<Vec<HolonReference>, HolonError> {
-        let targets = effective_relationship_targets(member, relationship.clone())?
-            .into_iter()
-            .map(|contribution| contribution.member)
-            .collect::<Vec<_>>();
+        let targets = if matches!(relationship, CoreRelationshipTypeName::ValueType) {
+            crate::assessment_support::targets(member, relationship.clone())?
+        } else {
+            self.diagnose(member)?
+                .encountered_relationship_targets(relationship.clone())?
+                .into_iter()
+                .map(|contribution| contribution.member)
+                .collect()
+        };
         if targets.len() != 1 {
             self.violation(
                 CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
@@ -500,9 +591,8 @@ impl DescriptorRuleProducts {
         expected: CoreDefinitionRole,
         role: &str,
         roots: &DescriptorKindSemantics,
-    ) -> Result<(), HolonError> {
-        use holons_core::ExtendsLineageDiagnosis;
-        let diagnosis = ExtendsLineageDiagnosis::assess(member)?;
+    ) -> Result<bool, HolonError> {
+        let diagnosis = self.diagnose(member)?;
         let Some(lineage) = diagnosis.valid_lineage() else {
             self.unresolved(
                 CoreValidationRuleName::ContractMemberKindCompatibility,
@@ -511,7 +601,7 @@ impl DescriptorRuleProducts {
                     member.reference_id_string()
                 ),
             );
-            return Ok(());
+            return Ok(false);
         };
         let kind = match roots.assess_instance_type_kind(lineage) {
             Ok(kind) => kind,
@@ -523,7 +613,7 @@ impl DescriptorRuleProducts {
                         member.reference_id_string(), descriptor.reference_id_string()
                     ),
                 );
-                return Ok(());
+                return Ok(false);
             }
             Err(KindResolutionError::Read(error)) => return Err(error),
         };
@@ -544,7 +634,7 @@ impl DescriptorRuleProducts {
                 ),
             );
         }
-        Ok(())
+        Ok(compatible)
     }
 
     pub(crate) fn append(&mut self, other: Self) {
@@ -557,8 +647,9 @@ impl DescriptorRuleProducts {
         !self.diagnostics.is_empty()
     }
 
-    /// Universal prerequisites must remain reachable even when the chosen describer
-    /// cannot inherit their bindings. Emit only rules not already dispatched here.
+    /// Universal prerequisites remain reachable without bindings. Other diagnosed defects
+    /// explain why mandatory assessment could not complete when their handler is unavailable.
+    /// A defect never makes another candidate's acceptance a prerequisite.
     pub(crate) fn emit_prerequisites(
         &self,
         path: &core_types::ValidationSubjectPath,
@@ -567,19 +658,20 @@ impl DescriptorRuleProducts {
     ) {
         for rule in CoreValidationRuleName::all() {
             let registration = crate::registries::registration(rule);
-            if !registration.prerequisite {
-                continue;
-            }
             if dispatched.contains(&rule) {
                 continue;
             }
             for diagnostic in self.diagnostics.get(&rule).into_iter().flatten() {
-                let kind = match diagnostic.kind {
-                    DiagnosticKind::Violation => CommitValidationViolationKind::RuleViolation {
-                        code: registration.code.into(),
-                    },
-                    DiagnosticKind::UnresolvedDependency => {
-                        CommitValidationViolationKind::UnresolvedLocalDependency
+                let kind = if !registration.prerequisite {
+                    CommitValidationViolationKind::UnresolvedLocalDependency
+                } else {
+                    match diagnostic.kind {
+                        DiagnosticKind::Violation => CommitValidationViolationKind::RuleViolation {
+                            code: registration.code.into(),
+                        },
+                        DiagnosticKind::UnresolvedDependency => {
+                            CommitValidationViolationKind::UnresolvedLocalDependency
+                        }
                     }
                 };
                 finding(
@@ -588,7 +680,15 @@ impl DescriptorRuleProducts {
                     Some(rule.as_str().into()),
                     path,
                     None,
-                    diagnostic.message.clone(),
+                    if registration.prerequisite {
+                        diagnostic.message.clone()
+                    } else {
+                        format!(
+                            "Cannot complete {} without a compatible mandatory binding: {}",
+                            rule.as_str(),
+                            diagnostic.message
+                        )
+                    },
                 );
             }
         }

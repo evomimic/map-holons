@@ -20,11 +20,28 @@ pub fn resolve_core_descriptor(
     let key = MapString(key.to_owned());
     match context.lookup().get_staged_holon_by_base_key(&key) {
         Ok(reference) => Ok(reference.into()),
-        Err(HolonError::HolonNotFound(_)) => {
-            Ok(context.lookup().get_saved_holon_by_key(&key)?.into())
-        }
+        Err(HolonError::HolonNotFound(_)) => resolve_saved_core_descriptor(context, key),
         Err(error) => Err(error),
     }
+}
+
+/// Saved state changes within a transaction only through its own staged candidates, which
+/// take precedence above, so one saved key lookup serves the rest of the transaction.
+/// Failures are not retained.
+fn resolve_saved_core_descriptor(
+    context: &Arc<TransactionContext>,
+    key: MapString,
+) -> Result<HolonReference, HolonError> {
+    let lock_error = |error: std::sync::PoisonError<_>| {
+        HolonError::FailedToAcquireLock(format!("Saved Core descriptor lookup: {error}"))
+    };
+    if let Some(reference) = context.saved_core_descriptors.lock().map_err(lock_error)?.get(&key.0)
+    {
+        return Ok(reference.clone());
+    }
+    let reference: HolonReference = context.lookup().get_saved_holon_by_key(&key)?.into();
+    context.saved_core_descriptors.lock().map_err(lock_error)?.insert(key.0, reference.clone());
+    Ok(reference)
 }
 
 /// Resolves a canonical identity in the source's real scope. Transaction-local
@@ -86,6 +103,31 @@ mod scope_tests {
         assert_eq!(resolve_core_descriptor_for(&staged, key)?, staged);
         assert_eq!(resolve_core_descriptor(&context, key)?, staged);
         assert!(context.is_open());
+        Ok(())
+    }
+
+    #[test]
+    fn saved_resolution_is_reused_without_shadowing_later_staged_definitions(
+    ) -> Result<(), HolonError> {
+        let key = "StringValueType.ValueType";
+        let id = HolonId::Local(LocalId(vec![38; 39]));
+        let saved = SavedHolon::new(
+            id.local_id().clone(),
+            PropertyMap::from([(PropertyName("Key".into()), BaseValue::StringValue(key.into()))]),
+            None,
+            MapInteger(1),
+        );
+        let context = build_context_with_saved_holons(vec![saved], Default::default());
+        assert!(resolve_core_descriptor(&context, "Missing.HolonType").is_err());
+        assert_eq!(resolve_core_descriptor(&context, key)?.holon_id()?, id);
+        assert_eq!(resolve_core_descriptor(&context, key)?.holon_id()?, id);
+        assert_eq!(
+            context.saved_core_descriptors.lock().unwrap().keys().collect::<Vec<_>>(),
+            [key]
+        );
+        let staged: HolonReference =
+            context.mutation().stage_new_holon(new_test_holon(&context, key)?)?.into();
+        assert_eq!(resolve_core_descriptor(&context, key)?, staged);
         Ok(())
     }
 

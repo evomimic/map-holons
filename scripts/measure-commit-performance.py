@@ -14,32 +14,69 @@ import sys
 from datetime import datetime, timezone
 
 
+ASSESSMENT_PHASES = ["Construction", "SubjectPreparation", "SchemaWorksetPreparation",
+                     "PackageDiscovery", "PreparedProducts", "PackageValidation", "InstanceValidation"]
+DERIVATION_OPERATIONS = ["schema_resolution_requests", "schema_builder_attempts", "schema_builder_successes",
+                         "saved_restoration_attempts", "saved_restoration_successes",
+                         "contract_contribution_resolutions", "constraint_contribution_resolutions",
+                         "structural_diagnoses", "role_walks", "snapshot_lookups", "registry_entries_examined",
+                         "registry_hits", "name_index_builds"]
+
 def output(*command):
     return subprocess.check_output(command, text=True).strip()
 
 
 def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard", mode="create",
-              anchor_evidence_policy="per-new-version"):
+              anchor_evidence_policy="per-new-version", instrumentation="822-v2",
+              preparation_substrate="broad-readiness", host_snapshot_policy="optional", expected_guest_cache_capacity=None):
     if not logs:
         raise ValueError("No captured run logs were found")
     if anchor_evidence_policy not in ["per-new-version", "retired"]:
         raise ValueError(f"Unknown anchor evidence policy: {anchor_evidence_policy}")
+    if instrumentation not in ["historical", "822-v2", "822-v3"]:
+        raise ValueError(f"Unknown instrumentation: {instrumentation}")
+    if preparation_substrate not in ["broad-readiness", "broad-preparation", "declared-demand"]:
+        raise ValueError(f"Unknown preparation substrate: {preparation_substrate}")
+    if host_snapshot_policy not in ["optional", "required"]:
+        raise ValueError(f"Unknown host snapshot policy: {host_snapshot_policy}")
     samples = []
     ansi = re.compile(r"\x1b\[[0-9;]*m")
     for log in logs:
         sample = None
+        run_samples = 0
         for raw in log.read_text().splitlines():
             line = ansi.sub("", raw)
             fields = dict(re.findall(r"([a-zA-Z_0-9]+)=([^\s]+)", line))
             if "[commit-baseline]" in line and "sample_start" in fields:
                 if sample is not None:
                     raise ValueError(f"Unfinished sample in {log}")
-                sample = {"run": log.name, "condition": fields["condition"], "sample": int(fields["sample_start"]), "metrics": {}}
+                sample = {"run": log.name, "condition": fields["condition"], "sample": int(fields["sample_start"]), "metrics": {}, "host_snapshot": "unavailable", "host_shipping": "unavailable"}
             if sample is None:
                 continue
             tag = re.search(r"\[(commit-[a-z-]+)\]", line)
             if tag:
                 prefix = tag[1]
+                if prefix == "commit-instrumentation":
+                    if fields.get("version") != instrumentation or fields.get("substrate") != preparation_substrate:
+                        raise ValueError(f"Incompatible instrumentation or substrate in {log}")
+                    if fields.get("read_detail") != "disabled":
+                        raise ValueError(f"Timed captures require read_detail=disabled in {log}")
+                    if expected_guest_cache_capacity is not None and fields.get("holon_cache_capacity") != str(expected_guest_cache_capacity):
+                        raise ValueError(f"Guest cache capacity does not match expected {expected_guest_cache_capacity} in {log}; rebuild the intended guest artifact")
+                    sample["instrumentation"] = fields["version"]
+                if prefix == "commit-governor":
+                    prefix += "." + fields["boundary"]
+                    sample["metrics"][prefix + ".present"] = float(fields["present"] == "true")
+                if prefix == "commit-host-shipping":
+                    sample["host_shipping"] = "measured-envelope"
+                if prefix == "commit-host-snapshot":
+                    sample["host_snapshot"] = "measured"
+                if prefix in ["commit-logical-reads", "commit-derivation", "commit-graph-only"]:
+                    prefix += "." + fields["phase"]
+
+                elif prefix == "commit-logical-read":
+                    # Inventory evidence stays in raw logs, never in performance metric keys.
+                    continue
                 if prefix == "commit-read-cost":
                     prefix += "." + fields["phase"] + "." + fields["component"]
                 elif prefix == "commit-assessment":
@@ -58,12 +95,58 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                 continue
             for key, value in fields.items():
                 if re.fullmatch(r"-?\d+(\.\d+)?", value):
-                    sample["metrics"][prefix + "." + key] = float(value)
+                    metric = prefix + "." + key
+                    # Multiple aggregate edge records may be emitted; never overwrite demand.
+                    if tag and tag[1] in ["commit-preparation-edge"]:
+                        sample["metrics"][metric] = sample["metrics"].get(metric, 0) + float(value)
+                    else:
+                        sample["metrics"][metric] = float(value)
             if "sample_end" in fields:
                 if int(fields["sample_end"]) != sample["sample"]:
                     raise ValueError(f"Mismatched sample in {log}")
                 required = ["commit-baseline.command_us", "commit-adapter.total_us", "commit-transport.conductor_call_us", "commit-construction.elapsed_us", "commit-preparation.distinct_content", "guest_commit.validation_ms", "commit-preparation-operation.EffectiveContract.PreparedDefinition.elapsed_us", "commit-preparation-operation.ContentRetention.SavedContent.exact_node_reads"]
-                if variant == "prefetch":
+                if instrumentation in ["822-v2", "822-v3"]:
+                    if sample.get("instrumentation") != instrumentation:
+                        raise ValueError(f"Missing instrumentation marker in {log}; rebuild with npm run build:commit-perf -w map-happ and retry without --skip-build")
+                    required.remove("commit-preparation-operation.EffectiveContract.PreparedDefinition.elapsed_us")
+                    required += ["commit-preparation.requested_schema_products", "commit-preparation.constructed_schema_products"]
+                    for phase in ASSESSMENT_PHASES:
+                        required += [f"commit-logical-reads.{phase}.requests", f"commit-logical-reads.{phase}.distinct_memberships"]
+                        required += [f"commit-logical-reads.{phase}.{field}" for field in ["membership_requests", "content_requests", "hits", "misses"]]
+                        required += [f"commit-derivation.{phase}.{operation}" for operation in (DERIVATION_OPERATIONS if instrumentation == "822-v2" else [operation for operation in DERIVATION_OPERATIONS if operation not in ["snapshot_lookups", "registry_entries_examined"]] + ["registry_lookups", "frozen_product_reuses", "derived_registry_lookups", "derived_registry_hits", "derived_builder_attempts", "derived_builder_successes", "derived_projection_attempts", "derived_projection_successes"])]
+                    if preparation_substrate == "broad-readiness":
+                        required += [f"commit-preparation-operation.{operation}.Assessment.elapsed_us"
+                                     for operation in ["ReadinessDiscovery", "DependencyGrouping"]]
+                        required.append("commit-preparation-edge.Readiness.Extends.requests")
+                    else:
+                        if any(key.startswith(("commit-preparation-operation.ReadinessDiscovery.",
+                                               "commit-preparation-operation.DependencyGrouping.",
+                                               "commit-preparation-edge.Readiness.")) for key in sample["metrics"]):
+                            raise ValueError(f"Substrate contains broad readiness observations in {log}")
+                        if preparation_substrate == "broad-preparation":
+                            required += ["commit-preparation-edge.Commitment.Extends.requests",
+                                         "commit-preparation.identity_role_visits"]
+                if instrumentation == "822-v3":
+                    required += ["commit-registry-capture.elapsed_us",
+                                 "commit-registry-ingress.restoration_us",
+                                 "commit-registry-ingress.index_rebuild_us",
+                                 "commit-registry-ingress.holon_types",
+                                 "commit-registry-ingress.derived",
+                                 "commit-registry-ingress.logical_reads",
+                                 "commit-registry-ingress.cache_misses"]
+                if host_snapshot_policy == "required":
+                    required += [f"commit-host-snapshot.{field}" for field in ["construction_us", "entries", "shipped_holons"]]
+                if mode == "graph-only-overlap":
+                    for field, minimum in [("overlap_buckets", 1), ("binding_interpretations", 1), ("target_identities", 2), ("target_keys", 2)]:
+                        metric = f"commit-graph-only.PreparedProducts.{field}"
+                        if sample["metrics"].get(metric, 0) < minimum:
+                            raise ValueError(f"Missing overlap branch evidence {metric} in {log}")
+                if variant == "prefetch" and preparation_substrate == "declared-demand" and assessment == "standard":
+                    # Declared demand labels prefetch by consumer role; any role establishes eager prefetch.
+                    if not any(key.startswith("commit-preparation-operation.MembershipPrefetch.") and key.endswith(".elapsed_us")
+                               for key in sample["metrics"]):
+                        required.append("commit-preparation-operation.MembershipPrefetch.<consumer role>.elapsed_us")
+                elif variant == "prefetch":
                     required.append("commit-preparation-operation.MembershipPrefetch." + ("ValidatorRoot" if assessment in ["validator-package", "combined", "warm-probe"] else "Commitment") + ".elapsed_us")
                 elif any(key.startswith("commit-preparation-operation.MembershipPrefetch.") for key in sample["metrics"]):
                     raise ValueError(f"On-demand capture unexpectedly contains eager prefetch in {log}")
@@ -95,10 +178,13 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
                     gap = metrics.get("commit-cost-accounting.timer_gap_us")
                     if accounted is None or wall is None or gap is None or sum(costs) != accounted or wall - accounted != gap:
                         raise ValueError(f"Inconsistent exclusive construction accounting in {log}")
+                run_samples += 1
                 samples.append(sample)
                 sample = None
         if sample is not None:
             raise ValueError(f"Unfinished sample in {log}")
+        if run_samples != expected_samples:
+            raise ValueError(f"Expected {expected_samples} complete samples per run, got {run_samples} in {log}")
     if len(samples) != len(logs) * expected_samples:
         raise ValueError(f"Expected {expected_samples} complete samples per run, got {len(samples)}")
     summary = {}
@@ -109,6 +195,7 @@ def summarize(logs, expected_samples=6, variant="prefetch", assessment="standard
             values = [sample["metrics"][metric] for sample in selected if metric in sample["metrics"]]
             summary[condition][metric] = {"n": len(values), "median": statistics.median(values), "min": min(values), "max": max(values), "stdev": statistics.stdev(values) if len(values) > 1 else None}
     return {"variant": variant, "assessment": assessment, "mode": mode,
+            "instrumentation": instrumentation, "preparation_substrate": preparation_substrate, "host_snapshot_policy": host_snapshot_policy,
             "anchor_evidence_policy": anchor_evidence_policy, "samples": samples, "summary": summary}
 
 
@@ -126,18 +213,30 @@ def main():
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--samples", type=int, default=6)
     parser.add_argument("--subjects", type=int, default=1)
-    parser.add_argument("--mode", choices=["create", "visualizer-slot", "descriptor", "new-version"], default="create", help="create: VisualizerUsage instances; visualizer-slot: VisualizerSlot instances; descriptor: one new HolonType descriptor and its affected saved Schema; new-version: one property-only successor of a saved non-root version")
+    parser.add_argument("--mode", choices=["create", "visualizer-slot", "descriptor", "new-version", "mixed", "no-op", "graph-only", "graph-only-overlap"], default="create", help="create: VisualizerUsage instances; visualizer-slot: VisualizerSlot instances; descriptor: one new HolonType descriptor and its affected saved Schema; new-version: one property-only successor of a saved non-root version")
     parser.add_argument("--anchor-evidence-policy", choices=["per-new-version", "retired"], default="retired", help="Expected evidence path in the guest artifact; saved in capture metadata")
     parser.add_argument("--variant", choices=["prefetch", "on-demand"], default="prefetch")
     parser.add_argument("--readiness-cases", action="store_true")
     parser.add_argument("--assessment", choices=["standard", "instance-experiment", "validator-package", "combined", "warm-probe"], default="standard", help="Label the separately built guest artifact; this does not select or build it")
     parser.add_argument("--link-profile", action="store_true", help="Capture read-only persisted link-query timings after Commit samples; replaces the retired --index-mode experiment")
+    parser.add_argument("--instrumentation", choices=["822-v2", "822-v3", "historical"], default="822-v3")
+    parser.add_argument("--preparation-substrate", choices=["broad-readiness", "broad-preparation", "declared-demand"], default="declared-demand")
+    parser.add_argument("--semantic-revision", default="3d053ba8becbac13496d7531abea8ce9a5303c53", help="Semantic revision represented by this capture")
+    parser.add_argument("--governor-reuse", action="store_true", help="Seed the exact VisualizerUsage governor in the controlled Session registry")
+    parser.add_argument("--governor-presence", default="unavailable", help="Governor entry presence established by workload setup")
+    parser.add_argument("--expected-guest-cache-capacity", type=int, choices=[99, 1024, 10000], default=10000, help="Validate the diagnostic content-cache capacity reported by the guest")
+    parser.add_argument("--guest-artifact-revision", default="unavailable", help="Revision used to build the supplied guest artifact")
+    parser.add_argument("--registry-population", type=int, help="Requested setup population; observed values come from logs")
+    parser.add_argument("--guest-cache-state", default="unavailable", help="Describe ingress and setup warming; a fresh transaction does not establish cold cache")
+    parser.add_argument("--session-product-reuse", default="unavailable", help="Describe pre-existing Session products separately from transaction cache state")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--summarize-only", action="store_true", help="Re-summarize logs using their recorded metadata; older captures without a policy use per-new-version")
     args = parser.parse_args()
+    if args.registry_population is not None and args.registry_population < 0:
+        parser.error("--registry-population must be nonnegative")
     if args.runs < 1 or args.samples < 2 or args.subjects < 1:
         parser.error("--runs must be positive and --samples must be at least two")
-    if args.mode in ["descriptor", "new-version"] and (args.subjects != 1 or args.readiness_cases):
+    if args.mode in ["descriptor", "new-version", "mixed", "no-op", "graph-only", "graph-only-overlap"] and (args.subjects != 1 or args.readiness_cases):
         parser.error(f"--mode {args.mode} measures one subject per Commit without readiness cases")
     if args.link_profile and args.mode != "create":
         parser.error("--link-profile supports only --mode create")
@@ -145,20 +244,42 @@ def main():
         metadata = json.loads((args.output / "metadata.json").read_text())
         result = summarize(sorted(args.output.glob("run-*.log")), metadata["samples_per_run"],
                            metadata["variant"], metadata["assessment"], metadata.get("mode", "create"),
-                           metadata.get("anchor_evidence_policy", "per-new-version"))
+                           metadata.get("anchor_evidence_policy", "per-new-version"),
+                           metadata.get("instrumentation", "historical"), metadata.get("preparation_substrate", "broad-readiness"), metadata.get("host_snapshot_policy", "optional"), metadata.get("expected_guest_cache_capacity"))
     else:
-        env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
+        env = {**os.environ, "MAP_COMMIT_PERF_SAMPLES": str(args.samples), "MAP_COMMIT_PERF_SUBJECTS": str(args.subjects), "MAP_PROFILE": "1", "RUST_LOG": "warn,holons_test=info,holons_client=info,holons_trust_channel=info,commit_performance_tests=info,holons_guest=info,wasm=info", "WASM_LOG": "info"}
         if "MAP_COMMIT_PERF_INDEX_MODE" in env or "MAP_COMMIT_PERF_INDEX_OUTPUT" in env:
             parser.error("MAP_COMMIT_PERF_INDEX_* is retired; unset it and use --link-profile")
+        env.pop("MAP_COMMIT_PERF_REGISTRY", None)
+        env.pop("MAP_COMMIT_PERF_GOVERNOR_REUSE", None)
         env.pop("MAP_COMMIT_PERF_LINK_OUTPUT", None)
         env.pop("MAP_COMMIT_READINESS_CASES_OUTPUT", None)
         env["MAP_COMMIT_PERF_MODE"] = args.mode
+        if args.registry_population is not None:
+            env["MAP_COMMIT_PERF_REGISTRY"] = str(args.registry_population)
+        if args.governor_reuse:
+            if not args.registry_population:
+                parser.error("--governor-reuse requires a positive --registry-population")
+            env["MAP_COMMIT_PERF_GOVERNOR_REUSE"] = "1"
         args.output.mkdir(parents=True, exist_ok=False)
         paths = [Path("happ/workdir/map_holons.dna"), Path("happ/Cargo.lock"), Path("host/Cargo.lock"), Path("Cargo.lock"), Path("flake.lock")]
         paths += sorted(Path("generated/core-schema-bootstrap").rglob("*.json"))
         paths += [Path(path) for path in output("git", "ls-files", "--modified", "--others", "--exclude-standard").splitlines() if Path(path).is_file()]
         paths = sorted(set(paths))
         metadata = {
+            "semantic_revision": args.semantic_revision,
+            "governor_presence": args.governor_presence,
+            "instrumentation": args.instrumentation,
+            "preparation_substrate": args.preparation_substrate,
+            "guest_artifact_revision": args.guest_artifact_revision,
+            "expected_guest_cache_capacity": args.expected_guest_cache_capacity,
+            "requested_registry_population": args.registry_population,
+            "governor_reuse": args.governor_reuse,
+            "guest_cache_state": args.guest_cache_state,
+            "session_product_reuse": args.session_product_reuse,
+            "startup_timeout_secs": env.get("MAP_SWEET_STARTUP_TIMEOUT_SECS", "10 (upstream default)"),
+            "host_snapshot_policy": "optional" if args.instrumentation == "822-v3" else "required",
+            "host_snapshot_observation": "registry-owner capture and ingress measured; Sweettest conductor owns encoding, so separate encoding timing is unavailable" if args.instrumentation == "822-v3" else "ClientHolonService::commit_internal via Sweettest mock conductor; construction expected, production envelope encoding unavailable",
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),
             "revision": output("git", "rev-parse", "HEAD"),
             "branch": output("git", "branch", "--show-current"),
@@ -192,9 +313,12 @@ def main():
             if result.returncode:
                 print(f"Run failed; inspect {path}", file=sys.stderr)
                 return result.returncode
+            # Validate each run before spending time on another conductor capture.
+            summarize([path], args.samples, args.variant, args.assessment, args.mode,
+                      args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, metadata["host_snapshot_policy"], args.expected_guest_cache_capacity)
             logs.append(path)
         result = summarize(logs, args.samples, args.variant, args.assessment, args.mode,
-                           args.anchor_evidence_policy)
+                           args.anchor_evidence_policy, args.instrumentation, args.preparation_substrate, metadata["host_snapshot_policy"], args.expected_guest_cache_capacity)
     (args.output / "measurements.json").write_text(json.dumps(result, indent=2) + "\n")
     for condition, metrics in result["summary"].items():
         value = metrics["commit-baseline.command_us"]

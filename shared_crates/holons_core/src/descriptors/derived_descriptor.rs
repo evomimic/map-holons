@@ -459,6 +459,17 @@ pub fn construct_derived_descriptor(
     context: &Arc<TransactionContext>,
     target: HolonReference,
 ) -> Result<DerivedDescriptor, HolonError> {
+    crate::core_shared_objects::read_observations::observe_attempt(
+        "derived_builder_attempts",
+        "derived_builder_successes",
+        || build_derived_descriptor(context, target),
+    )
+}
+
+fn build_derived_descriptor(
+    context: &Arc<TransactionContext>,
+    target: HolonReference,
+) -> Result<DerivedDescriptor, HolonError> {
     let lineage = match context.frozen_descriptor_lineage(&target)? {
         Some(lineage) => lineage,
         None => ancestors(&target)?,

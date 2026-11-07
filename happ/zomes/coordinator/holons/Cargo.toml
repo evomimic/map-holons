@@ -41,5 +41,6 @@ path = "../../../../shared_crates/type_system/integrity_core_types"
 path = "../../../crates/holons_guest"
 
 [features]
+commit-read-inventory = ["commit-performance-profiling", "holons_guest/commit-read-inventory"]
 commit-performance-profiling = ["holons_guest/commit-performance-profiling"]
 descriptor-performance-profiling = ["holons_guest/descriptor-performance-profiling"]

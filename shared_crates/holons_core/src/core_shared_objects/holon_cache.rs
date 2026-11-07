@@ -31,9 +31,12 @@ impl Drop for SavedHolonRetention {
 }
 
 impl HolonCache {
-    /// Creates a new HolonCache with a default size.
+    /// Requested capacity of the evictable content cache; explicit retention is separate.
+    pub const DEFAULT_CAPACITY: usize = 10_000;
+
+    /// Creates a content cache using the production default.
     pub fn new() -> Self {
-        Self::new_with_capacity(10000) // Default size
+        Self::new_with_capacity(Self::DEFAULT_CAPACITY)
     }
 
     /// Creates a new HolonCache with a custom size.

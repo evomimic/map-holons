@@ -1151,6 +1151,31 @@ mod tests {
     }
 
     #[test]
+    fn indexed_lookup_counts_only_saved_targets_without_source_diagnosis() -> Result<(), HolonError>
+    {
+        use crate::core_shared_objects::read_observations::DerivationProbe;
+        let (context, target, _) = fixture()?;
+        let saved = HolonReference::smart_from_id(
+            context.space_read_handle(),
+            core_types::HolonId::Local(core_types::LocalId(vec![1; 39])),
+        );
+        let registry = Arc::new(
+            crate::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry::new(
+                &context.space_manager(),
+            ),
+        );
+        context.space_manager().attach_descriptor_registry(&registry);
+        let probe = DerivationProbe::start(true);
+        assert!(EffectiveHolonDescriptor::find_in_context(&context, &target)?.is_none());
+        assert!(EffectiveHolonDescriptor::find_in_context(&context, &saved)?.is_none());
+        let counts = probe.finish().0;
+        assert_eq!(counts["registry_lookups"], 1);
+        assert!(!counts.contains_key("registry_entries_examined"));
+        assert!(!counts.contains_key("structural_diagnoses"));
+        Ok(())
+    }
+
+    #[test]
     fn unsaved_schema_result_is_keyless_sealed_and_walks_target_lineage_once(
     ) -> Result<(), HolonError> {
         let (context, mut parent, mut target) = fixture()?;

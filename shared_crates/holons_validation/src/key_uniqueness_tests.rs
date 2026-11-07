@@ -269,7 +269,7 @@ fn descriptor_key_failure_blocks_only_explicit_new_definition_consumers() -> Res
         assert!(
             matches!(&local_findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-KEY-006")
         );
-        assert!(dependent.validation_findings()?.iter().any(
+        assert!(!dependent.validation_findings()?.iter().any(
             |finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
         ));
     }
