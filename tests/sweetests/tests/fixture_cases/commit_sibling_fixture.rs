@@ -156,7 +156,8 @@ fn rejected_title(title: &TestReference) -> ExpectedRejectedHolon {
     }
 }
 
-/// A saved Book's contract stays exact while an explicitly referenced successor is a prerequisite.
+/// Exact references stay exact; an invalid successor rejects independently without
+/// blocking its explicit consumer.
 pub fn commit_book_title_exact_references_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "Book v1 and Title v2 exact references",
@@ -234,20 +235,9 @@ pub fn commit_book_title_exact_references_fixture() -> Result<DancesTestCase, Ho
         replace_target(case, holons, book_v2, "InstanceProperties", &pinned_title_v1, &title_v2)?;
     case.add_commit_step(holons, ExpectedCommitStatus::Rejected, None, None)?;
     case.add_verify_commit_rejection_step(
-        vec![
-            rejected_title(&title_v2),
-            ExpectedRejectedHolon {
-                token: book_v2.clone(),
-                validation_state: ValidationState::Invalid,
-                findings: vec![ExpectedValidationFinding {
-                    kind: CommitValidationViolationKind::UnresolvedLocalDependency,
-                    rule_key: None,
-                    subject: ExpectedValidationSubject::Holon,
-                }],
-            },
-        ],
-        MapInteger(2),
-        Some("Book v2 explicitly depends on invalid Title v2; Book v1 does not".into()),
+        vec![rejected_title(&title_v2)],
+        MapInteger(1),
+        Some("Only Title v2 rejects; its explicit Book v2 consumer remains valid".into()),
     )?;
     let title_v2 = case.add_remove_properties_step(
         holons,

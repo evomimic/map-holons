@@ -106,9 +106,9 @@ path = "../../host/crates/map_commands_runtime"
 path = "../../shared_crates/holons_trust_channel"
 
 [dev-dependencies]
+tokio = { version = "1", features = ["full"] }
 holons_validation = { path = "../../shared_crates/holons_validation" }
 rstest = "0.26.1"
 pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }
-tokio = { version = "1", features = ["full"] }
 #async-std = "1"

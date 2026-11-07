@@ -6,7 +6,7 @@ use std::time::Instant;
 use tracing::{debug, info};
 
 use crate::dance_envelope_transport::DanceEnvelopeTransport;
-use crate::envelopes::dance_envelope_adapter::DanceEnvelopeAdapter;
+use crate::envelopes::dance_envelope_adapter::{DanceEnvelopeAdapter, RegistryCaptureBoundary};
 use holons_core::dances::dance_initiator::DanceInitiator;
 
 /// The TrustChannel coordinates envelope flow for outbound and inbound Dances.
@@ -32,12 +32,32 @@ impl DanceInitiator for TrustChannel {
         context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse {
+        let is_commit = request.dance_name.0 == "commit";
         let is_load_holons = request.dance_name.0 == "load_holons";
         let total_started_at = Instant::now();
         // --- Outbound runtime -> envelope -----------------------------------------
         let request_envelope_started_at = Instant::now();
-        let request_envelope = match DanceEnvelopeAdapter::build_request_envelope(&context, request)
-        {
+        let mut capture_started = None;
+        let request_envelope = match DanceEnvelopeAdapter::build_request_envelope_with_observer(
+            &context,
+            request,
+            &mut |boundary| {
+                if !is_commit {
+                    return;
+                }
+                match boundary {
+                    RegistryCaptureBoundary::Started => capture_started = Some(Instant::now()),
+                    RegistryCaptureBoundary::Finished => {
+                        if let Some(started) = capture_started.take() {
+                            info!(
+                                "[commit-registry-capture] elapsed_us={}",
+                                started.elapsed().as_micros()
+                            );
+                        }
+                    }
+                }
+            },
+        ) {
             Ok(envelope) => envelope,
             Err(error) => return DanceResponse::from_error(error),
         };

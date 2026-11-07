@@ -47,7 +47,7 @@ pub fn stage_visualizer_slot(context: &Arc<TransactionContext>, key: &str) -> St
     context.mutation().stage_new_holon(slot).unwrap()
 }
 
-fn stage_descriptor(context: &Arc<TransactionContext>, key: &str) -> StagedReference {
+pub fn stage_descriptor(context: &Arc<TransactionContext>, key: &str) -> StagedReference {
     let mut descriptor = context.mutation().new_holon(Some(key.into())).unwrap();
     for (name, value) in [
         ("TypeName", key.to_base_value()),

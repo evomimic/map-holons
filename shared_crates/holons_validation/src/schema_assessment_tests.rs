@@ -413,14 +413,9 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
 }
 
 #[test]
-fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
-) -> Result<(), HolonError> {
+fn owning_schema_cycle_and_staged_component_are_assessed_independently() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
-    fixture.link(
-        "Schema.HolonType",
-        CoreRelationshipTypeName::Extends,
-        "HolonType.TypeDescriptor",
-    )?;
+    super::preparation_characterization::prepare_meta_contract(&mut fixture)?;
     for rule in [CoreValidationRuleName::SchemaDependenciesAcyclic] {
         fixture.link(
             "Schema.HolonType",
@@ -452,6 +447,11 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
         CoreRelationshipTypeName::DescribedBy,
         "MetaHolonType.MetaTypeDescriptor",
     )?;
+    fixture.link(
+        "MetaHolonType.MetaTypeDescriptor",
+        CoreRelationshipTypeName::InstanceProperties,
+        "Title.PropertyType",
+    )?;
     let candidate = staged(&fixture.nodes["StagedComponent"]);
     let report = crate::commit_assessment::validate_commit_candidates(
         &fixture.context,
@@ -461,7 +461,8 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
     let cycles = aggregates.iter().filter(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-SCHEMA-001")).collect::<Vec<_>>();
     assert_eq!(cycles.len(), 1, "one assessment of the affected owner");
     assert_eq!(cycles[0].subject, path(&fixture.nodes["OwnerA"]));
-    assert!(candidate
+    assert!(candidate.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001")), "the component must assess its own required Title");
+    assert!(!candidate
         .validation_findings()?
         .iter()
         .any(|finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
@@ -543,9 +544,21 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![subject];
     let expected = assess_commit_candidates(&fixture.context, &candidates)?.report;
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let mut product_start = None;
+    let mut product_end = None;
     let mut events = Vec::new();
     let actual =
         crate::validate_commit_candidates_with_profile(&fixture.context, &candidates, |event| {
+            match &event {
+                crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts) => {
+                    product_start = Some(probe.snapshot())
+                }
+                crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageValidation) => {
+                    product_end = Some(probe.snapshot())
+                }
+                _ => {}
+            }
             events.push(event)
         })?;
     assert_eq!(actual, expected);
@@ -578,26 +591,64 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         .collect();
     assert_eq!(metrics.len(), 1);
     let metrics = metrics[0];
+    let start = product_start.unwrap();
+    let end = product_end.unwrap();
+    let product_diagnoses = end.0.get("structural_diagnoses").copied().unwrap_or(0)
+        - start.0.get("structural_diagnoses").copied().unwrap_or(0);
+    let resolutions = end.0.get("schema_resolution_requests").copied().unwrap_or(0)
+        - start.0.get("schema_resolution_requests").copied().unwrap_or(0);
+    let edges: usize = events
+        .iter()
+        .filter_map(|event| match event {
+            crate::AssessmentEvent::PreparationEdge { requests, .. } => Some(*requests),
+            _ => None,
+        })
+        .sum();
+    // Product acquisition interleaves with consumer discovery; final facts reuse its diagnoses.
+    assert_eq!(product_diagnoses, 0, "diagnosis finishes during demand discovery");
+    assert_eq!(resolutions, 0, "valid diagnosed lineages seed all fresh products");
     assert_eq!(metrics.package_roots, 1);
     assert_eq!(metrics.subjects, 1);
     assert_eq!(metrics.affected_schemas, 0);
-    assert!(metrics.distinct_content > 1);
-    assert!(metrics.identity_role_visits >= metrics.distinct_content);
+    assert_eq!(metrics.distinct_content, 19);
+    assert_eq!(
+        metrics.constructed_schema_products, 4,
+        "governor, two properties and shared value type"
+    );
+    assert_eq!(edges, 20, "declared discovery membership requests");
+    assert_eq!(metrics.identity_role_visits, 19);
     assert_eq!(metrics.contract_consumers, 1);
+    assert!(!events.iter().any(|event| matches!(
+        event,
+        crate::AssessmentEvent::PreparationEdge { role: "Readiness", .. }
+            | crate::AssessmentEvent::PreparationOperation {
+                operation: "ReadinessDiscovery" | "DependencyGrouping",
+                ..
+            }
+    )));
+    assert!(events.iter().any(|event| matches!(
+        event,
+        crate::AssessmentEvent::PreparationOperation {
+            operation: "InterpretationGuards",
+            starting: true,
+            ..
+        }
+    )));
+
     assert!(metrics.binding_consumers > 0);
     assert!(metrics.binding_consumers <= metrics.distinct_content);
     let described_by_requests: usize = events
         .iter()
         .filter_map(|event| match event {
-            crate::AssessmentEvent::PreparationEdge { edge, requests, .. }
-                if edge == "DescribedBy" =>
+            crate::AssessmentEvent::PreparationEdge { role, edge, requests, .. }
+                if edge == "DescribedBy" && *role != "Readiness" =>
             {
                 Some(*requests)
             }
             _ => None,
         })
         .sum();
-    assert_eq!(described_by_requests, metrics.identity_role_visits);
+    assert_eq!(described_by_requests, 6);
     let typed_visits: Vec<_> = events
         .iter()
         .filter_map(|event| match event {
@@ -608,10 +659,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         })
         .collect();
     assert_eq!(typed_visits.len(), metrics.identity_role_visits);
-    assert_eq!(
-        typed_visits.iter().filter(|(_, distinct)| *distinct).count(),
-        metrics.distinct_content
-    );
+    assert_eq!(typed_visits.iter().filter(|(_, distinct)| *distinct).count(), 8);
     assert!(typed_visits.iter().all(|(name, _)| !name.is_empty()));
     let mut active = None;
     let mut contracts = 0;
@@ -625,7 +673,10 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
                 );
             } else {
                 assert_eq!(active.take(), Some((*operation, *role)));
-                if *operation == "EffectiveContract" {
+                if matches!(
+                    *operation,
+                    "FreshEffectiveSchema" | "SavedRestoration" | "DerivedAcquisition"
+                ) {
                     contracts += 1;
                 }
                 if *operation == "MembershipPrefetch" {
@@ -635,7 +686,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
         }
     }
     assert!(active.is_none());
-    assert_eq!(contracts, metrics.distinct_content);
+    assert_eq!(contracts, metrics.constructed_schema_products);
     assert!(prefetches > 0, "saved definitions must expose eager prefetch cost");
     Ok(())
 }

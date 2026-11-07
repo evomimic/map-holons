@@ -16,12 +16,29 @@ use tracing::debug;
 #[derive(Debug, Default)]
 pub struct DanceEnvelopeAdapter;
 
+/// Descriptor-registry capture boundary within request envelope construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegistryCaptureBoundary {
+    Started,
+    Finished,
+}
+
 impl DanceEnvelopeAdapter {
     /// Outbound: project runtime dance request + session into a transport envelope.
     pub fn build_request_envelope(
         context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> Result<DanceRequestEnvelope, HolonError> {
+        Self::build_request_envelope_with_observer(context, request, &mut |_| {})
+    }
+
+    /// Reports registry capture boundaries to the calling transport adapter.
+    pub fn build_request_envelope_with_observer(
+        context: &Arc<TransactionContext>,
+        request: DanceRequest,
+        observer: &mut impl FnMut(RegistryCaptureBoundary),
+    ) -> Result<DanceRequestEnvelope, HolonError> {
+        observer(RegistryCaptureBoundary::Started);
         let descriptor_registry = if request.dance_name.0 == "commit" {
             context
                 .descriptor_registry()
@@ -31,6 +48,7 @@ impl DanceEnvelopeAdapter {
         } else {
             None
         };
+        observer(RegistryCaptureBoundary::Finished);
         let request_wire = DanceRequestWire::from(&request);
         let session = Some(Self::attach_session_state(context)?);
         Ok(DanceRequestEnvelope {

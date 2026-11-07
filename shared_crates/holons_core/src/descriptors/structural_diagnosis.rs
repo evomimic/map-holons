@@ -126,8 +126,25 @@ impl<'a> ValidExtendsLineage<'a> {
 }
 
 impl ExtendsLineageDiagnosis {
+    /// Projects relationship occurrences from already encountered lineage members.
+    /// This preserves evidence on a rootless lineage without asserting structural validity.
+    pub fn encountered_relationship_targets(
+        &self,
+        relationship: type_names::CoreRelationshipTypeName,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        super::inheritance::relationship_targets_in_lineage(&self.lineage, relationship)
+    }
+
+    /// Tests encountered role evidence without asserting full lineage validity.
+    /// Binding placement needs this fact even when the supporting definition is rootless.
+    pub fn encountered_role(&self, role: CoreDefinitionRole) -> bool {
+        self.member_keys.iter().any(|key| key.as_ref().is_some_and(|key| key.0 == role.key()))
+    }
+
     /// Applies to any holon, without requiring descriptor classification.
     pub fn assess(subject: &HolonReference) -> Result<Self, HolonError> {
+        crate::core_shared_objects::read_observations::record_derivation("structural_diagnoses", 1);
+
         let mut lineage = Vec::new();
         let mut member_keys = Vec::new();
         let mut defects = Vec::new();

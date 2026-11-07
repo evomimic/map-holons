@@ -72,11 +72,14 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     };
 
     let hydration_started_at = performance_timestamp_micros();
-    let (context, _registry) =
-        match initialize_context_from_session_state(session_state, descriptor_registry) {
-            Ok(ctx) => ctx,
-            Err(error) => return Ok(create_error_response_envelope(error, session)),
-        };
+    let (context, _registry) = match initialize_context_from_session_state(
+        session_state,
+        descriptor_registry,
+        dance_name.0 == "commit",
+    ) {
+        Ok(ctx) => ctx,
+        Err(error) => return Ok(create_error_response_envelope(error, session)),
+    };
     let hydration_micros = elapsed_micros(hydration_started_at);
 
     // ---- bind wire -> runtime ----
@@ -143,7 +146,7 @@ fn execute_invocation_envelope(
     let context = session
         .as_ref()
         .ok_or_else(|| HolonError::InvalidParameter("Missing SessionStateWire".into()))
-        .and_then(|state| initialize_context_from_session_state(state, None));
+        .and_then(|state| initialize_context_from_session_state(state, None, false));
     let (context, _registry) = match context {
         Ok(context) => context,
         Err(error) => {
@@ -230,6 +233,7 @@ fn create_error_response_envelope(
 fn initialize_context_from_session_state(
     session_state: &SessionStateWire,
     registry: Option<holons_boundary::DescriptorRegistryWire>,
+    profile_commit: bool,
 ) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
     let tx_id = session_state.get_tx_id().ok_or(HolonError::InvalidWireFormat {
         wire_type: "SessionStateWire".to_string(),
@@ -251,6 +255,7 @@ fn initialize_context_from_session_state(
         tx_id,
         session_state.is_restricted_cache_read(),
         registry,
+        profile_commit,
     )?;
 
     let bootstrap_provisioning = session_state.is_bootstrap_provisioning();

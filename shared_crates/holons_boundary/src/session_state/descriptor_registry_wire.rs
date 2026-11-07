@@ -30,6 +30,15 @@ impl DescriptorRegistryWire {
         self,
         agent: &Arc<TransactionContext>,
     ) -> Result<Arc<EffectiveHolonDescriptorRegistry>, HolonError> {
+        self.restore_with_observer(agent, &mut |_| {})
+    }
+
+    /// Forwards clock-free restoration boundaries to the ingress adapter.
+    pub fn restore_with_observer(
+        self,
+        agent: &Arc<TransactionContext>,
+        observer: &mut impl FnMut(&'static str),
+    ) -> Result<Arc<EffectiveHolonDescriptorRegistry>, HolonError> {
         if !self.owner.is_restricted_cache_read()
             || self.owner.is_bootstrap_provisioning()
             || !self.owner.get_staged_holons().holons.is_empty()
@@ -55,9 +64,13 @@ impl DescriptorRegistryWire {
                 "Registry owner is missing its transaction identity".into(),
             )
         })?;
-        EffectiveHolonDescriptorRegistry::restore(agent, tx_id, self.root, |owner| {
-            self.owner.get_transient_holons().clone().bind(owner)
-        })
+        EffectiveHolonDescriptorRegistry::restore_with_observer(
+            agent,
+            tx_id,
+            self.root,
+            |owner| self.owner.get_transient_holons().clone().bind(owner),
+            observer,
+        )
     }
 }
 
@@ -186,7 +199,13 @@ mod tests {
         let (wire, id) = fixture()?;
         let space = test_space();
         let agent = space.get_transaction_manager().open_public_transaction(space.clone())?;
-        let registry = wire.restore(&agent)?;
+        let probe =
+            holons_core::core_shared_objects::read_observations::CacheReadProbe::start(true);
+        let mut phases = Vec::new();
+        let registry = wire.restore_with_observer(&agent, &mut |phase| phases.push(phase))?;
+        assert_eq!(phases, ["OwnerRestoration", "IndexRebuild", "Complete"]);
+        assert!(probe.finish().is_empty(), "registry ingress must not read saved sources");
+        assert_eq!(registry.population()?, (1, 1));
         let owner = registry.context()?;
         assert_eq!(owner.tx_id().value(), 400);
         assert_ne!(owner.tx_id(), agent.tx_id());

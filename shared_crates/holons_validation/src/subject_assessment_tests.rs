@@ -107,9 +107,7 @@ fn compatible_binding_in_view(
     level: crate::contexts::SubjectLevel,
     context: &ValueValidationContext,
 ) -> Result<bool, HolonError> {
-    use holons_core::{
-        DescribingTypeResolution, EffectiveRelationshipMember, ExtendsLineageDiagnosis,
-    };
+    use holons_core::{DescribingTypeResolution, EffectiveRelationshipMember};
     let key = crate::commitments::required_key(&binding.rule)?;
     let Some(registration) = CoreValidationRuleName::from_key(&key)
         .map(crate::registries::registration)
@@ -126,11 +124,10 @@ fn compatible_binding_in_view(
         member: binding.rule.clone(),
         declared_on: binding.declaring_descriptor.holon().clone(),
     };
-    let diagnosis = ExtendsLineageDiagnosis::assess(governing)?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &context.context,
         [&contribution],
-        diagnosis.valid_lineage(),
+        &crate::structural_diagnoses::StructuralDiagnoses::new(&context.context),
     )?;
     crate::subject_assessment::compatible_binding(
         binding,
@@ -140,6 +137,12 @@ fn compatible_binding_in_view(
         level,
         context,
         &roles,
+        &crate::descriptor_package::DescriptorPackages::construct(
+            &context.context,
+            &[governing.clone()],
+            &[],
+            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+        )?,
     )
 }
 
@@ -1092,7 +1095,7 @@ fn structural_handler_reports_multiple_parents_from_drained_kernel_diagnosis(
     fixture.link("Contract", CoreRelationshipTypeName::Extends, "OtherParent")?;
     let subject = fixture.nodes["Contract"].clone();
     let prerequisites = StructuralPrerequisites::assess(&subject)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_structure(&prerequisites);
     let findings = dispatch_c2_rule(
         &mut fixture,
@@ -1141,7 +1144,7 @@ fn structural_handlers_translate_cycle_termination_and_root_defects() -> Result<
         }
         let subject = fixture.nodes[subject_key].clone();
         let prerequisites = StructuralPrerequisites::assess(&subject)?;
-        let mut products = DescriptorRuleProducts::default();
+        let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
         products.prepare_structure(&prerequisites);
         let findings = dispatch_c2_rule(&mut fixture, rule, &products, &subject)?;
         assert!(findings.iter().any(|finding| matches!(&finding.kind,
@@ -1164,7 +1167,7 @@ fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Res
     )?;
     let subject = fixture.nodes["Rootless"].clone();
     let prerequisites = StructuralPrerequisites::assess(&subject)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_structure(&prerequisites);
     products.prepare_kind(&prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
@@ -1198,7 +1201,8 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
         .get_mut("Contract")
         .unwrap()
         .remove_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind)?;
-    let mut missing = DescriptorRuleProducts::default();
+    let diagnoses = fixture.diagnoses();
+    let mut missing = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     missing.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
@@ -1216,7 +1220,7 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
         .get_mut("Contract")
         .unwrap()
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
-    let mut non_abstract = DescriptorRuleProducts::default();
+    let mut non_abstract = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     non_abstract.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
@@ -1242,7 +1246,7 @@ fn kind_handlers_reject_an_ordinary_holon_with_an_incompatible_describer() -> Re
     subject.with_descriptor(fixture.nodes["StringValueType.ValueType"].clone())?;
     let subject: HolonReference = subject.into();
     let prerequisites = StructuralPrerequisites::assess(&subject)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_kind(&prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
@@ -1270,7 +1274,8 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
         .unwrap()
         .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![meta_holon.clone()])?;
     let prerequisites = StructuralPrerequisites::assess(&meta_holon)?;
-    let mut products = DescriptorRuleProducts::default();
+    let diagnoses = fixture.diagnoses();
+    let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     products.prepare_kind(&prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
@@ -1282,7 +1287,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
 
     let root = fixture.nodes["TypeDescriptor"].clone();
     let root_prerequisites = StructuralPrerequisites::assess(&root)?;
-    let mut root_products = DescriptorRuleProducts::default();
+    let mut root_products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     root_products.prepare_kind(&root_prerequisites, &roots)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
@@ -1296,7 +1301,7 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
         .get_mut("TypeDescriptor")
         .unwrap()
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
-    let mut invalid_root_products = DescriptorRuleProducts::default();
+    let mut invalid_root_products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     invalid_root_products.prepare_kind(&root_prerequisites, &roots)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
@@ -1327,7 +1332,7 @@ fn inherited_member_identity_does_not_create_a_semantic_name_collision() -> Resu
         fixture.link("Subtype", collection, member)?;
         let subject = fixture.nodes["Subtype"].clone();
         let contributions = ContractContributions::resolve(&subject)?;
-        let mut products = DescriptorRuleProducts::default();
+        let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
         products.prepare_contract(&contributions, &roots)?;
         let redeclarations = dispatch_c2_rule(
             &mut fixture,
@@ -1402,7 +1407,7 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
     )?;
     let subject = fixture.nodes["Subtype"].clone();
     let contributions = ContractContributions::resolve(&subject)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_contract(&contributions, &roots)?;
     for (rule, code) in [
         (CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001"),
@@ -1555,7 +1560,7 @@ fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> R
 
     let subtype = fixture.nodes["Subtype"].clone();
     let contributions = ContractContributions::resolve(&subtype)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_contract(&contributions, &roots)?;
     assert!(!products.has_findings());
     for rule in [
@@ -1911,7 +1916,7 @@ fn generic_predecessor_edit_promotes_and_is_rejected_by_both_assessment_modes(
 
 /// A saved contract's successor is a separate subject, never a substituted prerequisite.
 #[test]
-fn saved_book_keeps_title_v1_while_explicit_book_v2_depends_on_invalid_title_v2(
+fn saved_predecessor_and_staged_successor_consumers_are_assessed_independently(
 ) -> Result<(), HolonError> {
     use holons_core::{HolonCollection, HolonCollectionApi};
     use std::sync::{Arc, RwLock};
@@ -1954,10 +1959,11 @@ fn saved_book_keeps_title_v1_while_explicit_book_v2_depends_on_invalid_title_v2(
         assert_eq!(saved_consumer.validation_state()?, ValidationState::Validated);
         assert!(saved_consumer.validation_findings()?.is_empty());
         assert_ne!(title.validation_state()?, ValidationState::Validated);
-        assert!(explicit_consumer.validation_findings()?.iter().any(|finding| matches!(
-            finding.kind,
-            CommitValidationViolationKind::UnresolvedLocalDependency
-        )));
+        assert!(!explicit_consumer.validation_findings()?.iter().any(
+            |finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+        ));
+        assert_eq!(explicit_consumer.validation_state()?, ValidationState::Validated);
+        assert!(explicit_consumer.validation_findings()?.is_empty());
         let package = holons_core::ContractContributions::resolve(&book.clone().into())?;
         assert!(package.properties.iter().any(|member| holons_core::same_definition(
             &member.member,
@@ -2047,6 +2053,13 @@ fn no_op_and_graph_only_siblings_are_both_assessed_without_poisoning_saved_defin
         )?;
         staged.note_relationship_mutation(false)?;
     }
+    // Aliases share structural evidence, while their candidate outcomes remain independent.
+    let diagnoses = fixture.diagnoses();
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let saved_diagnosis = diagnoses.get(&fixture.nodes["SavedInstance"])?;
+    assert!(std::sync::Arc::ptr_eq(&saved_diagnosis, &diagnoses.get(&clean.clone().into())?));
+    assert!(std::sync::Arc::ptr_eq(&saved_diagnosis, &diagnoses.get(&graph.clone().into())?));
+    assert_eq!(probe.finish().0.get("structural_diagnoses"), Some(&1));
     let mut consumer = fixture.staged_subject("consumer")?;
     consumer.with_property_value("Title", "valid")?;
     for candidates in [
@@ -2202,7 +2215,8 @@ fn type_descriptor_requires_the_independent_meta_holon_type_role() -> Result<(),
     let mut root = fixture.nodes["TypeDescriptor"].clone();
     root.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![chosen.clone()])?;
     let prerequisites = StructuralPrerequisites::assess(&root)?;
-    let mut products = DescriptorRuleProducts::default();
+    let diagnoses = fixture.diagnoses();
+    let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     products.prepare_kind(&prerequisites, &kinds)?;
     let findings = dispatch_c2_rule(
         &mut fixture,
@@ -2219,7 +2233,7 @@ fn type_descriptor_requires_the_independent_meta_holon_type_role() -> Result<(),
         vec![fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone()],
     )?;
     let prerequisites = StructuralPrerequisites::assess(&root)?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     products.prepare_kind(&prerequisites, &kinds)?;
     assert!(dispatch_c2_rule(
         &mut fixture,
@@ -2238,7 +2252,7 @@ fn ordinary_unparented_holon_has_no_termination_finding() -> Result<(), HolonErr
         fixture.context.mutation().new_holon(Some("ordinary".into()))?.into();
     let prerequisites = holons_core::StructuralPrerequisites::assess(&ordinary)?;
     assert!(prerequisites.subject_lineage.valid_lineage().is_some());
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_structure(&prerequisites);
     assert!(dispatch_c2_rule(
         &mut fixture,
@@ -2297,7 +2311,7 @@ fn unsupported_bindings_prepare_no_family_reads() -> Result<(), HolonError> {
             crate::subject_assessment::BindingRoleMemo::prepare(
                 &fixture.context,
                 [&contribution],
-                std::iter::empty(),
+                &fixture.diagnoses(),
             )?;
             assert_eq!(
                 before,
@@ -2383,7 +2397,7 @@ fn prerequisite_products_remain_reported_without_compatible_bindings() -> Result
     use CoreValidationRuleName::*;
     let fixture = readiness_fixture()?;
     let subject = fixture.nodes["Contract"].clone();
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     let prerequisites = [
         (AtMostOneDirectParent, "DS-STRUCT-002"),
         (AcyclicExtendsLineage, "DS-STRUCT-003"),
@@ -2400,7 +2414,10 @@ fn prerequisite_products_remain_reported_without_compatible_bindings() -> Result
     let mut collector = ValidationCollector::default();
     crate::subject_assessment::dispatch_descriptor(&[], &products, &subject, &mut collector)?;
     let report = collector.into_report();
-    assert_eq!(report.violation_count(), 7);
+    assert_eq!(report.violation_count(), 8);
+    assert!(report.violations.iter().any(|finding| finding.rule_key.as_deref()
+        == Some(LocalInstanceKindAnchorDesignation.as_str())
+        && finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
     for (name, expected_code) in prerequisites {
         assert!(report.violations.iter().any(|finding| finding.rule_key.as_deref() == Some(name.as_str())
             && matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == expected_code)));
@@ -2432,11 +2449,10 @@ fn direct_descriptor_dispatch_preserves_binding_provenance_and_diagnostic_kinds(
         &[],
         &workset,
     )?;
-    let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(governor)?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
         &packages.binding_contributions(),
-        diagnosis.valid_lineage(),
+        &fixture.diagnoses(),
     )?;
     let mut collector = ValidationCollector::default();
     let bindings = crate::subject_assessment::prepare_bindings(
@@ -2448,7 +2464,7 @@ fn direct_descriptor_dispatch_preserves_binding_provenance_and_diagnostic_kinds(
         &mut collector,
         &packages,
     )?;
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.violation(name, "multiple parents".into());
     products.unresolved(name, "unresolved input".into());
     crate::subject_assessment::dispatch_descriptor(&bindings, &products, subject, &mut collector)?;
@@ -2520,11 +2536,10 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
             .into_iter()
             .map(|member| EffectiveRelationshipMember { member, declared_on: declaring.clone() })
             .collect();
-    let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(&fixture.nodes["Contract"])?;
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
         &contributions,
-        diagnosis.valid_lineage(),
+        &fixture.diagnoses(),
     )?;
     let reads_after_preparation =
         (fixture.backend_node_reads(), fixture.backend_relationship_reads());
@@ -2544,7 +2559,13 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
                 &fixture.nodes["Contract"],
                 crate::contexts::SubjectLevel::Holon,
                 &ValueValidationContext::new(&fixture.context),
-                &roles
+                &roles,
+                &crate::descriptor_package::DescriptorPackages::construct(
+                    &fixture.context,
+                    &[],
+                    &[],
+                    &crate::schema_view::SchemaWorkset { schemas: Vec::new() }
+                )?
             )?,
             expected
         );
@@ -2585,7 +2606,7 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
     let roles = crate::subject_assessment::BindingRoleMemo::prepare(
         &fixture.context,
         [&contribution],
-        std::iter::empty(),
+        &fixture.diagnoses(),
     )?;
     let reads_after_preparation =
         (fixture.backend_node_reads(), fixture.backend_relationship_reads());
@@ -2598,7 +2619,13 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
             &fixture.nodes["Contract"],
             crate::contexts::SubjectLevel::Holon,
             &ValueValidationContext::new(&fixture.context),
-            &roles
+            &roles,
+            &crate::descriptor_package::DescriptorPackages::construct(
+                &fixture.context,
+                &[],
+                &[],
+                &crate::schema_view::SchemaWorkset { schemas: Vec::new() }
+            )?
         ),
         Err(error)
     );
@@ -2811,11 +2838,10 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
             &[],
             &workset,
         )?;
-        let diagnosis = holons_core::ExtendsLineageDiagnosis::assess(governor)?;
         let roles = crate::subject_assessment::BindingRoleMemo::prepare(
             &fixture.context,
             &packages.binding_contributions(),
-            diagnosis.valid_lineage(),
+            &fixture.diagnoses(),
         )?;
         // Construction has its own schema traversal; this trap tests the dispatch ordering.
         let error = HolonError::InvalidState(
@@ -2954,7 +2980,29 @@ fn abstract_descriptor_universal_contract_needs_no_backend_reads_after_construct
     )?;
     let relationship_reads = fixture.backend_relationship_reads();
     let node_reads = fixture.backend_node_reads();
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
     let report = constructed.assess(|_| {})?.0.into_report();
+    let derivations = probe.finish();
+    // Category routing has already diagnosed these members during preparation.
+    assert_eq!(derivations.0.get("structural_diagnoses").copied().unwrap_or(0), 0);
+
+    for operation in [
+        "contract_contribution_resolutions",
+        "constraint_contribution_resolutions",
+        "schema_resolution_requests",
+        "schema_builder_attempts",
+        "derived_builder_attempts",
+        "derived_projection_attempts",
+        "saved_restoration_attempts",
+        "role_walks",
+        "name_index_builds",
+    ] {
+        assert_eq!(
+            derivations.0.get(operation).copied().unwrap_or(0),
+            0,
+            "assessment repeated {operation}"
+        );
+    }
     assert!(report.is_accepted(), "{report:?}");
     assert_eq!(relationship_reads, fixture.backend_relationship_reads());
     assert_eq!(node_reads, fixture.backend_node_reads());
@@ -3155,7 +3203,7 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
     let count = fixture.context.lookup().transient_count()?;
     let projection = ComputedEffectiveSchema::resolve(&subject)?;
     assert_eq!(count, fixture.context.lookup().transient_count()?);
-    let mut products = DescriptorRuleProducts::default();
+    let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.prepare_effective_schema(&projection, &roots)?;
     assert_eq!(fixture.saved_key_lookup_reads(), keyed_reads);
     let findings = dispatch_c2_rule(
@@ -3170,6 +3218,111 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
             "missing {namespace} conflict: {findings:?}"
         );
     }
+    Ok(())
+}
+
+#[path = "preparation_characterization_tests.rs"]
+mod preparation_characterization;
+
+#[test]
+fn vocabulary_classification_is_independent_of_defective_memo_entries() -> Result<(), HolonError> {
+    use holons_core::{ComputedEffectiveSchema, DescriptorKindSemantics};
+    use type_names::CoreDefinitionRole;
+    use type_names::CorePropertyTypeName as P;
+    let mut results = Vec::new();
+    for memoized in [false, true] {
+        let mut fixture = Fixture::new()?;
+        for key in [
+            "DeclaredRelationshipType",
+            "NavigationMember",
+            "DanceType.HolonType",
+            "DanceMember",
+            "OtherParent",
+            "VocabularyGovernor",
+        ] {
+            fixture.node(key)?.with_property_value(P::TypeName, key)?;
+        }
+        for (child, parent) in [
+            ("VocabularyGovernor", "HolonType.TypeDescriptor"),
+            ("NavigationMember", "DeclaredRelationshipType"),
+            ("DeclaredRelationshipType", "TypeDescriptor"),
+            ("DeclaredRelationshipType", "OtherParent"),
+            ("DanceMember", "DanceType.HolonType"),
+            ("DanceType.HolonType", "TypeDescriptor"),
+            ("DanceType.HolonType", "OtherParent"),
+        ] {
+            fixture.link(child, CoreRelationshipTypeName::Extends, parent)?;
+        }
+        fixture.link(
+            "NavigationMember",
+            CoreRelationshipTypeName::SourceType,
+            "VocabularyGovernor",
+        )?;
+        fixture.link(
+            "VocabularyGovernor",
+            CoreRelationshipTypeName::SourceOf,
+            "NavigationMember",
+        )?;
+        fixture.link(
+            "VocabularyGovernor",
+            CoreRelationshipTypeName::AffordsDance,
+            "DanceMember",
+        )?;
+        fixture.link(
+            "DescribedBy.Relationship",
+            CoreRelationshipTypeName::SourceType,
+            "VocabularyGovernor",
+        )?;
+        fixture.link(
+            "DescribedBy.Relationship",
+            CoreRelationshipTypeName::TargetType,
+            "VocabularyGovernor",
+        )?;
+        let mut fixture = fixture.saved_snapshot()?;
+        let diagnoses = fixture.diagnoses();
+        // Classification may stop at its anchor, before the malformed ancestry above it.
+        let direction = holons_core::descriptors::classify_relationship_direction(
+            &fixture.nodes["NavigationMember"],
+        )?;
+        assert!(holons_core::descriptors::extends_role(
+            &fixture.nodes["DanceMember"],
+            CoreDefinitionRole::DanceType
+        )?);
+        if memoized {
+            for key in ["NavigationMember", "DanceMember"] {
+                assert!(diagnoses.get(&fixture.nodes[key])?.valid_lineage().is_none());
+            }
+        }
+        let subject = fixture.nodes["VocabularyGovernor"].clone();
+        let projection = ComputedEffectiveSchema::resolve(&subject)?;
+        // Keep product preparation and the optional earlier diagnosis outside the check's read scope.
+        projection.name_index(holons_core::descriptors::EffectiveVocabulary::Relationships)?;
+        fixture.reset_backend_membership_reads();
+        let nodes_before = fixture.backend_node_reads();
+        let mut products = DescriptorRuleProducts::new(diagnoses);
+        products.prepare_effective_schema(
+            &projection,
+            &DescriptorKindSemantics::new(&fixture.context),
+        )?;
+        let reads = fixture.backend_membership_inventory();
+        let node_reads = fixture.backend_node_reads() - nodes_before;
+        let findings = dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::ContractMemberKindCompatibility,
+            &products,
+            &subject,
+        )?;
+        for key in ["NavigationMember", "DanceMember"] {
+            assert!(
+                !findings.iter().any(|finding| finding
+                    .message
+                    .contains(&fixture.nodes[key].reference_id_string())),
+                "{findings:?}"
+            );
+        }
+        results.push((direction, findings, reads, node_reads));
+    }
+    assert_eq!(results[0], results[1]);
     Ok(())
 }
 
@@ -3198,7 +3351,7 @@ fn property_extension_requires_an_abstract_parent() -> Result<(), HolonError> {
         fixture.link("PropertyChild", CoreRelationshipTypeName::Extends, parent_key)?;
         let subject = fixture.nodes["PropertyChild"].clone();
         let prerequisites = StructuralPrerequisites::assess(&subject)?;
-        let mut products = DescriptorRuleProducts::default();
+        let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
         products.prepare_kind(&prerequisites, &roots)?;
         let findings = dispatch_c2_rule(
             &mut fixture,
@@ -3236,6 +3389,34 @@ fn property_extension_requires_an_abstract_parent() -> Result<(), HolonError> {
 }
 
 #[test]
+fn structural_memo_lookup_preserves_absence_and_required_read_failure() -> Result<(), HolonError> {
+    let fixture = Fixture::new()?.saved_snapshot()?;
+    let diagnoses = fixture.diagnoses();
+    let reference = &fixture.nodes["Contract"];
+    fixture.control_saved_relationship_reads(
+        "Contract",
+        CoreRelationshipTypeName::Extends,
+        Some(HolonError::InvalidParameter("injected required read failure".into())),
+    )?;
+    assert!(diagnoses.existing(reference)?.is_none());
+    assert_eq!(fixture.backend_reads_for_source("Contract", &CoreRelationshipTypeName::Extends), 0);
+    let expected = diagnoses.get(reference).unwrap_err();
+    let reads = fixture.backend_reads_for_source("Contract", &CoreRelationshipTypeName::Extends);
+    assert!(reads > 0);
+    diagnoses.seal();
+    assert_eq!(diagnoses.get(reference).unwrap_err(), expected);
+    assert!(
+        matches!(diagnoses.get(&fixture.nodes["Title.PropertyType"]), Err(HolonError::InvalidState(message)) if message.contains("structural diagnosis") && message.contains("assessment consumer"))
+    );
+    assert_eq!(diagnoses.existing(reference).unwrap_err(), expected);
+    assert_eq!(
+        fixture.backend_reads_for_source("Contract", &CoreRelationshipTypeName::Extends),
+        reads
+    );
+    Ok(())
+}
+
+#[test]
 fn property_parent_abstractness_must_be_a_local_boolean() -> Result<(), HolonError> {
     use holons_core::StructuralPrerequisites;
     for malformed in [false, true] {
@@ -3251,7 +3432,7 @@ fn property_parent_abstractness_must_be_a_local_boolean() -> Result<(), HolonErr
         fixture.link("PropertyChild", CoreRelationshipTypeName::Extends, "Title.PropertyType")?;
         let subject = fixture.nodes["PropertyChild"].clone();
         let prerequisites = StructuralPrerequisites::assess(&subject)?;
-        let mut products = DescriptorRuleProducts::default();
+        let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
         products.prepare_kind(&prerequisites, &roots)?;
         let findings = dispatch_c2_rule(
             &mut fixture,

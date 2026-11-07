@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use crate::core_shared_objects::transactions::TransactionContext;
 
-use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
+use crate::descriptors::accessor_helpers::{descriptor_label, lock_error};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
@@ -151,13 +151,34 @@ pub(crate) fn described_by_descriptor(
 pub fn classify_relationship_direction(
     relationship_type_descriptor: &HolonReference,
 ) -> Result<RelationshipDirection, HolonError> {
+    classify_relationship_direction_with_members(
+        relationship_type_descriptor,
+        walk_extends_chain(relationship_type_descriptor),
+    )
+}
+
+/// Classifies a relationship using a previously diagnosed lineage, without rediscovery.
+pub fn classify_relationship_direction_in_lineage(
+    lineage: super::ValidExtendsLineage<'_>,
+) -> Result<RelationshipDirection, HolonError> {
+    classify_relationship_direction_with_members(
+        lineage.subject(),
+        lineage.members().iter().cloned().map(Ok),
+    )
+}
+
+fn classify_relationship_direction_with_members(
+    relationship_type_descriptor: &HolonReference,
+    members: impl IntoIterator<Item = Result<HolonReference, HolonError>>,
+) -> Result<RelationshipDirection, HolonError> {
     let declared_relationship_type = CoreHolonTypeName::DeclaredRelationshipType.as_holon_name();
     let inverse_relationship_type = CoreHolonTypeName::InverseRelationshipType.as_holon_name();
     let expected_relationship_type_names =
         [declared_relationship_type.clone(), inverse_relationship_type.clone()];
 
-    search_extends_chain(
+    super::accessor_helpers::search_lineage(
         relationship_type_descriptor,
+        members,
         &expected_relationship_type_names,
         |type_name| {
             if type_name == &declared_relationship_type {

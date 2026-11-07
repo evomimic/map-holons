@@ -24,6 +24,8 @@ pub fn extends_role(
     subject: &HolonReference,
     role: CoreDefinitionRole,
 ) -> Result<bool, HolonError> {
+    crate::core_shared_objects::read_observations::record_derivation("role_walks", 1);
+
     for ancestor in walk_extends_chain(subject) {
         if has_role(&ancestor?, role)? {
             return Ok(true);

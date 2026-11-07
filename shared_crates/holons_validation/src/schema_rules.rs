@@ -3,11 +3,10 @@ use crate::{
     handlers::rule_violation, schema_view::ProspectiveSchema, RuleOutcome, ValidationCollector,
     ValidationInvocation,
 };
-use core_types::{HolonError, RelationshipName};
+use core_types::HolonError;
 use holons_core::{
-    core_shared_objects::transactions::TransactionContext,
-    descriptors::{resolve_describing_type, schema_dependencies},
-    DefinitionIdentity, DescribingTypeResolution, HolonReference, ReadableHolon,
+    core_shared_objects::transactions::TransactionContext, descriptors::schema_dependencies,
+    DefinitionIdentity, HolonReference,
 };
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -27,10 +26,6 @@ impl SchemaRuleProducts {
     }
     pub(crate) fn rules_with_findings(&self) -> impl Iterator<Item = CoreValidationRuleName> + '_ {
         self.diagnostics.keys().copied()
-    }
-
-    pub(crate) fn has_findings(&self) -> bool {
-        !self.diagnostics.is_empty()
     }
 }
 
@@ -68,46 +63,6 @@ pub(crate) fn dependency_cycles(
         }
     }
     Ok(results)
-}
-
-/// Saved maps include materialized inverse navigation. Their authored surface is the
-/// declared contract, as in saved-to-transient cloning. Mutable maps are authored state
-/// and retain undeclared names so they cannot evade the fixed Commit check.
-pub(crate) fn authored_targets(
-    source: &HolonReference,
-    packages: &crate::descriptor_package::DescriptorPackages,
-) -> Result<Vec<(RelationshipName, HolonReference)>, HolonError> {
-    if let HolonReference::Smart(saved) = source {
-        let DescribingTypeResolution::Unique(descriptor) = resolve_describing_type(source)? else {
-            return Err(
-                HolonError::MissingDescribedBy { holon: source.reference_id_string() }.into()
-            );
-        };
-        let contract = packages.effective_schema(&descriptor)?.contract_contributions();
-        let names = crate::descriptor_package::declared_names(&contract)?;
-        saved.prepare_relationships(&names)?;
-        let mut result = Vec::new();
-        for name in names {
-            let members = source.related_holons(&name)?;
-            let members =
-                members.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
-            result
-                .extend(members.get_members().iter().cloned().map(|target| (name.clone(), target)));
-        }
-        return Ok(result);
-    }
-    let mut edges = source.all_related_holons()?.iter();
-    edges.sort_by_key(|(name, _)| name.to_string());
-    let mut result = Vec::new();
-    for (name, members) in edges {
-        let members = members
-            .read()
-            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
-            .get_members()
-            .to_vec();
-        result.extend(members.into_iter().map(|target| (name.clone(), target)));
-    }
-    Ok(result)
 }
 
 fn run(

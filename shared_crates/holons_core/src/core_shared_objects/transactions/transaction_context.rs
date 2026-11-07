@@ -63,6 +63,9 @@ pub struct TransactionContext {
     /// Reuse of mutable descriptor inputs is confined to one frozen assessment.
     pub(super) frozen_validation:
         std::sync::Mutex<Option<Arc<super::frozen_validation_scope::FrozenValidationState>>>,
+    /// Saved Core definitions resolved by key; staged definitions are always checked first.
+    pub(crate) saved_core_descriptors:
+        std::sync::Mutex<std::collections::HashMap<String, crate::reference_layer::HolonReference>>,
 }
 
 impl fmt::Debug for TransactionContext {
@@ -91,6 +94,7 @@ impl TransactionContext {
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
             restricted_cache_read,
             frozen_validation: Default::default(),
+            saved_core_descriptors: Default::default(),
         })
     }
 

@@ -14,6 +14,13 @@ fn graph_fixture(lineage: bool, existing: bool) -> Result<Fixture, HolonError> {
 }
 
 fn graph_fixture_with_binding(binding: &str, existing: bool) -> Result<Fixture, HolonError> {
+    graph_fixture_with_ambiguity(binding, existing, false)
+}
+fn graph_fixture_with_ambiguity(
+    binding: &str,
+    existing: bool,
+    ambiguous: bool,
+) -> Result<Fixture, HolonError> {
     let mut f = readiness_fixture()?;
     for key in ["Source", "X", "Y", "Xv2"] {
         f.node(key)?;
@@ -57,6 +64,10 @@ fn graph_fixture_with_binding(binding: &str, existing: bool) -> Result<Fixture, 
     if existing {
         let target = f.nodes["X"].clone();
         f.nodes.get_mut("Source").unwrap().add_related_holons("R", vec![target])?;
+    }
+    if ambiguous {
+        f.node("Alias.Relationship")?.with_property_value("TypeName", "R")?;
+        f.link("Contract", CoreRelationshipTypeName::InstanceRelationships, "Alias.Relationship")?;
     }
     f.saved_snapshot_with_lineages(&[("Xv2", "X")])
 }
@@ -297,5 +308,18 @@ fn invalid_binding_is_still_an_error_and_preserves_prior_outcomes() -> Result<()
         Err(HolonError::InvalidParameter(message)) if message.contains("TargetBinding")));
     assert_eq!((a.validation_state()?, a.validation_findings()?), before_a);
     assert_eq!((b.validation_state()?, b.validation_findings()?), before_b);
+    Ok(())
+}
+
+#[test]
+fn ambiguous_relationship_binding_never_selects_first_contribution() -> Result<(), HolonError> {
+    let fixture = graph_fixture_with_ambiguity("Version", false, true)?;
+    let first = fixture.stage_update_of("Source")?;
+    let second = fixture.stage_update_of("Source")?;
+    mutate(&fixture, &first, fixture.nodes["X"].clone(), false)?;
+    mutate(&fixture, &second, fixture.nodes["Y"].clone(), false)?;
+    let findings = overlap(&fixture, &[first.clone(), second.clone()])?;
+    assert_eq!(findings.len(), 2, "ambiguous binding explains both live participants");
+    assert_eq!(findings, overlap(&fixture, &[second, first])?);
     Ok(())
 }

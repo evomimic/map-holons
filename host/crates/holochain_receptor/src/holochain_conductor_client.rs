@@ -108,6 +108,15 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         let encode_ms = round_trip_started.elapsed().as_secs_f64() * 1000.0;
+        // This includes the entire envelope. Snapshot-only serialization would require a
+        // second encoding pass and is intentionally unavailable.
+        if profiling && dance_name.as_deref() == Some("commit") {
+            tracing::info!(
+                "[commit-host-shipping] envelope_encode_us={} envelope_bytes={}",
+                round_trip_started.elapsed().as_micros(),
+                payload.as_bytes().len()
+            );
+        }
 
         // --- Clone websocket (POC safe) ---
         let ws = {

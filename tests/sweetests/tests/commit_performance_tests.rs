@@ -11,6 +11,10 @@ mod link_queries;
 mod new_version_samples;
 #[path = "performance_support/readiness_cases.rs"]
 mod readiness_cases;
+#[path = "performance_support/registry_setup.rs"]
+mod registry_setup;
+#[path = "performance_support/update_samples.rs"]
+mod update_samples;
 use map_commands_contract::{
     MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
 };
@@ -37,6 +41,8 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
     };
     runtime.session().archive_transaction(&initial_tx_id).unwrap();
 
+    let runtime = registry_setup::configure(runtime).await;
+
     // Each sample creates a new usage with the same four outbound members. Shared inverse
     // buckets grow by one per sample; this is repeated execution, not identical storage state.
     let samples = std::env::var("MAP_COMMIT_PERF_SAMPLES")
@@ -48,6 +54,11 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
         .unwrap_or(1);
     assert!(subjects > 0);
     let mode = std::env::var("MAP_COMMIT_PERF_MODE").unwrap_or_else(|_| "create".into());
+    if ["no-op", "mixed", "graph-only", "graph-only-overlap"].contains(&mode.as_str()) {
+        assert_eq!(subjects, 1);
+        update_samples::run(&runtime, samples, &mode).await;
+        return;
+    }
     if mode == "new-version" {
         assert_eq!(subjects, 1, "new-version samples publish one successor per Commit");
         new_version_samples::run(&runtime, samples).await;
@@ -113,6 +124,15 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
 
         let condition = if sample == 0 { "first" } else { "repeated" };
         info!("[commit-baseline] sample_start={} condition={} candidates={} outbound_members={} prior_usages={}", sample, condition, subjects, subjects * 4, sample * subjects);
+        let governor_id = descriptor.holon_id().unwrap();
+        let governor_present =
+            runtime.session().descriptor_registry().get(&governor_id).unwrap().is_some();
+        info!(
+            "[commit-governor] sample={} boundary=before-command present={} governor={}",
+            sample,
+            governor_present,
+            descriptor.full_reference_id_string()
+        );
         let started = Instant::now();
         let response = runtime
             .execute_command(
@@ -125,6 +145,18 @@ async fn measures_first_and_repeated_visualizer_usage_commits() {
             .await
             .unwrap();
         let command_us = started.elapsed().as_micros();
+        // This is the post-command host registry, not the transported ingress population.
+        // The guest's registry-ingress event records the actual received counts.
+        let registry = runtime.session().descriptor_registry();
+        let (holon_types, derived) = registry.population().unwrap();
+        info!(
+            "[commit-governor] sample={} boundary=after-command present={} entries={} derived={}",
+            sample,
+            registry.get(&governor_id).unwrap().is_some(),
+            holon_types,
+            derived
+        );
+
         let MapResult::Reference(response) = response else {
             panic!("Commit must return a response");
         };

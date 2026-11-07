@@ -9,8 +9,7 @@ use core_types::{CommitValidationViolationKind, HolonError, PropertyName};
 use holons_core::{
     descriptors::{
         constraint_applies_to, constraint_applies_to_lineage, resolve_describing_type,
-        same_definition, ConstraintContributions, DescribingTypeResolution,
-        ExtendsLineageDiagnosis, ValidExtendsLineage,
+        same_definition, ConstraintContributions, DescribingTypeResolution, ValidExtendsLineage,
     },
     HolonReference, ReadableHolon,
 };
@@ -41,15 +40,16 @@ struct CheckedConstraint {
 /// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it
 /// neither evaluates attached constraints nor replaces the shared subject validators.
-#[derive(Default)]
 pub struct ConstraintDeclarationAssessment {
     checked: Vec<CheckedConstraint>,
+    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
 }
 
 impl ConstraintDeclarationAssessment {
-    /// Creates an empty Schema-scoped declaration workset over an unchanged input snapshot.
-    pub fn new() -> Self {
-        Self::default()
+    pub(crate) fn new(
+        diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    ) -> Self {
+        Self { diagnoses, checked: Vec::new() }
     }
 
     /// Checks a configured holon once, including owned constraints with no attachments.
@@ -181,7 +181,7 @@ impl ConstraintDeclarationAssessment {
         let mut checked =
             CheckedConstraint { constraint: constraint.clone(), constraint_type, valid: false };
         if let Some(constraint_type) = checked.constraint_type.clone() {
-            let diagnosis = ExtendsLineageDiagnosis::assess(&constraint_type)?;
+            let diagnosis = self.diagnoses.get(&constraint_type)?;
             if let Some(lineage) = diagnosis.valid_lineage() {
                 let root = CoreDefinitionRole::ConstraintType;
                 if lineage.contains_role(root)
