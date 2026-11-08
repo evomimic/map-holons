@@ -94,8 +94,17 @@ pub async fn execute_commit(
     rejection_verification: RejectionVerification,
     expected_status: ExpectedCommitStatus,
     expected_error: Option<HolonErrorKind>,
+    verify_committed_workset: bool,
 ) {
     let context = state.context();
+    let verification_baselines = if verify_committed_workset
+        && expected_error.is_none()
+        && expected_status != ExpectedCommitStatus::Rejected
+    {
+        super::commit_verification_executor::capture(state, &declarations).await
+    } else {
+        vec![]
+    };
     state.set_last_commit_response(None);
 
     // Retain staged handles across the wire round trip, including entries that
@@ -546,6 +555,14 @@ pub async fn execute_commit(
                 }
             }
 
+            if verify_committed_workset {
+                super::commit_verification_executor::verify(
+                    state,
+                    verification_baselines,
+                    expected_status,
+                )
+                .await;
+            }
             trace!("Commit complete: {} holons committed", commit_count.0);
         }
         Err(e) => {

@@ -153,7 +153,7 @@ use `Option<HolonErrorKind>` and descriptions use `Option<String>`.
 | Edit relationships | `add_add_related_holons_step`, `add_remove_related_holons_step` | Follow target heads; return updated source tokens |
 | Stage updates or clones | `add_stage_new_version_step`, `add_stage_new_from_clone_step` | Version staging records the exact saved predecessor; independent clones clear inherited lineage |
 | Commit creates | `add_commit_step` | Create-only convenience; saved-version provenance fails at authoring time and requires explicit dispositions |
-| Commit updates and retries | `add_commit_step_with_dispositions` | Declare the prepared live workset and retained relationship-retry participants |
+| Commit updates and retries | `add_commit_step_with_dispositions` | Declare the live workset and retries; graph cases opt into bounded persistence checks |
 | Check saved content | `add_match_saved_content_step` | Properties and definitional content; skips partial lookup stubs |
 | Check persisted graph | `add_verify_persisted_graph_step`, `add_verify_relationship_anchoring_step` | Fresh occurrence checks, exact target collections and exact lineage; the latter is the existing focused Book/Person check |
 | Check rejection findings | `add_verify_commit_rejection_step`, `add_verify_commit_carrier_finding_step` | Staged semantic findings and aggregate Schema findings |
@@ -200,8 +200,11 @@ a node write occurred. See the worked examples below and the outcome table in
 - `Rejected` attempts and commits with `expected_error` take no candidate or retry declarations
   and advance no heads. Use existing rejection-finding expectations for semantic failures.
 - Use `add_match_saved_content_step()` after Commit for saved properties and definitional
-  content, including after a version-producing Commit. Inverses, non-definitional graph changes
-  and exact lineage need `add_verify_persisted_graph_step()` instead.
+  content, including after a version-producing Commit. For a graph scenario, set
+  `test_case.verify_committed_workset = true` after initialization. Complete Commit then verifies
+  named fixture memberships, persisted inverse occurrences and exact lineage within its declared
+  workset. Do not repeat these guarantees in a separate graph step. See the authoritative
+  harness specification for partial lookup subjects, retries and Lineage-bound inverses.
 - In that step, `edges` counts occurrences of one named target, so it cannot reject an
   undeclared extra target. Use `relationships` to assert a relationship's exact target set,
   where an empty list asserts an empty collection. Declare an inverse direction as its own

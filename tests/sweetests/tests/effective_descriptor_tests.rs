@@ -656,32 +656,3 @@ async fn value_and_property_wrappers_reuse_guest_derived_products() {
     assert!(value.supported_operators().unwrap().len() >= 3);
     property.effective_constraints().unwrap();
 }
-
-#[tokio::test(flavor = "multi_thread")]
-async fn saved_visualizer_composition_stops_before_generic_descriptor_ancestors() {
-    let (runtime, _) = init_test_runtime(&mut DancesTestCase::default()).await;
-    let MapResult::TransactionCreated { tx_id } = runtime
-        .execute_command(
-            MapCommand::Space(SpaceCommand::BeginTransaction),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .unwrap()
-    else {
-        panic!("expected transaction")
-    };
-    let context = runtime.session().get_transaction(&tx_id).unwrap();
-    // Real type-owned composition must finish at the Visualizer family root;
-    // its generic descriptor parents have no HasSlot policy to resolve.
-    for (key, expected_slots) in
-        [("HolonInspector.NodeVisualizer", 8), ("PathInspector.RootedNavigationVisualizer", 1)]
-    {
-        let visualizer: HolonReference =
-            context.lookup().get_saved_holon_by_key(&MapString(key.into())).unwrap().into();
-        assert_eq!(
-            holons_core::dahn::composition_slots(&visualizer).unwrap().len(),
-            expected_slots
-        );
-    }
-    context.dispose().unwrap();
-}

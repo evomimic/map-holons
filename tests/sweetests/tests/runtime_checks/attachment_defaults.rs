@@ -1,11 +1,10 @@
 //! Descriptor attachment and the final loader pass over saved and staged contracts.
-mod fixture_cases;
 
-use fixture_cases::load_holons_internal_fixture::{
+use crate::fixture_cases::load_holons_internal_fixture::{
     add_loader_relationship_reference, make_load_set_from_bundles, BundleWithFilename,
 };
 use holons_prelude::prelude::*;
-use holons_test::{assert_descriptor_completion, init_test_runtime, DancesTestCase};
+use holons_test::assert_descriptor_completion;
 use map_commands_contract::{
     MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
 };
@@ -25,11 +24,9 @@ async fn begin(runtime: &Runtime) -> Arc<TransactionContext> {
     runtime.session().get_transaction(&tx_id).unwrap()
 }
 
-// attachment_defaults_fixture runs in dance_tests' runtime_behavior_matrix suite.
-#[tokio::test(flavor = "multi_thread")]
-async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defaults() {
-    let (runtime, initial_tx) = init_test_runtime(&mut DancesTestCase::default()).await;
-    runtime.session().archive_transaction(&initial_tx).unwrap();
+pub async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defaults(
+    runtime: &Runtime,
+) {
     let context = begin(&runtime).await;
     // This contract is saved before the extension is assembled. Its existing enum
     // member remains visible when Pass 2a promotes it and reattaches its meta-type.
@@ -206,6 +203,8 @@ async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defa
         );
     }
 
+    runtime.session().archive_transaction(&observer.tx_id()).unwrap();
+
     // Replaying the saved contract's edges must retain its version, while a new
     // instance can still persist a relationship to the unchanged staged target.
     let context = begin(&runtime).await;
@@ -280,4 +279,5 @@ async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_defa
             Some(MapEnumValue(MapString(token.into())).to_base_value())
         );
     }
+    runtime.session().archive_transaction(&observer.tx_id()).unwrap();
 }

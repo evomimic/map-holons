@@ -20,7 +20,7 @@ Paths below are relative to `tests/sweetests/`.
 | Bootstrap and probe isolation | `src/harness/helpers/test_context.rs`, `smartlink_test_control.rs` |
 | Driver and step dispatch | `tests/execution_steps/dance_test_runner.rs` |
 | Persisted reads and graph execution | `tests/execution_steps/persisted_read_support.rs`, `persisted_graph_executor.rs` |
-| Commit dispatch and result recording | `tests/execution_steps/commit_executor.rs` |
+| Commit dispatch, correspondence and bounded persistence checks | `tests/execution_steps/commit_executor.rs`, `commit_verification_executor.rs` |
 
 `rstest_dance_test_suites` in `tests/dance_tests.rs` registers suites. Individual fixtures belong
 in a suite's `test_cases` vector; new step match arms belong in `dance_test_runner.rs`.
@@ -156,8 +156,14 @@ Choose the read surface deliberately:
   a new transaction alone does not invalidate the shared saved relationship cache.
 
 Saved-content comparison checks complete saved properties and definitional content, skipping
-partial lookup stubs. Fresh persisted graph checks cover non-definitional changes, materialized
-inverses, and exact lineage. Within a graph step, `edges` counts occurrences of one named
+partial lookup stubs. Graph cases opt in with `test_case.verify_committed_workset = true`.
+For those cases, Complete Commit verifies the declared sources/results and named fixture
+memberships with fresh reads, including inverse occurrences and exact lineage. Verified fixture
+expectations are retained by saved identity; unknown memberships need an initial named
+baseline. Original expectations survive Incomplete retries, including NoAction; identities created by the fixture retain
+known inverse contributors across commits. See the authoritative harness specification for the
+bounds and Lineage-binding rules. Explicit persisted graph steps cover assertions beyond those
+shared guarantees. Within a graph step, `edges` counts occurrences of one named
 target, so `ExactlyOnce` rejects a duplicate of that target but no `edges` entry rejects an
 undeclared extra one; `relationships` and `lineage` compare exact target sets and reject both.
 Declare an inverse direction as its own entry; it is never derivable from a forward declaration.

@@ -20,21 +20,17 @@
 mod execution_steps;
 mod fixture_cases;
 mod query_contract;
+mod runtime_checks;
 
 use execution_steps::dance_test_runner::{
     boot_dance_test_suite, run_dance_test_suite, run_dance_test_suite_on, DanceTestSuite,
 };
 use fixture_cases::commit_graph_only_fixture::*;
 use fixture_cases::commit_key_uniqueness_fixture::*;
-use holons_core::ReadableHolon;
-use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
-use map_commands_runtime::{ExecutionPolicy, Runtime};
 use rstest::*;
-use std::collections::BTreeSet;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::attachment_defaults_fixture::*;
-use fixture_cases::bootstrap_operational_schema_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
 use fixture_cases::commit_lineage_fixture::*;
 use fixture_cases::commit_schema_fixture::*;
@@ -45,7 +41,6 @@ use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_book_person_inverse_schema_fixture::*;
-use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
 use fixture_cases::query_f1_filter_fixture::*;
 use fixture_cases::query_f2_equality_fixture::*;
@@ -69,14 +64,15 @@ use fixture_cases::transaction_lifecycle_fixture::*;
 ///      set RUST_LOG to enable client-side (i.e., test code) tracing
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
-/// The `runtime_behavior_matrix` case is skipped in CI for now (`ci-dance` filter in
-/// `.config/nextest.toml`): one bootstrap plus 33 scenarios ran past 30 minutes on a hosted
-/// runner. It still runs locally.
+/// The runtime matrix also runs the shared-runtime integration checks and is
+/// selected by the required ci-rest shard to preserve their CI coverage.
 #[rstest]
 #[case::runtime_behavior_matrix(runtime_behavior_matrix_suite())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
-    run_dance_test_suite(suite).await;
+    let (runtime, initial_tx_id) = boot_dance_test_suite().await;
+    run_dance_test_suite_on(&runtime, initial_tx_id, suite).await;
+    runtime_checks::run(&runtime).await;
 }
 
 /// Focused rerun for the fixture-scoped rejection contract; default coverage is in the matrix.
@@ -110,96 +106,6 @@ async fn schema_successor_membership_acceptance() {
         test_cases: vec![commit_schema_successor_membership_fixture().unwrap()],
     })
     .await;
-}
-
-/// Checks the pristine bootstrap's Space navigation before the loader scenario adds schemas,
-/// so it shares this suite's bootstrap instead of paying for its own.
-///
-/// Skipped in CI for now by the `ci-dance` filter in `.config/nextest.toml`.
-/// Bootstrap provisioning, descriptor access, and incremental loader behavior are checked here;
-/// Commit validation and persisted graph behavior use their dedicated fixtures.
-#[tokio::test(flavor = "multi_thread")]
-async fn pristine_bootstrap_and_loader() {
-    let (runtime, initial_tx_id) = boot_dance_test_suite().await;
-    assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(&runtime).await;
-    run_dance_test_suite_on(&runtime, initial_tx_id, pristine_bootstrap_and_loader_suite()).await;
-}
-
-/// Bootstrap schemas must be discoverable through ordinary Space navigation.
-async fn assert_bootstrap_space_exposes_selected_schemas_and_committed_inverses(runtime: &Runtime) {
-    let result = runtime
-        .execute_command(
-            MapCommand::Space(SpaceCommand::BeginTransaction),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .expect("failed to begin the schema availability transaction");
-    let MapResult::TransactionCreated { tx_id } = result else {
-        panic!("expected TransactionCreated, got {result:?}")
-    };
-    let context = runtime.session().get_transaction(&tx_id).unwrap();
-    let space = context.get_space_holon().unwrap().expect("bootstrap Space");
-
-    assert!(space
-        .effective_descriptor()
-        .unwrap()
-        .available_relationships(&space)
-        .unwrap()
-        .iter()
-        .any(|relationship| {
-            relationship.base_relationship_name().unwrap().to_string() == "AvailableSchemas"
-        }));
-    let schemas =
-        space.related_holons("AvailableSchemas").unwrap().read().unwrap().get_members().clone();
-    let expected = BTreeSet::from([
-        "MAP Commands Schema-v0.1.0",
-        "MAP Core Schema-v0.0.7",
-        "MAP DAHN Schema-v0.1.0",
-        "MAP Dance Schema-v0.1.0",
-        "MAP Descriptor Runtime Schema-v0.1.0",
-        "MAP Dancer Schema-v0.1.0",
-        "MAP Design Tokens Schema-v0.1.0",
-        "MAP Meta Design System Schema-v0.1.0",
-        "MAP Query Dance Adapter Schema-v0.1.0",
-        "MAP Query Schema-v0.0.2",
-        "MAP Theme Schema-v0.1.0",
-        "MAP Validation Schema-v0.1.0",
-    ]);
-    let keys: BTreeSet<String> =
-        schemas.iter().map(|schema| schema.key().unwrap().unwrap().to_string()).collect();
-    assert_eq!(keys, expected.into_iter().map(str::to_owned).collect());
-    assert_eq!(schemas.len(), keys.len(), "schemas must not be duplicated");
-    for schema in schemas {
-        assert!(schema
-            .effective_descriptor()
-            .unwrap()
-            .available_relationships(&schema)
-            .unwrap()
-            .iter()
-            .any(|relationship| {
-                relationship.base_relationship_name().unwrap().to_string() == "AvailableInSpace"
-            }));
-        let spaces = schema
-            .related_holons("AvailableInSpace")
-            .unwrap()
-            .read()
-            .unwrap()
-            .get_members()
-            .clone();
-        assert_eq!(spaces.len(), 1);
-        assert_eq!(spaces[0].holon_id(), space.holon_id());
-    }
-    runtime.session().archive_transaction(&tx_id).unwrap();
-}
-
-fn pristine_bootstrap_and_loader_suite() -> DanceTestSuite {
-    DanceTestSuite {
-        name: "pristine_bootstrap_and_loader",
-        test_cases: vec![
-            bootstrap_operational_schema_fixture().unwrap(),
-            loader_incremental_fixture().unwrap(),
-        ],
-    }
 }
 
 fn runtime_behavior_matrix_suite() -> DanceTestSuite {
@@ -312,21 +218,6 @@ async fn book_value_presentation_acceptance() {
     run_dance_test_suite(DanceTestSuite {
         name: "book_value_presentation_acceptance",
         test_cases: vec![load_book_person_inverse_schema_fixture().unwrap()],
-    })
-    .await;
-}
-
-/// Focused staging ancestry and persisted lineage checks; also covered by runtime_behavior_matrix.
-#[tokio::test(flavor = "multi_thread")]
-#[ignore = "focused ancestry check; runtime_behavior_matrix covers these fixtures"]
-async fn staging_ancestry_acceptance() {
-    run_dance_test_suite(DanceTestSuite {
-        name: "staging_ancestry_acceptance",
-        test_cases: vec![
-            stage_new_version_fixture().unwrap(),
-            commit_sequential_lineage_fixture().unwrap(),
-            commit_non_root_lineage_fixture().unwrap(),
-        ],
     })
     .await;
 }
