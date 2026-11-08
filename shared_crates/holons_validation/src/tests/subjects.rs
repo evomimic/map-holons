@@ -1,26 +1,17 @@
-#[path = "key_uniqueness_tests.rs"]
-mod key_uniqueness_tests;
-
-#[path = "graph_only_deltas_tests.rs"]
-mod graph_only_deltas_tests;
-
-#[path = "core_successor_tests.rs"]
-mod core_successors;
-
-#[path = "constraint_declarations_tests.rs"]
-mod constraint_declarations;
-
-#[path = "test_support.rs"]
-mod fixture;
-
+use super::support::dispatch_c2_rule;
+use crate::{
+    assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_profile,
+    AssessmentEvent, AssessmentPhase, CommitValidationReport, ConstraintTypeKey,
+    DescriptorRuleProducts, ResolvedConstraint, ResolvedValidationBinding,
+    StaticConstraintRegistry, ValidationCollector, ValueValidationContext,
+};
 use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
 use holons_core::core_shared_objects::{holon::ValidationState, Holon};
 use holons_core::{Descriptor, HolonReference, ReadableHolon, ValueDescriptor, WritableHolon};
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
-use super::*;
-use fixture::{c2_kind_semantics, readiness_fixture, subject_rules, Fixture};
+use super::support::{c2_kind_semantics, readiness_fixture, subject_rules, Fixture};
 
 /// Selects the Title member's value contract while retaining exactly one ValueType edge.
 fn select_title_value_type(fixture: &mut Fixture, key: &str) -> Result<(), HolonError> {
@@ -124,12 +115,12 @@ fn compatible_binding_in_view(
         member: binding.rule.clone(),
         declared_on: binding.declaring_descriptor.holon().clone(),
     };
-    let roles = crate::subject_assessment::BindingRoleMemo::prepare(
+    let roles = crate::assessment::subjects::BindingRoleMemo::prepare(
         &context.context,
         [&contribution],
-        &crate::structural_diagnoses::StructuralDiagnoses::new(&context.context),
+        &crate::assessment::structural_diagnoses::StructuralDiagnoses::new(&context.context),
     )?;
-    crate::subject_assessment::compatible_binding(
+    crate::assessment::subjects::compatible_binding(
         binding,
         &family,
         registration,
@@ -137,11 +128,11 @@ fn compatible_binding_in_view(
         level,
         context,
         &roles,
-        &crate::descriptor_package::DescriptorPackages::construct(
+        &crate::assessment::descriptor_package::DescriptorPackages::construct(
             &context.context,
             &[governing.clone()],
             &[],
-            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+            &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
         )?,
     )
 }
@@ -971,7 +962,7 @@ fn malformed_member_contract_reports_findings_and_installs_outcomes() -> Result<
 
 #[test]
 fn aggregate_only_report_rejects_without_installing_staged_outcomes() -> Result<(), HolonError> {
-    let mut assessment = crate::outcomes::PreparedAssessment::default();
+    let mut assessment = crate::assessment::outcomes::PreparedAssessment::default();
     let aggregate = core_types::CommitValidationViolation {
         kind: CommitValidationViolationKind::RuleViolation { code: "AggregateTest".into() },
         rule_key: None,
@@ -999,7 +990,7 @@ fn aggregate_findings_do_not_leak_into_candidate_outcomes() -> Result<(), HolonE
         validate_commit_candidates(&fixture.context, std::slice::from_ref(&invalid))?;
     let mut aggregate = candidate_report.violations[0].clone();
     aggregate.subject = ValidationSubjectPath::Holon { holon_identity: "unstaged-schema".into() };
-    let mut assessment = crate::outcomes::PreparedAssessment::default();
+    let mut assessment = crate::assessment::outcomes::PreparedAssessment::default();
     assessment.push_aggregate(aggregate.clone());
     assessment.record_candidate(&invalid, candidate_report.clone());
     assessment.push_aggregate(aggregate.clone());
@@ -1023,7 +1014,7 @@ fn identical_candidate_and_aggregate_findings_keep_distinct_carriers() -> Result
     let candidate_report =
         validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
     let finding = candidate_report.violations[0].clone();
-    let mut assessment = crate::outcomes::PreparedAssessment::default();
+    let mut assessment = crate::assessment::outcomes::PreparedAssessment::default();
     assessment.record_candidate(&candidate, candidate_report);
     assessment.push_aggregate(finding.clone());
 
@@ -1032,30 +1023,6 @@ fn identical_candidate_and_aggregate_findings_keep_distinct_carriers() -> Result
     assert_eq!(candidate.validation_findings()?, vec![finding.clone()]);
     assert_eq!(report.unattached_findings()?, vec![&finding]);
     Ok(())
-}
-
-fn dispatch_c2_rule(
-    fixture: &mut Fixture,
-    rule: CoreValidationRuleName,
-    products: &DescriptorRuleProducts,
-    subject: &HolonReference,
-) -> Result<Vec<core_types::CommitValidationViolation>, HolonError> {
-    fixture.node(rule.as_str())?;
-    let binding = ResolvedValidationBinding {
-        rule: fixture.nodes[rule.as_str()].clone(),
-        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
-            fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
-        ),
-    };
-    let path = ValidationSubjectPath::Holon { holon_identity: subject.full_reference_id_string() };
-    let mut collector = ValidationCollector::default();
-    let registration = crate::dispatch::registration(rule);
-    assert!(matches!(
-        registration.implementation,
-        Some(crate::dispatch::RuleImplementation::DescriptorProduct)
-    ));
-    products.emit(rule, registration.code, &binding, &path, &mut collector)?;
-    Ok(collector.into_report().violations)
 }
 
 #[test]
@@ -1584,7 +1551,7 @@ fn invalidated_unattached_position_returns_error_without_panicking() -> Result<(
         descriptor_identity: None,
         message: "Schema finding".into(),
     };
-    let mut assessment = crate::outcomes::PreparedAssessment::default();
+    let mut assessment = crate::assessment::outcomes::PreparedAssessment::default();
     assessment.push_aggregate(finding);
     let mut report = assessment.install_outcomes()?;
     report.violations.clear();
@@ -1790,9 +1757,6 @@ fn binding_family_and_constraint_type_follow_explicit_references() -> Result<(),
     }
     Ok(())
 }
-
-#[path = "schema_assessment_tests.rs"]
-mod schema_assessment;
 
 /// Both public assessment modes must reject malformed ancestry before preparation or writes.
 #[test]
@@ -2125,8 +2089,8 @@ fn finding_paths_distinguish_candidates_with_the_same_display_prefix() -> Result
         });
     assert_eq!(handles[0].reference_id_string(), handles[1].reference_id_string());
     assert_ne!(
-        crate::assessment_support::path(&handles[0].clone().into()),
-        crate::assessment_support::path(&handles[1].clone().into())
+        crate::assessment::support::path(&handles[0].clone().into()),
+        crate::assessment::support::path(&handles[1].clone().into())
     );
     Ok(())
 }
@@ -2308,7 +2272,7 @@ fn unsupported_bindings_prepare_no_family_reads() -> Result<(), HolonError> {
                 declared_on: fixture.nodes["Contract"].clone(),
             };
             let before = fixture.backend_relationship_reads();
-            crate::subject_assessment::BindingRoleMemo::prepare(
+            crate::assessment::subjects::BindingRoleMemo::prepare(
                 &fixture.context,
                 [&contribution],
                 &fixture.diagnoses(),
@@ -2412,7 +2376,7 @@ fn prerequisite_products_remain_reported_without_compatible_bindings() -> Result
     products.unresolved(DescribingCategoryCompatibility, "unresolved prerequisite".into());
     products.violation(LocalInstanceKindAnchorDesignation, "not a prerequisite".into());
     let mut collector = ValidationCollector::default();
-    crate::subject_assessment::dispatch_descriptor(&[], &products, &subject, &mut collector)?;
+    crate::assessment::subjects::dispatch_descriptor(&[], &products, &subject, &mut collector)?;
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 8);
     assert!(report.violations.iter().any(|finding| finding.rule_key.as_deref()
@@ -2442,32 +2406,37 @@ fn direct_descriptor_dispatch_preserves_binding_provenance_and_diagnostic_kinds(
     )?;
     let governor = &fixture.nodes["MetaTypeDescriptor.HolonType"];
     let subject = &fixture.nodes["Contract"];
-    let workset = crate::schema_view::SchemaWorkset { schemas: Vec::new() };
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
+    let workset = crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() };
+    let packages = crate::assessment::descriptor_package::DescriptorPackages::construct(
         &fixture.context,
         &[governor.clone()],
         &[],
         &workset,
     )?;
-    let roles = crate::subject_assessment::BindingRoleMemo::prepare(
+    let roles = crate::assessment::subjects::BindingRoleMemo::prepare(
         &fixture.context,
         &packages.binding_contributions(),
         &fixture.diagnoses(),
     )?;
     let mut collector = ValidationCollector::default();
-    let bindings = crate::subject_assessment::prepare_bindings(
+    let bindings = crate::assessment::subjects::prepare_bindings(
         governor,
         crate::dispatch::SubjectLevel::Holon,
         &ValueValidationContext::new(&fixture.context),
         &roles,
-        &crate::assessment_support::path(subject),
+        &crate::assessment::support::path(subject),
         &mut collector,
         &packages,
     )?;
     let mut products = DescriptorRuleProducts::new(fixture.diagnoses());
     products.violation(name, "multiple parents".into());
     products.unresolved(name, "unresolved input".into());
-    crate::subject_assessment::dispatch_descriptor(&bindings, &products, subject, &mut collector)?;
+    crate::assessment::subjects::dispatch_descriptor(
+        &bindings,
+        &products,
+        subject,
+        &mut collector,
+    )?;
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 2, "fallback must not duplicate dispatched products");
     assert!(
@@ -2536,7 +2505,7 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
             .into_iter()
             .map(|member| EffectiveRelationshipMember { member, declared_on: declaring.clone() })
             .collect();
-    let roles = crate::subject_assessment::BindingRoleMemo::prepare(
+    let roles = crate::assessment::subjects::BindingRoleMemo::prepare(
         &fixture.context,
         &contributions,
         &fixture.diagnoses(),
@@ -2552,7 +2521,7 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
             panic!("unique test family");
         };
         assert_eq!(
-            crate::subject_assessment::compatible_binding(
+            crate::assessment::subjects::compatible_binding(
                 &binding,
                 &family,
                 crate::dispatch::registration(name),
@@ -2560,11 +2529,11 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
                 crate::dispatch::SubjectLevel::Holon,
                 &ValueValidationContext::new(&fixture.context),
                 &roles,
-                &crate::descriptor_package::DescriptorPackages::construct(
+                &crate::assessment::descriptor_package::DescriptorPackages::construct(
                     &fixture.context,
                     &[],
                     &[],
-                    &crate::schema_view::SchemaWorkset { schemas: Vec::new() }
+                    &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() }
                 )?
             )?,
             expected
@@ -2603,7 +2572,7 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
         member: fixture.nodes[name.as_str()].clone(),
         declared_on: fixture.nodes["HolonType.TypeDescriptor"].clone(),
     };
-    let roles = crate::subject_assessment::BindingRoleMemo::prepare(
+    let roles = crate::assessment::subjects::BindingRoleMemo::prepare(
         &fixture.context,
         [&contribution],
         &fixture.diagnoses(),
@@ -2612,7 +2581,7 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
         (fixture.backend_node_reads(), fixture.backend_relationship_reads());
     let binding = ResolvedValidationBinding::from(contribution);
     assert_eq!(
-        crate::subject_assessment::compatible_binding(
+        crate::assessment::subjects::compatible_binding(
             &binding,
             &fixture.nodes["FamilySubtype"],
             crate::dispatch::registration(name),
@@ -2620,11 +2589,11 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
             crate::dispatch::SubjectLevel::Holon,
             &ValueValidationContext::new(&fixture.context),
             &roles,
-            &crate::descriptor_package::DescriptorPackages::construct(
+            &crate::assessment::descriptor_package::DescriptorPackages::construct(
                 &fixture.context,
                 &[],
                 &[],
-                &crate::schema_view::SchemaWorkset { schemas: Vec::new() }
+                &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() }
             )?
         ),
         Err(error)
@@ -2831,14 +2800,14 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
             None,
         )?;
         let governor = &fixture.nodes["Contract"];
-        let workset = crate::schema_view::SchemaWorkset { schemas: Vec::new() };
-        let packages = crate::descriptor_package::DescriptorPackages::construct(
+        let workset = crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() };
+        let packages = crate::assessment::descriptor_package::DescriptorPackages::construct(
             &fixture.context,
             &[governor.clone()],
             &[],
             &workset,
         )?;
-        let roles = crate::subject_assessment::BindingRoleMemo::prepare(
+        let roles = crate::assessment::subjects::BindingRoleMemo::prepare(
             &fixture.context,
             &packages.binding_contributions(),
             &fixture.diagnoses(),
@@ -2857,12 +2826,12 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
             Some(error)
         );
         let mut collector = ValidationCollector::default();
-        let bindings = crate::subject_assessment::prepare_bindings(
+        let bindings = crate::assessment::subjects::prepare_bindings(
             governor,
             crate::dispatch::SubjectLevel::Holon,
             &ValueValidationContext::new(&fixture.context),
             &roles,
-            &crate::assessment_support::path(governor),
+            &crate::assessment::support::path(governor),
             &mut collector,
             &packages,
         )?;
@@ -2973,7 +2942,7 @@ fn abstract_descriptor_universal_contract_needs_no_backend_reads_after_construct
     declare_abstract_property(&mut fixture)?;
     let fixture = fixture.saved_snapshot()?;
     let candidates = vec![abstract_subject(&fixture)?];
-    let constructed = crate::commit_assessment::construct_assessment(
+    let constructed = crate::assessment::commit::construct_assessment(
         &fixture.context,
         &candidates,
         ValidationCollector::default(),
@@ -3221,9 +3190,6 @@ fn lossless_projection_leaves_all_four_name_vocabularies_for_commit_validation(
     Ok(())
 }
 
-#[path = "preparation_characterization_tests.rs"]
-mod preparation_characterization;
-
 #[test]
 fn vocabulary_classification_is_independent_of_defective_memo_entries() -> Result<(), HolonError> {
     use holons_core::{ComputedEffectiveSchema, DescriptorKindSemantics};
@@ -3371,7 +3337,7 @@ fn property_extension_requires_an_abstract_parent() -> Result<(), HolonError> {
             assert!(findings[0].message.contains("only abstract property descriptors"));
             // This prerequisite cannot be bypassed by omitting a validation binding.
             let mut collector = ValidationCollector::default();
-            crate::subject_assessment::dispatch_descriptor(
+            crate::assessment::subjects::dispatch_descriptor(
                 &[],
                 &products,
                 &subject,

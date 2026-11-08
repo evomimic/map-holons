@@ -1,6 +1,6 @@
 //! Bounded Schema scheduling and separate staged ownership collections.
 use crate::{
-    assessment_support::{path, targets},
+    assessment::support::{path, targets},
     diagnostics::finding,
     ValidationCollector,
 };

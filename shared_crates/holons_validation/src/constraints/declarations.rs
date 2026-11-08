@@ -19,7 +19,7 @@ use type_names::{
 };
 
 use crate::{
-    assessment_support::path, diagnostics::finding, DescriptorRuleProducts, ValidationCollector,
+    assessment::support::path, diagnostics::finding, DescriptorRuleProducts, ValidationCollector,
 };
 
 #[derive(Clone)]
@@ -42,12 +42,12 @@ struct CheckedConstraint {
 /// neither evaluates attached constraints nor replaces the shared subject validators.
 pub struct ConstraintDeclarationAssessment {
     checked: Vec<CheckedConstraint>,
-    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
 }
 
 impl ConstraintDeclarationAssessment {
     pub(crate) fn new(
-        diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+        diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
     ) -> Self {
         Self { diagnoses, checked: Vec::new() }
     }

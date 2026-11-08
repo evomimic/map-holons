@@ -58,13 +58,13 @@ impl Default for ContractInterpretation {
 /// snapshot that supplied its kernel products. Discard the products on a read error.
 #[derive(Clone)]
 pub struct DescriptorRuleProducts {
-    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<PreparedDiagnostic>>,
 }
 
 impl DescriptorRuleProducts {
     pub(crate) fn new(
-        diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+        diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
     ) -> Self {
         Self { diagnoses, diagnostics: BTreeMap::new() }
     }
@@ -563,7 +563,7 @@ impl DescriptorRuleProducts {
         namespace: &str,
     ) -> Result<Vec<HolonReference>, HolonError> {
         let targets = if matches!(relationship, CoreRelationshipTypeName::ValueType) {
-            crate::assessment_support::targets(member, relationship.clone())?
+            crate::assessment::support::targets(member, relationship.clone())?
         } else {
             self.diagnose(member)?
                 .encountered_relationship_targets(relationship.clone())?

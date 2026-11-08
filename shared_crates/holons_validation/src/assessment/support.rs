@@ -1,7 +1,9 @@
 //! Shared mechanics for an immutable Commit assessment, never a persistence plan.
 use crate::{diagnostics::finding, ValidationCollector};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::{HolonReference, ReadableHolon};
+use std::sync::Arc;
 use type_names::CoreRelationshipTypeName;
 
 /// Finding paths carry complete identities so they route to exact candidates.
@@ -35,4 +37,16 @@ pub(crate) fn targets(
         .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
         .get_members()
         .to_vec())
+}
+
+/// Transaction guard shared by prepared subject assessments.
+pub struct ValueValidationContext {
+    pub(crate) context: Arc<TransactionContext>,
+}
+
+impl ValueValidationContext {
+    /// Creates the guard without discovering schema definitions.
+    pub fn new(context: &Arc<TransactionContext>) -> Self {
+        Self { context: Arc::clone(context) }
+    }
 }

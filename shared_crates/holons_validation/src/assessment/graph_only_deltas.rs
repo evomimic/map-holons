@@ -1,5 +1,5 @@
 //! Capability checks for overlapping graph-only writes, without saved collection reads.
-use crate::{assessment_support::path, diagnostics::finding, ValidationCollector};
+use crate::{assessment::support::path, diagnostics::finding, ValidationCollector};
 use core_types::{
     CommitValidationViolationKind, HolonError, HolonId, LocalId, RelationshipName, TemporaryId,
 };
@@ -36,7 +36,7 @@ enum PersistedTarget {
 pub(crate) fn classify_graph_only_delta_overlaps(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: Option<&crate::assessment::descriptor_package::DescriptorPackages>,
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
     for (_, (source, participants)) in collect_participants(context, candidates)? {
@@ -117,7 +117,7 @@ fn overlap_is_unsupported(
     participants: &[Participant],
     name: &RelationshipName,
     indices: &[usize],
-    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+    packages: Option<&crate::assessment::descriptor_package::DescriptorPackages>,
 ) -> Result<bool, HolonError> {
     if indices.iter().any(|i| {
         let delta = &participants[*i].deltas[name];

@@ -1,4 +1,15 @@
-use super::*;
+use super::support::dispatch_c2_rule;
+use super::support::{readiness_fixture, Fixture};
+use crate::{
+    assess_commit_candidates, validate_commit_candidates, ConstraintDeclarationAssessment,
+    DescriptorRuleProducts, ValidationCollector,
+};
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
+use holons_core::core_shared_objects::Holon;
+use holons_core::{HolonReference, WritableHolon};
+use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
+
 use holons_core::HolonCollectionApi;
 use holons_core::{
     descriptors::{same_definition, ConstraintContributions},
@@ -756,7 +767,7 @@ fn staged_schema_member_keeps_declaration_checks_without_scanning_saved_members(
     assert!(assessment.report.violations.iter().any(
         |finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code }
             if code == "DS-CONSTRAINT-003")
-            && finding.subject == crate::assessment_support::path(&invalid.clone().into())
+            && finding.subject == crate::assessment::support::path(&invalid.clone().into())
     ));
     for edge in [CoreRelationshipTypeName::Components, CoreRelationshipTypeName::Rules] {
         assert_eq!(fixture.backend_reads_for(&edge), 0, "unexpected {edge:?} scan");

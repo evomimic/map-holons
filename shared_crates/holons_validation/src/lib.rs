@@ -6,32 +6,27 @@
 //! and findings. Operational errors discard the incomplete pass and preserve prior outcomes.
 //! No entry point invokes Commit or persists holons.
 
-mod assessment_phase;
-mod assessment_support;
+mod assessment;
+mod commitments;
 mod constraints;
 mod diagnostics;
 mod dispatch;
 mod rules;
-pub use assessment_phase::{AssessmentEvent, AssessmentPhase, PreparationMetrics};
-mod commit_assessment;
-mod commitments;
-mod contexts;
-mod descriptor_package;
-mod graph_only_deltas;
-mod key_evidence;
-mod structural_diagnoses;
-pub use key_evidence::{KeyClaim, KeyEvidence};
-mod outcomes;
-mod schema_view;
-mod subject_assessment;
+mod transient_contract;
 
-pub use commit_assessment::{
+#[cfg(test)]
+mod tests;
+
+pub use assessment::key_evidence::{KeyClaim, KeyEvidence};
+pub use assessment::phases::{AssessmentEvent, AssessmentPhase, PreparationMetrics};
+
+pub use assessment::commit::{
     assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_observer,
     validate_commit_candidates_with_profile,
 };
+pub use assessment::support::ValueValidationContext;
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
 pub use constraints::declarations::ConstraintDeclarationAssessment;
-pub use contexts::ValueValidationContext;
 pub use diagnostics::{CommitAssessment, CommitValidationReport};
 pub use diagnostics::{ValidationCollector, ValidationObservations};
 pub use dispatch::{
@@ -42,10 +37,6 @@ pub use dispatch::{PreparedRuleSubject, ValueValidationSubject};
 pub use rules::descriptor::DescriptorRuleProducts;
 pub use rules::schema::SchemaRuleProducts;
 
-#[cfg(test)]
-mod subject_assessment_tests;
-
-mod transient_contract;
 pub use transient_contract::{
     validate_effective_descriptor_dance_contract, validate_transient_contract,
 };

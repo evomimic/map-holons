@@ -1,8 +1,18 @@
-use super::*;
-use crate::key_evidence::prepare_key_evidence;
+use core_types::{CommitValidationViolationKind, HolonError};
 use holons_core::{
-    core_shared_objects::holon::{StagedState, ValidationState},
-    LineageIdentity, StagedReference,
+    core_shared_objects::{
+        holon::{StagedState, ValidationState},
+        Holon,
+    },
+    HolonReference, LineageIdentity, ReadableHolon, StagedReference, WritableHolon,
+};
+use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
+
+use super::support::{described_core_fixture, readiness_fixture, Fixture};
+use crate::{
+    assess_commit_candidates, assessment::key_evidence::prepare_key_evidence,
+    validate_commit_candidates, validate_commit_candidates_with_profile, AssessmentEvent,
+    CommitValidationReport,
 };
 
 fn keyed_fixture(versions: &[(&str, &str, Option<&str>)]) -> Result<Fixture, HolonError> {
@@ -237,7 +247,7 @@ fn committed_nursery_claims_cover_a_missing_saved_key_index_entry() -> Result<()
 #[test]
 fn descriptor_key_failure_blocks_only_explicit_new_definition_consumers() -> Result<(), HolonError>
 {
-    let mut f = super::core_successors::described_core_fixture()?;
+    let mut f = described_core_fixture()?;
     for (name, parent) in [
         ("LocalString", "StringValueType.ValueType"),
         ("DependentProperty", "PropertyType.TypeDescriptor"),

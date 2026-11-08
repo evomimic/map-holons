@@ -1,12 +1,12 @@
 //! Commit assessment of candidates through their exact bound references.
 use crate::{
-    assessment_support::{blocked, path, targets},
+    assessment::outcomes::PreparedAssessment,
+    assessment::schema_view::{OwnedCandidate, SchemaWorkset},
+    assessment::subjects::{self, BindingRoleMemo, PreparedBinding},
+    assessment::support::{blocked, path, targets},
     diagnostics::finding,
     dispatch::SubjectLevel,
-    outcomes::PreparedAssessment,
     rules::schema::{self, SchemaRuleProducts},
-    schema_view::{OwnedCandidate, SchemaWorkset},
-    subject_assessment::{self, BindingRoleMemo, PreparedBinding},
     CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
     DescriptorRuleProducts, ValidationCollector, ValidationObservations, ValueValidationContext,
 };
@@ -29,7 +29,7 @@ use type_names::{CoreDefinitionRole, CoreRelationshipTypeName, CoreValidationRul
 fn prepare_universal_contracts(
     context: &Arc<TransactionContext>,
     subjects: &mut [SubjectPreparation],
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
     use std::collections::hash_map::Entry;
 
@@ -60,7 +60,7 @@ fn prepare_universal_contracts(
 }
 
 struct SubjectPreparation {
-    key_claim: Option<crate::key_evidence::KeyClaim>,
+    key_claim: Option<crate::assessment::key_evidence::KeyClaim>,
     subject: HolonReference,
     prerequisites: StructuralPrerequisites,
     products: DescriptorRuleProducts,
@@ -203,7 +203,7 @@ pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     prepared: Vec<SubjectPreparation>,
     binding_roles: BindingRoleMemo,
     workset: SchemaWorkset,
-    packages: crate::descriptor_package::DescriptorPackages,
+    packages: crate::assessment::descriptor_package::DescriptorPackages,
     collector: ValidationCollector,
     interpretations: HashMap<DefinitionIdentity, crate::rules::descriptor::ContractInterpretation>,
 }
@@ -224,9 +224,11 @@ fn construct_assessment_with_observer<'a, 'candidates>(
     observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<ConstructedAssessment<'a, 'candidates>, HolonError> {
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SubjectPreparation));
-    let mut key_claims = crate::key_evidence::prepare_key_evidence(context, candidates, observer)?;
+    let mut key_claims =
+        crate::assessment::key_evidence::prepare_key_evidence(context, candidates, observer)?;
     let kinds = DescriptorKindSemantics::new(context);
-    let diagnoses = Arc::new(crate::structural_diagnoses::StructuralDiagnoses::new(context));
+    let diagnoses =
+        Arc::new(crate::assessment::structural_diagnoses::StructuralDiagnoses::new(context));
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
     let mut schemas = Vec::new();
@@ -241,7 +243,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             products.clone()
         } else {
             let definition = identity.definition_reference(context, &subject);
-            let subject_lineage = crate::assessment_phase::observe_operation(
+            let subject_lineage = crate::assessment::phases::observe_operation(
                 observer,
                 "StructuralDiagnosis",
                 "PreparedDefinition",
@@ -253,7 +255,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                     if holons_core::same_definition(descriptor, &definition)? {
                         Some(subject_lineage.clone())
                     } else {
-                        Some(crate::assessment_phase::observe_operation(
+                        Some(crate::assessment::phases::observe_operation(
                             observer,
                             "StructuralDiagnosis",
                             "PreparedDefinition",
@@ -267,7 +269,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
                 StructuralPrerequisites { describing_type, subject_lineage, governing_lineage };
             let mut products = DescriptorRuleProducts::new(Arc::clone(&diagnoses));
             products.prepare_structure(&prerequisites);
-            crate::assessment_phase::observe_operation(
+            crate::assessment::phases::observe_operation(
                 observer,
                 "KindClassification",
                 "PreparedDefinition",
@@ -318,7 +320,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
             (SchemaOwnershipKind::Component, is_descriptor),
             (SchemaOwnershipKind::Rule, is_rule || is_constraint),
         ] {
-            let edge = crate::schema_view::ownership_edge(kind);
+            let edge = crate::assessment::schema_view::ownership_edge(kind);
             if required || !targets(&subject, edge)?.is_empty() {
                 owned.push(OwnedCandidate { subject: subject.clone(), kind });
             }
@@ -337,7 +339,7 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         });
     }
     observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::SchemaWorksetPreparation));
-    let workset = crate::assessment_phase::observe_operation(
+    let workset = crate::assessment::phases::observe_operation(
         observer,
         "SchemaWorkset",
         "Assessment",
@@ -351,20 +353,21 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         })
         .collect();
     let package_subjects: Vec<_> = prepared.iter().map(|subject| subject.subject.clone()).collect();
-    let packages = crate::descriptor_package::DescriptorPackages::construct_with_observer(
-        context,
-        &package_roots,
-        &package_subjects,
-        &workset,
-        diagnoses,
-        observer,
-    )?;
-    crate::assessment_phase::observe_operation(
+    let packages =
+        crate::assessment::descriptor_package::DescriptorPackages::construct_with_observer(
+            context,
+            &package_roots,
+            &package_subjects,
+            &workset,
+            diagnoses,
+            observer,
+        )?;
+    crate::assessment::phases::observe_operation(
         observer,
         "GraphOnlyClassification",
         "Assessment",
         || {
-            crate::graph_only_deltas::classify_graph_only_delta_overlaps(
+            crate::assessment::graph_only_deltas::classify_graph_only_delta_overlaps(
                 context,
                 candidates,
                 Some(&packages),
@@ -373,11 +376,13 @@ fn construct_assessment_with_observer<'a, 'candidates>(
         },
     )?;
     let binding_contributions = packages.binding_contributions();
-    let binding_roles =
-        crate::assessment_phase::observe_operation(observer, "BindingRoles", "Assessment", || {
-            BindingRoleMemo::prepare(context, &binding_contributions, &packages.diagnoses)
-        })?;
-    crate::assessment_phase::observe_operation(
+    let binding_roles = crate::assessment::phases::observe_operation(
+        observer,
+        "BindingRoles",
+        "Assessment",
+        || BindingRoleMemo::prepare(context, &binding_contributions, &packages.diagnoses),
+    )?;
+    crate::assessment::phases::observe_operation(
         observer,
         "UniversalContracts",
         "Assessment",
@@ -440,7 +445,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         // full validation subjects; candidate findings remain independently routed.
         let mut interpretations = HashMap::new();
         // Effective contracts are checked once per exact definition.
-        let operation = crate::assessment_phase::observe_operation_scope(
+        let operation = crate::assessment::phases::observe_operation_scope(
             observer,
             "ContractChecks",
             "Assessment",
@@ -480,7 +485,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
         }
         drop(operation);
-        let operation = crate::assessment_phase::observe_operation_scope(
+        let operation = crate::assessment::phases::observe_operation_scope(
             observer,
             "BindingDispatch",
             "Assessment",
@@ -492,7 +497,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                 .as_ref()
                 .and_then(|lineage| lineage.valid_lineage())
             {
-                let result = subject_assessment::prepare_bindings(
+                let result = subjects::prepare_bindings(
                     governing.subject(),
                     SubjectLevel::Holon,
                     &values,
@@ -505,7 +510,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
         }
         drop(operation);
-        let operation = crate::assessment_phase::observe_operation_scope(
+        let operation = crate::assessment::phases::observe_operation_scope(
             observer,
             "SchemaChecks",
             "Assessment",
@@ -520,7 +525,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
             if let Some(indices) = definition_candidates.get(&id) {
                 for index in indices {
-                    subject_assessment::dispatch_schema(
+                    subjects::dispatch_schema(
                         &prepared[*index].bindings,
                         &products,
                         &prepared[*index].subject,
@@ -530,7 +535,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             } else if let DescribingTypeResolution::Unique(descriptor) =
                 resolve_describing_type(&view.schema)?
             {
-                let result = subject_assessment::prepare_bindings(
+                let result = subjects::prepare_bindings(
                     &descriptor,
                     SubjectLevel::Holon,
                     &values,
@@ -540,19 +545,14 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
                     &packages,
                 );
                 let bindings = result?;
-                subject_assessment::dispatch_schema(
-                    &bindings,
-                    &products,
-                    &view.schema,
-                    &mut collector,
-                )?;
+                subjects::dispatch_schema(&bindings, &products, &view.schema, &mut collector)?;
             }
         }
         drop(operation);
         // Only staged members are declaration subjects, grouped by exact Version-bound owner;
         // saved unstaged members are not reread.
         // Declaration coverage belongs to exact definitions.
-        let operation = crate::assessment_phase::observe_operation_scope(
+        let operation = crate::assessment::phases::observe_operation_scope(
             observer,
             "DeclarationChecks",
             "Assessment",
@@ -697,7 +697,7 @@ fn route_definition_findings(
         declaration_definitions.insert(definition.full_reference_id_string(), identity);
     }
     for finding in collector.take_findings_since(start) {
-        let identity = crate::outcomes::subject_identity(&finding.subject)
+        let identity = crate::assessment::outcomes::subject_identity(&finding.subject)
             .and_then(|name| declaration_definitions.get(name));
         if let Some(identity) = identity {
             for index in &definition_candidates[identity] {
@@ -720,18 +720,18 @@ fn assess_candidate(
     subject: &SubjectPreparation,
     values: &ValueValidationContext,
     binding_roles: &BindingRoleMemo,
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
     interpretations: &HashMap<DefinitionIdentity, crate::rules::descriptor::ContractInterpretation>,
     collector: &mut ValidationCollector,
     observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<(), HolonError> {
-    subject_assessment::dispatch_descriptor(
+    subjects::dispatch_descriptor(
         &subject.bindings,
         &subject.products,
         &subject.subject,
         collector,
     )?;
-    let inputs = crate::assessment_phase::observe_operation(
+    let inputs = crate::assessment::phases::observe_operation(
         observer,
         "InterpretationGuards",
         "Candidate",
@@ -772,7 +772,7 @@ fn assess_candidate(
         },
     )?;
     if let Some((package, interpretation)) = inputs {
-        subject_assessment::assess_holon(
+        subjects::assess_holon(
             &subject.subject,
             &package.root,
             package.contract.as_ref().map_err(Clone::clone)?.as_ref(),
@@ -793,7 +793,7 @@ fn assess_configured_rule(
     rule: &HolonReference,
     declarations: &mut ConstraintDeclarationAssessment,
     collector: &mut ValidationCollector,
-    diagnoses: &crate::structural_diagnoses::StructuralDiagnoses,
+    diagnoses: &crate::assessment::structural_diagnoses::StructuralDiagnoses,
 ) -> Result<(), HolonError> {
     if let DescribingTypeResolution::Unique(descriptor) = resolve_describing_type(rule)? {
         if diagnoses
