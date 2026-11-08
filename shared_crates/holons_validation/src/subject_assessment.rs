@@ -2,9 +2,10 @@
 use crate::{
     assessment_support::{blocked, path},
     commitments::{required_key, ResolvedConstraint},
-    contexts::SubjectLevel,
-    handlers::{finding, rule_violation},
-    registries::{registration, RuleImplementation, RuleRegistration, SubjectApplicability},
+    diagnostics::{finding, rule_violation},
+    dispatch::{
+        registration, RuleImplementation, RuleRegistration, SubjectApplicability, SubjectLevel,
+    },
     ConstraintTypeKey, DescriptorRuleProducts, PreparedRuleSubject, ResolvedValidationBinding,
     RuleOutcome, StaticConstraintRegistry, ValidationCollector, ValidationInvocation,
     ValueValidationContext,
@@ -325,7 +326,7 @@ pub(crate) fn assess_holon(
     universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
     packages: &crate::descriptor_package::DescriptorPackages,
-    interpretation: &crate::descriptor_rules::ContractInterpretation,
+    interpretation: &crate::rules::descriptor::ContractInterpretation,
 ) -> Result<(), HolonError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();

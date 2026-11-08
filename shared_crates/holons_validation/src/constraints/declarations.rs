@@ -19,7 +19,7 @@ use type_names::{
 };
 
 use crate::{
-    assessment_support::path, handlers::finding, DescriptorRuleProducts, ValidationCollector,
+    assessment_support::path, diagnostics::finding, DescriptorRuleProducts, ValidationCollector,
 };
 
 #[derive(Clone)]

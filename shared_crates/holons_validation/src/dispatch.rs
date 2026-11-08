@@ -1,9 +1,9 @@
-use core_types::{BaseValueKind, HolonError, ValidationSubjectPath};
+use core_types::{BaseValue, BaseValueKind, HolonError, ValidationSubjectPath};
+use holons_core::ValueDescriptor;
 use type_names::{CoreDefinitionRole, CoreValidationRuleName};
 
 use crate::{
-    contexts::SubjectLevel, handlers, ResolvedConstraint, ResolvedValidationBinding,
-    ValidationCollector, ValueValidationContext, ValueValidationSubject,
+    ResolvedConstraint, ResolvedValidationBinding, ValidationCollector, ValueValidationContext,
 };
 
 /// Canonical fully qualified schema key of a validation rule.
@@ -28,7 +28,7 @@ pub enum ValidationInvocation<'a> {
         code: &'static str,
         binding: &'a ResolvedValidationBinding,
         path: &'a ValidationSubjectPath,
-        products: &'a crate::schema_rules::SchemaRuleProducts,
+        products: &'a crate::rules::schema::SchemaRuleProducts,
     },
 }
 
@@ -88,7 +88,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
     use SubjectLevel::*;
     match name {
         RequiredPropertyPresence => RuleRegistration {
-            implementation: Some(Subject(handlers::required_property_presence)),
+            implementation: Some(Subject(crate::rules::conformance::required_property_presence)),
             level: Property,
             family: Role::PropertyValidationRule,
             declaring: Role::PropertyType,
@@ -98,7 +98,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         NoUndescribedProperties => RuleRegistration {
-            implementation: Some(Subject(handlers::no_undescribed_properties)),
+            implementation: Some(Subject(crate::rules::conformance::no_undescribed_properties)),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::HolonType,
@@ -108,7 +108,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         KeyUniqueness => RuleRegistration {
-            implementation: Some(Subject(handlers::key_uniqueness)),
+            implementation: Some(Subject(crate::rules::conformance::key_uniqueness)),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::HolonType,
@@ -118,7 +118,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         BaseValueKindMatchesString => RuleRegistration {
-            implementation: Some(Subject(handlers::base_value_kind_matches)),
+            implementation: Some(Subject(crate::rules::conformance::base_value_kind_matches)),
             level: Value,
             family: Role::StringValidationRule,
             declaring: Role::StringValueType,
@@ -128,7 +128,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         BaseValueKindMatchesInteger => RuleRegistration {
-            implementation: Some(Subject(handlers::base_value_kind_matches)),
+            implementation: Some(Subject(crate::rules::conformance::base_value_kind_matches)),
             level: Value,
             family: Role::IntegerValidationRule,
             declaring: Role::IntegerValueType,
@@ -138,7 +138,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         BaseValueKindMatchesBoolean => RuleRegistration {
-            implementation: Some(Subject(handlers::base_value_kind_matches)),
+            implementation: Some(Subject(crate::rules::conformance::base_value_kind_matches)),
             level: Value,
             family: Role::BooleanValidationRule,
             declaring: Role::BooleanValueType,
@@ -148,7 +148,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         BaseValueKindMatchesBytes => RuleRegistration {
-            implementation: Some(Subject(handlers::base_value_kind_matches)),
+            implementation: Some(Subject(crate::rules::conformance::base_value_kind_matches)),
             level: Value,
             family: Role::BytesValidationRule,
             declaring: Role::BytesValueType,
@@ -158,7 +158,7 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         BaseValueKindMatchesEnum => RuleRegistration {
-            implementation: Some(Subject(handlers::base_value_kind_matches)),
+            implementation: Some(Subject(crate::rules::conformance::base_value_kind_matches)),
             level: Value,
             family: Role::EnumValueValidationRule,
             declaring: Role::EnumValueType,
@@ -318,7 +318,9 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         SchemaDependenciesAcyclic => RuleRegistration {
-            implementation: Some(SchemaAggregate(crate::schema_rules::schema_dependencies_acyclic)),
+            implementation: Some(SchemaAggregate(
+                crate::rules::schema::schema_dependencies_acyclic,
+            )),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::Schema,
@@ -348,4 +350,41 @@ impl StaticConstraintRegistry {
     pub fn lookup(_key: &ConstraintTypeKey) -> Option<StaticConstraintHandler> {
         None
     }
+}
+
+/// A populated native value and its selected value-type descriptor.
+#[derive(Clone, Copy)]
+pub struct ValueValidationSubject<'a> {
+    /// Descriptor governing this value independently of its containing property.
+    pub descriptor: &'a ValueDescriptor,
+    /// Native representation being assessed.
+    pub value: &'a BaseValue,
+    /// Immutable diagnostic provenance, with no property or holon handle.
+    pub path: &'a ValidationSubjectPath,
+}
+
+/// Read-only inputs prepared through the Commit assessment's bound references.
+/// Handlers consume these facts without navigating to containing subjects.
+pub enum PreparedRuleSubject {
+    /// Populated names absent from the selected effective contract.
+    Holon {
+        undescribed_properties: Vec<core_types::PropertyName>,
+        key_claim: Option<crate::KeyClaim>,
+    },
+    /// A missing property whose minimum and requiredness have already been resolved.
+    Property { missing_required: bool, name: String, descriptor_identity: String },
+    /// The selected value type's native representation and the populated value kind.
+    Value {
+        expected: holons_core::ValueDescriptorKind,
+        actual: core_types::BaseValueKind,
+        descriptor_identity: String,
+    },
+}
+
+/// Expected invocation boundary, distinct from a schema's authored display labels.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SubjectLevel {
+    Holon,
+    Property,
+    Value,
 }

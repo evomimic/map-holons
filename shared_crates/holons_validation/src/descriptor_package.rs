@@ -403,7 +403,7 @@ impl DescriptorPackages {
                             if crate::commitments::required_key(&entry.member)
                                 .ok()
                                 .and_then(|key| type_names::CoreValidationRuleName::from_key(&key))
-                                .map(crate::registries::registration)
+                                .map(crate::dispatch::registration)
                                 .is_some_and(|r| r.implementation.is_some())
                             {
                                 pending.push_back((entry.member.clone(), Binding));

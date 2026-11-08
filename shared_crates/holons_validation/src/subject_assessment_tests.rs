@@ -104,13 +104,13 @@ fn abstract_subject(fixture: &Fixture) -> Result<holons_core::StagedReference, H
 fn compatible_binding_in_view(
     binding: &ResolvedValidationBinding,
     governing: &HolonReference,
-    level: crate::contexts::SubjectLevel,
+    level: crate::dispatch::SubjectLevel,
     context: &ValueValidationContext,
 ) -> Result<bool, HolonError> {
     use holons_core::{DescribingTypeResolution, EffectiveRelationshipMember};
     let key = crate::commitments::required_key(&binding.rule)?;
     let Some(registration) = CoreValidationRuleName::from_key(&key)
-        .map(crate::registries::registration)
+        .map(crate::dispatch::registration)
         .filter(|registration| registration.implementation.is_some())
     else {
         return Ok(false);
@@ -413,7 +413,7 @@ fn all_five_native_handlers_accept_and_reject_without_configured_evaluation(
         BaseValue::EnumValue(MapEnumValue(MapString("member".into()))),
     ];
     for (index, (rule, _, target)) in subject_rules()
-        .filter(|(name, _, _)| crate::registries::registration(*name).native_kind.is_some())
+        .filter(|(name, _, _)| crate::dispatch::registration(*name).native_kind.is_some())
         .enumerate()
     {
         let mut fixture = readiness_fixture()?;
@@ -635,7 +635,7 @@ fn unsupported_rules_and_constraints_fail_closed_with_contribution_provenance(
 #[test]
 fn subject_rule_registrations_cover_fixture_bindings_and_report_rejects_findings() {
     for (rule, _, _) in subject_rules() {
-        assert!(crate::registries::registration(rule).implementation.is_some());
+        assert!(crate::dispatch::registration(rule).implementation.is_some());
     }
     assert!(CoreValidationRuleName::from_key("Unknown.ValidationRule").is_none());
     assert!(
@@ -1049,10 +1049,10 @@ fn dispatch_c2_rule(
     };
     let path = ValidationSubjectPath::Holon { holon_identity: subject.full_reference_id_string() };
     let mut collector = ValidationCollector::default();
-    let registration = crate::registries::registration(rule);
+    let registration = crate::dispatch::registration(rule);
     assert!(matches!(
         registration.implementation,
-        Some(crate::registries::RuleImplementation::DescriptorProduct)
+        Some(crate::dispatch::RuleImplementation::DescriptorProduct)
     ));
     products.emit(rule, registration.code, &binding, &path, &mut collector)?;
     Ok(collector.into_report().violations)
@@ -1077,10 +1077,10 @@ fn descriptor_rules_have_product_routes_and_no_native_value_kind() {
         WellFormedEffectiveMemberDefinitions,
         ContractMemberKindCompatibility,
     ] {
-        let registration = crate::registries::registration(rule);
+        let registration = crate::dispatch::registration(rule);
         assert!(matches!(
             registration.implementation,
-            Some(crate::registries::RuleImplementation::DescriptorProduct)
+            Some(crate::dispatch::RuleImplementation::DescriptorProduct)
         ));
         assert_eq!(registration.native_kind, None);
     }
@@ -1706,7 +1706,7 @@ fn unknown_rule_family_still_fails_closed_as_unsupported() -> Result<(), HolonEr
 
 #[test]
 fn split_saved_schema_and_staged_binding_definitions_are_compatible() -> Result<(), HolonError> {
-    use crate::contexts::SubjectLevel;
+    use crate::dispatch::SubjectLevel;
     use holons_core::ReadableHolon;
     let fixture = readiness_fixture()?.saved_snapshot()?;
     // Earlier definitions are persisted; a later subject is staged independently.
@@ -1774,7 +1774,7 @@ fn binding_family_and_constraint_type_follow_explicit_references() -> Result<(),
             compatible_binding_in_view(
                 &binding,
                 &fixture.nodes["Contract"],
-                crate::contexts::SubjectLevel::Holon,
+                crate::dispatch::SubjectLevel::Holon,
                 &context
             )?,
             compatible
@@ -2267,7 +2267,7 @@ fn ordinary_unparented_holon_has_no_termination_finding() -> Result<(), HolonErr
 #[test]
 fn every_builtin_rule_has_a_registration_and_only_cross_schema_dependencies_is_unimplemented() {
     for name in CoreValidationRuleName::all() {
-        let registration = crate::registries::registration(name);
+        let registration = crate::dispatch::registration(name);
         assert_eq!(
             registration.implementation.is_none(),
             name == CoreValidationRuleName::CrossSchemaDependenciesDeclared,
@@ -2457,7 +2457,7 @@ fn direct_descriptor_dispatch_preserves_binding_provenance_and_diagnostic_kinds(
     let mut collector = ValidationCollector::default();
     let bindings = crate::subject_assessment::prepare_bindings(
         governor,
-        crate::contexts::SubjectLevel::Holon,
+        crate::dispatch::SubjectLevel::Holon,
         &ValueValidationContext::new(&fixture.context),
         &roles,
         &crate::assessment_support::path(subject),
@@ -2555,9 +2555,9 @@ fn equal_dispatch_keys_keep_exact_family_versions_in_the_role_memo() -> Result<(
             crate::subject_assessment::compatible_binding(
                 &binding,
                 &family,
-                crate::registries::registration(name),
+                crate::dispatch::registration(name),
                 &fixture.nodes["Contract"],
-                crate::contexts::SubjectLevel::Holon,
+                crate::dispatch::SubjectLevel::Holon,
                 &ValueValidationContext::new(&fixture.context),
                 &roles,
                 &crate::descriptor_package::DescriptorPackages::construct(
@@ -2615,9 +2615,9 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
         crate::subject_assessment::compatible_binding(
             &binding,
             &fixture.nodes["FamilySubtype"],
-            crate::registries::registration(name),
+            crate::dispatch::registration(name),
             &fixture.nodes["Contract"],
-            crate::contexts::SubjectLevel::Holon,
+            crate::dispatch::SubjectLevel::Holon,
             &ValueValidationContext::new(&fixture.context),
             &roles,
             &crate::descriptor_package::DescriptorPackages::construct(
@@ -2638,7 +2638,7 @@ fn required_binding_role_read_errors_are_preserved_without_retrying_backend_read
 
 #[test]
 fn registrations_match_independent_core_placement_expectations() {
-    use crate::contexts::SubjectLevel::{Holon, Property, Value};
+    use crate::dispatch::SubjectLevel::{Holon, Property, Value};
     use std::collections::BTreeMap;
     // Keep these expectations independent of registration-driven fixture setup.
     let expected = [
@@ -2743,7 +2743,7 @@ fn registrations_match_independent_core_placement_expectations() {
     .collect::<BTreeMap<_, _>>();
     let actual = CoreValidationRuleName::all()
         .filter_map(|name| {
-            let registration = crate::registries::registration(name);
+            let registration = crate::dispatch::registration(name);
             registration.implementation.map(|_| {
                 (
                     name.as_str(),
@@ -2785,7 +2785,7 @@ fn holon_rule_with_only_the_wrong_family_is_rejected_before_dispatch() -> Result
 
 #[test]
 fn binding_compatibility_rejects_only_a_changed_subject_level() -> Result<(), HolonError> {
-    use crate::contexts::SubjectLevel;
+    use crate::dispatch::SubjectLevel;
     let fixture = readiness_fixture()?;
     let key = CoreValidationRuleName::NoUndescribedProperties.as_str();
     let binding = ResolvedValidationBinding {
@@ -2859,7 +2859,7 @@ fn unknown_binding_preparation_skips_an_unreadable_describer() -> Result<(), Hol
         let mut collector = ValidationCollector::default();
         let bindings = crate::subject_assessment::prepare_bindings(
             governor,
-            crate::contexts::SubjectLevel::Holon,
+            crate::dispatch::SubjectLevel::Holon,
             &ValueValidationContext::new(&fixture.context),
             &roles,
             &crate::assessment_support::path(governor),

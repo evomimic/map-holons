@@ -1,47 +1,8 @@
-use core_types::{
-    CommitValidationViolation, CommitValidationViolationKind, HolonError, ValidationSeverity,
-    ValidationSubjectPath,
-};
+use core_types::HolonError;
 use holons_core::ValueDescriptorKind;
 
-use crate::commitments::{declaring_identity, required_key};
-use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector, ValidationInvocation};
-
-pub(crate) fn finding(
-    collector: &mut ValidationCollector,
-    kind: CommitValidationViolationKind,
-    rule_key: Option<String>,
-    path: &ValidationSubjectPath,
-    descriptor_identity: Option<String>,
-    message: String,
-) {
-    collector.record(CommitValidationViolation {
-        kind,
-        rule_key,
-        severity: ValidationSeverity::Error,
-        subject: path.clone(),
-        descriptor_identity,
-        message,
-    });
-}
-
-pub(crate) fn rule_violation(
-    collector: &mut ValidationCollector,
-    binding: &ResolvedValidationBinding,
-    path: &ValidationSubjectPath,
-    code: &str,
-    message: String,
-) -> Result<(), HolonError> {
-    finding(
-        collector,
-        CommitValidationViolationKind::RuleViolation { code: code.into() },
-        Some(required_key(&binding.rule)?),
-        path,
-        Some(declaring_identity(binding)),
-        message,
-    );
-    Ok(())
-}
+use crate::diagnostics::rule_violation;
+use crate::{RuleOutcome, ValidationCollector, ValidationInvocation};
 
 /// Requiredness applies to absent effective members, after the parent has supplied
 /// the kernel's minimum decision. No containing-holon handle reaches this function.

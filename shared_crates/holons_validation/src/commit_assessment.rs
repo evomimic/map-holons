@@ -1,10 +1,10 @@
 //! Commit assessment of candidates through their exact bound references.
 use crate::{
     assessment_support::{blocked, path, targets},
-    contexts::SubjectLevel,
-    handlers::finding,
+    diagnostics::finding,
+    dispatch::SubjectLevel,
     outcomes::PreparedAssessment,
-    schema_rules::{self, SchemaRuleProducts},
+    rules::schema::{self, SchemaRuleProducts},
     schema_view::{OwnedCandidate, SchemaWorkset},
     subject_assessment::{self, BindingRoleMemo, PreparedBinding},
     CommitAssessment, CommitValidationReport, ConstraintDeclarationAssessment,
@@ -205,7 +205,7 @@ pub(crate) struct ConstructedAssessment<'a, 'candidates> {
     workset: SchemaWorkset,
     packages: crate::descriptor_package::DescriptorPackages,
     collector: ValidationCollector,
-    interpretations: HashMap<DefinitionIdentity, crate::descriptor_rules::ContractInterpretation>,
+    interpretations: HashMap<DefinitionIdentity, crate::rules::descriptor::ContractInterpretation>,
 }
 
 #[cfg(test)]
@@ -510,7 +510,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             "SchemaChecks",
             "Assessment",
         );
-        let cycles = schema_rules::dependency_cycles(context, &workset.schemas)?;
+        let cycles = schema::dependency_cycles(context, &workset.schemas)?;
         for view in &workset.schemas {
             collector.observations.schema_assessment_count += 1;
             let mut products = SchemaRuleProducts::default();
@@ -721,7 +721,7 @@ fn assess_candidate(
     values: &ValueValidationContext,
     binding_roles: &BindingRoleMemo,
     packages: &crate::descriptor_package::DescriptorPackages,
-    interpretations: &HashMap<DefinitionIdentity, crate::descriptor_rules::ContractInterpretation>,
+    interpretations: &HashMap<DefinitionIdentity, crate::rules::descriptor::ContractInterpretation>,
     collector: &mut ValidationCollector,
     observer: &mut impl FnMut(crate::AssessmentEvent),
 ) -> Result<(), HolonError> {

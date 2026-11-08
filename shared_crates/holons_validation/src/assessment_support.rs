@@ -1,5 +1,5 @@
 //! Shared mechanics for an immutable Commit assessment, never a persistence plan.
-use crate::{handlers::finding, ValidationCollector};
+use crate::{diagnostics::finding, ValidationCollector};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
 use holons_core::{HolonReference, ReadableHolon};
 use type_names::CoreRelationshipTypeName;

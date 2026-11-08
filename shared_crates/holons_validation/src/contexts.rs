@@ -13,11 +13,3 @@ impl ValueValidationContext {
         Self { context: Arc::clone(context) }
     }
 }
-
-/// Expected invocation boundary, distinct from a schema's authored display labels.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum SubjectLevel {
-    Holon,
-    Property,
-    Value,
-}

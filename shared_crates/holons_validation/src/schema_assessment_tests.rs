@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     assessment_support::path,
     outcomes::PreparedAssessment,
-    schema_rules::dependency_cycles,
+    rules::schema::dependency_cycles,
     schema_view::{OwnedCandidate, SchemaWorkset},
 };
 use holons_core::{
@@ -192,7 +192,7 @@ fn schema_scoped_findings_install_on_their_subject_in_either_candidate_order(
     let descriptor = fixture.staged_subject("descriptor")?;
     let constraint = fixture.staged_subject("constraint")?;
     let mut collector = ValidationCollector::default();
-    crate::handlers::finding(
+    crate::diagnostics::finding(
         &mut collector,
         CommitValidationViolationKind::RuleViolation { code: "DS-CONSTRAINT-003".into() },
         None,
@@ -767,7 +767,7 @@ fn schema_dependency_cycles_do_not_read_saved_memberships() -> Result<(), HolonE
 fn stale_cross_schema_dependency_binding_fails_closed() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
-    assert!(crate::registries::registration(rule).implementation.is_none());
+    assert!(crate::dispatch::registration(rule).implementation.is_none());
     fixture.link(
         "Schema.HolonType",
         CoreRelationshipTypeName::Extends,

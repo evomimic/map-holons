@@ -191,12 +191,9 @@ pub(super) struct Fixture {
 pub(super) fn subject_rules(
 ) -> impl Iterator<Item = (CoreValidationRuleName, &'static str, &'static str)> {
     CoreValidationRuleName::all().filter_map(|name| {
-        let registration = crate::registries::registration(name);
-        matches!(
-            registration.implementation,
-            Some(crate::registries::RuleImplementation::Subject(_))
-        )
-        .then_some((name, registration.family.key(), registration.declaring.key()))
+        let registration = crate::dispatch::registration(name);
+        matches!(registration.implementation, Some(crate::dispatch::RuleImplementation::Subject(_)))
+            .then_some((name, registration.family.key(), registration.declaring.key()))
     })
 }
 
@@ -249,10 +246,10 @@ impl Fixture {
         // Product rules are available to tests that explicitly bind them.
         for rule in CoreValidationRuleName::all() {
             if matches!(
-                crate::registries::registration(rule).implementation,
+                crate::dispatch::registration(rule).implementation,
                 Some(
-                    crate::registries::RuleImplementation::DescriptorProduct
-                        | crate::registries::RuleImplementation::SchemaAggregate(_)
+                    crate::dispatch::RuleImplementation::DescriptorProduct
+                        | crate::dispatch::RuleImplementation::SchemaAggregate(_)
                 )
             ) {
                 fixture.node(rule.as_str())?;
@@ -683,7 +680,7 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
     for (_, _, key) in subject_rules()
-        .filter(|(name, _, _)| crate::registries::registration(*name).native_kind.is_some())
+        .filter(|(name, _, _)| crate::dispatch::registration(*name).native_kind.is_some())
     {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
@@ -730,12 +727,12 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "HolonType.TypeDescriptor",
     )?;
     for rule in CoreValidationRuleName::all() {
-        let registration = crate::registries::registration(rule);
+        let registration = crate::dispatch::registration(rule);
         if matches!(
             registration.implementation,
             Some(
-                crate::registries::RuleImplementation::DescriptorProduct
-                    | crate::registries::RuleImplementation::SchemaAggregate(_)
+                crate::dispatch::RuleImplementation::DescriptorProduct
+                    | crate::dispatch::RuleImplementation::SchemaAggregate(_)
             )
         ) {
             fixture.node(rule.as_str())?;

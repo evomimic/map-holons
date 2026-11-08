@@ -1,5 +1,5 @@
 //! Capability checks for overlapping graph-only writes, without saved collection reads.
-use crate::{assessment_support::path, handlers::finding, ValidationCollector};
+use crate::{assessment_support::path, diagnostics::finding, ValidationCollector};
 use core_types::{
     CommitValidationViolationKind, HolonError, HolonId, LocalId, RelationshipName, TemporaryId,
 };

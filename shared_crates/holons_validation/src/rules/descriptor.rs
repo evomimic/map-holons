@@ -20,7 +20,7 @@ use type_names::{
 };
 
 use crate::commitments::required_key;
-use crate::handlers::{finding, rule_violation};
+use crate::diagnostics::{finding, rule_violation};
 use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector};
 
 #[derive(Clone, Copy, Debug)]
@@ -657,7 +657,7 @@ impl DescriptorRuleProducts {
         collector: &mut ValidationCollector,
     ) {
         for rule in CoreValidationRuleName::all() {
-            let registration = crate::registries::registration(rule);
+            let registration = crate::dispatch::registration(rule);
             if dispatched.contains(&rule) {
                 continue;
             }
