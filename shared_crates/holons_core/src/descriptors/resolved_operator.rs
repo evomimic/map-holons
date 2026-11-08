@@ -7,30 +7,66 @@ use crate::descriptors::{
 };
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
+use std::cmp::Ordering;
 
 /// Supported operator semantics, classified from an operator descriptor's lineage.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum OperatorKind {
     Equals,
-    LessThan,
+    /// An ordered comparison of the subject against one comparison value.
+    Ordered(OrderedComparison),
     /// Literal substring containment under the operator's case-matching policy.
     Contains(CaseMatching),
+}
+
+/// The ordered comparisons, each relating the subject to its comparison value
+/// under the subject value type's own ordering.
+///
+/// Each comparison is answered directly from one [`Ordering`]; none is the
+/// negation of another, so the predicate layer's absence rule (an absent
+/// optional value never matches) holds for all of them alike.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum OrderedComparison {
+    /// Subject strictly before the comparison value.
+    LessThan,
+    /// Subject strictly after the comparison value.
+    GreaterThan,
+    /// Subject before or equal to the comparison value.
+    LessThanOrEqual,
+    /// Subject after or equal to the comparison value.
+    GreaterThanOrEqual,
+}
+
+impl OrderedComparison {
+    /// Whether a subject ordered `ordering` relative to the comparison value
+    /// satisfies this comparison.
+    pub fn holds(self, ordering: Ordering) -> bool {
+        match self {
+            Self::LessThan => ordering == Ordering::Less,
+            Self::GreaterThan => ordering == Ordering::Greater,
+            Self::LessThanOrEqual => ordering != Ordering::Greater,
+            Self::GreaterThanOrEqual => ordering != Ordering::Less,
+        }
+    }
 }
 
 impl OperatorKind {
     /// Number of authored operands after the subject that this semantics consumes.
     fn authored_operand_count(self) -> usize {
         match self {
-            Self::Equals | Self::LessThan | Self::Contains(_) => 1,
+            Self::Equals | Self::Ordered(_) | Self::Contains(_) => 1,
         }
     }
 
     /// Whether this semantics is defined for a subject of `kind`.
+    ///
+    /// Ordering is defined for integers and strings only. Other kinds do not
+    /// acquire it from their representation or from equality support.
     fn applies_to(self, kind: &ValueDescriptorKind) -> bool {
         use BaseValueKind::*;
         match (self, kind) {
             (Self::Equals, ValueDescriptorKind::BaseValue(_)) => true,
-            (Self::LessThan, ValueDescriptorKind::BaseValue(Integer | String)) => true,
+            (Self::Ordered(_), ValueDescriptorKind::BaseValue(Integer | String)) => true,
             (Self::Contains(_), ValueDescriptorKind::BaseValue(String)) => true,
             _ => false,
         }
@@ -202,6 +238,9 @@ mod tests {
         string_type: HolonReference,
         equals: HolonReference,
         less_than: HolonReference,
+        greater_than: HolonReference,
+        less_than_or_equal: HolonReference,
+        greater_than_or_equal: HolonReference,
         contains: HolonReference,
     }
 
@@ -213,15 +252,37 @@ mod tests {
             .unwrap()
             .into();
         let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None).unwrap();
-        let less_than =
-            core_operator(&context, CoreOperatorTypeName::LessThanOperator, None).unwrap();
+        let ordered = |name| core_operator(&context, name, None).unwrap();
+        let less_than = ordered(CoreOperatorTypeName::LessThanOperator);
+        let greater_than = ordered(CoreOperatorTypeName::GreaterThanOperator);
+        let less_than_or_equal = ordered(CoreOperatorTypeName::LessThanOrEqualOperator);
+        let greater_than_or_equal = ordered(CoreOperatorTypeName::GreaterThanOrEqualOperator);
         let contains =
             core_operator(&context, CoreOperatorTypeName::ContainsOperator, Some(&string_type))
                 .unwrap();
-        World { context, string_type, equals, less_than, contains }
+        World {
+            context,
+            string_type,
+            equals,
+            less_than,
+            greater_than,
+            less_than_or_equal,
+            greater_than_or_equal,
+            contains,
+        }
     }
 
     impl World {
+        /// The four ordered operators with their expected classification.
+        fn ordering(&self) -> [(&HolonReference, OrderedComparison); 4] {
+            [
+                (&self.less_than, OrderedComparison::LessThan),
+                (&self.greater_than, OrderedComparison::GreaterThan),
+                (&self.less_than_or_equal, OrderedComparison::LessThanOrEqual),
+                (&self.greater_than_or_equal, OrderedComparison::GreaterThanOrEqual),
+            ]
+        }
+
         /// A subject value type of `kind_anchor`'s kind that affords `operators`.
         fn subject(&self, kind_anchor: &str, operators: &[&HolonReference]) -> ValueDescriptor {
             let anchor: HolonReference = if kind_anchor == "StringValueType" {
@@ -262,6 +323,223 @@ mod tests {
 
     fn string(value: &str) -> BaseValue {
         BaseValue::StringValue(MapString(value.to_string()))
+    }
+
+    fn integer(value: i64) -> BaseValue {
+        BaseValue::IntegerValue(MapInteger(value))
+    }
+
+    /// Results for a subject before, equal to, and after the comparison value.
+    fn boundary_results(comparison: OrderedComparison) -> [bool; 3] {
+        match comparison {
+            OrderedComparison::LessThan => [true, false, false],
+            OrderedComparison::GreaterThan => [false, false, true],
+            OrderedComparison::LessThanOrEqual => [true, true, false],
+            OrderedComparison::GreaterThanOrEqual => [false, true, true],
+        }
+    }
+
+    #[test]
+    fn each_ordered_comparison_answers_its_own_boundary() {
+        for comparison in [
+            OrderedComparison::LessThan,
+            OrderedComparison::GreaterThan,
+            OrderedComparison::LessThanOrEqual,
+            OrderedComparison::GreaterThanOrEqual,
+        ] {
+            let results = [Ordering::Less, Ordering::Equal, Ordering::Greater]
+                .map(|ordering| comparison.holds(ordering));
+            assert_eq!(results, boundary_results(comparison), "{comparison:?}");
+        }
+    }
+
+    #[test]
+    fn ordered_operators_compare_integers_and_strings_against_the_subject_type() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.ordering().iter().map(|(operator, _)| *operator).collect();
+        let count = world.subject("IntegerValueType", &operators);
+        let title = world.subject("StringValueType", &operators);
+
+        for (operator, comparison) in world.ordering() {
+            for (subject, values) in [
+                (&count, [integer(4), integer(5), integer(6)]),
+                (&title, [string("l"), string("m"), string("n")]),
+            ] {
+                let resolved = world.resolve(operator, subject).unwrap();
+                assert_eq!(resolved.kind(), OperatorKind::Ordered(comparison));
+                assert_eq!(resolved.operand_value_types().len(), 1);
+                assert_eq!(resolved.operand_value_types()[0].holon(), subject.holon());
+                let results = values.clone().map(|value| {
+                    resolved.invoke(&value, std::slice::from_ref(&values[1])).unwrap()
+                });
+                assert_eq!(results, boundary_results(comparison), "{comparison:?} {values:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn integer_ordering_is_numeric_at_the_signed_extremes() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.ordering().iter().map(|(operator, _)| *operator).collect();
+        let count = world.subject("IntegerValueType", &operators);
+        let [less_than, greater_than, less_than_or_equal, greater_than_or_equal] =
+            world.ordering().map(|(operator, _)| world.resolve(operator, &count).unwrap());
+        let (min, max) = (integer(i64::MIN), integer(i64::MAX));
+
+        assert!(less_than.invoke(&min, &[max.clone()]).unwrap());
+        assert!(greater_than.invoke(&max, &[min.clone()]).unwrap());
+        assert!(!greater_than.invoke(&min, &[max.clone()]).unwrap());
+        assert!(less_than_or_equal.invoke(&max, &[max.clone()]).unwrap());
+        assert!(greater_than_or_equal.invoke(&min, &[min.clone()]).unwrap());
+        assert!(less_than.invoke(&integer(-1), &[integer(0)]).unwrap());
+        assert!(greater_than.invoke(&integer(0), &[integer(-1)]).unwrap());
+        assert!(greater_than.invoke(&integer(1), &[min]).unwrap());
+        assert!(less_than.invoke(&integer(-1), &[max]).unwrap());
+    }
+
+    #[test]
+    fn string_ordering_is_case_sensitive_ordinal_and_unfolded() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.ordering().iter().map(|(operator, _)| *operator).collect();
+        let title = world.subject("StringValueType", &operators);
+        let [less_than, greater_than, less_than_or_equal, greater_than_or_equal] =
+            world.ordering().map(|(operator, _)| world.resolve(operator, &title).unwrap());
+
+        // Empty strings and prefixes.
+        assert!(less_than.invoke(&string(""), &[string("a")]).unwrap());
+        assert!(greater_than_or_equal.invoke(&string(""), &[string("")]).unwrap());
+        assert!(less_than.invoke(&string("Atlas"), &[string("Atlases")]).unwrap());
+        // Case: every ASCII uppercase letter precedes every lowercase one.
+        assert!(less_than.invoke(&string("Zebra"), &[string("apple")]).unwrap());
+        assert!(greater_than.invoke(&string("b"), &[string("B")]).unwrap());
+        // Non-ASCII values order by code point, and no folding applies.
+        assert!(greater_than.invoke(&string("é"), &[string("z")]).unwrap());
+        assert!(greater_than.invoke(&string("Straße"), &[string("STRASSE")]).unwrap());
+        assert!(!less_than_or_equal.invoke(&string("Straße"), &[string("STRASSE")]).unwrap());
+        assert!(greater_than.invoke(&string("ß"), &[string("ss")]).unwrap());
+    }
+
+    #[test]
+    fn ordered_operators_require_one_operand_of_the_subject_representation() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.greater_than_or_equal]);
+        let resolved = world.resolve(&world.greater_than_or_equal, &count).unwrap();
+
+        for operands in [vec![], vec![integer(1), integer(2)]] {
+            assert!(matches!(
+                resolved.invoke(&integer(1), &operands),
+                Err(HolonError::OperandCountMismatch { expected: 1, found, .. })
+                    if found == operands.len()
+            ));
+        }
+        assert!(matches!(
+            resolved.invoke(&integer(1), &[string("1")]),
+            Err(HolonError::ValueKindMismatch { expected, found, .. })
+                if expected == "Integer" && found == "String"
+        ));
+        assert!(matches!(
+            resolved.invoke(&string("1"), &[integer(1)]),
+            Err(HolonError::ValueKindMismatch { expected, found, .. })
+                if expected == "Integer" && found == "String"
+        ));
+    }
+
+    #[test]
+    fn one_ordered_affordance_does_not_grant_the_others() {
+        let world = world();
+        let rank = world.subject("IntegerValueType", &[&world.equals, &world.less_than]);
+        world.resolve(&world.less_than, &rank).expect("LessThan is afforded");
+        for operator in
+            [&world.greater_than, &world.less_than_or_equal, &world.greater_than_or_equal]
+        {
+            assert!(matches!(
+                world.resolve(operator, &rank),
+                Err(HolonError::UnsupportedOperator { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn ordering_is_unsupported_outside_integers_and_strings_even_when_afforded() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.ordering().iter().map(|(operator, _)| *operator).collect();
+        for kind_anchor in ["BooleanValueType", "BytesValueType", "EnumValueType"] {
+            let subject = world.subject(kind_anchor, &[&[&world.equals][..], &operators].concat());
+            world.resolve(&world.equals, &subject).expect("Equals applies to every scalar");
+            for operator in &operators {
+                assert!(
+                    matches!(
+                        world.resolve(operator, &subject),
+                        Err(HolonError::UnsupportedOperator { .. })
+                    ),
+                    "{kind_anchor} acquired ordering"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_ordered_extension_operator_keeps_its_ancestor_comparison() {
+        let world = world();
+        let strictly_after = stage_operator(
+            &world.context,
+            OperatorFixture {
+                type_name: "StrictlyAfterOperator",
+                category: "Ordering",
+                case_matching: None,
+                operand_type: None,
+                extends: Some(&world.greater_than),
+            },
+        )
+        .unwrap();
+        let count = world.subject("IntegerValueType", &[&strictly_after]);
+        let resolved = world.resolve(&strictly_after, &count).unwrap();
+        assert_eq!(resolved.kind(), OperatorKind::Ordered(OrderedComparison::GreaterThan));
+        assert!(resolved.invoke(&integer(2), &[integer(1)]).unwrap());
+        assert!(!resolved.invoke(&integer(1), &[integer(1)]).unwrap());
+        // Affording the extension does not afford its ancestor.
+        assert!(matches!(
+            world.resolve(&world.greater_than, &count),
+            Err(HolonError::UnsupportedOperator { .. })
+        ));
+    }
+
+    #[test]
+    fn an_unrelated_same_named_ordered_operator_has_no_semantics() {
+        let world = world();
+        for name in ["GreaterThanOperator", "LessThanOrEqualOperator", "GreaterThanOrEqualOperator"]
+        {
+            let rogue: HolonReference =
+                new_descriptor_holon(&world.context, &format!("rogue-{name}"), name, "Operator")
+                    .unwrap()
+                    .into();
+            assert!(
+                matches!(
+                    OperatorDescriptor::from_holon(rogue).kind(),
+                    Err(HolonError::NotImplemented(_))
+                ),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn ordered_metadata_must_declare_arity_minus_one_specifications() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.greater_than]);
+        let HolonReference::Staged(mut greater_than) = world.greater_than.clone() else {
+            panic!("canonical operator fixture is staged");
+        };
+        greater_than.with_property_value(CorePropertyTypeName::Arity, MapInteger(3)).unwrap();
+        assert!(matches!(
+            world.resolve(&world.greater_than, &count),
+            Err(HolonError::InvalidOperatorMetadata { operator, .. })
+                if operator == "GreaterThanOperator"
+        ));
     }
 
     #[test]

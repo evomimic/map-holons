@@ -56,8 +56,9 @@ const PERSON_TO_BOOK_RELATIONSHIP: &str = "AuthorOf";
 /// - `Filter -> Distinct` and `Distinct -> Filter`;
 /// - `Expand(AuthorOf) -> Filter(AnyOf) -> OrderBy(Title) -> Limit(1)` from
 ///   [Ada, Bob]: [Roads];
-/// - failures: a LessThan predicate (`NotImplemented`), the same after a
-///   completed `Distinct`, the same in a nested `AnyOf`, a selector the
+/// - failures: GreaterThan on the Boolean IsPublished
+///   (`UnsupportedOperator`), the same after a completed `Distinct`, the same
+///   in a nested `AnyOf`, a selector the
 ///   declared type lacks on empty input, a SeedPredicate selecting Title on
 ///   the root type, an integer-typed literal (`IncompatibleLiteralType`), and a
 ///   misplaced SeedPredicate (`InvalidParameter`).
@@ -216,29 +217,32 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
     let mixed_expand = author.authoring.next(mixed_expand, mixed_filter)?;
     let mixed_query = author.query("Mixed", mixed_expand)?;
 
-    // Failures.
-    let less_than_operand = author.literal(
-        "LessThan",
-        &types.map_string,
-        MapString("Roads".to_string()).to_base_value(),
+    // Failures. Booleans afford Equals but no ordering, so an ordered
+    // comparison on IsPublished is an unsupported operator capability.
+    let map_boolean = types.map_boolean.clone();
+    let greater_than = types.greater_than.clone();
+    let unordered = author.compare(
+        "Unordered",
+        "IsPublished",
+        &greater_than,
+        &map_boolean,
+        true.to_base_value(),
     )?;
-    let less_than_title =
-        author.comparison("LessThan", "Title", &types.less_than, vec![less_than_operand])?;
-    let less_than_filter = author.filter("LessThan", less_than_title.clone())?;
-    let less_than_query = author.query("LessThan", less_than_filter)?;
-    let late_less_than = author.filter("LateLessThan", less_than_title)?;
-    let late_distinct = author.authoring.distinct("Distinct.QryF1LateLessThan")?;
-    let late_distinct = author.authoring.next(late_distinct, late_less_than)?;
-    let late_less_than_query = author.query("LateLessThan", late_distinct)?;
+    let unordered_filter = author.filter("Unordered", unordered.clone())?;
+    let unordered_query = author.query("Unordered", unordered_filter)?;
+    let late_unordered = author.filter("LateUnordered", unordered)?;
+    let late_distinct = author.authoring.distinct("Distinct.QryF1LateUnordered")?;
+    let late_distinct = author.authoring.next(late_distinct, late_unordered)?;
+    let late_unordered_query = author.query("LateUnordered", late_distinct)?;
 
     // Nesting is supported since QRY-F3; an unsupported operator still fails at depth.
-    let nested_operand = author.literal(
+    let nested_leaf = author.compare(
         "NestedLeaf",
-        &types.map_string,
-        MapString("x".to_string()).to_base_value(),
+        "IsPublished",
+        &greater_than,
+        &map_boolean,
+        true.to_base_value(),
     )?;
-    let nested_leaf =
-        author.comparison("NestedLeaf", "Title", &types.less_than, vec![nested_operand])?;
     let inner = author.any_of("Inner", vec![nested_leaf])?;
     let outer_leaf = author.contains("OuterLeaf", "Title", "y")?;
     let outer = author.any_of("Outer", vec![outer_leaf, inner])?;
@@ -336,22 +340,22 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
 
         for (query, input, kind, what) in [
             (
-                &less_than_query,
+                &unordered_query,
                 books(&[&roads]),
-                HolonErrorKind::NotImplemented,
-                "a LessThan predicate",
+                HolonErrorKind::UnsupportedOperator,
+                "an ordered predicate on a Boolean",
             ),
             (
-                &late_less_than_query,
+                &late_unordered_query,
                 books(&[&roads]),
-                HolonErrorKind::NotImplemented,
-                "a LessThan predicate after a completed Distinct",
+                HolonErrorKind::UnsupportedOperator,
+                "an ordered predicate on a Boolean after a completed Distinct",
             ),
             (
                 &nested_query,
                 books(&[&roads]),
-                HolonErrorKind::NotImplemented,
-                "a LessThan predicate in a nested AnyOf",
+                HolonErrorKind::UnsupportedOperator,
+                "an ordered predicate on a Boolean in a nested AnyOf",
             ),
             (
                 &undeclared_query,
@@ -440,8 +444,12 @@ pub(super) struct PredicateTypes {
     pub(super) contains: TestReference,
     pub(super) equals: TestReference,
     pub(super) less_than: TestReference,
+    pub(super) greater_than: TestReference,
+    pub(super) less_than_or_equal: TestReference,
+    pub(super) greater_than_or_equal: TestReference,
     pub(super) map_string: TestReference,
     pub(super) map_integer: TestReference,
+    pub(super) map_boolean: TestReference,
 }
 
 impl PredicateTypes {
@@ -468,6 +476,11 @@ impl PredicateTypes {
             contains: lookup(&operator(CoreOperatorTypeName::ContainsOperator))?,
             equals: lookup(&operator(CoreOperatorTypeName::EqualsOperator))?,
             less_than: lookup(&operator(CoreOperatorTypeName::LessThanOperator))?,
+            greater_than: lookup(&operator(CoreOperatorTypeName::GreaterThanOperator))?,
+            less_than_or_equal: lookup(&operator(CoreOperatorTypeName::LessThanOrEqualOperator))?,
+            greater_than_or_equal: lookup(&operator(
+                CoreOperatorTypeName::GreaterThanOrEqualOperator,
+            ))?,
             map_string: lookup(&value(
                 CoreValueTypeName::MapStringValueType,
                 CoreValueTypeName::StringValueType,
@@ -475,6 +488,10 @@ impl PredicateTypes {
             map_integer: lookup(&value(
                 CoreValueTypeName::MapIntegerValueType,
                 CoreValueTypeName::IntegerValueType,
+            ))?,
+            map_boolean: lookup(&value(
+                CoreValueTypeName::MapBooleanValueType,
+                CoreValueTypeName::BooleanValueType,
             ))?,
         })
     }
@@ -576,6 +593,20 @@ impl PredicateAuthoring<'_, '_> {
         let operand = self.literal(label, value_type, value)?;
         let equals = self.types.equals.clone();
         self.comparison(label, property, &equals, vec![operand])
+    }
+
+    /// A single-literal comparison through `operator`, its literal declared as
+    /// `value_type`.
+    pub(super) fn compare(
+        &mut self,
+        label: &str,
+        property: &str,
+        operator: &TestReference,
+        value_type: &TestReference,
+        value: BaseValue,
+    ) -> Result<TestReference, HolonError> {
+        let operand = self.literal(label, value_type, value)?;
+        self.comparison(label, property, operator, vec![operand])
     }
 
     pub(super) fn any_of(

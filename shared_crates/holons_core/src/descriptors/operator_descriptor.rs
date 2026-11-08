@@ -1,7 +1,8 @@
 use crate::descriptors::inheritance::effective_relationship_targets;
 use crate::descriptors::{
     accessor_helpers, classify_descriptor_lineage, CaseMatching, Descriptor, OperandSpecification,
-    OperatorCategory, OperatorKind, ResolvedOperator, TypeHeader, ValueDescriptor,
+    OperatorCategory, OperatorKind, OrderedComparison, ResolvedOperator, TypeHeader,
+    ValueDescriptor,
 };
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, MapString};
@@ -107,6 +108,9 @@ impl OperatorDescriptor {
         let candidates = [
             CoreOperatorTypeName::EqualsOperator,
             CoreOperatorTypeName::LessThanOperator,
+            CoreOperatorTypeName::GreaterThanOperator,
+            CoreOperatorTypeName::LessThanOrEqualOperator,
+            CoreOperatorTypeName::GreaterThanOrEqualOperator,
             CoreOperatorTypeName::ContainsOperator,
         ]
         .map(|name| (name.as_operator_name().0, name));
@@ -114,7 +118,18 @@ impl OperatorDescriptor {
             classify_descriptor_lineage(&self.holon, &candidates, operator_type_descriptor_key)?;
         match classified {
             Some(CoreOperatorTypeName::EqualsOperator) => Ok(OperatorKind::Equals),
-            Some(CoreOperatorTypeName::LessThanOperator) => Ok(OperatorKind::LessThan),
+            Some(CoreOperatorTypeName::LessThanOperator) => {
+                Ok(OperatorKind::Ordered(OrderedComparison::LessThan))
+            }
+            Some(CoreOperatorTypeName::GreaterThanOperator) => {
+                Ok(OperatorKind::Ordered(OrderedComparison::GreaterThan))
+            }
+            Some(CoreOperatorTypeName::LessThanOrEqualOperator) => {
+                Ok(OperatorKind::Ordered(OrderedComparison::LessThanOrEqual))
+            }
+            Some(CoreOperatorTypeName::GreaterThanOrEqualOperator) => {
+                Ok(OperatorKind::Ordered(OrderedComparison::GreaterThanOrEqual))
+            }
             Some(CoreOperatorTypeName::ContainsOperator) => match self.case_matching()? {
                 Some(case_matching) => Ok(OperatorKind::Contains(case_matching)),
                 None => Err(HolonError::InvalidOperatorMetadata {

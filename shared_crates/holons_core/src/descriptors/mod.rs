@@ -88,7 +88,7 @@ pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::{EffectiveValue, PropertyDescriptor};
 pub use relationship_descriptor::{EffectiveCardinality, RelationshipDescriptor, TargetBinding};
-pub use resolved_operator::{OperatorKind, ResolvedOperator};
+pub use resolved_operator::{OperatorKind, OrderedComparison, ResolvedOperator};
 pub use schema_ownership::{
     resolve_schema_ownership, schema_components, schema_dependencies, schema_rules,
     SchemaOwnershipKind, SchemaOwnershipResolution,

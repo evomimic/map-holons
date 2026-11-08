@@ -10,9 +10,11 @@
 //! - [`filter`] applies the resolved predicate to each occurrence, reading the
 //!   selected property through ordinary bound reference access.
 //!
-//! Supported forms are a `ComparisonPredicate` whose operator is Contains or
-//! Equals, and the composites `Not`, `AllOf` and `AnyOf`, nested to any depth.
-//! Any other predicate form, and comparison through any other operator, fails
+//! Supported forms are a `ComparisonPredicate` whose operator is Contains,
+//! Equals, or one of the ordered comparisons (LessThan, GreaterThan,
+//! LessThanOrEqual, GreaterThanOrEqual), and the composites `Not`, `AllOf` and
+//! `AnyOf`, nested to any depth. Any other predicate form, and comparison
+//! through an operator with no supported core semantics in its lineage, fails
 //! with `NotImplemented` wherever it appears. Malformed child cardinalities,
 //! children that are not predicates, and cycles are definition errors. Nothing
 //! is ever answered with unfiltered members, and neither phase writes to the
@@ -264,15 +266,10 @@ fn validate_comparison(
     let operator = operator.resolve_for_subject(&subject_type)?;
     match operator.kind() {
         OperatorKind::Contains(_) => require_string_subject(&operator)?,
-        // Equals' operand is the subject's own ValueType, so resolution
-        // already carries its whole contract.
-        OperatorKind::Equals => {}
-        OperatorKind::LessThan => {
-            return Err(HolonError::NotImplemented(format!(
-                "comparison predicates through {}",
-                operator.operator().operator_name()?
-            )))
-        }
+        // Equals and the ordered comparisons take the subject's own ValueType
+        // as their operand, so resolution already carries their whole
+        // contract, including the integer/string ordering domain.
+        OperatorKind::Equals | OperatorKind::Ordered(_) => {}
     }
 
     let operand_values = validate_operands(&operator, &operands)?;
@@ -399,7 +396,9 @@ fn check_authored_literal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_holon_type_descriptor};
+    use crate::descriptors::test_support::{
+        build_context, new_holon_type_descriptor, stage_operator, OperatorFixture,
+    };
     use crate::query_layer::predicate_test_support::{
         bytes, canonical_type, flag, number, text, token, PredicateWorld,
     };
@@ -462,13 +461,31 @@ mod tests {
     }
 
     #[test]
-    fn ordering_predicates_are_not_implemented() {
+    fn an_afforded_operator_without_supported_core_semantics_is_not_implemented() {
+        // Affordance admits the operator, but no supported core operator
+        // appears in its lineage, so it has nothing to execute.
         let world = world();
-        let comparison = world.comparison(
-            "Title",
-            &world.less_than,
-            vec![world.literal(&world.text, text("x"))],
-        );
+        let unclassified = stage_operator(
+            &world.context,
+            OperatorFixture {
+                type_name: "RoughlyEqualsOperator",
+                category: "Equality",
+                case_matching: None,
+                operand_type: None,
+                extends: None,
+            },
+        )
+        .unwrap();
+        let HolonReference::Transient(mut text_type) = world.text.clone() else {
+            panic!("the Text value type is transient");
+        };
+        text_type
+            .add_related_holons(
+                CoreRelationshipTypeName::AffordsOperator,
+                vec![unclassified.clone()],
+            )
+            .unwrap();
+        let comparison = world.compare("Title", &unclassified, &world.text, text("x"));
         let error = validate(&comparison, &book(&world)).unwrap_err();
         assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
     }
@@ -1069,17 +1086,17 @@ mod tests {
     #[test]
     fn an_unsupported_operator_fails_although_another_branch_decides() {
         let world = world();
-        let less_than = world.comparison(
-            "Title",
-            &world.less_than,
-            vec![world.literal(&world.text, text("x"))],
-        );
+        // Status is an enum: it affords Equals but no ordering.
+        let unordered = world.compare("Status", &world.greater_than, &world.status, token("Draft"));
         let error = validate(
-            &world.any_of(vec![world.contains("Title", ""), world.not(vec![less_than])]),
+            &world.any_of(vec![world.contains("Title", ""), world.not(vec![unordered])]),
             &book(&world),
         )
         .unwrap_err();
-        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+        assert!(
+            matches!(&error, HolonError::UnsupportedOperator { operator, .. } if operator == "GreaterThanOperator"),
+            "unexpected error: {error:?}"
+        );
     }
 
     #[test]
@@ -1450,5 +1467,374 @@ mod tests {
         predicate.with_descriptor(impostor.into()).unwrap();
         let error = validate(&predicate.into(), &book(&world)).unwrap_err();
         assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+    }
+
+    // ---- Ordered comparisons -----------------------------------------------
+
+    /// Results for a subject before, equal to, and after the comparison value,
+    /// in the order of [`PredicateWorld::ordering_operators`].
+    const BOUNDARY_RESULTS: [[bool; 3]; 4] =
+        [[true, false, false], [false, false, true], [true, true, false], [false, true, true]];
+
+    #[test]
+    fn each_ordered_operator_respects_its_boundary_on_integers_and_strings() {
+        let world = world();
+        let pages = |key: &str, count: i64| {
+            world.member(key, &world.book, &[("Title", text("t")), ("PageCount", number(count))])
+        };
+        let titled =
+            |key: &str, title: &str| world.member(key, &world.book, &[("Title", text(title))]);
+        let by_pages = [pages("before", 4), pages("equal", 5), pages("after", 6)];
+        let by_title = [titled("before", "l"), titled("equal", "m"), titled("after", "n")];
+
+        for (operator, expected) in world.ordering_operators().into_iter().zip(BOUNDARY_RESULTS) {
+            let count = world.compare("PageCount", operator, &world.integer, number(5));
+            assert_eq!(evaluate(&world, &count, &by_pages), expected, "PageCount");
+            let title = world.compare("Title", operator, &world.text, text("m"));
+            assert_eq!(evaluate(&world, &title, &by_title), expected, "Title");
+        }
+    }
+
+    #[test]
+    fn ordered_predicates_are_safe_at_the_signed_integer_extremes() {
+        let world = world();
+        let pages = |key: &str, count: i64| {
+            world.member(key, &world.book, &[("Title", text("t")), ("PageCount", number(count))])
+        };
+        let members = [
+            pages("min", i64::MIN),
+            pages("minus-one", -1),
+            pages("zero", 0),
+            pages("max", i64::MAX),
+        ];
+        let [less_than, greater_than, less_than_or_equal, greater_than_or_equal] =
+            world.ordering_operators();
+        let at =
+            |operator, value| world.compare("PageCount", operator, &world.integer, number(value));
+
+        assert_eq!(
+            evaluate(&world, &at(greater_than, i64::MIN), &members),
+            vec![false, true, true, true]
+        );
+        assert_eq!(
+            evaluate(&world, &at(less_than, i64::MAX), &members),
+            vec![true, true, true, false]
+        );
+        assert_eq!(evaluate(&world, &at(greater_than_or_equal, i64::MIN), &members), vec![true; 4]);
+        assert_eq!(evaluate(&world, &at(less_than_or_equal, i64::MAX), &members), vec![true; 4]);
+        assert_eq!(evaluate(&world, &at(less_than, 0), &members), vec![true, true, false, false]);
+    }
+
+    #[test]
+    fn ordered_string_predicates_are_ordinal_and_independent_of_contains_folding() {
+        let world = world();
+        let titled =
+            |key: &str, title: &str| world.member(key, &world.book, &[("Title", text(title))]);
+        let members = [
+            titled("empty", ""),
+            titled("upper", "STRASSE"),
+            titled("folded", "Straße"),
+            titled("prefix", "Stra"),
+            titled("accented", "élan"),
+        ];
+        let [less_than, greater_than, less_than_or_equal, greater_than_or_equal] =
+            world.ordering_operators();
+        let at = |operator, value: &str| world.compare("Title", operator, &world.text, text(value));
+
+        // "" < "STRASSE" < "Stra" < "Straße" < "élan" by code point.
+        assert_eq!(
+            evaluate(&world, &at(greater_than, "Stra"), &members),
+            vec![false, false, true, false, true]
+        );
+        assert_eq!(
+            evaluate(&world, &at(less_than, "Stra"), &members),
+            vec![true, true, false, false, false]
+        );
+        assert_eq!(evaluate(&world, &at(greater_than_or_equal, ""), &members), vec![true; 5]);
+        // Contains would fold Straße to STRASSE; ordering compares the originals.
+        assert_eq!(
+            evaluate(&world, &at(less_than_or_equal, "STRASSE"), &members),
+            vec![true, true, false, false, false]
+        );
+    }
+
+    #[test]
+    fn optional_absence_is_false_for_every_ordered_operator() {
+        let world = world();
+        let untitled = world.member("untitled", &world.book, &[]);
+        let titled = world.member("titled", &world.book, &[("Title", text("t"))]);
+        for operator in world.ordering_operators() {
+            let pages = validate(
+                &world.compare("PageCount", operator, &world.integer, number(0)),
+                &book(&world),
+            )
+            .unwrap();
+            assert!(!pages.matches(&titled).unwrap(), "an absent PageCount never matches");
+
+            let title =
+                validate(&world.compare("Title", operator, &world.text, text("")), &book(&world))
+                    .unwrap();
+            assert!(matches!(
+                title.matches(&untitled),
+                Err(HolonError::EmptyField(name)) if name == "Title"
+            ));
+        }
+        // An inclusive comparison is not the negation of its strict opposite.
+        let [_, greater_than, less_than_or_equal, _] = world.ordering_operators();
+        let at_most = world.compare("PageCount", less_than_or_equal, &world.integer, number(0));
+        let not_above =
+            world.not(vec![world.compare("PageCount", greater_than, &world.integer, number(0))]);
+        assert_eq!(evaluate(&world, &at_most, &[titled.clone()]), vec![false]);
+        assert_eq!(evaluate(&world, &not_above, &[titled]), vec![true]);
+    }
+
+    #[test]
+    fn an_ordered_comparison_rejects_a_stored_value_of_the_wrong_representation() {
+        let world = world();
+        let predicate = validate(
+            &world.compare("PageCount", &world.greater_than, &world.integer, number(1)),
+            &book(&world),
+        )
+        .unwrap();
+        let member =
+            world.member("a", &world.book, &[("Title", text("t")), ("PageCount", text("2"))]);
+        assert!(matches!(predicate.matches(&member), Err(HolonError::ValueKindMismatch { .. })));
+    }
+
+    #[test]
+    fn ordered_affordances_are_independent_and_inherited() {
+        let world = world();
+        // Rank affords LessThan only.
+        validate(&world.compare("Rank", &world.less_than, &world.rank, number(1)), &book(&world))
+            .expect("LessThan is afforded on Rank");
+        for operator in
+            [&world.greater_than, &world.less_than_or_equal, &world.greater_than_or_equal]
+        {
+            let error =
+                validate(&world.compare("Rank", operator, &world.rank, number(1)), &book(&world))
+                    .unwrap_err();
+            assert!(
+                matches!(&error, HolonError::UnsupportedOperator { value_type, .. } if value_type == "Rank"),
+                "unexpected error: {error:?}"
+            );
+        }
+        // Headline declares no affordance of its own and inherits Text's.
+        let predicate = validate(
+            &world.compare("Headline", &world.greater_than_or_equal, &world.headline, text("M")),
+            &book(&world),
+        )
+        .unwrap();
+        let member =
+            world.member("a", &world.book, &[("Title", text("t")), ("Headline", text("News"))]);
+        assert!(predicate.matches(&member).unwrap());
+    }
+
+    #[test]
+    fn ordering_is_unavailable_outside_the_integer_and_string_domains() {
+        let world = world();
+        let domains = [
+            ("IsPublished", &world.flag, flag(true)),
+            ("Status", &world.status, token("Draft")),
+            ("Digest", &world.digest, bytes(&[1])),
+            ("RawDigest", &world.raw_digest, bytes(&[1])),
+        ];
+        let assert_unsupported = |property: &str, value_type, value: &BaseValue| {
+            for operator in world.ordering_operators() {
+                let comparison = world.compare(property, operator, value_type, value.clone());
+                let error = validate(&comparison, &book(&world)).unwrap_err();
+                assert!(
+                    matches!(error, HolonError::UnsupportedOperator { .. }),
+                    "{property}: unexpected error: {error:?}"
+                );
+            }
+        };
+        for (property, value_type, value) in &domains {
+            assert_unsupported(property, value_type, value);
+        }
+        // A deliberate ordered affordance does not give these domains ordering.
+        for (property, value_type, value) in &domains {
+            let HolonReference::Transient(mut holon) = (*value_type).clone() else {
+                panic!("{property}'s value type is transient");
+            };
+            holon
+                .add_related_holons(
+                    CoreRelationshipTypeName::AffordsOperator,
+                    world.ordering_operators().into_iter().cloned().collect(),
+                )
+                .unwrap();
+            assert_unsupported(property, value_type, value);
+        }
+    }
+
+    #[test]
+    fn ordered_literals_are_checked_against_the_required_type() {
+        let world = world();
+        // A subtype of the subject type is compatible.
+        let predicate = validate(
+            &world.compare("Title", &world.less_than, &world.headline, text("b")),
+            &book(&world),
+        )
+        .unwrap();
+        assert!(predicate
+            .matches(&world.member("a", &world.book, &[("Title", text("a"))]))
+            .unwrap());
+
+        // Broader or unrelated declared types are not.
+        for (property, value_type, value) in [
+            ("Title", &world.map_string, text("b")),
+            ("Title", &world.integer, number(1)),
+            ("PageCount", &world.text, text("1")),
+            ("PageCount", &world.rank, number(1)),
+        ] {
+            let error = validate(
+                &world.compare(property, &world.greater_than, value_type, value),
+                &book(&world),
+            )
+            .unwrap_err();
+            assert!(
+                matches!(error, HolonError::IncompatibleLiteralType { .. }),
+                "{property}: unexpected error: {error:?}"
+            );
+        }
+
+        // A value outside its declared representation, and a configured constraint.
+        let error = validate(
+            &world.compare("PageCount", &world.greater_than, &world.integer, text("1")),
+            &book(&world),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(error, HolonError::ValueKindMismatch { .. }),
+            "unexpected error: {error:?}"
+        );
+        let error = validate(
+            &world.compare("Identifier", &world.greater_than, &world.identifier, text("a")),
+            &book(&world),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(error, HolonError::UnsupportedValueConstraint { .. }),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn an_ordered_operator_takes_exactly_one_operand() {
+        let world = world();
+        for operator in world.ordering_operators() {
+            for operands in [
+                vec![],
+                vec![
+                    world.literal(&world.integer, number(1)),
+                    world.literal(&world.integer, number(2)),
+                ],
+            ] {
+                let found = operands.len();
+                let error =
+                    validate(&world.comparison("PageCount", operator, operands), &book(&world))
+                        .unwrap_err();
+                assert!(
+                    matches!(error, HolonError::OperandCountMismatch { expected: 1, found: f, .. } if f == found),
+                    "unexpected error: {error:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn ordered_selectors_resolve_on_the_declared_type() {
+        let world = world();
+        let novel = PredicateWorld::descriptor(&world.novel);
+        let predicate =
+            validate(&world.compare("Title", &world.greater_than, &world.text, text("m")), &novel)
+                .expect("Title is inherited from Book");
+        let error = validate(
+            &world.compare("Narrator", &world.greater_than, &world.text, text("m")),
+            &book(&world),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { name, .. } if name == "Narrator"),
+            "unexpected error: {error:?}"
+        );
+        // A Novel member in a Book collection is held to Book's contract.
+        let member =
+            world.member("novel", &world.novel, &[("Title", text("z")), ("Narrator", text("a"))]);
+        assert!(predicate.matches(&member).unwrap());
+        let by_title = validate(
+            &world.compare("Title", &world.greater_than, &world.text, text("m")),
+            &book(&world),
+        )
+        .unwrap();
+        assert!(by_title.matches(&member).unwrap());
+    }
+
+    #[test]
+    fn ordered_leaves_compose_with_equals_and_contains() {
+        let world = world();
+        let book_of = |key: &str, title: &str, pages: i64, status: &str| {
+            world.member(
+                key,
+                &world.book,
+                &[("Title", text(title)), ("PageCount", number(pages)), ("Status", token(status))],
+            )
+        };
+        let members = [
+            book_of("long-atlas", "Atlas", 300, "Draft"),
+            book_of("long-published", "Roads", 250, "Published"),
+            book_of("long-draft", "Roads", 400, "Draft"),
+            book_of("short-atlas", "Atlas", 50, "Published"),
+        ];
+        // PageCount >= 250 and (Title contains "atlas" or not Status = Draft).
+        let predicate = world.all_of(vec![
+            world.compare("PageCount", &world.greater_than_or_equal, &world.integer, number(250)),
+            world.any_of(vec![
+                world.contains("Title", "atlas"),
+                world.not(vec![world.equals("Status", &world.status, token("Draft"))]),
+            ]),
+        ]);
+        assert_eq!(evaluate(&world, &predicate, &members), vec![true, true, false, false]);
+
+        // A decisive branch hides neither a candidate error ...
+        let untitled = world.member("untitled", &world.book, &[("PageCount", number(1))]);
+        let decided = validate(
+            &world.any_of(vec![
+                world.compare("PageCount", &world.less_than, &world.integer, number(5)),
+                world.compare("Title", &world.greater_than, &world.text, text("a")),
+            ]),
+            &book(&world),
+        )
+        .unwrap();
+        assert!(matches!(decided.matches(&untitled), Err(HolonError::EmptyField(_))));
+        // ... nor a definition error.
+        let error = validate(
+            &world.all_of(vec![
+                world.compare("PageCount", &world.less_than, &world.integer, number(0)),
+                world.compare("Rank", &world.greater_than, &world.rank, number(1)),
+            ]),
+            &book(&world),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(error, HolonError::UnsupportedOperator { .. }),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn an_ordered_filter_keeps_order_and_duplicates_and_leaves_its_definition_unchanged() {
+        let world = world();
+        let pages = |key: &str, count: i64| {
+            world.member(key, &world.book, &[("Title", text("t")), ("PageCount", number(count))])
+        };
+        let (short, long) = (pages("short", 10), pages("long", 500));
+        let comparison =
+            world.compare("PageCount", &world.greater_than, &world.integer, number(100));
+        let definition = comparison.into_model().unwrap();
+        let predicate = validate(&comparison, &book(&world)).unwrap();
+        let retained =
+            filter(&[long.clone(), short.clone(), long.clone(), short], &predicate).unwrap();
+        assert_eq!(retained, vec![long.clone(), long]);
+        assert_eq!(comparison.into_model().unwrap(), definition);
     }
 }

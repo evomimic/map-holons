@@ -118,7 +118,7 @@ abstract value StringValueType.ValueType {
   extends ValueType.TypeDescriptor
   DefinesInstanceTypeKind true
   header {
-    description: "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals, LessThan, and Contains operator affordances additively. A specialization retains those affordances and may add its own operators."
+    description: "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, and Contains operator affordances additively. A specialization retains those affordances and may add its own operators."
     display_name: "String Value Type"
     display_plural: "String Value Types"
     plural: "StringValueTypes"
@@ -128,6 +128,9 @@ abstract value StringValueType.ValueType {
     AffordsOperator -> [
       EqualsOperator.OperatorType,
       LessThanOperator.OperatorType,
+      GreaterThanOperator.OperatorType,
+      LessThanOrEqualOperator.OperatorType,
+      GreaterThanOrEqualOperator.OperatorType,
       ContainsOperator.OperatorType
     ]
   }
@@ -138,7 +141,7 @@ abstract value IntegerValueType.ValueType {
   extends ValueType.TypeDescriptor
   DefinesInstanceTypeKind true
   header {
-    description: "Abstract descriptor family for integer-based value types. It does not directly describe runtime values; every concrete descendant inherits its integer classification and core Equals and LessThan operator affordances additively. A specialization retains those affordances and may add its own operators."
+    description: "Abstract descriptor family for integer-based value types. It does not directly describe runtime values; every concrete descendant inherits its integer classification and core Equals, LessThan, GreaterThan, LessThanOrEqual, and GreaterThanOrEqual operator affordances additively. A specialization retains those affordances and may add its own operators."
     display_name: "Integer Value Type"
     display_plural: "Integer Value Types"
     plural: "IntegerValueTypes"
@@ -147,7 +150,10 @@ abstract value IntegerValueType.ValueType {
     ValidationBindings -> BaseValueKindMatchesInteger.ValidationRule
     AffordsOperator -> [
       EqualsOperator.OperatorType,
-      LessThanOperator.OperatorType
+      LessThanOperator.OperatorType,
+      GreaterThanOperator.OperatorType,
+      LessThanOrEqualOperator.OperatorType,
+      GreaterThanOrEqualOperator.OperatorType
     ]
   }
 }

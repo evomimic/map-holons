@@ -80,7 +80,10 @@ impl ToOperatorName for &OperatorName {
 pub enum CoreOperatorTypeName {
     ContainsOperator,
     EqualsOperator,
+    GreaterThanOperator,
+    GreaterThanOrEqualOperator,
     LessThanOperator,
+    LessThanOrEqualOperator,
 }
 
 impl CoreOperatorTypeName {
@@ -111,7 +114,10 @@ mod tests {
         vec![
             CoreOperatorTypeName::ContainsOperator,
             CoreOperatorTypeName::EqualsOperator,
+            CoreOperatorTypeName::GreaterThanOperator,
+            CoreOperatorTypeName::GreaterThanOrEqualOperator,
             CoreOperatorTypeName::LessThanOperator,
+            CoreOperatorTypeName::LessThanOrEqualOperator,
         ]
     }
 
