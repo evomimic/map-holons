@@ -1,7 +1,7 @@
 //! Bounded Schema scheduling and separate staged ownership collections.
 use crate::{
-    assessment_support::{path, targets},
-    handlers::finding,
+    assessment::support::{path, targets},
+    diagnostics::finding,
     ValidationCollector,
 };
 use core_types::{CommitValidationViolationKind, HolonError};

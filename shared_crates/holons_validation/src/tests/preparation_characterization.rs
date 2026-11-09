@@ -1,10 +1,18 @@
 //! Scenario controls for Commit preparation and interpretation guards.
 //!
 //! Omitted-versus-required read faults are covered by the active omitted-membership control.
-use super::*;
-use crate::commit_assessment::{assess_commit_candidates, validate_commit_candidates};
-use holons_core::core_shared_objects::holon::ValidationState;
-use type_names::CoreRelationshipTypeName as R;
+use core_types::{CommitValidationViolationKind, HolonError};
+use holons_core::{
+    core_shared_objects::{holon::ValidationState, Holon},
+    HolonReference, ReadableHolon, WritableHolon,
+};
+use type_names::{CoreRelationshipTypeName as R, CoreValidationRuleName};
+
+use super::support::{prepare_meta_contract, readiness_fixture, Fixture};
+use crate::{
+    assessment::commit::{assess_commit_candidates, validate_commit_candidates},
+    DescriptorRuleProducts,
+};
 
 #[test]
 fn unusable_property_selection_beside_invalid_sibling_value() -> Result<(), HolonError> {
@@ -149,11 +157,11 @@ fn malformed_candidate_lineages() -> Result<(), HolonError> {
         let HolonReference::Staged(subject) = fixture.nodes["Malformed"].clone() else {
             unreachable!()
         };
-        let packages = crate::descriptor_package::DescriptorPackages::construct(
+        let packages = crate::assessment::descriptor_package::DescriptorPackages::construct(
             &fixture.context,
             &[subject.clone().into()],
             &[],
-            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+            &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
         )?;
         let error = packages
             .effective_schema(&subject.clone().into())
@@ -221,43 +229,6 @@ fn mutual_description_with_later_peer_failure() -> Result<(), HolonError> {
     Ok(())
 }
 
-/// Supplies a usable meta-contract to isolate candidate findings from product defects.
-pub(super) fn prepare_meta_contract(fixture: &mut Fixture) -> Result<(), HolonError> {
-    fixture.link("HolonType.TypeDescriptor", R::DescribedBy, "MetaHolonType.MetaTypeDescriptor")?;
-    fixture.link("Schema.HolonType", R::Extends, "HolonType.TypeDescriptor")?;
-    for name in ["Extends", "ComponentOf", "InstanceProperties"] {
-        let key = format!("Peer{name}.Relationship");
-        fixture
-            .node(&key)?
-            .with_property_value("TypeName", name)?
-            .with_property_value("DefinesInstanceTypeKind", false)?;
-        fixture.link(&key, R::Extends, "DeclaredRelationshipType.RelationshipType")?;
-        fixture.link(&key, R::SourceType, "HolonType.TypeDescriptor")?;
-        fixture.link(&key, R::TargetType, "HolonType.TypeDescriptor")?;
-        fixture.link("MetaHolonType.MetaTypeDescriptor", R::InstanceRelationships, &key)?;
-    }
-    for name in ["Key", "TypeName", "IsAbstractType", "IsValueRequired", "DefinesInstanceTypeKind"]
-    {
-        let key = format!("Peer{name}.Property");
-        fixture
-            .node(&key)?
-            .with_property_value("TypeName", name)?
-            .with_property_value("DefinesInstanceTypeKind", false)?;
-        fixture.link(&key, R::Extends, "PropertyType.TypeDescriptor")?;
-        fixture.link(
-            &key,
-            R::ValueType,
-            if matches!(name, "Key" | "TypeName") {
-                "StringValueType.ValueType"
-            } else {
-                "BooleanValueType.ValueType"
-            },
-        )?;
-        fixture.link("MetaHolonType.MetaTypeDescriptor", R::InstanceProperties, &key)?;
-    }
-    Ok(())
-}
-
 /// Tests semantic rule attribution without coupling callers to the finding representation.
 fn has_rule_code(findings: &[core_types::CommitValidationViolation], expected: &str) -> bool {
     findings.iter().any(|finding| {
@@ -286,11 +257,11 @@ fn saved_restoration_attempt_does_not_diagnose_lineage() -> Result<(), HolonErro
         &holons_core::EffectiveHolonDescriptor::from_constructed_holon(prepared.into()),
     )?;
     let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
+    let packages = crate::assessment::descriptor_package::DescriptorPackages::construct(
         &fixture.context,
         &[fixture.nodes["SavedSupportingDefinition"].clone()],
         &[],
-        &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+        &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
     )?;
     let observations = probe.finish();
     assert_eq!(observations.0.get("registry_hits"), Some(&1));
@@ -352,31 +323,32 @@ fn additional_consumers_share_complete_products_in_either_request_order() -> Res
         let probe =
             holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
         let mut index_reads = None;
-        let packages = crate::descriptor_package::DescriptorPackages::construct_with_observer(
-            &fixture.context,
-            &roots,
-            &[],
-            &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
-            fixture.diagnoses(),
-            &mut |event| {
-                if let crate::AssessmentEvent::PreparationOperation {
-                    operation: "NameIndexes",
-                    starting,
-                    ..
-                } = event
-                {
-                    if starting {
-                        index_reads = Some(fixture.backend_relationship_reads());
-                    } else {
-                        assert_eq!(
-                            index_reads.take(),
-                            Some(fixture.backend_relationship_reads()),
-                            "indexes consume prepared memberships"
-                        );
+        let packages =
+            crate::assessment::descriptor_package::DescriptorPackages::construct_with_observer(
+                &fixture.context,
+                &roots,
+                &[],
+                &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
+                fixture.diagnoses(),
+                &mut |event| {
+                    if let crate::AssessmentEvent::PreparationOperation {
+                        operation: "NameIndexes",
+                        starting,
+                        ..
+                    } = event
+                    {
+                        if starting {
+                            index_reads = Some(fixture.backend_relationship_reads());
+                        } else {
+                            assert_eq!(
+                                index_reads.take(),
+                                Some(fixture.backend_relationship_reads()),
+                                "indexes consume prepared memberships"
+                            );
+                        }
                     }
-                }
-            },
-        )?;
+                },
+            )?;
         let counts = probe.finish().0;
         assert!(packages.requiredness(&fixture.nodes["Title.PropertyType"])?.unwrap());
         assert!(packages.value_type(&fixture.nodes["Title.PropertyType"])?.is_some());
@@ -429,11 +401,11 @@ fn requiredness_and_value_selection_are_concrete_declarations() -> Result<(), Ho
         .remove_related_holons(R::ValueType, vec![value])?;
     fixture.link("PropertyType.TypeDescriptor", R::ValueType, "StringValueType.ValueType")?;
     // Neither inherited true nor the alias wins over the governing default.
-    let packages = crate::descriptor_package::DescriptorPackages::construct(
+    let packages = crate::assessment::descriptor_package::DescriptorPackages::construct(
         &fixture.context,
         &[fixture.nodes["Contract"].clone()],
         &[],
-        &crate::schema_view::SchemaWorkset { schemas: Vec::new() },
+        &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
     )?;
     assert!(!packages.requiredness(&fixture.nodes["Title.PropertyType"])?.unwrap());
     assert!(

@@ -1,10 +1,11 @@
 //! Binding preparation and subject assessment through exact bound references.
 use crate::{
-    assessment_support::{blocked, path},
+    assessment::support::{blocked, path},
     commitments::{required_key, ResolvedConstraint},
-    contexts::SubjectLevel,
-    handlers::{finding, rule_violation},
-    registries::{registration, RuleImplementation, RuleRegistration, SubjectApplicability},
+    diagnostics::{finding, rule_violation},
+    dispatch::{
+        registration, RuleImplementation, RuleRegistration, SubjectApplicability, SubjectLevel,
+    },
     ConstraintTypeKey, DescriptorRuleProducts, PreparedRuleSubject, ResolvedValidationBinding,
     RuleOutcome, StaticConstraintRegistry, ValidationCollector, ValidationInvocation,
     ValueValidationContext,
@@ -36,7 +37,7 @@ impl BindingRoleMemo {
     pub fn prepare<'a>(
         context: &Arc<TransactionContext>,
         contributions: impl IntoIterator<Item = &'a EffectiveRelationshipMember>,
-        diagnoses: &crate::structural_diagnoses::StructuralDiagnoses,
+        diagnoses: &crate::assessment::structural_diagnoses::StructuralDiagnoses,
     ) -> Result<Self, HolonError> {
         let mut memo = Self::default();
         for contribution in contributions {
@@ -70,7 +71,7 @@ impl BindingRoleMemo {
         context: &Arc<TransactionContext>,
         reference: &HolonReference,
         role: CoreDefinitionRole,
-        diagnoses: &crate::structural_diagnoses::StructuralDiagnoses,
+        diagnoses: &crate::assessment::structural_diagnoses::StructuralDiagnoses,
     ) -> Result<(), HolonError> {
         let identity = DefinitionIdentity::for_reference(reference, context)?;
         self.roles.entry((identity, role)).or_insert_with(|| {
@@ -111,7 +112,7 @@ pub(crate) fn prepare_bindings(
     roles: &BindingRoleMemo,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
 ) -> Result<Vec<PreparedBinding>, HolonError> {
     let mut result = Vec::new();
     let contributions = packages.effective_bindings(descriptor)?;
@@ -169,7 +170,7 @@ pub(crate) fn compatible_binding(
     level: SubjectLevel,
     context: &ValueValidationContext,
     roles: &BindingRoleMemo,
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
 ) -> Result<bool, HolonError> {
     if registration.level != level
         || !roles.matches(family, registration.family, &context.context)?
@@ -284,7 +285,7 @@ fn subject_constraints(
     descriptor: &HolonReference,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
     let contributions = packages.effective_constraints(descriptor)?;
     for contribution in contributions {
@@ -319,13 +320,13 @@ pub(crate) fn assess_holon(
     descriptor: &HolonReference,
     contributions: &ContractContributions,
     bindings: &[PreparedBinding],
-    key_claim: Option<&crate::key_evidence::KeyClaim>,
+    key_claim: Option<&crate::assessment::key_evidence::KeyClaim>,
     values: &ValueValidationContext,
     roles: &BindingRoleMemo,
     universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
-    packages: &crate::descriptor_package::DescriptorPackages,
-    interpretation: &crate::descriptor_rules::ContractInterpretation,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
+    interpretation: &crate::rules::descriptor::ContractInterpretation,
 ) -> Result<(), HolonError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();
@@ -419,7 +420,7 @@ fn assess_property(
     roles: &BindingRoleMemo,
     universal: Option<&UniversalDescriptorContract>,
     collector: &mut ValidationCollector,
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
     value_usable: bool,
 ) -> Result<(), HolonError> {
     let value = subject.property_value(name)?;
@@ -504,7 +505,7 @@ fn assess_value(
     values: &ValueValidationContext,
     roles: &BindingRoleMemo,
     collector: &mut ValidationCollector,
-    packages: &crate::descriptor_package::DescriptorPackages,
+    packages: &crate::assessment::descriptor_package::DescriptorPackages,
 ) -> Result<(), HolonError> {
     let bindings = prepare_bindings(
         descriptor.holon(),

@@ -1,6 +1,6 @@
 //! Assessment-local effective contracts. Holon content remains in bound references/caches.
-use crate::assessment_support::targets;
-use crate::schema_view::SchemaWorkset;
+use crate::assessment::schema_view::SchemaWorkset;
+use crate::assessment::support::targets;
 use core_types::HolonError;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext, ContractContributions,
@@ -31,7 +31,7 @@ pub(crate) struct DescriptorPackages {
     preparation: crate::PreparationMetrics,
     properties: HashMap<DefinitionIdentity, PropertyFacts>,
     value_kinds: HashMap<DefinitionIdentity, Result<holons_core::ValueDescriptorKind, HolonError>>,
-    pub(crate) diagnoses: Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    pub(crate) diagnoses: Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
 }
 
 /// Shared kernel products; configuration and other domain values remain on the holons.
@@ -106,7 +106,7 @@ impl DescriptorPackages {
             roots,
             subjects,
             workset,
-            Arc::new(crate::structural_diagnoses::StructuralDiagnoses::new(context)),
+            Arc::new(crate::assessment::structural_diagnoses::StructuralDiagnoses::new(context)),
             &mut |_| {},
         )
     }
@@ -116,7 +116,7 @@ impl DescriptorPackages {
         roots: &[HolonReference],
         subjects: &[HolonReference],
         workset: &SchemaWorkset,
-        diagnoses: Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+        diagnoses: Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
         observer: &mut impl FnMut(crate::AssessmentEvent),
     ) -> Result<Self, HolonError> {
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PackageDiscovery));
@@ -156,7 +156,7 @@ impl DescriptorPackages {
             let distinct_content = content_seen.insert(identity.clone());
             if distinct_content {
                 if let HolonReference::Smart(saved) = &reference {
-                    content.push(crate::assessment_phase::observe_operation(
+                    content.push(crate::assessment::phases::observe_operation(
                         observer,
                         "ContentRetention",
                         "SavedContent",
@@ -215,7 +215,7 @@ impl DescriptorPackages {
             let needs_product =
                 matches!(role, Governing | Defined | Property | Value | DefaultMeta | Obligations);
             if needs_product && !definitions.contains_key(&identity) {
-                let prepared = crate::assessment_phase::observe_operation(
+                let prepared = crate::assessment::phases::observe_operation(
                     observer,
                     "RegistryLookup",
                     "PreparedDefinition",
@@ -227,7 +227,7 @@ impl DescriptorPackages {
                 )?;
                 let mut lineage_defect = None;
                 let schema = match prepared {
-                    Some(descriptor) => crate::assessment_phase::observe_operation(
+                    Some(descriptor) => crate::assessment::phases::observe_operation(
                         observer,
                         "SavedRestoration",
                         "PreparedDefinition",
@@ -238,7 +238,7 @@ impl DescriptorPackages {
                         },
                     ),
                     None => {
-                        let diagnosis = crate::assessment_phase::observe_operation(
+                        let diagnosis = crate::assessment::phases::observe_operation(
                             observer,
                             "StructuralDiagnosis",
                             "CategoryRouting",
@@ -258,7 +258,7 @@ impl DescriptorPackages {
                                     if content_seen.insert(member_id.clone()) {
                                         if let HolonReference::Smart(saved) = member {
                                             let retained =
-                                                crate::assessment_phase::observe_operation(
+                                                crate::assessment::phases::observe_operation(
                                                     observer,
                                                     "ContentRetention",
                                                     "SavedContent",
@@ -282,7 +282,7 @@ impl DescriptorPackages {
                                             })
                                             .collect();
                                         if !names.is_empty() {
-                                            crate::assessment_phase::observe_operation(
+                                            crate::assessment::phases::observe_operation(
                                                 observer,
                                                 "MembershipPrefetch",
                                                 role.label(),
@@ -293,7 +293,7 @@ impl DescriptorPackages {
                                 }
                                 if lineage.contains_role(Role::ValueType) {
                                     context.retain_frozen_descriptor_lineage(lineage)?;
-                                    crate::assessment_phase::observe_operation(
+                                    crate::assessment::phases::observe_operation(
                                         observer,
                                         "DerivedAcquisition",
                                         "ValueType",
@@ -306,7 +306,7 @@ impl DescriptorPackages {
                                     )
                                 } else if lineage.contains_role(Role::PropertyType) {
                                     context.retain_frozen_descriptor_lineage(lineage)?;
-                                    crate::assessment_phase::observe_operation(
+                                    crate::assessment::phases::observe_operation(
                                         observer,
                                         "DerivedAcquisition",
                                         "PropertyType",
@@ -318,7 +318,7 @@ impl DescriptorPackages {
                                         },
                                     )
                                 } else {
-                                    crate::assessment_phase::observe_operation(
+                                    crate::assessment::phases::observe_operation(
                                         observer,
                                         "FreshEffectiveSchema",
                                         "PreparedDefinition",
@@ -332,7 +332,7 @@ impl DescriptorPackages {
                     }
                 };
                 let schema = schema.map(Arc::new);
-                let contract = crate::assessment_phase::observe_operation(
+                let contract = crate::assessment::phases::observe_operation(
                     observer,
                     "ContributionProjection",
                     "PreparedDefinition",
@@ -364,7 +364,7 @@ impl DescriptorPackages {
                         if content_seen.insert(DefinitionIdentity::for_reference(member, context)?)
                         {
                             if let HolonReference::Smart(saved) = member {
-                                content.push(crate::assessment_phase::observe_operation(
+                                content.push(crate::assessment::phases::observe_operation(
                                     observer,
                                     "ContentRetention",
                                     "SavedContent",
@@ -381,7 +381,7 @@ impl DescriptorPackages {
                                 .insert(DefinitionIdentity::for_reference(&entry.member, context)?)
                             {
                                 if let HolonReference::Smart(saved) = &entry.member {
-                                    content.push(crate::assessment_phase::observe_operation(
+                                    content.push(crate::assessment::phases::observe_operation(
                                         observer,
                                         "ContentRetention",
                                         "SavedContent",
@@ -403,7 +403,7 @@ impl DescriptorPackages {
                             if crate::commitments::required_key(&entry.member)
                                 .ok()
                                 .and_then(|key| type_names::CoreValidationRuleName::from_key(&key))
-                                .map(crate::registries::registration)
+                                .map(crate::dispatch::registration)
                                 .is_some_and(|r| r.implementation.is_some())
                             {
                                 pending.push_back((entry.member.clone(), Binding));
@@ -428,7 +428,7 @@ impl DescriptorPackages {
                     });
                     if matches!(role, Governing | Defined) && !derived_category {
                         let defines_instances = schema.defines_holon_instances()?;
-                        let navigation = crate::assessment_phase::observe_operation_scope(
+                        let navigation = crate::assessment::phases::observe_operation_scope(
                             observer,
                             "Navigation",
                             role.label(),
@@ -464,7 +464,7 @@ impl DescriptorPackages {
                             }
                         }
                         drop(navigation);
-                        let indexes = crate::assessment_phase::observe_operation_scope(
+                        let indexes = crate::assessment::phases::observe_operation_scope(
                             observer,
                             "NameIndexes",
                             role.label(),
@@ -511,7 +511,7 @@ impl DescriptorPackages {
             }
             if let HolonReference::Smart(saved) = &reference {
                 if !edges.is_empty() {
-                    crate::assessment_phase::observe_operation(
+                    crate::assessment::phases::observe_operation(
                         observer,
                         "MembershipPrefetch",
                         role.label(),

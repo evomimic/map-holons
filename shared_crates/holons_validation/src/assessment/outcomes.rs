@@ -23,7 +23,7 @@ impl<'a> PreparedAssessment<'a> {
         candidates: &'a [StagedReference],
         report: CommitValidationReport,
     ) -> Result<Self, HolonError> {
-        crate::commit_assessment::require_distinct_live_candidates(candidates)?;
+        crate::assessment::commit::require_distinct_live_candidates(candidates)?;
         // Diagnostic strings route findings; candidate distinctness uses temporary IDs
         // in the shared input check above.
         let indices: HashMap<_, _> = candidates
