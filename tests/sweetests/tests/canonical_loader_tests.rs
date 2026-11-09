@@ -138,7 +138,10 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let source = unrelated.mutation().new_holon(Some("unrelated-edit".into())).unwrap();
     let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
 
-    let context = load_navigator_package(&runtime).await;
+    let discovery_context = load_navigator_package(&runtime).await;
+    discovery_explanation_reads_existing_usage_without_committing(&runtime, discovery_context)
+        .await;
+    let context = new_context(&runtime).await;
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
@@ -913,7 +916,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         .get_members()
         .is_empty());
     assert!(!staged.commit_errors().unwrap().is_empty());
-    control.delete_link(planted).await;
+    assert_eq!(control.delete_link(planted).await, core_types::DeleteSmartLinkOutcome::Deleted);
 
     assert!(unrelated.is_open());
     assert!(unrelated_staged.holon_id().is_err());
@@ -959,10 +962,11 @@ async fn assert_committed_review(runtime: &Runtime, loader: &Arc<TransactionCont
     count
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn discovery_explanation_reads_existing_usage_without_committing() {
-    let (runtime, _, _control) = init_probe_test_runtime(&mut DancesTestCase::default()).await;
-    let context = load_navigator_package(&runtime).await;
+/// Read-only discovery runs before the suite authors any VisualizerUsage records.
+async fn discovery_explanation_reads_existing_usage_without_committing(
+    runtime: &Runtime,
+    context: Arc<TransactionContext>,
+) {
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };

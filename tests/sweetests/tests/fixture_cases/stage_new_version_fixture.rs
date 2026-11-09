@@ -1,8 +1,7 @@
 use holons_prelude::prelude::*;
 use holons_test::{
-    DancesTestCase, EdgeExpectation, ExpectedCommitCandidate, ExpectedCommitStatus,
-    ExpectedDisposition, ExpectedLineage, ExpectedPersistedEdge, ExpectedPersistedGraph,
-    ExpectedPersistedRelationship, PersistedSubject, TestCaseInit,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
@@ -16,19 +15,12 @@ use holons_test::harness::helpers::{
 
 // TODO: add/remove relationships
 
-/// Fixture for creating Simple NEWVERSION Testcase
+/// Exercises schema-backed Book version staging, Commit dispositions, saved content,
+/// and base-key lookups with multiple staged candidates.
 ///
-/// Schema-backed setup (issues #442/#515): strict commit Pass 2 only persists
-/// relationships the source holon's effective schema surface declares. The Book
-/// is therefore described by the loaded `Book.HolonType`, whose Extends chain
-/// reaches the core `HolonType` relationships used for graph-only and lineage
-/// assertions. Commit-time relationship persistence must anchor graph-only
-/// changes to the existing Book node and version-producing changes to the new
-/// Book version.
-///
-/// A second graph-only cycle replays the already-persisted `ReferencesProperty` edge
-/// (issue #516): commit-time SmartLink duplicate suppression must absorb the
-/// equivalent re-write, leaving exactly one forward and one inverse link.
+/// Graph-only updates retain the saved Book identity; a property and definitional
+/// relationship update produces a new version. Dedicated lineage and graph fixtures
+/// verify persisted anchoring, inverse links, duplicate suppression, and exact ancestry.
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _ } =
@@ -124,9 +116,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // relationships into the staged map, so appending a second ReferencesProperty target
     // marks the relationship touched; the graph-only commit then re-persists the
     // whole collection, including a SmartLink equivalent to the already-persisted
-    // Book --ReferencesProperty--> Title.PropertyType edge. Duplicate suppression must
-    // leave exactly one link per direction for that edge, asserted by the
-    // relationship-anchoring verification step below.
+    // Book --ReferencesProperty--> Title.PropertyType edge. The dedicated non-root
+    // lineage fixture verifies duplicate suppression and exact inverse occurrences.
     test_case.add_begin_transaction_step(
         None,
         Some(
@@ -231,92 +222,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Commit --- after staging new first version".to_string()),
     )?;
     test_case.add_match_saved_content_step()?;
-
-    test_case.add_verify_relationship_anchoring_step(None)?;
-
-    let root = PersistedSubject::Token(graph_only_update.clone());
-    let version = PersistedSubject::Token(staged_clone.clone());
-    let person = PersistedSubject::Token(person_1_token);
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            // Unique key enumeration proves the saved version is not a second lineage root.
-            enumerated: vec![
-                root.clone(),
-                PersistedSubject::Key(STAGE_NEW_VERSION_BOOK_KEY.into()),
-                person.clone(),
-            ],
-            edges: vec![
-                ExpectedPersistedEdge {
-                    source: root.clone(),
-                    relationship: "ReferencesProperty".to_relationship_name(),
-                    inverse: Some("ReferencedByBook".to_relationship_name()),
-                    target: PersistedSubject::Key("Title.PropertyType".into()),
-                    expectation: EdgeExpectation::ExactlyOnce,
-                },
-                ExpectedPersistedEdge {
-                    source: root.clone(),
-                    relationship: "ReferencesProperty".to_relationship_name(),
-                    inverse: Some("ReferencedByBook".to_relationship_name()),
-                    target: PersistedSubject::Key("Name.PropertyType".into()),
-                    expectation: EdgeExpectation::ExactlyOnce,
-                },
-                ExpectedPersistedEdge {
-                    source: version.clone(),
-                    relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
-                    inverse: Some("AuthorOf".to_relationship_name()),
-                    target: person.clone(),
-                    expectation: EdgeExpectation::ExactlyOnce,
-                },
-                ExpectedPersistedEdge {
-                    source: root.clone(),
-                    relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
-                    inverse: Some("AuthorOf".to_relationship_name()),
-                    target: person.clone(),
-                    expectation: EdgeExpectation::Absent,
-                },
-            ],
-            // Exact forward collections reject an undeclared extra target; the inverse
-            // directions stay partial above because Title, Name and the person holon are
-            // shared with other fixtures in this suite.
-            relationships: vec![
-                ExpectedPersistedRelationship {
-                    source: root.clone(),
-                    relationship: "ReferencesProperty".to_relationship_name(),
-                    targets: vec![
-                        PersistedSubject::Key("Title.PropertyType".into()),
-                        PersistedSubject::Key("Name.PropertyType".into()),
-                    ],
-                },
-                ExpectedPersistedRelationship {
-                    source: version.clone(),
-                    relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
-                    targets: vec![person],
-                },
-                ExpectedPersistedRelationship {
-                    source: root.clone(),
-                    relationship: BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
-                    targets: Vec::new(),
-                },
-            ],
-            lineage: vec![
-                ExpectedLineage {
-                    subject: root.clone(),
-                    predecessors: vec![],
-                    successors: vec![version],
-                },
-                ExpectedLineage {
-                    subject: PersistedSubject::Successor {
-                        of: Box::new(root.clone()),
-                        generation: 1,
-                    },
-                    predecessors: vec![root],
-                    successors: vec![],
-                },
-            ],
-        },
-        Some("Verify fresh forward/inverse graph links and exact version lineage".into()),
-    )?;
 
     // Begin fresh transaction so versions 2/3 stage into a clean nursery
     test_case.add_begin_transaction_step(

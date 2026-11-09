@@ -61,6 +61,7 @@ impl DancesTestCase {
             description: description.into(),
             steps: Vec::new(),
             test_session_state: TestSessionState::default(),
+            verify_committed_workset: false,
             is_finalized: false,
         }
     }
@@ -594,6 +595,8 @@ impl DancesTestCase {
     }
 
     /// Declares the prepared candidates and retained relationship-retry participants for one attempt.
+    /// Cases opting into `verify_committed_workset` verify fresh membership, inverses and
+    /// lineage on Complete, retaining original expectations through Incomplete retries.
     pub fn add_commit_step_with_dispositions(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -820,6 +823,11 @@ impl DancesTestCase {
         // Set Expected
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
         if expected_error.is_none() {
+            fixture_holons.record_relationship_edit(
+                &step_token,
+                relationship_name.clone(),
+                crate::ExpectedMembershipEdit::Add(holons_to_add.clone()),
+            )?;
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
@@ -873,6 +881,11 @@ impl DancesTestCase {
         }
         let expected = ExpectedSnapshot::new(snapshot, source.state());
         if expected_error.is_none() {
+            fixture_holons.record_relationship_edit(
+                &step_token,
+                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+                crate::ExpectedMembershipEdit::Replace(vec![descriptor.clone()]),
+            )?;
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
         let token = fixture_holons.mint_test_reference(source, expected);
@@ -946,10 +959,26 @@ impl DancesTestCase {
         for token in &holons_to_remove {
             references_to_remove.push(fixture_holons.resolve_expected_relationship_target(token)?);
         }
-        new_snapshot.remove_related_holons(&relationship_name, references_to_remove)?;
+        // A lookup stub omits unknown memberships; only execution can confirm their
+        // presence. Retain the explicit removal below rather than treating omission as absence.
+        let partial = new_snapshot.property_value(crate::SAVED_LOOKUP_STUB_MARKER)?.is_some();
+        if !partial
+            || new_snapshot
+                .all_related_holons()?
+                .iter()
+                .into_iter()
+                .any(|(name, _)| name == relationship_name)
+        {
+            new_snapshot.remove_related_holons(&relationship_name, references_to_remove)?;
+        }
         // Set Expected
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
         if expected_error.is_none() {
+            fixture_holons.record_relationship_edit(
+                &step_token,
+                relationship_name.clone(),
+                crate::ExpectedMembershipEdit::Remove(holons_to_remove.clone()),
+            )?;
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }

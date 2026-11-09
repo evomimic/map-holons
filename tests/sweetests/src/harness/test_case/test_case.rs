@@ -23,6 +23,9 @@ pub struct DancesTestCase {
     pub description: String,
     pub steps: Vec<DanceTestStep>,
     pub test_session_state: TestSessionState,
+    /// Opts a graph scenario into fresh, fixture-bounded Commit persistence checks.
+    /// Other cases retain their existing structural or specialized verification.
+    pub verify_committed_workset: bool,
     pub(crate) is_finalized: bool,
 }
 

@@ -35,6 +35,11 @@ pub struct TestExecutionState {
     // Registry of realized references keyed by source token's `TemporaryId`.
     execution_holons: ExecutionHolons,
     last_commit_response: Option<TransientReference>,
+    pending_commit_verification: Vec<crate::CommitVerificationBaseline>,
+    fixture_inverse_contributors: crate::FixtureInverseContributors,
+    fixture_saved_identities: std::collections::HashSet<core_types::LocalId>,
+    expected_persisted_memberships:
+        std::collections::HashMap<(core_types::LocalId, String), Vec<core_types::LocalId>>,
 }
 
 impl TestExecutionState {
@@ -51,6 +56,10 @@ impl TestExecutionState {
             fixture_head_index,
             execution_holons: ExecutionHolons::default(),
             last_commit_response: None,
+            pending_commit_verification: Vec::new(),
+            fixture_inverse_contributors: Default::default(),
+            fixture_saved_identities: Default::default(),
+            expected_persisted_memberships: Default::default(),
         }
     }
 
@@ -58,6 +67,45 @@ impl TestExecutionState {
     pub fn clear(&mut self) {
         self.execution_holons = ExecutionHolons::new();
         self.last_commit_response = None;
+        self.pending_commit_verification.clear();
+        self.fixture_inverse_contributors.clear();
+        self.fixture_saved_identities.clear();
+        self.expected_persisted_memberships.clear();
+    }
+
+    /// Saved participants from incomplete attempts keep their original pre-write baselines.
+    pub fn pending_commit_verification(&mut self) -> &mut Vec<crate::CommitVerificationBaseline> {
+        &mut self.pending_commit_verification
+    }
+
+    /// Expected inverse contributors for identities created by this fixture only.
+    pub fn fixture_inverse_contributors(&mut self) -> &mut crate::FixtureInverseContributors {
+        &mut self.fixture_inverse_contributors
+    }
+
+    /// Identities owned by NewRoot/NewVersion declarations, including their lookup aliases.
+    pub fn fixture_saved_identities(
+        &mut self,
+    ) -> &mut std::collections::HashSet<core_types::LocalId> {
+        &mut self.fixture_saved_identities
+    }
+
+    /// Previously verified expectations, independent of caches or current persisted contents.
+    pub fn expected_persisted_memberships(
+        &self,
+    ) -> &std::collections::HashMap<(core_types::LocalId, String), Vec<core_types::LocalId>> {
+        &self.expected_persisted_memberships
+    }
+
+    /// Advances the retained expectations only after fresh persisted verification succeeds.
+    pub fn retain_persisted_membership_expectations(
+        &mut self,
+        expectations: std::collections::HashMap<
+            (core_types::LocalId, String),
+            Vec<core_types::LocalId>,
+        >,
+    ) {
+        self.expected_persisted_memberships.extend(expectations);
     }
 
     /// Retains the latest response for assertions on its staged rejection relationships.
@@ -87,6 +135,10 @@ impl TestExecutionState {
     }
 
     pub fn set_active_tx_id(&mut self, tx_id: TxId) {
+        if self.active_tx_id != tx_id {
+            // A newly activated transaction cannot complete the previous Nursery's retries.
+            self.pending_commit_verification.clear();
+        }
         self.last_commit_response = None;
         self.active_tx_id = tx_id;
     }

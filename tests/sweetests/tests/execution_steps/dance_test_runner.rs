@@ -197,6 +197,7 @@ pub async fn run_dance_test_case(
                     rejection_verification,
                     expected_status,
                     expected_error,
+                    test_case.verify_committed_workset,
                 )
                 .await
             }

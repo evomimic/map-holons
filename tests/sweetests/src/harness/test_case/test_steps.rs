@@ -143,10 +143,31 @@ impl ExpectedRetryParticipant {
     }
 }
 
+/// Successful fixture operations retained even when a SavedLookup snapshot is partial.
+#[derive(Clone, Debug)]
+pub enum ExpectedMembershipEdit {
+    Add(Vec<TestReference>),
+    Remove(Vec<TestReference>),
+    Replace(Vec<TestReference>),
+}
+
+/// Fixture-authored membership before and after staging, frozen at this Commit.
+/// Runtime results bind these tokens to identities; they never supply expectations.
+#[derive(Clone, Debug)]
+pub struct ExpectedCommitRelationship {
+    pub name: RelationshipName,
+    pub before: Vec<TestReference>,
+    pub after: Vec<TestReference>,
+    pub edits: Vec<ExpectedMembershipEdit>,
+}
+
 /// Adder-resolved declaration associating author intent with a result token.
 #[derive(Clone, Debug)]
 pub struct ResolvedCommitCandidate {
     pub staged_token: TestReference,
+    /// Frozen saved source established by staging; never follows later fixture heads.
+    pub saved_source: Option<TestReference>,
+    pub relationships: Vec<ExpectedCommitRelationship>,
     pub disposition: ExpectedDisposition,
     /// Advanced fixture-head token, absent only for `NoAction` under `Incomplete`.
     /// That candidate keeps its staged head and remains live for the next attempt.

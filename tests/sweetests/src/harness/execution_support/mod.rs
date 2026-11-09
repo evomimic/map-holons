@@ -1,4 +1,5 @@
 pub mod commit_disposition;
+pub mod commit_verification;
 pub mod equivalence_resolver;
 pub mod execution_holons;
 pub mod execution_reference;
@@ -7,6 +8,7 @@ pub mod persisted_graph_assertions;
 pub mod rejection_assertions;
 
 pub use commit_disposition::*;
+pub use commit_verification::*;
 pub use equivalence_resolver::*;
 pub use execution_holons::*;
 pub use execution_reference::*;

@@ -42,9 +42,56 @@ pub fn assert_exact_relationship_ids(
     );
 }
 
+/// Composes fixture-authored changes on a named persisted baseline. Identical sibling
+/// additions are idempotent; unrelated baseline members and duplicate evidence survive.
+pub fn apply_fixture_membership_change(
+    members: &mut Vec<LocalId>,
+    before: &[LocalId],
+    after: &[LocalId],
+) {
+    let touched: std::collections::HashSet<_> = before.iter().chain(after).cloned().collect();
+    for id in touched {
+        let prior = before.iter().filter(|value| **value == id).count();
+        let desired = after.iter().filter(|value| **value == id).count();
+        let current = members.iter().filter(|value| **value == id).count();
+        let count = if desired > prior {
+            current.max(desired)
+        } else if desired < prior {
+            current.min(desired)
+        } else {
+            continue;
+        };
+        members.retain(|value| *value != id);
+        members.extend(std::iter::repeat(id).take(count));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    #[should_panic(expected = "found 0 target occurrences")]
+    fn exactly_once_rejects_missing_inverse() {
+        assert_edge_occurrences("inverse", &[], &LocalId(vec![1]), EdgeExpectation::ExactlyOnce);
+    }
+
+    #[test]
+    fn fixture_changes_compose_siblings_without_collapsing_unrelated_evidence() {
+        let a = LocalId(vec![1]);
+        let b = LocalId(vec![2]);
+        let unrelated = LocalId(vec![9]);
+        let mut members = vec![unrelated.clone(), unrelated.clone()];
+        apply_fixture_membership_change(&mut members, &[], &[a.clone()]);
+        apply_fixture_membership_change(&mut members, &[], &[a.clone(), b.clone()]);
+        assert_eq!(members.iter().filter(|id| **id == a).count(), 1);
+        assert_eq!(members.iter().filter(|id| **id == b).count(), 1);
+        assert_eq!(members.iter().filter(|id| **id == unrelated).count(), 2);
+        apply_fixture_membership_change(&mut members, &[a.clone()], &[]);
+        assert!(!members.contains(&a));
+        assert!(members.contains(&b));
+    }
 
     #[test]
     fn exact_relationship_accepts_unordered_identities_and_empty_collections() {

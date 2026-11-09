@@ -1,4 +1,6 @@
-//! Explicit-ID cache population through the real host/wire/guest boundary.
+//! Cache population and theme loading share storage, with independent host caches/transports.
+#[path = "measured_reads/load_theme.rs"]
+mod load_theme;
 use async_trait::async_trait;
 use core_types::LocalId;
 use holons_boundary::envelopes::{
@@ -63,9 +65,25 @@ fn fresh_context(
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_requests() {
+async fn measured_reads_preserve_cache_and_theme_boundaries() {
     init_tracing();
     let backend = setup_test_conductor().await;
+    let anchor = explicit_cache_batches_are_missing_only_errors_only_and_shared_across_requests(
+        backend.clone(),
+    )
+    .await;
+    load_theme::load_theme_is_theme_afforded_guest_resolved_and_constant_in_boundary_calls(
+        backend.clone(),
+        anchor,
+    )
+    .await;
+    backend.shutdown().await;
+}
+
+async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_requests(
+    backend: Arc<MockConductorConfig>,
+) -> HolonId {
+    init_tracing();
     let measured = Arc::new(MeasuredTransport { backend, calls: Mutex::new(Vec::new()) });
     let initiator = Arc::new(TrustChannel::new(measured.clone()));
     let (runtime, tx) =
@@ -180,7 +198,7 @@ async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_r
     println!("[plural navigation evidence] saved_targets={} cold_targets={} bulk_guest_invocations=1 subsequent_label_guest_invocations=0", saved_ids.len(), missing.len());
 
     // A malformed ID is a per-ID error, while a valid target is still populated.
-    let (_space, context) = fresh_context(initiator, anchor);
+    let (_space, context) = fresh_context(initiator, anchor.clone());
     let bad = HolonId::Local(LocalId(vec![1]));
     let errors = context.ensure_cached(&[ids[0].clone(), bad.clone()]);
     assert_eq!(errors.len(), 1, "{errors:?}");
@@ -188,4 +206,5 @@ async fn explicit_cache_batches_are_missing_only_errors_only_and_shared_across_r
     measured.calls.lock().unwrap().clear();
     HolonReference::smart_from_id(context.space_read_handle(), ids[0].clone()).key().unwrap();
     assert!(measured.calls.lock().unwrap().is_empty(), "successful population is reused");
+    anchor
 }

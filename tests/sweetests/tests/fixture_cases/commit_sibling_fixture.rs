@@ -9,10 +9,9 @@ use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
-    DancesTestCase, EdgeExpectation, ExpectedCommitCandidate, ExpectedCommitStatus,
-    ExpectedDisposition, ExpectedLineage, ExpectedPersistedEdge, ExpectedPersistedGraph,
-    ExpectedPersistedRelationship, ExpectedRejectedHolon, ExpectedValidationFinding,
-    ExpectedValidationSubject, PersistedSubject, TestCaseInit, TestReference,
+    DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, TestCaseInit,
+    TestReference,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -23,6 +22,7 @@ pub fn commit_version_siblings_fixture() -> Result<DancesTestCase, HolonError> {
         "Commit version-producing siblings",
         "Two candidates publish independent versions with the same exact predecessor",
     );
+    test_case.verify_committed_workset = true;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
     let original = add_described_instance(
@@ -82,28 +82,6 @@ pub fn commit_version_siblings_fixture() -> Result<DancesTestCase, HolonError> {
         None,
     )?;
     test_case.add_match_saved_content_step()?;
-    let a = PersistedSubject::Token(original);
-    let b = PersistedSubject::Token(first);
-    let c = PersistedSubject::Token(second);
-    // Fresh reads require two distinct successors, each pointing to exactly A.
-    // Collapsing either result onto A or its sibling fails these exact collections.
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            enumerated: vec![a.clone(), PersistedSubject::Key("Book.VersionSiblings".into())],
-            lineage: vec![
-                ExpectedLineage {
-                    subject: a.clone(),
-                    predecessors: vec![],
-                    successors: vec![b.clone(), c.clone()],
-                },
-                ExpectedLineage { subject: b, predecessors: vec![a.clone()], successors: vec![] },
-                ExpectedLineage { subject: c, predecessors: vec![a], successors: vec![] },
-            ],
-            ..Default::default()
-        },
-        Some("Verify both siblings persist as distinct successors of A".into()),
-    )?;
     // The shared key still resolves through A's lineage, whose two heads make a
     // singular saved lookup ambiguous rather than selecting either sibling.
     test_case.add_begin_transaction_step(None, None)?;
@@ -118,30 +96,6 @@ pub fn commit_version_siblings_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
-}
-
-fn reference_graph(
-    book_v1: &TestReference,
-    title_v1: &TestReference,
-    book_v2: &TestReference,
-    title_v2: &TestReference,
-) -> ExpectedPersistedGraph {
-    let edges = [
-        (book_v1, title_v1, EdgeExpectation::ExactlyOnce),
-        (book_v1, title_v2, EdgeExpectation::Absent),
-        (book_v2, title_v1, EdgeExpectation::Absent),
-        (book_v2, title_v2, EdgeExpectation::ExactlyOnce),
-    ]
-    .into_iter()
-    .map(|(book, title, expectation)| ExpectedPersistedEdge {
-        source: PersistedSubject::Token(book.clone()),
-        relationship: "InstanceProperties".to_relationship_name(),
-        inverse: None,
-        target: PersistedSubject::Token(title.clone()),
-        expectation,
-    })
-    .collect();
-    ExpectedPersistedGraph { edges, ..Default::default() }
 }
 
 fn rejected_title(title: &TestReference) -> ExpectedRejectedHolon {
@@ -163,6 +117,7 @@ pub fn commit_book_title_exact_references_fixture() -> Result<DancesTestCase, Ho
         "Book v1 and Title v2 exact references",
         "Invalid successors reject independently; explicit references publish only after correction",
     );
+    test_case.verify_committed_workset = true;
     let case = &mut test_case;
     let holons = &mut fixture_holons;
     case.add_load_book_person_inverse_test_schema_step(None)?;
@@ -258,11 +213,6 @@ pub fn commit_book_title_exact_references_fixture() -> Result<DancesTestCase, Ho
         None,
         None,
     )?;
-    case.add_verify_persisted_graph_step(
-        holons,
-        reference_graph(&book_v1, &pinned_title_v1, &book_v2, &title_v2),
-        Some("Fresh reads preserve Book v1 to Title v1 and Book v2 to exact Title v2".into()),
-    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
@@ -274,6 +224,7 @@ pub fn commit_no_op_and_graph_only_siblings_fixture() -> Result<DancesTestCase, 
         "Commit no-op and graph-only siblings",
         "Both candidate results name the saved source and its graph edit creates no version",
     );
+    test_case.verify_committed_workset = true;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
     let original = add_described_instance(
@@ -333,37 +284,6 @@ pub fn commit_no_op_and_graph_only_siblings_fixture() -> Result<DancesTestCase, 
         None,
     )?;
     test_case.add_match_saved_content_step()?;
-    let source_aliases = vec![
-        PersistedSubject::Token(original),
-        PersistedSubject::Token(unchanged),
-        PersistedSubject::Token(graph_only),
-    ];
-    // Resolve all three tokens through a fresh observer: each must see A's graph,
-    // and neither update may persist its staged predecessor edge onto A itself.
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            enumerated: source_aliases.clone(),
-            relationships: source_aliases
-                .iter()
-                .map(|source| ExpectedPersistedRelationship {
-                    source: source.clone(),
-                    relationship: "ReferencesProperty".to_relationship_name(),
-                    targets: vec![PersistedSubject::Token(property.clone())],
-                })
-                .collect(),
-            lineage: source_aliases
-                .into_iter()
-                .map(|subject| ExpectedLineage {
-                    subject,
-                    predecessors: vec![],
-                    successors: vec![],
-                })
-                .collect(),
-            ..Default::default()
-        },
-        Some("Verify all saved aliases see the graph edit without a new version".into()),
-    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
@@ -375,6 +295,7 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
         "Commit branches across transactions",
         "A to B and A to C both commit when staged in separate transactions",
     );
+    test_case.verify_committed_workset = true;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
     let original = add_described_instance(
@@ -443,23 +364,6 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
         None,
     )?;
     test_case.add_match_saved_content_step()?;
-    // Tokens distinguish the branches sharing one key; get-all still enumerates only A.
-    let a = PersistedSubject::Token(original);
-    let b = PersistedSubject::Token(branch_b);
-    let c = PersistedSubject::Token(branch_c);
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            enumerated: vec![a.clone(), PersistedSubject::Key("Book.BranchSource".into())],
-            lineage: vec![
-                ExpectedLineage { subject: a.clone(), predecessors: vec![], successors: vec![b.clone(), c.clone()] },
-                ExpectedLineage { subject: b, predecessors: vec![a.clone()], successors: vec![] },
-                ExpectedLineage { subject: c, predecessors: vec![a], successors: vec![] },
-            ],
-            ..Default::default()
-        },
-        Some("Verify both branches have exactly A as predecessor and A has exactly B and C as successors".into()),
-    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
