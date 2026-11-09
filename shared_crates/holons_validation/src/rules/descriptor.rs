@@ -20,7 +20,7 @@ use type_names::{
 };
 
 use crate::commitments::required_key;
-use crate::handlers::{finding, rule_violation};
+use crate::diagnostics::{finding, rule_violation};
 use crate::{ResolvedValidationBinding, RuleOutcome, ValidationCollector};
 
 #[derive(Clone, Copy, Debug)]
@@ -58,13 +58,13 @@ impl Default for ContractInterpretation {
 /// snapshot that supplied its kernel products. Discard the products on a read error.
 #[derive(Clone)]
 pub struct DescriptorRuleProducts {
-    diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+    diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<PreparedDiagnostic>>,
 }
 
 impl DescriptorRuleProducts {
     pub(crate) fn new(
-        diagnoses: std::sync::Arc<crate::structural_diagnoses::StructuralDiagnoses>,
+        diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
     ) -> Self {
         Self { diagnoses, diagnostics: BTreeMap::new() }
     }
@@ -563,7 +563,7 @@ impl DescriptorRuleProducts {
         namespace: &str,
     ) -> Result<Vec<HolonReference>, HolonError> {
         let targets = if matches!(relationship, CoreRelationshipTypeName::ValueType) {
-            crate::assessment_support::targets(member, relationship.clone())?
+            crate::assessment::support::targets(member, relationship.clone())?
         } else {
             self.diagnose(member)?
                 .encountered_relationship_targets(relationship.clone())?
@@ -657,7 +657,7 @@ impl DescriptorRuleProducts {
         collector: &mut ValidationCollector,
     ) {
         for rule in CoreValidationRuleName::all() {
-            let registration = crate::registries::registration(rule);
+            let registration = crate::dispatch::registration(rule);
             if dispatched.contains(&rule) {
                 continue;
             }

@@ -1,85 +1,15 @@
-use super::*;
+use super::support::core_fixture;
+use super::support::described_core_fixture;
+use crate::{
+    assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_profile,
+};
+use core_types::{CommitValidationViolationKind, HolonError};
+use holons_core::core_shared_objects::holon::ValidationState;
+use holons_core::{HolonReference, ReadableHolon, WritableHolon};
+use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
+
 use base_types::ToBaseValue;
 use type_names::ToPropertyName;
-
-/// Completes descriptor conformance inputs so successor findings are isolated
-/// from missing metadata declarations, describing types, or Schema ownership.
-fn core_fixture() -> Result<Fixture, HolonError> {
-    let mut fixture = readiness_fixture()?;
-    for (name, value_type) in [
-        ("TypeName", "StringValueType.ValueType"),
-        ("IsAbstractType", "BooleanValueType.ValueType"),
-        ("IsValueRequired", "BooleanValueType.ValueType"),
-        ("DefinesInstanceTypeKind", "BooleanValueType.ValueType"),
-    ] {
-        let key = format!("{name}.CoreMetadataProperty");
-        fixture
-            .node(&key)?
-            .with_property_value("TypeName", name)?
-            .with_property_value("DefinesInstanceTypeKind", false)?;
-        fixture.link(&key, CoreRelationshipTypeName::Extends, "PropertyType.TypeDescriptor")?;
-        fixture.link(&key, CoreRelationshipTypeName::ValueType, value_type)?;
-        fixture.link(
-            "MetaTypeDescriptor.HolonType",
-            CoreRelationshipTypeName::InstanceProperties,
-            &key,
-        )?;
-    }
-    fixture.link(
-        "MetaTypeDescriptor.HolonType",
-        CoreRelationshipTypeName::InstanceProperties,
-        "Key.PropertyType",
-    )?;
-    for (name, target) in [
-        ("Extends", "TypeDescriptor"),
-        ("ComponentOf", "Schema.HolonType"),
-        ("InstanceProperties", "PropertyType.TypeDescriptor"),
-        ("InstanceRelationships", "DeclaredRelationshipType.RelationshipType"),
-        ("ValidationBindings", "Rule.HolonType"),
-        ("Predecessor", "HolonType.TypeDescriptor"),
-        ("ValueType", "ValueType.TypeDescriptor"),
-    ] {
-        let key = format!("{name}.CoreMetadataRelationship");
-        fixture
-            .node(&key)?
-            .with_property_value("TypeName", name)?
-            .with_property_value("DefinesInstanceTypeKind", false)?;
-        fixture.link(
-            &key,
-            CoreRelationshipTypeName::Extends,
-            "DeclaredRelationshipType.RelationshipType",
-        )?;
-        fixture.link(&key, CoreRelationshipTypeName::SourceType, "MetaTypeDescriptor.HolonType")?;
-        fixture.link(&key, CoreRelationshipTypeName::TargetType, target)?;
-        fixture.link(
-            "MetaTypeDescriptor.HolonType",
-            CoreRelationshipTypeName::InstanceRelationships,
-            &key,
-        )?;
-    }
-    fixture.link(
-        "Schema.HolonType",
-        CoreRelationshipTypeName::Extends,
-        "HolonType.TypeDescriptor",
-    )?;
-    fixture.node("CoreOwner")?;
-    fixture.link("CoreOwner", CoreRelationshipTypeName::DescribedBy, "Schema.HolonType")?;
-    for core_definition in
-        ["HolonType.TypeDescriptor", "StringValueType.ValueType", "PropertyType.TypeDescriptor"]
-    {
-        fixture.link(core_definition, CoreRelationshipTypeName::ComponentOf, "CoreOwner")?;
-        fixture.link(
-            core_definition,
-            CoreRelationshipTypeName::DescribedBy,
-            "MetaHolonType.MetaTypeDescriptor",
-        )?;
-    }
-    Ok(fixture)
-}
-
-pub(super) fn described_core_fixture() -> Result<Fixture, HolonError> {
-    core_fixture()?.saved_snapshot()
-}
 
 #[test]
 fn core_successors_and_rekeys_preserve_independent_findings_and_retry() -> Result<(), HolonError> {

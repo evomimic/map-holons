@@ -1,7 +1,7 @@
 //! Schema rule products over the bounded Commit workset.
 use crate::{
-    handlers::rule_violation, schema_view::ProspectiveSchema, RuleOutcome, ValidationCollector,
-    ValidationInvocation,
+    assessment::schema_view::ProspectiveSchema, diagnostics::rule_violation, RuleOutcome,
+    ValidationCollector, ValidationInvocation,
 };
 use core_types::HolonError;
 use holons_core::{

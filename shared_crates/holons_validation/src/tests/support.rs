@@ -5,8 +5,9 @@ use std::{
     sync::Arc,
 };
 
+use crate::{DescriptorRuleProducts, ResolvedValidationBinding, ValidationCollector};
 use base_types::MapString;
-use core_types::{HolonError, HolonId, LocalId, RelationshipName};
+use core_types::{HolonError, HolonId, LocalId, RelationshipName, ValidationSubjectPath};
 use holons_core::core_shared_objects::{
     space_manager::HolonSpaceManager, transactions::TransactionContext, Holon, WritableRelationship,
 };
@@ -14,6 +15,7 @@ use holons_core::{
     HolonCollection, HolonCollectionApi, HolonReference, HolonServiceApi, ReadableHolon,
     RelationshipMap, ServiceRoutingPolicy, StagedReference, TransientReference, WritableHolon,
 };
+use type_names::CoreRelationshipTypeName as R;
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
 /// Explicit saved snapshots only; unexpected writes and unbounded reads fail tests.
@@ -191,19 +193,16 @@ pub(super) struct Fixture {
 pub(super) fn subject_rules(
 ) -> impl Iterator<Item = (CoreValidationRuleName, &'static str, &'static str)> {
     CoreValidationRuleName::all().filter_map(|name| {
-        let registration = crate::registries::registration(name);
-        matches!(
-            registration.implementation,
-            Some(crate::registries::RuleImplementation::Subject(_))
-        )
-        .then_some((name, registration.family.key(), registration.declaring.key()))
+        let registration = crate::dispatch::registration(name);
+        matches!(registration.implementation, Some(crate::dispatch::RuleImplementation::Subject(_)))
+            .then_some((name, registration.family.key(), registration.declaring.key()))
     })
 }
 
 impl Fixture {
     /// Opens structural evidence for one unchanged assessment; share it across its consumers.
-    pub fn diagnoses(&self) -> Arc<crate::structural_diagnoses::StructuralDiagnoses> {
-        Arc::new(crate::structural_diagnoses::StructuralDiagnoses::new(&self.context))
+    pub fn diagnoses(&self) -> Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses> {
+        Arc::new(crate::assessment::structural_diagnoses::StructuralDiagnoses::new(&self.context))
     }
 
     /// Opens an empty schema snapshot for bootstrap precondition tests.
@@ -249,10 +248,10 @@ impl Fixture {
         // Product rules are available to tests that explicitly bind them.
         for rule in CoreValidationRuleName::all() {
             if matches!(
-                crate::registries::registration(rule).implementation,
+                crate::dispatch::registration(rule).implementation,
                 Some(
-                    crate::registries::RuleImplementation::DescriptorProduct
-                        | crate::registries::RuleImplementation::SchemaAggregate(_)
+                    crate::dispatch::RuleImplementation::DescriptorProduct
+                        | crate::dispatch::RuleImplementation::SchemaAggregate(_)
                 )
             ) {
                 fixture.node(rule.as_str())?;
@@ -683,7 +682,7 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
     for (_, _, key) in subject_rules()
-        .filter(|(name, _, _)| crate::registries::registration(*name).native_kind.is_some())
+        .filter(|(name, _, _)| crate::dispatch::registration(*name).native_kind.is_some())
     {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
@@ -730,12 +729,12 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "HolonType.TypeDescriptor",
     )?;
     for rule in CoreValidationRuleName::all() {
-        let registration = crate::registries::registration(rule);
+        let registration = crate::dispatch::registration(rule);
         if matches!(
             registration.implementation,
             Some(
-                crate::registries::RuleImplementation::DescriptorProduct
-                    | crate::registries::RuleImplementation::SchemaAggregate(_)
+                crate::dispatch::RuleImplementation::DescriptorProduct
+                    | crate::dispatch::RuleImplementation::SchemaAggregate(_)
             )
         ) {
             fixture.node(rule.as_str())?;
@@ -747,4 +746,144 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         }
     }
     Ok(fixture)
+}
+
+/// Completes descriptor conformance inputs so successor findings are isolated
+/// from missing metadata declarations, describing types, or Schema ownership.
+pub(super) fn core_fixture() -> Result<Fixture, HolonError> {
+    let mut fixture = readiness_fixture()?;
+    for (name, value_type) in [
+        ("TypeName", "StringValueType.ValueType"),
+        ("IsAbstractType", "BooleanValueType.ValueType"),
+        ("IsValueRequired", "BooleanValueType.ValueType"),
+        ("DefinesInstanceTypeKind", "BooleanValueType.ValueType"),
+    ] {
+        let key = format!("{name}.CoreMetadataProperty");
+        fixture
+            .node(&key)?
+            .with_property_value("TypeName", name)?
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link(&key, CoreRelationshipTypeName::Extends, "PropertyType.TypeDescriptor")?;
+        fixture.link(&key, CoreRelationshipTypeName::ValueType, value_type)?;
+        fixture.link(
+            "MetaTypeDescriptor.HolonType",
+            CoreRelationshipTypeName::InstanceProperties,
+            &key,
+        )?;
+    }
+    fixture.link(
+        "MetaTypeDescriptor.HolonType",
+        CoreRelationshipTypeName::InstanceProperties,
+        "Key.PropertyType",
+    )?;
+    for (name, target) in [
+        ("Extends", "TypeDescriptor"),
+        ("ComponentOf", "Schema.HolonType"),
+        ("InstanceProperties", "PropertyType.TypeDescriptor"),
+        ("InstanceRelationships", "DeclaredRelationshipType.RelationshipType"),
+        ("ValidationBindings", "Rule.HolonType"),
+        ("Predecessor", "HolonType.TypeDescriptor"),
+        ("ValueType", "ValueType.TypeDescriptor"),
+    ] {
+        let key = format!("{name}.CoreMetadataRelationship");
+        fixture
+            .node(&key)?
+            .with_property_value("TypeName", name)?
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link(
+            &key,
+            CoreRelationshipTypeName::Extends,
+            "DeclaredRelationshipType.RelationshipType",
+        )?;
+        fixture.link(&key, CoreRelationshipTypeName::SourceType, "MetaTypeDescriptor.HolonType")?;
+        fixture.link(&key, CoreRelationshipTypeName::TargetType, target)?;
+        fixture.link(
+            "MetaTypeDescriptor.HolonType",
+            CoreRelationshipTypeName::InstanceRelationships,
+            &key,
+        )?;
+    }
+    fixture.link(
+        "Schema.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.node("CoreOwner")?;
+    fixture.link("CoreOwner", CoreRelationshipTypeName::DescribedBy, "Schema.HolonType")?;
+    for core_definition in
+        ["HolonType.TypeDescriptor", "StringValueType.ValueType", "PropertyType.TypeDescriptor"]
+    {
+        fixture.link(core_definition, CoreRelationshipTypeName::ComponentOf, "CoreOwner")?;
+        fixture.link(
+            core_definition,
+            CoreRelationshipTypeName::DescribedBy,
+            "MetaHolonType.MetaTypeDescriptor",
+        )?;
+    }
+    Ok(fixture)
+}
+
+pub(super) fn described_core_fixture() -> Result<Fixture, HolonError> {
+    core_fixture()?.saved_snapshot()
+}
+
+/// Supplies a usable meta-contract to isolate candidate findings from product defects.
+pub(super) fn prepare_meta_contract(fixture: &mut Fixture) -> Result<(), HolonError> {
+    fixture.link("HolonType.TypeDescriptor", R::DescribedBy, "MetaHolonType.MetaTypeDescriptor")?;
+    fixture.link("Schema.HolonType", R::Extends, "HolonType.TypeDescriptor")?;
+    for name in ["Extends", "ComponentOf", "InstanceProperties"] {
+        let key = format!("Peer{name}.Relationship");
+        fixture
+            .node(&key)?
+            .with_property_value("TypeName", name)?
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link(&key, R::Extends, "DeclaredRelationshipType.RelationshipType")?;
+        fixture.link(&key, R::SourceType, "HolonType.TypeDescriptor")?;
+        fixture.link(&key, R::TargetType, "HolonType.TypeDescriptor")?;
+        fixture.link("MetaHolonType.MetaTypeDescriptor", R::InstanceRelationships, &key)?;
+    }
+    for name in ["Key", "TypeName", "IsAbstractType", "IsValueRequired", "DefinesInstanceTypeKind"]
+    {
+        let key = format!("Peer{name}.Property");
+        fixture
+            .node(&key)?
+            .with_property_value("TypeName", name)?
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link(&key, R::Extends, "PropertyType.TypeDescriptor")?;
+        fixture.link(
+            &key,
+            R::ValueType,
+            if matches!(name, "Key" | "TypeName") {
+                "StringValueType.ValueType"
+            } else {
+                "BooleanValueType.ValueType"
+            },
+        )?;
+        fixture.link("MetaHolonType.MetaTypeDescriptor", R::InstanceProperties, &key)?;
+    }
+    Ok(())
+}
+
+pub(super) fn dispatch_c2_rule(
+    fixture: &mut Fixture,
+    rule: CoreValidationRuleName,
+    products: &DescriptorRuleProducts,
+    subject: &HolonReference,
+) -> Result<Vec<core_types::CommitValidationViolation>, HolonError> {
+    fixture.node(rule.as_str())?;
+    let binding = ResolvedValidationBinding {
+        rule: fixture.nodes[rule.as_str()].clone(),
+        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
+            fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
+        ),
+    };
+    let path = ValidationSubjectPath::Holon { holon_identity: subject.full_reference_id_string() };
+    let mut collector = ValidationCollector::default();
+    let registration = crate::dispatch::registration(rule);
+    assert!(matches!(
+        registration.implementation,
+        Some(crate::dispatch::RuleImplementation::DescriptorProduct)
+    ));
+    products.emit(rule, registration.code, &binding, &path, &mut collector)?;
+    Ok(collector.into_report().violations)
 }

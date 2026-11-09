@@ -1,16 +1,25 @@
-use super::*;
-use crate::{
-    assessment_support::path,
-    outcomes::PreparedAssessment,
-    schema_rules::dependency_cycles,
-    schema_view::{OwnedCandidate, SchemaWorkset},
-};
-use holons_core::{
-    DefinitionIdentity, HolonCollection, HolonCollectionApi, ReadableHolon, SchemaOwnershipKind,
-    StagedReference,
-};
 use std::sync::{Arc, RwLock};
-use type_names::ToRelationshipName;
+
+use base_types::MapString;
+use core_types::{CommitValidationViolationKind, HolonError};
+use holons_core::{
+    core_shared_objects::holon::ValidationState, DefinitionIdentity, HolonCollection,
+    HolonCollectionApi, HolonReference, ReadableHolon, SchemaOwnershipKind, StagedReference,
+    ValueDescriptor, WritableHolon,
+};
+use type_names::{CoreRelationshipTypeName, CoreValidationRuleName, ToRelationshipName};
+
+use super::support::{prepare_meta_contract, readiness_fixture, Fixture};
+use crate::{
+    assess_commit_candidates,
+    assessment::{
+        outcomes::PreparedAssessment,
+        schema_view::{OwnedCandidate, SchemaWorkset},
+        support::path,
+    },
+    rules::schema::dependency_cycles,
+    validate_commit_candidates, CommitValidationReport, ValidationCollector,
+};
 
 fn schema_fixture() -> Result<Fixture, HolonError> {
     let mut fixture = Fixture::empty()?;
@@ -160,7 +169,11 @@ fn missing_multiple_and_invalid_owners_are_findings_in_both_namespaces() -> Resu
         for owners in [vec![], vec!["A", "B"], vec!["Foreign"]] {
             let mut fixture = schema_fixture()?;
             for owner in &owners {
-                fixture.link("Member", crate::schema_view::ownership_edge(kind), owner)?;
+                fixture.link(
+                    "Member",
+                    crate::assessment::schema_view::ownership_edge(kind),
+                    owner,
+                )?;
             }
             describe_schemas(&mut fixture)?;
             let mut collector = ValidationCollector::default();
@@ -192,7 +205,7 @@ fn schema_scoped_findings_install_on_their_subject_in_either_candidate_order(
     let descriptor = fixture.staged_subject("descriptor")?;
     let constraint = fixture.staged_subject("constraint")?;
     let mut collector = ValidationCollector::default();
-    crate::handlers::finding(
+    crate::diagnostics::finding(
         &mut collector,
         CommitValidationViolationKind::RuleViolation { code: "DS-CONSTRAINT-003".into() },
         None,
@@ -314,13 +327,13 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
     let mut fixture = readiness_fixture()?;
     let mut subject = fixture.staged_subject("instance")?;
     subject.with_property_value("Title", "ready")?;
-    assert!(crate::commit_assessment::validate_commit_candidates(
+    assert!(crate::assessment::commit::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )?
     .is_accepted());
     fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
-    let report = crate::commit_assessment::validate_commit_candidates(
+    let report = crate::assessment::commit::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject),
     )?;
@@ -337,7 +350,7 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
         .get_mut("Title.PropertyType")
         .unwrap()
         .with_property_value("TypeName", "Title")?;
-    assert!(crate::commit_assessment::validate_commit_candidates(
+    assert!(crate::assessment::commit::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )?
@@ -388,7 +401,7 @@ fn report_only_commit_assessment_preserves_outcomes_and_matches_validation(
 fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let subject = fixture.staged_subject("previously-rejected")?;
-    let old = crate::commit_assessment::validate_commit_candidates(
+    let old = crate::assessment::commit::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject),
     )?;
@@ -403,7 +416,7 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
     assert!(assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject)).is_err());
     assert_eq!(subject.validation_state()?, ValidationState::Invalid);
     assert_eq!(subject.validation_findings()?, old.violations);
-    assert!(crate::commit_assessment::validate_commit_candidates(
+    assert!(crate::assessment::commit::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&subject)
     )
@@ -415,7 +428,7 @@ fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<()
 #[test]
 fn owning_schema_cycle_and_staged_component_are_assessed_independently() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
-    super::preparation_characterization::prepare_meta_contract(&mut fixture)?;
+    prepare_meta_contract(&mut fixture)?;
     for rule in [CoreValidationRuleName::SchemaDependenciesAcyclic] {
         fixture.link(
             "Schema.HolonType",
@@ -453,7 +466,7 @@ fn owning_schema_cycle_and_staged_component_are_assessed_independently() -> Resu
         "Title.PropertyType",
     )?;
     let candidate = staged(&fixture.nodes["StagedComponent"]);
-    let report = crate::commit_assessment::validate_commit_candidates(
+    let report = crate::assessment::commit::validate_commit_candidates(
         &fixture.context,
         std::slice::from_ref(&candidate),
     )?;
@@ -476,7 +489,7 @@ fn scoped_installation_uses_the_same_distinct_candidate_check_as_commit() -> Res
     let candidate = fixture.staged_subject("repeated")?;
     let candidates = [candidate.clone(), candidate.clone()];
     let expected =
-        crate::commit_assessment::require_distinct_live_candidates(&candidates).unwrap_err();
+        crate::assessment::commit::require_distinct_live_candidates(&candidates).unwrap_err();
     let Err(actual) =
         PreparedAssessment::from_scope(&candidates, CommitValidationReport::default())
     else {
@@ -493,7 +506,7 @@ fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<
     let mut subject = fixture.staged_subject("prepared-instance")?;
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![subject];
-    let constructed = crate::commit_assessment::construct_assessment(
+    let constructed = crate::assessment::commit::construct_assessment(
         &fixture.context,
         &candidates,
         ValidationCollector::default(),
@@ -518,7 +531,7 @@ fn frozen_preparation_supplies_all_value_products_before_consumption() -> Result
     subject.with_property_value("Title", "complete")?;
     let candidates = [subject];
     let _scope = fixture.context.begin_frozen_validation()?;
-    let constructed = crate::commit_assessment::construct_assessment(
+    let constructed = crate::assessment::commit::construct_assessment(
         &fixture.context,
         &candidates,
         ValidationCollector::default(),
@@ -713,7 +726,7 @@ fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
     let mut subject = fixture.staged_subject("mixed-instance")?;
     subject.with_property_value("Title", "ready")?;
     let candidates = vec![descriptor, subject];
-    let constructed = crate::commit_assessment::construct_assessment(
+    let constructed = crate::assessment::commit::construct_assessment(
         &fixture.context,
         &candidates,
         ValidationCollector::default(),
@@ -756,7 +769,12 @@ fn schema_dependency_cycles_do_not_read_saved_memberships() -> Result<(), HolonE
     assert!(cycles[&DefinitionIdentity::for_reference(&fixture.nodes["A"], &fixture.context)?]
         .is_some());
     // Package construction must not rediscover members excluded by the workset.
-    crate::descriptor_package::DescriptorPackages::construct(&fixture.context, &[], &[], &workset)?;
+    crate::assessment::descriptor_package::DescriptorPackages::construct(
+        &fixture.context,
+        &[],
+        &[],
+        &workset,
+    )?;
     for edge in [CoreRelationshipTypeName::Components, CoreRelationshipTypeName::Rules] {
         assert_eq!(fixture.backend_reads_for(&edge), 0, "unexpected {edge:?} scan");
     }
@@ -767,7 +785,7 @@ fn schema_dependency_cycles_do_not_read_saved_memberships() -> Result<(), HolonE
 fn stale_cross_schema_dependency_binding_fails_closed() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let rule = CoreValidationRuleName::CrossSchemaDependenciesDeclared;
-    assert!(crate::registries::registration(rule).implementation.is_none());
+    assert!(crate::dispatch::registration(rule).implementation.is_none());
     fixture.link(
         "Schema.HolonType",
         CoreRelationshipTypeName::Extends,
