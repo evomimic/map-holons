@@ -71,6 +71,7 @@ use fixture_cases::transaction_lifecycle_fixture::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     let (runtime, initial_tx_id) = boot_dance_test_suite().await;
+    runtime_checks::run_before_fixtures(&runtime).await;
     run_dance_test_suite_on(&runtime, initial_tx_id, suite).await;
     runtime_checks::run(&runtime).await;
 }

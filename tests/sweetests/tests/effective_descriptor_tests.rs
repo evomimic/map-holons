@@ -1,11 +1,17 @@
 //! Guest preparation, Session reuse, and Commit registry-owner transport.
 use holons_core::descriptors::{ComputedEffectiveSchema, Descriptor, EffectiveHolonDescriptor};
+use holons_core::reference_layer::HolonSpaceBehavior;
 use holons_prelude::prelude::*;
-use holons_test::{init_test_runtime, DancesTestCase};
+use holons_test::{
+    init_runtime_with_initiator, init_tracing, runtime_for_bootstrapped_space,
+    setup_test_conductor, DancesTestCase,
+};
+use holons_trust_channel::TrustChannel;
 use map_commands_contract::{
     HolonAction, HolonCommand, MapCommand, MapResult, ReadableHolonAction, SpaceCommand,
 };
-use map_commands_runtime::ExecutionPolicy;
+use map_commands_runtime::{ExecutionPolicy, Runtime};
+use std::sync::Arc;
 
 /// Models the guest ingress boundary without borrowing the host registry's ownership.
 fn restore_registry_request(
@@ -34,10 +40,25 @@ fn restore_registry_request(
     (context, registry)
 }
 
+/// Each phase owns its Session; only the conductor and committed bootstrap are reused.
 #[tokio::test(flavor = "multi_thread")]
-async fn guest_construction_returns_a_retained_sealed_schema_graph() {
+async fn effective_descriptors_preserve_session_and_transport_contracts() {
+    init_tracing();
+    let backend = setup_test_conductor().await;
+    let initiator = Arc::new(TrustChannel::new(backend.clone()));
+    let (runtime, _) =
+        init_runtime_with_initiator(&mut DancesTestCase::default(), initiator.clone()).await;
+    let anchor = runtime.session().space_manager().get_space_holon_id().unwrap().unwrap();
+    guest_construction_returns_a_retained_sealed_schema_graph(runtime).await;
+    // The first phase must finish its Runtime-drop assertion before a new Session exists.
+    let runtime = runtime_for_bootstrapped_space(initiator, anchor);
+    assert!(runtime.session().descriptor_registry().is_empty().unwrap());
+    value_and_property_wrappers_reuse_guest_derived_products(runtime).await;
+    backend.shutdown().await;
+}
+
+async fn guest_construction_returns_a_retained_sealed_schema_graph(runtime: Runtime) {
     let started = std::time::Instant::now();
-    let (runtime, _) = init_test_runtime(&mut DancesTestCase::default()).await;
     let mut contexts = Vec::new();
     let mut references = Vec::new();
     for _ in 0..2 {
@@ -377,12 +398,10 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph() {
 
 /// The non-HolonType trial keeps the public wrapper API while reusing one
 /// guest-produced, Session-retained result for each exact saved definition.
-#[tokio::test(flavor = "multi_thread")]
-async fn value_and_property_wrappers_reuse_guest_derived_products() {
+async fn value_and_property_wrappers_reuse_guest_derived_products(runtime: Runtime) {
     use holons_core::descriptors::{
         effective_relationship_targets, PropertyDescriptor, ValueDescriptor,
     };
-    let (runtime, _) = init_test_runtime(&mut DancesTestCase::default()).await;
     let MapResult::TransactionCreated { tx_id } = runtime
         .execute_command(
             MapCommand::Space(SpaceCommand::BeginTransaction),

@@ -4,8 +4,21 @@ mod key_uniqueness;
 mod relationship_cache_policy;
 mod space_dancer_import;
 mod visualizer_composition;
+mod visualizer_usage_resolution;
 
 use map_commands_runtime::Runtime;
+
+/// Run before any suite fixture can populate the default visualizer's usage.
+pub async fn run_before_fixtures(runtime: &Runtime) {
+    let started = std::time::Instant::now();
+    tracing::info!(check = "visualizer_usage_resolution", "runtime check starting");
+    visualizer_usage_resolution::guest_usage_resolution_preserves_affordance_inheritance_scope_and_read_only_misses(runtime).await;
+    tracing::info!(
+        check = "visualizer_usage_resolution",
+        elapsed_ms = started.elapsed().as_millis(),
+        "runtime check passed"
+    );
+}
 
 pub async fn run(runtime: &Runtime) {
     macro_rules! check {

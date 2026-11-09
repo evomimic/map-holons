@@ -4,10 +4,7 @@ use core_types::{ContentSet, FileData, HolonError};
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_core::dances::{DanceResponseReference, LoadedTheme};
 use holons_core::{HolonReference, ReadableHolon, WritableHolon};
-use holons_test::{
-    init_runtime_with_initiator, init_tracing, setup_test_conductor, DancesTestCase,
-    MockConductorConfig,
-};
+use holons_test::{runtime_for_bootstrapped_space, MockConductorConfig};
 use holons_trust_channel::{DanceEnvelopeTransport, TrustChannel};
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use map_commands_runtime::{ExecutionPolicy, Runtime};
@@ -55,17 +52,15 @@ async fn command(
         .await
         .unwrap()
 }
-#[tokio::test(flavor = "multi_thread")]
-async fn load_theme_is_theme_afforded_guest_resolved_and_constant_in_boundary_calls() {
-    init_tracing();
-    let backend = setup_test_conductor().await;
+pub async fn load_theme_is_theme_afforded_guest_resolved_and_constant_in_boundary_calls(
+    backend: Arc<MockConductorConfig>,
+    anchor: core_types::HolonId,
+) {
     let measured =
         Arc::new(MeasuredTransport { backend: backend.clone(), calls: Mutex::new(Vec::new()) });
-    let (runtime, _) = init_runtime_with_initiator(
-        &mut DancesTestCase::default(),
-        Arc::new(TrustChannel::new(measured.clone())),
-    )
-    .await;
+    let runtime =
+        runtime_for_bootstrapped_space(Arc::new(TrustChannel::new(measured.clone())), anchor);
+    assert!(runtime.session().descriptor_registry().is_empty().unwrap());
     let context = begin(&runtime).await;
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let path = root.join("generated/visualizer-commons/default-presentation/imports/schema.json");
@@ -256,5 +251,4 @@ async fn load_theme_is_theme_afforded_guest_resolved_and_constant_in_boundary_ca
     drop(context);
     drop(runtime);
     drop(measured);
-    backend.shutdown().await;
 }

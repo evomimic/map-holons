@@ -24,9 +24,25 @@ Paths below are relative to `tests/sweetests/`.
 
 `rstest_dance_test_suites` in `tests/dance_tests.rs` registers suites. Individual fixtures belong
 in a suite's `test_cases` vector; new step match arms belong in `dance_test_runner.rs`.
-Expected-panic and probe-backed targets reuse the runner; `fixture_authoring_tests.rs` checks
+Probe-backed targets reuse the runner; `fixture_authoring_tests.rs` checks
 fixture gates without executing it. Put pure assertion/classification logic in `src/harness`
 so its tests run once under `--lib`, rather than in each integration target.
+
+## Reusing committed bootstrap data
+
+`init_test_runtime`, `init_probe_test_runtime` and `init_runtime_with_initiator` provision
+Core Schema. Call them once per compatible suite. When a scenario requires fresh host caches,
+descriptor ownership or Runtime lifetime, `runtime_for_bootstrapped_space(initiator, space_id)`
+opens an independent host Runtime/Session against that existing persisted Space without
+loading it again. Keep the conductor/transport alive independently of the Runtime under test.
+
+The descriptor integration suite exercises separate Sessions and Runtime-drop behavior on one
+conductor. The cache-population target also owns the nested theme-loading checks, with separate
+measured transports and fresh host caches. Canonical-loader discovery runs before usage writes
+and reuses one Navigator import. The enabled graph/key-index retry suite shares a probe backend
+and schema-load bookkeeping while keeping case transactions and fixture registries separate;
+planted links are removed before the next case. The excluded repeated-error retry remains a
+standalone test. Never share a probe-enabled conductor with an ordinary production suite.
 
 ## Tokens, heads, and realizations
 

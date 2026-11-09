@@ -2,7 +2,6 @@
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInvocation, DanceResponseReference, VisualizerUsageResolution};
 use holons_core::{HolonReference, ReadableHolon, WritableHolon};
-use holons_test::{init_test_runtime, DancesTestCase};
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use map_commands_runtime::{ExecutionPolicy, Runtime};
 use std::sync::Arc;
@@ -31,10 +30,10 @@ async fn command(
         .unwrap()
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn guest_usage_resolution_preserves_affordance_inheritance_scope_and_read_only_misses() {
-    let (runtime, _) = init_test_runtime(&mut DancesTestCase::default()).await;
-    let context = new_context(&runtime).await;
+pub async fn guest_usage_resolution_preserves_affordance_inheritance_scope_and_read_only_misses(
+    runtime: &Runtime,
+) {
+    let context = new_context(runtime).await;
     let visualizer = saved(&context, "DefaultPropertyMapVisualizer.PropertyMapVisualizer");
     let actual = saved(&context, "HolonSpace.HolonType");
     let default_type = saved(&context, "HolonType.TypeDescriptor");
@@ -56,11 +55,11 @@ async fn guest_usage_resolution_preserves_affordance_inheritance_scope_and_read_
     usage.add_related_holons("UsesVisualizer", vec![visualizer.clone()]).unwrap();
     usage.add_related_holons("ForSubjectType", vec![default_type]).unwrap();
     let staged = context.mutation().stage_new_holon(usage).unwrap();
-    command(&runtime, &context, TransactionAction::Commit).await;
+    command(runtime, &context, TransactionAction::Commit).await;
     assert!(!context.is_open());
     let expected = staged.holon_id().unwrap();
 
-    let context = new_context(&runtime).await;
+    let context = new_context(runtime).await;
     let visualizer = saved(&context, "DefaultPropertyMapVisualizer.PropertyMapVisualizer");
     let actual = saved(&context, "HolonSpace.HolonType");
     let slot = saved(&context, "DefaultPropertyMapVisualizer.PropertySlot");
@@ -81,7 +80,7 @@ async fn guest_usage_resolution_preserves_affordance_inheritance_scope_and_read_
     invocation.add_related_holons("Request", vec![request.into()]).unwrap();
     invocation.add_related_holons("AffordingHolon", vec![visualizer]).unwrap();
     let MapResult::Reference(response) = command(
-        &runtime,
+        runtime,
         &context,
         TransactionAction::DanceV2 { invocation: DanceInvocation::new(invocation.into()).unwrap() },
     )
@@ -93,4 +92,5 @@ async fn guest_usage_resolution_preserves_affordance_inheritance_scope_and_read_
     let result = VisualizerUsageResolution::from_projection(&body).unwrap();
     assert_eq!(result.usage.unwrap().holon_id().unwrap(), expected);
     assert_eq!(context.lookup().staged_count().unwrap(), 0);
+    context.dispose().unwrap();
 }

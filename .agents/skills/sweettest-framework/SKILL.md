@@ -24,7 +24,7 @@ The framework separates fixture authoring from execution:
   steps. No conductor runs and nothing is persisted.
 - **Execution phase:** `rstest_dance_test_suites` in `dance_tests.rs` runs registered suites via
   `run_dance_test_suite` and `run_dance_test_case` in `execution_steps/dance_test_runner.rs`.
-  The expected-panic and isolated probe tests also use these drivers. Executors resolve tokens,
+  The isolated probe tests also use these drivers. Executors resolve tokens,
   dispatch `MapCommand` through `Runtime::execute_command()` and `TrustChannel`, validate, and
   record the real handles.
 
@@ -43,7 +43,6 @@ tests/sweetests/
   tests/
     dance_tests.rs                            # two registered suites
     fixture_authoring_tests.rs                # conductor-free authoring gates
-    commit_disposition_tests.rs               # expected-panic disposition scenarios
     commit_incomplete_tests.rs                # isolated probe-backed retries
     fixture_cases/                            # fixture builders and shared setup helpers
     execution_steps/
@@ -136,9 +135,9 @@ my_feature_fixture().unwrap(),
 ```
 
 Add `#[case]` in `dance_tests.rs` only for a whole new suite, not for each fixture.
-Also register the builder in `fixture_authoring_tests.rs`. Keep expected-panic scenarios in
-`commit_disposition_tests.rs` and probe-backed scenarios in their isolated target; never add a
-probe-enabled backend to an ordinary suite.
+Also register the builder in `fixture_authoring_tests.rs`. Keep classifier and diagnostic
+assertions in harness unit tests, and probe-backed scenarios in their isolated target; never
+add a probe-enabled backend to an ordinary suite.
 
 ## Choosing Adders
 
