@@ -12,13 +12,15 @@ use core_types::{encode_smartlink_tag, CanonicalKey, DeleteSmartLinkOutcome, Sma
 use execution_steps::dance_test_runner::run_dance_test_case;
 use fixture_cases::commit_incomplete_fixture::commit_incomplete_fixture;
 use holons_core::core_shared_objects::holon::StagedState;
+use holons_core::core_shared_objects::transactions::TxId;
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::init_probe_test_runtime;
+use holons_test::harness::helpers::{init_probe_test_runtime, SmartLinkTestControl};
 use holons_test::{
     assert_exact_relationship_ids, DanceTestStep, DancesTestCase, ResolveBy, TestExecutionState,
     TestReference,
 };
 use integrity_core_types::LocalId;
+use map_commands_runtime::Runtime;
 use pretty_assertions::assert_eq;
 
 const STALE_KEY: &str = "stale.title.property";
@@ -252,11 +254,35 @@ async fn incomplete_commit_repeats_error_then_completes_relationship_retry() {
     }
 }
 
+/// Probe faults are removed and each case's active transaction is disposed before advancing.
 #[tokio::test(flavor = "multi_thread")]
-async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition() {
+async fn graph_and_key_index_retries_preserve_isolation() {
+    let (runtime, tx_id, control) = init_probe_test_runtime(&mut DancesTestCase::default()).await;
+    let mut schema_loaded = false;
+    outstanding_graph_replay_rejects_removal_then_composes_live_addition(
+        runtime.clone(),
+        tx_id,
+        &control,
+        &mut schema_loaded,
+    )
+    .await;
+    let tx_id = runtime.session().begin_transaction().await.unwrap();
+    published_rekey_is_reserved_before_key_index_retry_repairs_owns(
+        runtime,
+        tx_id,
+        &control,
+        &mut schema_loaded,
+    )
+    .await;
+}
+
+async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition(
+    runtime: Runtime,
+    tx_id: TxId,
+    control: &SmartLinkTestControl,
+    loaded: &mut bool,
+) {
     let scenario = fixture_cases::commit_incomplete_fixture::graph_overlap_retry_fixture().unwrap();
-    let mut bootstrap = DancesTestCase::default();
-    let (runtime, tx_id, control) = init_probe_test_runtime(&mut bootstrap).await;
     let case = &scenario.case;
     let mut state = TestExecutionState::new(
         runtime,
@@ -265,13 +291,12 @@ async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition() 
         case.test_session_state.fixture_head_index().clone(),
     );
     state.activate_transaction(tx_id).unwrap();
-    let mut loaded = false;
     let mut query_loaded = false;
     run_segment(
         case,
         case.steps[..scenario.first_attempt].to_vec(),
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
@@ -291,18 +316,22 @@ async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition() 
         case,
         vec![case.steps[scenario.first_attempt].clone()],
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
     assert_eq!(control.delete_link(planted).await, DeleteSmartLinkOutcome::Deleted);
     let before =
         control.live_links(source.clone(), "ReferencesProperty".to_relationship_name()).await;
+    assert!(
+        before.iter().all(|link| link.canonical_key.as_str() != STALE_KEY),
+        "injected graph link must be removed"
+    );
     run_segment(
         case,
         case.steps[scenario.first_attempt + 1..scenario.after_rejection].to_vec(),
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
@@ -323,19 +352,22 @@ async fn outstanding_graph_replay_rejects_removal_then_composes_live_addition() 
         case,
         case.steps[scenario.after_rejection..].to_vec(),
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
+    state.runtime().session().dispose_transaction(&state.context().tx_id()).await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
+async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns(
+    runtime: Runtime,
+    tx_id: TxId,
+    control: &SmartLinkTestControl,
+    loaded: &mut bool,
+) {
     use core_types::OccurrenceId;
     use sha2::{Digest, Sha256};
     let scenario = fixture_cases::commit_incomplete_fixture::key_index_retry_fixture().unwrap();
-    let mut bootstrap = DancesTestCase::default();
-    let (runtime, tx_id, control) = init_probe_test_runtime(&mut bootstrap).await;
     let case = &scenario.case;
     let mut state = TestExecutionState::new(
         runtime,
@@ -344,13 +376,12 @@ async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
         case.test_session_state.fixture_head_index().clone(),
     );
     state.activate_transaction(tx_id).unwrap();
-    let mut loaded = false;
     let mut query_loaded = false;
     run_segment(
         case,
         case.steps[..scenario.first_attempt].to_vec(),
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
@@ -379,7 +410,7 @@ async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
         case,
         vec![case.steps[scenario.first_attempt].clone()],
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
@@ -396,10 +427,14 @@ async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
         case,
         case.steps[scenario.first_attempt + 1..scenario.after_rejection].to_vec(),
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
+    assert!(
+        before.iter().all(|link| link.canonical_key.as_str() != "stale.key-index-retry"),
+        "injected index link must be removed"
+    );
     before.sort_by_key(|row| row.smartlink_id.0 .0.clone());
     let mut after = control
         .live_links(space.clone(), CoreRelationshipTypeName::Owns.as_relationship_name())
@@ -410,7 +445,7 @@ async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
         case,
         case.steps[scenario.after_rejection..].to_vec(),
         &mut state,
-        &mut loaded,
+        loaded,
         &mut query_loaded,
     )
     .await;
@@ -421,4 +456,5 @@ async fn published_rekey_is_reserved_before_key_index_retry_repairs_owns() {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].target_id, HolonId::Local(root.clone()));
     }
+    state.runtime().session().dispose_transaction(&state.context().tx_id()).await.unwrap();
 }

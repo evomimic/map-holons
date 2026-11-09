@@ -2,16 +2,12 @@
 
 use holons_core::{HolonReference, ReadableHolon, RelationshipReadHint};
 use holons_prelude::prelude::MapString;
-use holons_test::{init_test_runtime, DancesTestCase};
+use map_commands_runtime::Runtime;
 use std::sync::Arc;
 use std::time::Instant;
 
-#[tokio::test(flavor = "multi_thread")]
-async fn configured_inverse_policies_retain_committed_membership() {
-    let mut test_case = DancesTestCase::default();
-    let started = Instant::now();
-    let (runtime, transaction_id) = init_test_runtime(&mut test_case).await;
-    eprintln!("cache-policy bootstrap completed in {:?}", started.elapsed());
+pub async fn configured_inverse_policies_retain_committed_membership(runtime: &Runtime) {
+    let transaction_id = runtime.session().begin_transaction().await.unwrap();
     let context = runtime.session().get_transaction(&transaction_id).unwrap();
 
     for (key, name) in [

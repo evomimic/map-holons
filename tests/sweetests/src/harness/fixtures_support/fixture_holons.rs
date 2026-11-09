@@ -3,8 +3,9 @@ use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 
 use crate::{
-    ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition, ExpectedRetryParticipant,
-    ResolvedCommitCandidate, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedCommitCandidate, ExpectedCommitRelationship, ExpectedCommitStatus, ExpectedDisposition,
+    ExpectedMembershipEdit, ExpectedRetryParticipant, ResolvedCommitCandidate,
+    SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_core::WritableHolon;
 use holons_core::{
@@ -87,6 +88,7 @@ pub struct FixtureHolon {
 
     pub staging_source: StagingSource,
     pub saved_identity: Option<SavedIdentity>,
+    relationship_edits: Vec<(core_types::RelationshipName, ExpectedMembershipEdit)>,
 }
 
 impl FixtureHolon {
@@ -224,6 +226,7 @@ impl FixtureHolons {
             last_live_snapshot: snapshot,
             staging_source,
             saved_identity: None,
+            relationship_edits: Vec::new(),
         }; // last live is the same for first creations
         if self.holons.contains_key(&fixture_holon_id) {
             return Err(HolonError::Misc("Something went wrong in logic.. duplicate ids for fixture holons should never happen".to_string()));
@@ -354,6 +357,16 @@ impl FixtureHolons {
 
             if existing_holon.head_snapshot.snapshot().temporary_id() == abandoned_temp_id {
                 continue;
+            }
+
+            // Abandon removes dangling intent as well as expected snapshot members.
+            for (_, edit) in &mut self.holons.get_mut(&fixture_id).unwrap().relationship_edits {
+                let targets = match edit {
+                    ExpectedMembershipEdit::Add(targets)
+                    | ExpectedMembershipEdit::Remove(targets)
+                    | ExpectedMembershipEdit::Replace(targets) => targets,
+                };
+                targets.retain(|token| token.expected_id() != abandoned_temp_id);
             }
 
             let mut updated_snapshot =
@@ -546,6 +559,88 @@ impl FixtureHolons {
         }).collect()
     }
 
+    /// Retains successful authored operations; partial lookup snapshots cannot express removals alone.
+    pub(crate) fn record_relationship_edit(
+        &mut self,
+        token: &TestReference,
+        name: core_types::RelationshipName,
+        edit: ExpectedMembershipEdit,
+    ) -> Result<(), HolonError> {
+        let id = self.fixture_id_for_token(token)?;
+        self.holons.get_mut(&id).unwrap().relationship_edits.push((name, edit));
+        Ok(())
+    }
+
+    /// Reads fixture snapshots only and freezes member tokens to the current authoring heads.
+    fn commit_relationships(
+        &self,
+        staged: &TestReference,
+        source: Option<&TestReference>,
+    ) -> Result<Vec<ExpectedCommitRelationship>, HolonError> {
+        let memberships =
+            |token: &TestReference| -> Result<BTreeMap<_, Vec<TestReference>>, HolonError> {
+                let mut result = BTreeMap::new();
+                for (name, members) in
+                    token.expected_snapshot().snapshot().all_related_holons()?.iter()
+                {
+                    if matches!(name.to_string().as_str(), "Predecessor" | "Successor") {
+                        continue;
+                    }
+                    let members = members
+                        .read()
+                        .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+                    let mut tokens = Vec::new();
+                    for member in members.get_members() {
+                        let holons_core::HolonReference::Transient(snapshot) = member else {
+                            return Err(HolonError::InvalidParameter(
+                                "Expected fixture relationship members to be snapshots".into(),
+                            ));
+                        };
+                        let holon = self.get_fixture_holon_by_snapshot(&snapshot.temporary_id())?;
+                        let head = &holon.head_snapshot;
+                        tokens.push(TestReference::new(head.as_source(), head.clone()));
+                    }
+                    result.insert(name.clone(), tokens);
+                }
+                Ok(result)
+            };
+        let before = source.map(memberships).transpose()?.unwrap_or_default();
+        let after = memberships(staged)?;
+        let holon = self.get_fixture_holon_by_snapshot(&staged.expected_id())?;
+        let mut edits: BTreeMap<_, Vec<ExpectedMembershipEdit>> = BTreeMap::new();
+        for (name, edit) in &holon.relationship_edits {
+            let resolve = |targets: &[TestReference]| {
+                targets
+                    .iter()
+                    .map(|target| self.resolve_target_token_to_head(target))
+                    .collect::<Result<Vec<_>, _>>()
+            };
+            let edit = match edit {
+                ExpectedMembershipEdit::Add(targets) => {
+                    ExpectedMembershipEdit::Add(resolve(targets)?)
+                }
+                ExpectedMembershipEdit::Remove(targets) => {
+                    ExpectedMembershipEdit::Remove(resolve(targets)?)
+                }
+                ExpectedMembershipEdit::Replace(targets) => {
+                    ExpectedMembershipEdit::Replace(resolve(targets)?)
+                }
+            };
+            edits.entry(name.clone()).or_default().push(edit);
+        }
+        let names: BTreeSet<_> =
+            before.keys().chain(after.keys()).chain(edits.keys()).cloned().collect();
+        Ok(names
+            .into_iter()
+            .map(|name| ExpectedCommitRelationship {
+                before: before.get(&name).cloned().unwrap_or_default(),
+                after: after.get(&name).cloned().unwrap_or_default(),
+                edits: edits.get(&name).cloned().unwrap_or_default(),
+                name,
+            })
+            .collect())
+    }
+
     /// Mints result tokens, retaining no-action staged heads while an attempt is incomplete.
     /// Declarations retain author order and never derive policy from fixture mutations.
     pub fn commit(
@@ -563,6 +658,14 @@ impl FixtureHolons {
             let id = self.fixture_id_for_token(&declaration.token)?;
             let holon = &self.holons[&id];
             let staged_token = self.resolve_target_token_to_head(&declaration.token)?;
+            let saved_source = match &holon.staging_source {
+                StagingSource::NewRoot => None,
+                StagingSource::Version { source } => {
+                    let head = &self.holons[source].head_snapshot;
+                    Some(TestReference::new(head.as_source(), head.clone()))
+                }
+            };
+            let relationships = self.commit_relationships(&staged_token, saved_source.as_ref())?;
             if expected_status == ExpectedCommitStatus::Incomplete
                 && declaration.disposition == ExpectedDisposition::NoAction
             {
@@ -575,6 +678,8 @@ impl FixtureHolons {
                     None,
                     ResolvedCommitCandidate {
                         staged_token,
+                        saved_source,
+                        relationships,
                         disposition: declaration.disposition,
                         result_token: None,
                         expected_new_errors: declaration.expected_new_errors.clone(),
@@ -622,6 +727,8 @@ impl FixtureHolons {
                 Some(saved_identity),
                 ResolvedCommitCandidate {
                     staged_token,
+                    saved_source,
+                    relationships,
                     disposition: declaration.disposition,
                     result_token: Some(result_token),
                     expected_new_errors: declaration.expected_new_errors.clone(),
@@ -635,6 +742,7 @@ impl FixtureHolons {
                 self.advance_head(&old_id, result_token.expected_snapshot())?;
                 self.holons.get_mut(&id).expect("registered fixture").saved_identity =
                     saved_identity;
+                self.holons.get_mut(&id).unwrap().relationship_edits.clear();
             }
             resolved.push(candidate);
         }

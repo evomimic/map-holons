@@ -6,8 +6,7 @@ use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
     DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedLineage, ExpectedPersistedGraph, ExpectedPersistedRelationship, ExpectedRejectedHolon,
-    ExpectedValidationFinding, ExpectedValidationSubject, PersistedSubject, TestCaseInit,
+    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, TestCaseInit,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -37,6 +36,7 @@ fn graph_siblings(
         format!("Graph-only siblings {label}"),
         "Independent candidates address one saved source without snapshot substitution",
     );
+    test_case.verify_committed_workset = true;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
     let mut source = add_described_instance(
@@ -186,50 +186,6 @@ fn graph_siblings(
         )?;
         test_case.add_match_saved_content_step()?;
     }
-    let saved_source = PersistedSubject::Token(source.clone());
-    let source_targets = if remove {
-        vec![targets[0].clone()]
-    } else if let Some(version) = version_index {
-        vec![targets[1 - version].clone()]
-    } else if identical {
-        vec![targets[0].clone()]
-    } else {
-        targets.clone()
-    };
-    let mut graph = ExpectedPersistedGraph {
-        relationships: vec![ExpectedPersistedRelationship {
-            source: saved_source.clone(),
-            relationship: "ReferencesProperty".to_relationship_name(),
-            targets: source_targets.into_iter().map(PersistedSubject::Token).collect(),
-        }],
-        lineage: vec![ExpectedLineage {
-            subject: saved_source,
-            predecessors: vec![],
-            successors: version_index
-                .map(|i| vec![PersistedSubject::Token(updates[i].clone())])
-                .unwrap_or_default(),
-        }],
-        ..Default::default()
-    };
-    if let Some(version) = version_index {
-        graph.relationships.push(ExpectedPersistedRelationship {
-            source: PersistedSubject::Token(updates[version].clone()),
-            relationship: "ReferencesProperty".to_relationship_name(),
-            targets: vec![PersistedSubject::Token(targets[version].clone())],
-        });
-        graph.lineage.push(ExpectedLineage {
-            subject: PersistedSubject::Token(updates[version].clone()),
-            predecessors: vec![PersistedSubject::Token(source)],
-            successors: vec![],
-        });
-    }
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        graph,
-        Some(
-            "Inspect the saved source and successor independently from a fresh transaction".into(),
-        ),
-    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }

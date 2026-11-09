@@ -8,8 +8,7 @@ use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{
     DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedPersistedGraph, ExpectedPersistedRelationship, ExpectedRetryParticipant, FixtureHolons,
-    PersistedSubject, TestCaseInit, TestReference,
+    ExpectedRetryParticipant, FixtureHolons, TestCaseInit, TestReference,
 };
 use integrity_core_types::HolonErrorKind;
 
@@ -43,6 +42,7 @@ pub fn commit_incomplete_fixture() -> Result<IncompleteScenario, HolonError> {
         "Commit relationship failure and repeated retry",
         "Repeated relationship errors support both zero-live-candidate retries and a retained unchanged candidate",
     );
+    test_case.verify_committed_workset = true;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     let first = add_incomplete_attempts(
         &mut test_case,
@@ -50,7 +50,6 @@ pub fn commit_incomplete_fixture() -> Result<IncompleteScenario, HolonError> {
         &mut fixture_holons,
         "Book.IncompleteRetry",
         false,
-        &[],
     )?;
     let second = add_incomplete_attempts(
         &mut test_case,
@@ -58,20 +57,18 @@ pub fn commit_incomplete_fixture() -> Result<IncompleteScenario, HolonError> {
         &mut fixture_holons,
         "Book.IncompleteWithNoAction",
         true,
-        &[first.saved_update.clone()],
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(IncompleteScenario { case: test_case, attempts: vec![first, second] })
 }
 
-/// Earlier sequences remain known inverse sources because the runtime is shared within this case.
+/// Repeated attempts retain one fixture-declared relationship workset.
 fn add_incomplete_attempts(
     test_case: &mut DancesTestCase,
     fixture_context: &std::sync::Arc<TransactionContext>,
     fixture_holons: &mut FixtureHolons,
     book_key: &str,
     include_unchanged: bool,
-    prior_inverse_sources: &[TestReference],
 ) -> Result<IncompleteAttempts, HolonError> {
     test_case.add_begin_transaction_step(None, None)?;
     let book = add_described_instance(
@@ -197,38 +194,6 @@ fn add_incomplete_attempts(
         })
         .transpose()?;
     test_case.add_match_saved_content_step()?;
-    // Both sequences own the isolated runtime, so all earlier inverse sources are known.
-    // An extra or duplicated link in either direction fails here.
-    let referenced = ["Name.PropertyType", "Title.PropertyType"];
-    let mut relationships = vec![ExpectedPersistedRelationship {
-        source: PersistedSubject::Token(saved_update.clone()),
-        relationship: "ReferencesProperty".to_relationship_name(),
-        targets: referenced.iter().map(|key| PersistedSubject::Key((*key).into())).collect(),
-    }];
-    relationships.extend(referenced.iter().map(|key| {
-        ExpectedPersistedRelationship {
-            source: PersistedSubject::Key((*key).into()),
-            relationship: "ReferencedByBook".to_relationship_name(),
-            targets: prior_inverse_sources
-                .iter()
-                .chain(std::iter::once(&saved_update))
-                .cloned()
-                .map(PersistedSubject::Token)
-                .collect(),
-        }
-    }));
-    test_case.add_verify_persisted_graph_step(
-        fixture_holons,
-        ExpectedPersistedGraph {
-            enumerated: vec![
-                PersistedSubject::Token(saved_update.clone()),
-                PersistedSubject::Token(companion),
-            ],
-            relationships,
-            ..Default::default()
-        },
-        Some("Fresh reads verify exact replayed forward and inverse collections".into()),
-    )?;
     Ok(IncompleteAttempts {
         book,
         title,
@@ -259,6 +224,7 @@ pub fn graph_overlap_retry_fixture() -> Result<GraphOverlapRetryScenario, HolonE
         "Graph-only overlapping retry",
         "Outstanding replay participates before writes and composes compatible live additions",
     );
+    test_case.verify_committed_workset = true;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
     let mut source = add_described_instance(
@@ -352,18 +318,6 @@ pub fn graph_overlap_retry_fixture() -> Result<GraphOverlapRetryScenario, HolonE
         MapInteger(1),
         None,
     )?;
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            relationships: vec![ExpectedPersistedRelationship {
-                source: PersistedSubject::Token(source.clone()),
-                relationship: "ReferencesProperty".to_relationship_name(),
-                targets: vec![PersistedSubject::Token(targets[0].clone())],
-            }],
-            ..Default::default()
-        },
-        Some("Rejection must prevent outstanding replay writes too".into()),
-    )?;
     let after_rejection = test_case.steps.len();
     let c = test_case.add_stage_new_version_step(
         &mut fixture_holons,
@@ -389,18 +343,6 @@ pub fn graph_overlap_retry_fixture() -> Result<GraphOverlapRetryScenario, HolonE
         vec![ExpectedRetryParticipant::new(a)],
         None,
         None,
-    )?;
-    test_case.add_verify_persisted_graph_step(
-        &fixture_holons,
-        ExpectedPersistedGraph {
-            relationships: vec![ExpectedPersistedRelationship {
-                source: PersistedSubject::Token(source.clone()),
-                relationship: "ReferencesProperty".to_relationship_name(),
-                targets: targets.iter().cloned().map(PersistedSubject::Token).collect(),
-            }],
-            ..Default::default()
-        },
-        Some("Fresh observer sees replayed and newly added targets".into()),
     )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(GraphOverlapRetryScenario {

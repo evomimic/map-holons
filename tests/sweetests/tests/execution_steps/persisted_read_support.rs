@@ -27,21 +27,23 @@ pub(super) async fn loaded_holons_with_fresh_context(
     state: &mut TestExecutionState,
     step_name: &str,
 ) -> (Arc<TransactionContext>, HolonCollection) {
+    let context = fresh_assertion_context(state, step_name).await;
+    load_holons(state, context, step_name).await
+}
+
+/// Opens an observer without enumerating saved roots or changing the active transaction.
+pub(super) async fn fresh_assertion_context(
+    state: &TestExecutionState,
+    step_name: &str,
+) -> Arc<TransactionContext> {
     let result = state
-        .dispatch_command(
-            MapCommand::Space(SpaceCommand::BeginTransaction),
-            &format!("{step_name}: begin_fresh_assertion_transaction"),
-        )
+        .dispatch_command(MapCommand::Space(SpaceCommand::BeginTransaction), step_name)
         .await
-        .unwrap_or_else(|error| panic!("{step_name}: failed to open fresh observer: {error:?}"));
+        .expect("begin fresh assertion transaction");
     let MapResult::TransactionCreated { tx_id } = result else {
         panic!("{step_name}: expected TransactionCreated, got {result:?}");
     };
-    let context =
-        state.runtime().session().get_transaction(&tx_id).unwrap_or_else(|error| {
-            panic!("{step_name}: failed to resolve fresh observer: {error:?}")
-        });
-    load_holons(state, context, step_name).await
+    state.runtime().session().get_transaction(&tx_id).expect("fresh assertion context")
 }
 
 async fn load_holons(

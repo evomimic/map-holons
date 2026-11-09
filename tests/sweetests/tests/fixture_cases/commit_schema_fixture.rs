@@ -5,8 +5,7 @@ use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use holons_test::{
     DancesTestCase, ExpectedCommitCandidate, ExpectedCommitStatus, ExpectedDisposition,
-    ExpectedPersistedGraph, ExpectedPersistedRelationship, ExpectedRejectedHolon,
-    ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons, PersistedSubject,
+    ExpectedRejectedHolon, ExpectedValidationFinding, ExpectedValidationSubject, FixtureHolons,
     TestCaseInit, TestReference,
 };
 
@@ -213,18 +212,6 @@ pub fn commit_schema_cycle_fixture() -> Result<DancesTestCase, HolonError> {
     Ok(test_case)
 }
 
-fn persisted_targets(
-    source: &TestReference,
-    relationship: &str,
-    targets: &[&TestReference],
-) -> ExpectedPersistedRelationship {
-    ExpectedPersistedRelationship {
-        source: PersistedSubject::Token(source.clone()),
-        relationship: relationship.to_relationship_name(),
-        targets: targets.iter().map(|target| PersistedSubject::Token((*target).clone())).collect(),
-    }
-}
-
 fn commit_versions(
     case: &mut DancesTestCase,
     holons: &mut FixtureHolons,
@@ -251,6 +238,7 @@ pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, Ho
         "Schema successor membership history",
         "Explicit membership populates a new Schema version without rewriting earlier owners",
     );
+    test_case.verify_committed_workset = true;
     let case = &mut test_case;
     let holons = &mut fixture_holons;
     case.add_begin_transaction_step(None, None)?;
@@ -305,9 +293,6 @@ pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, Ho
     )?;
     case.add_commit_step(holons, ExpectedCommitStatus::Complete, None, None)?;
     case.add_begin_transaction_step(None, None)?;
-    let member_v1 = saved(&fixture_context, case, holons, "MembershipHistory.Title.PropertyType")?;
-    let rule_v1 =
-        saved(&fixture_context, case, holons, "MembershipHistory.Unbound.ValidationRule")?;
     let schema_v2 =
         case.add_stage_new_version_step(holons, schema, None, MapInteger(1), None, None)?;
     let schema_v2 = case.add_with_properties_step(
@@ -322,21 +307,6 @@ pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, Ho
         None,
     )?;
     commit_versions(case, holons, &[&schema_v2])?;
-    case.add_verify_persisted_graph_step(
-        holons,
-        ExpectedPersistedGraph {
-            relationships: vec![
-                persisted_targets(&schema_v1, "Components", &[&member_v1]),
-                persisted_targets(&schema_v1, "Rules", &[&rule_v1]),
-                persisted_targets(&schema_v2, "Components", &[]),
-                persisted_targets(&schema_v2, "Rules", &[]),
-                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
-                persisted_targets(&rule_v1, "RuleOf", &[&schema_v1]),
-            ],
-            ..Default::default()
-        },
-        Some("Publishing a Schema successor inherits no inverse memberships".into()),
-    )?;
 
     case.add_begin_transaction_step(None, None)?;
     let member_v2 =
@@ -350,18 +320,6 @@ pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, Ho
         None,
     )?;
     commit_versions(case, holons, &[&member_v2])?;
-    case.add_verify_persisted_graph_step(
-        holons,
-        ExpectedPersistedGraph {
-            relationships: vec![
-                persisted_targets(&schema_v1, "Components", &[&member_v1]),
-                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
-                persisted_targets(&member_v2, "ComponentOf", &[&schema_v1]),
-            ],
-            ..Default::default()
-        },
-        Some("Two member versions realize one Lineage-bound inverse membership".into()),
-    )?;
 
     case.add_begin_transaction_step(None, None)?;
     let member_v3 = case.add_stage_new_version_step(
@@ -376,27 +334,6 @@ pub fn commit_schema_successor_membership_fixture() -> Result<DancesTestCase, Ho
     let rule_v2 = case.add_stage_new_version_step(holons, rule, None, MapInteger(1), None, None)?;
     let rule_v2 = replace_target(case, holons, rule_v2, "RuleOf", &schema_v1, &schema_v2)?;
     commit_versions(case, holons, &[&member_v3, &rule_v2])?;
-    case.add_verify_persisted_graph_step(
-        holons,
-        ExpectedPersistedGraph {
-            relationships: vec![
-                persisted_targets(&schema_v1, "Components", &[&member_v1]),
-                persisted_targets(&schema_v1, "Rules", &[&rule_v1]),
-                persisted_targets(&schema_v2, "Components", &[&member_v1]),
-                persisted_targets(&schema_v2, "Rules", &[&rule_v1]),
-                persisted_targets(&member_v1, "ComponentOf", &[&schema_v1]),
-                persisted_targets(&member_v2, "ComponentOf", &[&schema_v1]),
-                persisted_targets(&member_v3, "ComponentOf", &[&schema_v2]),
-                persisted_targets(&rule_v1, "RuleOf", &[&schema_v1]),
-                persisted_targets(&rule_v2, "RuleOf", &[&schema_v2]),
-            ],
-            ..Default::default()
-        },
-        Some(
-            "Explicit membership preserves both historical owners and root-targeted inverses"
-                .into(),
-        ),
-    )?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }

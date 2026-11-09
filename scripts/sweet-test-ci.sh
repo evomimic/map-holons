@@ -8,7 +8,7 @@ nextest_args=(run --manifest-path tests/sweetests/Cargo.toml -p holons_test --pr
 if [[ "$nextest_profile" == ci-rest || "$nextest_profile" == ci-commit ]]; then
   # Nextest intersects this selection with each shard's default filter. The
   # second invocation excludes exactly its priority tests, preserving coverage once.
-  regression_filter='(binary(commit_incomplete_tests) & test(=outstanding_graph_replay_rejects_removal_then_composes_live_addition)) | binary(effective_descriptor_tests) | binary(relationship_cache_policy_tests)'
+  regression_filter='(binary(commit_incomplete_tests) & test(=graph_and_key_index_retries_preserve_isolation)) | binary(effective_descriptor_tests) | (binary(dance_tests) & test(=rstest_dance_test_suites::case_1_runtime_behavior_matrix))'
   printf '[sweettest] Running priority regressions (stop on first failure).\n'
   cargo nextest "${nextest_args[@]}" --fail-fast -E "$regression_filter"
   printf '[sweettest] Priority regressions passed; running remaining tests.\n'

@@ -10,7 +10,6 @@ use pretty_assertions::assert_eq;
 #[test]
 fn all_fixtures_author_without_a_conductor() {
     abandon_staged_changes_fixture::simple_abandon_staged_changes_fixture().unwrap();
-    bootstrap_operational_schema_fixture::bootstrap_operational_schema_fixture().unwrap();
     commit_sibling_fixture::commit_version_siblings_fixture().unwrap();
     commit_sibling_fixture::commit_no_op_and_graph_only_siblings_fixture().unwrap();
     commit_graph_only_fixture::commit_disjoint_graph_additions_fixture().unwrap();
@@ -25,8 +24,6 @@ fn all_fixtures_author_without_a_conductor() {
     commit_disposition_fixture::commit_no_action_fixture().unwrap();
     commit_disposition_fixture::commit_mixed_dispositions_fixture().unwrap();
     commit_disposition_fixture::commit_same_key_dispositions_fixture().unwrap();
-    commit_disposition_fixture::commit_stale_graph_only_declaration_fixture().unwrap();
-    commit_disposition_fixture::commit_unsupported_pass_one_fixture().unwrap();
     commit_lineage_fixture::commit_sequential_lineage_fixture().unwrap();
     commit_lineage_fixture::commit_non_root_lineage_fixture().unwrap();
     commit_schema_fixture::commit_cross_schema_dependency_gap_fixture().unwrap();
@@ -48,7 +45,6 @@ fn all_fixtures_author_without_a_conductor() {
         .unwrap();
     load_book_person_inverse_schema_fixture::cross_transaction_staged_target_diagnostic_fixture()
         .unwrap();
-    load_holons_internal_fixture::loader_incremental_fixture().unwrap();
     load_inverse_oriented_book_person_instances_fixture::load_inverse_oriented_book_person_instances_fixture().unwrap();
     query_boundary_fixture::query_boundary_fixture().unwrap();
     query_qry1_scaffold_fixture::query_qry1_scaffold_fixture().unwrap();
@@ -256,4 +252,196 @@ fn validation_correction_declares_both_roots_and_descriptor_inverse_guards() {
         commits[1],
         (RejectionVerification::ExistingPersistenceSnapshot, ExpectedCommitStatus::Complete)
     ));
+}
+
+/// Commit freezes provenance and memberships before later heads advance.
+#[test]
+fn commit_verification_uses_declared_fixture_worksets() {
+    let case = commit_graph_only_fixture::commit_identical_graph_additions_fixture().unwrap();
+    let commits: Vec<_> = case
+        .steps
+        .iter()
+        .filter_map(|step| match step {
+            DanceTestStep::Commit { candidates, .. } => Some(candidates),
+            _ => None,
+        })
+        .collect();
+    assert!(commits[0].iter().all(|candidate| candidate.saved_source.is_none()));
+    let siblings = commits.last().unwrap();
+    assert_eq!(siblings.len(), 2);
+    assert_eq!(siblings[0].saved_source, siblings[1].saved_source);
+    for candidate in *siblings {
+        let relationship = candidate
+            .relationships
+            .iter()
+            .find(|relationship| relationship.name.to_string() == "ReferencesProperty")
+            .unwrap();
+        assert!(relationship.before.is_empty());
+        assert_eq!(relationship.after.len(), 1);
+        assert!(candidate.relationships.iter().all(|relationship| !matches!(
+            relationship.name.to_string().as_str(),
+            "Predecessor" | "Successor"
+        )));
+    }
+}
+
+/// Commit scenarios use shared persisted checks rather than rediscovering their graph.
+#[test]
+fn audited_commit_cases_need_no_standalone_graph_step() {
+    let cases = [
+        commit_lineage_fixture::commit_sequential_lineage_fixture().unwrap(),
+        commit_lineage_fixture::commit_non_root_lineage_fixture().unwrap(),
+        commit_graph_only_fixture::commit_disjoint_graph_additions_fixture().unwrap(),
+        commit_graph_only_fixture::commit_identical_graph_additions_fixture().unwrap(),
+        commit_graph_only_fixture::commit_graph_overlap_rejection_fixture().unwrap(),
+        commit_graph_only_fixture::commit_graph_then_version_fixture().unwrap(),
+        commit_graph_only_fixture::commit_version_then_graph_fixture().unwrap(),
+        commit_sibling_fixture::commit_version_siblings_fixture().unwrap(),
+        commit_sibling_fixture::commit_no_op_and_graph_only_siblings_fixture().unwrap(),
+        commit_sibling_fixture::commit_book_title_exact_references_fixture().unwrap(),
+        commit_sibling_fixture::commit_branch_across_transactions_fixture().unwrap(),
+        commit_schema_fixture::commit_schema_successor_membership_fixture().unwrap(),
+        commit_incomplete_fixture::commit_incomplete_fixture().unwrap().case,
+        commit_incomplete_fixture::graph_overlap_retry_fixture().unwrap().case,
+    ];
+    for case in cases {
+        assert!(case.verify_committed_workset, "{} requires shared Commit graph checks", case.name);
+        assert!(
+            case.steps
+                .iter()
+                .all(|step| !matches!(step, DanceTestStep::VerifyPersistedGraph { .. })),
+            "{} must verify its declared workset through Commit",
+            case.name
+        );
+    }
+}
+
+/// A partial lookup stub cannot describe the member being removed; the operation still must.
+#[test]
+fn partial_lookup_removals_remain_explicit_commit_intent() {
+    use holons_prelude::prelude::*;
+    use holons_test::{ExpectedCommitCandidate, ExpectedMembershipEdit, TestCaseInit};
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Partial membership intent",
+        "Keep explicit removal of an unknown stub member",
+    );
+    let mut tokens = Vec::new();
+    for key in ["Book.PartialIntent", "Title.PropertyType", "Name.PropertyType"] {
+        let key = MapString(key.into());
+        let stub = fixture_context.mutation().new_holon(Some(key.clone())).unwrap();
+        tokens.push(
+            test_case
+                .add_lookup_saved_holon_by_key_step(&mut fixture_holons, stub, key, None, None)
+                .unwrap(),
+        );
+    }
+    let update = test_case
+        .add_stage_new_version_step(
+            &mut fixture_holons,
+            tokens[0].clone(),
+            None,
+            MapInteger(1),
+            None,
+            None,
+        )
+        .unwrap();
+    let update = test_case
+        .add_remove_related_holons_step(
+            &mut fixture_holons,
+            update,
+            "ReferencesProperty".to_relationship_name(),
+            vec![tokens[1].clone()],
+            None,
+            None,
+        )
+        .unwrap();
+    let update = test_case
+        .add_add_related_holons_step(
+            &mut fixture_holons,
+            update,
+            "ReferencesProperty".to_relationship_name(),
+            vec![tokens[2].clone()],
+            None,
+            None,
+        )
+        .unwrap();
+    test_case
+        .add_commit_step_with_dispositions(
+            &mut fixture_holons,
+            ExpectedCommitStatus::Complete,
+            vec![ExpectedCommitCandidate::new(update, ExpectedDisposition::GraphOnly)],
+            vec![],
+            None,
+            None,
+        )
+        .unwrap();
+    let DanceTestStep::Commit { candidates, .. } = test_case.steps.last().unwrap() else {
+        unreachable!()
+    };
+    let relationship = candidates
+        .iter()
+        .flat_map(|candidate| &candidate.relationships)
+        .find(|relationship| relationship.name.to_string() == "ReferencesProperty")
+        .unwrap();
+    assert!(relationship.before.is_empty(), "the saved source is a partial lookup");
+    assert!(relationship
+        .edits
+        .iter()
+        .any(|edit| matches!(edit, ExpectedMembershipEdit::Remove(targets) if targets.len() == 1)));
+    assert!(relationship
+        .edits
+        .iter()
+        .any(|edit| matches!(edit, ExpectedMembershipEdit::Add(targets) if targets.len() == 1)));
+}
+
+#[test]
+fn abandoned_targets_are_removed_from_pending_commit_intent() {
+    use fixture_cases::described_instance_helpers::add_described_instance;
+    use holons_prelude::prelude::*;
+    use holons_test::harness::helpers::{BOOK_DESCRIPTOR_KEY, PERSON_DESCRIPTOR_KEY};
+    use holons_test::{ExpectedMembershipEdit, TestCaseInit};
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } =
+        TestCaseInit::new("Abandon related intent", "Prune pending relationship intent");
+    let book = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        "Book.PrunedIntent",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
+    )
+    .unwrap();
+    let person = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        "Person.PrunedIntent",
+        "Name",
+        PERSON_DESCRIPTOR_KEY,
+    )
+    .unwrap();
+    test_case
+        .add_add_related_holons_step(
+            &mut fixture_holons,
+            book,
+            "AuthoredBy".to_relationship_name(),
+            vec![person.clone()],
+            None,
+            None,
+        )
+        .unwrap();
+    test_case.add_abandon_staged_changes_step(&mut fixture_holons, person, None, None).unwrap();
+    test_case
+        .add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)
+        .unwrap();
+    let DanceTestStep::Commit { candidates, .. } = test_case.steps.last().unwrap() else {
+        unreachable!()
+    };
+    let relationship =
+        candidates[0].relationships.iter().find(|r| r.name.to_string() == "AuthoredBy").unwrap();
+    assert!(relationship.after.is_empty());
+    assert!(relationship
+        .edits
+        .iter()
+        .all(|edit| matches!(edit, ExpectedMembershipEdit::Add(targets) if targets.is_empty())));
 }

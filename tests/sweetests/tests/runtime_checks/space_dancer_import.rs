@@ -8,7 +8,6 @@ use base_types::MapString;
 use core_types::{ContentSet, FileData};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::{HolonReference, ReadableHolon};
-use holons_test::{init_test_runtime, DancesTestCase};
 use map_commands_contract::{
     MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
 };
@@ -60,15 +59,7 @@ async fn load_space_navigator(runtime: &Runtime) {
     );
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn importing_space_navigator_affords_its_dancer_from_the_local_space() {
-    let mut test_case = DancesTestCase::default();
-    let (runtime, initial_tx_id) = init_test_runtime(&mut test_case).await;
-    runtime
-        .session()
-        .archive_transaction(&initial_tx_id)
-        .expect("initial transaction must archive");
-
+pub async fn importing_space_navigator_affords_its_dancer_from_the_local_space(runtime: &Runtime) {
     load_space_navigator(&runtime).await;
 
     let context = begin_transaction(&runtime).await;
@@ -106,4 +97,5 @@ async fn importing_space_navigator_affords_its_dancer_from_the_local_space() {
         afforded_dancers.iter().any(|member| member.holon_id() == dancer.holon_id()),
         "local HolonSpace must afford SpaceNavigator.Dancer after package import"
     );
+    runtime.session().archive_transaction(&context.tx_id()).unwrap();
 }

@@ -20,13 +20,29 @@ Paths below are relative to `tests/sweetests/`.
 | Bootstrap and probe isolation | `src/harness/helpers/test_context.rs`, `smartlink_test_control.rs` |
 | Driver and step dispatch | `tests/execution_steps/dance_test_runner.rs` |
 | Persisted reads and graph execution | `tests/execution_steps/persisted_read_support.rs`, `persisted_graph_executor.rs` |
-| Commit dispatch and result recording | `tests/execution_steps/commit_executor.rs` |
+| Commit dispatch, correspondence and bounded persistence checks | `tests/execution_steps/commit_executor.rs`, `commit_verification_executor.rs` |
 
 `rstest_dance_test_suites` in `tests/dance_tests.rs` registers suites. Individual fixtures belong
 in a suite's `test_cases` vector; new step match arms belong in `dance_test_runner.rs`.
-Expected-panic and probe-backed targets reuse the runner; `fixture_authoring_tests.rs` checks
+Probe-backed targets reuse the runner; `fixture_authoring_tests.rs` checks
 fixture gates without executing it. Put pure assertion/classification logic in `src/harness`
 so its tests run once under `--lib`, rather than in each integration target.
+
+## Reusing committed bootstrap data
+
+`init_test_runtime`, `init_probe_test_runtime` and `init_runtime_with_initiator` provision
+Core Schema. Call them once per compatible suite. When a scenario requires fresh host caches,
+descriptor ownership or Runtime lifetime, `runtime_for_bootstrapped_space(initiator, space_id)`
+opens an independent host Runtime/Session against that existing persisted Space without
+loading it again. Keep the conductor/transport alive independently of the Runtime under test.
+
+The descriptor integration suite exercises separate Sessions and Runtime-drop behavior on one
+conductor. The cache-population target also owns the nested theme-loading checks, with separate
+measured transports and fresh host caches. Canonical-loader discovery runs before usage writes
+and reuses one Navigator import. The enabled graph/key-index retry suite shares a probe backend
+and schema-load bookkeeping while keeping case transactions and fixture registries separate;
+planted links are removed before the next case. The excluded repeated-error retry remains a
+standalone test. Never share a probe-enabled conductor with an ordinary production suite.
 
 ## Tokens, heads, and realizations
 
@@ -156,8 +172,14 @@ Choose the read surface deliberately:
   a new transaction alone does not invalidate the shared saved relationship cache.
 
 Saved-content comparison checks complete saved properties and definitional content, skipping
-partial lookup stubs. Fresh persisted graph checks cover non-definitional changes, materialized
-inverses, and exact lineage. Within a graph step, `edges` counts occurrences of one named
+partial lookup stubs. Graph cases opt in with `test_case.verify_committed_workset = true`.
+For those cases, Complete Commit verifies the declared sources/results and named fixture
+memberships with fresh reads, including inverse occurrences and exact lineage. Verified fixture
+expectations are retained by saved identity; unknown memberships need an initial named
+baseline. Original expectations survive Incomplete retries, including NoAction; identities created by the fixture retain
+known inverse contributors across commits. See the authoritative harness specification for the
+bounds and Lineage-binding rules. Explicit persisted graph steps cover assertions beyond those
+shared guarantees. Within a graph step, `edges` counts occurrences of one named
 target, so `ExactlyOnce` rejects a duplicate of that target but no `edges` entry rejects an
 undeclared extra one; `relationships` and `lineage` compare exact target sets and reject both.
 Declare an inverse direction as its own entry; it is never derivable from a forward declaration.

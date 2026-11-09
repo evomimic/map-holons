@@ -101,6 +101,32 @@ pub async fn init_probe_test_runtime(
     (runtime, tx_id, SmartLinkTestControl::new(backend))
 }
 
+/// Opens an independent host Runtime and Session against an already committed Space.
+/// Only persisted data and the supplied transport are shared: host caches, transaction
+/// managers and descriptor-registry ownership start fresh. This does not provision schemas.
+pub fn runtime_for_bootstrapped_space(
+    dance_initiator: Arc<dyn DanceInitiator + Send + Sync>,
+    space_id: HolonId,
+) -> Runtime {
+    runtime_with_initiator(dance_initiator, Some(space_id))
+}
+
+fn runtime_with_initiator(
+    dance_initiator: Arc<dyn DanceInitiator + Send + Sync>,
+    space_id: Option<HolonId>,
+) -> Runtime {
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(ClientHolonService::development_default());
+    let space_manager = HolonSpaceManager::new_with_managers(
+        Some(dance_initiator),
+        holon_service,
+        space_id,
+        ServiceRoutingPolicy::Combined,
+    );
+    let session = Arc::new(RuntimeSession::new(space_manager, None));
+    Runtime::new(session)
+}
+
 /// Uses the same bootstrap and fixture import path with either conductor configuration.
 /// Initialize ordinary bootstrap with a caller-supplied transport for focused boundary tests.
 pub async fn init_runtime_with_initiator(
@@ -110,21 +136,7 @@ pub async fn init_runtime_with_initiator(
     let initialization_started = Instant::now();
     info!("\n ========== Initializing TEST RUNTIME ============");
 
-    // Step 1: Create the ClientHolonService
-    let holon_service: Arc<dyn HolonServiceApi> =
-        Arc::new(ClientHolonService::development_default());
-
-    // Step 2: Create a new `HolonSpaceManager` wrapped in `Arc`
-    let space_manager = HolonSpaceManager::new_with_managers(
-        Some(dance_initiator),
-        holon_service,
-        None, // No local space holon initially
-        ServiceRoutingPolicy::Combined,
-    );
-
-    // Step 3: Create RuntimeSession and Runtime
-    let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager), None));
-    let runtime = Runtime::new(session);
+    let runtime = runtime_with_initiator(dance_initiator, None);
 
     // Step 4: Bootstrap the first space through the same internal transaction
     // shape Conductora uses. The guest writes and returns CoreSchemaSpace as
