@@ -49,6 +49,7 @@ impl DanceResponseWire {
     /// Binds a wire response to the supplied transaction, validating `tx_id` for all embedded references.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<DanceResponse, HolonError> {
         Ok(DanceResponse {
+            returned_descriptor_products: None,
             status_code: self.status_code,
             description: self.description,
             error: self.error,

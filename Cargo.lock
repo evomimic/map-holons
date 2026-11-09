@@ -3347,6 +3347,7 @@ version = "0.1.0"
 dependencies = [
  "base_types",
  "core_types",
+ "holochain_serialized_bytes",
  "holons_core",
  "serde",
  "serde_json",

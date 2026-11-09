@@ -491,8 +491,57 @@ fn usage_resolution_delegates_once_without_client_relationship_discovery() -> Re
     Ok(())
 }
 
+/// Models transport binding of a guest-built saved product without installing it.
+fn commit_return_fixture(
+    context: &Arc<TransactionContext>,
+) -> holons_core::core_shared_objects::descriptor_registry::ReturnedDescriptorProducts {
+    use holons_core::{SmartReference, WritableHolon};
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(ClientHolonService::development_default()),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let owner = space
+        .get_transaction_manager()
+        .open_private_restricted_cache_read_transaction_with_id(
+            space.clone(),
+            holons_core::core_shared_objects::transactions::TxId::from_str("400").unwrap(),
+        )
+        .unwrap();
+    let source: HolonReference = SmartReference::new_with_properties(
+        owner.space_read_handle(),
+        id(77),
+        core_types::PropertyMap::from([(
+            core_types::PropertyName("Key".into()),
+            base_types::BaseValue::StringValue("source".into()),
+        )]),
+    )
+    .into();
+    let mut ehd = owner.mutation().new_holon(None).unwrap();
+    ehd.add_related_holons("DescribedBy", vec![source.clone()]).unwrap();
+    ehd.add_related_holons("DescribedHolonType", vec![source]).unwrap();
+    ehd.with_property_value("DerivedInstanceTypeKind", "{\"Ok\":null}").unwrap();
+    let schema = holons_core::descriptors::PreparedSchema {
+        lineage: vec![id(77)],
+        origins: vec![vec![]; 7],
+        ..Default::default()
+    };
+    ehd.with_property_value("PreparedSchema", serde_json::to_string(&schema).unwrap()).unwrap();
+    ehd.mark_as_immutable().unwrap();
+    let mut root = owner.mutation().new_holon(None).unwrap();
+    root.add_related_holons("PreparedDescriptors", vec![ehd.into()]).unwrap();
+    let wire = holons_boundary::DescriptorRegistryWire {
+        root: root.temporary_id(),
+        owner: holons_boundary::SessionStateWire::from_context(&owner).unwrap(),
+    };
+    owner.dispose().unwrap();
+    wire.bind_return(context).unwrap().unwrap()
+}
+
 #[derive(Debug)]
 struct CommitResetTransport {
+    return_products: bool,
     status: &'static str,
     evidence: Option<base_types::BaseValue>,
     persisted: bool,
@@ -547,78 +596,93 @@ impl holons_core::dances::DanceInitiator for CommitResetTransport {
         response
             .add_related_holons(type_names::CoreRelationshipTypeName::SavedHolons, members)
             .unwrap();
-        holons_core::dances::DanceResponse::new(
+        let mut result = holons_core::dances::DanceResponse::new(
             ResponseStatusCode::OK,
             "Commit completed".into(),
             ResponseBody::HolonReference(response.into()),
             None,
-        )
+        );
+        if self.return_products {
+            result.returned_descriptor_products = Some(commit_return_fixture(context));
+        }
+        result
     }
 }
 
 #[test]
 fn local_commit_resets_current_session_only_when_persistence_may_have_changed() {
     use base_types::BaseValue;
-    for (status, persisted, reset_during_request, evidence, nonempty, should_reset) in [
-        ("Complete", true, false, "missing", false, true),
-        ("Complete", true, true, "reset", false, true),
-        ("Complete", false, false, "missing", false, false),
-        ("Complete", false, false, "missing", true, true),
-        ("Complete", true, false, "safe", true, false),
-        ("Complete", true, true, "safe", true, false),
-        ("Complete", false, false, "safe", true, false),
-        ("Complete", true, false, "malformed", true, true),
-        ("Complete", false, false, "reset", false, true),
-        ("Rejected", false, false, "reset", true, false),
-        ("Rejected", true, false, "safe", true, true),
-        ("Incomplete", true, false, "safe", true, true),
-        // Partial graph persistence can occur without a newly saved node.
-        ("Incomplete", false, false, "safe", false, true),
-        ("Unknown", false, false, "safe", false, true),
-        ("TransportFailure", false, false, "safe", true, true),
-        ("InvalidResponse", false, false, "safe", true, true),
-    ] {
-        let evidence = match evidence {
-            "safe" => Some(BaseValue::BooleanValue(false.into())),
-            "reset" => Some(BaseValue::BooleanValue(true.into())),
-            "malformed" => Some(BaseValue::StringValue("false".into())),
-            _ => None,
-        };
-        let transport = Arc::new(CommitResetTransport {
-            status,
-            evidence,
-            persisted,
-            reset_during_request,
-            during: Default::default(),
-        });
-        let client = Arc::new(ClientHolonService::development_default());
-        let space = HolonSpaceManager::new_with_managers(
-            Some(transport.clone()),
-            client.clone(),
-            None,
-            ServiceRoutingPolicy::BlockExternal,
-        );
-        let context =
-            space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
-        let candidates = if nonempty {
-            let transient = context.mutation().new_holon(Some("candidate".into())).unwrap();
-            vec![context.mutation().stage_new_holon(transient).unwrap()]
-        } else {
-            vec![]
-        };
-        let before = space.session().unwrap();
-        let result = client.commit_internal(&context, &candidates);
-        match status {
-            "TransportFailure" => assert!(matches!(result, Err(HolonError::ConductorError(_)))),
-            "InvalidResponse" => assert!(matches!(result, Err(HolonError::CommitFailure(_)))),
-            _ => {
-                result.unwrap();
+    for return_products in [false, true] {
+        for (status, persisted, reset_during_request, evidence, nonempty, should_reset) in [
+            ("Complete", true, false, "missing", false, true),
+            ("Complete", true, true, "reset", false, true),
+            ("Complete", false, false, "missing", false, false),
+            ("Complete", false, false, "missing", true, true),
+            ("Complete", true, false, "safe", true, false),
+            ("Complete", true, true, "safe", true, false),
+            ("Complete", false, false, "safe", true, false),
+            ("Complete", true, false, "malformed", true, true),
+            ("Complete", false, false, "reset", false, true),
+            ("Rejected", false, false, "reset", true, false),
+            ("Rejected", true, false, "safe", true, true),
+            ("Incomplete", true, false, "safe", true, true),
+            // Partial graph persistence can occur without a newly saved node.
+            ("Incomplete", false, false, "safe", false, true),
+            ("Unknown", false, false, "safe", false, true),
+            ("TransportFailure", false, false, "safe", true, true),
+            ("InvalidResponse", false, false, "safe", true, true),
+        ] {
+            let evidence = match evidence {
+                "safe" => Some(BaseValue::BooleanValue(false.into())),
+                "reset" => Some(BaseValue::BooleanValue(true.into())),
+                "malformed" => Some(BaseValue::StringValue("false".into())),
+                _ => None,
+            };
+            let transport = Arc::new(CommitResetTransport {
+                return_products,
+                status,
+                evidence,
+                persisted,
+                reset_during_request,
+                during: Default::default(),
+            });
+            let client = Arc::new(ClientHolonService::development_default());
+            let space = HolonSpaceManager::new_with_managers(
+                Some(transport.clone()),
+                client.clone(),
+                None,
+                ServiceRoutingPolicy::BlockExternal,
+            );
+            let context =
+                space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+            let candidates = if nonempty {
+                let transient = context.mutation().new_holon(Some("candidate".into())).unwrap();
+                vec![context.mutation().stage_new_holon(transient).unwrap()]
+            } else {
+                vec![]
+            };
+            let registry = Arc::new(holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry::new(&space));
+            space.attach_descriptor_registry(&registry);
+            let before = space.session().unwrap();
+            let result = client.commit_internal(&context, &candidates);
+            match status {
+                "TransportFailure" => assert!(matches!(result, Err(HolonError::ConductorError(_)))),
+                "InvalidResponse" => assert!(matches!(result, Err(HolonError::CommitFailure(_)))),
+                _ => {
+                    result.unwrap();
+                }
             }
+            let during = transport.during.lock().unwrap().clone().unwrap();
+            assert_eq!(during.check_active().is_err(), should_reset, "{status}/{persisted}");
+            assert_eq!(before.check_active().is_err(), should_reset || reset_during_request);
+            assert!(space.session().unwrap().check_active().is_ok());
+            let adopts = return_products && !should_reset && !reset_during_request;
+            assert_eq!(
+                registry.population().unwrap(),
+                (usize::from(adopts), 0),
+                "return adoption {status}/{persisted}/{reset_during_request}"
+            );
         }
-        let during = transport.during.lock().unwrap().clone().unwrap();
-        assert_eq!(during.check_active().is_err(), should_reset, "{status}/{persisted}");
-        assert_eq!(before.check_active().is_err(), should_reset || reset_during_request);
-        assert!(space.session().unwrap().check_active().is_ok());
     }
 }
 

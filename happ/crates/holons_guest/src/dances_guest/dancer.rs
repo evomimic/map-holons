@@ -99,6 +99,7 @@ impl Dancer {
 fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
         Ok(body) => DanceResponse {
+            returned_descriptor_products: None,
             status_code: ResponseStatusCode::OK,
             description: MapString("Success".to_string()),
             error: None,
@@ -106,6 +107,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
             descriptor: None,
         },
         Err(error) => DanceResponse {
+            returned_descriptor_products: None,
             status_code: ResponseStatusCode::from(error.clone()),
             description: MapString(extract_error_message(&error)),
             error: Some(error),

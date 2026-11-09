@@ -306,6 +306,20 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         Ok(transient_pool.0.clone())
     }
 
+    fn update_transient_holons(
+        &self,
+        update: &mut dyn FnMut(&mut HolonPool) -> Result<(), HolonError>,
+    ) -> Result<(), HolonError> {
+        let mut guard = self
+            .transient_holons
+            .write()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        let mut next = guard.0.clone();
+        update(&mut next)?;
+        guard.import_pool(next);
+        Ok(())
+    }
+
     /// Imports holons into the transient pool, completely replacing existing holons.
     fn import_transient_holons(&self, pool: HolonPool) -> Result<(), HolonError> {
         let mut guard = self.transient_holons.write().map_err(|e| {
@@ -328,5 +342,34 @@ mod tests {
     #[test]
     fn transient_holon_manager_is_thread_safe() {
         assert_thread_safe::<TransientHolonManager>();
+    }
+    #[test]
+    fn failed_pool_update_preserves_original_membership() -> Result<(), HolonError> {
+        let manager = TransientHolonManager::new_empty(TxId::from_str("99").unwrap(), Weak::new());
+        let holon = Holon::Transient(TransientHolon::from_parts(
+            MapInteger(1),
+            HolonState::Mutable,
+            ValidationState::ValidationRequired,
+            Default::default(),
+            TransientRelationshipMap::new_empty(),
+            None,
+        ));
+        let mut original = HolonPool::new();
+        let id = original.insert_holon(holon.clone())?;
+        manager.import_transient_holons(original)?;
+        let error = HolonError::InvalidParameter("late batch failure".into());
+        assert_eq!(
+            manager.update_transient_holons(&mut |pool| {
+                pool.clear();
+                pool.insert_holon(holon.clone())?;
+                pool.insert_holon(holon.clone())?;
+                Err(error.clone())
+            }),
+            Err(error)
+        );
+        let remaining = manager.export_transient_holons()?;
+        assert_eq!(remaining.len(), 1);
+        assert!(remaining.get_holon_by_id(&id).is_ok());
+        Ok(())
     }
 }

@@ -84,6 +84,12 @@ pub trait TransientManagerAccessInternal:
     /// Returns `HolonError::FailedToAcquireLock` if the internal write lock cannot be acquired.
     fn import_transient_holons(&self, pool: HolonPool) -> Result<(), HolonError>;
 
+    /// Applies an internal pool update atomically; failure preserves membership.
+    fn update_transient_holons(
+        &self,
+        update: &mut dyn FnMut(&mut HolonPool) -> Result<(), HolonError>,
+    ) -> Result<(), HolonError>;
+
     /// Provides direct access to the underlying transient holon instances.
     ///
     /// This returns the actual `Arc<RwLock<Holon>>` objects stored inside the manager.

@@ -53,6 +53,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         };
 
         return Ok(DanceResponseEnvelope {
+            descriptor_registry: None,
             response: DanceEnvelopeResponse::Legacy(response_wire),
             session,
         });
@@ -105,6 +106,34 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let response_session = restore_session_state_from_context(&context);
     let session_export_micros = elapsed_micros(session_export_started_at);
 
+    let descriptor_registry = if dance_name.0 == "commit" {
+        let started = performance_timestamp_micros();
+        let captured = context.descriptor_registry().and_then(|registry| {
+            match holons_boundary::DescriptorRegistryWire::capture(&registry) {
+                Ok(snapshot) => snapshot,
+                Err(error) => {
+                    warn!("Commit registry return capture failed: {error}");
+                    None
+                }
+            }
+        });
+        if cfg!(feature = "commit-performance-profiling") {
+            let bytes = captured
+                .as_ref()
+                .and_then(|snapshot| ExternIO::encode(snapshot).ok())
+                .map(|bytes| bytes.as_bytes().len())
+                .unwrap_or_default();
+            info!(
+                "[commit-registry-return-capture] elapsed_us={} payload_bytes={}",
+                elapsed_micros(started),
+                bytes
+            );
+        }
+        captured
+    } else {
+        None
+    };
+
     if cfg!(feature = "commit-performance-profiling")
         && (is_load_holons || dance_name.0 == "commit")
     {
@@ -127,6 +156,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     }
 
     Ok(DanceResponseEnvelope {
+        descriptor_registry,
         response: DanceEnvelopeResponse::Legacy(response_wire),
         session: response_session,
     })
@@ -151,6 +181,7 @@ fn execute_invocation_envelope(
         Ok(context) => context,
         Err(error) => {
             return DanceResponseEnvelope {
+                descriptor_registry: None,
                 response: DanceEnvelopeResponse::Reference { result: Err(error) },
                 session,
             }
@@ -193,7 +224,11 @@ fn execute_invocation_envelope(
         warn!("[effective-descriptor-profile] phase=envelope hydration_us={} request_validation_us={} execute_us={} response_projection_us={} export_us={} total_us={} success={}",
             hydration_us, request_us, execute_us, output_us, export_us, elapsed(total_started), result.is_ok());
     }
-    DanceResponseEnvelope { response: DanceEnvelopeResponse::Reference { result }, session }
+    DanceResponseEnvelope {
+        descriptor_registry: None,
+        response: DanceEnvelopeResponse::Reference { result },
+        session,
+    }
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
@@ -227,7 +262,11 @@ fn create_error_response_envelope(
         descriptor: None,
     };
 
-    DanceResponseEnvelope { response: DanceEnvelopeResponse::Legacy(response_wire), session }
+    DanceResponseEnvelope {
+        descriptor_registry: None,
+        response: DanceEnvelopeResponse::Legacy(response_wire),
+        session,
+    }
 }
 
 fn initialize_context_from_session_state(

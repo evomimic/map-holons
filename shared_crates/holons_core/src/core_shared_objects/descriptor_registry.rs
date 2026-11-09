@@ -1,4 +1,5 @@
 //! Session-owned prepared results and Commit registry-owner capture/restoration.
+mod returned_products;
 use super::{space_manager::HolonSpaceManager, transactions::TransactionContext};
 use crate::{
     descriptors::{
@@ -7,6 +8,7 @@ use crate::{
     HolonReference, ReadableHolon, TransientReference, WritableHolon,
 };
 use core_types::{HolonError, HolonId, TemporaryId};
+pub use returned_products::ReturnedDescriptorProducts;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, Weak},
@@ -260,29 +262,26 @@ impl EffectiveHolonDescriptorRegistry {
 
     /// Removes construction envelopes, including after failed preparation attempts.
     pub fn prune_envelopes(&self) -> Result<(), HolonError> {
-        let (context, retained) = {
-            let state = self.state.lock().map_err(lock_error)?;
-            let Some(context) = state.context.clone() else {
-                return Ok(());
-            };
-            (
-                context,
-                state
-                    .admitted
-                    .iter()
-                    .cloned()
-                    .chain(state.root.iter().cloned())
-                    .collect::<std::collections::HashSet<_>>(),
-            )
+        let state = self.state.lock().map_err(lock_error)?;
+        let Some(context) = &state.context else {
+            return Ok(());
         };
-        let pool = context.export_transient_holons()?;
-        let holons = pool
-            .holons_by_id()
+        let retained = state
+            .admitted
             .iter()
-            .filter(|(id, _)| retained.contains(*id))
-            .map(|(id, holon)| (id.clone(), holon.clone()))
-            .collect();
-        context.import_transient_holons(super::HolonPool::from_parts(holons, Default::default()))
+            .cloned()
+            .chain(state.root.iter().cloned())
+            .collect::<std::collections::HashSet<_>>();
+        context.update_transient_holons(&mut |pool| {
+            let holons = pool
+                .holons_by_id()
+                .iter()
+                .filter(|(id, _)| retained.contains(*id))
+                .map(|(id, holon)| (id.clone(), holon.clone()))
+                .collect();
+            *pool = super::HolonPool::from_parts(holons, Default::default());
+            Ok(())
+        })
     }
 
     /// Projects the retained owner's state without moving results into the agent pool.
@@ -381,8 +380,29 @@ impl EffectiveHolonDescriptorRegistry {
         bind: impl FnOnce(&Arc<TransactionContext>) -> Result<super::HolonPool, HolonError>,
         observer: &mut impl FnMut(&'static str),
     ) -> Result<Arc<Self>, HolonError> {
+        Self::restore_snapshot(agent, owner_id, root_id, bind, observer, true)
+    }
+
+    /// Binds and validates a snapshot without installing it in the receiving space.
+    pub fn restore_detached(
+        agent: &Arc<TransactionContext>,
+        owner_id: super::transactions::TxId,
+        root_id: TemporaryId,
+        bind: impl FnOnce(&Arc<TransactionContext>) -> Result<super::HolonPool, HolonError>,
+    ) -> Result<Arc<Self>, HolonError> {
+        Self::restore_snapshot(agent, owner_id, root_id, bind, &mut |_| {}, false)
+    }
+
+    fn restore_snapshot(
+        agent: &Arc<TransactionContext>,
+        owner_id: super::transactions::TxId,
+        root_id: TemporaryId,
+        bind: impl FnOnce(&Arc<TransactionContext>) -> Result<super::HolonPool, HolonError>,
+        observer: &mut impl FnMut(&'static str),
+        install: bool,
+    ) -> Result<Arc<Self>, HolonError> {
         observer("OwnerRestoration");
-        if agent.descriptor_registry().is_some() {
+        if install && agent.descriptor_registry().is_some() {
             return Err(HolonError::InvalidParameter(
                 "Space already has a descriptor registry".into(),
             ));
@@ -401,6 +421,7 @@ impl EffectiveHolonDescriptorRegistry {
         registry.state.lock().map_err(lock_error)?.context = Some(owner.clone());
         owner.import_transient_holons(bind(&owner)?)?;
         observer("IndexRebuild");
+        let pool = owner.export_transient_holons()?;
         let root = TransientReference::from_temporary_id(owner.context_handle(), &root_id);
         let session = space.session()?;
         let mut entries = HashMap::new();
@@ -428,6 +449,13 @@ impl EffectiveHolonDescriptorRegistry {
                     ));
                 }
                 Self::ensure_saved_references(&member)?;
+                let raw = pool.get_holon_by_id(&reference.temporary_id())?;
+                if !matches!(&*raw.read().map_err(lock_error)?, super::Holon::Transient(holon) if *holon.holon_state() == super::holon::state::HolonState::Immutable)
+                {
+                    return Err(HolonError::InvalidParameter(
+                        "Registry products must be sealed transient holons".into(),
+                    ));
+                }
                 let target = if derived {
                     DerivedDescriptor::from_constructed_holon(member.clone())
                         .lineage()?
@@ -464,7 +492,9 @@ impl EffectiveHolonDescriptorRegistry {
             state.derived_entries = derived_entries;
             state.admitted = admitted;
         }
-        space.attach_descriptor_registry(&registry);
+        if install {
+            space.attach_descriptor_registry(&registry);
+        }
         observer("Complete");
         Ok(registry)
     }

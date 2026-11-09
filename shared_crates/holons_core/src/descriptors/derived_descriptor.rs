@@ -419,6 +419,14 @@ impl DerivedDescriptor {
             .ok_or_else(|| HolonError::InvalidParameter("Missing derived source".into()))
     }
 
+    /// Checks all prepared collection/origin pairs without reading saved definitions.
+    pub(crate) fn validate_prepared_collections(&self) -> Result<(), HolonError> {
+        for index in 0..collections().len() {
+            self.contributions(index)?;
+        }
+        Ok(())
+    }
+
     fn contributions(&self, index: usize) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
         let origins: Vec<Vec<usize>> = match self.holon.property_value(P::DerivedOrigins)? {
             Some(base_types::BaseValue::StringValue(value)) => serde_json::from_str(&value.0)
