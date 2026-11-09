@@ -15,6 +15,39 @@ Use this guide to author fixtures. Read [references/harness.md](references/harne
 changing harness mechanics or debugging resolution, Commit, or persisted reads. Current API
 signatures live in the harness code; enduring MAP design lives in `map-dev-docs`.
 
+## Before Authoring a Case
+
+- **Identify the coverage gap.** Name the unique behavior and its test layer. Keep pure
+  classifier/reporting combinations in units; retain representative real-boundary integration
+  checks. Identify the required coverage owner before omitting duplicate assertions.
+- **Justify each step.** Compose proven adders. Do not append verification as reassurance when
+  Commit and existing harness checks already establish the claim. Before extending a shared
+  step, inspect its callers and preserve their contracts; add missing shared checks narrowly.
+- **Author expectations through the fixture.** Its TransientHolons and TestReferences supply
+  parameters and expected results. Never reconstruct expected mutations from persisted actuals.
+  SavedLookup stubs are partial knowledge; an omitted membership is not evidence of emptiness.
+- **Bound the reads to the claim.** For small changes, use the declared subjects and affected
+  named collections. Call out saved-root enumeration, schema-wide traversal and repeated
+  descriptor discovery. Database-wide assertions need a database-wide requirement. Preserve
+  fresh-observer checks, exact identities, multiplicity and meaningful absence/error distinctions.
+- **Share compatible setup.** Prefer existing suites over another bootstrap. Preserve separate
+  transactions and fixture registries, and fresh Sessions, caches or measured transports where
+  those boundaries matter. Order initially-missing checks before cases/steps that populate the
+  membership. Sharing a conductor does not establish fresh host state; keep probes separate.
+
+Choose the existing verification contract; these checks are complementary:
+
+| Claim | Preferred mechanism | Limit |
+|---|---|---|
+| Saved properties and definitional content | `add_match_saved_content_step()` | Skips partial lookup stubs; does not prove every graph/lineage guarantee |
+| Declared persisted memberships, inverse occurrences, multiplicity and exact lineage | Set `test_case.verify_committed_workset = true` during authoring | Verifies on Complete; retains original expectations through Incomplete retries |
+| Rejected creates leave no residue; named existing collections remain unchanged | `add_commit_step_with_rejection_checks` | Unique nonempty-key new roots only; no updates or relationship retries after Incomplete |
+| Explicit graph requirement outside the shared guarantees | Standalone persisted-graph assertion | Do not repeat shared Commit checks; `VerifyPersistedGraph` currently enumerates all saved roots before checking named expectations |
+
+See the authoritative [bounded Commit verification contract](https://github.com/memetic-activation-platform/map-dev-docs/blob/main/docs/core/testing/test-harness-design-spec.md#bounded-persisted-verification-at-commit)
+and [rejection-check authoring contract](https://github.com/memetic-activation-platform/map-dev-docs/blob/main/docs/core/testing/test-step-authoring-guide.md#26-fixture-scoped-rejection-checks)
+for partial subjects, inverse bindings, retries and observer semantics.
+
 ## Mental Model
 
 The framework separates fixture authoring from execution:
@@ -118,9 +151,9 @@ pub fn my_feature_fixture() -> Result<DancesTestCase, HolonError> {
 }
 ```
 
-Prefer saved-content and graph assertions to database counts. `count_saved()` counts
-fixture-owned nodes, while the count executor checks all enumerated roots, including bootstrap
-and schema data; these counts are not interchangeable.
+Use the verification contract above rather than an incidental database count.
+`count_saved()` counts fixture-owned nodes; the count executor enumerates all saved roots,
+including bootstrap and schema data. These counts are not interchangeable.
 
 ### Registering a fixture
 
@@ -154,7 +187,7 @@ use `Option<HolonErrorKind>` and descriptions use `Option<String>`.
 | Commit creates | `add_commit_step` | Create-only convenience; saved-version provenance fails at authoring time and requires explicit dispositions |
 | Commit updates and retries | `add_commit_step_with_dispositions` | Declare the live workset and retries; graph cases opt into bounded persistence checks |
 | Check saved content | `add_match_saved_content_step` | Properties and definitional content; skips partial lookup stubs |
-| Check persisted graph | `add_verify_persisted_graph_step`, `add_verify_relationship_anchoring_step` | Fresh occurrence checks, exact target collections and exact lineage; the latter is the existing focused Book/Person check |
+| Check specialized persisted graph claims | `add_verify_persisted_graph_step`, `add_verify_relationship_anchoring_step` | Only beyond shared Commit guarantees; `VerifyPersistedGraph` currently enumerates saved roots |
 | Check rejection findings | `add_verify_commit_rejection_step`, `add_verify_commit_carrier_finding_step` | Staged semantic findings and aggregate Schema findings |
 | Resolve external saved holons | `add_lookup_saved_holon_by_key_step` | Returns a partial SavedLookup token; use for schema-loaded holons outside the fixture ledger |
 | Manage lifecycle | `add_begin_transaction_step`, `add_abandon_staged_changes_step`, `add_delete_holon_step` | Explicit transactions, abandon, and deletion |
@@ -198,16 +231,11 @@ a node write occurred. See the worked examples below and the outcome table in
   `CrossTransactionReference` naming the relationship and target.
 - `Rejected` attempts and commits with `expected_error` take no candidate or retry declarations
   and advance no heads. Use existing rejection-finding expectations for semantic failures.
-- Use `add_match_saved_content_step()` after Commit for saved properties and definitional
-  content, including after a version-producing Commit. For a graph scenario, set
-  `test_case.verify_committed_workset = true` after initialization. Complete Commit then verifies
-  named fixture memberships, persisted inverse occurrences and exact lineage within its declared
-  workset. Do not repeat these guarantees in a separate graph step. See the authoritative
-  harness specification for partial lookup subjects, retries and Lineage-bound inverses.
-- In that step, `edges` counts occurrences of one named target, so it cannot reject an
-  undeclared extra target. Use `relationships` to assert a relationship's exact target set,
-  where an empty list asserts an empty collection. Declare an inverse direction as its own
-  entry; it is never derivable from a forward declaration.
+- Use the verification contracts above after Commit, including version-producing attempts.
+- In a standalone `ExpectedPersistedGraph`, `edges` counts occurrences of one named target;
+  it cannot reject an undeclared extra target. Use `relationships` for an exact target set,
+  where an empty list asserts an empty collection. Declare exact inverse collections
+  explicitly; they are not inferred from forward collections.
 - Exact collections on holons shared with other fixtures are only sound where every source is
   known. Ordinary suites share persisted data, so schema descriptors accumulate inverse
   backlinks: declare exact forward collections there and keep the inverse partial, and reserve
@@ -223,7 +251,7 @@ an unrelated fixture:
 | Fixture | Use it for |
 |---|---|
 | `transaction_lifecycle_fixture.rs`, `described_instance_helpers.rs` | The shortest happy path: schema-backed staging, a Complete Commit, and saved-content comparison |
-| `stage_new_version_fixture.rs`, `stage_new_from_clone_fixture.rs` | Update/clone staging and existing anchoring checks |
+| `stage_new_version_fixture.rs`, `stage_new_from_clone_fixture.rs` | Update/clone staging, explicit Commit dispositions and saved-content comparison |
 | `commit_disposition_fixture.rs` | Explicit dispositions, zero-save updates, same-key identities, negative diagnostics |
 | `commit_lineage_fixture.rs` | Sequential lineage, non-root updates, graph replay, independent clones |
 | `commit_competition_fixture.rs` | Rejection/correction/retry and branches across transactions |
@@ -248,9 +276,11 @@ npm run sweetest
 exit
 ```
 
-The harness inner loop is sub-second after compilation. Full Sweettest takes over an hour:
-use it as a completion gate. For focused integration checks in Nix, build fresh DNA/probe artifacts
-and select a target with `cargo test --manifest-path tests/sweetests/Cargo.toml --test <target>`.
+Use focused correctness checks while iterating and broader final verification appropriate to
+runtime/harness changes. Instruction-only edits need source/API, link and skill validation,
+not conductor runs or full `npm test`. For focused integration checks in Nix, build fresh
+DNA/probe artifacts and select a target with
+`cargo test --manifest-path tests/sweetests/Cargo.toml --test <target>`.
 `npm run sweetest:nocapture` enables full output.
 
 ## When a New Step Type Is Needed
