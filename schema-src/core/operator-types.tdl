@@ -314,7 +314,31 @@ instance LessThanComparisonValue.OperandSpecification {
   type OperandSpecification.HolonType
   OperandRole "ComparisonValue"
   DisplayName "Comparison Value"
-  Description "Value the subject must be ordered before."
+  Description "Value the subject must be ordered strictly before."
+  OperandValueTypeRule SameAsSubject
+}
+
+instance GreaterThanComparisonValue.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "ComparisonValue"
+  DisplayName "Comparison Value"
+  Description "Value the subject must be ordered strictly after."
+  OperandValueTypeRule SameAsSubject
+}
+
+instance LessThanOrEqualComparisonValue.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "ComparisonValue"
+  DisplayName "Comparison Value"
+  Description "Value the subject must be ordered before or equal to."
+  OperandValueTypeRule SameAsSubject
+}
+
+instance GreaterThanOrEqualComparisonValue.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "ComparisonValue"
+  DisplayName "Comparison Value"
+  Description "Value the subject must be ordered after or equal to."
   OperandValueTypeRule SameAsSubject
 }
 
@@ -377,13 +401,61 @@ holon LessThanOperator.OperatorType {
   Arity 2
   OperatorCategory Ordering
   header {
-    description: "Returns true iff lhs is ordered before rhs under the value type's ordering semantics."
+    description: "Returns true iff the subject is ordered strictly before the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion."
     display_name: "Less Than"
     display_plural: "Less Than Operators"
     plural: "LessThanOperators"
   }
   relationships {
     OperandSpecifications -> LessThanComparisonValue.OperandSpecification
+  }
+}
+
+holon GreaterThanOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Ordering
+  header {
+    description: "Returns true iff the subject is ordered strictly after the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion."
+    display_name: "Greater Than"
+    display_plural: "Greater Than Operators"
+    plural: "GreaterThanOperators"
+  }
+  relationships {
+    OperandSpecifications -> GreaterThanComparisonValue.OperandSpecification
+  }
+}
+
+holon LessThanOrEqualOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Ordering
+  header {
+    description: "Returns true iff the subject is ordered before or equal to the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion."
+    display_name: "Less Than Or Equal"
+    display_plural: "Less Than Or Equal Operators"
+    plural: "LessThanOrEqualOperators"
+  }
+  relationships {
+    OperandSpecifications -> LessThanOrEqualComparisonValue.OperandSpecification
+  }
+}
+
+holon GreaterThanOrEqualOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Ordering
+  header {
+    description: "Returns true iff the subject is ordered after or equal to the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion."
+    display_name: "Greater Than Or Equal"
+    display_plural: "Greater Than Or Equal Operators"
+    plural: "GreaterThanOrEqualOperators"
+  }
+  relationships {
+    OperandSpecifications -> GreaterThanOrEqualComparisonValue.OperandSpecification
   }
 }
 

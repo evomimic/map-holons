@@ -61,7 +61,10 @@ impl StringValueDescriptor {
     /// Executes a resolved string operator.
     ///
     /// Contains treats its operand as literal text, never a pattern, and matches
-    /// under the operator's resolved case-matching policy.
+    /// under the operator's resolved case-matching policy. Ordered comparisons
+    /// use the original values in ordinal order (UTF-8 byte order, which is
+    /// Unicode code point order): case-sensitive, with no folding,
+    /// normalization or locale collation.
     pub(crate) fn evaluate(
         &self,
         op: &ResolvedOperator,
@@ -80,7 +83,7 @@ impl StringValueDescriptor {
 
         match op.kind() {
             OperatorKind::Equals => Ok(lhs == rhs),
-            OperatorKind::LessThan => Ok(lhs.0 < rhs.0),
+            OperatorKind::Ordered(comparison) => Ok(comparison.holds(lhs.0.cmp(&rhs.0))),
             OperatorKind::Contains(case_matching) => Ok(case_matching.contains(&lhs.0, &rhs.0)),
         }
     }
@@ -242,6 +245,34 @@ mod tests {
             Err(HolonError::UnsupportedOperator { operator, value_type, .. })
                 if operator == "EqualsOperator" && value_type == "StringValueType"
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_operator_delegates_every_ordered_comparison() -> Result<(), HolonError> {
+        let context = build_context();
+        let operators = [
+            CoreOperatorTypeName::LessThanOperator,
+            CoreOperatorTypeName::GreaterThanOperator,
+            CoreOperatorTypeName::LessThanOrEqualOperator,
+            CoreOperatorTypeName::GreaterThanOrEqualOperator,
+        ]
+        .map(|name| core_operator(&context, name, None));
+        let operators = operators.into_iter().collect::<Result<Vec<_>, _>>()?;
+        let mut value = new_kind_descriptor(&context, "StringValueType", None, true)?;
+        value.add_related_holons(CoreRelationshipTypeName::AffordsOperator, operators.clone())?;
+        let descriptor = StringValueDescriptor::from_holon(value.into());
+
+        // (before, equal, after) the comparison value, per operator.
+        let expected =
+            [[true, false, false], [false, false, true], [true, true, false], [false, true, true]];
+        for (operator, expected) in operators.into_iter().zip(expected) {
+            let operator = OperatorDescriptor::from_holon(operator);
+            let results = [string_value("a"), string_value("m"), string_value("z")]
+                .map(|subject| descriptor.apply_operator(&operator, &subject, &string_value("m")));
+            let results = results.into_iter().collect::<Result<Vec<_>, _>>()?;
+            assert_eq!(results, expected, "{}", operator.operator_name()?);
+        }
         Ok(())
     }
 }

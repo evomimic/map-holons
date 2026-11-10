@@ -3767,6 +3767,155 @@ mod tests {
         assert_eq!(predicate.into_model().unwrap(), definition, "the definition is unchanged");
     }
 
+    // ---- Ordered comparisons -----------------------------------------------
+
+    #[test]
+    fn an_ordered_filter_keeps_order_duplicates_and_the_declared_type() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let pages = |key: &str, count: Option<i64>| {
+            let mut values = vec![("Title", text("t"))];
+            values.extend(count.map(|count| ("PageCount", number(count))));
+            world.member(key, &world.book, &values)
+        };
+        let (short, exact, long, unknown) = (
+            pages("short", Some(99)),
+            pages("exact", Some(100)),
+            pages("long", Some(300)),
+            pages("unknown", None),
+        );
+        let filter = filter_of(
+            &fixture,
+            "filter",
+            world.compare("PageCount", &world.greater_than_or_equal, &world.integer, number(100)),
+        );
+        let definition = filter.into_model().unwrap();
+
+        let (instance, result) = run_typed(
+            &fixture,
+            &filter,
+            &world.book,
+            &[long.clone(), short, unknown, exact.clone(), long.clone()],
+        );
+        let result = result.expect("an ordered Filter executes");
+        assert_eq!(result_members(&result), vec![long.clone(), exact, long]);
+        assert_eq!(element_type_of(result.as_holon_reference()), world.book);
+        assert_step(&step_records(&instance)[0], ExecutionStatus::Complete, true);
+        assert_eq!(filter.into_model().unwrap(), definition, "the definition is unchanged");
+    }
+
+    #[test]
+    fn an_invalid_ordered_predicate_fails_even_for_empty_input() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        for (key, predicate) in [
+            ("unordered", world.compare("Status", &world.less_than, &world.status, token("Draft"))),
+            ("unafforded", world.compare("Rank", &world.greater_than, &world.rank, number(1))),
+            (
+                "broader",
+                world.compare("Title", &world.less_than_or_equal, &world.map_string, text("m")),
+            ),
+        ] {
+            let filter = filter_of(&fixture, key, predicate);
+            let (instance, result) = run_typed(&fixture, &filter, &world.book, &[]);
+            assert!(
+                matches!(
+                    result,
+                    Err(HolonError::UnsupportedOperator { .. })
+                        | Err(HolonError::IncompatibleLiteralType { .. })
+                ),
+                "{key}: the definition is rejected before any member is read: {result:?}"
+            );
+            assert_failed_without_result(&instance);
+        }
+    }
+
+    #[test]
+    fn an_ordered_filter_composes_with_distinct_in_either_order() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        let a = world.member("a", &world.book, &[("Title", text("Atlas"))]);
+        let b = world.member("b", &world.book, &[("Title", text("Roads"))]);
+        let input = [b.clone(), a.clone(), b.clone(), a];
+        let after_m = || world.compare("Title", &world.greater_than, &world.text, text("M"));
+
+        let mut filter_first = filter_of(&fixture, "filter", after_m());
+        chain(&mut filter_first, &fixture.described_as("distinct", Q::Distinct));
+        let (_, result) = run_typed(&fixture, &filter_first, &world.book, &input);
+        assert_eq!(result_members(&result.unwrap()), vec![b.clone()]);
+
+        let mut distinct_first = fixture.described_as("distinct-2", Q::Distinct);
+        chain(&mut distinct_first, &filter_of(&fixture, "filter-2", after_m()));
+        let (_, result) = run_typed(&fixture, &distinct_first, &world.book, &input);
+        assert_eq!(result_members(&result.unwrap()), vec![b]);
+    }
+
+    #[test]
+    fn a_failing_ordered_filter_stops_the_chain_and_leaves_its_predecessor_complete() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        // The stored PageCount is not an integer, which execution rejects.
+        let member =
+            world.member("a", &world.book, &[("Title", text("t")), ("PageCount", text("12"))]);
+        let predicate = world.compare("PageCount", &world.less_than, &world.integer, number(50));
+        let definition = predicate.into_model().unwrap();
+        let mut distinct = fixture.described_as("distinct", Q::Distinct);
+        let mut filter = filter_of(&fixture, "filter", predicate.clone());
+        chain(&mut filter, &fixture.paginate("limit", Q::Limit, Some(1)));
+        chain(&mut distinct, &filter);
+
+        let (instance, result) = run_typed(&fixture, &distinct, &world.book, &[member]);
+        assert!(matches!(result, Err(HolonError::ValueKindMismatch { .. })));
+        let records = step_records(&instance);
+        assert_eq!(records.len(), 2, "the step after the failure does not execute");
+        assert_step(&records[0], ExecutionStatus::Complete, true);
+        assert_step(&records[1], ExecutionStatus::Failed, false);
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+        assert_eq!(predicate.into_model().unwrap(), definition, "the definition is unchanged");
+    }
+
+    #[test]
+    fn ordered_attachments_are_validated_against_their_declared_types() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+
+        // Seeds declare the root type, which declares no Title.
+        let mut seed = fixture.described_as("seed", Q::SeedHolons);
+        seed.add_related_holons(
+            QueryRelationshipTypeName::SeedPredicate,
+            vec![world.compare("Title", &world.less_than, &world.text, text("m"))],
+        )
+        .unwrap();
+        let execution = fixture
+            .query_with_root(&seed)
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+        assert!(matches!(
+            execution.run(),
+            Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "Title"
+        ));
+        assert_failed_without_result(&instance);
+
+        // AuthoredBy targets Person, which declares no Title.
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        expand
+            .add_related_holons(
+                QueryRelationshipTypeName::ExpansionPredicate,
+                vec![world.compare("Title", &world.greater_than_or_equal, &world.text, text("m"))],
+            )
+            .unwrap();
+        let (instance, result) = run_typed(&fixture, &expand, &fixture.saved(BOOK), &[]);
+        assert!(
+            matches!(&result, Err(HolonError::DescriptorDeclarationNotFound { name, descriptor, .. })
+                if name == "Title" && descriptor.contains("Person")),
+            "unexpected result: {result:?}"
+        );
+        assert_failed_without_result(&instance);
+    }
+
     #[test]
     fn an_expansion_predicate_on_seed_holons_is_a_placement_error() {
         let fixture = build_fixture();

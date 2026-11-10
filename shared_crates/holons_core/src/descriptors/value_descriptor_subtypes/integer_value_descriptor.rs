@@ -60,6 +60,9 @@ impl IntegerValueDescriptor {
     }
 
     /// Executes a resolved integer operator.
+    ///
+    /// Ordered comparisons are numeric and compare directly, so no signed
+    /// extreme can overflow them.
     pub(crate) fn evaluate(
         &self,
         op: &ResolvedOperator,
@@ -78,7 +81,7 @@ impl IntegerValueDescriptor {
 
         match op.kind() {
             OperatorKind::Equals => Ok(lhs == rhs),
-            OperatorKind::LessThan => Ok(lhs.0 < rhs.0),
+            OperatorKind::Ordered(comparison) => Ok(comparison.holds(lhs.0.cmp(&rhs.0))),
             OperatorKind::Contains(_) => unsupported_operator(&self.holon, op.operator()),
         }
     }
@@ -245,6 +248,34 @@ mod tests {
             Err(HolonError::UnsupportedOperator { operator, value_type, .. })
                 if operator == "LessThanOperator" && value_type == "IntegerValueType"
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_operator_delegates_every_ordered_comparison() -> Result<(), HolonError> {
+        let context = build_context();
+        let operators = [
+            CoreOperatorTypeName::LessThanOperator,
+            CoreOperatorTypeName::GreaterThanOperator,
+            CoreOperatorTypeName::LessThanOrEqualOperator,
+            CoreOperatorTypeName::GreaterThanOrEqualOperator,
+        ]
+        .map(|name| core_operator(&context, name, None));
+        let operators = operators.into_iter().collect::<Result<Vec<_>, _>>()?;
+        let mut value = new_kind_descriptor(&context, "IntegerValueType", None, true)?;
+        value.add_related_holons(CoreRelationshipTypeName::AffordsOperator, operators.clone())?;
+        let descriptor = IntegerValueDescriptor::from_holon(value.into());
+
+        // (before, equal, after) the comparison value, per operator.
+        let expected =
+            [[true, false, false], [false, false, true], [true, true, false], [false, true, true]];
+        for (operator, expected) in operators.into_iter().zip(expected) {
+            let operator = OperatorDescriptor::from_holon(operator);
+            let results = [integer_value(2), integer_value(5), integer_value(9)]
+                .map(|subject| descriptor.apply_operator(&operator, &subject, &integer_value(5)));
+            let results = results.into_iter().collect::<Result<Vec<_>, _>>()?;
+            assert_eq!(results, expected, "{}", operator.operator_name()?);
+        }
         Ok(())
     }
 }

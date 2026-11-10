@@ -53,7 +53,8 @@ const PERSON_BOB_KEY: &str = "QryF3.Person.Bob";
 /// - the mixed predicate before and after `Distinct`;
 /// - failures, on empty input unless noted: a `Not` without a child, a `Not`
 ///   with two, an empty `AllOf`, a self-referencing `Not`, a two-node cycle,
-///   an unsupported LessThan leaf beside a true branch (over [Roads]), an
+///   an ordered leaf on the Boolean IsPublished beside a true branch (over
+///   [Roads]), an
 ///   undeclared selector beside a false branch, and the cycle after a
 ///   completed `Distinct` (over [Roads]).
 ///
@@ -279,15 +280,16 @@ pub fn query_f3_boolean_fixture() -> Result<DancesTestCase, HolonError> {
     let two_node_cycle_query = author.query("TwoNodeCycle", two_node_cycle)?;
 
     let any_title = author.contains("UnsupportedTrue", "Title", "")?;
-    let less_than_operand =
-        author.literal("UnsupportedLessThan", &types.map_string, string("Roads"))?;
-    let less_than = author.comparison(
-        "UnsupportedLessThan",
-        "Title",
-        &types.less_than,
-        vec![less_than_operand],
+    // Booleans afford Equals but no ordering.
+    let (greater_than, map_boolean) = (types.greater_than.clone(), types.map_boolean.clone());
+    let unordered = author.compare(
+        "UnsupportedOrdering",
+        "IsPublished",
+        &greater_than,
+        &map_boolean,
+        true.to_base_value(),
     )?;
-    let unsupported = author.any_of("Unsupported", vec![any_title, less_than])?;
+    let unsupported = author.any_of("Unsupported", vec![any_title, unordered])?;
     let unsupported = author.filter("Unsupported", unsupported)?;
     let unsupported_query = author.query("Unsupported", unsupported)?;
 
@@ -408,8 +410,8 @@ pub fn query_f3_boolean_fixture() -> Result<DancesTestCase, HolonError> {
             (
                 &unsupported_query,
                 books(&[&roads]),
-                HolonErrorKind::NotImplemented,
-                "a LessThan leaf beside a true branch",
+                HolonErrorKind::UnsupportedOperator,
+                "an ordered leaf on a Boolean beside a true branch",
             ),
             (
                 &undeclared_query,

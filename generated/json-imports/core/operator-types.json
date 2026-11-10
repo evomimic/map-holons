@@ -942,7 +942,37 @@
       "type": "OperandSpecification.HolonType",
       "properties": {
         "DisplayName": "Comparison Value",
-        "Description": "Value the subject must be ordered before.",
+        "Description": "Value the subject must be ordered strictly before.",
+        "OperandRole": "ComparisonValue",
+        "OperandValueTypeRule": "SameAsSubject"
+      }
+    },
+    {
+      "key": "GreaterThanComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Comparison Value",
+        "Description": "Value the subject must be ordered strictly after.",
+        "OperandRole": "ComparisonValue",
+        "OperandValueTypeRule": "SameAsSubject"
+      }
+    },
+    {
+      "key": "LessThanOrEqualComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Comparison Value",
+        "Description": "Value the subject must be ordered before or equal to.",
+        "OperandRole": "ComparisonValue",
+        "OperandValueTypeRule": "SameAsSubject"
+      }
+    },
+    {
+      "key": "GreaterThanOrEqualComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Comparison Value",
+        "Description": "Value the subject must be ordered after or equal to.",
         "OperandRole": "ComparisonValue",
         "OperandValueTypeRule": "SameAsSubject"
       }
@@ -1090,7 +1120,7 @@
         "TypeNamePlural": "LessThanOperators",
         "DisplayName": "Less Than",
         "DisplayNamePlural": "Less Than Operators",
-        "Description": "Returns true iff lhs is ordered before rhs under the value type's ordering semantics.",
+        "Description": "Returns true iff the subject is ordered strictly before the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion.",
         "Arity": 2,
         "OperatorCategory": "Ordering"
       },
@@ -1116,6 +1146,123 @@
           "target": [
             {
               "$ref": "LessThanComparisonValue.OperandSpecification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GreaterThanOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "GreaterThanOperator",
+        "TypeNamePlural": "GreaterThanOperators",
+        "DisplayName": "Greater Than",
+        "DisplayNamePlural": "Greater Than Operators",
+        "Description": "Returns true iff the subject is ordered strictly after the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion.",
+        "Arity": 2,
+        "OperatorCategory": "Ordering"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "GreaterThanComparisonValue.OperandSpecification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LessThanOrEqualOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "LessThanOrEqualOperator",
+        "TypeNamePlural": "LessThanOrEqualOperators",
+        "DisplayName": "Less Than Or Equal",
+        "DisplayNamePlural": "Less Than Or Equal Operators",
+        "Description": "Returns true iff the subject is ordered before or equal to the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion.",
+        "Arity": 2,
+        "OperatorCategory": "Ordering"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "LessThanOrEqualComparisonValue.OperandSpecification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GreaterThanOrEqualOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "GreaterThanOrEqualOperator",
+        "TypeNamePlural": "GreaterThanOrEqualOperators",
+        "DisplayName": "Greater Than Or Equal",
+        "DisplayNamePlural": "Greater Than Or Equal Operators",
+        "Description": "Returns true iff the subject is ordered after or equal to the comparison value under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion.",
+        "Arity": 2,
+        "OperatorCategory": "Ordering"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "GreaterThanOrEqualComparisonValue.OperandSpecification"
             }
           ]
         }

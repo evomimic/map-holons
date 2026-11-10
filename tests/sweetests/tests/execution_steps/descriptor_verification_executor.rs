@@ -7,8 +7,8 @@ use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
     CaseMatching, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
     EffectiveHolonDescriptor, HolonDescriptor, OperandValueTypeRule, OperatorCategory,
-    OperatorDescriptor, OperatorKind, PropertyDescriptor, RelationshipDescriptor,
-    ValueArrayDescriptor, ValueDescriptor,
+    OperatorDescriptor, OperatorKind, OrderedComparison, PropertyDescriptor,
+    RelationshipDescriptor, ValueArrayDescriptor, ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
@@ -695,8 +695,95 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
             if operator == "ContainsOperator" && value_type == "IntegerValueType"
     ));
 
+    // Ordered comparisons: one Ordering, Arity 2 operator per comparison, each
+    // with one SameAsSubject ComparisonValue operand, afforded explicitly by the
+    // integer and string families and inherited by their Map* descendants.
+    let map_integer = ValueDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "MapIntegerValueType.IntegerValueType",
+    ));
+    let string =
+        ValueDescriptor::from_holon(find_holon_by_key(&holons, "StringValueType.ValueType"));
+    let string_operator_names = operator_type_names(string.supported_operators());
+    let ordered = [
+        ("LessThanOperator", OrderedComparison::LessThan),
+        ("GreaterThanOperator", OrderedComparison::GreaterThan),
+        ("LessThanOrEqualOperator", OrderedComparison::LessThanOrEqual),
+        ("GreaterThanOrEqualOperator", OrderedComparison::GreaterThanOrEqual),
+    ];
+    for (name, comparison) in ordered {
+        let operator = OperatorDescriptor::from_holon(find_holon_by_key(
+            &holons,
+            &format!("{name}.OperatorType"),
+        ));
+        assert_eq!(operator.arity().expect("ordered operator arity"), 2, "{name}");
+        assert_eq!(
+            operator.operator_category().expect("ordered operator category"),
+            OperatorCategory::Ordering,
+            "{name}"
+        );
+        assert_eq!(
+            operator.kind().expect("ordered operator kind"),
+            OperatorKind::Ordered(comparison),
+            "{name}"
+        );
+        let specifications =
+            operator.operand_specifications().expect("ordered operand specifications");
+        assert_eq!(specifications.len(), 1, "{name}");
+        assert_eq!(specifications[0].role().expect("ordered operand role").0, "ComparisonValue");
+        assert_eq!(
+            specifications[0].rule().expect("ordered operand rule"),
+            OperandValueTypeRule::SameAsSubject,
+            "{name}"
+        );
+        assert!(specifications[0]
+            .operand_value_type()
+            .expect("ordered operand type read")
+            .is_none());
+        assert_contains(&integer_operator_names, name);
+        assert_contains(&string_operator_names, name);
+
+        for (subject, values) in [
+            (
+                &map_integer,
+                [BaseValue::IntegerValue(MapInteger(4)), BaseValue::IntegerValue(MapInteger(5))],
+            ),
+            (
+                &map_string,
+                [
+                    BaseValue::StringValue(MapString("STRASSE".to_string())),
+                    BaseValue::StringValue(MapString("Straße".to_string())),
+                ],
+            ),
+        ] {
+            let resolved = operator
+                .resolve_for_subject(subject)
+                .unwrap_or_else(|error| panic!("{name} resolves on Map* subjects: {error:?}"));
+            let [before, after] = values;
+            let strict =
+                matches!(comparison, OrderedComparison::LessThan | OrderedComparison::GreaterThan);
+            let ascending = matches!(
+                comparison,
+                OrderedComparison::LessThan | OrderedComparison::LessThanOrEqual
+            );
+            let invoke = |lhs: &BaseValue, rhs: &BaseValue| {
+                resolved.invoke(lhs, std::slice::from_ref(rhs)).expect("ordered execution")
+            };
+            assert_eq!(invoke(&before, &after), ascending, "{name} {before:?} {after:?}");
+            assert_eq!(invoke(&after, &before), !ascending, "{name} {after:?} {before:?}");
+            assert_eq!(invoke(&before, &before), !strict, "{name} at the boundary");
+        }
+    }
+
     let boolean =
         ValueDescriptor::from_holon(find_holon_by_key(&holons, "BooleanValueType.ValueType"));
+    for name in ["GreaterThanOperator", "LessThanOrEqualOperator", "GreaterThanOrEqualOperator"] {
+        let operator = OperatorDescriptor::from_holon(find_holon_by_key(
+            &holons,
+            &format!("{name}.OperatorType"),
+        ));
+        assert!(!boolean.supports_operator(&operator).expect("Boolean affordance read"), "{name}");
+    }
     assert!(!boolean
         .supports_operator(&less_than)
         .expect("BooleanValueType does not support LessThanOperator"));

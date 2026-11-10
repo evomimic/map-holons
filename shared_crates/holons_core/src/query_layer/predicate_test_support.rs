@@ -1,8 +1,8 @@
 //! Descriptor world for predicate unit tests.
 //!
 //! Stages the canonical descriptors predicate validation resolves by key
-//! (`MapStringValueType.StringValueType`, the Contains/Equals/LessThan
-//! operators, `QueryPredicate` and the predicate forms extending it, and the
+//! (`MapStringValueType.StringValueType`, the Contains, Equals and ordered
+//! comparison operators, `QueryPredicate` and the predicate forms extending it, and the
 //! Query literal and Filter types) and builds transient
 //! member types over them. Staged holons cannot reference transient ones, so
 //! operator affordances sit on a transient `Text` subtype of the canonical
@@ -31,12 +31,16 @@ pub(crate) struct PredicateWorld {
     pub(crate) context: Arc<TransactionContext>,
     /// The canonical `MapStringValueType.StringValueType` (staged).
     pub(crate) map_string: HolonReference,
-    /// A transient string subtype affording Contains, Equals and LessThan.
+    /// A transient string subtype affording Contains, Equals and all four
+    /// ordered comparisons.
     pub(crate) text: HolonReference,
     /// A text subtype carrying a configured constraint.
     pub(crate) identifier: HolonReference,
-    /// An integer type affording Equals only.
+    /// An integer type affording Equals and all four ordered comparisons.
     pub(crate) integer: HolonReference,
+    /// An integer type affording Equals and LessThan only, so that one ordered
+    /// affordance can be shown not to grant the others.
+    pub(crate) rank: HolonReference,
     /// A text subtype with no local affordance; it inherits Text's operators.
     pub(crate) headline: HolonReference,
     /// A Boolean type affording Equals.
@@ -50,10 +54,13 @@ pub(crate) struct PredicateWorld {
     pub(crate) contains: HolonReference,
     pub(crate) equals: HolonReference,
     pub(crate) less_than: HolonReference,
+    pub(crate) greater_than: HolonReference,
+    pub(crate) less_than_or_equal: HolonReference,
+    pub(crate) greater_than_or_equal: HolonReference,
     /// `Book`: required `Title`, optional `Subtitle`, optional `Code`
     /// (foreign string), optional `Identifier` (constrained), optional
-    /// `PageCount`, and optional `Headline`, `IsPublished`, `Status`, `Digest`
-    /// and `RawDigest`.
+    /// `PageCount`, and optional `Rank`, `Headline`, `IsPublished`, `Status`,
+    /// `Digest` and `RawDigest`.
     pub(crate) book: HolonReference,
     /// `Novel` extends `Book` and adds an optional `Narrator`.
     pub(crate) novel: HolonReference,
@@ -125,8 +132,12 @@ impl PredicateWorld {
             core_operator(&context, CoreOperatorTypeName::ContainsOperator, Some(&map_string))
                 .unwrap();
         let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None).unwrap();
-        let less_than =
-            core_operator(&context, CoreOperatorTypeName::LessThanOperator, None).unwrap();
+        let ordered = |name| core_operator(&context, name, None).unwrap();
+        let less_than = ordered(CoreOperatorTypeName::LessThanOperator);
+        let greater_than = ordered(CoreOperatorTypeName::GreaterThanOperator);
+        let less_than_or_equal = ordered(CoreOperatorTypeName::LessThanOrEqualOperator);
+        let greater_than_or_equal = ordered(CoreOperatorTypeName::GreaterThanOrEqualOperator);
+        let ordering = [&less_than, &greater_than, &less_than_or_equal, &greater_than_or_equal];
 
         let value_type = |key: &str, parent: &HolonReference, operators: &[&HolonReference]| {
             let mut holon = new_kind_descriptor(&context, key, Some(parent), false).unwrap();
@@ -141,7 +152,8 @@ impl PredicateWorld {
             holon
         };
         let text: HolonReference =
-            value_type("Text", &map_string, &[&contains, &equals, &less_than]).into();
+            value_type("Text", &map_string, &[&[&contains, &equals][..], &ordering].concat())
+                .into();
         let mut identifier = value_type("Identifier", &text, &[]);
         identifier
             .add_related_holons(
@@ -154,7 +166,10 @@ impl PredicateWorld {
             value_type("ForeignString", &string_anchor, &[&contains]).into();
         let integer_anchor =
             stage(new_kind_descriptor(&context, "IntegerValueType", None, true).unwrap());
-        let integer: HolonReference = value_type("Count", &integer_anchor, &[&equals]).into();
+        let integer: HolonReference =
+            value_type("Count", &integer_anchor, &[&[&equals][..], &ordering].concat()).into();
+        let rank: HolonReference =
+            value_type("Rank", &integer_anchor, &[&equals, &less_than]).into();
         let headline: HolonReference = value_type("Headline", &text, &[]).into();
         let anchor = |kind: &str| stage(new_kind_descriptor(&context, kind, None, true).unwrap());
         let flag: HolonReference =
@@ -188,6 +203,7 @@ impl PredicateWorld {
                 ("Code", false, &foreign_string),
                 ("Identifier", false, &identifier),
                 ("PageCount", false, &integer),
+                ("Rank", false, &rank),
                 ("Headline", false, &headline),
                 ("IsPublished", false, &flag),
                 ("Status", false, &status),
@@ -203,6 +219,7 @@ impl PredicateWorld {
             text,
             identifier,
             integer,
+            rank,
             headline,
             flag,
             status,
@@ -211,6 +228,9 @@ impl PredicateWorld {
             contains,
             equals,
             less_than,
+            greater_than,
+            less_than_or_equal,
+            greater_than_or_equal,
             book,
             novel,
         }
@@ -265,6 +285,24 @@ impl PredicateWorld {
         value: BaseValue,
     ) -> HolonReference {
         self.comparison(property, &self.equals, vec![self.literal(value_type, value)])
+    }
+
+    /// A single-literal comparison over `property` of `Book` through
+    /// `operator`, its literal declared as `value_type`.
+    pub(crate) fn compare(
+        &self,
+        property: &str,
+        operator: &HolonReference,
+        value_type: &HolonReference,
+        value: BaseValue,
+    ) -> HolonReference {
+        self.comparison(property, operator, vec![self.literal(value_type, value)])
+    }
+
+    /// The four ordered comparison operators, in a fixed order: LessThan,
+    /// GreaterThan, LessThanOrEqual, GreaterThanOrEqual.
+    pub(crate) fn ordering_operators(&self) -> [&HolonReference; 4] {
+        [&self.less_than, &self.greater_than, &self.less_than_or_equal, &self.greater_than_or_equal]
     }
 
     /// A comparison predicate built directly, so tests can pair any operator

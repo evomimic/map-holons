@@ -55,7 +55,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "b7e2852c46f2ed2b1b2447c16e9ee4ab2325cccab23e5c36e44c214a51621577"
+      "sha256": "65301bf5eea2d685ee6705277ea556fe46c03c38df89881260b1ac26b80471f4"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -71,7 +71,7 @@
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "9f22aabf0572b10c494afb91e8af98aecbea3ed11124dd28e1bb86ce41a4f290"
+      "sha256": "c93a848ee41737e55e31cdc8729494ae51e532b5c32c5af617b49278fcd2a2f6"
     },
     {
       "path": "imports/core/property-types.json",
@@ -3036,6 +3036,22 @@
       "type": "MetaVisualizerType.MetaHolonType"
     },
     {
+      "key": "GreaterThanComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
+    },
+    {
+      "key": "GreaterThanOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "GreaterThanOrEqualComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
+    },
+    {
+      "key": "GreaterThanOrEqualOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
       "key": "GuestLoadTheme.DanceImplementation",
       "type": "DanceImplementation.HolonType"
     },
@@ -3325,6 +3341,14 @@
     },
     {
       "key": "LessThanOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "LessThanOrEqualComparisonValue.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
+    },
+    {
+      "key": "LessThanOrEqualOperator.OperatorType",
       "type": "MetaOperatorType.MetaHolonType"
     },
     {
