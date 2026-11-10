@@ -164,10 +164,10 @@ impl ConductorDanceCaller for HolochainConductorClient {
         let decoded = ExternIO::decode::<DanceResponseEnvelope>(&extern_io);
         if dance_name.as_deref() == Some("commit") {
             tracing::info!(target: "map_profile",
-                "[commit-client-transport] encode_ms={} call_ms={} decode_ms={} total_ms={} success={}",
+                "[commit-client-transport] encode_ms={} call_ms={} decode_ms={} total_ms={} response_bytes={} success={}",
                 encode_ms, decode_started.duration_since(zome_call_started_at).as_secs_f64() * 1000.0,
                 decode_started.elapsed().as_secs_f64() * 1000.0,
-                round_trip_started.elapsed().as_secs_f64() * 1000.0, decoded.is_ok());
+                round_trip_started.elapsed().as_secs_f64() * 1000.0, extern_io.as_bytes().len(), decoded.is_ok());
         }
         match decoded {
             Ok(decoded) => Ok(decoded),
@@ -190,6 +190,7 @@ fn server_error_response_wire(msg: String) -> DanceResponseEnvelope {
         descriptor: None,
     };
     DanceResponseEnvelope {
+        descriptor_registry: None,
         response: holons_boundary::envelopes::DanceEnvelopeResponse::Legacy(response),
         session: None,
     }

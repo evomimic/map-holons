@@ -67,10 +67,14 @@ impl DanceInitiator for TrustChannel {
 
         // --- Transmit via backend --------------------------------------------
         let backend_started_at = Instant::now();
-        let response_envelope = match self.backend.initiate_dance_envelope(request_envelope).await {
-            Ok(envelope) => envelope,
-            Err(error) => return DanceResponse::from_error(error),
-        };
+        let mut response_envelope =
+            match self.backend.initiate_dance_envelope(request_envelope).await {
+                Ok(envelope) => envelope,
+                Err(error) => return DanceResponse::from_error(error),
+            };
+        if !is_commit {
+            response_envelope.descriptor_registry = None;
+        }
         let backend_millis = backend_started_at.elapsed().as_millis();
 
         // --- Inbound envelope -> runtime -------------------------------------

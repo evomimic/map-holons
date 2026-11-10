@@ -63,14 +63,30 @@ impl DanceEnvelopeAdapter {
         context: &Arc<TransactionContext>,
         envelope: DanceResponseEnvelope,
     ) -> Result<DanceResponse, HolonError> {
-        let DanceResponseEnvelope { response, session } = envelope;
+        let DanceResponseEnvelope { response, session, descriptor_registry } = envelope;
         let session_state = session.ok_or_else(|| HolonError::InvalidWireFormat {
             wire_type: "InternalDanceResponseEnvelope".to_string(),
             reason: "Missing SessionStateWire".to_string(),
         })?;
         Self::hydrate_from_response(context, &session_state)?;
         match response {
-            DanceEnvelopeResponse::Legacy(response) => response.bind(context),
+            DanceEnvelopeResponse::Legacy(response) => {
+                let mut response = response.bind(context)?;
+                if let Some(registry) = descriptor_registry {
+                    let started = std::time::Instant::now();
+                    match registry.bind_return(context) {
+                        Ok(products) => response.returned_descriptor_products = products,
+                        Err(error) => {
+                            tracing::warn!("Discarding invalid Commit registry return: {error}")
+                        }
+                    }
+                    tracing::info!(
+                        "[commit-registry-return-binding] elapsed_us={}",
+                        started.elapsed().as_micros()
+                    );
+                }
+                Ok(response)
+            }
             _ => Err(HolonError::InvalidParameter("Expected legacy Dance response".into())),
         }
     }

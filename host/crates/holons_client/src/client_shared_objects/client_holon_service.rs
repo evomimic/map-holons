@@ -293,6 +293,7 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<TransientReference, HolonError> {
         // A missing or unusable response may follow persistence. Keep evidence
         // handling inside this boundary so binding/read errors cannot preserve stale state.
+        let originating_session = context.space_read_handle().session()?;
         let outcome = (|| {
             let request = holon_dance_builders::build_commit_dance_request()?;
             let response =
@@ -337,15 +338,31 @@ impl HolonServiceApi for ClientHolonService {
                 }
                 _ => true,
             };
-            Ok((tref, reset))
+            Ok((tref, reset, response.returned_descriptor_products))
         })();
         match outcome {
-            Ok((response, reset)) => {
+            Ok((response, reset, products)) => {
                 if reset {
                     context
                         .space_read_handle()
                         .reset_session()
                         .map_err(|error| HolonError::CacheResetAfterCommit(error.to_string()))?;
+                }
+                if !reset {
+                    if let (Some(registry), Some(products)) =
+                        (context.descriptor_registry(), products)
+                    {
+                        let started = std::time::Instant::now();
+                        if let Err(error) =
+                            registry.merge_returned_products(products, &originating_session)
+                        {
+                            tracing::warn!("Commit registry return was not adopted: {error}");
+                        }
+                        tracing::info!(
+                            "[commit-registry-return-adoption] elapsed_us={}",
+                            started.elapsed().as_micros()
+                        );
+                    }
                 }
                 Ok(response)
             }

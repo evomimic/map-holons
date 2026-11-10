@@ -816,6 +816,13 @@ impl TransactionContext {
         self.transient_manager.export_transient_holons()
     }
 
+    pub(crate) fn update_transient_holons(
+        &self,
+        update: &mut dyn FnMut(&mut HolonPool) -> Result<(), HolonError>,
+    ) -> Result<(), HolonError> {
+        self.transient_manager.update_transient_holons(update)
+    }
+
     pub fn import_transient_holons(&self, transient_holons: HolonPool) -> Result<(), HolonError> {
         self.transient_manager.import_transient_holons(transient_holons)
     }

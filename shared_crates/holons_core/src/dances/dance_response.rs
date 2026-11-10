@@ -16,6 +16,9 @@ use std::fmt;
 /// tx-bound references. Use `DanceResponseWire` for IPC and call `bind(context)` at ingress.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DanceResponse {
+    /// Unpublished Commit cache products; only reconciliation may admit these.
+    pub returned_descriptor_products:
+        Option<crate::core_shared_objects::descriptor_registry::ReturnedDescriptorProducts>,
     pub status_code: ResponseStatusCode,
     pub description: MapString,
     /// The original domain error, retained across the dance boundary when present.
@@ -71,7 +74,14 @@ impl DanceResponse {
         body: ResponseBody,
         descriptor: Option<HolonReference>,
     ) -> DanceResponse {
-        DanceResponse { status_code, description, error: None, body, descriptor }
+        DanceResponse {
+            status_code,
+            description,
+            error: None,
+            body,
+            descriptor,
+            returned_descriptor_products: None,
+        }
     }
 
     /// Annotates this response with a local processing error (e.g. envelope hydration failure).
@@ -110,6 +120,7 @@ impl DanceResponse {
     /// - Leaving `descriptor` unset (`None`).
     pub fn from_error(error: HolonError) -> Self {
         Self {
+            returned_descriptor_products: None,
             status_code: ResponseStatusCode::from(error.clone()),
             description: MapString(error.to_string()),
             error: Some(error),

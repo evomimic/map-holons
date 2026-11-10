@@ -11,3 +11,4 @@ serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+holochain_serialized_bytes = { workspace = true }

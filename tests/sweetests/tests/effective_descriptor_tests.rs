@@ -51,9 +51,14 @@ async fn effective_descriptors_preserve_session_and_transport_contracts() {
     let anchor = runtime.session().space_manager().get_space_holon_id().unwrap().unwrap();
     guest_construction_returns_a_retained_sealed_schema_graph(runtime).await;
     // The first phase must finish its Runtime-drop assertion before a new Session exists.
-    let runtime = runtime_for_bootstrapped_space(initiator, anchor);
+    let runtime = runtime_for_bootstrapped_space(initiator.clone(), anchor.clone());
     assert!(runtime.session().descriptor_registry().is_empty().unwrap());
     value_and_property_wrappers_reuse_guest_derived_products(runtime).await;
+    let recorder =
+        Arc::new(CommitReturnRecorder { backend: backend.clone(), samples: Default::default() });
+    let runtime =
+        runtime_for_bootstrapped_space(Arc::new(TrustChannel::new(recorder.clone())), anchor);
+    cold_commit_returns_guest_products_for_the_next_attempt(runtime, recorder).await;
     backend.shutdown().await;
 }
 
@@ -674,4 +679,276 @@ async fn value_and_property_wrappers_reuse_guest_derived_products(runtime: Runti
     context.dispose().unwrap();
     assert!(value.supported_operators().unwrap().len() >= 3);
     property.effective_constraints().unwrap();
+}
+
+#[derive(Debug)]
+struct CommitReturnRecorder {
+    backend: Arc<dyn holons_trust_channel::DanceEnvelopeTransport>,
+    samples: std::sync::Mutex<Vec<CommitReturnSample>>,
+}
+
+#[derive(Debug)]
+struct CommitReturnSample {
+    request: Option<holons_boundary::DescriptorRegistryWire>,
+    response: Option<holons_boundary::DescriptorRegistryWire>,
+    response_bytes: usize,
+    call_us: u128,
+}
+
+#[async_trait::async_trait]
+impl holons_trust_channel::DanceEnvelopeTransport for CommitReturnRecorder {
+    async fn initiate_dance_envelope(
+        &self,
+        envelope: holons_boundary::envelopes::DanceRequestEnvelope,
+    ) -> Result<holons_boundary::envelopes::DanceResponseEnvelope, HolonError> {
+        let commit = envelope.request.transport_label() == "commit";
+        let request = commit.then(|| envelope.descriptor_registry.clone()).flatten();
+        let started = std::time::Instant::now();
+        let response = self.backend.initiate_dance_envelope(envelope).await?;
+        let call_us = started.elapsed().as_micros();
+        if commit {
+            let response_bytes =
+                holochain::prelude::ExternIO::encode(&response).unwrap().as_bytes().len();
+            self.samples.lock().unwrap().push(CommitReturnSample {
+                request,
+                response: response.descriptor_registry.clone(),
+                response_bytes,
+                call_us,
+            });
+        }
+        Ok(response)
+    }
+}
+
+/// Compares selected products by transport identity and payload, excluding owner bookkeeping.
+fn selected_registry_products(
+    context: &Arc<holons_core::core_shared_objects::transactions::TransactionContext>,
+    wire: holons_boundary::DescriptorRegistryWire,
+) -> std::collections::BTreeMap<String, holons_boundary::HolonWire> {
+    let (_, registry) = restore_registry_request(context, wire);
+    registry
+        .capture(|owner, root| {
+            let root = TransientReference::from_temporary_id(owner.context_handle(), root);
+            let pool = owner.export_transient_holons()?;
+            let mut products = std::collections::BTreeMap::new();
+            for relationship in [
+                CoreRelationshipTypeName::PreparedDescriptors,
+                CoreRelationshipTypeName::PreparedDerivedDescriptors,
+            ] {
+                let members = root.related_holons(relationship)?;
+                for member in members.read().unwrap().get_members() {
+                    let HolonReference::Transient(reference) = member else {
+                        panic!("transient prepared result")
+                    };
+                    let raw = pool.get_holon_by_id(&reference.temporary_id())?;
+                    products.insert(
+                        member.full_reference_id_string(),
+                        holons_boundary::HolonWire::from(&*raw.read().unwrap()),
+                    );
+                }
+            }
+            Ok(products)
+        })
+        .unwrap()
+        .unwrap_or_default()
+}
+
+/// Lists only EHD products actually demanded and returned by this Commit.
+fn returned_ehd_sources(
+    context: &Arc<holons_core::core_shared_objects::transactions::TransactionContext>,
+    recorder: &CommitReturnRecorder,
+) -> Vec<HolonId> {
+    let wire = recorder.samples.lock().unwrap().last().unwrap().response.clone().unwrap();
+    let (_, registry) = restore_registry_request(context, wire);
+    registry
+        .capture(|owner, root| {
+            let root = TransientReference::from_temporary_id(owner.context_handle(), root);
+            let members = root.related_holons(CoreRelationshipTypeName::PreparedDescriptors)?;
+            let members = members.read().unwrap().get_members().clone();
+            members
+                .into_iter()
+                .map(|member| {
+                    EffectiveHolonDescriptor::from_constructed_holon(member)
+                        .described_holon_type()?
+                        .holon()
+                        .holon_id()
+                })
+                .collect::<Result<Vec<_>, HolonError>>()
+        })
+        .unwrap()
+        .unwrap_or_default()
+}
+
+/// Matched cold/warm rejection keeps the same candidate and persistence workset.
+/// Correction then proves returned saved products survive the normal Complete path.
+async fn cold_commit_returns_guest_products_for_the_next_attempt(
+    runtime: Runtime,
+    recorder: Arc<CommitReturnRecorder>,
+) {
+    let tx_id = runtime.session().begin_transaction().await.unwrap();
+    let context = runtime.session().get_transaction(&tx_id).unwrap();
+    let saved = |key: &str| -> HolonReference {
+        context.lookup().get_saved_holon_by_key(&MapString(key.into())).unwrap().into()
+    };
+    let space_type = saved("HolonSpace.HolonType");
+    let property_source = saved("HolonSpaceName.PropertyType");
+    let property_id = property_source.holon_id().unwrap();
+    let value_type = property_source.related_holons(CoreRelationshipTypeName::ValueType).unwrap();
+    let value_id = value_type.read().unwrap().get_members()[0].holon_id().unwrap();
+    let mut candidate = context.mutation().new_holon(Some("GuestReturnProof".into())).unwrap();
+    candidate.with_descriptor(space_type.clone()).unwrap();
+    candidate.with_property_value("HolonSpaceName", "GuestReturnProof").unwrap();
+    let mut staged = context.mutation().stage_new_holon(candidate).unwrap();
+    context.space_read_handle().reset_session().unwrap();
+    let registry = context.descriptor_registry().unwrap();
+    assert_eq!(registry.population().unwrap(), (0, 0));
+    let mut durations = Vec::new();
+    let mut first_products = None;
+    for attempt in 0..2 {
+        let started = std::time::Instant::now();
+        let response = context.commit().unwrap();
+        durations.push(started.elapsed().as_micros());
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+            Some(BaseValue::StringValue("Rejected".into()))
+        );
+        let mut ehds = returned_ehd_sources(&context, &recorder)
+            .into_iter()
+            .map(|source| {
+                registry
+                    .get(&source)
+                    .unwrap()
+                    .expect("returned EHD adopted")
+                    .holon()
+                    .full_reference_id_string()
+            })
+            .collect::<Vec<_>>();
+        ehds.sort();
+        let property = registry
+            .get_derived(&property_id)
+            .unwrap()
+            .expect("guest-built PropertyType DD returned");
+        let value =
+            registry.get_derived(&value_id).unwrap().expect("guest-built ValueType DD returned");
+        let identities = (ehds, property.lineage().unwrap(), value.lineage().unwrap());
+        assert!(property.effective_constraints().is_ok());
+        assert!(value.value_kind().is_ok());
+        if attempt == 0 {
+            first_products = Some(identities);
+        } else {
+            assert_eq!(first_products.as_ref().unwrap(), &identities);
+        }
+    }
+    {
+        let samples = recorder.samples.lock().unwrap();
+        assert_eq!(samples.len(), 2);
+        assert!(samples[0].request.is_none());
+        assert!(samples[0].response.is_some());
+        let warm_request =
+            samples[1].request.clone().expect("adopted products transported on second Commit");
+        let warm_response = samples[1].response.clone().unwrap();
+        let (_, sent) = restore_registry_request(&context, warm_request);
+        let (_, received) = restore_registry_request(&context, warm_response);
+        for id in [&property_id, &value_id] {
+            let sent = sent.get_derived(id).unwrap().unwrap();
+            let received = received.get_derived(id).unwrap().unwrap();
+            // Exact result IDs, not just equivalent payloads, establish guest reuse.
+            assert_eq!(
+                sent.lineage()
+                    .unwrap()
+                    .iter()
+                    .map(|source| source.holon_id().unwrap())
+                    .collect::<Vec<_>>(),
+                received
+                    .lineage()
+                    .unwrap()
+                    .iter()
+                    .map(|source| source.holon_id().unwrap())
+                    .collect::<Vec<_>>()
+            );
+        }
+        assert_eq!(sent.population().unwrap(), received.population().unwrap());
+        assert_eq!(
+            selected_registry_products(&context, samples[1].request.clone().unwrap()),
+            selected_registry_products(&context, samples[1].response.clone().unwrap()),
+            "warm guest does not rebuild selected saved products"
+        );
+        for (mode, sample, total_us) in [
+            ("rejected-cold", &samples[0], durations[0]),
+            ("rejected-warm", &samples[1], durations[1]),
+        ] {
+            eprintln!("[commit-registry-return-measurement] mode={mode} response_bytes={} conductor_us={} end_to_end_us={total_us}", sample.response_bytes, sample.call_us);
+        }
+    }
+    staged.with_property_value("DisplayName", "Guest return proof").unwrap();
+    staged
+        .with_property_value("Description", "Corrected after matched rejection attempts")
+        .unwrap();
+    let response = context.commit().unwrap();
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue("Complete".into()))
+    );
+    assert!(registry.get_derived(&property_id).unwrap().is_some());
+    let mut completed_identity: Option<Vec<(HolonId, String)>> = None;
+    for attempt in 0..2 {
+        let tx = runtime.session().begin_transaction().await.unwrap();
+        let transaction = runtime.session().get_transaction(&tx).unwrap();
+        let key = format!("GuestCompleteReturnProof-{attempt}");
+        let mut candidate = transaction.mutation().new_holon(Some(key.clone().into())).unwrap();
+        candidate.with_descriptor(space_type.clone()).unwrap();
+        candidate.with_property_value("HolonSpaceName", key).unwrap();
+        candidate.with_property_value("DisplayName", "Complete return proof").unwrap();
+        candidate
+            .with_property_value("Description", "Matched saved-product reuse workload")
+            .unwrap();
+        transaction.mutation().stage_new_holon(candidate).unwrap();
+        if attempt == 0 {
+            transaction.space_read_handle().reset_session().unwrap();
+        }
+        let started = std::time::Instant::now();
+        let response = transaction.commit().unwrap();
+        let total_us = started.elapsed().as_micros();
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+            Some(BaseValue::StringValue("Complete".into()))
+        );
+        let selected = returned_ehd_sources(&transaction, &recorder)
+            .into_iter()
+            .map(|source| {
+                let identity = registry
+                    .get(&source)
+                    .unwrap()
+                    .expect("returned EHD adopted")
+                    .holon()
+                    .full_reference_id_string();
+                (source, identity)
+            })
+            .collect::<Vec<_>>();
+        assert!(registry.get_derived(&property_id).unwrap().is_some());
+        assert!(registry.get_derived(&value_id).unwrap().is_some());
+        if attempt == 0 {
+            completed_identity = Some(selected);
+        } else {
+            for (source, identity) in completed_identity.as_ref().unwrap() {
+                assert_eq!(
+                    &registry.get(source).unwrap().unwrap().holon().full_reference_id_string(),
+                    identity
+                );
+            }
+        }
+        let samples = recorder.samples.lock().unwrap();
+        let sample = samples.last().unwrap();
+        if attempt == 0 {
+            assert!(sample.request.is_none());
+        } else {
+            assert_eq!(
+                selected_registry_products(&transaction, sample.request.clone().unwrap()),
+                selected_registry_products(&transaction, sample.response.clone().unwrap()),
+                "warm Complete reuses transported exact products"
+            );
+        }
+        let mode = if attempt == 0 { "complete-cold" } else { "complete-warm" };
+        eprintln!("[commit-registry-return-measurement] mode={mode} response_bytes={} conductor_us={} end_to_end_us={total_us}", sample.response_bytes, sample.call_us);
+    }
 }
