@@ -1,261 +1,106 @@
 ---
 name: sweettest-framework
 description: >
-  Orientation and authoring guide for MAP Holons integration tests (sweettests). Use this skill
-  whenever a task involves writing, extending, or understanding test cases in
-  tests/sweetests/ — including after completing a feature that needs test coverage, when asked
-  to add a test case for a behavior, when modifying an existing fixture, or when
-  a new DanceTestStep type needs to be introduced. Always consult this skill before writing
-  any code in tests/sweetests/.
+  Author, extend, or understand MAP Holons integration tests in tests/sweetests/.
+  Use before editing fixtures, DanceTestStep adders or executors, harness code,
+  or direct conductor tests; first select the client or conductor evidence boundary.
 ---
 
 # Sweettest Framework — Authoring Guide
 
-Use this guide to author fixtures. Read [references/harness.md](references/harness.md) when
-changing harness mechanics or debugging resolution, Commit, or persisted reads. Current API
-signatures live in the harness code; enduring MAP design lives in `map-dev-docs`.
+Current API signatures live in the harness source; enduring MAP design lives in `map-dev-docs`.
 
-## Mental Model
+## Choose the Test Boundary
 
-The framework separates fixture authoring from execution:
+- **Client-visible semantics:** use dance fixtures for staging, token chaining, Commit lifecycle,
+  relationship graphs, and saved-content equality. Follow the authoring guidance below.
+- **Integrity execution or substrate-record claims:** use direct conductor tests under the
+  [Conductor Test Specification](https://github.com/memetic-activation-platform/map-dev-docs/blob/main/docs/core/testing/conductor-test-spec.md).
+  Do not add a `DanceTestStep` just to expose substrate evidence. Each conductor test owns its
+  backend; do not apply dance-suite setup sharing to these tests. Probe-enabled conductors
+  must remain separate from production-only assertions.
+- **Pure classification/reporting:** use unit tests. A standalone async test is not automatically
+  a conductor-boundary test; choose by the evidence the assertion requires.
 
-- **Fixture phase:** build a `DancesTestCase` with `add_*_step()` methods. Adders declare intent,
-  clone and mutate in-memory expected snapshots, mint opaque `TestReference` tokens, and append
-  steps. No conductor runs and nothing is persisted.
-- **Execution phase:** `rstest_dance_test_suites` in `dance_tests.rs` runs registered suites via
-  `run_dance_test_suite` and `run_dance_test_case` in `execution_steps/dance_test_runner.rs`.
-  The isolated probe tests also use these drivers. Executors resolve tokens,
-  dispatch `MapCommand` through `Runtime::execute_command()` and `TrustChannel`, validate, and
-  record the real handles.
+## Before Authoring a Dance Case
 
-**Token chaining:** pass an adder's returned token into the next operation on that holon.
-Adders follow its current fixture head, including after Commit; authors do not capture Commit's
-internally minted result tokens.
+- **Identify the coverage gap.** Name the unique behavior and its test layer. Keep pure
+  classifier/reporting combinations in units; retain representative real-boundary integration
+  checks. Identify the required coverage owner before omitting duplicate assertions.
+- **Justify each step.** Compose proven adders. Do not append verification as reassurance when
+  Commit and existing harness checks already establish the claim. Before extending a shared
+  step, inspect its callers and preserve their contracts; add missing shared checks narrowly.
+- **Author expectations through the fixture.** Its TransientHolons and TestReferences supply
+  parameters and expected results. Never reconstruct expected mutations from persisted actuals.
+  SavedLookup stubs are partial knowledge; an omitted membership is not evidence of emptiness.
+- **Bound the reads to the claim.** For small changes, use the declared subjects and affected
+  named collections. Call out saved-root enumeration, schema-wide traversal and repeated
+  descriptor discovery. Database-wide assertions need a database-wide requirement. Preserve
+  fresh-observer checks, exact identities, multiplicity and meaningful absence/error distinctions.
+- **Share compatible dance setup.** Prefer existing suites over another bootstrap. Preserve
+  separate transactions and fixture registries, and fresh Sessions, caches or measured transports
+  where those boundaries matter. Order initially-missing checks before steps that populate the
+  membership. Sharing a conductor does not establish fresh host state; keep probes separate.
 
-## File Layout
+Choose the existing verification contract; these checks are complementary:
 
-```text
-tests/sweetests/
-  src/harness/
-    test_case/adders.rs                       # authoritative adder API
-    execution_support/commit_disposition.rs   # pure disposition, identity, error-delta logic
-    execution_support/persisted_graph_assertions.rs # pure graph assertions
-  tests/
-    dance_tests.rs                            # two registered suites
-    fixture_authoring_tests.rs                # conductor-free authoring gates
-    commit_incomplete_tests.rs                # isolated probe-backed retries
-    fixture_cases/                            # fixture builders and shared setup helpers
-    execution_steps/
-      dance_test_runner.rs                    # shared suite/case driver and step match arms
-      persisted_read_support.rs               # assertion contexts and persisted reads
-      persisted_graph_executor.rs             # declarative graph verification
-      ...                                     # other step executors
-```
-
-Plain `pub fn` fixture builders are sufficient; rstest's `#[fixture]` is optional and unused
-by suite registration. A file may contain several scenarios. The authoring target checks gates
-without executing the runner; other direct integration targets also live in `tests/`.
-
-## Canonical Test Case Pattern
-
-This schema-backed example can live in `tests/fixture_cases/my_feature_fixture.rs`.
-`TestCaseInit::new` returns `Self` and accepts `impl Into<String>` arguments.
-
-```rust
-use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
-use holons_test::harness::prelude::*;
-use holons_prelude::prelude::*;
-
-pub fn my_feature_fixture() -> Result<DancesTestCase, HolonError> {
-    // 1. Initialize the fixture authoring state.
-    let TestCaseInit {
-        mut test_case,
-        fixture_context,
-        mut fixture_holons,
-        fixture_bindings: _,
-    } = TestCaseInit::new("My Feature Test", "Create and commit a described Book");
-
-    // 2. Load the descriptor schema, then begin the instance transaction.
-    test_case.add_load_book_person_inverse_test_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
-
-    // 3. Schema-loaded descriptors use partial SavedLookup tokens.
-    let descriptor_key = MapString(BOOK_DESCRIPTOR_KEY.into());
-    let descriptor_stub = fixture_context.mutation().new_holon(Some(descriptor_key.clone()))?;
-    let descriptor = test_case.add_lookup_saved_holon_by_key_step(
-        &mut fixture_holons, descriptor_stub, descriptor_key, None, None,
-    )?;
-
-    // 4. Create and stage the instance; capture tokens for chaining.
-    let key = MapString("Book.MyFeature".into());
-    let source = fixture_context.mutation().new_holon(Some(key.clone()))?;
-    let mut properties = PropertyMap::new();
-    properties.insert("Title".to_property_name(), "My Holon".to_base_value());
-    let new_token = test_case.add_new_holon_step(
-        &mut fixture_holons, source, properties, Some(key), None, None,
-    )?;
-    let staged_token = test_case.add_stage_holon_step(
-        &mut fixture_holons, new_token, None, None,
-    )?;
-    let _described_token = test_case.add_add_related_holons_step(
-        &mut fixture_holons,
-        staged_token,
-        CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-        vec![descriptor],
-        None,
-        None,
-    )?;
-
-    // 5. Create-only Commit advances the head; the prior token remains usable.
-    test_case.add_commit_step(
-        &mut fixture_holons, ExpectedCommitStatus::Complete, None, None,
-    )?;
-    test_case.add_match_saved_content_step()?;
-
-    // 6. Finalize exactly once, after all steps are added.
-    test_case.finalize(&fixture_context, &fixture_holons)?;
-    Ok(test_case)
-}
-```
-
-Prefer saved-content and graph assertions to database counts. `count_saved()` counts
-fixture-owned nodes, while the count executor checks all enumerated roots, including bootstrap
-and schema data; these counts are not interchangeable.
-
-### Registering a fixture
-
-Declare `pub mod my_feature_fixture;` in `fixture_cases/mod.rs`, import the builder in
-`dance_tests.rs`, and insert it into the appropriate `DanceTestSuite.test_cases` vector:
-
-```rust
-use fixture_cases::my_feature_fixture::*;
-
-// Inside the selected suite's test_cases: vec![ ... ]:
-my_feature_fixture().unwrap(),
-```
-
-Add `#[case]` in `dance_tests.rs` only for a whole new suite, not for each fixture.
-Also register the builder in `fixture_authoring_tests.rs`. Keep classifier and diagnostic
-assertions in harness unit tests, and probe-backed scenarios in their isolated target; never
-add a probe-enabled backend to an ordinary suite.
-
-## Choosing Adders
-
-Consult `tests/sweetests/src/harness/test_case/adders.rs` for exact signatures. This is a starting
-set, not a complete API inventory. Adders are methods on `DancesTestCase`; expected command errors
-use `Option<HolonErrorKind>` and descriptions use `Option<String>`.
-
-| Purpose | Adders | Orientation |
+| Claim | Preferred mechanism | Limit |
 |---|---|---|
-| Create and stage | `add_new_holon_step`, `add_stage_holon_step` | Return chainable tokens |
-| Mutate content | `add_with_properties_step`, `add_remove_properties_step` | Return tokens for the updated head |
-| Edit relationships | `add_add_related_holons_step`, `add_remove_related_holons_step` | Follow target heads; return updated source tokens |
-| Stage updates or clones | `add_stage_new_version_step`, `add_stage_new_from_clone_step` | Version staging records the exact saved predecessor; independent clones clear inherited lineage |
-| Commit creates | `add_commit_step` | Create-only convenience; saved-version provenance fails at authoring time and requires explicit dispositions |
-| Commit updates and retries | `add_commit_step_with_dispositions` | Declare the live workset and retries; graph cases opt into bounded persistence checks |
-| Check saved content | `add_match_saved_content_step` | Properties and definitional content; skips partial lookup stubs |
-| Check persisted graph | `add_verify_persisted_graph_step`, `add_verify_relationship_anchoring_step` | Fresh occurrence checks, exact target collections and exact lineage; the latter is the existing focused Book/Person check |
-| Check rejection findings | `add_verify_commit_rejection_step`, `add_verify_commit_carrier_finding_step` | Staged semantic findings and aggregate Schema findings |
-| Resolve external saved holons | `add_lookup_saved_holon_by_key_step` | Returns a partial SavedLookup token; use for schema-loaded holons outside the fixture ledger |
-| Manage lifecycle | `add_begin_transaction_step`, `add_abandon_staged_changes_step`, `add_delete_holon_step` | Explicit transactions, abandon, and deletion |
-| Load or inspect | `add_load_book_person_inverse_test_schema_step`, `add_load_core_schema_step`, `add_load_holons_internal_step`, `add_query_relationships_step`, `add_database_print_step` | See source and matching fixtures for expected counts and outcomes |
-| Count enumerated roots | `add_ensure_database_count_step` | Illustrative API, unused by current fixtures; not a fixture-ownership count |
+| Saved properties and definitional content | `add_match_saved_content_step()` | Skips partial lookup stubs; does not prove every graph/lineage guarantee |
+| Declared persisted memberships, inverse occurrences, multiplicity and exact lineage | Set `test_case.verify_committed_workset = true` during authoring | Verifies on Complete; retains original expectations through Incomplete retries |
+| Rejected keyed creates remain absent from saved lookup; named existing collections remain unchanged | `add_commit_step_with_rejection_checks` | Unique nonempty-key new roots only; no updates or relationship retries after Incomplete; does not prove absence of inaccessible substrate records |
+| Explicit graph requirement outside the shared guarantees | Standalone persisted-graph assertion | Do not repeat shared Commit checks; `VerifyPersistedGraph` currently enumerates all saved roots before checking named expectations |
 
-## Declaring Commit dispositions
+See the authoritative [bounded Commit verification contract](https://github.com/memetic-activation-platform/map-dev-docs/blob/main/docs/core/testing/test-harness-design-spec.md#bounded-persisted-verification-at-commit)
+and [rejection-check authoring contract](https://github.com/memetic-activation-platform/map-dev-docs/blob/main/docs/core/testing/test-step-authoring-guide.md#26-fixture-scoped-rejection-checks)
+for partial subjects, inverse bindings, retries and observer semantics.
 
-For Complete or supported Incomplete attempts, declare what each prepared live Pass 1 candidate
-should do. These are verbatim expectations, never inferred from fixture mutations or the response:
+## Author and Register a Fixture
 
-- `NewRoot` — a create or independent clone, with no inherited lineage.
-- `NoAction` — an unchanged update: nothing is saved. Complete binds the token to the saved source; Incomplete retains the staged head for retry.
-- `GraphOnly` — graph writes anchored to the source identity, whose lineage is untouched.
-- `NewVersion` — a new identity whose single predecessor is the staging source.
+Paths below are relative to the repository root.
 
-Use `ExpectedCommitCandidate::new(token, disposition)` for every live candidate exactly once.
-Mutations never rewrite a declaration: a property write can promote a graph-only candidate to
-NewVersion, so a stale GraphOnly expectation fails as a disposition mismatch before snapshots.
-NoAction under Incomplete advances no head and binds no result. Declare it again as an
-ExpectedCommitCandidate on retry, not an ExpectedRetryParticipant. Use its saved-source
-token for persisted operations between attempts. Under Complete, its head binds to that
-saved source.
+Start with [transaction_lifecycle_fixture.rs](../../../tests/sweetests/tests/fixture_cases/transaction_lifecycle_fixture.rs)
+and its [described-instance helper](../../../tests/sweetests/tests/fixture_cases/described_instance_helpers.rs)
+for schema-backed staging, Complete Commit, and saved-content comparison. Check
+[adders.rs](../../../tests/sweetests/src/harness/test_case/adders.rs) for current signatures
+rather than copying an API catalog.
 
-Operational errors are separate from command errors and semantic findings. Attach
-`.with_expected_new_errors(...)` only when needed; omission expects none. Checks compare newly
-appended occurrences against a per-attempt baseline, including kind and multiplicity.
-
-A retained committed entry retrying only relationships uses `ExpectedRetryParticipant`, with no
-disposition or new saved result. Each attempt needs fresh expectations, even with zero live
-candidates. Supported Incomplete means successful Pass 1 followed by relationship failure;
-a failure before a Saved outcome is unsupported, not NoAction, and says nothing about whether
-a node write occurred. See the worked examples below and the outcome table in
-[references/harness.md](references/harness.md#commit-dispositions-and-retries).
-
-## Key Rules for Test Authors
-
-- Treat `TestReference` as an opaque immutable token; pass it to adders rather than constructing it.
-- Existing tokens follow their fixture heads after Commit, including as relationship targets
-  across transactions. An uncommitted target from an earlier transaction fails add/remove with
-  `CrossTransactionReference` naming the relationship and target.
-- `Rejected` attempts and commits with `expected_error` take no candidate or retry declarations
-  and advance no heads. Use existing rejection-finding expectations for semantic failures.
-- Use `add_match_saved_content_step()` after Commit for saved properties and definitional
-  content, including after a version-producing Commit. For a graph scenario, set
-  `test_case.verify_committed_workset = true` after initialization. Complete Commit then verifies
-  named fixture memberships, persisted inverse occurrences and exact lineage within its declared
-  workset. Do not repeat these guarantees in a separate graph step. See the authoritative
-  harness specification for partial lookup subjects, retries and Lineage-bound inverses.
-- In that step, `edges` counts occurrences of one named target, so it cannot reject an
-  undeclared extra target. Use `relationships` to assert a relationship's exact target set,
-  where an empty list asserts an empty collection. Declare an inverse direction as its own
-  entry; it is never derivable from a forward declaration.
-- Exact collections on holons shared with other fixtures are only sound where every source is
-  known. Ordinary suites share persisted data, so schema descriptors accumulate inverse
-  backlinks: declare exact forward collections there and keep the inverse partial, and reserve
-  exact inverses for a scenario owning an isolated runtime.
+- Build a `DancesTestCase` using `TestCaseInit` and adders. Authoring mutates in-memory expected
+  snapshots, mints opaque `TestReference` tokens, and appends steps; it does not run a conductor.
+- Pass returned tokens to later adders. Tokens follow their current fixture heads after Commit,
+  including as relationship targets across transactions; do not construct tokens or capture
+  Commit's internal result tokens. An uncommitted target from an earlier transaction fails with `CrossTransactionReference`.
+- Use `add_commit_step` for create-only work. For updates, explicit dispositions, or Incomplete
+  retries, read [Commit dispositions and retries](references/harness.md#commit-dispositions-and-retries)
+  and the linked examples before authoring expectations.
 - Expected command failures are successful test outcomes when the error kind matches.
-- Call `finalize()` exactly once, after adding all steps and before returning.
+- Exact inverse collections on shared schema holons can accumulate other fixtures' backlinks.
+  Keep those inverses partial unless the scenario owns all contributors in an isolated runtime.
+- Call `finalize()` exactly once after adding all steps and before returning.
+- Declare the fixture module in
+  [fixture_cases/mod.rs](../../../tests/sweetests/tests/fixture_cases/mod.rs), add its builder to
+  the appropriate suite's `test_cases` vector in
+  [dance_tests.rs](../../../tests/sweetests/tests/dance_tests.rs), and also register it in
+  [fixture_authoring_tests.rs](../../../tests/sweetests/tests/fixture_authoring_tests.rs).
+  Add an rstest case only for a new suite. Probe-backed scenarios stay in their isolated target.
 
-## Existing Fixtures (Model From These)
+For semantic rejection examples, inspect
+[commit_validation_fixture.rs](../../../tests/sweetests/tests/fixture_cases/commit_validation_fixture.rs).
+For specialized persisted graph assertions, read
+[assertion freshness and graph semantics](references/harness.md#initialization-and-assertion-freshness).
+`count_saved()` counts fixture-owned nodes; the count executor enumerates all saved roots,
+including bootstrap and schema data. These counts are not interchangeable.
 
-Start with the closest example in `tests/sweetests/tests/fixture_cases/`, rather than copying
-an unrelated fixture:
+## Harness Work and Validation
 
-| Fixture | Use it for |
-|---|---|
-| `transaction_lifecycle_fixture.rs`, `described_instance_helpers.rs` | The shortest happy path: schema-backed staging, a Complete Commit, and saved-content comparison |
-| `stage_new_version_fixture.rs`, `stage_new_from_clone_fixture.rs` | Update/clone staging and existing anchoring checks |
-| `commit_disposition_fixture.rs` | Explicit dispositions, zero-save updates, same-key identities, negative diagnostics |
-| `commit_lineage_fixture.rs` | Sequential lineage, non-root updates, graph replay, independent clones |
-| `commit_competition_fixture.rs` | Rejection/correction/retry and branches across transactions |
-| `commit_incomplete_fixture.rs` + `commit_incomplete_tests.rs` | Repeated relationship failures; injection stays in the isolated test target |
-| `simple_create_holon_fixture.rs`, `commit_validation_fixture.rs`, `commit_strict_contract_fixture.rs`, `commit_schema_fixture.rs` | Semantic findings and rejection contracts; undescribed creation is rejected |
-| `load_book_person_inverse_schema_fixture.rs` | Descriptor/instance links and head redirection across transactions |
-| `transaction_lifecycle_fixture.rs`, `delete_holon_fixture.rs`, `abandon_staged_changes_fixture.rs` | Multi-transaction lifecycle, deletion, abandon, and expected failures |
+For harness mechanics or debugging resolution, execution correspondence, or persisted reads,
+read the relevant section of [references/harness.md](references/harness.md). Before adding a step type,
+read its [adder/executor contracts](references/harness.md#adding-a-step), reuse a matching pattern,
+and wire the variant in `tests/sweetests/tests/execution_steps/dance_test_runner.rs`. Put pure
+classification/comparison logic in `src/harness/execution_support/` under `tests/sweetests/`
+so its unit tests run once under `--lib`.
 
-## Running Tests
-
-```bash
-# Inner loop: --lib + fixture_authoring_tests; no conductor, DNA, or Nix.
-npm run test:unit:sweetests
-
-# Broader Rust/TypeScript unit checks.
-npm run test:unit
-
-# Completion gate: full Sweettest suite in Nix.
-nix develop
-npm install
-npm run sweetest
-exit
-```
-
-The harness inner loop is sub-second after compilation. Full Sweettest takes over an hour:
-use it as a completion gate. For focused integration checks in Nix, build fresh DNA/probe artifacts
-and select a target with `cargo test --manifest-path tests/sweetests/Cargo.toml --test <target>`.
-`npm run sweetest:nocapture` enables full output.
-
-## When a New Step Type Is Needed
-
-If no existing adder covers the behavior, add an adder and executor and wire the new variant in
-`execution_steps/dance_test_runner.rs`. Read the adder/executor contracts in
-[references/harness.md](references/harness.md) first. Put pure classification or comparison
-logic and its unit tests in `src/harness/execution_support/` so those tests run once under `--lib`.
+For fixture or harness authoring changes, `npm run test:unit:sweetests` runs the conductor-free
+`--lib` and `fixture_authoring_tests` checks without DNA or Nix. Use `AGENTS.md` for broader
+build/test entrypoints; focused conductor runs need fresh DNA/probe artifacts in Nix.
+Instruction-only edits need skill, source/API, and link validation rather than conductor runs.

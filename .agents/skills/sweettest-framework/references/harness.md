@@ -1,8 +1,8 @@
 # Dance Test Harness — Implementation Orientation
 
-Read this when adding a step or debugging token resolution, Commit expectations, or persisted
-reads. For fixture authoring, start with [SKILL.md](../SKILL.md). Exact layouts and signatures
-belong in the source; enduring design belongs in the
+Read the relevant section when authoring updates/retries, adding a step, or debugging token
+resolution, Commit expectations, or persisted reads. For fixture authoring, start with
+[SKILL.md](../SKILL.md). Exact layouts and signatures belong in the source; enduring design belongs in the
 [DevDocs harness specification](../../../../../map-dev-docs/docs/core/testing/test-harness-design-spec.md).
 
 ## Where to look
@@ -79,6 +79,14 @@ resolver rather than inventing another correspondence rule.
 
 ## Commit dispositions and retries
 
+For update/disposition authoring, start with
+[commit_disposition_fixture.rs](../../../../tests/sweetests/tests/fixture_cases/commit_disposition_fixture.rs).
+For semantic rejection, correction, and retry within an open transaction, use
+[commit_validation_fixture.rs](../../../../tests/sweetests/tests/fixture_cases/commit_validation_fixture.rs).
+Injected relationship failures belong in the isolated
+[commit_incomplete_tests.rs](../../../../tests/sweetests/tests/commit_incomplete_tests.rs) target
+and its fixture, not an ordinary suite.
+
 Commit expectations are attempt-scoped and independent of observed behavior. The create-only
 `add_commit_step` derives NewRoot only when staging unambiguously established a root; update
 provenance requires `add_commit_step_with_dispositions`. Every live candidate must be declared
@@ -121,9 +129,9 @@ graph-only mutations are non-definitional by construction. A SavedLookup source 
 through Commit; it must never become a complete saved-content snapshot.
 
 Operational errors are separate from disposition, command errors, and semantic findings. Compare
-**new occurrences** against a pre-attempt baseline, including kind and multiplicity; omission
-expects none. Include retained committed entries eligible for relationship retries, using
-ExpectedRetryParticipant. They produce no new SavedHolons result and keep their existing saved
+**new occurrences** against a pre-attempt baseline, including kind and multiplicity; attach
+`.with_expected_new_errors(...)` only when needed, since omission expects none. Include retained
+committed entries eligible for relationship retries, using ExpectedRetryParticipant. They produce no new SavedHolons result and keep their existing saved
 mapping, even when the retry has zero live candidates. Each retry gets fresh expectations.
 
 Supported Incomplete covers successful Pass 1 followed by relationship-persistence failure.
