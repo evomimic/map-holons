@@ -912,3 +912,62 @@ pub(super) fn dispatch_c2_rule(
     products.emit(rule, registration.code, &binding, &path, &mut collector)?;
     Ok(collector.into_report().violations)
 }
+
+/// Adds a concrete constraint type and configured contribution to an exact descriptor.
+pub(super) fn bounded_constraint(
+    fixture: &mut Fixture,
+    name: &str,
+    constraint_type: &str,
+    descriptor: &str,
+    minimum: Option<i64>,
+    maximum: Option<i64>,
+) -> Result<(), HolonError> {
+    fixture.node("ConstraintType.HolonType")?;
+    if fixture.nodes["ConstraintType.HolonType"]
+        .related_holons(CoreRelationshipTypeName::Extends)?
+        .read()
+        .unwrap()
+        .get_members()
+        .is_empty()
+    {
+        fixture.link(
+            "ConstraintType.HolonType",
+            CoreRelationshipTypeName::Extends,
+            "HolonType.TypeDescriptor",
+        )?;
+    }
+    fixture.node(constraint_type)?;
+    if fixture.nodes[constraint_type]
+        .related_holons(CoreRelationshipTypeName::Extends)?
+        .read()
+        .unwrap()
+        .get_members()
+        .is_empty()
+    {
+        fixture.link(
+            constraint_type,
+            CoreRelationshipTypeName::Extends,
+            "ConstraintType.HolonType",
+        )?;
+    }
+    fixture.link(
+        constraint_type,
+        CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+        descriptor,
+    )?;
+    let mut constraint = fixture.node(name)?;
+    constraint.with_property_value("ConstraintName", name)?;
+    if let Some(minimum) = minimum {
+        constraint
+            .with_property_value("Minimum", minimum)?
+            .with_property_value("MinimumIsInclusive", true)?;
+    }
+    if let Some(maximum) = maximum {
+        constraint
+            .with_property_value("Maximum", maximum)?
+            .with_property_value("MaximumIsInclusive", true)?;
+    }
+    fixture.link(name, CoreRelationshipTypeName::DescribedBy, constraint_type)?;
+    fixture.link(descriptor, CoreRelationshipTypeName::Constraints, name)?;
+    Ok(())
+}

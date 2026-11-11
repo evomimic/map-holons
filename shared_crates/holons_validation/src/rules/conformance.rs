@@ -121,3 +121,17 @@ pub(crate) fn base_value_kind_matches(
 fn wrong_invocation(expected: &str) -> HolonError {
     HolonError::InvalidParameter(format!("Validation handler requires a {expected} invocation"))
 }
+
+/// Proves property binding compatibility; fixed traversal owns value findings.
+pub(crate) fn property_value_conformance(
+    invocation: ValidationInvocation<'_>,
+    _collector: &mut ValidationCollector,
+) -> Result<RuleOutcome, HolonError> {
+    match invocation {
+        ValidationInvocation::Prepared {
+            subject: crate::PreparedRuleSubject::Property { .. },
+            ..
+        } => Ok(RuleOutcome::Continue),
+        _ => Err(wrong_invocation("property")),
+    }
+}

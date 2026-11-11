@@ -623,13 +623,13 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
     assert_eq!(metrics.package_roots, 1);
     assert_eq!(metrics.subjects, 1);
     assert_eq!(metrics.affected_schemas, 0);
-    assert_eq!(metrics.distinct_content, 19);
+    assert_eq!(metrics.distinct_content, 20);
     assert_eq!(
         metrics.constructed_schema_products, 4,
         "governor, two properties and shared value type"
     );
-    assert_eq!(edges, 20, "declared discovery membership requests");
-    assert_eq!(metrics.identity_role_visits, 19);
+    assert_eq!(edges, 21, "declared discovery membership requests");
+    assert_eq!(metrics.identity_role_visits, 20);
     assert_eq!(metrics.contract_consumers, 1);
     assert!(!events.iter().any(|event| matches!(
         event,
@@ -661,7 +661,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
             _ => None,
         })
         .sum();
-    assert_eq!(described_by_requests, 6);
+    assert_eq!(described_by_requests, 7);
     let typed_visits: Vec<_> = events
         .iter()
         .filter_map(|event| match event {

@@ -1,10 +1,10 @@
 use core_types::{BaseValue, BaseValueKind, HolonError, ValidationSubjectPath};
-use holons_core::ValueDescriptor;
+use holons_core::descriptors::value_constraints::{
+    ConstraintEvaluationOutcome, ScalarConstraintFamily, ScalarConstraintParameters,
+};
 use type_names::{CoreDefinitionRole, CoreValidationRuleName};
 
-use crate::{
-    ResolvedConstraint, ResolvedValidationBinding, ValidationCollector, ValueValidationContext,
-};
+use crate::{ResolvedValidationBinding, ValidationCollector};
 
 /// Canonical fully qualified schema key of a validation rule.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,13 +45,22 @@ pub enum RuleOutcome {
 pub type StaticRuleHandler =
     fn(ValidationInvocation<'_>, &mut ValidationCollector) -> Result<RuleOutcome, HolonError>;
 
-/// Internal configured-constraint evaluator contract; no evaluators are registered.
-pub type StaticConstraintHandler = fn(
-    &ResolvedConstraint,
-    ValueValidationSubject<'_>,
-    &ValueValidationContext,
-    &mut ValidationCollector,
-) -> Result<(), HolonError>;
+/// Pure scalar execution over prepared parameters and an actual value.
+pub type StaticValueConstraintEvaluator =
+    fn(&ScalarConstraintParameters, &BaseValue) -> ConstraintEvaluationOutcome;
+
+/// Subject-specific evaluator selected by the single constraint registry.
+#[derive(Clone, Copy)]
+pub enum StaticConstraintEvaluator {
+    Value(StaticValueConstraintEvaluator),
+}
+
+impl StaticConstraintEvaluator {
+    /// An implementation for another subject level does not establish support.
+    pub fn supports(self, level: SubjectLevel) -> bool {
+        matches!((self, level), (Self::Value(_), SubjectLevel::Value))
+    }
+}
 
 /// Execution route selected by a built-in rule's registration.
 #[derive(Clone, Copy)]
@@ -94,6 +103,16 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             declaring: Role::PropertyType,
             native_kind: None,
             code: "DS-PROP-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        PropertyValueConformance => RuleRegistration {
+            implementation: Some(Subject(crate::rules::conformance::property_value_conformance)),
+            level: Property,
+            family: Role::PropertyValidationRule,
+            declaring: Role::PropertyType,
+            native_kind: None,
+            code: "DS-PROP-002",
             prerequisite: false,
             applicability: SubjectApplicability::AnySubject,
         },
@@ -346,21 +365,15 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
 pub struct StaticConstraintRegistry;
 
 impl StaticConstraintRegistry {
-    /// No configured value or cardinality evaluator is registered.
-    pub fn lookup(_key: &ConstraintTypeKey) -> Option<StaticConstraintHandler> {
-        None
+    /// Selects exact concrete scalar types and filters by evaluation subject.
+    pub fn lookup(
+        key: &ConstraintTypeKey,
+        level: SubjectLevel,
+    ) -> Option<StaticConstraintEvaluator> {
+        ScalarConstraintFamily::for_concrete_type(&key.0)?;
+        let evaluator = StaticConstraintEvaluator::Value(ScalarConstraintParameters::evaluate);
+        evaluator.supports(level).then_some(evaluator)
     }
-}
-
-/// A populated native value and its selected value-type descriptor.
-#[derive(Clone, Copy)]
-pub struct ValueValidationSubject<'a> {
-    /// Descriptor governing this value independently of its containing property.
-    pub descriptor: &'a ValueDescriptor,
-    /// Native representation being assessed.
-    pub value: &'a BaseValue,
-    /// Immutable diagnostic provenance, with no property or holon handle.
-    pub path: &'a ValidationSubjectPath,
 }
 
 /// Read-only inputs prepared through the Commit assessment's bound references.
@@ -383,7 +396,7 @@ pub enum PreparedRuleSubject {
 
 /// Expected invocation boundary, distinct from a schema's authored display labels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum SubjectLevel {
+pub enum SubjectLevel {
     Holon,
     Property,
     Value,

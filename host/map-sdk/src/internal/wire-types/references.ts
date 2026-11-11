@@ -135,6 +135,7 @@ export type CommitValidationViolationKindWire =
   | 'NoDescriptor'
   | 'UnsupportedValidationRule'
   | { UnsupportedConstraintType: { constraint_identity: string; constraint_type_identity: string } }
+  | { ConstraintViolation: { code: string; constraint_identity: string; constraint_type_identity: string } }
   | { RuleViolation: { code: string } }
   | 'UnresolvedLocalDependency'
   | 'RelationshipCoordinationRequired';
@@ -1324,6 +1325,13 @@ export function isCommitValidationViolationKindWire(
         isRecord(candidate) &&
         isString(candidate['constraint_identity']) &&
         isString(candidate['constraint_type_identity']),
+    ) ||
+    isTaggedValue(
+      value,
+      'ConstraintViolation',
+      (candidate): candidate is { code: string; constraint_identity: string; constraint_type_identity: string } =>
+        isRecord(candidate) && isString(candidate['code']) &&
+        isString(candidate['constraint_identity']) && isString(candidate['constraint_type_identity']),
     ) ||
     isTaggedValue(
       value,

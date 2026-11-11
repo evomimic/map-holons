@@ -39,16 +39,7 @@ impl PreparedConstraint {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PreparedConstraintParameters {
-    Valid(
-        #[cfg_attr(
-            not(test),
-            expect(
-                dead_code,
-                reason = "Prepared parameters await production scalar evaluator dispatch"
-            )
-        )]
-        ConstraintParameters,
-    ),
+    Valid(ConstraintParameters),
     Invalid(Vec<ConfigurationDiagnosis>),
     Uninterpreted,
 }

@@ -25,15 +25,16 @@ pub use assessment::commit::{
     validate_commit_candidates_with_profile,
 };
 pub use assessment::support::ValueValidationContext;
-pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
+pub use commitments::ResolvedValidationBinding;
 pub use constraints::declarations::ConstraintDeclarationAssessment;
 pub use diagnostics::{CommitAssessment, CommitValidationReport};
 pub use diagnostics::{ValidationCollector, ValidationObservations};
+pub use dispatch::PreparedRuleSubject;
 pub use dispatch::{
-    ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
-    StaticRuleHandler, ValidationInvocation, ValidationRuleKey,
+    ConstraintTypeKey, RuleOutcome, StaticConstraintEvaluator, StaticConstraintRegistry,
+    StaticRuleHandler, StaticValueConstraintEvaluator, SubjectLevel, ValidationInvocation,
+    ValidationRuleKey,
 };
-pub use dispatch::{PreparedRuleSubject, ValueValidationSubject};
 pub use rules::descriptor::DescriptorRuleProducts;
 pub use rules::schema::SchemaRuleProducts;
 
