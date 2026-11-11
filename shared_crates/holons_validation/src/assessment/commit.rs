@@ -560,8 +560,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
         let mut declaration_members = HashSet::new();
         let declaration_start = collector.violations().len();
         for view in &workset.schemas {
-            let mut declarations =
-                ConstraintDeclarationAssessment::new(Arc::clone(&packages.diagnoses));
+            let mut declarations = ConstraintDeclarationAssessment::new(&packages);
             for descriptor in &view.staged_components {
                 declaration_members.insert(DefinitionIdentity::for_reference(descriptor, context)?);
                 let diagnosis = packages.diagnoses.get(descriptor)?;
@@ -594,8 +593,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             }
         }
         // Invalid/missing ownership cannot remove a staged commitment from declaration assessment.
-        let mut orphan_declarations =
-            ConstraintDeclarationAssessment::new(Arc::clone(&packages.diagnoses));
+        let mut orphan_declarations = ConstraintDeclarationAssessment::new(&packages);
         for subject in prepared.iter_mut() {
             if !declaration_members
                 .contains(&DefinitionIdentity::for_reference(&subject.subject, context)?)

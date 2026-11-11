@@ -205,6 +205,31 @@ impl Fixture {
         Arc::new(crate::assessment::structural_diagnoses::StructuralDiagnoses::new(&self.context))
     }
 
+    /// Uses production preparation for declaration tests, including unattached constraints.
+    pub fn constraint_packages(
+        &self,
+        diagnoses: Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
+    ) -> Result<crate::assessment::descriptor_package::DescriptorPackages, HolonError> {
+        let mut roots = Vec::new();
+        for reference in self.nodes.values() {
+            if diagnoses.get(reference)?.valid_lineage().is_some_and(|lineage| {
+                lineage.contains_role(type_names::CoreDefinitionRole::TypeDescriptor)
+            }) {
+                roots.push(reference.clone());
+            }
+        }
+        let packages =
+            crate::assessment::descriptor_package::DescriptorPackages::construct_with_observer(
+                &self.context,
+                &roots,
+                &self.nodes.values().cloned().collect::<Vec<_>>(),
+                &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
+                diagnoses,
+                &mut |_| {},
+            )?;
+        Ok(packages)
+    }
+
     /// Opens an empty schema snapshot for bootstrap precondition tests.
     pub fn empty() -> Result<Self, HolonError> {
         let manager = HolonSpaceManager::new_with_managers(

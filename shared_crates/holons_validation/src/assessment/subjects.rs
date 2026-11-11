@@ -1,7 +1,10 @@
 //! Binding preparation and subject assessment through exact bound references.
+use crate::assessment::descriptor_package::{
+    AttachmentApplicability, PreparedConstraint, PreparedConstraintParameters,
+};
 use crate::{
     assessment::support::{blocked, path},
-    commitments::{required_key, ResolvedConstraint},
+    commitments::required_key,
     diagnostics::{finding, rule_violation},
     dispatch::{
         registration, RuleImplementation, RuleRegistration, SubjectApplicability, SubjectLevel,
@@ -290,21 +293,49 @@ fn subject_constraints(
     let contributions = packages.effective_constraints(descriptor)?;
     for contribution in contributions {
         collector.observations.effective_constraint_count += 1;
-        let constraint = ResolvedConstraint::resolve(contribution)?;
-        let key = ConstraintTypeKey(required_key(constraint.constraint_type.holon())?);
+        let prepared = packages.prepared_constraint(&contribution.member)?;
+        let applicability = packages.attachment_applicability(descriptor, &contribution.member)?;
+        let reason = match (prepared, applicability) {
+            (PreparedConstraint::Defective { defect, .. }, _) => Some(defect.to_string()),
+            (_, AttachmentApplicability::DoesNotApply) => {
+                Some("Constraint is not applicable to this descriptor".into())
+            }
+            (_, AttachmentApplicability::Blocked(reason)) => Some(reason.clone()),
+            (
+                PreparedConstraint::Interpreted {
+                    parameters: PreparedConstraintParameters::Invalid(diagnoses),
+                    ..
+                },
+                _,
+            ) => Some(diagnoses.iter().map(|d| d.message.as_str()).collect::<Vec<_>>().join("; ")),
+            _ => None,
+        };
+        if let Some(reason) = reason {
+            finding(
+                collector,
+                CommitValidationViolationKind::UnresolvedLocalDependency,
+                None,
+                path,
+                Some(contribution.declared_on.reference_id_string()),
+                format!(
+                    "Mandatory constraint {} is unusable: {reason}",
+                    contribution.member.reference_id_string()
+                ),
+            );
+            continue;
+        }
+        let PreparedConstraint::Interpreted { constraint_type, .. } = prepared else { continue };
+        let key = ConstraintTypeKey(required_key(constraint_type)?);
         if StaticConstraintRegistry::lookup(&key).is_none() {
             finding(
                 collector,
                 CommitValidationViolationKind::UnsupportedConstraintType {
-                    constraint_identity: constraint.constraint.reference_id_string(),
-                    constraint_type_identity: constraint
-                        .constraint_type
-                        .holon()
-                        .reference_id_string(),
+                    constraint_identity: contribution.member.reference_id_string(),
+                    constraint_type_identity: constraint_type.reference_id_string(),
                 },
                 None,
                 path,
-                Some(constraint.declaring_descriptor.holon().reference_id_string()),
+                Some(contribution.declared_on.reference_id_string()),
                 format!("Mandatory constraint type {} has no registered evaluator.", key.0),
             );
         }

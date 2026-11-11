@@ -15,6 +15,8 @@ pub enum AssessmentPhase {
 /// Aggregate preparation demand. Counts describe reference requests, not backend cache misses.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreparationMetrics {
+    /// Distinct exact constraint identities with a prepared interpretation, including defects.
+    pub prepared_constraint_parameters: usize,
     pub package_roots: usize,
     /// Baseline alias for distinct_content: every reached definition requests a complete schema.
     pub requested_schema_products: usize,

@@ -576,7 +576,27 @@ fn unsupported_rules_and_constraints_fail_closed_with_contribution_provenance(
 ) -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     fixture.node("Unknown.ValidationRule")?;
+    fixture.node("ConstraintType.HolonType")?;
+    fixture.link(
+        "ConstraintType.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
     fixture.node("Constraint.Type")?;
+    fixture.link(
+        "Constraint.Type",
+        CoreRelationshipTypeName::Extends,
+        "ConstraintType.HolonType",
+    )?;
+    for target in
+        ["StringValueType.ValueType", "HolonType.TypeDescriptor", "PropertyType.TypeDescriptor"]
+    {
+        fixture.link(
+            "Constraint.Type",
+            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+            target,
+        )?;
+    }
     fixture.node("Constraint.Instance")?;
     fixture.link(
         "Unknown.ValidationRule",
@@ -786,7 +806,27 @@ fn canonical_rule_with_wrong_authored_family_never_dispatches() -> Result<(), Ho
 fn unsupported_constraints_on_holon_and_absent_property_are_not_skipped() -> Result<(), HolonError>
 {
     let mut fixture = readiness_fixture()?;
+    fixture.node("ConstraintType.HolonType")?;
+    fixture.link(
+        "ConstraintType.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
     fixture.node("Constraint.Type")?;
+    fixture.link(
+        "Constraint.Type",
+        CoreRelationshipTypeName::Extends,
+        "ConstraintType.HolonType",
+    )?;
+    for target in
+        ["StringValueType.ValueType", "HolonType.TypeDescriptor", "PropertyType.TypeDescriptor"]
+    {
+        fixture.link(
+            "Constraint.Type",
+            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+            target,
+        )?;
+    }
     fixture.node("Constraint.Instance")?;
     fixture.link(
         "Constraint.Instance",
@@ -823,7 +863,7 @@ fn unsupported_constraints_on_holon_and_absent_property_are_not_skipped() -> Res
 }
 
 #[test]
-fn unresolved_constraint_type_is_an_incomplete_assessment() -> Result<(), HolonError> {
+fn unresolved_constraint_type_is_a_completed_rejection() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     fixture.node("Undescribed.Constraint")?;
     fixture.link(
@@ -833,10 +873,14 @@ fn unresolved_constraint_type_is_an_incomplete_assessment() -> Result<(), HolonE
     )?;
     let mut subject = fixture.staged_subject("constraint-subject")?;
     subject.with_property_value("Title", "present")?;
-    assert!(matches!(
-        assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject)),
-        Err(HolonError::MissingDescribedBy { .. })
-    ));
+    let assessment = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(!assessment.report.is_accepted());
+    assert!(assessment
+        .report
+        .violations
+        .iter()
+        .any(|finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+            && finding.message.contains("MissingDescribedBy")));
     Ok(())
 }
 
