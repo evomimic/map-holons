@@ -16,10 +16,12 @@ use holons_core::{
     ExtendsLineageDiagnosis, ReadableHolon,
 };
 
+const NUMERIC_RANGE: &str = "NumericRangeConstraint.ConstraintType";
+
 const BOUNDED: [&str; 4] = [
     "StringLengthConstraint.ConstraintType",
     "BytesLengthConstraint.ConstraintType",
-    "NumericRangeConstraint.ConstraintType",
+    NUMERIC_RANGE,
     "ItemCountConstraint.ConstraintType",
 ];
 const CARDINALITY: &str = "CardinalityConstraint.ConstraintType";
@@ -123,12 +125,13 @@ fn bounded_configuration_boundaries_are_declarations_without_evaluators() -> Res
             (Some(0), None, Some(true), None, true),
             (None, Some(8), None, Some(false), true),
             (Some(2), Some(8), Some(false), Some(false), true),
+            (Some(0), Some(1), Some(false), Some(false), true),
             (Some(2), Some(2), Some(true), Some(true), true),
             (Some(2), Some(2), Some(false), Some(true), false),
             (Some(2), Some(2), Some(true), Some(false), false),
             (Some(8), Some(2), Some(true), Some(true), false),
-            (Some(-1), None, Some(true), None, false),
-            (None, Some(-1), None, Some(true), false),
+            (Some(-1), None, Some(true), None, family == NUMERIC_RANGE),
+            (None, Some(-1), None, Some(true), family == NUMERIC_RANGE),
             (Some(0), None, None, None, false),
             (None, Some(8), None, None, false),
             (None, Some(8), Some(true), Some(true), false),
@@ -797,6 +800,82 @@ fn unused_staged_constraint_and_rule_keep_independent_declaration_coverage(
         assert!(rule.validation_findings()?.iter().any(|finding| matches!(
             &finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership"
         )));
+    }
+    Ok(())
+}
+
+#[test]
+fn shared_interpretation_recognizes_extension_families_without_granting_execution(
+) -> Result<(), HolonError> {
+    use holons_core::descriptors::value_constraints::{
+        interpret_constraint, Bound, ConstraintConfiguration, ConstraintInterpretation,
+        ConstraintParameters, IntegerInterval, ScalarConstraintFamily,
+    };
+
+    let mut fixture = fixture()?;
+    for (parent, expected) in [
+        (
+            NUMERIC_RANGE,
+            Some(ConstraintParameters::NumericRange(IntegerInterval {
+                minimum: Some(Bound { value: i64::MIN, inclusive: true }),
+                maximum: Some(Bound { value: -1, inclusive: false }),
+            })),
+        ),
+        ("ConstraintType.HolonType", None),
+    ] {
+        let key = format!("Extension.{parent}");
+        fixture.node(&key)?;
+        fixture.link(&key, CoreRelationshipTypeName::Extends, parent)?;
+        let mut constraint = configured(&mut fixture, &format!("Configured.{parent}"), &key)?;
+        constraint
+            .with_property_value("Minimum", i64::MIN)?
+            .with_property_value("Maximum", -1_i64)?
+            .with_property_value("MinimumIsInclusive", true)?
+            .with_property_value("MaximumIsInclusive", false)?;
+        let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[&key])?;
+        let authored = ConstraintConfiguration::acquire(&constraint)?;
+        let interpretation =
+            interpret_constraint(Ok(diagnosis.valid_lineage().unwrap()), &authored);
+        assert_eq!(
+            interpretation,
+            expected
+                .map(ConstraintInterpretation::Parameters)
+                .unwrap_or(ConstraintInterpretation::UnrecognizedFamily)
+        );
+        assert_eq!(ScalarConstraintFamily::for_concrete_type(&key), None);
+        if parent == NUMERIC_RANGE {
+            let mut collector = ValidationCollector::default();
+            assert!(ConstraintDeclarationAssessment::new(fixture.diagnoses())
+                .assess_constraint(&constraint, &mut collector)?);
+            assert!(collector.into_report().is_accepted());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn declaration_accepts_signed_extrema_and_negative_equal_endpoints() -> Result<(), HolonError> {
+    for (minimum, maximum, inclusive, accepted) in [
+        (i64::MIN, i64::MAX, true, true),
+        (i64::MIN, i64::MIN, true, true),
+        (-2, -2, true, true),
+        (-2, -2, false, false),
+        (-2, -1, false, true),
+    ] {
+        let mut fixture = fixture()?;
+        let mut constraint = configured(&mut fixture, "Signed", NUMERIC_RANGE)?;
+        constraint
+            .with_property_value("Minimum", minimum)?
+            .with_property_value("Maximum", maximum)?
+            .with_property_value("MinimumIsInclusive", inclusive)?
+            .with_property_value("MaximumIsInclusive", inclusive)?;
+        let mut collector = ValidationCollector::default();
+        assert_eq!(
+            ConstraintDeclarationAssessment::new(fixture.diagnoses())
+                .assess_constraint(&constraint, &mut collector)?,
+            accepted
+        );
+        assert_eq!(collector.into_report().is_accepted(), accepted);
     }
     Ok(())
 }

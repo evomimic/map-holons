@@ -9,7 +9,11 @@ use core_types::{CommitValidationViolationKind, HolonError, PropertyName};
 use holons_core::{
     descriptors::{
         constraint_applies_to, constraint_applies_to_lineage, resolve_describing_type,
-        same_definition, ConstraintContributions, DescribingTypeResolution, ValidExtendsLineage,
+        same_definition,
+        value_constraints::{
+            parse_constraint_configuration, ConstraintConfiguration, ConstraintFamily,
+        },
+        ConstraintContributions, DescribingTypeResolution, ValidExtendsLineage,
     },
     HolonReference, ReadableHolon,
 };
@@ -217,51 +221,25 @@ impl ConstraintDeclarationAssessment {
         configuration: &Configuration<'_>,
         collector: &mut ValidationCollector,
     ) -> Result<bool, HolonError> {
-        let mut valid = true;
-        // Family roles also apply to extension-owned subtypes.
-        for root in [
-            CoreDefinitionRole::StringLengthConstraint,
-            CoreDefinitionRole::BytesLengthConstraint,
-            CoreDefinitionRole::NumericRangeConstraint,
-            CoreDefinitionRole::ItemCountConstraint,
-        ] {
-            if lineage.contains_role(root) {
-                valid &= configuration.check_bounds(false, collector)?;
-                break;
-            }
-        }
-        if lineage.contains_role(CoreDefinitionRole::CardinalityConstraint) {
-            valid &= configuration.check_bounds(true, collector)?;
-        }
-        if lineage.contains_role(CoreDefinitionRole::UniqueItemsConstraint) {
-            // No Boolean parameter controls this commitment. Undeclared parameters,
-            // including any enable/disable field, are rejected by membership checking.
-            for field in [P::Minimum, P::Maximum, P::MinimumIsInclusive, P::MaximumIsInclusive] {
-                if configuration.constraint.property_value(&field)?.is_some() {
-                    configuration.violation(
-                        collector,
-                        format!(
-                            "UniqueItemsConstraint is presence-only and has no {} parameter.",
-                            field.as_property_name()
-                        ),
-                    );
-                    valid = false;
+        let Some(family) = ConstraintFamily::for_lineage(lineage) else {
+            return Ok(true);
+        };
+        let authored = ConstraintConfiguration::acquire(configuration.constraint)?;
+        match parse_constraint_configuration(family, &authored) {
+            Ok(_) => Ok(true),
+            Err(diagnoses) => {
+                for diagnosis in diagnoses {
+                    configuration.violation(collector, diagnosis.message);
                 }
+                Ok(false)
             }
         }
-        Ok(valid)
     }
 }
 
 struct Configuration<'a> {
     constraint: &'a HolonReference,
     constraint_type: &'a HolonReference,
-}
-
-/// Retains presence separately from native-kind validity for conditional fields.
-struct Field<T> {
-    present: bool,
-    value: Option<T>,
 }
 
 impl Configuration<'_> {
@@ -306,124 +284,6 @@ impl Configuration<'_> {
             );
         }
         Ok(undescribed.is_empty())
-    }
-
-    fn integer(
-        &self,
-        field: P,
-        collector: &mut ValidationCollector,
-    ) -> Result<Field<i64>, core_types::HolonError> {
-        let value = self.constraint.property_value(&field)?;
-        let parsed = match &value {
-            Some(BaseValue::IntegerValue(value)) if value.0 >= 0 => Some(value.0),
-            Some(BaseValue::IntegerValue(value)) => {
-                self.violation(
-                    collector,
-                    format!(
-                        "{} must be non-negative; found integer {}.",
-                        field.as_property_name(),
-                        value.0
-                    ),
-                );
-                None
-            }
-            None => None,
-            Some(value) => {
-                self.violation(
-                    collector,
-                    format!(
-                        "{} must be an integer; found value kind {:?}.",
-                        field.as_property_name(),
-                        value.kind()
-                    ),
-                );
-                None
-            }
-        };
-        Ok(Field { present: value.is_some(), value: parsed })
-    }
-
-    fn boolean(
-        &self,
-        field: P,
-        collector: &mut ValidationCollector,
-    ) -> Result<Field<bool>, core_types::HolonError> {
-        let value = self.constraint.property_value(&field)?;
-        let parsed = match &value {
-            Some(BaseValue::BooleanValue(value)) => Some(value.0),
-            None => None,
-            _ => {
-                self.violation(collector, format!("{} must be Boolean.", field.as_property_name()));
-                None
-            }
-        };
-        Ok(Field { present: value.is_some(), value: parsed })
-    }
-
-    fn check_bounds(
-        &self,
-        cardinality: bool,
-        collector: &mut ValidationCollector,
-    ) -> Result<bool, core_types::HolonError> {
-        let minimum = self.integer(P::Minimum, collector)?;
-        let maximum = self.integer(P::Maximum, collector)?;
-        let lower_inclusive = self.boolean(P::MinimumIsInclusive, collector)?;
-        let upper_inclusive = self.boolean(P::MaximumIsInclusive, collector)?;
-        let mut valid = (!minimum.present || minimum.value.is_some())
-            && (!maximum.present || maximum.value.is_some())
-            && (!lower_inclusive.present || lower_inclusive.value.is_some())
-            && (!upper_inclusive.present || upper_inclusive.value.is_some());
-        if cardinality {
-            if !minimum.present {
-                self.violation(collector, "CardinalityConstraint requires Minimum.".into());
-                valid = false;
-            }
-            if lower_inclusive.present || upper_inclusive.present {
-                self.violation(
-                    collector,
-                    "CardinalityConstraint has inclusive bounds and admits no inclusivity flags."
-                        .into(),
-                );
-                valid = false;
-            }
-        } else {
-            if !minimum.present && !maximum.present {
-                self.violation(
-                    collector,
-                    "At least one of Minimum and Maximum is required.".into(),
-                );
-                valid = false;
-            }
-            for (bound, flag, name) in [
-                (minimum.present, lower_inclusive.present, "MinimumIsInclusive"),
-                (maximum.present, upper_inclusive.present, "MaximumIsInclusive"),
-            ] {
-                if bound != flag {
-                    self.violation(
-                        collector,
-                        format!("{name} must be present exactly when its bound is present."),
-                    );
-                    valid = false;
-                }
-            }
-        }
-        // Missing or malformed flags already have findings. Equal-endpoint checks
-        // require two valid flags so their absence does not produce a second interval finding.
-        if let (Some(minimum), Some(maximum)) = (minimum.value, maximum.value) {
-            if minimum > maximum
-                || (minimum == maximum
-                    && !cardinality
-                    && matches!((lower_inclusive.value, upper_inclusive.value), (Some(lower), Some(upper)) if !lower || !upper))
-            {
-                self.violation(
-                    collector,
-                    "Bounds form an invalid interval; equal endpoints require both ends inclusive."
-                        .into(),
-                );
-                valid = false;
-            }
-        }
-        Ok(valid)
     }
 }
 
