@@ -1890,7 +1890,7 @@
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-PROP-002",
         "ValidationLevel": "Property",
-        "ValidationRuleDescription": "A populated property value must conform to the selected ValueType descriptor."
+        "ValidationRuleDescription": "A populated property value must conform to its selected ValueType descriptor. Representation and configured-constraint findings are reported by the value-kind rules and the constraint traversal; this rule adds none of its own."
       },
       "relationships": [
         {

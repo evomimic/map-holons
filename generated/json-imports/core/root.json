@@ -1024,7 +1024,7 @@
         "TypeNamePlural": "Minimums",
         "DisplayName": "Minimum",
         "DisplayNamePlural": "Minimums",
-        "Description": "Optional non-negative lower bound for a configured constraint."
+        "Description": "Optional integer lower bound for a configured constraint. Signedness is determined by the constraint family."
       },
       "relationships": [
         {
@@ -1099,7 +1099,7 @@
         "TypeNamePlural": "Maximums",
         "DisplayName": "Maximum",
         "DisplayNamePlural": "Maximums",
-        "Description": "Optional non-negative upper bound for a configured constraint. Absence means unbounded."
+        "Description": "Optional integer upper bound for a configured constraint. Signedness is determined by the constraint family. Absence means unbounded."
       },
       "relationships": [
         {

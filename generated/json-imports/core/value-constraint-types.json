@@ -22,7 +22,7 @@
         "TypeNamePlural": "StringLengthConstraints",
         "DisplayName": "String Length Constraint",
         "DisplayNamePlural": "String Length Constraints",
-        "Description": "Constrains the Unicode grapheme-cluster length of a string value to a configured range."
+        "Description": "Constrains the Unicode 17.0.0 default extended grapheme-cluster length of a stored string, without normalization, to a configured non-negative range. Each bound carries its own inclusivity."
       },
       "relationships": [
         {
@@ -76,7 +76,7 @@
         "TypeNamePlural": "BytesLengthConstraints",
         "DisplayName": "Bytes Length Constraint",
         "DisplayNamePlural": "Bytes Length Constraints",
-        "Description": "Constrains the byte length of a bytes value to a configured range."
+        "Description": "Constrains the byte length of a bytes value to a configured non-negative range. Each bound carries its own inclusivity."
       },
       "relationships": [
         {
@@ -130,7 +130,7 @@
         "TypeNamePlural": "NumericRangeConstraints",
         "DisplayName": "Numeric Range Constraint",
         "DisplayNamePlural": "Numeric Range Constraints",
-        "Description": "Constrains an integer value to a configured inclusive range."
+        "Description": "Constrains an integer value to a configured signed integer range. Each bound carries its own inclusivity."
       },
       "relationships": [
         {
@@ -184,7 +184,7 @@
         "TypeNamePlural": "ItemCountConstraints",
         "DisplayName": "Item Count Constraint",
         "DisplayNamePlural": "Item Count Constraints",
-        "Description": "Constrains the number of items in a value array to a configured inclusive range."
+        "Description": "Constrains the number of items in a value array to a configured non-negative range. Each bound carries its own inclusivity."
       },
       "relationships": [
         {

@@ -12,7 +12,7 @@ holon StringLengthConstraint.ConstraintType {
   type MetaConstraintType.MetaHolonType
   extends ConstraintType.HolonType
   header {
-    description: "Constrains the Unicode grapheme-cluster length of a string value to a configured range."
+    description: "Constrains the Unicode 17.0.0 default extended grapheme-cluster length of a stored string, without normalization, to a configured non-negative range. Each bound carries its own inclusivity."
     display_name: "String Length Constraint"
     display_plural: "String Length Constraints"
     plural: "StringLengthConstraints"
@@ -32,7 +32,7 @@ holon BytesLengthConstraint.ConstraintType {
   type MetaConstraintType.MetaHolonType
   extends ConstraintType.HolonType
   header {
-    description: "Constrains the byte length of a bytes value to a configured range."
+    description: "Constrains the byte length of a bytes value to a configured non-negative range. Each bound carries its own inclusivity."
     display_name: "Bytes Length Constraint"
     display_plural: "Bytes Length Constraints"
     plural: "BytesLengthConstraints"
@@ -52,7 +52,7 @@ holon NumericRangeConstraint.ConstraintType {
   type MetaConstraintType.MetaHolonType
   extends ConstraintType.HolonType
   header {
-    description: "Constrains an integer value to a configured inclusive range."
+    description: "Constrains an integer value to a configured signed integer range. Each bound carries its own inclusivity."
     display_name: "Numeric Range Constraint"
     display_plural: "Numeric Range Constraints"
     plural: "NumericRangeConstraints"
@@ -72,7 +72,7 @@ holon ItemCountConstraint.ConstraintType {
   type MetaConstraintType.MetaHolonType
   extends ConstraintType.HolonType
   header {
-    description: "Constrains the number of items in a value array to a configured inclusive range."
+    description: "Constrains the number of items in a value array to a configured non-negative range. Each bound carries its own inclusivity."
     display_name: "Item Count Constraint"
     display_plural: "Item Count Constraints"
     plural: "ItemCountConstraints"
