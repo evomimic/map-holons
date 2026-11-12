@@ -85,6 +85,11 @@ fn authored_binding_inventory(documents: &[Value]) -> BTreeSet<String> {
 fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
     [
         (
+            "PropertyValueConformance.ValidationRule",
+            "PropertyValidationRule.HolonType",
+            "PropertyType.TypeDescriptor",
+        ),
+        (
             "RequiredPropertyPresence.ValidationRule",
             "PropertyValidationRule.HolonType",
             "PropertyType.TypeDescriptor",
@@ -229,6 +234,40 @@ fn require_expected_bindings(documents: &[Value]) -> Result<()> {
 #[test]
 fn canonical_corpus_binds_expected_rules_with_expected_families_and_declarations() -> Result<()> {
     require_expected_bindings(&canonical_documents()?)
+}
+
+/// Counts raw occurrences so duplicate edges cannot disappear into the placement set.
+#[test]
+fn scalar_activation_has_one_property_binding_and_one_string_attachment() -> Result<()> {
+    let documents = canonical_documents()?;
+    for (relationship_name, target_key, source_key) in [
+        (
+            "ValidationBindings",
+            "PropertyValueConformance.ValidationRule",
+            "PropertyType.TypeDescriptor",
+        ),
+        ("Constraints", "Length16k.StringLengthConstraint", "MapStringValueType.StringValueType"),
+    ] {
+        let mut sources = Vec::new();
+        for holon in documents.iter().flat_map(|document| document["holons"].as_array().unwrap()) {
+            for relationship in holon["relationships"].as_array().into_iter().flatten() {
+                if relationship["name"] != relationship_name {
+                    continue;
+                }
+                let targets = relationship["target"]
+                    .as_array()
+                    .map(Vec::as_slice)
+                    .unwrap_or_else(|| std::slice::from_ref(&relationship["target"]));
+                for target in targets {
+                    if target["$ref"] == target_key {
+                        sources.push(holon["key"].as_str().unwrap());
+                    }
+                }
+            }
+        }
+        assert_eq!(sources, vec![source_key], "{relationship_name} -> {target_key}");
+    }
+    Ok(())
 }
 
 #[test]

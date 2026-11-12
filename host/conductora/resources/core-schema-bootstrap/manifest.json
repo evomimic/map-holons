@@ -59,7 +59,7 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "312919fbb05750ededc4d34b451898cb225ca55cee845f74fa4a7387b7e4fdc1"
+      "sha256": "5dddfedcc9b82c7fe2def38ee4adbfa4d208925f60011172f8f8ca91ea3566d2"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -83,7 +83,7 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "9aa4bddeddb7ef4e134eadc4a1d7b44daaff753bd61ea1eddc2ec295634b4804"
+      "sha256": "b560c576ffc8cac3d5f5863ad81828f9d5cb5a09db4cc3be3bb16c5997c66d28"
     },
     {
       "path": "imports/core/validation.json",

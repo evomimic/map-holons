@@ -828,3 +828,59 @@ fn stale_cross_schema_dependency_binding_fails_closed() -> Result<(), HolonError
     // binding remains fail-closed even though its native handler has been retired.
     Ok(())
 }
+
+/// A constraint's name can be governed by that same constraint without recursive preparation.
+#[test]
+fn length16k_validates_its_own_constraint_name_with_one_prepared_parameter_fact(
+) -> Result<(), HolonError> {
+    let mut fixture = super::support::length16k_fixture()?;
+    let constraint = &fixture.nodes["Length16k.StringLengthConstraint"];
+    let candidates = [staged(constraint)];
+    let mut prepared_parameters = None;
+    let report =
+        crate::validate_commit_candidates_with_profile(&fixture.context, &candidates, |event| {
+            if let crate::AssessmentEvent::Preparation(metrics) = event {
+                prepared_parameters = Some(metrics.prepared_constraint_parameters);
+            }
+        })?;
+    assert_eq!(prepared_parameters, Some(1));
+    assert!(report.is_accepted(), "{report:?}");
+    let assessment = assess_commit_candidates(&fixture.context, &candidates)?;
+    assert_eq!(assessment.observations.effective_constraint_count, 1);
+    assert!(assessment
+        .observations
+        .dispatched_rule_keys
+        .contains(CoreValidationRuleName::PropertyValueConformance.as_str()));
+
+    // Tightening the same contribution proves the self-governed name was evaluated.
+    fixture
+        .nodes
+        .get_mut("Length16k.StringLengthConstraint")
+        .unwrap()
+        .with_property_value("Maximum", 8_i64)?;
+    let rejected = assess_commit_candidates(&fixture.context, &candidates)?;
+    assert_eq!(rejected.report.violation_count(), 1, "{:?}", rejected.report);
+    let finding = &rejected.report.violations[0];
+    assert_eq!(
+        finding.kind,
+        CommitValidationViolationKind::ConstraintViolation {
+            code: "StringLengthOutOfRange".into(),
+            constraint_identity: fixture.nodes["Length16k.StringLengthConstraint"]
+                .reference_id_string(),
+            constraint_type_identity: fixture.nodes["StringLengthConstraint.ConstraintType"]
+                .reference_id_string(),
+        }
+    );
+    assert_eq!(
+        finding.subject,
+        core_types::ValidationSubjectPath::Value {
+            holon_identity: candidates[0].full_reference_id_string(),
+            property: "ConstraintName".into(),
+        }
+    );
+    assert_eq!(
+        finding.descriptor_identity.as_deref(),
+        Some(fixture.nodes["MapStringValueType.StringValueType"].reference_id_string().as_str())
+    );
+    Ok(())
+}

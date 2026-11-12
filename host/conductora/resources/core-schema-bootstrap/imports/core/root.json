@@ -181,6 +181,9 @@
           "target": [
             {
               "$ref": "RequiredPropertyPresence.ValidationRule"
+            },
+            {
+              "$ref": "PropertyValueConformance.ValidationRule"
             }
           ]
         },

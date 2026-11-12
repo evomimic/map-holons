@@ -59,7 +59,7 @@ abstract holon PropertyType.TypeDescriptor {
     plural: "PropertyTypes"
   }
   relationships {
-    ValidationBindings -> RequiredPropertyPresence.ValidationRule
+    ValidationBindings -> [RequiredPropertyPresence.ValidationRule, PropertyValueConformance.ValidationRule]
   }
 }
 
