@@ -34,7 +34,7 @@ pub(crate) struct PredicateWorld {
     /// A transient string subtype affording Contains, Equals and all four
     /// ordered comparisons.
     pub(crate) text: HolonReference,
-    /// A text subtype carrying a configured constraint.
+    /// A text subtype carrying an unsupported configured pattern constraint.
     pub(crate) identifier: HolonReference,
     /// An integer type affording Equals and all four ordered comparisons.
     pub(crate) integer: HolonReference,
@@ -78,6 +78,58 @@ impl PredicateWorld {
         Self::build(context, true)
     }
 
+    /// Attaches a real string bound to a selected literal or required descriptor.
+    pub(crate) fn string_bound(
+        &self,
+        descriptor: &HolonReference,
+        key: &str,
+        maximum: i64,
+    ) -> HolonReference {
+        let constraint_type = self
+            .context
+            .mutation()
+            .stage_new_holon(constraint_type(
+                &self.context,
+                "StringLengthConstraint",
+                &self.map_string,
+            ))
+            .unwrap();
+        let mut bound = new_schema_holon(&self.context, key, &constraint_type.into()).unwrap();
+        bound
+            .with_property_value("Maximum", maximum)
+            .unwrap()
+            .with_property_value("MaximumIsInclusive", true)
+            .unwrap();
+        let bound: HolonReference = self.context.mutation().stage_new_holon(bound).unwrap().into();
+        descriptor
+            .clone()
+            .add_related_holons(CoreRelationshipTypeName::Constraints, vec![bound.clone()])
+            .unwrap();
+        bound
+    }
+
+    /// Adds an unsupported, structurally usable attachment for fail-closed coverage.
+    pub(crate) fn unknown_constraint(&self, descriptor: &HolonReference) -> HolonReference {
+        let constraint_type = self
+            .context
+            .mutation()
+            .stage_new_holon(constraint_type(&self.context, "Unknown", &self.map_string))
+            .unwrap();
+        let bound: HolonReference = self
+            .context
+            .mutation()
+            .stage_new_holon(
+                new_schema_holon(&self.context, "unknown", &constraint_type.into()).unwrap(),
+            )
+            .unwrap()
+            .into();
+        descriptor
+            .clone()
+            .add_related_holons(CoreRelationshipTypeName::Constraints, vec![bound.clone()])
+            .unwrap();
+        bound
+    }
+
     fn build(context: Arc<TransactionContext>, constrain_map_string: bool) -> Self {
         let stage = |holon: TransientReference| -> HolonReference {
             context.mutation().stage_new_holon(holon).unwrap().into()
@@ -96,8 +148,11 @@ impl PredicateWorld {
             canonical_type(&context, &type_name.as_holon_name().0);
         }
 
-        let string_anchor =
-            stage(new_kind_descriptor(&context, "StringValueType", None, true).unwrap());
+        let type_descriptor =
+            stage(new_kind_descriptor(&context, "TypeDescriptor", None, false).unwrap());
+        let string_anchor = stage(
+            new_kind_descriptor(&context, "StringValueType", Some(&type_descriptor), true).unwrap(),
+        );
         let mut map_string = new_descriptor_holon(
             &context,
             "MapStringValueType.StringValueType",
@@ -112,16 +167,15 @@ impl PredicateWorld {
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![string_anchor.clone()])
             .unwrap();
         if constrain_map_string {
-            let constraint_type = stage(
-                new_holon_type_descriptor(
-                    &context,
-                    "StringLengthConstraint.ConstraintType",
-                    "StringLengthConstraint",
-                )
-                .unwrap(),
-            );
-            let constraint =
-                stage(new_schema_holon(&context, "Length16k", &constraint_type).unwrap());
+            let constraint_type =
+                stage(constraint_type(&context, "StringLengthConstraint", &string_anchor));
+            let mut length = new_schema_holon(&context, "Length16k", &constraint_type).unwrap();
+            length
+                .with_property_value("Maximum", 16_384_i64)
+                .unwrap()
+                .with_property_value("MaximumIsInclusive", true)
+                .unwrap();
+            let constraint = stage(length);
             map_string
                 .add_related_holons(CoreRelationshipTypeName::Constraints, vec![constraint])
                 .unwrap();
@@ -158,7 +212,12 @@ impl PredicateWorld {
         identifier
             .add_related_holons(
                 CoreRelationshipTypeName::Constraints,
-                vec![constraint(&context, "identifier-pattern", "StringPatternConstraint")],
+                vec![constraint(
+                    &context,
+                    "identifier-pattern",
+                    "StringPatternConstraint",
+                    &string_anchor,
+                )],
             )
             .unwrap();
         let identifier: HolonReference = identifier.into();
@@ -425,19 +484,41 @@ fn canonical_predicate_type(
     }
 }
 
-/// A transient configured-constraint holon described by `constraint_type_name`.
+/// A concrete ConstraintType with a rooted lineage and explicit local applicability.
+fn constraint_type(
+    context: &Arc<TransactionContext>,
+    name: &str,
+    applies_to: &HolonReference,
+) -> TransientReference {
+    let root = context
+        .mutation()
+        .stage_new_holon(new_kind_descriptor(context, "TypeDescriptor", None, false).unwrap())
+        .unwrap();
+    let mut anchor =
+        new_holon_type_descriptor(context, "ConstraintType.HolonType", "ConstraintType").unwrap();
+    anchor.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()]).unwrap();
+    let anchor = context.mutation().stage_new_holon(anchor).unwrap();
+    let mut descriptor =
+        new_holon_type_descriptor(context, &format!("{name}.ConstraintType"), name).unwrap();
+    descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.into()]).unwrap();
+    descriptor
+        .add_related_holons(
+            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+            vec![applies_to.clone()],
+        )
+        .unwrap();
+    descriptor
+}
+
+/// A well-formed applicable extension constraint, with no executable Core semantics.
 fn constraint(
     context: &Arc<TransactionContext>,
     key: &str,
-    constraint_type_name: &str,
+    name: &str,
+    applies_to: &HolonReference,
 ) -> HolonReference {
-    let constraint_type = new_holon_type_descriptor(
-        context,
-        &format!("{constraint_type_name}.ConstraintType"),
-        constraint_type_name,
-    )
-    .unwrap();
-    new_schema_holon(context, key, &constraint_type.into()).unwrap().into()
+    let descriptor = constraint_type(context, name, applies_to);
+    new_schema_holon(context, key, &descriptor.into()).unwrap().into()
 }
 
 /// A transient holon type declaring `(name, required, value type)` properties,

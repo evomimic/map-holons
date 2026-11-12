@@ -38,6 +38,15 @@ pub enum ScalarConstraintFamily {
 }
 
 impl ScalarConstraintFamily {
+    /// Native representation consumed by this scalar family.
+    pub fn expected_kind(self) -> base_types::BaseValueKind {
+        match self {
+            Self::StringLength => base_types::BaseValueKind::String,
+            Self::BytesLength => base_types::BaseValueKind::Bytes,
+            Self::NumericRange => base_types::BaseValueKind::Integer,
+        }
+    }
+
     /// Selects executable semantics only for an exact Core concrete type key.
     pub fn for_concrete_type(key: &str) -> Option<Self> {
         match key {

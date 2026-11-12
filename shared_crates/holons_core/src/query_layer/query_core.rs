@@ -3326,6 +3326,21 @@ mod tests {
     }
 
     #[test]
+    fn scalar_literal_rejection_precedes_empty_filter_input() {
+        let fixture = build_fixture();
+        let world = predicate_world(&fixture);
+        world.string_bound(&world.map_string, "TightQueryLiteral", 3);
+        let predicate = world.contains("Title", "long");
+        let filter = filter_of(&fixture, "filter", predicate.clone());
+        let definition = filter.into_model().unwrap();
+        let predicate_definition = predicate.into_model().unwrap();
+        let (_, result) = run_typed(&fixture, &filter, &world.book, &[]);
+        assert!(matches!(result, Err(HolonError::ValueConstraintViolation { .. })), "{result:?}");
+        assert_eq!(filter.into_model().unwrap(), definition);
+        assert_eq!(predicate.into_model().unwrap(), predicate_definition);
+    }
+
+    #[test]
     fn filter_root_retains_matching_occurrences_and_the_declared_type() {
         let fixture = build_fixture();
         let world = predicate_world(&fixture);

@@ -855,8 +855,7 @@ fn shared_interpretation_recognizes_extension_families_without_granting_executio
             .with_property_value("MaximumIsInclusive", false)?;
         let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[&key])?;
         let authored = ConstraintConfiguration::acquire(&constraint)?;
-        let interpretation =
-            interpret_constraint(Ok(diagnosis.valid_lineage().unwrap()), &authored);
+        let interpretation = interpret_constraint(diagnosis.valid_lineage().unwrap(), &authored);
         assert_eq!(
             interpretation,
             expected

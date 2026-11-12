@@ -2,6 +2,7 @@
 mod configuration;
 mod evaluators;
 mod interpretation;
+pub(super) mod literal;
 mod parameters;
 mod support;
 
@@ -23,3 +24,6 @@ pub use support::{ConstraintFamily, ScalarConstraintFamily};
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod literal_tests;

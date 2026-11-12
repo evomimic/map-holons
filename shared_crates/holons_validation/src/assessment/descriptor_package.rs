@@ -624,7 +624,7 @@ impl DescriptorPackages {
                         HolonError::InvalidState("Concrete classification lacks lineage".into())
                     })?;
                     let parameters = match interpret_constraint(
-                        Ok(lineage),
+                        lineage,
                         &ConstraintConfiguration::acquire(&reference)?,
                     ) {
                         ConstraintInterpretation::Parameters(parameters) => {
@@ -635,16 +635,6 @@ impl DescriptorPackages {
                         }
                         ConstraintInterpretation::UnrecognizedFamily => {
                             PreparedConstraintParameters::Uninterpreted
-                        }
-                        ConstraintInterpretation::StructurallyInvalid(defect) => {
-                            constraints.insert(
-                                identity,
-                                PreparedConstraint::Defective {
-                                    defect,
-                                    describing_type: Some(constraint_type),
-                                },
-                            );
-                            continue;
                         }
                     };
                     PreparedConstraint::Interpreted { constraint_type, parameters }

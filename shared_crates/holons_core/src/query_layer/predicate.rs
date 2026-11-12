@@ -21,10 +21,8 @@
 //! definitions.
 //!
 //! Authored literals are checked for declared-type compatibility, runtime
-//! representation, and the existing supported value checks (such as enum
-//! membership). A literal ValueType with any effective configured constraint,
-//! inherited ones included, is rejected: this module evaluates no configured
-//! constraint. Stored member values are never revalidated.
+//! representation, existing value semantics and effective configured constraints
+//! through `ValueDescriptor::validate_literal`. Stored member values are never revalidated.
 
 use base_types::BaseValue;
 use core_types::{HolonError, PropertyName};
@@ -37,8 +35,8 @@ use crate::descriptors::accessor_helpers::{
     descriptor_label, related_members, require_single_related,
 };
 use crate::descriptors::{
-    classify_holon_type, lineage_contains, require_holon_type, same_definition, Descriptor,
-    HolonDescriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
+    classify_holon_type, lineage_contains, require_holon_type, Descriptor, HolonDescriptor,
+    OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -359,38 +357,9 @@ fn validate_literal_operand(
             operator: operator.operator().operator_name()?.to_string(),
         });
     }
-    check_authored_literal(&declared_type, &value)?;
-    if !same_definition(declared_type.holon(), required_type.holon())? {
-        check_authored_literal(required_type, &value)?;
-    }
+    // D extends R, so its effective constraints include R’s contributions.
+    declared_type.validate_literal(&value)?;
     Ok(value)
-}
-
-/// The authored-literal checks available without configured-constraint
-/// evaluators: runtime representation and the existing value checks, such as
-/// enum membership, through `is_valid`. Any effective configured constraint,
-/// inherited ones included, fails explicitly rather than passing unchecked.
-///
-/// This is the single point to switch to the shared configured-value
-/// validation facility once its constraint evaluators exist.
-fn check_authored_literal(
-    value_type: &ValueDescriptor,
-    value: &BaseValue,
-) -> Result<(), HolonError> {
-    value_type.is_valid(value)?;
-    if let Some(constraint) = value_type.effective_constraints()?.first() {
-        return Err(HolonError::UnsupportedValueConstraint {
-            constraint_type: constraint
-                .member
-                .holon_descriptor()?
-                .header()
-                .type_name()?
-                .to_string(),
-            value_type: descriptor_label(value_type.holon()),
-            descriptor: descriptor_label(&constraint.declared_on),
-        });
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -627,10 +596,10 @@ mod tests {
     }
 
     #[test]
-    fn a_constrained_literal_type_fails_explicitly() {
+    fn an_unsupported_literal_constraint_fails_explicitly() {
         let world = world();
         // Identifier extends MapStringValueType through Text, so it satisfies
-        // Contains' required type, but it carries a constraint.
+        // Contains' required type, but its pattern constraint has no evaluator.
         let comparison = world.comparison(
             "Title",
             &world.contains,
@@ -645,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn an_inherited_literal_constraint_fails_explicitly() {
+    fn an_inherited_unsupported_literal_constraint_fails_explicitly() {
         let world = world();
         // No local constraint: the one on Identifier is inherited.
         let short_identifier: HolonReference =
@@ -672,16 +641,11 @@ mod tests {
     }
 
     #[test]
-    fn a_constrained_required_type_fails_every_contains_literal() {
-        // Fail closed: once the canonical string type carries a constraint,
-        // no Contains literal passes until that constraint can be evaluated.
+    fn a_constrained_required_type_accepts_ordinary_and_empty_contains_literals() {
         let world = PredicateWorld::with_constrained_map_string(build_context());
-        let error = validate(&world.contains("Title", "x"), &book(&world)).unwrap_err();
-        assert!(
-            matches!(&error, HolonError::UnsupportedValueConstraint { constraint_type, .. }
-                if constraint_type == "StringLengthConstraint"),
-            "unexpected error: {error:?}"
-        );
+        for value in ["x", ""] {
+            validate(&world.contains("Title", value), &book(&world)).unwrap();
+        }
     }
 
     // ---- Evaluation ---------------------------------------------------------
@@ -1288,7 +1252,7 @@ mod tests {
     }
 
     #[test]
-    fn equals_on_a_constrained_subject_fails_explicitly() {
+    fn equals_on_a_subject_with_an_unsupported_constraint_fails_explicitly() {
         // Unlike a Contains substring, an Equals literal must satisfy the
         // subject's own ValueType, constraints included.
         let world = world();
@@ -1302,15 +1266,15 @@ mod tests {
     }
 
     #[test]
-    fn a_constrained_canonical_string_fails_equals_on_its_subtypes() {
-        // Fail closed: Text inherits the canonical constraint, so no Equals
-        // literal on it passes until that constraint can be evaluated.
-        let world = PredicateWorld::with_constrained_map_string(build_context());
+    fn a_canonical_unsupported_constraint_rejects_equals_on_subtypes() {
+        // A well-formed unknown attachment remains fail-closed on inherited literals.
+        let world = world();
+        world.unknown_constraint(&world.map_string);
         let error =
             validate(&world.equals("Title", &world.text, text("x")), &book(&world)).unwrap_err();
         assert!(
             matches!(&error, HolonError::UnsupportedValueConstraint { constraint_type, .. }
-                if constraint_type == "StringLengthConstraint"),
+                if constraint_type == "Unknown"),
             "unexpected error: {error:?}"
         );
     }
@@ -1697,7 +1661,7 @@ mod tests {
             );
         }
 
-        // A value outside its declared representation, and a configured constraint.
+        // A value outside its declared representation, and an unsupported configured constraint.
         let error = validate(
             &world.compare("PageCount", &world.greater_than, &world.integer, text("1")),
             &book(&world),
@@ -1836,5 +1800,267 @@ mod tests {
             filter(&[long.clone(), short.clone(), long.clone(), short], &predicate).unwrap();
         assert_eq!(retained, vec![long.clone(), long]);
         assert_eq!(comparison.into_model().unwrap(), definition);
+    }
+
+    #[test]
+    fn contains_literal_bounds_cover_declared_required_and_coincident_types() {
+        for location in ["declared", "required", "both", "coincident"] {
+            let world = world();
+            if ["declared", "both"].contains(&location) {
+                world.string_bound(&world.headline, "DeclaredBound", 3);
+            }
+            if ["required", "both", "coincident"].contains(&location) {
+                world.string_bound(&world.map_string, "RequiredBound", 3);
+            }
+            let declared =
+                if location == "coincident" { &world.map_string } else { &world.headline };
+            for (value, valid) in [("a\u{301}bc", true), ("abcd", false)] {
+                let comparison = world.comparison(
+                    "Title",
+                    &world.contains,
+                    vec![world.literal(declared, text(value))],
+                );
+                let definition = comparison.into_model().unwrap();
+                let result = validate(&comparison, &book(&world));
+                if valid {
+                    result.unwrap();
+                } else {
+                    assert!(
+                        matches!(result, Err(HolonError::ValueConstraintViolation { ref code, ref value_type, ref detail, .. }) if code == "StringLengthOutOfRange" && value_type == &declared.reference_id_string() && detail.contains("4 graphemes") && detail.contains("[0, 3]")),
+                        "{location}: {result:?}"
+                    );
+                }
+                assert_eq!(comparison.into_model().unwrap(), definition);
+            }
+        }
+    }
+
+    #[test]
+    fn every_inherited_and_local_literal_bound_is_enforced_with_provenance() {
+        let world = world();
+        let required = world.string_bound(&world.map_string, "Required", 5);
+        let inherited = world.string_bound(&world.text, "Inherited", 3);
+        let local = world.string_bound(&world.headline, "Local", 2);
+        for (value, constraint, declaring) in [
+            ("abcdef", &required, &world.map_string),
+            ("abcd", &inherited, &world.text),
+            ("abc", &local, &world.headline),
+        ] {
+            let comparison = world.comparison(
+                "Title",
+                &world.contains,
+                vec![world.literal(&world.headline, text(value))],
+            );
+            let error = validate(&comparison, &book(&world)).unwrap_err();
+            let type_ref = constraint
+                .related_holons(CoreRelationshipTypeName::DescribedBy)
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()[0]
+                .clone();
+            assert!(
+                matches!(error, HolonError::ValueConstraintViolation { constraint: ref actual, constraint_type: ref actual_type, descriptor: ref actual_declaring, .. } if actual == &constraint.reference_id_string() && actual_type == &type_ref.reference_id_string() && actual_declaring == &declaring.reference_id_string()),
+                "{error:?}"
+            );
+        }
+        let comparison = world.comparison(
+            "Title",
+            &world.contains,
+            vec![world.literal(&world.headline, text("ab"))],
+        );
+        validate(&comparison, &book(&world)).unwrap();
+    }
+
+    #[test]
+    fn contains_does_not_apply_subject_property_bounds_to_its_substring() {
+        let world = world();
+        world.string_bound(&world.text, "SubjectOnly", 1);
+        validate(&world.contains("Title", "substring"), &book(&world)).unwrap();
+    }
+
+    #[test]
+    fn malformed_constraint_policy_precedes_unsupported_semantics() {
+        use core_types::SchemaInvalidityKind;
+        for defect in [
+            "configuration",
+            "applicability",
+            "unknown-applicability",
+            "abstract",
+            "non-constraint",
+            "lineage",
+            "missing",
+            "multiple",
+            "unknown-missing",
+        ] {
+            let world = world();
+            let unknown = defect.starts_with("unknown");
+            let mut bound = if unknown {
+                world.unknown_constraint(&world.map_string)
+            } else {
+                world.string_bound(&world.map_string, "Bound", 3)
+            };
+            let mut type_ref = bound
+                .related_holons(CoreRelationshipTypeName::DescribedBy)
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()[0]
+                .clone();
+            match defect {
+                "configuration" => {
+                    bound.with_property_value("Maximum", "three").unwrap();
+                }
+                "applicability" | "unknown-applicability" => {
+                    bound.with_property_value("Maximum", "invalid core bound").unwrap();
+                    let targets = type_ref
+                        .related_holons(CoreRelationshipTypeName::ApplicableToDescriptorTypes)
+                        .unwrap()
+                        .read()
+                        .unwrap()
+                        .get_members()
+                        .clone();
+                    type_ref
+                        .remove_related_holons(
+                            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+                            targets,
+                        )
+                        .unwrap();
+                }
+                "abstract" => {
+                    type_ref.with_property_value("IsAbstractType", true).unwrap();
+                }
+                "non-constraint" | "lineage" => {
+                    let parents = type_ref
+                        .related_holons(CoreRelationshipTypeName::Extends)
+                        .unwrap()
+                        .read()
+                        .unwrap()
+                        .get_members()
+                        .clone();
+                    type_ref
+                        .remove_related_holons(CoreRelationshipTypeName::Extends, parents.clone())
+                        .unwrap();
+                    if defect == "non-constraint" {
+                        let root = parents[0]
+                            .related_holons(CoreRelationshipTypeName::Extends)
+                            .unwrap()
+                            .read()
+                            .unwrap()
+                            .get_members()[0]
+                            .clone();
+                        type_ref
+                            .add_related_holons(CoreRelationshipTypeName::Extends, vec![root])
+                            .unwrap();
+                    }
+                }
+                "missing" | "unknown-missing" | "multiple" => {
+                    // Transient definitions can carry malformed describers for validation.
+                    let mut malformed = crate::descriptors::test_support::new_test_holon(
+                        &world.context,
+                        "MalformedBound",
+                    )
+                    .unwrap();
+                    if defect == "multiple" {
+                        malformed
+                            .add_related_holons(
+                                CoreRelationshipTypeName::DescribedBy,
+                                vec![type_ref.clone(), world.map_string.clone()],
+                            )
+                            .unwrap();
+                    }
+                    let malformed: HolonReference = malformed.into();
+                    world
+                        .map_string
+                        .clone()
+                        .remove_related_holons(
+                            CoreRelationshipTypeName::Constraints,
+                            vec![bound.clone()],
+                        )
+                        .unwrap();
+                    world
+                        .text
+                        .clone()
+                        .add_related_holons(CoreRelationshipTypeName::Constraints, vec![malformed])
+                        .unwrap();
+                }
+                _ => unreachable!(),
+            }
+            let comparison = world.comparison(
+                "Title",
+                &world.contains,
+                vec![world.literal(&world.text, text("x"))],
+            );
+            let error = validate(&comparison, &book(&world)).unwrap_err();
+            match defect {
+                "missing" | "unknown-missing" => {
+                    assert!(matches!(error, HolonError::MissingDescribedBy { .. }), "{error:?}")
+                }
+                "multiple" => assert!(
+                    matches!(error, HolonError::MultipleDescribedBy { count: 2, .. }),
+                    "{error:?}"
+                ),
+                _ => {
+                    let expected = if defect.ends_with("applicability") {
+                        SchemaInvalidityKind::IncompatibleConstraintFamily
+                    } else {
+                        SchemaInvalidityKind::InvalidConstraintConfiguration
+                    };
+                    assert!(
+                        matches!(error, HolonError::DescriptorSchemaInvalid { kind, ref detail, .. } if kind == expected && detail.contains(&bound.reference_id_string()) && detail.contains(&type_ref.reference_id_string())),
+                        "{defect}: {error:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_literal_validation_leaves_definitions_unchanged() {
+        let world = world();
+        world.string_bound(&world.map_string, "Tight", 1);
+        let comparison = world.contains("Title", "too long");
+        let comparison_before = comparison.into_model().unwrap();
+        let operand = comparison
+            .related_holons(QueryRelationshipTypeName::Operands)
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()[0]
+            .clone();
+        let operand_before = operand.into_model().unwrap();
+        assert!(matches!(
+            validate(&comparison, &book(&world)),
+            Err(HolonError::ValueConstraintViolation { .. })
+        ));
+        assert_eq!(comparison.into_model().unwrap(), comparison_before);
+        assert_eq!(operand.into_model().unwrap(), operand_before);
+    }
+    #[test]
+    fn later_schema_defects_precede_earlier_literal_violations() {
+        for malformed in [false, true] {
+            let world = world();
+            world.string_bound(&world.map_string, "InheritedBound", 1);
+            if malformed {
+                let mut bound = world.string_bound(&world.text, "Malformed", 5);
+                bound.with_property_value("Maximum", "invalid").unwrap();
+            } else {
+                world.unknown_constraint(&world.text);
+            }
+            let comparison = world.comparison(
+                "Title",
+                &world.contains,
+                vec![world.literal(&world.text, text("long"))],
+            );
+            let error = validate(&comparison, &book(&world)).unwrap_err();
+            assert!(
+                if malformed {
+                    matches!(error, HolonError::DescriptorSchemaInvalid { .. })
+                } else {
+                    matches!(error, HolonError::UnsupportedValueConstraint { .. })
+                },
+                "{error:?}"
+            );
+        }
     }
 }

@@ -224,21 +224,6 @@ fn unique_items_is_presence_only_regardless_of_native_kind() {
 }
 
 #[test]
-fn structural_defects_take_precedence_over_configuration() {
-    for defect in [
-        ConstraintTypeDefect::MissingDescribedBy,
-        ConstraintTypeDefect::MultipleDescribedBy(2),
-        ConstraintTypeDefect::UnusableLineage,
-        ConstraintTypeDefect::NotConcreteConstraintType,
-    ] {
-        assert_eq!(
-            interpret_constraint(Err(defect.clone()), &ConstraintConfiguration::default()),
-            ConstraintInterpretation::StructurallyInvalid(defect)
-        );
-    }
-}
-
-#[test]
 fn executable_support_requires_exact_scalar_type_keys() {
     for (role, family) in [
         (Role::StringLengthConstraint, ScalarConstraintFamily::StringLength),
