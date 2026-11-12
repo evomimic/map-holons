@@ -35,8 +35,8 @@ use crate::descriptors::accessor_helpers::{
     descriptor_label, related_members, require_single_related,
 };
 use crate::descriptors::{
-    classify_holon_type, lineage_contains, require_holon_type, Descriptor, HolonDescriptor,
-    OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
+    classify_holon_type, lineage_contains, require_holon_type, same_definition, Descriptor,
+    HolonDescriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, ValueDescriptor,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 
@@ -357,8 +357,13 @@ fn validate_literal_operand(
             operator: operator.operator().operator_name()?.to_string(),
         });
     }
-    // D extends R, so its effective constraints include R’s contributions.
+    // D extends R, so D's effective constraints already include R's contributions and are
+    // evaluated once. Value semantics such as enum membership are per type, so R still
+    // checks the literal's representation and membership itself.
     declared_type.validate_literal(&value)?;
+    if !same_definition(declared_type.holon(), required_type.holon())? {
+        required_type.is_valid(&value)?;
+    }
     Ok(value)
 }
 
@@ -1213,6 +1218,32 @@ mod tests {
         let error =
             validate(&world.equals("Status", &world.status, token("Archived")), &book(&world))
                 .unwrap_err();
+        assert!(
+            matches!(&error, HolonError::EnumVariantNotInSchema { variant, .. } if variant == "Archived"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn an_enum_literal_must_also_be_a_member_of_the_required_type() {
+        // A declared subtype can declare a variant its parent lacks. The operator's
+        // required type still governs which tokens the comparison accepts.
+        use crate::descriptors::test_support::{new_descriptor_holon, new_kind_descriptor};
+        let world = world();
+        let mut extended =
+            new_kind_descriptor(&world.context, "ExtendedStatus", Some(&world.status), false)
+                .unwrap();
+        extended
+            .add_related_holons(
+                CoreRelationshipTypeName::Variants,
+                vec![new_descriptor_holon(&world.context, "Archived", "Archived", "EnumVariant")
+                    .unwrap()
+                    .into()],
+            )
+            .unwrap();
+        let extended: HolonReference = extended.into();
+        let error = validate(&world.equals("Status", &extended, token("Archived")), &book(&world))
+            .unwrap_err();
         assert!(
             matches!(&error, HolonError::EnumVariantNotInSchema { variant, .. } if variant == "Archived"),
             "unexpected error: {error:?}"
