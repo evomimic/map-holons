@@ -847,6 +847,7 @@ fn length16k_validates_its_own_constraint_name_with_one_prepared_parameter_fact(
     assert!(report.is_accepted(), "{report:?}");
     let assessment = assess_commit_candidates(&fixture.context, &candidates)?;
     assert_eq!(assessment.observations.effective_constraint_count, 1);
+    assert_eq!(assessment.observations.evaluated_value_constraint_count, 1);
     assert!(assessment
         .observations
         .dispatched_rule_keys

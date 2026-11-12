@@ -35,10 +35,24 @@ pub struct PreparationMetrics {
 pub enum AssessmentEvent {
     Phase(AssessmentPhase),
     Preparation(PreparationMetrics),
+    /// Completed assessment coverage, independent of its accept/reject result.
+    Coverage(crate::ValidationObservations),
     PreparationVisitStarted,
-    PreparationVisitFinished { type_name: String, distinct_content: bool },
-    PreparationOperation { operation: &'static str, role: &'static str, starting: bool },
-    PreparationEdge { role: &'static str, edge: String, requests: usize, members: usize },
+    PreparationVisitFinished {
+        type_name: String,
+        distinct_content: bool,
+    },
+    PreparationOperation {
+        operation: &'static str,
+        role: &'static str,
+        starting: bool,
+    },
+    PreparationEdge {
+        role: &'static str,
+        edge: String,
+        requests: usize,
+        members: usize,
+    },
 }
 
 /// Observe an operation on both success and operational failure. Operation spans are siblings.

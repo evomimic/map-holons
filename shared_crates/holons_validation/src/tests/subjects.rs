@@ -3550,6 +3550,7 @@ fn scalar_constraints_are_mandatory_with_or_without_property_binding() -> Result
             let assessment =
                 assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
             assert_eq!(assessment.observations.effective_constraint_count, 1);
+            assert_eq!(assessment.observations.evaluated_value_constraint_count, 1);
             assert_eq!(
                 assessment
                     .observations

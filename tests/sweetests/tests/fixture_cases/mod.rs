@@ -38,3 +38,7 @@ pub mod commit_graph_only_fixture;
 pub mod commit_key_uniqueness_fixture;
 
 pub mod query_boundary_fixture;
+
+pub mod commit_scalar_constraints_fixture;
+
+pub mod commit_staged_scalar_fixture;

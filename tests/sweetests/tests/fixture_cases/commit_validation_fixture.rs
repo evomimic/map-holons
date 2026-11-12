@@ -73,7 +73,8 @@ pub fn commit_validation_fixture() -> Result<DancesTestCase, HolonError> {
             token: book.clone(),
             validation_state: ValidationState::Invalid,
             findings: vec![ExpectedValidationFinding {
-                kind: CommitValidationViolationKind::RuleViolation { code: "DS-PROP-001".into() },
+                kind: CommitValidationViolationKind::RuleViolation { code: "DS-PROP-001".into() }
+                    .into(),
                 rule_key: Some("RequiredPropertyPresence.ValidationRule".into()),
                 subject: ExpectedValidationSubject::Property("Title".into()),
             }],

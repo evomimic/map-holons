@@ -672,6 +672,7 @@ impl<'candidates> ConstructedAssessment<'_, 'candidates> {
             )?;
         }
         observer(crate::AssessmentEvent::Preparation(packages.preparation_metrics()));
+        observer(crate::AssessmentEvent::Coverage(collector.observations().clone()));
         finish_assessment(candidates, collector)
     }
 }

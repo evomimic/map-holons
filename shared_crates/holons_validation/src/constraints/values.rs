@@ -121,6 +121,7 @@ pub(crate) fn evaluate_value_constraints(
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
     for prepared in constraints {
+        collector.observations.evaluated_value_constraint_count += 1;
         let StaticConstraintEvaluator::Value(evaluate) = prepared.evaluator;
         let (kind, rule_key, message) = match evaluate(&prepared.parameters, value) {
             ConstraintEvaluationOutcome::Satisfied => continue,

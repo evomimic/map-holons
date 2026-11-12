@@ -17,6 +17,8 @@ pub struct ValidationObservations {
     pub dispatched_rule_keys: BTreeSet<String>,
     /// Number of effective constraints reached during subject evaluation.
     pub effective_constraint_count: usize,
+    /// Scalar evaluator invocations, including incompatible-value-kind declines.
+    pub evaluated_value_constraint_count: usize,
     /// Effective attachments inspected by declaration assessment, including reused constraints.
     pub constraint_attachment_count: usize,
     /// Distinct configured constraints declaration-checked in the assessment's Schema scope.

@@ -143,6 +143,7 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
         HolonWriteRequest::PublishRoot { holon_node } => {
             preflight_holon_node(&holon_node)?;
 
+            crate::commit_audit::node_create();
             let action_hash =
                 create_entry(&EntryTypes::HolonNode(HolonNode::from(holon_node.clone())))
                     .map_err(holon_error_from_wasm_error)?;
@@ -158,6 +159,7 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
             let lineage_id = resolve_lineage_root_for_predecessors(&predecessor_ids)?;
             let root_hash = try_action_hash_from_local_id(lineage_id.as_local_id())?;
 
+            crate::commit_audit::node_update();
             let action_hash = update_entry(
                 root_hash,
                 &EntryTypes::HolonNode(HolonNode::from(holon_node.clone())),
