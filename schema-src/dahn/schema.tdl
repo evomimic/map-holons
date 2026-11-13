@@ -1173,13 +1173,12 @@ inverse relationship (DesignToken.HolonType)-[ConsumedByVisualizer]->(Visualizer
   }
 }
 
-// The response's concrete type selects this Node before the generic ancestor.
+// Retained implementation; result holons use ordinary Holon Inspector selection.
 instance LoadHolons.NodeVisualizer {
   type LoadHolons.NodeVisualizerType
   DisplayName "Load Holons"
   VisualizerDescription "Groups load-result details above tabbed result collections, with a side rail for related items. The title bar supports the same exploration and expansion controls as Holon Inspector."
   relationships {
-    ApplicableToType -> HolonLoadResponse.DanceResponseType
     OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
     ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
   }

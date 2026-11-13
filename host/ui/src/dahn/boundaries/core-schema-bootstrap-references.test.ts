@@ -23,9 +23,12 @@ it('resolves every relationship target in the packaged Core Schema bootstrap bun
   expect(unresolved).toEqual([]);
 });
 
-it('keeps the loader-specific Node applicable only to load responses', async () => {
+it('leaves load response Node selection to the standard Holon Inspector', async () => {
   const schema = JSON.parse(await readFile(resolve(process.cwd(), 'conductora/resources/core-schema-bootstrap/imports/dahn/schema.json'), 'utf8'));
   const visualizer = schema.holons.find((holon: { key: string }) => holon.key === 'LoadHolons.NodeVisualizer');
   const applicable = visualizer.relationships.find((relationship: { name: string }) => relationship.name === 'ApplicableToType');
-  expect(applicable.target).toEqual([{ $ref: 'HolonLoadResponse.DanceResponseType' }]);
+  expect(applicable).toBeUndefined();
+  const inspector = schema.holons.find((holon: { key: string }) => holon.key === 'HolonInspector.NodeVisualizer');
+  expect(inspector.relationships.find((relationship: { name: string }) => relationship.name === 'ApplicableToType').target)
+    .toEqual([{ $ref: 'HolonType.TypeDescriptor' }]);
 });
