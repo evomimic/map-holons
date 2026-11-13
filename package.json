@@ -22,7 +22,7 @@
     "start:production": "npm run nix:check && npm run build:happ && RUST_LOG=host:info WASM_LOG=warn MAP_START_MODE=prod npm run start -w map-host",
 
   "build": "npm run build:happ && npm run build:host",
-  "build:host": "npm run build:house-troupe && npm run build -w map-host",
+    "build:host": "npm run build:agent-spaces && npm run build:house-troupe && npm run build -w map-host",
     "build:node-visualizers": "node scripts/build-node-visualizers.mjs",
     "prebuild:house-troupe": "npm run build:node-visualizers",
     "build:happ": "npm run build:happ -w map-happ",
@@ -43,7 +43,7 @@
     "test:heavy": "npm run deps:check && bash scripts/test-run.sh npm run sweetest:ci",
     "test:unit": "npm run test:unit:shared && npm run test:unit:schema && npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run test:unit -w map-happ && npm run test:unit:sweetests && npm run web:typecheck && npm run web:test && npm run typecheck -w map-sdk && npm run test -w map-sdk",
     "test:unit:shared": "bash scripts/test-shared-crates.sh",
-    "test:unit:schema": "cargo test --manifest-path tools/map-schema/Cargo.toml --test validation_binding_inventory",
+    "test:unit:schema": "cargo test --manifest-path tools/map-schema/Cargo.toml --test validation_binding_inventory --test agent_spaces_schema",
     "test:unit:sweetests": "cargo test --manifest-path tests/sweetests/Cargo.toml --lib --test fixture_authoring_tests",
 
     "sweetest": "npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run sweet:test",
@@ -63,6 +63,8 @@
     "map-schema:help": "cargo run --manifest-path tools/map-schema/Cargo.toml -- help",
     "map-schema:compile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- compile",
   "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",
+  "map-schema:sync-agent-spaces-resource": "bash scripts/sync-agent-spaces-resource.sh",
+  "build:agent-spaces": "npm run map-schema:compile:coreschema && npm run map-schema:sync-agent-spaces-resource",
   "map-schema:compile:house-troupe:space-navigator": "npm run map-schema:compile -- house-troupe/space-navigator/schema --out-dir generated/house-troupe/space-navigator/imports",
   "map-schema:compile:visualizer-commons:default-presentation": "npm run map-schema:compile -- visualizer-commons/default-presentation/schema --out-dir generated/visualizer-commons/default-presentation/imports",
   "map-schema:check:house-troupe:space-navigator": "npm run map-schema:check -- house-troupe/space-navigator/schema",

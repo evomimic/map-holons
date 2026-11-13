@@ -40,6 +40,8 @@
 		"resources": [
 			"resources/bootstrap-import.schema.json",
 			"resources/core-schema-bootstrap",
+			"resources/space-imports.json",
+			"resources/schema-packages",
 			"resources/house-troupe",
 			"resources/visualizer-commons",
 			"resources/dahn-visualizers"

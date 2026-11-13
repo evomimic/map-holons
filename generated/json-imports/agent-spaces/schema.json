@@ -1,0 +1,412 @@
+{
+  "holons": [
+    {
+      "key": "MAP Agent Spaces Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Agent Spaces Schema-v0.1.0",
+        "Description": "Minimal Agent ontology and the sovereign interior association. AgentSpace, I-Space and We-Space are roles of an existing HolonSpace, not additional types."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Agent.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Agent",
+        "TypeNamePlural": "Agents",
+        "DisplayName": "Agent",
+        "DisplayNamePlural": "Agents",
+        "Description": "Anything capable of sensing and responding; agency alone does not establish sovereignty or commitment authority.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BioSocialAgent.Agent",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "BioSocialAgent",
+        "TypeNamePlural": "BioSocialAgents",
+        "DisplayName": "BioSocial Agent",
+        "DisplayNamePlural": "BioSocial Agents",
+        "Description": "An Agent grounded in biological and social life, with exactly one sovereign interior.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Agent.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(BioSocialAgent.Agent)-[HasInterior]->(HolonSpace.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PersonAgent.BioSocialAgent",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PersonAgent",
+        "TypeNamePlural": "PersonAgents",
+        "DisplayName": "Person Agent",
+        "DisplayNamePlural": "Person Agents",
+        "Description": "A human being's sovereign digital extension in MAP, distinct from an informational Person holon."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "BioSocialAgent.Agent"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "PersonAgentName.FormatRule"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "FirstName.PropertyType"
+            },
+            {
+              "$ref": "MiddleName.PropertyType"
+            },
+            {
+              "$ref": "LastName.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FirstName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "FirstName",
+        "TypeNamePlural": "FirstNames",
+        "DisplayName": "First Name",
+        "DisplayNamePlural": "First Names",
+        "Description": "Optional first name of a PersonAgent.",
+        "IsValueRequired": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MiddleName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MiddleName",
+        "TypeNamePlural": "MiddleNames",
+        "DisplayName": "Middle Name",
+        "DisplayNamePlural": "Middle Names",
+        "Description": "Optional middle name of a PersonAgent.",
+        "IsValueRequired": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LastName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "LastName",
+        "TypeNamePlural": "LastNames",
+        "DisplayName": "Last Name",
+        "DisplayNamePlural": "Last Names",
+        "Description": "Required last name of a PersonAgent.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PersonAgentName.FormatRule",
+      "type": "FormatRule.KeyRuleType",
+      "properties": {
+        "TypeName": "PersonAgentName",
+        "TemplateString": "{0}.[1].[2]"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "TemplateParameters",
+          "target": [
+            {
+              "$ref": "LastName.PropertyType"
+            },
+            {
+              "$ref": "FirstName.PropertyType"
+            },
+            {
+              "$ref": "MiddleName.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(BioSocialAgent.Agent)-[HasInterior]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasInterior",
+        "TypeNamePlural": "HasInteriorRelationships",
+        "DisplayName": "Has Interior",
+        "DisplayNamePlural": "Has Interior Relationships",
+        "Description": "The sovereign interior of a BioSocialAgent; its authoritative Home Space must identify this same HolonSpace.",
+        "IsDefinitional": true,
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "BioSocialAgent.Agent"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonSpace.HolonType)-[IsInteriorOf]->(BioSocialAgent.Agent)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[IsInteriorOf]->(BioSocialAgent.Agent)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "IsInteriorOf",
+        "TypeNamePlural": "IsInteriorOfRelationships",
+        "DisplayName": "Is Interior Of",
+        "DisplayNamePlural": "Is Interior Of Relationships",
+        "Description": "The optional sovereign Agent lineage whose interior this HolonSpace provides; derived from HasInterior.",
+        "IsDefinitional": false,
+        "IsOrdered": false,
+        "AllowsDuplicates": false,
+        "DeletionSemantic": "Allow",
+        "MembershipCacheMaxAgeMillis": 86400000,
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "BioSocialAgent.Agent"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

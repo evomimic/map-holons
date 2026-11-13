@@ -4,8 +4,10 @@
 //! or other Holons and their authored relationships. Conductora does not
 //! select, activate, or otherwise special-case any imported Dancer.
 
+use base_types::ToBaseValue;
 use core_types::{ContentSet, FileData};
-use map_commands_contract::{MapCommand, TransactionAction, TransactionCommand};
+use holons_core::ReadableHolon;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use map_commands_runtime::ExecutionPolicy;
 use serde::Deserialize;
 use std::path::{Component, Path};
@@ -13,18 +15,12 @@ use tauri::{AppHandle, Manager};
 
 use crate::runtime::RuntimeState;
 
-const IMPORT_ROOT: &str = "resources/house-troupe";
+const IMPORT_ROOT: &str = "resources";
 const IMPORT_SET_FILENAME: &str = "space-imports.json";
-const PACKAGE_MANIFEST_FILENAME: &str = "package.json";
 
 #[derive(Debug, Deserialize)]
 struct SpaceImportSet {
     imports: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SchemaImportManifest {
-    schema_imports: Vec<String>,
 }
 
 /// Loads every configured schema package through the ordinary post-Core loader.
@@ -49,35 +45,17 @@ pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Resu
         .clone()
         .ok_or_else(|| anyhow::anyhow!("MAP Commands runtime is not initialized"))?;
 
-    for package_directory in import_set.imports {
+    for import in import_set.imports {
         let started = std::time::Instant::now();
-        let package_directory = safe_relative_path(&package_directory)?;
-        let package_root = import_root.join(package_directory);
-        let manifest: SchemaImportManifest = serde_json::from_slice(
-            &std::fs::read(package_root.join(PACKAGE_MANIFEST_FILENAME))
-                .map_err(|error| anyhow::anyhow!("reading schema import manifest: {error}"))?,
-        )
-        .map_err(|error| anyhow::anyhow!("parsing schema import manifest: {error}"))?;
-
+        let import = safe_relative_path(&import)?;
+        let path = import_root.join(import);
         let content_set = ContentSet {
-            files_to_load: manifest
-                .schema_imports
-                .iter()
-                .map(|import| {
-                    let import = safe_relative_path(import)?;
-                    let path = package_root.join(import);
-                    Ok(FileData {
-                        filename: path
-                            .file_name()
-                            .ok_or_else(|| anyhow::anyhow!("schema import has no file name"))?
-                            .to_string_lossy()
-                            .into_owned(),
-                        raw_contents: std::fs::read_to_string(&path).map_err(|error| {
-                            anyhow::anyhow!("reading schema import {}: {error}", path.display())
-                        })?,
-                    })
-                })
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            files_to_load: vec![FileData {
+                filename: import.to_string_lossy().into_owned(),
+                raw_contents: std::fs::read_to_string(&path).map_err(|error| {
+                    anyhow::anyhow!("reading schema import {}: {error}", path.display())
+                })?,
+            }],
         };
         // Core bootstrap provisions a local HolonSpace for this launch. A
         // schema package may target that space through its ordinary authored
@@ -93,12 +71,27 @@ pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Resu
                 }),
                 ExecutionPolicy::default(),
             )
-            .await;
+            .await
+            .and_then(|result| {
+                let MapResult::Reference(response) = result else {
+                    return Err(core_types::HolonError::InvalidState(
+                        "schema import returned no load response".into(),
+                    ));
+                };
+                let status = response.property_value("LoadCommitStatus")?;
+                if status != Some("Complete".to_base_value()) {
+                    return Err(core_types::HolonError::InvalidState(format!(
+                        "schema import {} did not complete: {status:?}",
+                        import.display()
+                    )));
+                }
+                Ok(())
+            });
         runtime.session().archive_transaction(&tx_id)?;
         if std::env::var_os("MAP_PROFILE").is_some() {
             eprintln!(
-                "[MAP-PROFILE] package={} total_ms={:.3} succeeded={}",
-                package_directory.display(),
+                "[MAP-PROFILE] import={} total_ms={:.3} succeeded={}",
+                import.display(),
                 started.elapsed().as_secs_f64() * 1000.0,
                 result.is_ok()
             );
