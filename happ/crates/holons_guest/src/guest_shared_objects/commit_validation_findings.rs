@@ -55,6 +55,16 @@ fn finding_fields(finding: &CommitValidationViolation) -> Vec<(&'static str, Str
             fields.push(("ConstraintTypeIdentity", constraint_type_identity.clone()));
             "UnsupportedConstraintType"
         }
+        CommitValidationViolationKind::ConstraintViolation {
+            code,
+            constraint_identity,
+            constraint_type_identity,
+        } => {
+            fields.push(("RuleCode", code.clone()));
+            fields.push(("ConstraintIdentity", constraint_identity.clone()));
+            fields.push(("ConstraintTypeIdentity", constraint_type_identity.clone()));
+            "ConstraintViolation"
+        }
         CommitValidationViolationKind::RuleViolation { code } => {
             fields.push(("RuleCode", code.clone()));
             "RuleViolation"
@@ -110,6 +120,39 @@ fn finding_fields(finding: &CommitValidationViolation) -> Vec<(&'static str, Str
 mod tests {
     use super::*;
     use core_types::ValidationSeverity;
+
+    #[test]
+    fn constraint_violation_projects_code_and_provenance() {
+        let finding = CommitValidationViolation {
+            kind: CommitValidationViolationKind::ConstraintViolation {
+                code: "StringLengthOutOfRange".into(),
+                constraint_identity: "constraint".into(),
+                constraint_type_identity: "type".into(),
+            },
+            rule_key: Some("PropertyValueConformance.ValidationRule".into()),
+            severity: core_types::ValidationSeverity::Error,
+            subject: ValidationSubjectPath::Value {
+                holon_identity: "carrier".into(),
+                property: "Title".into(),
+            },
+            descriptor_identity: Some("descriptor".into()),
+            message: "measured 6 graphemes; required [0, 5]".into(),
+        };
+        let fields = finding_fields(&finding);
+        for (name, value) in [
+            ("ViolationKind", "ConstraintViolation"),
+            ("RuleCode", "StringLengthOutOfRange"),
+            ("ConstraintIdentity", "constraint"),
+            ("ConstraintTypeIdentity", "type"),
+            ("SubjectKind", "Value"),
+            ("HolonIdentity", "carrier"),
+            ("MemberName", "Title"),
+            ("DescriptorIdentity", "descriptor"),
+            ("RuleIdentity", "PropertyValueConformance.ValidationRule"),
+        ] {
+            assert!(fields.contains(&(name, value.into())), "missing {name}");
+        }
+    }
 
     #[test]
     fn projection_preserves_all_existing_finding_fields() {

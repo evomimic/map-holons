@@ -124,7 +124,8 @@ pub fn commit_cross_schema_dependency_gap_fixture() -> Result<DancesTestCase, Ho
             findings: vec![ExpectedValidationFinding {
                 kind: CommitValidationViolationKind::RuleViolation {
                     code: "DS-CONTRACT-001".into(),
-                },
+                }
+                .into(),
                 rule_key: Some("NoInheritedMemberRedeclaration.ValidationRule".into()),
                 subject: ExpectedValidationSubject::Holon,
             }],
@@ -200,7 +201,8 @@ pub fn commit_schema_cycle_fixture() -> Result<DancesTestCase, HolonError> {
             token: schema,
             validation_state: ValidationState::Invalid,
             findings: vec![ExpectedValidationFinding {
-                kind: CommitValidationViolationKind::RuleViolation { code: "DS-SCHEMA-001".into() },
+                kind: CommitValidationViolationKind::RuleViolation { code: "DS-SCHEMA-001".into() }
+                    .into(),
                 rule_key: Some("SchemaDependenciesAcyclic.ValidationRule".into()),
                 subject: ExpectedValidationSubject::Holon,
             }],
@@ -401,7 +403,7 @@ pub fn commit_core_successor_fixture() -> Result<DancesTestCase, HolonError> {
             token: control.clone(),
             validation_state: ValidationState::NoDescriptor,
             findings: vec![ExpectedValidationFinding {
-                kind: CommitValidationViolationKind::NoDescriptor,
+                kind: CommitValidationViolationKind::NoDescriptor.into(),
                 rule_key: None,
                 subject: ExpectedValidationSubject::Holon,
             }],

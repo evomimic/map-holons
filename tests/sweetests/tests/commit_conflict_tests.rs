@@ -196,9 +196,10 @@ async fn create_described_book(runtime: &Runtime, backend: &MockConductorConfig)
         .await;
     assert_eq!(after, before, "rejection must author zero nodes and zero links");
 
-    // C1 checks native string compatibility, not PVL's byte limit. This is a
-    // semantically clean candidate that deterministically fails persist_holon
-    // preflight, exercising Pass 1 error recording through public Commit.
+    // Length16k bounds graphemes while PVL bounds bytes. Two-byte "é" yields a
+    // value within Length16k but over PVL's limit: a semantically clean candidate
+    // that deterministically fails persist_holon preflight, exercising Pass 1
+    // error recording through public Commit.
     runtime
         .execute_command(
             MapCommand::Holon(HolonCommand {
@@ -206,7 +207,7 @@ async fn create_described_book(runtime: &Runtime, backend: &MockConductorConfig)
                 target: staged.clone(),
                 action: HolonAction::Write(WritableHolonAction::WithPropertyValue {
                     name: "Title".to_property_name(),
-                    value: MapString("x".repeat(16_385)).to_base_value(),
+                    value: MapString("\u{e9}".repeat(8_193)).to_base_value(),
                 }),
             }),
             ExecutionPolicy::default(),
@@ -246,7 +247,7 @@ async fn create_described_book(runtime: &Runtime, backend: &MockConductorConfig)
         errors[0],
         HolonError::PvlViolation(integrity_core_types::PvlViolation::StringValueTooLarge {
             property_name: "Title".to_property_name(),
-            actual_bytes: 16_385,
+            actual_bytes: 16_386,
             max_bytes: 16_384,
         })
     );

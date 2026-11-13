@@ -135,6 +135,7 @@ export type CommitValidationViolationKindWire =
   | 'NoDescriptor'
   | 'UnsupportedValidationRule'
   | { UnsupportedConstraintType: { constraint_identity: string; constraint_type_identity: string } }
+  | { ConstraintViolation: { code: string; constraint_identity: string; constraint_type_identity: string } }
   | { RuleViolation: { code: string } }
   | 'UnresolvedLocalDependency'
   | 'RelationshipCoordinationRequired';
@@ -457,6 +458,14 @@ export type PvlViolationWire =
       };
     };
 
+export type SchemaInvalidityKindWire =
+  | 'ContradictoryConstraints'
+  | 'MissingConstraintParameter'
+  | 'IncompatibleConstraintFamily'
+  | 'UnsupportedExecutableConstraint'
+  | 'UnclassifiedConstraint'
+  | 'InvalidConstraintConfiguration';
+
 /**
  * Wire-safe `HolonError`.
  *
@@ -466,6 +475,34 @@ export type PvlViolationWire =
  * - tuple payload variants encoded as arrays
  */
 export type HolonErrorWire =
+  | {
+      ValueConstraintViolation: {
+        code: string;
+        value_type: string;
+        constraint: string;
+        constraint_type: string;
+        descriptor: string;
+        detail: string;
+      };
+    }
+  | {
+      DescriptorSchemaInvalid: {
+        kind: SchemaInvalidityKindWire;
+        detail: string;
+        descriptor: string;
+      };
+    }
+  | {
+      UnsupportedValueConstraint: {
+        constraint_type: string;
+        value_type: string;
+        descriptor: string;
+      };
+    }
+  | { IncompatibleLiteralType: { declared: string; required: string; operator: string } }
+  | { ValueKindMismatch: { expected: string; found: string; descriptor: string } }
+  | { MultipleDescribedBy: { holon: string; count: number } }
+  | { OperandCountMismatch: { operator: string; expected: number; found: number } }
   | { CacheError: string }
   | { CommitFailure: string }
   | { ConductorError: string }
@@ -1104,8 +1141,82 @@ export function isLineageIntegrityReasonWire(
   );
 }
 
+export function isSchemaInvalidityKindWire(value: unknown): value is SchemaInvalidityKindWire {
+  return value === 'ContradictoryConstraints' ||
+    value === 'MissingConstraintParameter' ||
+    value === 'IncompatibleConstraintFamily' ||
+    value === 'UnsupportedExecutableConstraint' ||
+    value === 'UnclassifiedConstraint' ||
+    value === 'InvalidConstraintConfiguration';
+}
+
 export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
   return (
+    isTaggedValue(
+      value,
+      'ValueConstraintViolation',
+      (candidate): candidate is { code: string; value_type: string; constraint: string; constraint_type: string; descriptor: string; detail: string } =>
+        isRecord(candidate) &&
+        isString(candidate['code']) &&
+        isString(candidate['value_type']) &&
+        isString(candidate['constraint']) &&
+        isString(candidate['constraint_type']) &&
+        isString(candidate['descriptor']) &&
+        isString(candidate['detail']),
+    ) ||
+    isTaggedValue(
+      value,
+      'DescriptorSchemaInvalid',
+      (candidate): candidate is { kind: SchemaInvalidityKindWire; detail: string; descriptor: string } =>
+        isRecord(candidate) &&
+        isSchemaInvalidityKindWire(candidate['kind']) &&
+        isString(candidate['detail']) &&
+        isString(candidate['descriptor']),
+    ) ||
+    isTaggedValue(
+      value,
+      'UnsupportedValueConstraint',
+      (candidate): candidate is { constraint_type: string; value_type: string; descriptor: string } =>
+        isRecord(candidate) &&
+        isString(candidate['constraint_type']) &&
+        isString(candidate['value_type']) &&
+        isString(candidate['descriptor']),
+    ) ||
+    isTaggedValue(
+      value,
+      'IncompatibleLiteralType',
+      (candidate): candidate is { declared: string; required: string; operator: string } =>
+        isRecord(candidate) &&
+        isString(candidate['declared']) &&
+        isString(candidate['required']) &&
+        isString(candidate['operator']),
+    ) ||
+    isTaggedValue(
+      value,
+      'ValueKindMismatch',
+      (candidate): candidate is { expected: string; found: string; descriptor: string } =>
+        isRecord(candidate) &&
+        isString(candidate['expected']) &&
+        isString(candidate['found']) &&
+        isString(candidate['descriptor']),
+    ) ||
+    isTaggedValue(
+      value,
+      'MultipleDescribedBy',
+      (candidate): candidate is { holon: string; count: number } =>
+        isRecord(candidate) &&
+        isString(candidate['holon']) &&
+        isNumber(candidate['count']),
+    ) ||
+    isTaggedValue(
+      value,
+      'OperandCountMismatch',
+      (candidate): candidate is { operator: string; expected: number; found: number } =>
+        isRecord(candidate) &&
+        isString(candidate['operator']) &&
+        isNumber(candidate['expected']) &&
+        isNumber(candidate['found']),
+    ) ||
     isTaggedValue(
       value,
       'MissingDescribedBy',
@@ -1324,6 +1435,13 @@ export function isCommitValidationViolationKindWire(
         isRecord(candidate) &&
         isString(candidate['constraint_identity']) &&
         isString(candidate['constraint_type_identity']),
+    ) ||
+    isTaggedValue(
+      value,
+      'ConstraintViolation',
+      (candidate): candidate is { code: string; constraint_identity: string; constraint_type_identity: string } =>
+        isRecord(candidate) && isString(candidate['code']) &&
+        isString(candidate['constraint_identity']) && isString(candidate['constraint_type_identity']),
     ) ||
     isTaggedValue(
       value,

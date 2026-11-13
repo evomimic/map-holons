@@ -150,7 +150,8 @@ fn graph_siblings(
                     findings: vec![ExpectedValidationFinding {
                         kind: CommitValidationViolationKind::RuleViolation {
                             code: "UnsupportedGraphOnlyCombination".into(),
-                        },
+                        }
+                        .into(),
                         rule_key: None,
                         subject: ExpectedValidationSubject::Holon,
                     }],

@@ -2,8 +2,8 @@ use super::support::dispatch_c2_rule;
 use crate::{
     assess_commit_candidates, validate_commit_candidates, validate_commit_candidates_with_profile,
     AssessmentEvent, AssessmentPhase, CommitValidationReport, ConstraintTypeKey,
-    DescriptorRuleProducts, ResolvedConstraint, ResolvedValidationBinding,
-    StaticConstraintRegistry, ValidationCollector, ValueValidationContext,
+    DescriptorRuleProducts, ResolvedValidationBinding, StaticConstraintRegistry,
+    ValidationCollector, ValueValidationContext,
 };
 use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
@@ -576,7 +576,27 @@ fn unsupported_rules_and_constraints_fail_closed_with_contribution_provenance(
 ) -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     fixture.node("Unknown.ValidationRule")?;
+    fixture.node("ConstraintType.HolonType")?;
+    fixture.link(
+        "ConstraintType.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
     fixture.node("Constraint.Type")?;
+    fixture.link(
+        "Constraint.Type",
+        CoreRelationshipTypeName::Extends,
+        "ConstraintType.HolonType",
+    )?;
+    for target in
+        ["StringValueType.ValueType", "HolonType.TypeDescriptor", "PropertyType.TypeDescriptor"]
+    {
+        fixture.link(
+            "Constraint.Type",
+            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+            target,
+        )?;
+    }
     fixture.node("Constraint.Instance")?;
     fixture.link(
         "Unknown.ValidationRule",
@@ -610,14 +630,14 @@ fn unsupported_rules_and_constraints_fail_closed_with_contribution_provenance(
     assert_eq!(report.violation_count(), 3);
     assert_eq!(report.violations[0].kind, CommitValidationViolationKind::UnsupportedValidationRule);
     assert_eq!(
-        report.violations[1].kind,
+        report.violations[2].kind,
         CommitValidationViolationKind::UnsupportedConstraintType {
             constraint_identity: fixture.nodes["Constraint.Instance"].reference_id_string(),
             constraint_type_identity: fixture.nodes["Constraint.Type"].reference_id_string(),
         }
     );
     assert_eq!(
-        report.violations[1].descriptor_identity,
+        report.violations[2].descriptor_identity,
         Some(descriptor.holon().reference_id_string())
     );
     Ok(())
@@ -629,9 +649,11 @@ fn subject_rule_registrations_cover_fixture_bindings_and_report_rejects_findings
         assert!(crate::dispatch::registration(rule).implementation.is_some());
     }
     assert!(CoreValidationRuleName::from_key("Unknown.ValidationRule").is_none());
-    assert!(
-        StaticConstraintRegistry::lookup(&ConstraintTypeKey("Configured.Type".into())).is_none()
-    );
+    assert!(StaticConstraintRegistry::lookup(
+        &ConstraintTypeKey("Configured.Type".into()),
+        crate::SubjectLevel::Value
+    )
+    .is_none());
     assert!(CommitValidationReport::default().is_accepted());
     let mut collector = ValidationCollector::default();
     for severity in [
@@ -786,7 +808,27 @@ fn canonical_rule_with_wrong_authored_family_never_dispatches() -> Result<(), Ho
 fn unsupported_constraints_on_holon_and_absent_property_are_not_skipped() -> Result<(), HolonError>
 {
     let mut fixture = readiness_fixture()?;
+    fixture.node("ConstraintType.HolonType")?;
+    fixture.link(
+        "ConstraintType.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
     fixture.node("Constraint.Type")?;
+    fixture.link(
+        "Constraint.Type",
+        CoreRelationshipTypeName::Extends,
+        "ConstraintType.HolonType",
+    )?;
+    for target in
+        ["StringValueType.ValueType", "HolonType.TypeDescriptor", "PropertyType.TypeDescriptor"]
+    {
+        fixture.link(
+            "Constraint.Type",
+            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+            target,
+        )?;
+    }
     fixture.node("Constraint.Instance")?;
     fixture.link(
         "Constraint.Instance",
@@ -823,7 +865,7 @@ fn unsupported_constraints_on_holon_and_absent_property_are_not_skipped() -> Res
 }
 
 #[test]
-fn unresolved_constraint_type_is_an_incomplete_assessment() -> Result<(), HolonError> {
+fn unresolved_constraint_type_is_a_completed_rejection() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     fixture.node("Undescribed.Constraint")?;
     fixture.link(
@@ -833,10 +875,14 @@ fn unresolved_constraint_type_is_an_incomplete_assessment() -> Result<(), HolonE
     )?;
     let mut subject = fixture.staged_subject("constraint-subject")?;
     subject.with_property_value("Title", "present")?;
-    assert!(matches!(
-        assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject)),
-        Err(HolonError::MissingDescribedBy { .. })
-    ));
+    let assessment = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(!assessment.report.is_accepted());
+    assert!(assessment
+        .report
+        .violations
+        .iter()
+        .any(|finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+            && finding.message.contains("MissingDescribedBy")));
     Ok(())
 }
 
@@ -1714,8 +1760,8 @@ fn split_saved_schema_and_staged_binding_definitions_are_compatible() -> Result<
 }
 
 #[test]
-fn binding_family_and_constraint_type_follow_explicit_references() -> Result<(), HolonError> {
-    use holons_core::{EffectiveRelationshipMember, HolonCollection, HolonCollectionApi};
+fn binding_family_follows_explicit_references() -> Result<(), HolonError> {
+    use holons_core::{HolonCollection, HolonCollectionApi};
     use std::sync::{Arc, RwLock};
     let fixture = readiness_fixture()?.saved_snapshot()?;
     let rule_key = CoreValidationRuleName::NoUndescribedProperties.as_str();
@@ -1745,14 +1791,6 @@ fn binding_family_and_constraint_type_follow_explicit_references() -> Result<(),
                 &context
             )?,
             compatible
-        );
-        let constraint = ResolvedConstraint::resolve(EffectiveRelationshipMember {
-            member: binding.rule,
-            declared_on: fixture.nodes["HolonType.TypeDescriptor"].clone(),
-        })?;
-        assert_eq!(
-            holons_core::same_definition(constraint.constraint_type.holon(), &wrong_family)?,
-            !compatible
         );
     }
     Ok(())
@@ -2616,6 +2654,10 @@ fn registrations_match_independent_core_placement_expectations() {
             ("PropertyValidationRule.HolonType", "PropertyType.TypeDescriptor", Property),
         ),
         (
+            "PropertyValueConformance.ValidationRule",
+            ("PropertyValidationRule.HolonType", "PropertyType.TypeDescriptor", Property),
+        ),
+        (
             "NoUndescribedProperties.ValidationRule",
             ("HolonValidationRule.HolonType", "HolonType.TypeDescriptor", Holon),
         ),
@@ -3409,5 +3451,649 @@ fn property_parent_abstractness_must_be_a_local_boolean() -> Result<(), HolonErr
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
     }
+    Ok(())
+}
+
+/// Removes a binding while retaining the rule definition for observation assertions.
+fn remove_binding(
+    fixture: &mut Fixture,
+    descriptor: &str,
+    rule: CoreValidationRuleName,
+) -> Result<(), HolonError> {
+    let target = fixture.nodes[rule.as_str()].clone();
+    fixture
+        .nodes
+        .get_mut(descriptor)
+        .unwrap()
+        .remove_related_holons(CoreRelationshipTypeName::ValidationBindings, vec![target])?;
+    Ok(())
+}
+
+#[test]
+fn scalar_constraints_are_mandatory_with_or_without_property_binding() -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    for (value_type, constraint_type, code, rejected, boundary) in [
+        (
+            "StringValueType.ValueType",
+            "StringLengthConstraint.ConstraintType",
+            "StringLengthOutOfRange",
+            BaseValue::StringValue("abcdef".into()),
+            BaseValue::StringValue("a\u{301}bcde".into()),
+        ),
+        (
+            "IntegerValueType.ValueType",
+            "NumericRangeConstraint.ConstraintType",
+            "NumericValueOutOfRange",
+            BaseValue::IntegerValue(MapInteger(-6)),
+            BaseValue::IntegerValue(MapInteger(-5)),
+        ),
+        (
+            "BytesValueType.ValueType",
+            "BytesLengthConstraint.ConstraintType",
+            "BytesLengthOutOfRange",
+            BaseValue::BytesValue(MapBytes(vec![0; 6])),
+            BaseValue::BytesValue(MapBytes(vec![0; 5])),
+        ),
+    ] {
+        for bound in [false, true] {
+            let mut fixture = readiness_fixture()?;
+            if !bound {
+                remove_binding(
+                    &mut fixture,
+                    "PropertyType.TypeDescriptor",
+                    CoreValidationRuleName::PropertyValueConformance,
+                )?;
+            }
+            select_title_value_type(&mut fixture, value_type)?;
+            bounded_constraint(
+                &mut fixture,
+                "TightBound",
+                constraint_type,
+                value_type,
+                if code == "NumericValueOutOfRange" { Some(-5) } else { None },
+                Some(5),
+            )?;
+            let mut subject = fixture.staged_subject("scalar-subject")?;
+            subject.remove_property_value("Key")?.with_property_value("Title", rejected.clone())?;
+            let report =
+                validate_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+            assert_eq!(report.violation_count(), 1, "{report:?}");
+            let finding = &report.violations[0];
+            assert_eq!(
+                finding.kind,
+                CommitValidationViolationKind::ConstraintViolation {
+                    code: code.into(),
+                    constraint_identity: fixture.nodes["TightBound"].reference_id_string(),
+                    constraint_type_identity: fixture.nodes[constraint_type].reference_id_string(),
+                }
+            );
+            assert_eq!(
+                finding.rule_key.as_deref(),
+                Some(CoreValidationRuleName::PropertyValueConformance.as_str())
+            );
+            assert_eq!(
+                finding.descriptor_identity,
+                Some(fixture.nodes[value_type].reference_id_string())
+            );
+            assert_eq!(
+                finding.subject,
+                ValidationSubjectPath::Value {
+                    holon_identity: subject.full_reference_id_string(),
+                    property: "Title".into()
+                }
+            );
+            assert!(finding.message.contains(value_type), "{}", finding.message);
+            assert!(finding.message.contains("measured"));
+            assert!(finding.message.contains("required"));
+            assert_eq!(subject.validation_state()?, ValidationState::Invalid);
+            assert_eq!(subject.validation_findings()?.len(), 1);
+            let assessment =
+                assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+            assert_eq!(assessment.observations.effective_constraint_count, 1);
+            assert_eq!(assessment.observations.evaluated_value_constraint_count, 1);
+            assert_eq!(
+                assessment
+                    .observations
+                    .dispatched_rule_keys
+                    .contains(CoreValidationRuleName::PropertyValueConformance.as_str()),
+                bound
+            );
+            subject.with_property_value("Title", boundary.clone())?;
+            assert!(validate_commit_candidates(&fixture.context, &[subject])?.is_accepted());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn inherited_and_local_constraints_preserve_each_property_and_contribution(
+) -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    let mut fixture = readiness_fixture()?;
+    bounded_constraint(
+        &mut fixture,
+        "ParentBound",
+        "StringLengthConstraint.ConstraintType",
+        "StringValueType.ValueType",
+        None,
+        Some(5),
+    )?;
+    fixture.node("ChildString")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("ChildString", CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
+    bounded_constraint(
+        &mut fixture,
+        "ChildBound",
+        "StringLengthConstraint.ConstraintType",
+        "ChildString",
+        None,
+        Some(3),
+    )?;
+    select_title_value_type(&mut fixture, "ChildString")?;
+    let old = fixture.nodes["StringValueType.ValueType"].clone();
+    fixture
+        .nodes
+        .get_mut("Key.PropertyType")
+        .unwrap()
+        .remove_related_holons(CoreRelationshipTypeName::ValueType, vec![old])?;
+    fixture.link("Key.PropertyType", CoreRelationshipTypeName::ValueType, "ChildString")?;
+    let mut subject = fixture.staged_subject("multiple-constraints")?;
+    subject.with_property_value("Title", "abcdef")?.with_property_value("Key", "abcdef")?;
+    let assessment = assess_commit_candidates(&fixture.context, &[subject.clone()])?;
+    assert_eq!(assessment.report.violation_count(), 4, "{:?}", assessment.report);
+    assert_eq!(assessment.observations.effective_constraint_count, 4);
+    for property in ["Title", "Key"] {
+        for (constraint, descriptor) in
+            [("ParentBound", "StringValueType.ValueType"), ("ChildBound", "ChildString")]
+        {
+            let findings: Vec<_> = assessment.report.violations.iter().filter(|finding| {
+                finding.subject == (ValidationSubjectPath::Value { holon_identity: subject.full_reference_id_string(), property: property.into() })
+                && matches!(&finding.kind, CommitValidationViolationKind::ConstraintViolation { constraint_identity, .. } if constraint_identity == &fixture.nodes[constraint].reference_id_string())
+            }).collect();
+            assert_eq!(findings.len(), 1);
+            assert_eq!(
+                findings[0].descriptor_identity,
+                Some(fixture.nodes[descriptor].reference_id_string())
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn native_kind_mismatch_skips_scalar_execution_but_discovers_unsupported_attachments(
+) -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    for native_bound in [false, true] {
+        let mut fixture = readiness_fixture()?;
+        if !native_bound {
+            remove_binding(
+                &mut fixture,
+                "StringValueType.ValueType",
+                CoreValidationRuleName::BaseValueKindMatchesString,
+            )?;
+        }
+        bounded_constraint(
+            &mut fixture,
+            "Length",
+            "StringLengthConstraint.ConstraintType",
+            "StringValueType.ValueType",
+            None,
+            Some(1),
+        )?;
+        bounded_constraint(
+            &mut fixture,
+            "Unknown",
+            "Unknown.ConstraintType",
+            "StringValueType.ValueType",
+            None,
+            None,
+        )?;
+        let mut subject = fixture.staged_subject("wrong-kind")?;
+        subject.remove_property_value("Key")?.with_property_value("Title", 12_i64)?;
+        let assessment = assess_commit_candidates(&fixture.context, &[subject])?;
+        let findings = &assessment.report.violations;
+        assert_eq!(findings.len(), 2, "{findings:?}");
+        assert_eq!(
+            findings
+                .iter()
+                .filter(|f| matches!(
+                    f.kind,
+                    CommitValidationViolationKind::UnsupportedConstraintType { .. }
+                ))
+                .count(),
+            1
+        );
+        assert!(!findings
+            .iter()
+            .any(|f| matches!(f.kind, CommitValidationViolationKind::ConstraintViolation { .. })));
+        if native_bound {
+            assert!(
+                matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "BaseValueKindMismatch")
+            );
+        } else {
+            assert_eq!(findings[1].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn populated_arrays_reject_independent_of_bindings_and_attachments() -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    for bound in [false, true] {
+        for attached in [false, true] {
+            for native_bound in [false, true] {
+                let mut fixture = readiness_fixture()?;
+                if !bound {
+                    remove_binding(
+                        &mut fixture,
+                        "PropertyType.TypeDescriptor",
+                        CoreValidationRuleName::PropertyValueConformance,
+                    )?;
+                }
+                fixture.link(
+                    "ValueArrayValueType.ValueType",
+                    CoreRelationshipTypeName::Extends,
+                    "ValueType.TypeDescriptor",
+                )?;
+                if native_bound {
+                    fixture.link(
+                        "ValueArrayValueType.ValueType",
+                        CoreRelationshipTypeName::ValidationBindings,
+                        CoreValidationRuleName::BaseValueKindMatchesString.as_str(),
+                    )?;
+                }
+                select_title_value_type(&mut fixture, "ValueArrayValueType.ValueType")?;
+                fixture
+                    .nodes
+                    .get_mut("Title.PropertyType")
+                    .unwrap()
+                    .with_property_value("IsValueRequired", false)?;
+                if attached {
+                    bounded_constraint(
+                        &mut fixture,
+                        "Items",
+                        "ItemCountConstraint.ConstraintType",
+                        "ValueArrayValueType.ValueType",
+                        None,
+                        Some(5),
+                    )?;
+                }
+                let mut subject = fixture.staged_subject("array")?;
+                subject.remove_property_value("Key")?;
+                assert!(assess_commit_candidates(&fixture.context, &[subject.clone()])?
+                    .report
+                    .is_accepted());
+                subject.with_property_value("Title", "populated")?;
+                let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+                assert_eq!(
+                    report.violation_count(),
+                    1 + usize::from(attached) + usize::from(native_bound),
+                    "{report:?}"
+                );
+                assert!(!report.violations.iter().any(|f| matches!(&f.kind, CommitValidationViolationKind::RuleViolation { code } if code == "BaseValueKindMismatch")));
+                assert_eq!(report.violations.iter().filter(|f| matches!(&f.kind, CommitValidationViolationKind::RuleViolation { code } if code == "IncompatibleValidationBinding")).count(), usize::from(native_bound));
+                assert!(report.violations.iter().any(|f| matches!(&f.kind, CommitValidationViolationKind::RuleViolation { code } if code == "UnsupportedValueRepresentation") && f.rule_key.is_none()));
+                assert_eq!(
+                    report
+                        .violations
+                        .iter()
+                        .filter(|f| matches!(
+                            f.kind,
+                            CommitValidationViolationKind::UnsupportedConstraintType { .. }
+                        ))
+                        .count(),
+                    usize::from(attached)
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn scalar_evaluators_require_value_subject_compatibility() -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    for (descriptor, level) in [
+        ("Contract", crate::SubjectLevel::Holon),
+        ("Title.PropertyType", crate::SubjectLevel::Property),
+    ] {
+        let mut fixture = readiness_fixture()?;
+        bounded_constraint(
+            &mut fixture,
+            "Misplaced",
+            "StringLengthConstraint.ConstraintType",
+            descriptor,
+            None,
+            Some(1),
+        )?;
+        let mut subject = fixture.staged_subject("wrong-level")?;
+        subject.remove_property_value("Key")?.with_property_value("Title", "abcdef")?;
+        let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+        assert_eq!(report.violation_count(), 1, "{report:?}");
+        assert!(matches!(
+            report.violations[0].kind,
+            CommitValidationViolationKind::UnsupportedConstraintType { .. }
+        ));
+        assert!(StaticConstraintRegistry::lookup(
+            &ConstraintTypeKey("StringLengthConstraint.ConstraintType".into()),
+            level
+        )
+        .is_none());
+    }
+    assert!(StaticConstraintRegistry::lookup(
+        &ConstraintTypeKey("StringLengthConstraint.ConstraintType".into()),
+        crate::SubjectLevel::Value
+    )
+    .is_some());
+    Ok(())
+}
+
+#[test]
+fn any_base_value_evaluates_compatible_values_and_explains_declines() -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    // No native-kind binding is compatible with AnyBaseValue; adding one proves it cannot gate enforcement.
+    for native_bound in [false, true] {
+        let mut fixture = readiness_fixture()?;
+        fixture.link(
+            "BaseValueValueType.ValueType",
+            CoreRelationshipTypeName::Extends,
+            "ValueType.TypeDescriptor",
+        )?;
+        if native_bound {
+            fixture.link(
+                "BaseValueValueType.ValueType",
+                CoreRelationshipTypeName::ValidationBindings,
+                CoreValidationRuleName::BaseValueKindMatchesString.as_str(),
+            )?;
+        }
+        select_title_value_type(&mut fixture, "BaseValueValueType.ValueType")?;
+        bounded_constraint(
+            &mut fixture,
+            "AnyLength",
+            "StringLengthConstraint.ConstraintType",
+            "BaseValueValueType.ValueType",
+            None,
+            Some(2),
+        )?;
+        let mut subject = fixture.staged_subject("any-value")?;
+        subject.remove_property_value("Key")?;
+        for (value, expected) in [
+            (BaseValue::StringValue("abc".into()), true),
+            (BaseValue::IntegerValue(MapInteger(10)), false),
+        ] {
+            subject.with_property_value("Title", value)?;
+            let report = assess_commit_candidates(&fixture.context, &[subject.clone()])?.report;
+            let scalar: Vec<_> = report
+                .violations
+                .iter()
+                .filter(|f| {
+                    matches!(
+                        f.kind,
+                        CommitValidationViolationKind::ConstraintViolation { .. }
+                            | CommitValidationViolationKind::UnresolvedLocalDependency
+                    )
+                })
+                .collect();
+            assert_eq!(scalar.len(), 1, "{report:?}");
+            assert_eq!(
+                matches!(scalar[0].kind, CommitValidationViolationKind::ConstraintViolation { .. }),
+                expected
+            );
+            assert_eq!(
+                scalar[0].rule_key.as_deref(),
+                expected.then_some(CoreValidationRuleName::PropertyValueConformance.as_str())
+            );
+            if !expected {
+                assert!(scalar[0].message.contains("kind Integer"));
+                assert_eq!(
+                    scalar[0].kind,
+                    CommitValidationViolationKind::UnresolvedLocalDependency
+                );
+            }
+            assert_eq!(report.violation_count(), 1 + usize::from(native_bound), "{report:?}");
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn property_conformance_dispatch_does_not_repeat_value_type_selection_findings(
+) -> Result<(), HolonError> {
+    for count in [0, 2] {
+        let mut fixture = readiness_fixture()?;
+        let string = fixture.nodes["StringValueType.ValueType"].clone();
+        let property = fixture.nodes.get_mut("Title.PropertyType").unwrap();
+        if count == 0 {
+            property.remove_related_holons(CoreRelationshipTypeName::ValueType, vec![string])?;
+        } else {
+            fixture.link(
+                "Title.PropertyType",
+                CoreRelationshipTypeName::ValueType,
+                "IntegerValueType.ValueType",
+            )?;
+        }
+        let mut subject = fixture.staged_subject("bad-selection")?;
+        subject.remove_property_value("Key")?.with_property_value("Title", "value")?;
+        let assessment = assess_commit_candidates(&fixture.context, &[subject])?;
+        assert!(assessment
+            .observations
+            .dispatched_rule_keys
+            .contains(CoreValidationRuleName::PropertyValueConformance.as_str()));
+        assert!(
+            assessment
+                .report
+                .violations
+                .iter()
+                .any(|f| f.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+                    && f.message.contains("requires one usable ValueType")),
+            "{:?}",
+            assessment.report
+        );
+        assert!(!assessment.report.violations.iter().any(|f| f.rule_key.as_deref()
+            == Some(CoreValidationRuleName::PropertyValueConformance.as_str())));
+    }
+    Ok(())
+}
+
+#[test]
+fn unknown_constraint_types_are_supported_only_after_structure_applicability_and_configuration(
+) -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    for defect in ["structure", "applicability", "configuration", "unrecognized"] {
+        let mut fixture = readiness_fixture()?;
+        bounded_constraint(
+            &mut fixture,
+            "CoreLength",
+            "StringLengthConstraint.ConstraintType",
+            "StringValueType.ValueType",
+            None,
+            Some(5),
+        )?;
+        // A subtype inherits configuration semantics, but never executable support from its parent.
+        fixture.node("Extension.ConstraintType")?;
+        let parent = if defect == "unrecognized" {
+            "ConstraintType.HolonType"
+        } else {
+            "StringLengthConstraint.ConstraintType"
+        };
+        fixture.link("Extension.ConstraintType", CoreRelationshipTypeName::Extends, parent)?;
+        if defect != "applicability" {
+            fixture.link(
+                "Extension.ConstraintType",
+                CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+                "StringValueType.ValueType",
+            )?;
+        }
+        fixture.node("UnknownBound")?.with_property_value("Maximum", "arbitrary extension data")?;
+        if defect != "structure" {
+            fixture.link(
+                "UnknownBound",
+                CoreRelationshipTypeName::DescribedBy,
+                "Extension.ConstraintType",
+            )?;
+        }
+        if defect == "applicability" {
+            let target = fixture.nodes["StringValueType.ValueType"].clone();
+            fixture
+                .nodes
+                .get_mut("StringLengthConstraint.ConstraintType")
+                .unwrap()
+                .remove_related_holons(
+                    CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+                    vec![target],
+                )?;
+        }
+        // Isolate the unknown attachment from the Core setup constraint.
+        let core = fixture.nodes["CoreLength"].clone();
+        fixture
+            .nodes
+            .get_mut("StringValueType.ValueType")
+            .unwrap()
+            .remove_related_holons(CoreRelationshipTypeName::Constraints, vec![core])?;
+        fixture.link(
+            "StringValueType.ValueType",
+            CoreRelationshipTypeName::Constraints,
+            "UnknownBound",
+        )?;
+        let mut subject = fixture.staged_subject("unknown-policy")?;
+        subject.remove_property_value("Key")?.with_property_value("Title", "value")?;
+        let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+        assert_eq!(report.violation_count(), 1, "{defect}: {report:?}");
+        if defect == "unrecognized" {
+            assert!(matches!(
+                report.violations[0].kind,
+                CommitValidationViolationKind::UnsupportedConstraintType { .. }
+            ));
+        } else {
+            assert_eq!(
+                report.violations[0].kind,
+                CommitValidationViolationKind::UnresolvedLocalDependency
+            );
+        }
+        if defect == "applicability" {
+            assert!(report.violations[0].message.contains("not applicable"));
+        }
+        if defect == "configuration" {
+            assert!(report.violations[0].message.contains("Maximum"), "{report:?}");
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn scalar_execution_consumes_sealed_preparation_without_reads_or_derivation(
+) -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    let mut fixture = readiness_fixture()?;
+    bounded_constraint(
+        &mut fixture,
+        "SavedLength",
+        "StringLengthConstraint.ConstraintType",
+        "StringValueType.ValueType",
+        None,
+        Some(5),
+    )?;
+    let fixture = fixture.saved_snapshot()?;
+    let mut subject = fixture.staged_subject("saved-scalar")?;
+    subject.with_property_value("Title", "abcdef")?.remove_property_value("Key")?;
+    let candidates = [subject];
+    let constructed = crate::assessment::commit::construct_assessment(
+        &fixture.context,
+        &candidates,
+        ValidationCollector::default(),
+    )?;
+    let reads = (fixture.backend_node_reads(), fixture.backend_relationship_reads());
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let report = constructed.assess(|_| {})?.0.into_report();
+    let derivations = probe.finish();
+    assert_eq!(report.violation_count(), 1, "{report:?}");
+    assert!(matches!(
+        report.violations[0].kind,
+        CommitValidationViolationKind::ConstraintViolation { .. }
+    ));
+    assert_eq!(reads, (fixture.backend_node_reads(), fixture.backend_relationship_reads()));
+    for operation in [
+        "structural_diagnoses",
+        "contract_contribution_resolutions",
+        "constraint_contribution_resolutions",
+        "schema_builder_attempts",
+        "derived_builder_attempts",
+        "derived_projection_attempts",
+        "role_walks",
+    ] {
+        assert_eq!(derivations.0.get(operation).copied().unwrap_or(0), 0, "{operation}");
+    }
+    Ok(())
+}
+
+#[test]
+fn unbound_kind_mismatch_needs_a_blocker_only_when_scalar_evaluation_is_skipped(
+) -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+    for attachment in ["none", "unsupported", "scalar"] {
+        let mut fixture = readiness_fixture()?;
+        remove_binding(
+            &mut fixture,
+            "StringValueType.ValueType",
+            CoreValidationRuleName::BaseValueKindMatchesString,
+        )?;
+        if attachment != "none" {
+            bounded_constraint(
+                &mut fixture,
+                "Bound",
+                if attachment == "scalar" {
+                    "StringLengthConstraint.ConstraintType"
+                } else {
+                    "Unknown.ConstraintType"
+                },
+                "StringValueType.ValueType",
+                None,
+                Some(1),
+            )?;
+        }
+        let mut subject = fixture.staged_subject("unbound-mismatch")?;
+        subject.remove_property_value("Key")?.with_property_value("Title", 12_i64)?;
+        let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+        match attachment {
+            "none" => assert!(report.is_accepted(), "{report:?}"),
+            "unsupported" => {
+                assert_eq!(report.violation_count(), 1, "{report:?}");
+                assert!(matches!(
+                    report.violations[0].kind,
+                    CommitValidationViolationKind::UnsupportedConstraintType { .. }
+                ));
+            }
+            "scalar" => {
+                assert_eq!(report.violation_count(), 1, "{report:?}");
+                assert_eq!(
+                    report.violations[0].kind,
+                    CommitValidationViolationKind::UnresolvedLocalDependency
+                );
+                assert!(report.violations[0].rule_key.is_none());
+            }
+            _ => unreachable!(),
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn unsupported_value_kind_blocks_without_bindings_or_constraints() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("UnsupportedValueType")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link(
+        "UnsupportedValueType",
+        CoreRelationshipTypeName::Extends,
+        "ValueType.TypeDescriptor",
+    )?;
+    select_title_value_type(&mut fixture, "UnsupportedValueType")?;
+    let mut subject = fixture.staged_subject("unsupported-representation")?;
+    subject.remove_property_value("Key")?.with_property_value("Title", 12_i64)?;
+    let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+    assert_eq!(report.violation_count(), 1, "{report:?}");
+    assert_eq!(report.violations[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
+    assert!(matches!(report.violations[0].subject, ValidationSubjectPath::Value { .. }));
+    assert!(report.violations[0].message.contains("Unsupported"));
     Ok(())
 }

@@ -66,3 +66,16 @@ it('rejects malformed structured wire findings', async () => {
   findings = [{ ...finding, severity: 'Unknown' } as never];
   await expect(createHolonReference(41, staged).validationFindings()).rejects.toThrow();
 });
+
+it('binds constraint violations from staged findings and projected carriers', async () => {
+  const kind = { ConstraintViolation: { code: 'StringLengthOutOfRange', constraint_identity: 'constraint', constraint_type_identity: 'type' } };
+  findings = [{ ...finding, kind, subject: { Value: { holon_identity: 'staged', property: 'Title' } } }];
+  for (const [key, value] of Object.entries({ ViolationKind: 'ConstraintViolation', RuleCode: 'StringLengthOutOfRange', ConstraintIdentity: 'constraint', ConstraintTypeIdentity: 'type', SubjectKind: 'Value', HolonIdentity: 'staged', MemberName: 'Title', RuleIdentity: 'PropertyValueConformance.ValidationRule', DescriptorIdentity: 'descriptor' })) properties.set(id(unattached) + key, value);
+  const result = await readLoadValidationDiagnostics(createHolonReference(41, root));
+  expect(result.findings[0].finding.kind).toEqual(kind);
+  expect(result.findings[1].finding).toMatchObject({ kind, subject: { Value: { holon_identity: 'staged', property: 'Title' } }, descriptorIdentity: 'descriptor', ruleKey: 'PropertyValueConformance.ValidationRule' });
+});
+it('rejects projected constraint violations with missing provenance', async () => {
+  properties.set(id(unattached) + 'ViolationKind', 'ConstraintViolation');
+  await expect(readLoadValidationDiagnostics(createHolonReference(41, root))).rejects.toThrow();
+});

@@ -282,6 +282,11 @@ pub fn smartlink_seed_retrieval_for_test(
     Ok(total as u32)
 }
 
+// Storage-only probes do not execute a Commit invocation.
+mod commit_audit {
+    pub(crate) fn smartlink_create() {}
+}
+
 // The shared storage source's Commit read timers stay inactive in storage-only probes.
 #[allow(dead_code)]
 #[path = "../../../../crates/holons_guest/src/read_cost.rs"]

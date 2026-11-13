@@ -1,8 +1,8 @@
 use super::support::dispatch_c2_rule;
 use super::support::{readiness_fixture, Fixture};
 use crate::{
-    assess_commit_candidates, validate_commit_candidates, ConstraintDeclarationAssessment,
-    DescriptorRuleProducts, ValidationCollector,
+    assess_commit_candidates, validate_commit_candidates, DescriptorRuleProducts,
+    ValidationCollector,
 };
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
@@ -16,10 +16,12 @@ use holons_core::{
     ExtendsLineageDiagnosis, ReadableHolon,
 };
 
+const NUMERIC_RANGE: &str = "NumericRangeConstraint.ConstraintType";
+
 const BOUNDED: [&str; 4] = [
     "StringLengthConstraint.ConstraintType",
     "BytesLengthConstraint.ConstraintType",
-    "NumericRangeConstraint.ConstraintType",
+    NUMERIC_RANGE,
     "ItemCountConstraint.ConstraintType",
 ];
 const CARDINALITY: &str = "CardinalityConstraint.ConstraintType";
@@ -123,12 +125,13 @@ fn bounded_configuration_boundaries_are_declarations_without_evaluators() -> Res
             (Some(0), None, Some(true), None, true),
             (None, Some(8), None, Some(false), true),
             (Some(2), Some(8), Some(false), Some(false), true),
+            (Some(0), Some(1), Some(false), Some(false), true),
             (Some(2), Some(2), Some(true), Some(true), true),
             (Some(2), Some(2), Some(false), Some(true), false),
             (Some(2), Some(2), Some(true), Some(false), false),
             (Some(8), Some(2), Some(true), Some(true), false),
-            (Some(-1), None, Some(true), None, false),
-            (None, Some(-1), None, Some(true), false),
+            (Some(-1), None, Some(true), None, family == NUMERIC_RANGE),
+            (None, Some(-1), None, Some(true), family == NUMERIC_RANGE),
             (Some(0), None, None, None, false),
             (None, Some(8), None, None, false),
             (None, Some(8), Some(true), Some(true), false),
@@ -147,7 +150,8 @@ fn bounded_configuration_boundaries_are_declarations_without_evaluators() -> Res
                 }
             }
 
-            let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
+            let packages = fixture.constraint_packages(fixture.diagnoses())?;
+            let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
             let mut collector = ValidationCollector::default();
             assert_eq!(
                 assessment.assess_constraint(&constraint, &mut collector)?,
@@ -224,7 +228,8 @@ fn cardinality_and_presence_only_uniqueness_have_distinct_configuration_contract
         }
 
         let mut collector = ValidationCollector::default();
-        let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
+        let packages = fixture.constraint_packages(fixture.diagnoses())?;
+        let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
         assert_eq!(
             assessment.assess_constraint(&constraint, &mut collector)?,
             accepted,
@@ -261,7 +266,8 @@ fn broader_local_constraints_preserve_inherited_obligations_and_check_reusable_r
     fixture.link("Child", CoreRelationshipTypeName::Constraints, "Broader")?;
 
     let diagnoses = fixture.diagnoses();
-    let mut assessment = ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
+    let packages = fixture.constraint_packages(std::sync::Arc::clone(&diagnoses))?;
+    let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
     let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
     let mut collector = ValidationCollector::default();
     let mut attachment_count = 0;
@@ -314,8 +320,8 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
         let diagnoses = fixture.diagnoses();
         let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
         let mut collector = ValidationCollector::default();
-        let mut assessment =
-            ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
+        let packages = fixture.constraint_packages(std::sync::Arc::clone(&diagnoses))?;
+        let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
         assert!(!assessment.assess_contributions(
             lineage,
             &contributions,
@@ -349,7 +355,9 @@ fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
     )?;
 
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(fixture.diagnoses())
+    assert!(fixture
+        .constraint_packages(fixture.diagnoses())?
+        .declarations()
         .assess_constraint(&constraint, &mut collector)?);
     assert_eq!(collector.observations().effective_constraint_count, 0);
     assert!(collector.into_report().is_accepted());
@@ -414,7 +422,8 @@ fn extension_owned_constraint_and_dependency_owned_reuse_do_not_change_ownership
     let mut collector = ValidationCollector::default();
     let diagnoses = fixture.diagnoses();
     let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses));
-    let mut assessment = ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
+    let packages = fixture.constraint_packages(std::sync::Arc::clone(&diagnoses))?;
+    let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
     assert!(assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut products,
@@ -446,7 +455,8 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
     let diagnosis = ExtendsLineageDiagnosis::assess(&subject)?;
     let mut collector = ValidationCollector::default();
     let diagnoses = fixture.diagnoses();
-    let mut assessment = ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
+    let packages = fixture.constraint_packages(std::sync::Arc::clone(&diagnoses))?;
+    let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
     assert!(!assessment.assess_descriptor(
         diagnosis.valid_lineage().unwrap(),
         &mut DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses)),
@@ -473,7 +483,9 @@ fn invalid_declarations_accumulate_attachment_findings_and_fresh_assessment_acce
         "IntegerValueType.ValueType",
     )?;
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses))
+    assert!(fixture
+        .constraint_packages(std::sync::Arc::clone(&diagnoses))?
+        .declarations()
         .assess_descriptor(
             diagnosis.valid_lineage().unwrap(),
             &mut DescriptorRuleProducts::new(std::sync::Arc::clone(&diagnoses)),
@@ -496,8 +508,12 @@ fn malformed_describing_selections_are_findings() -> Result<(), HolonError> {
     )?;
     let wrong = configured(&mut fixture, "Wrong", "StringValueType.ValueType")?;
 
+    for key in ["Missing", "Multiple", "Wrong"] {
+        fixture.link("StringValueType.ValueType", CoreRelationshipTypeName::Constraints, key)?;
+    }
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
+    let packages = fixture.constraint_packages(fixture.diagnoses())?;
+    let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
     for constraint in [&missing, &multiple, &wrong] {
         assert!(!assessment.assess_constraint(constraint, &mut collector)?);
     }
@@ -525,12 +541,14 @@ fn declaration_reads_exact_configuration_and_deduplicates_each_definition() -> R
     let mut fixture = fixture()?;
     let mut constraint = configured(&mut fixture, "Configured", CARDINALITY)?;
     constraint.with_property_value("Minimum", 0_i64)?;
-    let fixture = fixture.saved_snapshot()?;
+    let mut fixture = fixture.saved_snapshot()?;
     let mut replacement = fixture.stage_update_of("Configured")?;
     replacement.with_property_value("Minimum", -1_i64)?;
+    fixture.nodes.insert("Replacement".into(), replacement.clone().into());
 
     let mut collector = ValidationCollector::default();
-    let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
+    let packages = fixture.constraint_packages(fixture.diagnoses())?;
+    let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
     assert!(assessment.assess_constraint(&fixture.nodes["Configured"], &mut collector).unwrap());
     assert!(!assessment.assess_constraint(&replacement.into(), &mut collector).unwrap());
     assert_eq!(collector.observations().constraint_declaration_count, 2);
@@ -574,11 +592,13 @@ fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), Hol
         CoreRelationshipTypeName::DescribedBy,
         "MetaConstraintType.MetaHolonType",
     )?;
-    let fixture = fixture.saved_snapshot()?;
+    let mut fixture = fixture.saved_snapshot()?;
 
     let mut collector = ValidationCollector::default();
     let diagnoses = fixture.diagnoses();
-    assert!(!ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses))
+    assert!(!fixture
+        .constraint_packages(std::sync::Arc::clone(&diagnoses))?
+        .declarations()
         .assess_constraint(&fixture.nodes["Configured"], &mut collector)?);
 
     let mut replacement = fixture.stage_update_of("Extension.ConstraintType")?;
@@ -595,8 +615,11 @@ fn parameter_membership_uses_explicit_staged_constraint_type() -> Result<(), Hol
         );
         Ok(())
     })?;
+    fixture.nodes.insert("Replacement".into(), configured.clone().into());
     let mut collector = ValidationCollector::default();
-    assert!(ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses))
+    assert!(fixture
+        .constraint_packages(fixture.diagnoses())?
+        .declarations()
         .assess_constraint(&configured.into(), &mut collector)?);
     assert!(collector.into_report().is_accepted());
     Ok(())
@@ -616,7 +639,9 @@ fn bound_diagnostics_distinguish_negative_integers_from_wrong_value_kinds() -> R
             .with_property_value("MinimumIsInclusive", true)?;
 
         let mut collector = ValidationCollector::default();
-        assert!(!ConstraintDeclarationAssessment::new(fixture.diagnoses())
+        assert!(!fixture
+            .constraint_packages(fixture.diagnoses())?
+            .declarations()
             .assess_constraint(&constraint, &mut collector)?);
         let report = collector.into_report();
         assert_eq!(report.violation_count(), 1);
@@ -638,7 +663,9 @@ fn malformed_inclusivity_does_not_invent_an_equal_endpoint_interval_failure(
         .with_property_value("MaximumIsInclusive", true)?;
 
     let mut collector = ValidationCollector::default();
-    assert!(!ConstraintDeclarationAssessment::new(fixture.diagnoses())
+    assert!(!fixture
+        .constraint_packages(fixture.diagnoses())?
+        .declarations()
         .assess_constraint(&constraint, &mut collector)?);
     let report = collector.into_report();
     assert_eq!(report.violation_count(), 1);
@@ -659,8 +686,8 @@ fn shared_invalid_constraint_findings_keep_their_subject_in_either_candidate_ord
         }
 
         let diagnoses = fixture.diagnoses();
-        let mut assessment =
-            ConstraintDeclarationAssessment::new(std::sync::Arc::clone(&diagnoses));
+        let packages = fixture.constraint_packages(std::sync::Arc::clone(&diagnoses))?;
+        let mut assessment = crate::ConstraintDeclarationAssessment::new(&packages);
         let mut collector = ValidationCollector::default();
         for key in order {
             let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[key])?;
@@ -692,12 +719,9 @@ fn declaration_backend_errors_remain_operational_through_plain_references() -> R
         "Unreadable",
         HolonError::EmptyField("injected backend failure".into()),
     )])?;
-    let mut assessment = ConstraintDeclarationAssessment::new(fixture.diagnoses());
-    let mut collector = ValidationCollector::default();
     assert!(
-        matches!(assessment.assess_constraint(&fixture.nodes["Unreadable"], &mut collector), Err(HolonError::EmptyField(message)) if message == "injected backend failure")
+        matches!(fixture.constraint_packages(fixture.diagnoses()), Err(HolonError::EmptyField(message)) if message == "injected backend failure")
     );
-    assert!(collector.into_report().is_accepted());
     Ok(())
 }
 
@@ -797,6 +821,269 @@ fn unused_staged_constraint_and_rule_keep_independent_declaration_coverage(
         assert!(rule.validation_findings()?.iter().any(|finding| matches!(
             &finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership"
         )));
+    }
+    Ok(())
+}
+
+#[test]
+fn shared_interpretation_recognizes_extension_families_without_granting_execution(
+) -> Result<(), HolonError> {
+    use holons_core::descriptors::value_constraints::{
+        interpret_constraint, Bound, ConstraintConfiguration, ConstraintInterpretation,
+        ConstraintParameters, IntegerInterval, ScalarConstraintFamily,
+    };
+
+    let mut fixture = fixture()?;
+    for (parent, expected) in [
+        (
+            NUMERIC_RANGE,
+            Some(ConstraintParameters::NumericRange(IntegerInterval {
+                minimum: Some(Bound { value: i64::MIN, inclusive: true }),
+                maximum: Some(Bound { value: -1, inclusive: false }),
+            })),
+        ),
+        ("ConstraintType.HolonType", None),
+    ] {
+        let key = format!("Extension.{parent}");
+        fixture.node(&key)?;
+        fixture.link(&key, CoreRelationshipTypeName::Extends, parent)?;
+        let mut constraint = configured(&mut fixture, &format!("Configured.{parent}"), &key)?;
+        constraint
+            .with_property_value("Minimum", i64::MIN)?
+            .with_property_value("Maximum", -1_i64)?
+            .with_property_value("MinimumIsInclusive", true)?
+            .with_property_value("MaximumIsInclusive", false)?;
+        let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[&key])?;
+        let authored = ConstraintConfiguration::acquire(&constraint)?;
+        let interpretation = interpret_constraint(diagnosis.valid_lineage().unwrap(), &authored);
+        assert_eq!(
+            interpretation,
+            expected
+                .map(ConstraintInterpretation::Parameters)
+                .unwrap_or(ConstraintInterpretation::UnrecognizedFamily)
+        );
+        assert_eq!(ScalarConstraintFamily::for_concrete_type(&key), None);
+        if parent == NUMERIC_RANGE {
+            let mut collector = ValidationCollector::default();
+            assert!(fixture
+                .constraint_packages(fixture.diagnoses())?
+                .declarations()
+                .assess_constraint(&constraint, &mut collector)?);
+            assert!(collector.into_report().is_accepted());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn declaration_accepts_signed_extrema_and_negative_equal_endpoints() -> Result<(), HolonError> {
+    for (minimum, maximum, inclusive, accepted) in [
+        (i64::MIN, i64::MAX, true, true),
+        (i64::MIN, i64::MIN, true, true),
+        (-2, -2, true, true),
+        (-2, -2, false, false),
+        (-2, -1, false, true),
+    ] {
+        let mut fixture = fixture()?;
+        let mut constraint = configured(&mut fixture, "Signed", NUMERIC_RANGE)?;
+        constraint
+            .with_property_value("Minimum", minimum)?
+            .with_property_value("Maximum", maximum)?
+            .with_property_value("MinimumIsInclusive", inclusive)?
+            .with_property_value("MaximumIsInclusive", inclusive)?;
+        let mut collector = ValidationCollector::default();
+        assert_eq!(
+            fixture
+                .constraint_packages(fixture.diagnoses())?
+                .declarations()
+                .assess_constraint(&constraint, &mut collector)?,
+            accepted
+        );
+        assert_eq!(collector.into_report().is_accepted(), accepted);
+    }
+    Ok(())
+}
+
+/// Prepared parameters are shared across attachments, refreshed for each assessment, and consumed
+/// without schema navigation even when saved content is retained in a small cache.
+#[test]
+fn prepared_constraint_parameters_are_shared_and_refreshed() -> Result<(), HolonError> {
+    use crate::assessment::descriptor_package::{
+        AttachmentApplicability, DescriptorPackages, PreparedConstraint,
+        PreparedConstraintParameters,
+    };
+    use crate::assessment::schema_view::SchemaWorkset;
+    use holons_core::descriptors::value_constraints::ConstraintParameters;
+    for saved in [false, true] {
+        let mut fixture = fixture_with_commit_roots()?;
+        let mut constraint = configured(&mut fixture, "SharedBound", BOUNDED[0])?;
+        constraint
+            .with_property_value("Maximum", 5_i64)?
+            .with_property_value("MaximumIsInclusive", true)?;
+        fixture.link(
+            "StringValueType.ValueType",
+            CoreRelationshipTypeName::Constraints,
+            "SharedBound",
+        )?;
+        fixture.node("ConstrainedChild")?;
+        fixture.link(
+            "ConstrainedChild",
+            CoreRelationshipTypeName::Extends,
+            "StringValueType.ValueType",
+        )?;
+        fixture
+            .node("Second.PropertyType")?
+            .with_property_value("TypeName", "Second")?
+            .with_property_value("IsValueRequired", false)?;
+        fixture.link(
+            "Second.PropertyType",
+            CoreRelationshipTypeName::Extends,
+            "PropertyType.TypeDescriptor",
+        )?;
+        fixture.link(
+            "Second.PropertyType",
+            CoreRelationshipTypeName::ValueType,
+            "ConstrainedChild",
+        )?;
+        fixture.link(
+            "Contract",
+            CoreRelationshipTypeName::InstanceProperties,
+            "Second.PropertyType",
+        )?;
+        let fixture = if saved { fixture.saved_snapshot()? } else { fixture };
+        let roots = [
+            fixture.nodes["StringValueType.ValueType"].clone(),
+            fixture.nodes["ConstrainedChild"].clone(),
+        ];
+        let construct = || {
+            DescriptorPackages::construct(
+                &fixture.context,
+                &[roots[0].clone(), roots[1].clone(), fixture.nodes["Contract"].clone()],
+                &[],
+                &SchemaWorkset { schemas: Vec::new() },
+            )
+        };
+        let packages = construct()?;
+        packages.diagnoses.seal();
+        assert_eq!(packages.preparation_metrics().prepared_constraint_parameters, 1);
+        let reads = fixture.backend_relationship_reads();
+        let probe =
+            holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+        for root in &roots {
+            let contributions = packages.effective_constraints(root)?;
+            assert_eq!(contributions.len(), 1);
+            assert!(same_definition(&contributions[0].declared_on, &roots[0])?);
+            assert_eq!(
+                packages.attachment_applicability(root, &fixture.nodes["SharedBound"])?,
+                &AttachmentApplicability::Applies
+            );
+            assert!(
+                matches!(&packages.prepared_constraint(&contributions[0].member)?.parameters().unwrap(),
+                PreparedConstraintParameters::Valid(ConstraintParameters::StringLength(bounds)) if bounds.maximum.as_ref().unwrap().value == 5)
+            );
+        }
+        let mut declaration = crate::ConstraintDeclarationAssessment::new(&packages);
+        assert!(declaration.assess_constraint(
+            &fixture.nodes["SharedBound"],
+            &mut ValidationCollector::default()
+        )?);
+        let observations = probe.finish().0;
+        assert_eq!(fixture.backend_relationship_reads(), reads);
+        for metric in
+            ["structural_diagnoses", "derived_projection_attempts", "schema_builder_attempts"]
+        {
+            assert_eq!(observations.get(metric).copied().unwrap_or(0), 0, "{metric}");
+        }
+        if !saved {
+            let mut constraint = fixture.nodes["SharedBound"].clone();
+            constraint.with_property_value("Maximum", 2_i64)?;
+            let next = construct()?;
+            assert!(matches!(&next.prepared_constraint(&constraint)?.parameters().unwrap(),
+                PreparedConstraintParameters::Valid(ConstraintParameters::StringLength(bounds)) if bounds.maximum.as_ref().unwrap().value == 2));
+            let mut governor = fixture.nodes[BOUNDED[0]].clone();
+            governor.with_property_value("IsAbstractType", true)?;
+            let next = construct()?;
+            assert!(matches!(
+                next.prepared_constraint(&constraint)?,
+                PreparedConstraint::Defective { defect: holons_core::descriptors::value_constraints::ConstraintTypeDefect::NotConcreteConstraintType, .. }
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn unusable_attachments_block_subjects_before_support_lookup() -> Result<(), HolonError> {
+    for defect in ["configuration", "applicability", "abstract", "multiple"] {
+        let mut fixture = fixture_with_commit_roots()?;
+        let mut constraint = if defect == "multiple" {
+            let mut constraint = fixture.node("Unusable")?;
+            constraint.add_related_holons(
+                CoreRelationshipTypeName::DescribedBy,
+                vec![fixture.nodes[BOUNDED[0]].clone(), fixture.nodes[CARDINALITY].clone()],
+            )?;
+            constraint
+        } else {
+            configured(&mut fixture, "Unusable", BOUNDED[0])?
+        };
+        if defect != "configuration" {
+            constraint
+                .with_property_value("Maximum", 5_i64)?
+                .with_property_value("MaximumIsInclusive", true)?;
+        }
+        match defect {
+            "applicability" => {
+                let target = fixture.nodes["StringValueType.ValueType"].clone();
+                fixture.nodes.get_mut(BOUNDED[0]).unwrap().remove_related_holons(
+                    CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+                    vec![target],
+                )?;
+            }
+            "abstract" => {
+                fixture
+                    .nodes
+                    .get_mut(BOUNDED[0])
+                    .unwrap()
+                    .with_property_value("IsAbstractType", true)?;
+            }
+            _ => {}
+        }
+        fixture.link(
+            "StringValueType.ValueType",
+            CoreRelationshipTypeName::Constraints,
+            "Unusable",
+        )?;
+        let mut subject = fixture.staged_subject("blocked-attachment")?;
+        subject.with_property_value("Title", "value")?.remove_property_value("Key")?;
+        let assessment = assess_commit_candidates(&fixture.context, &[subject.clone()])?;
+        assert!(!assessment.report.is_accepted(), "{defect}");
+        let blockers: Vec<_> = assessment
+            .report
+            .violations
+            .iter()
+            .filter(|finding| {
+                finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+            })
+            .collect();
+        assert_eq!(blockers.len(), 1, "{defect}: {:?}", assessment.report);
+        assert_eq!(
+            blockers[0].subject,
+            ValidationSubjectPath::Value {
+                holon_identity: subject.full_reference_id_string(),
+                property: "Title".into()
+            }
+        );
+        assert_eq!(
+            blockers[0].descriptor_identity,
+            Some(fixture.nodes["StringValueType.ValueType"].reference_id_string())
+        );
+        assert!(
+            !assessment.report.violations.iter().any(|finding| matches!(
+                finding.kind,
+                CommitValidationViolationKind::UnsupportedConstraintType { .. }
+            )),
+            "{defect}"
+        );
     }
     Ok(())
 }

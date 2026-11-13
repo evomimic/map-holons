@@ -10,6 +10,8 @@ pub enum CoreValidationRuleName {
     RequiredPropertyPresence,
     /// DS-PROP-003: populated properties must belong to the effective contract.
     NoUndescribedProperties,
+    /// DS-PROP-002: property value execution and binding compatibility.
+    PropertyValueConformance,
     /// DS-KEY-006: complete local keys remain associated with one lineage.
     KeyUniqueness,
     /// String values use the native string representation.
@@ -81,6 +83,7 @@ impl CoreValidationRuleName {
             Self::InheritedValueConstraintNonRelaxation => {
                 "InheritedValueConstraintNonRelaxation.ValidationRule"
             }
+            Self::PropertyValueConformance => "PropertyValueConformance.ValidationRule",
             Self::RequiredPropertyPresence => "RequiredPropertyPresence.ValidationRule",
             Self::KeyUniqueness => "KeyUniqueness.ValidationRule",
             Self::NoUndescribedProperties => "NoUndescribedProperties.ValidationRule",
@@ -150,6 +153,7 @@ mod tests {
     #[test]
     fn canonical_keys_are_fully_qualified() {
         for (rule, expected) in [
+            (PropertyValueConformance, "PropertyValueConformance.ValidationRule"),
             (RequiredPropertyPresence, "RequiredPropertyPresence.ValidationRule"),
             (NoUndescribedProperties, "NoUndescribedProperties.ValidationRule"),
             (KeyUniqueness, "KeyUniqueness.ValidationRule"),

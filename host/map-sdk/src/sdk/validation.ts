@@ -4,6 +4,7 @@ import { extractNumber, extractString } from './types';
 
 export type ValidationFindingKind = 'NoDescriptor' | 'UnsupportedValidationRule'
   | { UnsupportedConstraintType: { constraint_identity: string; constraint_type_identity: string } }
+  | { ConstraintViolation: { code: string; constraint_identity: string; constraint_type_identity: string } }
   | { RuleViolation: { code: string } } | 'UnresolvedLocalDependency' | 'RelationshipCoordinationRequired';
 export type ValidationSubject = { Holon: { holon_identity: string } }
   | { Property: { holon_identity: string; name: string } }
@@ -87,6 +88,7 @@ async function readFindingCarrier(carrier: HolonReference): Promise<ValidationFi
   const kindName = await required('ViolationKind');
   let kind: ValidationFindingKind;
   switch (kindName) {
+    case 'ConstraintViolation': kind = { ConstraintViolation: { code: await required('RuleCode'), constraint_identity: await required('ConstraintIdentity'), constraint_type_identity: await required('ConstraintTypeIdentity') } }; break;
     case 'RuleViolation': kind = { RuleViolation: { code: await required('RuleCode') } }; break;
     case 'UnsupportedConstraintType': kind = { UnsupportedConstraintType: { constraint_identity: await required('ConstraintIdentity'), constraint_type_identity: await required('ConstraintTypeIdentity') } }; break;
     case 'NoDescriptor': case 'UnsupportedValidationRule': case 'UnresolvedLocalDependency': case 'RelationshipCoordinationRequired': kind = kindName; break;

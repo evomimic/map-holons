@@ -75,14 +75,16 @@ pub fn commit_strict_contract_fixture() -> Result<DancesTestCase, HolonError> {
                 ExpectedValidationFinding {
                     kind: CommitValidationViolationKind::RuleViolation {
                         code: "DS-PROP-003".into(),
-                    },
+                    }
+                    .into(),
                     rule_key: Some("NoUndescribedProperties.ValidationRule".into()),
                     subject: ExpectedValidationSubject::Holon,
                 },
                 ExpectedValidationFinding {
                     kind: CommitValidationViolationKind::RuleViolation {
                         code: "UndeclaredRelationship".into(),
-                    },
+                    }
+                    .into(),
                     rule_key: None,
                     subject: ExpectedValidationSubject::Relationship {
                         name: "ExtraneousLink".into(),

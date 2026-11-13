@@ -310,7 +310,8 @@ pub fn graph_overlap_retry_fixture() -> Result<GraphOverlapRetryScenario, HolonE
             findings: vec![ExpectedValidationFinding {
                 kind: CommitValidationViolationKind::RuleViolation {
                     code: "UnsupportedGraphOnlyCombination".into(),
-                },
+                }
+                .into(),
                 rule_key: None,
                 subject: ExpectedValidationSubject::Holon,
             }],
@@ -426,7 +427,8 @@ pub fn key_index_retry_fixture() -> Result<KeyIndexRetryScenario, HolonError> {
             token: collision.clone(),
             validation_state: ValidationState::Invalid,
             findings: vec![ExpectedValidationFinding {
-                kind: CommitValidationViolationKind::RuleViolation { code: "DS-KEY-006".into() },
+                kind: CommitValidationViolationKind::RuleViolation { code: "DS-KEY-006".into() }
+                    .into(),
                 rule_key: Some("KeyUniqueness.ValidationRule".into()),
                 subject: ExpectedValidationSubject::Holon,
             }],

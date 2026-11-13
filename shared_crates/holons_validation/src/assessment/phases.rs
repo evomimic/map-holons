@@ -15,6 +15,8 @@ pub enum AssessmentPhase {
 /// Aggregate preparation demand. Counts describe reference requests, not backend cache misses.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreparationMetrics {
+    /// Distinct exact constraint identities with a prepared interpretation, including defects.
+    pub prepared_constraint_parameters: usize,
     pub package_roots: usize,
     /// Baseline alias for distinct_content: every reached definition requests a complete schema.
     pub requested_schema_products: usize,
@@ -33,10 +35,24 @@ pub struct PreparationMetrics {
 pub enum AssessmentEvent {
     Phase(AssessmentPhase),
     Preparation(PreparationMetrics),
+    /// Completed assessment coverage, independent of its accept/reject result.
+    Coverage(crate::ValidationObservations),
     PreparationVisitStarted,
-    PreparationVisitFinished { type_name: String, distinct_content: bool },
-    PreparationOperation { operation: &'static str, role: &'static str, starting: bool },
-    PreparationEdge { role: &'static str, edge: String, requests: usize, members: usize },
+    PreparationVisitFinished {
+        type_name: String,
+        distinct_content: bool,
+    },
+    PreparationOperation {
+        operation: &'static str,
+        role: &'static str,
+        starting: bool,
+    },
+    PreparationEdge {
+        role: &'static str,
+        edge: String,
+        requests: usize,
+        members: usize,
+    },
 }
 
 /// Observe an operation on both success and operational failure. Operation spans are siblings.

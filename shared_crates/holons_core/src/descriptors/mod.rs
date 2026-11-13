@@ -51,6 +51,7 @@ pub mod transaction_descriptor;
 pub mod type_header;
 pub mod type_membership;
 mod universal_descriptor_contract;
+pub mod value_constraints;
 pub mod value_descriptor;
 pub mod value_descriptor_subtypes;
 

@@ -37,6 +37,7 @@ describe('source-aligned holon wire guards', () => {
     for (const kind of [
       'NoDescriptor', 'UnsupportedValidationRule', 'UnresolvedLocalDependency',
       'RelationshipCoordinationRequired',
+      { ConstraintViolation: { code: 'StringLengthOutOfRange', constraint_identity: 'constraint', constraint_type_identity: 'type' } },
       { RuleViolation: { code: 'DS-PROP-001' } },
       { UnsupportedConstraintType: { constraint_identity: 'constraint', constraint_type_identity: 'type' } },
     ]) {
@@ -57,6 +58,11 @@ describe('source-aligned holon wire guards', () => {
     for (const invalid of [
       null, {}, { ...finding, severity: 'Fatal' },
       { ...finding, kind: { RuleViolation: { code: 1 } } },
+      ...[
+        { code: 1, constraint_identity: 'constraint', constraint_type_identity: 'type' },
+        { code: 'StringLengthOutOfRange', constraint_type_identity: 'type' },
+        { code: 'StringLengthOutOfRange', constraint_identity: 'constraint' },
+      ].map(ConstraintViolation => ({ ...finding, kind: { ConstraintViolation } })),
       { ...finding, subject: { Property: { holon_identity: 'subject' } } },
       { ...finding, descriptor_identity: {} }, { ...finding, rule_key: 1 },
       { ...finding, message: null },

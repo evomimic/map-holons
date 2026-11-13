@@ -12,3 +12,5 @@ pub use persistence_layer::*;
 pub(crate) mod read_cost;
 
 pub(crate) mod performance;
+
+pub(crate) mod commit_audit;

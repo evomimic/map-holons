@@ -33,8 +33,10 @@ use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::attachment_defaults_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
 use fixture_cases::commit_lineage_fixture::*;
+use fixture_cases::commit_scalar_constraints_fixture::*;
 use fixture_cases::commit_schema_fixture::*;
 use fixture_cases::commit_sibling_fixture::*;
+use fixture_cases::commit_staged_scalar_fixture::*;
 use fixture_cases::commit_strict_contract_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
@@ -119,6 +121,8 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             stage_new_version_fixture().unwrap(),
             simple_create_holon_fixture().unwrap(),
             commit_validation_fixture().unwrap(),
+            commit_scalar_constraints_fixture().unwrap(),
+            commit_staged_scalar_fixture().unwrap(),
             attachment_defaults_fixture().unwrap(),
             commit_no_action_fixture().unwrap(),
             commit_mixed_dispositions_fixture().unwrap(),

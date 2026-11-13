@@ -2,6 +2,14 @@
 use crate::assessment::schema_view::SchemaWorkset;
 use crate::assessment::support::targets;
 use core_types::HolonError;
+use holons_core::descriptors::{
+    constraint_applies_to_lineage,
+    value_constraints::{
+        classify_constraint_type, interpret_constraint, ClassifiedConstraintType,
+        ConfigurationDiagnosis, ConstraintConfiguration, ConstraintInterpretation,
+        ConstraintParameters, ConstraintTypeDefect,
+    },
+};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext, ContractContributions,
     DefinitionIdentity, EffectiveRelationshipMember, HolonReference, ReadableHolon,
@@ -12,6 +20,37 @@ use std::{
     sync::Arc,
 };
 use type_names::CoreRelationshipTypeName as R;
+
+/// Owned interpretation shared by all subjects reaching one exact constraint.
+#[derive(Clone, Debug)]
+pub(crate) enum PreparedConstraint {
+    Defective { defect: ConstraintTypeDefect, describing_type: Option<HolonReference> },
+    Interpreted { constraint_type: HolonReference, parameters: PreparedConstraintParameters },
+}
+impl PreparedConstraint {
+    #[cfg(test)]
+    pub(crate) fn parameters(&self) -> Option<&PreparedConstraintParameters> {
+        match self {
+            Self::Interpreted { parameters, .. } => Some(parameters),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum PreparedConstraintParameters {
+    Valid(ConstraintParameters),
+    Invalid(Vec<ConfigurationDiagnosis>),
+    Uninterpreted,
+}
+
+/// Applicability belongs to an attachment, not to the shared configured constraint.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum AttachmentApplicability {
+    Applies,
+    DoesNotApply,
+    Blocked(String),
+}
 
 /// The root's effective contract retains kernel contribution ordering and provenance.
 pub(crate) struct DescriptorPackage {
@@ -30,11 +69,14 @@ pub(crate) struct DescriptorPackages {
     _content: Vec<holons_core::core_shared_objects::holon_cache::SavedHolonRetention>,
     preparation: crate::PreparationMetrics,
     properties: HashMap<DefinitionIdentity, PropertyFacts>,
+    pub(crate) constraints: HashMap<DefinitionIdentity, PreparedConstraint>,
+    pub(crate) attachment_applicability:
+        HashMap<(DefinitionIdentity, DefinitionIdentity), AttachmentApplicability>,
     value_kinds: HashMap<DefinitionIdentity, Result<holons_core::ValueDescriptorKind, HolonError>>,
     pub(crate) diagnoses: Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
 }
 
-/// Shared kernel products; configuration and other domain values remain on the holons.
+/// Shared kernel products; owned constraint parameters are prepared separately.
 struct PreparedDefinition {
     reference: HolonReference,
     // Provenance distinguishes authored structural defects from acquisition/read failures.
@@ -146,6 +188,7 @@ impl DescriptorPackages {
         let mut definitions = HashMap::new();
         let mut properties = HashMap::new();
         let mut value_kinds = HashMap::new();
+        let mut constraint_references = HashMap::new();
         while let Some((reference, role)) = pending.pop_front() {
             let identity = DefinitionIdentity::for_reference(&reference, context)?;
             let reference = identity.definition_reference(context, &reference);
@@ -163,6 +206,9 @@ impl DescriptorPackages {
                         || saved.retain_content(),
                     )?);
                 }
+            }
+            if role == Constraint {
+                constraint_references.insert(identity.clone(), reference.clone());
             }
             let mut edges = Vec::new();
             match role {
@@ -563,6 +609,82 @@ impl DescriptorPackages {
             });
         }
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts));
+        let mut constraints = HashMap::new();
+        let mut requests: Vec<_> = constraint_references.into_iter().collect();
+        requests.sort_by_key(|(_, reference)| reference.reference_id_string());
+        for (identity, reference) in requests {
+            let prepared = match classify_constraint_type(&reference, |reference| {
+                diagnoses.get(reference)
+            })? {
+                ClassifiedConstraintType::Defective { defect, describing_type } => {
+                    PreparedConstraint::Defective { defect, describing_type }
+                }
+                ClassifiedConstraintType::Concrete { reference: constraint_type, diagnosis } => {
+                    let lineage = diagnosis.valid_lineage().ok_or_else(|| {
+                        HolonError::InvalidState("Concrete classification lacks lineage".into())
+                    })?;
+                    let parameters = match interpret_constraint(
+                        lineage,
+                        &ConstraintConfiguration::acquire(&reference)?,
+                    ) {
+                        ConstraintInterpretation::Parameters(parameters) => {
+                            PreparedConstraintParameters::Valid(parameters)
+                        }
+                        ConstraintInterpretation::InvalidConfiguration(diagnoses) => {
+                            PreparedConstraintParameters::Invalid(diagnoses)
+                        }
+                        ConstraintInterpretation::UnrecognizedFamily => {
+                            PreparedConstraintParameters::Uninterpreted
+                        }
+                    };
+                    PreparedConstraint::Interpreted { constraint_type, parameters }
+                }
+            };
+            constraints.insert(identity, prepared);
+        }
+        let mut attachment_applicability = HashMap::new();
+        for (descriptor_id, definition) in &definitions {
+            // Default metadata supplies requiredness only; it creates no attachment demand.
+            if ![Governing, Defined, Property, Value, Obligations]
+                .into_iter()
+                .any(|role| seen.contains(&(descriptor_id.clone(), role)))
+            {
+                continue;
+            }
+            let Ok(schema) = &definition.schema else { continue };
+            let diagnosis = if schema.contributions(R::Constraints).is_empty() {
+                None
+            } else {
+                Some(diagnoses.get(&definition.reference)?)
+            };
+            for attachment in schema.contributions(R::Constraints) {
+                let constraint_id = diagnoses.identity(&attachment.member)?;
+                let prepared = constraints.get(&constraint_id).ok_or_else(|| {
+                    HolonError::InvalidState("Missing prepared attachment constraint".into())
+                })?;
+                let applicability = match prepared {
+                    PreparedConstraint::Defective { defect, .. } => {
+                        AttachmentApplicability::Blocked(defect.to_string())
+                    }
+                    PreparedConstraint::Interpreted { constraint_type, .. } => {
+                        match diagnosis.as_ref().and_then(|diagnosis| diagnosis.valid_lineage()) {
+                            None => AttachmentApplicability::Blocked(
+                                "Unusable descriptor lineage".into(),
+                            ),
+                            Some(lineage) => {
+                                if constraint_applies_to_lineage(constraint_type, lineage)? {
+                                    AttachmentApplicability::Applies
+                                } else {
+                                    AttachmentApplicability::DoesNotApply
+                                }
+                            }
+                        }
+                    }
+                };
+                attachment_applicability
+                    .insert((descriptor_id.clone(), constraint_id), applicability);
+            }
+        }
         // Requiredness and concrete ValueType selection are independent facts.
         let mut defaults = HashMap::new();
         let mut property_requests: Vec<_> =
@@ -585,6 +707,7 @@ impl DescriptorPackages {
             );
         }
         let mut preparation = crate::PreparationMetrics {
+            prepared_constraint_parameters: constraints.len(),
             package_roots: packages.len(),
             subjects: subjects.len(),
             affected_schemas: workset.schemas.len(),
@@ -616,7 +739,35 @@ impl DescriptorPackages {
             diagnoses,
             properties,
             value_kinds,
+            constraints,
+            attachment_applicability,
         })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn declarations(&self) -> crate::ConstraintDeclarationAssessment<'_> {
+        crate::ConstraintDeclarationAssessment::new(self)
+    }
+
+    pub(crate) fn prepared_constraint(
+        &self,
+        reference: &HolonReference,
+    ) -> Result<&PreparedConstraint, HolonError> {
+        self.constraints.get(&self.diagnoses.identity(reference)?).ok_or_else(|| {
+            HolonError::InvalidState("Constraint interpretation was not prepared".into())
+        })
+    }
+
+    pub(crate) fn attachment_applicability(
+        &self,
+        descriptor: &HolonReference,
+        constraint: &HolonReference,
+    ) -> Result<&AttachmentApplicability, HolonError> {
+        self.attachment_applicability
+            .get(&(self.diagnoses.identity(descriptor)?, self.diagnoses.identity(constraint)?))
+            .ok_or_else(|| {
+                HolonError::InvalidState("Attachment applicability was not prepared".into())
+            })
     }
 
     pub fn requiredness(&self, reference: &HolonReference) -> Result<Requiredness, HolonError> {

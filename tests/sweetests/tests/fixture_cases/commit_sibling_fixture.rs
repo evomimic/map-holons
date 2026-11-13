@@ -103,7 +103,8 @@ fn rejected_title(title: &TestReference) -> ExpectedRejectedHolon {
         token: title.clone(),
         validation_state: ValidationState::Invalid,
         findings: vec![ExpectedValidationFinding {
-            kind: CommitValidationViolationKind::RuleViolation { code: "DS-PROP-003".into() },
+            kind: CommitValidationViolationKind::RuleViolation { code: "DS-PROP-003".into() }
+                .into(),
             rule_key: Some("NoUndescribedProperties.ValidationRule".into()),
             subject: ExpectedValidationSubject::Holon,
         }],

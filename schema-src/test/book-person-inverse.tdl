@@ -20,7 +20,7 @@ holon Book.HolonType {
     plural: "Books"
   }
   relationships {
-    InstanceProperties -> [Title.PropertyType, IsPublished.PropertyType, PageCount.PropertyType, PublicationStatus.PropertyType, CoverDigest.PropertyType, Subtitle.PropertyType, ContentDigest.PropertyType]
+    InstanceProperties -> [Title.PropertyType, IsPublished.PropertyType, PageCount.PropertyType, PublicationStatus.PropertyType, CoverDigest.PropertyType, Subtitle.PropertyType, ContentDigest.PropertyType, ShortText.PropertyType, SignedScore.PropertyType, ShortBytes.PropertyType]
     InstanceRelationships -> [
       (Book.HolonType)-[AuthoredBy]->(Person.HolonType),
       (Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor)
@@ -249,5 +249,121 @@ enum PublicationStatus.MapEnumValueType {
         display_name: "Published"
       }
     }
+  }
+}
+
+// Tight bounds make scalar rejection observable below PVL's representation limits.
+instance ShortText.StringLengthConstraint {
+  type StringLengthConstraint.ConstraintType
+  rule_of BookAuthorInverseSchema
+  ConstraintName "ShortText"
+  Minimum 1
+  Maximum 5
+  MinimumIsInclusive true
+  MaximumIsInclusive true
+}
+
+instance SignedScore.NumericRangeConstraint {
+  type NumericRangeConstraint.ConstraintType
+  rule_of BookAuthorInverseSchema
+  ConstraintName "SignedScore"
+  Minimum -5
+  Maximum 5
+  MinimumIsInclusive true
+  MaximumIsInclusive true
+}
+
+instance ShortBytes.BytesLengthConstraint {
+  type BytesLengthConstraint.ConstraintType
+  rule_of BookAuthorInverseSchema
+  ConstraintName "ShortBytes"
+  Maximum 3
+  MaximumIsInclusive true
+}
+
+value ShortText.MapStringValueType {
+  type MetaStringValueType.MetaValueType
+  extends MapStringValueType.StringValueType
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "ShortText"
+  }
+  relationships {
+    Constraints -> ShortText.StringLengthConstraint
+  }
+}
+
+value SignedScore.MapIntegerValueType {
+  type MetaIntegerValueType.MetaValueType
+  extends MapIntegerValueType.IntegerValueType
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "SignedScore"
+  }
+  relationships {
+    Constraints -> SignedScore.NumericRangeConstraint
+  }
+}
+
+value ShortBytes.MapBytesValueType {
+  type MetaBytesValueType.MetaValueType
+  extends MapBytesValueType.BytesValueType
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "ShortBytes"
+  }
+  relationships {
+    Constraints -> ShortBytes.BytesLengthConstraint
+  }
+}
+
+property ShortText.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "ShortText"
+  }
+  value ShortText.MapStringValueType
+}
+
+property SignedScore.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "SignedScore"
+  }
+  value SignedScore.MapIntegerValueType
+}
+
+property ShortBytes.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "ShortBytes"
+  }
+  value ShortBytes.MapBytesValueType
+}
+
+holon ScalarTestMetaType.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "ScalarTestMetaType"
+  }
+  relationships {
+    InstanceProperties -> ShortText.PropertyType
+  }
+}
+
+value ShortTextChild.ShortText {
+  type MetaStringValueType.MetaValueType
+  extends ShortText.MapStringValueType
+  header {
+    description: "Scalar constraint acceptance fixture."
+    display_name: "ShortTextChild"
   }
 }

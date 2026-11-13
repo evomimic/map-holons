@@ -75,6 +75,15 @@
             },
             {
               "$ref": "ContentDigest.PropertyType"
+            },
+            {
+              "$ref": "ShortText.PropertyType"
+            },
+            {
+              "$ref": "SignedScore.PropertyType"
+            },
+            {
+              "$ref": "ShortBytes.PropertyType"
             }
           ]
         },
@@ -776,6 +785,339 @@
           "target": [
             {
               "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortText.StringLengthConstraint",
+      "type": "StringLengthConstraint.ConstraintType",
+      "properties": {
+        "Minimum": 1,
+        "Maximum": 5,
+        "ConstraintName": "ShortText",
+        "MaximumIsInclusive": true,
+        "MinimumIsInclusive": true
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SignedScore.NumericRangeConstraint",
+      "type": "NumericRangeConstraint.ConstraintType",
+      "properties": {
+        "Minimum": -5,
+        "Maximum": 5,
+        "ConstraintName": "SignedScore",
+        "MaximumIsInclusive": true,
+        "MinimumIsInclusive": true
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortBytes.BytesLengthConstraint",
+      "type": "BytesLengthConstraint.ConstraintType",
+      "properties": {
+        "Maximum": 3,
+        "ConstraintName": "ShortBytes",
+        "MaximumIsInclusive": true
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortText.MapStringValueType",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ShortText",
+        "DisplayName": "ShortText",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ShortText.StringLengthConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SignedScore.MapIntegerValueType",
+      "type": "MetaIntegerValueType.MetaValueType",
+      "properties": {
+        "TypeName": "SignedScore",
+        "DisplayName": "SignedScore",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "SignedScore.NumericRangeConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortBytes.MapBytesValueType",
+      "type": "MetaBytesValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ShortBytes",
+        "DisplayName": "ShortBytes",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapBytesValueType.BytesValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ShortBytes.BytesLengthConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortText.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ShortText",
+        "DisplayName": "ShortText",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ShortText.MapStringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SignedScore.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SignedScore",
+        "DisplayName": "SignedScore",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "SignedScore.MapIntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortBytes.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ShortBytes",
+        "DisplayName": "ShortBytes",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ShortBytes.MapBytesValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ScalarTestMetaType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ScalarTestMetaType",
+        "DisplayName": "ScalarTestMetaType",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ShortText.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ShortTextChild.ShortText",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ShortTextChild",
+        "DisplayName": "ShortTextChild",
+        "Description": "Scalar constraint acceptance fixture."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ShortText.MapStringValueType"
             }
           ]
         },

@@ -59,7 +59,7 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "312919fbb05750ededc4d34b451898cb225ca55cee845f74fa4a7387b7e4fdc1"
+      "sha256": "5dddfedcc9b82c7fe2def38ee4adbfa4d208925f60011172f8f8ca91ea3566d2"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -83,15 +83,15 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "48a4719972f5739d2cdef57ae7eac1ac75cc063234d790e44ad5ce57ca4bd52b"
+      "sha256": "b560c576ffc8cac3d5f5863ad81828f9d5cb5a09db4cc3be3bb16c5997c66d28"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "0767a9b8e83ebf74f8f3b79fef8bc5d3d7f6ef07171b179fbd019d86ca49ffc9"
+      "sha256": "87ed6eafef2942cafefc6dfd0a2faed0c53f3b8a93cee833ce72bf56e8395f82"
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "46d4447bcd3751c06809ba14562b39732fe7345db1e90db97884ae7a4acfd7bd"
+      "sha256": "fb83ca55be285a3604d5b74bae7b7ac30a2d10e55a824de74b587060777de969"
     },
     {
       "path": "imports/validation/schema.json",

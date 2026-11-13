@@ -148,10 +148,20 @@ pub enum HolonError {
     ReferenceResolutionFailed { reference_kind: String, reference_id: String, reason: String },
     #[error("Service '{0}' is not available")]
     ServiceNotAvailable(String),
+    /// Authored-literal failure with scalar semantics and identity-only provenance.
+    /// Unlike UnsupportedValueConstraint’s readable labels, these fields carry reference ids.
     #[error(
-        "String length {length} is out of range for descriptor {descriptor}: min={min:?}, max={max:?}"
+        "Value constraint {constraint} ({constraint_type}) violated for {value_type}, \
+         declared on {descriptor}: {code}: {detail}"
     )]
-    StringLengthOutOfRange { length: usize, min: Option<i64>, max: Option<i64>, descriptor: String },
+    ValueConstraintViolation {
+        code: String,
+        value_type: String,
+        constraint: String,
+        constraint_type: String,
+        descriptor: String,
+        detail: String,
+    },
     #[error("Transaction {tx_id} is already committed")]
     TransactionAlreadyCommitted { tx_id: u64 },
     #[error("Transaction {tx_id} is currently committing and cannot accept external mutations")]
@@ -205,6 +215,7 @@ pub enum SchemaInvalidityKind {
     IncompatibleConstraintFamily,
     UnsupportedExecutableConstraint,
     UnclassifiedConstraint,
+    InvalidConstraintConfiguration,
 }
 
 // Remove this implementation - no longer needed with RwLock
@@ -270,7 +281,7 @@ pub enum HolonErrorKind {
     ReferenceBindingFailed,
     ReferenceResolutionFailed,
     ServiceNotAvailable,
-    StringLengthOutOfRange,
+    ValueConstraintViolation,
     TransactionAlreadyCommitted,
     TransactionCommitInProgress,
     TransactionNotOpen,
@@ -346,7 +357,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::ReferenceBindingFailed { .. } => Self::ReferenceBindingFailed,
             HolonError::ReferenceResolutionFailed { .. } => Self::ReferenceResolutionFailed,
             HolonError::ServiceNotAvailable(_) => Self::ServiceNotAvailable,
-            HolonError::StringLengthOutOfRange { .. } => Self::StringLengthOutOfRange,
+            HolonError::ValueConstraintViolation { .. } => Self::ValueConstraintViolation,
             HolonError::TransactionAlreadyCommitted { .. } => Self::TransactionAlreadyCommitted,
             HolonError::TransactionCommitInProgress { .. } => Self::TransactionCommitInProgress,
             HolonError::TransactionNotOpen { .. } => Self::TransactionNotOpen,
@@ -385,6 +396,100 @@ impl HolonError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn query_errors_preserve_sdk_json_contract_in_both_directions() {
+        use serde_json::json;
+        let cases = [
+            (
+                HolonError::ValueConstraintViolation {
+                    code: "StringLengthOutOfRange".into(),
+                    value_type: "value-type".into(),
+                    constraint: "constraint".into(),
+                    constraint_type: "constraint-type".into(),
+                    descriptor: "descriptor".into(),
+                    detail: "measured 6 graphemes; required [0, 5]".into(),
+                },
+                json!({"ValueConstraintViolation": {"code": "StringLengthOutOfRange", "value_type": "value-type", "constraint": "constraint", "constraint_type": "constraint-type", "descriptor": "descriptor", "detail": "measured 6 graphemes; required [0, 5]"}}),
+            ),
+            (
+                HolonError::UnsupportedValueConstraint {
+                    constraint_type: "constraint-type".into(),
+                    value_type: "value-type".into(),
+                    descriptor: "descriptor".into(),
+                },
+                json!({"UnsupportedValueConstraint": {"constraint_type": "constraint-type", "value_type": "value-type", "descriptor": "descriptor"}}),
+            ),
+            (
+                HolonError::IncompatibleLiteralType {
+                    declared: "declared".into(),
+                    required: "required".into(),
+                    operator: "Contains".into(),
+                },
+                json!({"IncompatibleLiteralType": {"declared": "declared", "required": "required", "operator": "Contains"}}),
+            ),
+            (
+                HolonError::ValueKindMismatch {
+                    expected: "String".into(),
+                    found: "Integer".into(),
+                    descriptor: "descriptor".into(),
+                },
+                json!({"ValueKindMismatch": {"expected": "String", "found": "Integer", "descriptor": "descriptor"}}),
+            ),
+            (
+                HolonError::MultipleDescribedBy { holon: "holon".into(), count: 2 },
+                json!({"MultipleDescribedBy": {"holon": "holon", "count": 2}}),
+            ),
+            (
+                HolonError::OperandCountMismatch {
+                    operator: "Contains".into(),
+                    expected: 1,
+                    found: 2,
+                },
+                json!({"OperandCountMismatch": {"operator": "Contains", "expected": 1, "found": 2}}),
+            ),
+            (
+                HolonError::MissingDescribedBy { holon: "holon".into() },
+                json!({"MissingDescribedBy": {"holon": "holon"}}),
+            ),
+        ];
+        for (error, expected) in cases {
+            assert_eq!(serde_json::to_value(&error).unwrap(), expected);
+            assert_eq!(serde_json::from_value::<HolonError>(expected).unwrap(), error);
+        }
+        for (kind, wire_kind) in [
+            (SchemaInvalidityKind::ContradictoryConstraints, "ContradictoryConstraints"),
+            (SchemaInvalidityKind::MissingConstraintParameter, "MissingConstraintParameter"),
+            (SchemaInvalidityKind::IncompatibleConstraintFamily, "IncompatibleConstraintFamily"),
+            (
+                SchemaInvalidityKind::UnsupportedExecutableConstraint,
+                "UnsupportedExecutableConstraint",
+            ),
+            (SchemaInvalidityKind::UnclassifiedConstraint, "UnclassifiedConstraint"),
+            (
+                SchemaInvalidityKind::InvalidConstraintConfiguration,
+                "InvalidConstraintConfiguration",
+            ),
+        ] {
+            let error = HolonError::DescriptorSchemaInvalid {
+                kind,
+                descriptor: "descriptor".into(),
+                detail: "invalid configuration".into(),
+            };
+            let expected = json!({"DescriptorSchemaInvalid": {"kind": wire_kind, "descriptor": "descriptor", "detail": "invalid configuration"}});
+            assert_eq!(serde_json::to_value(&error).unwrap(), expected);
+            assert_eq!(serde_json::from_value::<HolonError>(expected).unwrap(), error);
+        }
+        let error = HolonError::ValueConstraintViolation {
+            code: "code".into(),
+            value_type: "value-type".into(),
+            constraint: "constraint".into(),
+            constraint_type: "type".into(),
+            descriptor: "descriptor".into(),
+            detail: "detail".into(),
+        };
+        assert_eq!(HolonErrorKind::from(&error), HolonErrorKind::ValueConstraintViolation);
+    }
 
     #[test]
     fn pvl_violation_preserves_structured_kind_and_deterministic_message() {
