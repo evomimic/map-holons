@@ -299,7 +299,7 @@ it('retains the result inspection adapter for actions on descendant nodes', asyn
   }));
 });
 
-it('realizes a retained request root through the standard selected Node composition', async () => {
+it.each(['LoadRequest', 'HolonLoadResponse'])('realizes a retained %s through the standard selected Node composition', async subjectName => {
   const { MaterializedVisualizerRuntime } = await import('./materialized-visualizer-runtime');
   const selected = reference('HolonInspector'), slot = reference('Node slot');
   const realize = vi.spyOn(MaterializedVisualizerRuntime.prototype, 'realize').mockResolvedValue(NavigationElement);
@@ -310,7 +310,7 @@ it('realizes a retained request root through the standard selected Node composit
     await experience.openInitial();
     mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
     const present = openLoadHolons.mock.calls[0][0].presentResult;
-    const request = reference('LoadRequest');
+    const request = reference(subjectName);
     const loader = { owns: () => true, bindSavedReference: (ref: unknown) => ref, withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
     recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
     prepareVisualizerUsage: async () => ({}),

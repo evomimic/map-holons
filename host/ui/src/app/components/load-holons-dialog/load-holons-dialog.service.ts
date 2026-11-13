@@ -74,8 +74,8 @@ export class LoadHolonsDialog implements ActionInteraction {
   constructor(private readonly binding: ActionBinding, private readonly client: MapClient,
     private readonly sources: NativeLoaderSourceAdapter, private readonly mountReview: MountReview,
     private readonly mountDiagnostics: MountDiagnostics = (binding, client, read, load, failure) => {
-      const diagnostics = new LoadDiagnosticPresentation(binding, client, read, failure);
-      return load ? new LoadResultPresentation(binding, diagnostics, load.transaction, load.complete, { response: load.response, summary: load.summary }, client) : diagnostics;
+      const diagnostics = () => new LoadDiagnosticPresentation(binding, client, read, failure);
+      return load ? new LoadResultPresentation(binding, diagnostics, load.transaction, { response: load.response, summary: load.summary }, client) : diagnostics();
     }) {
     this.dialog = document.createElement(binding.mountPresentation ? 'section' : 'dialog');
     this.dialog.setAttribute('aria-label', binding.label);
