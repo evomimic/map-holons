@@ -634,7 +634,8 @@ impl Fixture {
     }
 }
 
-pub(super) fn c2_kind_semantics(
+/// Seeds Core anchor designations and ancestry for graph-derived kind assessment.
+pub(super) fn seed_instance_type_kind_anchors(
     fixture: &mut Fixture,
 ) -> Result<holons_core::DescriptorKindSemantics, HolonError> {
     use type_names::CorePropertyTypeName;
@@ -674,7 +675,7 @@ pub(super) fn c2_kind_semantics(
 /// Complete the roots and member structure consumed by prospective Commit assessment.
 pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
     let mut fixture = Fixture::new()?;
-    c2_kind_semantics(&mut fixture)?;
+    seed_instance_type_kind_anchors(&mut fixture)?;
     for key in [
         "Schema.HolonType",
         "Rule.HolonType",
@@ -889,7 +890,8 @@ pub(super) fn prepare_meta_contract(fixture: &mut Fixture) -> Result<(), HolonEr
     Ok(())
 }
 
-pub(super) fn dispatch_c2_rule(
+/// Emits one prepared descriptor product through a fixture binding, without dispatch.
+pub(super) fn emit_descriptor_product_rule(
     fixture: &mut Fixture,
     rule: CoreValidationRuleName,
     products: &DescriptorRuleProducts,

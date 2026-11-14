@@ -2142,7 +2142,7 @@
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-ENUM-001",
         "ValidationLevel": "Value",
-        "ValidationRuleDescription": "Enum member names must be unique within each effective enum definition."
+        "ValidationRuleDescription": "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."
       },
       "relationships": [
         {

@@ -612,7 +612,7 @@ instance EnumMemberNamesUnique.ValidationRule {
   ValidationLevel Value
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-001"
-  ValidationRuleDescription "Enum member names must be unique within each effective enum definition."
+  ValidationRuleDescription "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."
   rule_of "MAP Core Schema-v0.0.7"
 }
 

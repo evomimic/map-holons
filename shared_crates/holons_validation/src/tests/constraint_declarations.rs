@@ -1,4 +1,4 @@
-use super::support::dispatch_c2_rule;
+use super::support::emit_descriptor_product_rule;
 use super::support::{readiness_fixture, Fixture};
 use crate::{
     assess_commit_candidates, validate_commit_candidates, DescriptorRuleProducts,
@@ -282,7 +282,7 @@ fn broader_local_constraints_preserve_inherited_obligations_and_check_reusable_r
     assert_eq!(collector.observations().effective_constraint_count, 0);
     assert!(collector.into_report().is_accepted());
     let subject = fixture.nodes["Child"].clone();
-    let findings = dispatch_c2_rule(
+    let findings = emit_descriptor_product_rule(
         &mut fixture,
         CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
         &products,
@@ -328,7 +328,7 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
             &mut products,
             &mut collector
         )?);
-        let findings = dispatch_c2_rule(
+        let findings = emit_descriptor_product_rule(
             &mut fixture,
             CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
             &products,

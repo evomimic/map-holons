@@ -55,7 +55,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "65301bf5eea2d685ee6705277ea556fe46c03c38df89881260b1ac26b80471f4"
+      "sha256": "9a30866bb8eaf684e8280f5cd7cd6b8b55c2f3e89d078220520de8a4539435ec"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -79,7 +79,7 @@
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "59ba6cc17ed76ea71d0c808d69e066e0ef9a5815c547c332cc80d37624e1a8dd"
+      "sha256": "6b1ebb1f4dac57e8b3534c0cd01e4cc898e30ca05a1c3603b468a2df1e050a09"
     },
     {
       "path": "imports/core/root.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "87ed6eafef2942cafefc6dfd0a2faed0c53f3b8a93cee833ce72bf56e8395f82"
+      "sha256": "b2b2eb6039e3748eae8f416c8f0ffbade9c050cdb1f9ff83ae81994b41197cf0"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -2821,7 +2821,7 @@
     },
     {
       "key": "EnumVariantValueType.ValueType",
-      "type": "MetaValueType.MetaTypeDescriptor"
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "EqualsComparisonValue.OperandSpecification",
@@ -3613,7 +3613,7 @@
     },
     {
       "key": "MapEnumVariantValueType.EnumVariantValueType",
-      "type": "MetaValueType.MetaTypeDescriptor"
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "MapInteger.PropertyType",
