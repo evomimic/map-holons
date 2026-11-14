@@ -1,7 +1,9 @@
 //! Assessment-local effective contracts. Holon content remains in bound references/caches.
 use crate::assessment::schema_view::SchemaWorkset;
 use crate::assessment::support::targets;
+use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
+use holons_core::descriptors::value_descriptor_subtypes::{EnumMember, EnumMembers};
 use holons_core::descriptors::{
     constraint_applies_to_lineage,
     value_constraints::{
@@ -72,6 +74,8 @@ pub(crate) struct DescriptorPackages {
     pub(crate) constraints: HashMap<DefinitionIdentity, PreparedConstraint>,
     pub(crate) attachment_applicability:
         HashMap<(DefinitionIdentity, DefinitionIdentity), AttachmentApplicability>,
+    enum_members: HashMap<DefinitionIdentity, Result<EnumMembers, HolonError>>,
+    default_declarations: HashMap<DefinitionIdentity, Option<BaseValue>>,
     value_kinds: HashMap<DefinitionIdentity, Result<holons_core::ValueDescriptorKind, HolonError>>,
     pub(crate) diagnoses: Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
 }
@@ -97,6 +101,7 @@ enum PreparationRole {
     PropertyMember,
     Binding,
     Value,
+    EnumDefinition,
     RelationshipMember,
     Constraint,
     ConstraintType,
@@ -116,6 +121,7 @@ impl PreparationRole {
             Self::PropertyMember => "PropertyMember",
             Self::Binding => "Binding",
             Self::Value => "Value",
+            Self::EnumDefinition => "EnumDefinition",
             Self::RelationshipMember => "RelationshipMember",
             Self::Constraint => "Constraint",
             Self::ConstraintType => "ConstraintType",
@@ -189,6 +195,8 @@ impl DescriptorPackages {
         let mut properties = HashMap::new();
         let mut value_kinds = HashMap::new();
         let mut constraint_references = HashMap::new();
+        let mut enum_requests = HashMap::new();
+        let mut default_declarations = HashMap::new();
         while let Some((reference, role)) = pending.pop_front() {
             let identity = DefinitionIdentity::for_reference(&reference, context)?;
             let reference = identity.definition_reference(context, &reference);
@@ -217,6 +225,19 @@ impl DescriptorPackages {
                     if let Some(lineage) = diagnosis.valid_lineage() {
                         if lineage.contains_role(type_names::CoreDefinitionRole::TypeDescriptor) {
                             pending.push_back((reference.clone(), Defined));
+                            if lineage.contains_role(type_names::CoreDefinitionRole::EnumValueType)
+                            {
+                                pending.push_back((reference.clone(), EnumDefinition));
+                            }
+                            if lineage.contains_role(type_names::CoreDefinitionRole::PropertyType) {
+                                pending.push_back((reference.clone(), Property));
+                                default_declarations.insert(
+                                    identity.clone(),
+                                    reference.property_value(
+                                        type_names::CorePropertyTypeName::DefaultValue,
+                                    )?,
+                                );
+                            }
                             if let Some(parent) = lineage.members().get(1) {
                                 pending.push_back((parent.clone(), Obligations));
                             }
@@ -234,6 +255,7 @@ impl DescriptorPackages {
                         }
                     }
                 }
+                EnumDefinition => edges.push(R::Variants),
                 Schema => edges.extend([R::DependsOn, R::DescribedBy]),
                 Constraint | Binding => edges.push(R::DescribedBy),
                 PropertyMember => {
@@ -552,6 +574,16 @@ impl DescriptorPackages {
                         value_kinds.entry(identity.clone()).or_insert_with(|| {
                             holons_core::ValueDescriptor::from_holon(reference.clone()).value_kind()
                         });
+                        if role == Value
+                            && matches!(
+                                value_kinds.get(&identity),
+                                Some(Ok(holons_core::ValueDescriptorKind::BaseValue(
+                                    BaseValueKind::Enum
+                                )))
+                            )
+                        {
+                            pending.push_back((reference.clone(), EnumDefinition));
+                        }
                     }
                 }
             }
@@ -571,6 +603,16 @@ impl DescriptorPackages {
             }
             for edge in edges {
                 let members = targets(&reference, edge.clone())?;
+                if role == EnumDefinition && matches!(edge, R::Variants) {
+                    // The kernel owns inheritance policy and declaring provenance.
+                    let diagnosis = diagnoses.get(&reference)?;
+                    if let Some(lineage) = diagnosis.valid_lineage() {
+                        enum_requests.insert(
+                            identity.clone(),
+                            (reference.clone(), lineage.relationship_targets(R::Variants)?),
+                        );
+                    }
+                }
                 let demand = edge_demand
                     .entry((role.label(), edge.as_relationship_name().to_string()))
                     .or_default();
@@ -609,6 +651,29 @@ impl DescriptorPackages {
             });
         }
         observer(crate::AssessmentEvent::Phase(crate::AssessmentPhase::PreparedProducts));
+        let mut enum_members = HashMap::new();
+        let mut enum_requests: Vec<_> = enum_requests.into_iter().collect();
+        enum_requests.sort_by_key(|(_, (reference, _))| reference.reference_id_string());
+        for (identity, (_, contributions)) in enum_requests {
+            let mut members = Vec::new();
+            let mut defect = None;
+            for contribution in contributions {
+                match EnumMember::from_contribution(&contribution, Some(context))? {
+                    Ok(member) => members.push(member),
+                    Err(error) => {
+                        defect.get_or_insert(error);
+                    }
+                }
+            }
+            enum_members.insert(
+                identity,
+                match defect {
+                    Some(error) => Err(error),
+                    None => Ok(EnumMembers::new(members)),
+                },
+            );
+        }
+
         let mut constraints = HashMap::new();
         let mut requests: Vec<_> = constraint_references.into_iter().collect();
         requests.sort_by_key(|(_, reference)| reference.reference_id_string());
@@ -707,6 +772,7 @@ impl DescriptorPackages {
             );
         }
         let mut preparation = crate::PreparationMetrics {
+            prepared_enum_definitions: enum_members.len(),
             prepared_constraint_parameters: constraints.len(),
             package_roots: packages.len(),
             subjects: subjects.len(),
@@ -739,9 +805,34 @@ impl DescriptorPackages {
             diagnoses,
             properties,
             value_kinds,
+            enum_members,
+            default_declarations,
             constraints,
             attachment_applicability,
         })
+    }
+
+    /// Supplies exact enum evidence without reading or deriving schema state.
+    pub(crate) fn enum_members(
+        &self,
+        identity: &DefinitionIdentity,
+    ) -> Result<&EnumMembers, HolonError> {
+        self.enum_members
+            .get(identity)
+            .ok_or_else(|| HolonError::InvalidState("Enum members were not prepared".into()))?
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+
+    /// A prepared local omission remains distinct from missing preparation demand.
+    pub(crate) fn default_declaration(
+        &self,
+        identity: &DefinitionIdentity,
+    ) -> Result<Option<&BaseValue>, HolonError> {
+        self.default_declarations
+            .get(identity)
+            .map(Option::as_ref)
+            .ok_or_else(|| HolonError::InvalidState("Default declaration was not prepared".into()))
     }
 
     #[cfg(test)]

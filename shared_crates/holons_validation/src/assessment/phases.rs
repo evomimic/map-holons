@@ -15,6 +15,8 @@ pub enum AssessmentPhase {
 /// Aggregate preparation demand. Counts describe reference requests, not backend cache misses.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreparationMetrics {
+    /// Exact enum definitions with retained concrete and abstract variant evidence.
+    pub prepared_enum_definitions: usize,
     /// Distinct exact constraint identities with a prepared interpretation, including defects.
     pub prepared_constraint_parameters: usize,
     pub package_roots: usize,

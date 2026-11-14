@@ -499,3 +499,324 @@ fn unusable_requiredness_preserves_independent_value_checks() -> Result<(), Holo
     }
     Ok(())
 }
+
+/// Enum values and unused default declarations share exact prepared contracts.
+fn enum_default_fixture() -> Result<Fixture, HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("PreparedEnum")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("PreparedEnum", R::Extends, "EnumValueType.ValueType")?;
+    fixture.node("PreparedVariant")?.with_property_value("TypeName", "Member")?;
+    fixture.link("PreparedEnum", R::Variants, "PreparedVariant")?;
+    let old = fixture.nodes["StringValueType.ValueType"].clone();
+    fixture.node("Title.PropertyType")?.remove_related_holons(R::ValueType, vec![old])?;
+    fixture.link("Title.PropertyType", R::ValueType, "PreparedEnum")?;
+    fixture
+        .node("UnusedDefault")?
+        .with_property_value("DefinesInstanceTypeKind", false)?
+        .with_property_value("IsValueRequired", true)?
+        .with_property_value(
+            "DefaultValue",
+            base_types::BaseValue::EnumValue(base_types::MapEnumValue("Member".into())),
+        )?;
+    fixture.link("UnusedDefault", R::Extends, "PropertyType.TypeDescriptor")?;
+    fixture.link("UnusedDefault", R::ValueType, "PreparedEnum")?;
+    Ok(fixture)
+}
+
+#[test]
+fn enum_and_default_demand_is_subject_local_and_sealed() -> Result<(), HolonError> {
+    use crate::assessment::{descriptor_package::DescriptorPackages, schema_view::SchemaWorkset};
+    use holons_core::descriptors::value_descriptor_subtypes::EnumMembership;
+    for saved in [false, true] {
+        let fixture = enum_default_fixture()?;
+        let fixture = if saved { fixture.saved_snapshot()? } else { fixture };
+        let identity = |key: &str| {
+            holons_core::DefinitionIdentity::for_reference(&fixture.nodes[key], &fixture.context)
+        };
+        let mut events = Vec::new();
+        let packages = DescriptorPackages::construct_with_observer(
+            &fixture.context,
+            &[fixture.nodes["Contract"].clone()],
+            &[fixture.nodes["UnusedDefault"].clone(), fixture.nodes["PreparedEnum"].clone()],
+            &SchemaWorkset { schemas: Vec::new() },
+            fixture.diagnoses(),
+            &mut |event| events.push(event),
+        )?;
+        let reads = (fixture.backend_node_reads(), fixture.backend_relationship_reads());
+        let probe =
+            holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+        let members = packages.enum_members(&identity("PreparedEnum")?)?;
+        assert_eq!(
+            members.membership("Member"),
+            EnumMembership::Member(identity("PreparedVariant")?)
+        );
+        assert_eq!(members.members()[0].declared_on, identity("PreparedEnum")?);
+        assert!(packages.default_declaration(&identity("UnusedDefault")?)?.is_some());
+        assert!(packages.requiredness(&fixture.nodes["UnusedDefault"])?.unwrap());
+        assert_eq!(
+            packages.value_type(&fixture.nodes["UnusedDefault"])?,
+            Some(&fixture.nodes["PreparedEnum"])
+        );
+        assert!(matches!(
+            packages.default_declaration(&identity("Title.PropertyType")?),
+            Err(HolonError::InvalidState(_))
+        ));
+        assert!(matches!(
+            packages.enum_members(&identity("Contract")?),
+            Err(HolonError::InvalidState(_))
+        ));
+        assert_eq!(packages.preparation_metrics().prepared_enum_definitions, 1);
+        assert_eq!(reads, (fixture.backend_node_reads(), fixture.backend_relationship_reads()));
+        assert!(probe.finish().0.values().all(|count| *count == 0));
+        assert!(events.iter().any(|event| matches!(event, crate::AssessmentEvent::PreparationEdge { role: "EnumDefinition", edge, requests: 1, members: 1 } if edge == "Variants")));
+
+        // Supporting saved declarations are inputs, not independent validation subjects.
+        let supporting = DescriptorPackages::construct(
+            &fixture.context,
+            &[fixture.nodes["Contract"].clone()],
+            &[],
+            &SchemaWorkset { schemas: Vec::new() },
+        )?;
+        assert!(matches!(
+            supporting.default_declaration(&identity("UnusedDefault")?),
+            Err(HolonError::InvalidState(_))
+        ));
+        assert!(supporting.enum_members(&identity("PreparedEnum")?).is_ok());
+    }
+    Ok(())
+}
+
+#[test]
+fn enum_definition_alone_demands_variants_and_local_default_omissions_are_retained(
+) -> Result<(), HolonError> {
+    use crate::assessment::{descriptor_package::DescriptorPackages, schema_view::SchemaWorkset};
+    let mut fixture = enum_default_fixture()?;
+    let enum_only = DescriptorPackages::construct(
+        &fixture.context,
+        &[],
+        &[fixture.nodes["PreparedEnum"].clone()],
+        &SchemaWorkset { schemas: Vec::new() },
+    )?;
+    assert_eq!(enum_only.preparation_metrics().prepared_enum_definitions, 1);
+    assert!(matches!(
+        enum_only.value_type(&fixture.nodes["UnusedDefault"]),
+        Err(HolonError::InvalidState(_))
+    ));
+    fixture.node("UnusedDefault")?.remove_property_value("DefaultValue")?;
+    fixture
+        .node("PropertyType.TypeDescriptor")?
+        .with_property_value("DefaultValue", "inherited")?;
+    let packages = DescriptorPackages::construct(
+        &fixture.context,
+        &[],
+        &[fixture.nodes["PreparedEnum"].clone(), fixture.nodes["UnusedDefault"].clone()],
+        &SchemaWorkset { schemas: Vec::new() },
+    )?;
+    assert_eq!(packages.preparation_metrics().prepared_enum_definitions, 1);
+    let property = holons_core::DefinitionIdentity::for_reference(
+        &fixture.nodes["UnusedDefault"],
+        &fixture.context,
+    )?;
+    assert!(packages.default_declaration(&property)?.is_none());
+    Ok(())
+}
+
+#[test]
+fn enum_default_commit_consumes_preparation_without_reads_or_derivation() -> Result<(), HolonError>
+{
+    for saved in [false, true] {
+        let mut fixture = enum_default_fixture()?;
+        prepare_meta_contract(&mut fixture)?;
+        fixture.link("PreparedEnum", R::DescribedBy, "MetaHolonType.MetaTypeDescriptor")?;
+        fixture.link("UnusedDefault", R::DescribedBy, "MetaHolonType.MetaTypeDescriptor")?;
+        let fixture = if saved { fixture.saved_snapshot()? } else { fixture };
+        let mut subject = fixture.staged_subject("enum-consumer")?;
+        subject.with_property_value(
+            "Title",
+            base_types::BaseValue::EnumValue(base_types::MapEnumValue("Member".into())),
+        )?;
+        let mut candidates = vec![subject];
+        if !saved {
+            for key in ["PreparedEnum", "UnusedDefault"] {
+                let HolonReference::Staged(candidate) = fixture.nodes[key].clone() else {
+                    unreachable!()
+                };
+                candidates.push(candidate);
+            }
+        }
+        let constructed = crate::assessment::commit::construct_assessment(
+            &fixture.context,
+            &candidates,
+            crate::ValidationCollector::default(),
+        )?;
+        let reads = (fixture.backend_node_reads(), fixture.backend_relationship_reads());
+        let probe =
+            holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+        constructed.assess(|_| {})?;
+        assert_eq!(reads, (fixture.backend_node_reads(), fixture.backend_relationship_reads()));
+        assert!(probe.finish().0.values().all(|count| *count == 0));
+    }
+    Ok(())
+}
+
+#[test]
+fn property_collision_evidence_retains_all_distinct_claimants_and_owners() -> Result<(), HolonError>
+{
+    use crate::assessment::{descriptor_package::DescriptorPackages, schema_view::SchemaWorkset};
+    let mut fixture = readiness_fixture()?;
+    for key in ["OtherTitle", "ThirdTitle"] {
+        fixture
+            .node(key)?
+            .with_property_value("TypeName", "Title")?
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link(key, R::Extends, "PropertyType.TypeDescriptor")?;
+        fixture.link(key, R::ValueType, "StringValueType.ValueType")?;
+        fixture.link("Contract", R::InstanceProperties, key)?;
+    }
+    // A repeated identity is not another semantic-name claimant.
+    fixture.link("Contract", R::InstanceProperties, "OtherTitle")?;
+    let fixture = fixture.saved_snapshot()?;
+    let packages = DescriptorPackages::construct(
+        &fixture.context,
+        &[fixture.nodes["Contract"].clone()],
+        &[],
+        &SchemaWorkset { schemas: Vec::new() },
+    )?;
+    let reads = (fixture.backend_node_reads(), fixture.backend_relationship_reads());
+    let probe = holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+    let mut products = DescriptorRuleProducts::new(std::sync::Arc::clone(&packages.diagnoses));
+    let interpretation = products.prepare_effective_schema(
+        packages.effective_schema(&fixture.nodes["Contract"])?,
+        &holons_core::DescriptorKindSemantics::new(&fixture.context),
+    )?;
+    assert!(!interpretation.vocabulary_usable);
+    assert_eq!(interpretation.property_name_collisions.len(), 1);
+    let owner = holons_core::DefinitionIdentity::for_reference(
+        &fixture.nodes["Contract"],
+        &fixture.context,
+    )?;
+    let expected = ["Title.PropertyType", "OtherTitle", "ThirdTitle"]
+        .into_iter()
+        .map(|key| {
+            Ok((
+                holons_core::DefinitionIdentity::for_reference(
+                    &fixture.nodes[key],
+                    &fixture.context,
+                )?,
+                owner.clone(),
+            ))
+        })
+        .collect::<Result<Vec<_>, HolonError>>()?;
+    assert_eq!(
+        interpretation.property_name_collisions["Title"]
+            .iter()
+            .map(|claim| (claim.member.clone(), claim.declared_on.clone()))
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(reads, (fixture.backend_node_reads(), fixture.backend_relationship_reads()));
+    assert!(probe.finish().0.values().all(|count| *count == 0));
+    Ok(())
+}
+
+#[test]
+fn staged_successors_do_not_redirect_saved_enum_or_default_contracts() -> Result<(), HolonError> {
+    use crate::assessment::{descriptor_package::DescriptorPackages, schema_view::SchemaWorkset};
+    use base_types::ToBaseValue;
+    use holons_core::core_shared_objects::WritableRelationship;
+    use holons_core::descriptors::value_descriptor_subtypes::EnumMembership;
+    use type_names::ToPropertyName;
+    let fixture = enum_default_fixture()?.saved_snapshot()?;
+    let variant = fixture.stage_update_of_with("PreparedVariant", |model| {
+        model.properties.insert("TypeName".to_property_name(), "Changed".to_base_value());
+        Ok(())
+    })?;
+    let successor = fixture.stage_update_of_with("PreparedEnum", |model| {
+        model.properties.insert("TypeName".to_property_name(), "ChangedEnum".to_base_value());
+        let mut relationships = model.relationships.as_ref().unwrap().clone_for_staged()?;
+        relationships.map.remove(&R::Variants.as_relationship_name());
+        relationships.add_related_holons_with_keys(
+            R::Variants.as_relationship_name(),
+            vec![(variant.clone().into(), None)],
+        )?;
+        model.relationships = Some(relationships.into());
+        Ok(())
+    })?;
+    let property = fixture.stage_update_of_with("UnusedDefault", |model| {
+        model
+            .properties
+            .insert("DefaultValue".to_property_name(), "ChangedDefault".to_base_value());
+        Ok(())
+    })?;
+    let successor: HolonReference = successor.into();
+    let property: HolonReference = property.into();
+    let packages = DescriptorPackages::construct(
+        &fixture.context,
+        &[fixture.nodes["Contract"].clone()],
+        &[successor.clone(), property.clone()],
+        &SchemaWorkset { schemas: Vec::new() },
+    )?;
+    let identity = |reference: &HolonReference| {
+        holons_core::DefinitionIdentity::for_reference(reference, &fixture.context)
+    };
+    let original = packages.enum_members(&identity(&fixture.nodes["PreparedEnum"])?)?;
+    assert_eq!(
+        original.membership("Member"),
+        EnumMembership::Member(identity(&fixture.nodes["PreparedVariant"])?)
+    );
+    assert_eq!(original.membership("Changed"), EnumMembership::Undeclared);
+    let changed = packages.enum_members(&identity(&successor)?)?;
+    assert_eq!(changed.membership("Changed"), EnumMembership::Member(identity(&variant.into())?));
+    assert_eq!(changed.membership("Member"), EnumMembership::Undeclared);
+    assert_eq!(
+        packages.default_declaration(&identity(&property)?)?,
+        Some(&"ChangedDefault".to_base_value())
+    );
+    assert!(matches!(
+        packages.default_declaration(&identity(&fixture.nodes["UnusedDefault"])?),
+        Err(HolonError::InvalidState(_))
+    ));
+    assert_eq!(packages.value_type(&property)?, Some(&fixture.nodes["PreparedEnum"]));
+    Ok(())
+}
+
+#[test]
+fn malformed_variant_fields_are_sealed_defects() -> Result<(), HolonError> {
+    use crate::assessment::{descriptor_package::DescriptorPackages, schema_view::SchemaWorkset};
+    for field in ["TypeName", "IsAbstractType"] {
+        let mut fixture = enum_default_fixture()?;
+        fixture.node("PreparedVariant")?.remove_property_value(field)?;
+        let packages = DescriptorPackages::construct(
+            &fixture.context,
+            &[],
+            &[fixture.nodes["PreparedEnum"].clone()],
+            &SchemaWorkset { schemas: Vec::new() },
+        )?;
+        let identity = holons_core::DefinitionIdentity::for_reference(
+            &fixture.nodes["PreparedEnum"],
+            &fixture.context,
+        )?;
+        assert!(
+            matches!(packages.enum_members(&identity), Err(HolonError::EmptyField(name)) if name == field)
+        );
+        assert_eq!(packages.preparation_metrics().prepared_enum_definitions, 1);
+    }
+    Ok(())
+}
+
+#[test]
+fn enum_member_acquisition_failure_is_not_a_declaration_defect() -> Result<(), HolonError> {
+    use crate::assessment::{descriptor_package::DescriptorPackages, schema_view::SchemaWorkset};
+    // Even a backend error resembling a field defect must remain operational.
+    let error = HolonError::EmptyField("backend acquisition failed".into());
+    let fixture = enum_default_fixture()?
+        .saved_snapshot_with_read_errors(&[("PreparedVariant", error.clone())])?;
+    let result = DescriptorPackages::construct(
+        &fixture.context,
+        &[],
+        &[fixture.nodes["PreparedEnum"].clone()],
+        &SchemaWorkset { schemas: Vec::new() },
+    );
+    assert_eq!(result.err(), Some(error));
+    Ok(())
+}
