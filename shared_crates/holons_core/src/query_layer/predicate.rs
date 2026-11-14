@@ -1242,12 +1242,39 @@ mod tests {
             )
             .unwrap();
         let extended: HolonReference = extended.into();
+        ValueDescriptor::from_holon(extended.clone()).validate_literal(&token("Archived")).unwrap();
+        assert!(matches!(
+            ValueDescriptor::from_holon(extended.clone()).validate_literal(&token("Draft")),
+            Err(HolonError::EnumVariantNotInSchema { .. })
+        ));
         let error = validate(&world.equals("Status", &extended, token("Archived")), &book(&world))
             .unwrap_err();
         assert!(
             matches!(&error, HolonError::EnumVariantNotInSchema { variant, .. } if variant == "Archived"),
             "unexpected error: {error:?}"
         );
+    }
+
+    #[test]
+    fn enum_literal_and_predicate_membership_agree_on_duplicate_tokens() {
+        use crate::descriptors::test_support::new_descriptor_holon;
+        let world = world();
+        ValueDescriptor::from_holon(world.status.clone())
+            .validate_literal(&token("Draft"))
+            .unwrap();
+        validate(&world.equals("Status", &world.status, token("Draft")), &book(&world)).unwrap();
+
+        let member =
+            new_descriptor_holon(&world.context, "duplicate-draft", "Draft", "EnumVariant")
+                .unwrap();
+        let mut status = world.status.clone();
+        status.add_related_holons(CoreRelationshipTypeName::Variants, vec![member.into()]).unwrap();
+        let literal =
+            ValueDescriptor::from_holon(world.status.clone()).validate_literal(&token("Draft"));
+        let predicate =
+            validate(&world.equals("Status", &world.status, token("Draft")), &book(&world));
+        assert!(matches!(literal, Err(HolonError::EnumVariantNotInSchema { .. })));
+        assert!(matches!(predicate, Err(HolonError::EnumVariantNotInSchema { .. })));
     }
 
     #[test]

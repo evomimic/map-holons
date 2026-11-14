@@ -127,9 +127,14 @@ pub enum HolonError {
     #[error("Descriptor schema is invalid for {descriptor}: {kind:?}: {detail}")]
     DescriptorSchemaInvalid { kind: SchemaInvalidityKind, detail: String, descriptor: String },
     #[error(
-        "Enum variant {variant} is not declared for value type {value_type} on descriptor {descriptor}"
+        "Enum variant {variant} does not conform to value type {value_type} on descriptor {descriptor}: {detail}"
     )]
-    EnumVariantNotInSchema { variant: String, value_type: String, descriptor: String },
+    EnumVariantNotInSchema {
+        variant: String,
+        value_type: String,
+        descriptor: String,
+        detail: String,
+    },
     #[error("No effective key rule found for descriptor {descriptor}")]
     NoEffectiveKeyRule { descriptor: String },
     #[error("{0} access not allowed while holon is in {1} state")]
