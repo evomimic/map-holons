@@ -60,8 +60,9 @@ impl StringValueDescriptor {
 
     /// Executes a resolved string operator.
     ///
-    /// Contains treats its operand as literal text, never a pattern, and matches
-    /// under the operator's resolved case-matching policy. Ordered comparisons
+    /// The matching operators (Contains, StartsWith, EndsWith) treat their
+    /// operand as literal text, never a pattern, and match under the operator's
+    /// resolved case-matching policy. Ordered comparisons
     /// use the original values in ordinal order (UTF-8 byte order, which is
     /// Unicode code point order): case-sensitive, with no folding,
     /// normalization or locale collation.
@@ -84,7 +85,9 @@ impl StringValueDescriptor {
         match op.kind() {
             OperatorKind::Equals => Ok(lhs == rhs),
             OperatorKind::Ordered(comparison) => Ok(comparison.holds(lhs.0.cmp(&rhs.0))),
-            OperatorKind::Contains(case_matching) => Ok(case_matching.contains(&lhs.0, &rhs.0)),
+            OperatorKind::Matching(literal_match, case_matching) => {
+                Ok(case_matching.matches(literal_match, &lhs.0, &rhs.0))
+            }
         }
     }
 }
@@ -245,6 +248,37 @@ mod tests {
             Err(HolonError::UnsupportedOperator { operator, value_type, .. })
                 if operator == "EqualsOperator" && value_type == "StringValueType"
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_operator_delegates_literal_boundary_matching() -> Result<(), HolonError> {
+        let context = build_context();
+        // Staged operators can reference only a staged substring type.
+        let string_type: HolonReference = context
+            .mutation()
+            .stage_new_holon(new_kind_descriptor(&context, "StringValueType", None, true)?)?
+            .into();
+        let starts_with =
+            core_operator(&context, CoreOperatorTypeName::StartsWithOperator, Some(&string_type))?;
+        let ends_with =
+            core_operator(&context, CoreOperatorTypeName::EndsWithOperator, Some(&string_type))?;
+        let mut value = new_kind_descriptor(&context, "Title", Some(&string_type), false)?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![starts_with.clone(), ends_with.clone()],
+        )?;
+        let descriptor = StringValueDescriptor::from_holon(value.into());
+        let (starts_with, ends_with) = (
+            OperatorDescriptor::from_holon(starts_with),
+            OperatorDescriptor::from_holon(ends_with),
+        );
+        let subject = string_value("Straße");
+
+        assert!(descriptor.apply_operator(&starts_with, &subject, &string_value("STRA"))?);
+        assert!(!descriptor.apply_operator(&starts_with, &subject, &string_value("SSE"))?);
+        assert!(descriptor.apply_operator(&ends_with, &subject, &string_value("SSE"))?);
+        assert!(!descriptor.apply_operator(&ends_with, &subject, &string_value("STRA"))?);
         Ok(())
     }
 

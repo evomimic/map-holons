@@ -1,8 +1,8 @@
 use crate::descriptors::inheritance::effective_relationship_targets;
 use crate::descriptors::{
-    accessor_helpers, classify_descriptor_lineage, CaseMatching, Descriptor, OperandSpecification,
-    OperatorCategory, OperatorKind, OrderedComparison, ResolvedOperator, TypeHeader,
-    ValueDescriptor,
+    accessor_helpers, classify_descriptor_lineage, CaseMatching, Descriptor, LiteralMatch,
+    OperandSpecification, OperatorCategory, OperatorKind, OrderedComparison, ResolvedOperator,
+    TypeHeader, ValueDescriptor,
 };
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, MapString};
@@ -103,7 +103,8 @@ impl OperatorDescriptor {
     /// Identity decides: an ancestor counts only when it is the canonical
     /// `<Name>.OperatorType` descriptor, so an extension operator executes with
     /// its supported ancestor's semantics and an unrelated same-named descriptor
-    /// is unsupported. Contains semantics require an effective case-matching policy.
+    /// is unsupported. The string matching semantics (Contains, StartsWith,
+    /// EndsWith) require an effective case-matching policy.
     pub fn kind(&self) -> Result<OperatorKind, HolonError> {
         let candidates = [
             CoreOperatorTypeName::EqualsOperator,
@@ -112,6 +113,8 @@ impl OperatorDescriptor {
             CoreOperatorTypeName::LessThanOrEqualOperator,
             CoreOperatorTypeName::GreaterThanOrEqualOperator,
             CoreOperatorTypeName::ContainsOperator,
+            CoreOperatorTypeName::StartsWithOperator,
+            CoreOperatorTypeName::EndsWithOperator,
         ]
         .map(|name| (name.as_operator_name().0, name));
         let classified =
@@ -130,17 +133,27 @@ impl OperatorDescriptor {
             Some(CoreOperatorTypeName::GreaterThanOrEqualOperator) => {
                 Ok(OperatorKind::Ordered(OrderedComparison::GreaterThanOrEqual))
             }
-            Some(CoreOperatorTypeName::ContainsOperator) => match self.case_matching()? {
-                Some(case_matching) => Ok(OperatorKind::Contains(case_matching)),
-                None => Err(HolonError::InvalidOperatorMetadata {
-                    operator: self.operator_name()?.to_string(),
-                    reason: "a Contains operator requires an effective CaseMatching".to_string(),
-                }),
-            },
+            Some(CoreOperatorTypeName::ContainsOperator) => self.matching(LiteralMatch::Contains),
+            Some(CoreOperatorTypeName::StartsWithOperator) => {
+                self.matching(LiteralMatch::StartsWith)
+            }
+            Some(CoreOperatorTypeName::EndsWithOperator) => self.matching(LiteralMatch::EndsWith),
             None => Err(HolonError::NotImplemented(format!(
                 "operator {} has no supported core operator in its lineage",
                 self.operator_name()?
             ))),
+        }
+    }
+
+    /// Classifies a string matching operator, which requires an effective
+    /// case-matching policy.
+    fn matching(&self, literal_match: LiteralMatch) -> Result<OperatorKind, HolonError> {
+        match self.case_matching()? {
+            Some(case_matching) => Ok(OperatorKind::Matching(literal_match, case_matching)),
+            None => Err(HolonError::InvalidOperatorMetadata {
+                operator: self.operator_name()?.to_string(),
+                reason: format!("a {literal_match:?} operator requires an effective CaseMatching"),
+            }),
         }
     }
 

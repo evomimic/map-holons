@@ -55,7 +55,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "56e9882810cf609ee6ec1dbf1d8b620ed1d56adb505580a3a6e1bfda1afbfaf3"
+      "sha256": "30ee634091409287e93d42cd7b4ed32905179a4cf384733aa258d2a9aee6cf5a"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -71,7 +71,7 @@
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "c93a848ee41737e55e31cdc8729494ae51e532b5c32c5af617b49278fcd2a2f6"
+      "sha256": "0671cbd13cfb1e46f2f8562e101e641bfa1cb3e0c7f242f77f7edb48e2065b84"
     },
     {
       "path": "imports/core/property-types.json",
@@ -2784,6 +2784,14 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "EndsWithOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "EndsWithSuffix.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
+    },
+    {
       "key": "Engine.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -4430,6 +4438,14 @@
     {
       "key": "StartUtf8ByteOffset.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "StartsWithOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "StartsWithPrefix.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
     },
     {
       "key": "StringLengthConstraint.ConstraintType",

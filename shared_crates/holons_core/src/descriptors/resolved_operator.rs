@@ -2,7 +2,7 @@ use crate::descriptors::value_descriptor_subtypes::helpers::{
     unsupported_operator_error, value_kind_mismatch,
 };
 use crate::descriptors::{
-    accessor_helpers, CaseMatching, Descriptor, OperatorDescriptor, ValueDescriptor,
+    accessor_helpers, CaseMatching, Descriptor, LiteralMatch, OperatorDescriptor, ValueDescriptor,
     ValueDescriptorKind,
 };
 use base_types::{BaseValue, BaseValueKind};
@@ -15,8 +15,9 @@ pub enum OperatorKind {
     Equals,
     /// An ordered comparison of the subject against one comparison value.
     Ordered(OrderedComparison),
-    /// Literal substring containment under the operator's case-matching policy.
-    Contains(CaseMatching),
+    /// Literal string matching (Contains, StartsWith, or EndsWith) under the
+    /// operator's case-matching policy.
+    Matching(LiteralMatch, CaseMatching),
 }
 
 /// The ordered comparisons, each relating the subject to its comparison value
@@ -54,7 +55,7 @@ impl OperatorKind {
     /// Number of authored operands after the subject that this semantics consumes.
     fn authored_operand_count(self) -> usize {
         match self {
-            Self::Equals | Self::Ordered(_) | Self::Contains(_) => 1,
+            Self::Equals | Self::Ordered(_) | Self::Matching(..) => 1,
         }
     }
 
@@ -67,7 +68,7 @@ impl OperatorKind {
         match (self, kind) {
             (Self::Equals, ValueDescriptorKind::BaseValue(_)) => true,
             (Self::Ordered(_), ValueDescriptorKind::BaseValue(Integer | String)) => true,
-            (Self::Contains(_), ValueDescriptorKind::BaseValue(String)) => true,
+            (Self::Matching(..), ValueDescriptorKind::BaseValue(String)) => true,
             _ => false,
         }
     }
@@ -242,6 +243,8 @@ mod tests {
         less_than_or_equal: HolonReference,
         greater_than_or_equal: HolonReference,
         contains: HolonReference,
+        starts_with: HolonReference,
+        ends_with: HolonReference,
     }
 
     fn world() -> World {
@@ -257,9 +260,10 @@ mod tests {
         let greater_than = ordered(CoreOperatorTypeName::GreaterThanOperator);
         let less_than_or_equal = ordered(CoreOperatorTypeName::LessThanOrEqualOperator);
         let greater_than_or_equal = ordered(CoreOperatorTypeName::GreaterThanOrEqualOperator);
-        let contains =
-            core_operator(&context, CoreOperatorTypeName::ContainsOperator, Some(&string_type))
-                .unwrap();
+        let matching = |name| core_operator(&context, name, Some(&string_type)).unwrap();
+        let contains = matching(CoreOperatorTypeName::ContainsOperator);
+        let starts_with = matching(CoreOperatorTypeName::StartsWithOperator);
+        let ends_with = matching(CoreOperatorTypeName::EndsWithOperator);
         World {
             context,
             string_type,
@@ -269,10 +273,21 @@ mod tests {
             less_than_or_equal,
             greater_than_or_equal,
             contains,
+            starts_with,
+            ends_with,
         }
     }
 
     impl World {
+        /// The three matching operators with their expected literal position.
+        fn matching(&self) -> [(&HolonReference, LiteralMatch); 3] {
+            [
+                (&self.contains, LiteralMatch::Contains),
+                (&self.starts_with, LiteralMatch::StartsWith),
+                (&self.ends_with, LiteralMatch::EndsWith),
+            ]
+        }
+
         /// The four ordered operators with their expected classification.
         fn ordering(&self) -> [(&HolonReference, OrderedComparison); 4] {
             [
@@ -548,7 +563,10 @@ mod tests {
         let title = world.subject("StringValueType", &[&world.contains]);
         let contains = world.resolve(&world.contains, &title).unwrap();
 
-        assert_eq!(contains.kind(), OperatorKind::Contains(CaseMatching::UnicodeDefaultCaseFold));
+        assert_eq!(
+            contains.kind(),
+            OperatorKind::Matching(LiteralMatch::Contains, CaseMatching::UnicodeDefaultCaseFold)
+        );
         assert_eq!(contains.operand_value_types()[0].holon(), &world.string_type);
         assert!(contains.invoke(&string("Straße"), &[string("STRASSE")]).unwrap());
         assert!(contains.invoke(&string("Graph Theory"), &[string("graph")]).unwrap());
@@ -580,6 +598,203 @@ mod tests {
             Err(HolonError::ValueKindMismatch { expected, found, .. })
                 if expected == "String" && found == "Integer"
         ));
+    }
+
+    #[test]
+    fn starts_with_and_ends_with_match_case_folded_literal_boundaries() {
+        let world = world();
+        let title = world.subject("StringValueType", &[&world.starts_with, &world.ends_with]);
+        let starts_with = world.resolve(&world.starts_with, &title).unwrap();
+        let ends_with = world.resolve(&world.ends_with, &title).unwrap();
+
+        for (resolved, literal_match) in
+            [(&starts_with, LiteralMatch::StartsWith), (&ends_with, LiteralMatch::EndsWith)]
+        {
+            assert_eq!(
+                resolved.kind(),
+                OperatorKind::Matching(literal_match, CaseMatching::UnicodeDefaultCaseFold)
+            );
+            assert_eq!(resolved.operand_value_types().len(), 1);
+            assert_eq!(resolved.operand_value_types()[0].holon(), &world.string_type);
+            assert!(resolved.invoke(&string("anything"), &[string("")]).unwrap());
+            assert!(resolved.invoke(&string(""), &[string("")]).unwrap());
+            assert!(!resolved.invoke(&string(""), &[string("a")]).unwrap());
+            assert!(!resolved.invoke(&string("Graph Theory"), &[string("ph Th")]).unwrap());
+        }
+        assert!(starts_with.invoke(&string("Straße"), &[string("STRA")]).unwrap());
+        assert!(starts_with.invoke(&string("ßeta"), &[string("s")]).unwrap());
+        assert!(!starts_with.invoke(&string("Graph"), &[string("G.*")]).unwrap());
+        assert!(!starts_with.invoke(&string("Graph Theory"), &[string("theory")]).unwrap());
+        assert!(ends_with.invoke(&string("Straße"), &[string("SSE")]).unwrap());
+        assert!(ends_with.invoke(&string("Fuß"), &[string("s")]).unwrap());
+        assert!(!ends_with.invoke(&string("Graph"), &[string("h$")]).unwrap());
+        assert!(!ends_with.invoke(&string("Graph Theory"), &[string("graph")]).unwrap());
+    }
+
+    #[test]
+    fn matching_operators_require_exactly_one_string_operand() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.matching().iter().map(|(operator, _)| *operator).collect();
+        let title = world.subject("StringValueType", &operators);
+        for (operator, _) in world.matching() {
+            let resolved = world.resolve(operator, &title).unwrap();
+            for operands in [vec![], vec![string("a"), string("b")]] {
+                assert!(matches!(
+                    resolved.invoke(&string("abc"), &operands),
+                    Err(HolonError::OperandCountMismatch { expected: 1, found, .. })
+                        if found == operands.len()
+                ));
+            }
+            assert!(matches!(
+                resolved.invoke(&string("abc"), &[integer(1)]),
+                Err(HolonError::ValueKindMismatch { expected, found, .. })
+                    if expected == "String" && found == "Integer"
+            ));
+            assert!(matches!(
+                resolved.invoke(&integer(1), &[string("1")]),
+                Err(HolonError::ValueKindMismatch { expected, found, .. })
+                    if expected == "String" && found == "Integer"
+            ));
+        }
+    }
+
+    #[test]
+    fn each_matching_affordance_is_independent() {
+        let world = world();
+        for (afforded, _) in world.matching() {
+            let title = world.subject("StringValueType", &[afforded]);
+            world.resolve(afforded, &title).expect("the afforded operator resolves");
+            for (other, _) in world.matching() {
+                if other != afforded {
+                    assert!(matches!(
+                        world.resolve(other, &title),
+                        Err(HolonError::UnsupportedOperator { .. })
+                    ));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn matching_is_unsupported_on_non_string_subjects_even_when_afforded() {
+        let world = world();
+        for (operator, _) in world.matching() {
+            for kind_anchor in ["IntegerValueType", "BooleanValueType", "BytesValueType"] {
+                let subject = world.subject(kind_anchor, &[operator]);
+                assert!(
+                    matches!(
+                        world.resolve(operator, &subject),
+                        Err(HolonError::UnsupportedOperator { .. })
+                    ),
+                    "{kind_anchor} acquired string matching"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_boundary_extension_operator_keeps_its_ancestor_position_and_may_set_its_policy() {
+        let world = world();
+        for (ancestor, literal_match) in [
+            (&world.starts_with, LiteralMatch::StartsWith),
+            (&world.ends_with, LiteralMatch::EndsWith),
+        ] {
+            let case_sensitive = stage_operator(
+                &world.context,
+                OperatorFixture {
+                    type_name: &format!("CaseSensitive{literal_match:?}Operator"),
+                    category: "Matching",
+                    case_matching: Some("CaseSensitive"),
+                    operand_type: Some(&world.string_type),
+                    extends: Some(ancestor),
+                },
+            )
+            .unwrap();
+            let inheriting = stage_operator(
+                &world.context,
+                OperatorFixture {
+                    type_name: &format!("Inheriting{literal_match:?}Operator"),
+                    category: "Matching",
+                    case_matching: None,
+                    operand_type: Some(&world.string_type),
+                    extends: Some(ancestor),
+                },
+            )
+            .unwrap();
+            let title = world.subject("StringValueType", &[&case_sensitive, &inheriting]);
+
+            let resolved = world.resolve(&case_sensitive, &title).unwrap();
+            assert_eq!(
+                resolved.kind(),
+                OperatorKind::Matching(literal_match, CaseMatching::CaseSensitive)
+            );
+            assert!(!resolved.invoke(&string("Straße"), &[string("STRA")]).unwrap());
+            assert!(!resolved.invoke(&string("Straße"), &[string("SSE")]).unwrap());
+            assert_eq!(
+                world.resolve(&inheriting, &title).unwrap().kind(),
+                OperatorKind::Matching(literal_match, CaseMatching::UnicodeDefaultCaseFold)
+            );
+            // Affording the extensions does not afford their ancestor.
+            assert!(matches!(
+                world.resolve(ancestor, &title),
+                Err(HolonError::UnsupportedOperator { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn boundary_operator_metadata_requires_a_known_case_matching_policy() {
+        for name in ["StartsWithOperator", "EndsWithOperator"] {
+            for (case_matching, expected_unknown) in [(None, false), (Some("Loose"), true)] {
+                let context = build_context();
+                let string_type: HolonReference = context
+                    .mutation()
+                    .stage_new_holon(
+                        new_kind_descriptor(&context, "StringValueType", None, true).unwrap(),
+                    )
+                    .unwrap()
+                    .into();
+                let operator = stage_operator(
+                    &context,
+                    OperatorFixture {
+                        type_name: name,
+                        category: "Matching",
+                        case_matching,
+                        operand_type: Some(&string_type),
+                        extends: None,
+                    },
+                )
+                .unwrap();
+                let kind = OperatorDescriptor::from_holon(operator).kind();
+                if expected_unknown {
+                    assert!(matches!(kind, Err(HolonError::UnknownCaseMatching { .. })), "{name}");
+                } else {
+                    assert!(
+                        matches!(kind, Err(HolonError::InvalidOperatorMetadata { .. })),
+                        "{name}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn an_unrelated_same_named_boundary_operator_has_no_semantics() {
+        let world = world();
+        for name in ["StartsWithOperator", "EndsWithOperator"] {
+            let rogue: HolonReference =
+                new_descriptor_holon(&world.context, &format!("rogue-{name}"), name, "Operator")
+                    .unwrap()
+                    .into();
+            assert!(
+                matches!(
+                    OperatorDescriptor::from_holon(rogue.clone()).kind(),
+                    Err(HolonError::NotImplemented(_))
+                ),
+                "{name}"
+            );
+        }
     }
 
     #[test]
@@ -688,13 +903,19 @@ mod tests {
             world.subject("StringValueType", &[&world.contains, &case_sensitive, &inheriting]);
 
         let resolved = world.resolve(&case_sensitive, &title).unwrap();
-        assert_eq!(resolved.kind(), OperatorKind::Contains(CaseMatching::CaseSensitive));
+        assert_eq!(
+            resolved.kind(),
+            OperatorKind::Matching(LiteralMatch::Contains, CaseMatching::CaseSensitive)
+        );
         assert!(resolved.invoke(&string("Graph"), &[string("Gra")]).unwrap());
         assert!(!resolved.invoke(&string("Graph"), &[string("graph")]).unwrap());
 
         // An extension that declares no policy inherits its ancestor's.
         let resolved = world.resolve(&inheriting, &title).unwrap();
-        assert_eq!(resolved.kind(), OperatorKind::Contains(CaseMatching::UnicodeDefaultCaseFold));
+        assert_eq!(
+            resolved.kind(),
+            OperatorKind::Matching(LiteralMatch::Contains, CaseMatching::UnicodeDefaultCaseFold)
+        );
     }
 
     #[test]
