@@ -133,6 +133,16 @@ fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
             "EnumValueType.ValueType",
         ),
         (
+            "EnumTokenMembership.ValidationRule",
+            "EnumValueValidationRule.HolonType",
+            "EnumValueType.ValueType",
+        ),
+        (
+            "EnumMemberNamesUnique.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaEnumValueType.MetaValueType",
+        ),
+        (
             "AtMostOneDirectParent.ValidationRule",
             "HolonValidationRule.HolonType",
             "MetaTypeDescriptor.HolonType",
@@ -565,6 +575,26 @@ fn enum_ownership_binds_members_by_version_and_owner_by_lineage() -> Result<()> 
                     && edge["target"][0]["$ref"] == cardinality),
             "{name}"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn enum_non_retroactivity_is_retained_as_unbound_vocabulary() -> Result<()> {
+    let documents = canonical_documents()?;
+    let key = "EnumTokenNonRetroactivity.ValidationRule";
+    let rule = holons(&documents)
+        .find(|holon| holon["key"] == key)
+        .context("DS-ENUM-003 vocabulary must remain available")?;
+    assert_eq!(rule["properties"]["SemanticAuthority"], "DS-ENUM-003");
+    assert!(!authored_binding_inventory(&documents).contains(key));
+    for (key, level) in [
+        ("EnumMemberNamesUnique.ValidationRule", "Holon"),
+        ("EnumTokenMembership.ValidationRule", "Value"),
+    ] {
+        let rule = holons(&documents).find(|holon| holon["key"] == key).context("enum rule")?;
+        assert_eq!(rule["properties"]["ValidationLevel"], level);
+        assert_eq!(rule["properties"]["DeterminismClass"], "Deterministic");
     }
     Ok(())
 }

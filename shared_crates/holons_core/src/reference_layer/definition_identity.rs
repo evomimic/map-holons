@@ -325,3 +325,13 @@ mod tests {
         Ok(())
     }
 }
+
+/// Formats exact definition identities without exposing their byte representation.
+impl std::fmt::Display for DefinitionIdentity {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Saved(id) => write!(formatter, "HolonId={id}"),
+            Self::Staged(id) | Self::Transient(id) => write!(formatter, "TemporaryId={}", id.0),
+        }
+    }
+}

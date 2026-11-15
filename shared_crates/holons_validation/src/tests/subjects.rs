@@ -403,11 +403,14 @@ fn all_five_native_handlers_accept_and_reject_without_configured_evaluation(
         BaseValue::BytesValue(MapBytes(vec![1, 2])),
         BaseValue::EnumValue(MapEnumValue(MapString("member".into()))),
     ];
-    for (index, (rule, _, target)) in subject_rules()
-        .filter(|(name, _, _)| crate::dispatch::registration(*name).native_kind.is_some())
-        .enumerate()
-    {
+    for (index, (rule, _, target)) in super::support::native_kind_rules().enumerate() {
         let mut fixture = readiness_fixture()?;
+        let membership =
+            fixture.nodes[CoreValidationRuleName::EnumTokenMembership.as_str()].clone();
+        fixture.node("EnumValueType.ValueType")?.remove_related_holons(
+            CoreRelationshipTypeName::ValidationBindings,
+            vec![membership],
+        )?;
         select_title_value_type(&mut fixture, target)?;
         let mut subject = fixture.staged_subject("native-value")?;
         for (value_index, value) in values.iter().enumerate() {
@@ -2267,12 +2270,21 @@ fn ordinary_unparented_holon_has_no_termination_finding() -> Result<(), HolonErr
 }
 
 #[test]
-fn every_builtin_rule_has_a_registration_and_only_cross_schema_dependencies_is_unimplemented() {
+fn every_builtin_rule_has_a_registration_with_explicit_deferred_implementations() {
     for name in CoreValidationRuleName::all() {
         let registration = crate::dispatch::registration(name);
         assert_eq!(
             registration.implementation.is_none(),
-            name == CoreValidationRuleName::CrossSchemaDependenciesDeclared,
+            matches!(
+                name,
+                CoreValidationRuleName::CrossSchemaDependenciesDeclared
+                    | CoreValidationRuleName::EnumTokenNonRetroactivity
+                    | CoreValidationRuleName::DefaultsRequireRequiredProperties
+                    | CoreValidationRuleName::DefaultValueConformance
+                    | CoreValidationRuleName::ConcreteDescribingType
+                    | CoreValidationRuleName::UniquePropertyMemberBinding
+                    | CoreValidationRuleName::AbstractMemberMinimumEnforcement
+            ),
             "{name:?}"
         );
     }
@@ -2684,6 +2696,14 @@ fn registrations_match_independent_core_placement_expectations() {
         (
             "BaseValueKindMatchesEnum.ValidationRule",
             ("EnumValueValidationRule.HolonType", "EnumValueType.ValueType", Value),
+        ),
+        (
+            "EnumTokenMembership.ValidationRule",
+            ("EnumValueValidationRule.HolonType", "EnumValueType.ValueType", Value),
+        ),
+        (
+            "EnumMemberNamesUnique.ValidationRule",
+            ("HolonValidationRule.HolonType", "MetaEnumValueType.MetaValueType", Holon),
         ),
         (
             "AtMostOneDirectParent.ValidationRule",

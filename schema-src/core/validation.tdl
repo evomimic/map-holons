@@ -608,8 +608,8 @@ instance ExplicitKeylessBaseline.ValidationRule {
 }
 
 instance EnumMemberNamesUnique.ValidationRule {
-  type EnumValueValidationRule.HolonType
-  ValidationLevel Value
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-001"
   ValidationRuleDescription "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."

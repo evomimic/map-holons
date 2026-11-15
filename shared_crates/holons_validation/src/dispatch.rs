@@ -2,6 +2,7 @@ use core_types::{BaseValue, BaseValueKind, HolonError, ValidationSubjectPath};
 use holons_core::descriptors::value_constraints::{
     ConstraintEvaluationOutcome, ScalarConstraintFamily, ScalarConstraintParameters,
 };
+use holons_core::descriptors::value_descriptor_subtypes::{EnumMembers, EnumMembership};
 use type_names::{CoreDefinitionRole, CoreValidationRuleName};
 
 use crate::{ResolvedValidationBinding, ValidationCollector};
@@ -21,7 +22,7 @@ pub enum ValidationInvocation<'a> {
         code: &'static str,
         binding: &'a ResolvedValidationBinding,
         path: &'a ValidationSubjectPath,
-        subject: &'a crate::PreparedRuleSubject,
+        subject: &'a crate::PreparedRuleSubject<'a>,
     },
     /// Aggregate products computed once for a Schema, even when it is unstaged.
     Schema {
@@ -186,6 +187,87 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             prerequisite: false,
             applicability: SubjectApplicability::AnySubject,
         },
+        EnumTokenMembership => RuleRegistration {
+            implementation: Some(Subject(crate::rules::conformance::assess_enum_token_membership)),
+            level: Value,
+            family: Role::EnumValueValidationRule,
+            declaring: Role::EnumValueType,
+            native_kind: Some(BaseValueKind::Enum),
+            code: "DS-ENUM-002",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        EnumMemberNamesUnique => RuleRegistration {
+            implementation: Some(Subject(crate::rules::conformance::assess_enum_members)),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaEnumValueType,
+            native_kind: None,
+            code: "DS-ENUM-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        EnumTokenNonRetroactivity => RuleRegistration {
+            implementation: None,
+            level: Value,
+            family: Role::EnumValueValidationRule,
+            declaring: Role::EnumValueType,
+            native_kind: Some(BaseValueKind::Enum),
+            code: "DS-ENUM-003",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        DefaultsRequireRequiredProperties => RuleRegistration {
+            implementation: None,
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaPropertyType,
+            native_kind: None,
+            code: "DS-DEFAULT-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        DefaultValueConformance => RuleRegistration {
+            implementation: None,
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaPropertyType,
+            native_kind: None,
+            code: "DS-DEFAULT-002",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        ConcreteDescribingType => RuleRegistration {
+            implementation: None,
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::HolonType,
+            native_kind: None,
+            code: "DS-CONFORM-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        UniquePropertyMemberBinding => RuleRegistration {
+            implementation: None,
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::HolonType,
+            native_kind: None,
+            code: "DS-BIND-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        AbstractMemberMinimumEnforcement => RuleRegistration {
+            implementation: None,
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaTypeDescriptor,
+            native_kind: None,
+            code: "DS-CONFORM-002",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+
         AtMostOneDirectParent => RuleRegistration {
             implementation: Some(DescriptorProduct),
             level: Holon,
@@ -378,11 +460,13 @@ impl StaticConstraintRegistry {
 
 /// Read-only inputs prepared through the Commit assessment's bound references.
 /// Handlers consume these facts without navigating to containing subjects.
-pub enum PreparedRuleSubject {
+pub enum PreparedRuleSubject<'a> {
     /// Populated names absent from the selected effective contract.
     Holon {
         undescribed_properties: Vec<core_types::PropertyName>,
         key_claim: Option<crate::KeyClaim>,
+        /// Present only for enum definitions; malformed declarations retain their diagnosis.
+        enum_members: Option<Result<&'a EnumMembers, HolonError>>,
     },
     /// A missing property whose minimum and requiredness have already been resolved.
     Property { missing_required: bool, name: String, descriptor_identity: String },
@@ -390,6 +474,8 @@ pub enum PreparedRuleSubject {
     Value {
         expected: holons_core::ValueDescriptorKind,
         actual: core_types::BaseValueKind,
+        /// Present only when both actual and selected native kinds are enum.
+        enum_membership: Option<(String, Result<EnumMembership, HolonError>)>,
         descriptor_identity: String,
     },
 }

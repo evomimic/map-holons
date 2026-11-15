@@ -55,7 +55,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "9a30866bb8eaf684e8280f5cd7cd6b8b55c2f3e89d078220520de8a4539435ec"
+      "sha256": "56e9882810cf609ee6ec1dbf1d8b620ed1d56adb505580a3a6e1bfda1afbfaf3"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "b2b2eb6039e3748eae8f416c8f0ffbade9c050cdb1f9ff83ae81994b41197cf0"
+      "sha256": "16a23eb7b2238efe57d11dd35e78a8945b356dd234a03b0f2480c199ec5a9d06"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -2793,7 +2793,7 @@
     },
     {
       "key": "EnumMemberNamesUnique.ValidationRule",
-      "type": "EnumValueValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "EnumTokenMembership.ValidationRule",

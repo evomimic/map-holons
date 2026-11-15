@@ -252,6 +252,14 @@
           ]
         },
         {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "EnumMemberNamesUnique.ValidationRule"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {
@@ -626,6 +634,9 @@
           "target": [
             {
               "$ref": "BaseValueKindMatchesEnum.ValidationRule"
+            },
+            {
+              "$ref": "EnumTokenMembership.ValidationRule"
             }
           ]
         },

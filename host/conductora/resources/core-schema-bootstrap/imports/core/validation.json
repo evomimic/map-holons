@@ -2137,11 +2137,11 @@
     },
     {
       "key": "EnumMemberNamesUnique.ValidationRule",
-      "type": "EnumValueValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-ENUM-001",
-        "ValidationLevel": "Value",
+        "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."
       },
       "relationships": [

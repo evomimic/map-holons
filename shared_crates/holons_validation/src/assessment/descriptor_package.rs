@@ -816,12 +816,13 @@ impl DescriptorPackages {
     pub(crate) fn enum_members(
         &self,
         identity: &DefinitionIdentity,
-    ) -> Result<&EnumMembers, HolonError> {
-        self.enum_members
+    ) -> Result<Result<&EnumMembers, HolonError>, HolonError> {
+        Ok(self
+            .enum_members
             .get(identity)
             .ok_or_else(|| HolonError::InvalidState("Enum members were not prepared".into()))?
             .as_ref()
-            .map_err(Clone::clone)
+            .map_err(Clone::clone))
     }
 
     /// A prepared local omission remains distinct from missing preparation demand.

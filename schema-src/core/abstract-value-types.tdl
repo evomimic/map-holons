@@ -79,6 +79,7 @@ holon MetaEnumValueType.MetaValueType {
     plural: "MetaEnumValueTypes"
   }
   relationships {
+    ValidationBindings -> [EnumMemberNamesUnique.ValidationRule]
     InstanceRelationships -> [
       (EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)
     ]
@@ -200,7 +201,7 @@ abstract enum EnumValueType.ValueType {
     plural: "EnumValueTypes"
   }
   relationships {
-    ValidationBindings -> BaseValueKindMatchesEnum.ValidationRule
+    ValidationBindings -> [BaseValueKindMatchesEnum.ValidationRule, EnumTokenMembership.ValidationRule]
     AffordsOperator -> EqualsOperator.OperatorType
   }
 }

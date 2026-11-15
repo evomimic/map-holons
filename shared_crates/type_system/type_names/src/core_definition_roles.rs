@@ -11,6 +11,10 @@ pub enum CoreDefinitionRole {
     MetaTypeDescriptor,
     /// The `MetaHolonType.MetaTypeDescriptor` role.
     MetaHolonType,
+    /// The `MetaEnumValueType.MetaValueType` role.
+    MetaEnumValueType,
+    /// The `MetaPropertyType.MetaTypeDescriptor` role.
+    MetaPropertyType,
     /// The `PropertyType.TypeDescriptor` role.
     PropertyType,
     /// The `DeclaredRelationshipType.RelationshipType` role.
@@ -71,6 +75,8 @@ impl CoreDefinitionRole {
     /// Returns the exact record key identifying this role.
     pub const fn key(self) -> &'static str {
         match self {
+            Self::MetaPropertyType => "MetaPropertyType.MetaTypeDescriptor",
+            Self::MetaEnumValueType => "MetaEnumValueType.MetaValueType",
             Self::TypeDescriptor => "TypeDescriptor",
             Self::HolonType => "HolonType.TypeDescriptor",
             Self::MetaTypeDescriptor => "MetaTypeDescriptor.HolonType",

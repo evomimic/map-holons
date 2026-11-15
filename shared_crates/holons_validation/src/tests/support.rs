@@ -199,6 +199,21 @@ pub(super) fn subject_rules(
     })
 }
 
+/// Native representation handlers, excluding semantic rules that also constrain native kind.
+pub(super) fn native_kind_rules(
+) -> impl Iterator<Item = (CoreValidationRuleName, &'static str, &'static str)> {
+    subject_rules().filter(|(name, _, _)| {
+        matches!(
+            name,
+            CoreValidationRuleName::BaseValueKindMatchesString
+                | CoreValidationRuleName::BaseValueKindMatchesInteger
+                | CoreValidationRuleName::BaseValueKindMatchesBoolean
+                | CoreValidationRuleName::BaseValueKindMatchesBytes
+                | CoreValidationRuleName::BaseValueKindMatchesEnum
+        )
+    })
+}
+
 impl Fixture {
     /// Opens structural evidence for one unchanged assessment; share it across its consumers.
     pub fn diagnoses(&self) -> Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses> {
@@ -707,9 +722,7 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "TypeDescriptor",
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
-    for (_, _, key) in subject_rules()
-        .filter(|(name, _, _)| crate::dispatch::registration(*name).native_kind.is_some())
-    {
+    for (_, _, key) in native_kind_rules() {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
             .nodes

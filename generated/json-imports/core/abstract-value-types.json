@@ -210,6 +210,14 @@
               "$ref": "(EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)"
             }
           ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "EnumMemberNamesUnique.ValidationRule"
+            }
+          ]
         }
       ]
     },
@@ -530,6 +538,9 @@
           "target": [
             {
               "$ref": "BaseValueKindMatchesEnum.ValidationRule"
+            },
+            {
+              "$ref": "EnumTokenMembership.ValidationRule"
             }
           ]
         }

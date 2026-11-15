@@ -545,7 +545,7 @@ fn enum_and_default_demand_is_subject_local_and_sealed() -> Result<(), HolonErro
         let reads = (fixture.backend_node_reads(), fixture.backend_relationship_reads());
         let probe =
             holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
-        let members = packages.enum_members(&identity("PreparedEnum")?)?;
+        let members = packages.enum_members(&identity("PreparedEnum")?)??;
         assert_eq!(
             members.membership("Member"),
             EnumMembership::Member(identity("PreparedVariant")?)
@@ -759,13 +759,13 @@ fn staged_successors_do_not_redirect_saved_enum_or_default_contracts() -> Result
     let identity = |reference: &HolonReference| {
         holons_core::DefinitionIdentity::for_reference(reference, &fixture.context)
     };
-    let original = packages.enum_members(&identity(&fixture.nodes["PreparedEnum"])?)?;
+    let original = packages.enum_members(&identity(&fixture.nodes["PreparedEnum"])?)??;
     assert_eq!(
         original.membership("Member"),
         EnumMembership::Member(identity(&fixture.nodes["PreparedVariant"])?)
     );
     assert_eq!(original.membership("Changed"), EnumMembership::Undeclared);
-    let changed = packages.enum_members(&identity(&successor)?)?;
+    let changed = packages.enum_members(&identity(&successor)?)??;
     assert_eq!(changed.membership("Changed"), EnumMembership::Member(identity(&variant.into())?));
     assert_eq!(changed.membership("Member"), EnumMembership::Undeclared);
     assert_eq!(
@@ -797,7 +797,7 @@ fn malformed_variant_fields_are_sealed_defects() -> Result<(), HolonError> {
             &fixture.context,
         )?;
         assert!(
-            matches!(packages.enum_members(&identity), Err(HolonError::EmptyField(name)) if name == field)
+            matches!(packages.enum_members(&identity)?, Err(HolonError::EmptyField(name)) if name == field)
         );
         assert_eq!(packages.preparation_metrics().prepared_enum_definitions, 1);
     }

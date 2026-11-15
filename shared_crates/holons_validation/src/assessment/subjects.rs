@@ -310,6 +310,13 @@ pub(crate) fn assess_holon(
     let prepared = PreparedRuleSubject::Holon {
         undescribed_properties: subject.undescribed_property_names_in_contract(&names)?,
         key_claim: key_claim.cloned(),
+        enum_members: if packages.diagnoses.get(subject)?.valid_lineage().is_some_and(|lineage| {
+            lineage.contains_role(type_names::CoreDefinitionRole::EnumValueType)
+        }) {
+            Some(packages.enum_members(&packages.diagnoses.identity(subject)?)?)
+        } else {
+            None
+        },
     };
     dispatch_subject(bindings, &prepared, &subject_path, collector)?;
     assess_subject_constraints(
@@ -505,6 +512,19 @@ fn assess_value(
     let facts = PreparedRuleSubject::Value {
         expected: expected.clone(),
         actual: value.kind(),
+        enum_membership: match (value, &expected) {
+            (
+                BaseValue::EnumValue(token),
+                ValueDescriptorKind::BaseValue(base_types::BaseValueKind::Enum),
+            ) => {
+                let token = token.to_string();
+                let verdict = packages
+                    .enum_members(&packages.diagnoses.identity(descriptor.holon())?)?
+                    .map(|members| members.membership(&token));
+                Some((token, verdict))
+            }
+            _ => None,
+        },
         descriptor_identity: descriptor.holon().reference_id_string(),
     };
     let native_kind_finding = dispatch_subject(&bindings, &facts, path, collector)?;
