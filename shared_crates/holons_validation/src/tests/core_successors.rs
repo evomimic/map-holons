@@ -93,6 +93,13 @@ fn exact_core_predecessor_and_successor_consumers_keep_separate_contracts() -> R
             .into_iter()
             .enumerate()
     {
+        // Concrete types inherit the exact root version under test.
+        let mut concrete =
+            fixture.context.mutation().new_holon(Some(format!("concrete-{index}").into()))?;
+        concrete.with_property_value("IsAbstractType", false)?;
+        concrete.add_related_holons(CoreRelationshipTypeName::Extends, vec![descriptor])?;
+        let descriptor: holons_core::HolonReference =
+            fixture.context.mutation().stage_new_holon(concrete)?.into();
         let mut input =
             fixture.context.mutation().new_holon(Some(format!("consumer-{index}").into()))?;
         input.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor])?;

@@ -280,7 +280,8 @@ impl Fixture {
             fixture.node(family)?;
             fixture.node(target)?;
             fixture.link(rule.as_str(), CoreRelationshipTypeName::DescribedBy, family)?;
-            if binding_roots.insert(target) {
+            // The anchor seeding helper supplies MetaTypeDescriptor's HolonType parent.
+            if binding_roots.insert(target) && target != "MetaTypeDescriptor.HolonType" {
                 fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
             }
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;

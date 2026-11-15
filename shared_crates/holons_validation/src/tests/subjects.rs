@@ -721,7 +721,12 @@ fn abstract_descriptor_exemption_is_computed_from_the_universal_contract() -> Re
     let mut fixture = readiness_fixture()?;
     declare_abstract_property(&mut fixture)?;
     let subject = abstract_subject(&fixture)?;
-    let report = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?.report;
+    let assessment = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(assessment
+        .observations
+        .dispatched_rule_keys
+        .contains(CoreValidationRuleName::AbstractMemberMinimumEnforcement.as_str()));
+    let report = assessment.report;
     assert!(report.is_accepted(), "{:?}", report);
     let title = fixture.nodes["Title.PropertyType"].clone();
     fixture
@@ -2279,9 +2284,6 @@ fn every_builtin_rule_has_a_registration_with_explicit_deferred_implementations(
                 name,
                 CoreValidationRuleName::CrossSchemaDependenciesDeclared
                     | CoreValidationRuleName::EnumTokenNonRetroactivity
-                    | CoreValidationRuleName::ConcreteDescribingType
-                    | CoreValidationRuleName::UniquePropertyMemberBinding
-                    | CoreValidationRuleName::AbstractMemberMinimumEnforcement
             ),
             "{name:?}"
         );
@@ -2698,6 +2700,18 @@ fn registrations_match_independent_core_placement_expectations() {
         (
             "EnumTokenMembership.ValidationRule",
             ("EnumValueValidationRule.HolonType", "EnumValueType.ValueType", Value),
+        ),
+        (
+            "ConcreteDescribingType.ValidationRule",
+            ("HolonValidationRule.HolonType", "HolonType.TypeDescriptor", Holon),
+        ),
+        (
+            "UniquePropertyMemberBinding.ValidationRule",
+            ("HolonValidationRule.HolonType", "HolonType.TypeDescriptor", Holon),
+        ),
+        (
+            "AbstractMemberMinimumEnforcement.ValidationRule",
+            ("HolonValidationRule.HolonType", "MetaTypeDescriptor.HolonType", Holon),
         ),
         (
             "EnumMemberNamesUnique.ValidationRule",
@@ -4186,6 +4200,21 @@ fn concrete_variants_require_the_enum_variant_describing_category() -> Result<()
                 Some("DescribingCategoryCompatibility.ValidationRule")
             );
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn abstract_minimum_exemption_preserves_required_structure() -> Result<(), HolonError> {
+    for missing in [CoreRelationshipTypeName::DescribedBy, CoreRelationshipTypeName::ComponentOf] {
+        let mut fixture = readiness_fixture()?;
+        declare_abstract_property(&mut fixture)?;
+        let mut subject = abstract_subject(&fixture)?;
+        let members =
+            subject.related_holons(missing.clone())?.read().unwrap().get_members().clone();
+        subject.remove_related_holons(missing.clone(), members)?;
+        let report = assess_commit_candidates(&fixture.context, &[subject])?.report;
+        assert!(!report.is_accepted(), "{missing:?}: {report:?}");
     }
     Ok(())
 }

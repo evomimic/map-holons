@@ -34,6 +34,8 @@ abstract holon HolonType.TypeDescriptor {
   }
   relationships {
     ValidationBindings -> [
+      ConcreteDescribingType.ValidationRule,
+      UniquePropertyMemberBinding.ValidationRule,
       NoUndescribedProperties.ValidationRule,
       KeyUniqueness.ValidationRule,
       DescribingCategoryCompatibility.ValidationRule,
@@ -111,6 +113,7 @@ abstract holon MetaTypeDescriptor.HolonType {
   }
   relationships {
     ValidationBindings -> [
+      AbstractMemberMinimumEnforcement.ValidationRule,
       AtMostOneDirectParent.ValidationRule,
       AbstractPropertyParent.ValidationRule,
       AcyclicExtendsLineage.ValidationRule,

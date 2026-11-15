@@ -302,9 +302,12 @@ pub(crate) fn assess_holon(
     for member in &contributions.properties {
         let property = PropertyDescriptor::from_holon(member.member.clone());
         let name = property.property_name()?;
-        if names.insert(name.clone()) {
-            properties.push((name, property));
+        if !names.insert(name.clone()) {
+            return Err(HolonError::InvalidState(format!(
+                "Ambiguous property {name} passed the contract guard"
+            )));
         }
+        properties.push((name, property));
     }
     let subject_path = path(subject);
     let diagnosis = packages.diagnoses.get(subject)?;
@@ -597,4 +600,41 @@ pub(crate) fn assess_value(
         );
     }
     Ok(())
+}
+
+/// Attributes populated collisions while leaving rejection unconditional in the caller.
+/// Returns true when attribution is complete and the generic blocker can be omitted.
+pub(crate) fn dispatch_contract_guard(
+    bindings: &[PreparedBinding],
+    subject: &HolonReference,
+    interpretation: &crate::rules::descriptor::ContractInterpretation,
+    collector: &mut ValidationCollector,
+) -> Result<bool, HolonError> {
+    let mut attributed = false;
+    for prepared in bindings {
+        if !matches!(prepared.registration.implementation, Some(RuleImplementation::ContractGuard))
+        {
+            continue;
+        }
+        for (name, claims) in &interpretation.property_name_collisions {
+            if subject.property_value(name.as_str())?.is_none() {
+                continue;
+            }
+            let claimants = claims
+                .iter()
+                .map(|claim| format!("{} declared on {}", claim.member, claim.declared_on))
+                .collect::<Vec<_>>()
+                .join(", ");
+            rule_violation(
+                collector,
+                &prepared.binding,
+                &path(subject),
+                prepared.registration.code,
+                format!("Populated property {name} has ambiguous bindings: {claimants}."),
+            )?;
+            collector.observations.dispatched_rule_keys.insert(prepared.name.as_str().into());
+            attributed = true;
+        }
+    }
+    Ok(attributed && !interpretation.other_vocabulary_defect)
 }

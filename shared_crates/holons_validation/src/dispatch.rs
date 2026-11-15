@@ -68,6 +68,7 @@ impl StaticConstraintEvaluator {
 pub(crate) enum RuleImplementation {
     Subject(StaticRuleHandler),
     DescriptorProduct,
+    ContractGuard,
     SchemaAggregate(StaticRuleHandler),
 }
 
@@ -242,17 +243,17 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         ConcreteDescribingType => RuleRegistration {
-            implementation: None,
+            implementation: Some(DescriptorProduct),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::HolonType,
             native_kind: None,
             code: "DS-CONFORM-001",
-            prerequisite: false,
+            prerequisite: true,
             applicability: SubjectApplicability::AnySubject,
         },
         UniquePropertyMemberBinding => RuleRegistration {
-            implementation: None,
+            implementation: Some(RuleImplementation::ContractGuard),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::HolonType,
@@ -262,7 +263,9 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         AbstractMemberMinimumEnforcement => RuleRegistration {
-            implementation: None,
+            implementation: Some(Subject(
+                crate::rules::conformance::abstract_member_minimum_enforcement,
+            )),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::MetaTypeDescriptor,

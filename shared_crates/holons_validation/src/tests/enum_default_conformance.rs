@@ -713,3 +713,113 @@ fn unusable_default_value_lineage_blocks_only_dependent_assessment() -> Result<(
     assert_eq!(blockers[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
     Ok(())
 }
+
+#[test]
+fn abstract_describer_has_one_conformance_finding() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.link(
+        "HolonType.TypeDescriptor",
+        R::ValidationBindings,
+        Rule::ConcreteDescribingType.as_str(),
+    )?;
+    fixture.node("Contract")?.with_property_value("IsAbstractType", true)?;
+    let mut subject = fixture.staged_subject("abstract-describer")?;
+    subject.with_property_value("Title", "present")?;
+    let assessment = assess_commit_candidates(&fixture.context, &[subject])?;
+    assert_eq!(assessment.report.violation_count(), 1, "{:?}", assessment.report);
+    assert_eq!(findings(&assessment, "DS-CONFORM-001"), 1);
+    assert!(assessment
+        .observations
+        .dispatched_rule_keys
+        .contains(Rule::ConcreteDescribingType.as_str()));
+    Ok(())
+}
+
+#[test]
+fn contract_guard_attributes_only_bound_populated_collisions() -> Result<(), HolonError> {
+    for bound in [false, true] {
+        for (populated, unnamed_member) in [(false, false), (true, false), (true, true)] {
+            let mut fixture = readiness_fixture()?;
+            fixture
+                .node("OtherTitle")?
+                .with_property_value("TypeName", "Title")?
+                .with_property_value("DefinesInstanceTypeKind", false)?;
+            fixture.link("OtherTitle", R::Extends, "PropertyType.TypeDescriptor")?;
+            fixture.link("OtherTitle", R::ValueType, "StringValueType.ValueType")?;
+            fixture.link("Contract", R::InstanceProperties, "OtherTitle")?;
+            if unnamed_member {
+                fixture
+                    .node("Unnamed")?
+                    .with_property_value("TypeName", "")?
+                    .with_property_value("DefinesInstanceTypeKind", false)?;
+                fixture.link("Unnamed", R::Extends, "PropertyType.TypeDescriptor")?;
+                fixture.link("Unnamed", R::ValueType, "StringValueType.ValueType")?;
+                fixture.link("Contract", R::InstanceProperties, "Unnamed")?;
+            }
+            if bound {
+                fixture.node(Rule::UniquePropertyMemberBinding.as_str())?;
+                fixture.link(
+                    Rule::UniquePropertyMemberBinding.as_str(),
+                    R::DescribedBy,
+                    "HolonValidationRule.HolonType",
+                )?;
+                fixture.link(
+                    "HolonType.TypeDescriptor",
+                    R::ValidationBindings,
+                    Rule::UniquePropertyMemberBinding.as_str(),
+                )?;
+            }
+            let mut subject = fixture.staged_subject("ambiguous")?;
+            if populated {
+                subject.with_property_value("Title", 12_i64)?;
+            }
+            let assessment = assess_commit_candidates(&fixture.context, &[subject])?;
+            assert_eq!(
+                findings(&assessment, "DS-BIND-001"),
+                usize::from(bound && populated),
+                "{:?}",
+                assessment.report
+            );
+            assert!(!assessment.report.is_accepted());
+            assert_eq!(findings(&assessment, "BaseValueKindMismatch"), 0);
+            assert_eq!(
+                assessment
+                    .observations
+                    .dispatched_rule_keys
+                    .contains(Rule::UniquePropertyMemberBinding.as_str()),
+                bound && populated
+            );
+            assert_eq!(
+                assessment
+                    .report
+                    .violations
+                    .iter()
+                    .any(|f| f.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+                        && f.message.contains("ambiguous or unnamed effective members")),
+                !bound || !populated || unnamed_member,
+                "{:?}",
+                assessment.report
+            );
+            if bound && populated {
+                let finding = assessment
+                    .report
+                    .violations
+                    .iter()
+                    .find(|f| {
+                        f.rule_key.as_deref() == Some(Rule::UniquePropertyMemberBinding.as_str())
+                    })
+                    .unwrap();
+                for key in ["Title.PropertyType", "OtherTitle", "Contract"] {
+                    assert!(finding.message.contains(&fixture.nodes[key].reference_id_string()));
+                }
+            } else {
+                assert!(assessment
+                    .report
+                    .violations
+                    .iter()
+                    .any(|f| f.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
+            }
+        }
+    }
+    Ok(())
+}

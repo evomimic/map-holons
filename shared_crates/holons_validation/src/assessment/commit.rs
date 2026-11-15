@@ -755,14 +755,21 @@ fn assess_candidate(
                     )
                 })?;
                 if !interpretation.vocabulary_usable {
-                    blocked(
-                        collector,
+                    if !subjects::dispatch_contract_guard(
+                        &subject.bindings,
                         &subject.subject,
-                        format!(
-                            "Governing descriptor {} has ambiguous or unnamed effective members.",
-                            package.root.reference_id_string()
-                        ),
-                    );
+                        interpretation,
+                        collector,
+                    )? {
+                        blocked(
+                            collector,
+                            &subject.subject,
+                            format!(
+                                "Governing descriptor {} has ambiguous or unnamed effective members.",
+                                package.root.reference_id_string()
+                            ),
+                        );
+                    }
                     return Ok(None);
                 }
                 return Ok(Some((package, interpretation)));

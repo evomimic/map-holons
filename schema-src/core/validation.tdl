@@ -234,7 +234,7 @@ abstract holon ValidationRule.HolonType {
   }
 }
 
-abstract holon HolonValidationRule.HolonType {
+holon HolonValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -245,7 +245,7 @@ abstract holon HolonValidationRule.HolonType {
   }
 }
 
-abstract holon PropertyValidationRule.HolonType {
+holon PropertyValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -256,7 +256,7 @@ abstract holon PropertyValidationRule.HolonType {
   }
 }
 
-abstract holon ValueValidationRule.HolonType {
+holon ValueValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -267,7 +267,7 @@ abstract holon ValueValidationRule.HolonType {
   }
 }
 
-abstract holon StringValidationRule.HolonType {
+holon StringValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -278,7 +278,7 @@ abstract holon StringValidationRule.HolonType {
   }
 }
 
-abstract holon IntegerValidationRule.HolonType {
+holon IntegerValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -289,7 +289,7 @@ abstract holon IntegerValidationRule.HolonType {
   }
 }
 
-abstract holon BooleanValidationRule.HolonType {
+holon BooleanValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -300,7 +300,7 @@ abstract holon BooleanValidationRule.HolonType {
   }
 }
 
-abstract holon EnumValueValidationRule.HolonType {
+holon EnumValueValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -311,7 +311,7 @@ abstract holon EnumValueValidationRule.HolonType {
   }
 }
 
-abstract holon BytesValidationRule.HolonType {
+holon BytesValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -322,7 +322,7 @@ abstract holon BytesValidationRule.HolonType {
   }
 }
 
-abstract holon ValueArrayValidationRule.HolonType {
+holon ValueArrayValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -333,7 +333,7 @@ abstract holon ValueArrayValidationRule.HolonType {
   }
 }
 
-abstract holon RelationshipValidationRule.HolonType {
+holon RelationshipValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -344,7 +344,7 @@ abstract holon RelationshipValidationRule.HolonType {
   }
 }
 
-abstract holon TransactionValidationRule.HolonType {
+holon TransactionValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -626,8 +626,8 @@ instance AbstractMemberMinimumEnforcement.ValidationRule {
 }
 
 instance UniquePropertyMemberBinding.ValidationRule {
-  type PropertyValidationRule.HolonType
-  ValidationLevel Property
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-BIND-001"
   ValidationRuleDescription "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."

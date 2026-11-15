@@ -138,6 +138,21 @@ fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
             "EnumValueType.ValueType",
         ),
         (
+            "ConcreteDescribingType.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "UniquePropertyMemberBinding.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "AbstractMemberMinimumEnforcement.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
             "EnumMemberNamesUnique.ValidationRule",
             "HolonValidationRule.HolonType",
             "MetaEnumValueType.MetaValueType",
@@ -622,5 +637,26 @@ fn default_declaration_rules_are_deterministic_holon_rules() -> Result<()> {
         assert_eq!(rule["properties"]["ValidationLevel"], "Holon");
         assert_eq!(rule["properties"]["DeterminismClass"], "Deterministic");
     }
+    Ok(())
+}
+
+/// Checks the actual bootstrap corpus across package boundaries, including unused definitions.
+#[test]
+fn bootstrap_holons_have_concrete_describing_types() -> Result<()> {
+    let documents = canonical_documents()?;
+    let definitions: BTreeMap<_, _> =
+        holons(&documents).filter_map(|holon| Some((holon["key"].as_str()?, holon))).collect();
+    let mut abstract_describers = Vec::new();
+    for holon in holons(&documents) {
+        let key = holon["key"].as_str().context("holon key")?;
+        let type_key = holon["type"].as_str().context("describing type")?;
+        let descriptor = definitions
+            .get(type_key)
+            .with_context(|| format!("{key} describes itself through missing {type_key}"))?;
+        if descriptor["properties"]["IsAbstractType"] == true {
+            abstract_describers.push(format!("{key} is described by abstract {type_key}"));
+        }
+    }
+    ensure!(abstract_describers.is_empty(), "{}", abstract_describers.join("\n"));
     Ok(())
 }

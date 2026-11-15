@@ -124,6 +124,12 @@
           "name": "ValidationBindings",
           "target": [
             {
+              "$ref": "ConcreteDescribingType.ValidationRule"
+            },
+            {
+              "$ref": "UniquePropertyMemberBinding.ValidationRule"
+            },
+            {
               "$ref": "NoUndescribedProperties.ValidationRule"
             },
             {
@@ -396,6 +402,9 @@
         {
           "name": "ValidationBindings",
           "target": [
+            {
+              "$ref": "AbstractMemberMinimumEnforcement.ValidationRule"
+            },
             {
               "$ref": "AtMostOneDirectParent.ValidationRule"
             },

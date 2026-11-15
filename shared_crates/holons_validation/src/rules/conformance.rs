@@ -298,3 +298,19 @@ pub(crate) fn assess_default_value_conformance(
     }
     Ok(RuleOutcome::Continue)
 }
+
+/// Fixed traversal consults the abstract exemption only for per-member property minimums.
+/// Structural validity never consults it: NoDescriptor covers DescribedBy, schema ownership
+/// covers ComponentOf, and lineage diagnoses cover Extends. Relationship minimums remain deferred.
+pub(crate) fn abstract_member_minimum_enforcement(
+    invocation: ValidationInvocation<'_>,
+    _collector: &mut ValidationCollector,
+) -> Result<RuleOutcome, HolonError> {
+    match invocation {
+        ValidationInvocation::Prepared {
+            subject: crate::PreparedRuleSubject::Holon { .. },
+            ..
+        } => Ok(RuleOutcome::Continue),
+        _ => Err(wrong_invocation("holon")),
+    }
+}

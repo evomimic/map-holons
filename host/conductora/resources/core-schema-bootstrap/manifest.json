@@ -83,11 +83,11 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "b5bcc509fd4c3031dd95311f746a048aed13793068a8822185928dcb419ab045"
+      "sha256": "afcb88510eab8bcff17b1fe8dd3319fad942341f7972856102c6faa0473bd1ff"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "9802c1283cc2f5c06b4236f2347d34319dac45cd3b52143decb68c31b8003c89"
+      "sha256": "91a17f65e6fae82e21bb71c299580c0d3ffa8735aa20c28b30920b4de3125c76"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -4597,7 +4597,7 @@
     },
     {
       "key": "UniquePropertyMemberBinding.ValidationRule",
-      "type": "PropertyValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "UniqueSemanticMemberNames.ValidationRule",
