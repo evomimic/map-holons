@@ -25,6 +25,7 @@ pub use assessment::commit::{
     validate_commit_candidates_with_profile,
 };
 pub use assessment::support::ValueValidationContext;
+pub use assessment::DefaultDeclarationAssessment;
 pub use commitments::ResolvedValidationBinding;
 pub use constraints::declarations::ConstraintDeclarationAssessment;
 pub use diagnostics::{CommitAssessment, CommitValidationReport};

@@ -553,6 +553,17 @@
           ]
         },
         {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "DefaultsRequireRequiredProperties.ValidationRule"
+            },
+            {
+              "$ref": "DefaultValueConformance.ValidationRule"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {

@@ -242,3 +242,59 @@ fn enum_dependency_finding(
     );
     Ok(())
 }
+
+/// Default declarations use the declaring property's prepared requiredness, never a fallback.
+pub(crate) fn assess_defaults_require_required_properties(
+    invocation: ValidationInvocation<'_>,
+    collector: &mut ValidationCollector,
+) -> Result<RuleOutcome, HolonError> {
+    let ValidationInvocation::Prepared {
+        code,
+        binding,
+        path,
+        subject: crate::PreparedRuleSubject::Holon { default_declaration, .. },
+    } = invocation
+    else {
+        return Err(wrong_invocation("holon"));
+    };
+    if let Some(declaration) = default_declaration {
+        match declaration.requiredness()? {
+            Ok(true) => {}
+            Ok(false) => rule_violation(
+                collector,
+                binding,
+                path,
+                code,
+                "Only required properties may declare a default.".into(),
+            )?,
+            Err(reason) => crate::diagnostics::finding(
+                collector,
+                core_types::CommitValidationViolationKind::UnresolvedLocalDependency,
+                Some(crate::commitments::required_key(&binding.rule)?),
+                path,
+                Some(crate::commitments::declaring_identity(binding)),
+                format!("Default declaration requires usable requiredness: {reason}"),
+            ),
+        }
+    }
+    Ok(RuleOutcome::Continue)
+}
+
+/// Assesses the declaration once through the same value path used for populated properties.
+pub(crate) fn assess_default_value_conformance(
+    invocation: ValidationInvocation<'_>,
+    collector: &mut ValidationCollector,
+) -> Result<RuleOutcome, HolonError> {
+    let ValidationInvocation::Prepared {
+        binding,
+        subject: crate::PreparedRuleSubject::Holon { default_declaration, .. },
+        ..
+    } = invocation
+    else {
+        return Err(wrong_invocation("holon"));
+    };
+    if let Some(declaration) = default_declaration {
+        declaration.assess_value(binding, collector)?;
+    }
+    Ok(RuleOutcome::Continue)
+}

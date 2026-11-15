@@ -143,6 +143,16 @@ fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
             "MetaEnumValueType.MetaValueType",
         ),
         (
+            "DefaultsRequireRequiredProperties.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaPropertyType.MetaTypeDescriptor",
+        ),
+        (
+            "DefaultValueConformance.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaPropertyType.MetaTypeDescriptor",
+        ),
+        (
             "AtMostOneDirectParent.ValidationRule",
             "HolonValidationRule.HolonType",
             "MetaTypeDescriptor.HolonType",
@@ -594,6 +604,22 @@ fn enum_non_retroactivity_is_retained_as_unbound_vocabulary() -> Result<()> {
     ] {
         let rule = holons(&documents).find(|holon| holon["key"] == key).context("enum rule")?;
         assert_eq!(rule["properties"]["ValidationLevel"], level);
+        assert_eq!(rule["properties"]["DeterminismClass"], "Deterministic");
+    }
+    Ok(())
+}
+
+#[test]
+fn default_declaration_rules_are_deterministic_holon_rules() -> Result<()> {
+    let documents = canonical_documents()?;
+    for key in [
+        "DefaultsRequireRequiredProperties.ValidationRule",
+        "DefaultValueConformance.ValidationRule",
+    ] {
+        let rule = holons(&documents)
+            .find(|holon| holon["key"] == key)
+            .context("default declaration rule")?;
+        assert_eq!(rule["properties"]["ValidationLevel"], "Holon");
         assert_eq!(rule["properties"]["DeterminismClass"], "Deterministic");
     }
     Ok(())

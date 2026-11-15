@@ -545,8 +545,8 @@ instance InheritedValueConstraintNonRelaxation.ValidationRule {
 }
 
 instance DefaultsRequireRequiredProperties.ValidationRule {
-  type PropertyValidationRule.HolonType
-  ValidationLevel Property
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-001"
   ValidationRuleDescription "Only required properties may declare defaults."
@@ -554,8 +554,8 @@ instance DefaultsRequireRequiredProperties.ValidationRule {
 }
 
 instance DefaultValueConformance.ValidationRule {
-  type PropertyValidationRule.HolonType
-  ValidationLevel Property
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-002"
   ValidationRuleDescription "Every declared default value must conform to its effective value definition."

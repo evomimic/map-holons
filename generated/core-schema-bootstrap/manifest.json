@@ -83,11 +83,11 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "b560c576ffc8cac3d5f5863ad81828f9d5cb5a09db4cc3be3bb16c5997c66d28"
+      "sha256": "b5bcc509fd4c3031dd95311f746a048aed13793068a8822185928dcb419ab045"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "16a23eb7b2238efe57d11dd35e78a8945b356dd234a03b0f2480c199ec5a9d06"
+      "sha256": "9802c1283cc2f5c06b4236f2347d34319dac45cd3b52143decb68c31b8003c89"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -2097,11 +2097,11 @@
     },
     {
       "key": "DefaultValueConformance.ValidationRule",
-      "type": "PropertyValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "DefaultsRequireRequiredProperties.ValidationRule",
-      "type": "PropertyValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "DefinesInstanceTypeKind.PropertyType",

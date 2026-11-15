@@ -307,12 +307,23 @@ pub(crate) fn assess_holon(
         }
     }
     let subject_path = path(subject);
+    let diagnosis = packages.diagnoses.get(subject)?;
+    let lineage = diagnosis.valid_lineage();
     let prepared = PreparedRuleSubject::Holon {
         undescribed_properties: subject.undescribed_property_names_in_contract(&names)?,
         key_claim: key_claim.cloned(),
-        enum_members: if packages.diagnoses.get(subject)?.valid_lineage().is_some_and(|lineage| {
-            lineage.contains_role(type_names::CoreDefinitionRole::EnumValueType)
-        }) {
+        default_declaration: if lineage
+            .is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::PropertyType))
+        {
+            packages.default_declaration(&packages.diagnoses.identity(subject)?)?.map(|value| {
+                crate::DefaultDeclarationAssessment::new(subject, value, values, roles, packages)
+            })
+        } else {
+            None
+        },
+        enum_members: if lineage
+            .is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::EnumValueType))
+        {
             Some(packages.enum_members(&packages.diagnoses.identity(subject)?)?)
         } else {
             None
@@ -481,12 +492,21 @@ fn assess_property(
             holon_identity: subject.full_reference_id_string(),
             property: name.to_string(),
         };
-        assess_value(&value, &descriptor, &path, values, roles, collector, packages)?;
+        assess_value(
+            &value,
+            &descriptor,
+            &path,
+            values,
+            roles,
+            collector,
+            packages,
+            CoreValidationRuleName::PropertyValueConformance,
+        )?;
     }
     Ok(())
 }
 
-fn assess_value(
+pub(crate) fn assess_value(
     value: &BaseValue,
     descriptor: &ValueDescriptor,
     path: &ValidationSubjectPath,
@@ -494,6 +514,7 @@ fn assess_value(
     roles: &BindingRoleMemo,
     collector: &mut ValidationCollector,
     packages: &crate::assessment::descriptor_package::DescriptorPackages,
+    attributing_rule: CoreValidationRuleName,
 ) -> Result<(), HolonError> {
     let bindings = prepare_bindings(
         descriptor.holon(),
@@ -541,7 +562,14 @@ fn assess_value(
         ValueDescriptorKind::ValueArray | ValueDescriptorKind::Unsupported(_) => false,
     };
     if eligible {
-        evaluate_value_constraints(value, path, descriptor.holon(), &evaluators, collector)?;
+        evaluate_value_constraints(
+            value,
+            path,
+            descriptor.holon(),
+            &evaluators,
+            collector,
+            attributing_rule,
+        )?;
     } else if expected == ValueDescriptorKind::ValueArray {
         finding(
             collector,

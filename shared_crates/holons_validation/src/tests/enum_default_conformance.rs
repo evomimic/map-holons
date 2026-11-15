@@ -352,3 +352,364 @@ fn enum_handlers_consume_sealed_products_without_reads_or_derivation() -> Result
     }
     Ok(())
 }
+
+/// Models the ordinary AnyBaseValue property and the dependent declaration contract together.
+fn default_fixture() -> Result<Fixture, HolonError> {
+    let mut fixture = enum_fixture()?;
+    for name in [
+        "ValueType",
+        "Extends",
+        "ComponentOf",
+        "InstanceProperties",
+        "InstanceRelationships",
+        "ValidationBindings",
+        "Predecessor",
+    ] {
+        fixture
+            .node(&format!("{name}.CoreMetadataRelationship"))?
+            .with_property_value("AllowsDuplicates", false)?
+            .with_property_value("IsOrdered", false)?;
+    }
+    fixture
+        .node("Constraints.CoreMetadataRelationship")?
+        .with_property_value("TypeName", "Constraints")?
+        .with_property_value("DefinesInstanceTypeKind", false)?
+        .with_property_value("AllowsDuplicates", false)?
+        .with_property_value("IsOrdered", false)?;
+    fixture.link(
+        "Constraints.CoreMetadataRelationship",
+        R::Extends,
+        "DeclaredRelationshipType.RelationshipType",
+    )?;
+    fixture.link(
+        "Constraints.CoreMetadataRelationship",
+        R::SourceType,
+        "MetaTypeDescriptor.HolonType",
+    )?;
+    fixture.link(
+        "Constraints.CoreMetadataRelationship",
+        R::TargetType,
+        "ConstraintType.HolonType",
+    )?;
+    fixture.link(
+        "MetaTypeDescriptor.HolonType",
+        R::InstanceRelationships,
+        "Constraints.CoreMetadataRelationship",
+    )?;
+    let root = fixture.nodes["TypeDescriptor"].clone();
+    fixture
+        .node("MetaPropertyType.MetaTypeDescriptor")?
+        .remove_related_holons(R::Extends, vec![root])?;
+    fixture.link(
+        "MetaPropertyType.MetaTypeDescriptor",
+        R::Extends,
+        "MetaTypeDescriptor.HolonType",
+    )?;
+    fixture.link("BaseValueValueType.ValueType", R::Extends, "ValueType.TypeDescriptor")?;
+    fixture
+        .node("DefaultValue.PropertyType")?
+        .with_property_value("TypeName", "DefaultValue")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("DefaultValue.PropertyType", R::Extends, "PropertyType.TypeDescriptor")?;
+    fixture.link("DefaultValue.PropertyType", R::ValueType, "BaseValueValueType.ValueType")?;
+    fixture.link(
+        "MetaPropertyType.MetaTypeDescriptor",
+        R::InstanceProperties,
+        "DefaultValue.PropertyType",
+    )?;
+    let old = fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone();
+    fixture
+        .node("PropertyType.TypeDescriptor")?
+        .remove_related_holons(R::DescribedBy, vec![old])?;
+    fixture.link(
+        "PropertyType.TypeDescriptor",
+        R::DescribedBy,
+        "MetaPropertyType.MetaTypeDescriptor",
+    )?;
+    fixture.link("Title.PropertyType", R::ComponentOf, "CoreOwner")?;
+    fixture.link("Title.PropertyType", R::DescribedBy, "MetaPropertyType.MetaTypeDescriptor")?;
+    Ok(fixture)
+}
+
+fn select_default_type(fixture: &mut Fixture, target: &str) -> Result<(), HolonError> {
+    let old = fixture.nodes["Color"].clone();
+    fixture.node("Title.PropertyType")?.remove_related_holons(R::ValueType, vec![old])?;
+    fixture.link("Title.PropertyType", R::ValueType, target)
+}
+
+#[test]
+fn unused_property_defaults_require_requiredness_and_dispatch_independently(
+) -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", token("Red"))?;
+    for required in [true, false] {
+        fixture.node("Title.PropertyType")?.with_property_value("IsValueRequired", required)?;
+        let assessment = assess_commit_candidates(
+            &fixture.context,
+            &[candidate(&fixture, "Title.PropertyType")],
+        )?;
+        assert_eq!(
+            assessment.report.violation_count(),
+            usize::from(!required),
+            "{:?}",
+            assessment.report
+        );
+        assert_eq!(findings(&assessment, "DS-DEFAULT-001"), usize::from(!required));
+        for rule in [Rule::DefaultsRequireRequiredProperties, Rule::DefaultValueConformance] {
+            assert!(assessment.observations.dispatched_rule_keys.contains(rule.as_str()));
+        }
+    }
+    fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", 12_i64)?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert_eq!(assessment.report.violation_count(), 2, "{:?}", assessment.report);
+    assert_eq!(findings(&assessment, "DS-DEFAULT-001"), 1);
+    assert_eq!(findings(&assessment, "BaseValueKindMismatch"), 1);
+    Ok(())
+}
+
+#[test]
+fn enum_defaults_use_membership_without_duplicate_ordinary_property_findings(
+) -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", token("undeclared"))?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert_eq!(assessment.report.violation_count(), 1, "{:?}", assessment.report);
+    assert_eq!(findings(&assessment, "DS-ENUM-002"), 1);
+    assert_eq!(
+        assessment.report.violations[0].rule_key.as_deref(),
+        Some(Rule::EnumTokenMembership.as_str())
+    );
+    assert_eq!(
+        assessment.report.violations[0].subject,
+        core_types::ValidationSubjectPath::Value {
+            holon_identity: fixture.nodes["Title.PropertyType"].full_reference_id_string(),
+            property: "DefaultValue".into(),
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn default_constraints_preserve_declaration_attribution_and_contributing_provenance(
+) -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    fixture.node("NarrowString")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.node("WideString")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("WideString", R::Extends, "StringValueType.ValueType")?;
+    fixture.link("NarrowString", R::Extends, "WideString")?;
+    bounded_constraint(
+        &mut fixture,
+        "InheritedLength",
+        "StringLengthConstraint.ConstraintType",
+        "WideString",
+        None,
+        Some(8),
+    )?;
+    bounded_constraint(
+        &mut fixture,
+        "TighterLength",
+        "StringLengthConstraint.ConstraintType",
+        "NarrowString",
+        None,
+        Some(2),
+    )?;
+    select_default_type(&mut fixture, "NarrowString")?;
+    fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", "long")?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert_eq!(assessment.report.violation_count(), 1, "{:?}", assessment.report);
+    assert_eq!(assessment.observations.evaluated_value_constraint_count, 2);
+    let finding = &assessment.report.violations[0];
+    assert!(matches!(&finding.kind, CommitValidationViolationKind::ConstraintViolation {
+        constraint_identity, constraint_type_identity, ..
+    } if constraint_identity == &fixture.nodes["TighterLength"].reference_id_string()
+        && constraint_type_identity == &fixture.nodes["StringLengthConstraint.ConstraintType"].reference_id_string()));
+    assert_eq!(finding.rule_key.as_deref(), Some(Rule::DefaultValueConformance.as_str()));
+    assert_eq!(
+        finding.descriptor_identity,
+        Some(fixture.nodes["NarrowString"].reference_id_string())
+    );
+    assert_eq!(
+        finding.subject,
+        core_types::ValidationSubjectPath::Value {
+            holon_identity: fixture.nodes["Title.PropertyType"].full_reference_id_string(),
+            property: "DefaultValue".into(),
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn populated_array_defaults_reject_with_and_without_unsupported_constraints(
+) -> Result<(), HolonError> {
+    for attached in [false, true] {
+        let mut fixture = default_fixture()?;
+        fixture.link("ValueArrayValueType.ValueType", R::Extends, "ValueType.TypeDescriptor")?;
+        select_default_type(&mut fixture, "ValueArrayValueType.ValueType")?;
+        if attached {
+            bounded_constraint(
+                &mut fixture,
+                "Items",
+                "ItemCountConstraint.ConstraintType",
+                "ValueArrayValueType.ValueType",
+                None,
+                Some(2),
+            )?;
+        }
+        fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", "populated")?;
+        let assessment = assess_commit_candidates(
+            &fixture.context,
+            &[candidate(&fixture, "Title.PropertyType")],
+        )?;
+        assert_eq!(
+            findings(&assessment, "UnsupportedValueRepresentation"),
+            1,
+            "{:?}",
+            assessment.report
+        );
+        assert_eq!(assessment.report.violation_count(), 1 + usize::from(attached));
+        if attached {
+            assert!(assessment.report.violations.iter().any(|f| matches!(
+                f.kind,
+                CommitValidationViolationKind::UnsupportedConstraintType { .. }
+            )));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn saved_default_definitions_are_supporting_inputs_and_never_supply_omitted_values(
+) -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    fixture
+        .node("Title.PropertyType")?
+        .with_property_value("IsValueRequired", false)?
+        .with_property_value("DefaultValue", token("undeclared"))?;
+    let fixture = fixture.saved_snapshot()?;
+    let mut subject = fixture.staged_subject("saved-support")?;
+    subject.with_property_value("Title", token("Red"))?;
+    let assessment = assess_commit_candidates(&fixture.context, &[subject])?;
+    assert!(assessment.report.is_accepted(), "{:?}", assessment.report);
+    assert!(!assessment
+        .observations
+        .dispatched_rule_keys
+        .contains(Rule::DefaultValueConformance.as_str()));
+
+    let mut fixture = default_fixture()?;
+    fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", token("Red"))?;
+    let mut subject = fixture.staged_subject("explicit-omission")?;
+    subject.remove_property_value("Title")?;
+    let assessment = assess_commit_candidates(&fixture.context, &[subject.clone()])?;
+    assert_eq!(assessment.report.violation_count(), 1, "{:?}", assessment.report);
+    assert_eq!(findings(&assessment, "DS-PROP-001"), 1);
+    use holons_core::ReadableHolon;
+    assert!(subject.property_value("Title")?.is_none());
+    Ok(())
+}
+
+#[test]
+fn default_handlers_consume_sealed_products_without_reads_or_derivation() -> Result<(), HolonError>
+{
+    for saved in [false, true] {
+        let mut fixture = default_fixture()?;
+        fixture.node("Title.PropertyType")?.with_property_value("DefaultValue", token("Red"))?;
+        let fixture = if saved { fixture.saved_snapshot()? } else { fixture };
+        let property = if saved {
+            fixture.stage_update_of("Title.PropertyType")?
+        } else {
+            candidate(&fixture, "Title.PropertyType")
+        };
+        let candidates = [property];
+        let constructed = crate::assessment::commit::construct_assessment(
+            &fixture.context,
+            &candidates,
+            crate::ValidationCollector::default(),
+        )?;
+        let reads = (fixture.backend_node_reads(), fixture.backend_relationship_reads());
+        let probe =
+            holons_core::core_shared_objects::read_observations::DerivationProbe::start(true);
+        let (prepared, observations) = constructed.assess(|_| {})?;
+        let report = prepared.into_report();
+        assert!(report.is_accepted(), "{report:?}");
+        assert!(observations.dispatched_rule_keys.contains(Rule::DefaultValueConformance.as_str()));
+        assert_eq!(reads, (fixture.backend_node_reads(), fixture.backend_relationship_reads()));
+        assert!(probe.finish().0.values().all(|count| *count == 0));
+    }
+    Ok(())
+}
+
+#[test]
+fn missing_defaults_are_valid_and_unusable_requiredness_is_attributed() -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    fixture.node("Title.PropertyType")?.with_property_value("IsValueRequired", false)?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert!(assessment.report.is_accepted(), "{:?}", assessment.report);
+    fixture
+        .node("Title.PropertyType")?
+        .with_property_value("IsValueRequired", "malformed")?
+        .with_property_value("DefaultValue", token("Red"))?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert_eq!(findings(&assessment, "DS-DEFAULT-001"), 0);
+    let dependencies: Vec<_> = assessment
+        .report
+        .violations
+        .iter()
+        .filter(|f| f.rule_key.as_deref() == Some(Rule::DefaultsRequireRequiredProperties.as_str()))
+        .collect();
+    assert_eq!(dependencies.len(), 1, "{:?}", assessment.report);
+    assert_eq!(dependencies[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
+    assert!(matches!(dependencies[0].subject, core_types::ValidationSubjectPath::Holon { .. }));
+    assert_eq!(findings(&assessment, "BaseValueKindMismatch"), 1);
+    Ok(())
+}
+
+#[test]
+fn default_with_missing_value_type_has_an_attributed_blocker() -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    let old = fixture.nodes["Color"].clone();
+    fixture
+        .node("Title.PropertyType")?
+        .remove_related_holons(R::ValueType, vec![old])?
+        .with_property_value("DefaultValue", token("Red"))?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert_eq!(assessment.report.violation_count(), 1, "{:?}", assessment.report);
+    assert_eq!(
+        assessment.report.violations[0].kind,
+        CommitValidationViolationKind::UnresolvedLocalDependency
+    );
+    assert_eq!(
+        assessment.report.violations[0].rule_key.as_deref(),
+        Some(Rule::DefaultValueConformance.as_str())
+    );
+    Ok(())
+}
+
+#[test]
+fn unusable_default_value_lineage_blocks_only_dependent_assessment() -> Result<(), HolonError> {
+    let mut fixture = default_fixture()?;
+    fixture.node("BrokenValue")?.with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("BrokenValue", R::Extends, "BrokenValue")?;
+    select_default_type(&mut fixture, "BrokenValue")?;
+    fixture
+        .node("Title.PropertyType")?
+        .with_property_value("IsValueRequired", false)?
+        .with_property_value("DefaultValue", "populated")?;
+    let assessment =
+        assess_commit_candidates(&fixture.context, &[candidate(&fixture, "Title.PropertyType")])?;
+    assert_eq!(findings(&assessment, "DS-DEFAULT-001"), 1);
+    let blockers: Vec<_> = assessment
+        .report
+        .violations
+        .iter()
+        .filter(|f| f.rule_key.as_deref() == Some(Rule::DefaultValueConformance.as_str()))
+        .collect();
+    assert_eq!(blockers.len(), 1, "{:?}", assessment.report);
+    assert_eq!(blockers[0].kind, CommitValidationViolationKind::UnresolvedLocalDependency);
+    Ok(())
+}

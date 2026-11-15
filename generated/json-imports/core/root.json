@@ -477,6 +477,17 @@
               "$ref": "(PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor)"
             }
           ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "DefaultsRequireRequiredProperties.ValidationRule"
+            },
+            {
+              "$ref": "DefaultValueConformance.ValidationRule"
+            }
+          ]
         }
       ]
     },

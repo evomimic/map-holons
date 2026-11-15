@@ -218,7 +218,9 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         DefaultsRequireRequiredProperties => RuleRegistration {
-            implementation: None,
+            implementation: Some(Subject(
+                crate::rules::conformance::assess_defaults_require_required_properties,
+            )),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::MetaPropertyType,
@@ -228,7 +230,9 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             applicability: SubjectApplicability::AnySubject,
         },
         DefaultValueConformance => RuleRegistration {
-            implementation: None,
+            implementation: Some(Subject(
+                crate::rules::conformance::assess_default_value_conformance,
+            )),
             level: Holon,
             family: Role::HolonValidationRule,
             declaring: Role::MetaPropertyType,
@@ -467,6 +471,8 @@ pub enum PreparedRuleSubject<'a> {
         key_claim: Option<crate::KeyClaim>,
         /// Present only for enum definitions; malformed declarations retain their diagnosis.
         enum_members: Option<Result<&'a EnumMembers, HolonError>>,
+        /// Local default declaration and its sealed assessment inputs, for property candidates.
+        default_declaration: Option<crate::DefaultDeclarationAssessment<'a>>,
     },
     /// A missing property whose minimum and requiredness have already been resolved.
     Property { missing_required: bool, name: String, descriptor_identity: String },

@@ -119,6 +119,7 @@ pub(crate) fn evaluate_value_constraints(
     descriptor: &HolonReference,
     constraints: &[PreparedValueConstraint<'_>],
     collector: &mut ValidationCollector,
+    attributing_rule: CoreValidationRuleName,
 ) -> Result<(), HolonError> {
     for prepared in constraints {
         collector.observations.evaluated_value_constraint_count += 1;
@@ -131,7 +132,7 @@ pub(crate) fn evaluate_value_constraints(
                     constraint_identity: prepared.contribution.member.reference_id_string(),
                     constraint_type_identity: prepared.constraint_type.reference_id_string(),
                 },
-                Some(CoreValidationRuleName::PropertyValueConformance.as_str().into()),
+                Some(attributing_rule.as_str().into()),
                 format!(
                     "Value type {}: {detail}.",
                     descriptor

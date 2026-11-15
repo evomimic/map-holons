@@ -2279,8 +2279,6 @@ fn every_builtin_rule_has_a_registration_with_explicit_deferred_implementations(
                 name,
                 CoreValidationRuleName::CrossSchemaDependenciesDeclared
                     | CoreValidationRuleName::EnumTokenNonRetroactivity
-                    | CoreValidationRuleName::DefaultsRequireRequiredProperties
-                    | CoreValidationRuleName::DefaultValueConformance
                     | CoreValidationRuleName::ConcreteDescribingType
                     | CoreValidationRuleName::UniquePropertyMemberBinding
                     | CoreValidationRuleName::AbstractMemberMinimumEnforcement
@@ -2704,6 +2702,14 @@ fn registrations_match_independent_core_placement_expectations() {
         (
             "EnumMemberNamesUnique.ValidationRule",
             ("HolonValidationRule.HolonType", "MetaEnumValueType.MetaValueType", Holon),
+        ),
+        (
+            "DefaultsRequireRequiredProperties.ValidationRule",
+            ("HolonValidationRule.HolonType", "MetaPropertyType.MetaTypeDescriptor", Holon),
+        ),
+        (
+            "DefaultValueConformance.ValidationRule",
+            ("HolonValidationRule.HolonType", "MetaPropertyType.MetaTypeDescriptor", Holon),
         ),
         (
             "AtMostOneDirectParent.ValidationRule",

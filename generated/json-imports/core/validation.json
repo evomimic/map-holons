@@ -1525,11 +1525,11 @@
     },
     {
       "key": "DefaultsRequireRequiredProperties.ValidationRule",
-      "type": "PropertyValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-DEFAULT-001",
-        "ValidationLevel": "Property",
+        "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Only required properties may declare defaults."
       },
       "relationships": [
@@ -1545,11 +1545,11 @@
     },
     {
       "key": "DefaultValueConformance.ValidationRule",
-      "type": "PropertyValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-DEFAULT-002",
-        "ValidationLevel": "Property",
+        "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every declared default value must conform to its effective value definition."
       },
       "relationships": [

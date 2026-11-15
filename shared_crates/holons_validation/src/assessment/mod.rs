@@ -1,4 +1,5 @@
 pub(crate) mod commit;
+mod default_declaration;
 pub(crate) mod descriptor_package;
 pub(crate) mod graph_only_deltas;
 pub(crate) mod key_evidence;
@@ -8,3 +9,5 @@ pub(crate) mod schema_view;
 pub(crate) mod structural_diagnoses;
 pub(crate) mod subjects;
 pub(crate) mod support;
+
+pub use default_declaration::DefaultDeclarationAssessment;
