@@ -93,7 +93,7 @@ pub use schema_ownership::{
     resolve_schema_ownership, schema_components, schema_dependencies, schema_rules,
     SchemaOwnershipKind, SchemaOwnershipResolution,
 };
-pub use string_matching::CaseMatching;
+pub use string_matching::{CaseMatching, LiteralMatch};
 pub use structural_diagnosis::{
     resolve_describing_type, DescribingTypeResolution, ExtendsLineageDefect,
     ExtendsLineageDiagnosis, StructuralPrerequisites, ValidExtendsLineage,

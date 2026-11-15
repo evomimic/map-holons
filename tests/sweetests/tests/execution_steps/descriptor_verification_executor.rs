@@ -6,8 +6,8 @@ use super::persisted_read_support::{
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
     CaseMatching, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
-    EffectiveHolonDescriptor, HolonDescriptor, OperandValueTypeRule, OperatorCategory,
-    OperatorDescriptor, OperatorKind, OrderedComparison, PropertyDescriptor,
+    EffectiveHolonDescriptor, HolonDescriptor, LiteralMatch, OperandValueTypeRule,
+    OperatorCategory, OperatorDescriptor, OperatorKind, OrderedComparison, PropertyDescriptor,
     RelationshipDescriptor, ValueArrayDescriptor, ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
@@ -653,7 +653,7 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
     );
     assert_eq!(
         contains.kind().expect("ContainsOperator kind"),
-        OperatorKind::Contains(CaseMatching::UnicodeDefaultCaseFold)
+        OperatorKind::Matching(LiteralMatch::Contains, CaseMatching::UnicodeDefaultCaseFold)
     );
     let contains_specifications =
         contains.operand_specifications().expect("ContainsOperator operand specifications");
@@ -694,6 +694,72 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
         Err(HolonError::UnsupportedOperator { operator, value_type, .. })
             if operator == "ContainsOperator" && value_type == "IntegerValueType"
     ));
+
+    // Literal boundary matching: StartsWith and EndsWith each take one literal of
+    // fixed MapStringValueType, declare Contains' default policy, and are
+    // afforded by the string family only.
+    for (name, literal_match, role) in [
+        ("StartsWithOperator", LiteralMatch::StartsWith, "Prefix"),
+        ("EndsWithOperator", LiteralMatch::EndsWith, "Suffix"),
+    ] {
+        let operator = OperatorDescriptor::from_holon(find_holon_by_key(
+            &holons,
+            &format!("{name}.OperatorType"),
+        ));
+        assert_eq!(operator.arity().expect("boundary operator arity"), 2, "{name}");
+        assert_eq!(
+            operator.operator_category().expect("boundary operator category"),
+            OperatorCategory::Matching,
+            "{name}"
+        );
+        assert_eq!(
+            operator.kind().expect("boundary operator kind"),
+            OperatorKind::Matching(literal_match, CaseMatching::UnicodeDefaultCaseFold),
+            "{name}"
+        );
+        let specifications =
+            operator.operand_specifications().expect("boundary operand specifications");
+        assert_eq!(specifications.len(), 1, "{name}");
+        let specification = &specifications[0];
+        assert_eq!(specification.role().expect("boundary operand role").0, role);
+        assert_eq!(specification.display_name().expect("boundary operand label").0, role);
+        assert_eq!(
+            specification.rule().expect("boundary operand rule"),
+            OperandValueTypeRule::FixedValueType,
+            "{name}"
+        );
+        assert_eq!(
+            specification
+                .operand_value_type()
+                .expect("boundary operand type read")
+                .expect("boundary operand type")
+                .holon(),
+            map_string.holon(),
+            "{name}"
+        );
+        assert!(map_string
+            .supports_operator(&operator)
+            .unwrap_or_else(|error| panic!("MapStringValueType inherits {name}: {error:?}")));
+        let resolved = operator
+            .resolve_for_subject(&map_string)
+            .unwrap_or_else(|error| panic!("{name} resolves on strings: {error:?}"));
+        let invoke = |subject: &str, literal: &str| {
+            resolved
+                .invoke(
+                    &BaseValue::StringValue(MapString(subject.to_string())),
+                    &[BaseValue::StringValue(MapString(literal.to_string()))],
+                )
+                .expect("boundary operator execution")
+        };
+        let (matching, interior) = match literal_match {
+            LiteralMatch::StartsWith => ("STRA", "RASS"),
+            _ => ("SSE", "RASS"),
+        };
+        assert!(invoke("Straße", matching), "{name} folds case at its boundary");
+        assert!(!invoke("Straße", interior), "{name} does not match interior text");
+        assert!(invoke("Straße", ""), "{name} empty literal");
+        assert!(!integer.supports_operator(&operator).expect("integer affordance read"), "{name}");
+    }
 
     // Ordered comparisons: one Ordering, Arity 2 operator per comparison, each
     // with one SameAsSubject ComparisonValue operand, afforded explicitly by the

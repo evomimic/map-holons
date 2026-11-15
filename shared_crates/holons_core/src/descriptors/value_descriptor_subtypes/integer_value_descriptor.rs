@@ -82,7 +82,7 @@ impl IntegerValueDescriptor {
         match op.kind() {
             OperatorKind::Equals => Ok(lhs == rhs),
             OperatorKind::Ordered(comparison) => Ok(comparison.holds(lhs.0.cmp(&rhs.0))),
-            OperatorKind::Contains(_) => unsupported_operator(&self.holon, op.operator()),
+            OperatorKind::Matching(..) => unsupported_operator(&self.holon, op.operator()),
         }
     }
 }
