@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod config;
+mod constitution_admission;
 pub mod env;
 mod logging;
 mod map_commands;

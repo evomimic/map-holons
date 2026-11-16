@@ -11,9 +11,7 @@ use crate::{
         application_launcher::{
             ApplicationExperience, ApplicationSessionState, HomeDancerLaunchSelection,
         },
-        core_schema_bootstrap::{
-            ensure_core_schema_space, CoreSchemaBootstrapGate, CoreSchemaStartup,
-        },
+        core_schema_bootstrap::{ensure_core_schema_space, CoreSchemaBootstrapGate},
         plugin_manager::PluginManager,
         provider_registry::ProviderRegistry,
         receptor_config_registry::ReceptorConfigRegistry,
@@ -95,6 +93,7 @@ impl AppBuilder {
             //.manage::<runtime::HolochainReceptorState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .manage(CoreSchemaBootstrapGate::new())
+            .manage(crate::constitution_admission::WelcomeLifecycle::default())
             .manage(ApplicationSessionState::new(application_experience));
         let base = if crate::env::development_enabled() {
             base.invoke_handler(tauri::generate_handler![
@@ -191,12 +190,11 @@ impl AppBuilder {
                     application_session
                         .mark_activating_base_packages()
                         .map_err(anyhow::Error::msg)?;
-                    if startup == CoreSchemaStartup::Provisioned {
-                        ensure_configured_space_imports(&handle)
-                            .await
-                            .context("ensure_configured_space_imports failed")?;
-                    }
+                    ensure_configured_space_imports(&handle, startup)
+                        .await
+                        .context("ensure_configured_space_imports failed")?;
                     if !crate::env::development_enabled() {
+                        crate::trusted_welcome::refresh_lifecycle(&handle).await?;
                         return Ok::<(), anyhow::Error>(());
                     }
                     application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
@@ -319,7 +317,12 @@ impl AppBuilder {
                     // eprintln flushes synchronously before process::exit kills async writers
                     eprintln!("[APP BUILDER] FATAL startup error: {:#}", e);
                     tracing::error!("[APP BUILDER] startup failed: {}", e);
-                    std::process::exit(1);
+                    if crate::env::development_enabled() {
+                        std::process::exit(1);
+                    }
+                    // Keep packaged Welcome available to explain failure. Neither
+                    // startup failure nor another launch may grant acquisition authority.
+                    return;
                 }
                 tracing::info!("[APP BUILDER] App builder done, Startup complete.");
             });

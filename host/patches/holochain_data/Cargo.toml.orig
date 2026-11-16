@@ -1,0 +1,62 @@
+[package]
+name = "holochain_data"
+version = "0.7.1"
+description = "Database abstraction layer for Holochain using sqlx"
+license = "Apache-2.0"
+repository = "https://github.com/holochain/holochain"
+documentation = "https://docs.rs/holochain_data"
+authors = ["Holochain Core Dev Team <devcore@holochain.org>"]
+edition = "2021"
+
+[dependencies]
+sqlx = { version = "0.9.0", features = [
+  "runtime-tokio",
+  "sqlite",
+  "migrate",
+  "macros",
+  "derive",
+  "json",
+] }
+base64 = "0.22"
+sodoken = "0.1.0"
+tokio = { version = "1.27", features = ["full"] }
+libsqlite3-sys = "0.35"
+opentelemetry = "0.31"
+holo_hash = { version = "^0.7.1", path = "../holo_hash" }
+holochain_types = { version = "^0.7.1", path = "../holochain_types" }
+holochain_integrity_types = { version = "^0.7.1", path = "../holochain_integrity_types" }
+holochain_zome_types = { version = "^0.7.1", path = "../holochain_zome_types" }
+holochain_conductor_api = { version = "^0.7.1", path = "../holochain_conductor_api" }
+holochain_serialized_bytes = "=0.0.57"
+holochain_nonce = { version = "^0.7.1", path = "../holochain_nonce" }
+holochain_timestamp = { version = "^0.7.1", path = "../timestamp" }
+serde_json = "1.0"
+indexmap = { version = "2.6.0", features = ["serde"] }
+bytes = "1"
+
+[dev-dependencies]
+criterion = { version = "0.6", features = ["async_tokio"] }
+holochain_data = { path = ".", features = ["test-utils", "encryption"] }
+rand = "0.9"
+tempfile = "3.3"
+
+[[bench]]
+name = "dht_queries"
+harness = false
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# Exposes the read-only inspection queries (op counts, existence checks, etc.)
+# that are otherwise only compiled for this crate's own tests. Lets tooling read
+# the database directly; `test-utils` turns it on for test consumers.
+inspection = []
+test-utils = ["inspection"]
+unstable-migration = [
+  "holochain_zome_types/unstable-migration",
+  "holochain_types/unstable-migration",
+]
+
+encryption = ["libsqlite3-sys/bundled-sqlcipher-vendored-openssl"]

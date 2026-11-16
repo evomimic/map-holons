@@ -90,12 +90,32 @@ async fn initialize_app(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use base_types::ToBaseValue;
-    use holons_core::reference_layer::ReadableHolon;
-    use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
-    use map_commands_runtime::{ExecutionPolicy, Runtime, RuntimeSession};
+    use crate::setup::{
+        core_schema_bootstrap::{prepare_core_schema, CoreSchemaStartup},
+        space_imports::prepare_space_imports,
+    };
+    use map_commands_runtime::{Runtime, RuntimeSession};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[derive(Debug)]
+    struct CountingTransport {
+        inner: NativeDanceTransport,
+        loads: Arc<AtomicUsize>,
+    }
+    #[async_trait::async_trait]
+    impl DanceEnvelopeTransport for CountingTransport {
+        async fn initiate_dance_envelope(
+            &self,
+            request: DanceRequestEnvelope,
+        ) -> Result<DanceResponseEnvelope, HolonError> {
+            if request.request.transport_label() == "load_holons" {
+                self.loads.fetch_add(1, Ordering::SeqCst);
+            }
+            self.inner.initiate_dance_envelope(request).await
+        }
+    }
     use tauri_plugin_holochain::{
-        vec_to_locked, AllowedOrigins, HolochainRuntime, HolochainRuntimeConfig, NetworkConfig,
+        vec_to_locked, AllowedOrigins, HolochainRuntime, HolochainRuntimeConfig,
     };
 
     /// Real persistent conductor and packaged hApp; no test keystore, probes or external ingress.
@@ -111,12 +131,21 @@ mod tests {
         let happ = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../happ/workdir/map-holons.happ");
         let configuration = || {
-            let mut network = NetworkConfig::default();
+            let packaged: serde_json::Value =
+                serde_json::from_str(include_str!("../../../config/storage.packaged.json"))
+                    .unwrap();
+            let config: HolochainConfig =
+                serde_json::from_value(packaged["storage_providers"]["holochain_packaged"].clone())
+                    .unwrap();
+            let mut network =
+                crate::setup::providers::holochain::plugins::network_config_from_storage_config(
+                    &config,
+                );
             network.bootstrap_url = url2::Url2::parse("http://127.0.0.1:1");
             network.relay_url = url2::Url2::parse("https://127.0.0.1:1");
-            network.target_arc_factor = 0;
             HolochainRuntimeConfig::new(root.clone(), network).backend_only(true)
         };
+        let loads = Arc::new(AtomicUsize::new(0));
         let conductor =
             HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.unwrap();
         assert!(conductor.conductor_handle.get_arbitrary_admin_websocket_port().is_none());
@@ -124,34 +153,36 @@ mod tests {
         assert!(conductor.admin_websocket().await.is_err());
         assert!(conductor.app_websocket("map_holons".into(), AllowedOrigins::Any).await.is_err());
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
-        let initiator = Arc::new(TrustChannel::new(Arc::new(NativeDanceTransport(caller))));
+        let initiator = Arc::new(TrustChannel::new(Arc::new(CountingTransport {
+            inner: NativeDanceTransport(caller),
+            loads: loads.clone(),
+        })));
         let manager = holons_client::init_client_runtime(Some(initiator));
         let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
-        let tx = runtime.session().begin_transaction().await.unwrap();
-        let context = runtime.session().get_transaction(&tx).unwrap();
-        assert!(context.discover_local_holon_space().unwrap().is_none());
-        context.enable_bootstrap_provisioning();
-        let content_set =
-            crate::setup::core_schema_bootstrap::bootstrap_content_set_from_directory(
-                &resources.join("core-schema-bootstrap"),
-            )
-            .unwrap();
-        let result = runtime
-            .execute_command(
-                MapCommand::Transaction(TransactionCommand {
-                    context: context.clone(),
-                    action: TransactionAction::LoadHolons { content_set },
-                }),
-                ExecutionPolicy::default(),
-            )
+        let resource_root = resources.parent().unwrap();
+        assert_eq!(
+            prepare_core_schema(&runtime, resource_root, None).await.unwrap(),
+            CoreSchemaStartup::Provisioned
+        );
+        assert_eq!(loads.load(Ordering::SeqCst), 1);
+        // Interrupted post-Core provisioning is refused on Open, not repaired by import replay.
+        assert!(prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::OpenedExisting)
+            .await
+            .is_err());
+        assert_eq!(loads.load(Ordering::SeqCst), 1);
+        prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::Provisioned)
             .await
             .unwrap();
-        let MapResult::Reference(result) = result else { panic!("Expected loader result") };
-        assert_eq!(
-            result.property_value("LoadCommitStatus").unwrap(),
-            Some("Complete".to_base_value())
-        );
-        let id = context.get_space_holon().unwrap().unwrap().holon_id().unwrap();
+        assert_eq!(loads.load(Ordering::SeqCst), 3);
+        let target = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
+        let id = target.space;
+        let tx = runtime.session().begin_transaction().await.unwrap();
+        let context = runtime.session().get_transaction(&tx).unwrap();
+        let descriptor_id = context
+            .lookup()
+            .get_saved_holon_by_key(&"PersonAgent.BioSocialAgent".into())
+            .unwrap()
+            .holon_id();
         runtime.session().archive_transaction(&tx).unwrap();
         drop(context);
         drop(runtime);
@@ -162,16 +193,63 @@ mod tests {
         let conductor =
             HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.unwrap();
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
-        let manager = holons_client::init_client_runtime(Some(Arc::new(TrustChannel::new(
-            Arc::new(NativeDanceTransport(caller)),
-        ))));
-        let context =
-            manager.get_transaction_manager().open_public_transaction(manager.clone()).unwrap();
-        assert_eq!(context.discover_local_holon_space().unwrap().unwrap().holon_id().unwrap(), id);
+        let manager =
+            holons_client::init_client_runtime(Some(Arc::new(TrustChannel::new(Arc::new(
+                CountingTransport { inner: NativeDanceTransport(caller), loads: loads.clone() },
+            )))));
+        let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
+        let baseline = loads.load(Ordering::SeqCst);
+        assert_eq!(
+            prepare_core_schema(&runtime, resource_root, None).await.unwrap(),
+            CoreSchemaStartup::OpenedExisting
+        );
+        prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::OpenedExisting)
+            .await
+            .unwrap();
+        let reopened = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
+        assert_eq!(reopened.space, id);
+        assert_eq!(
+            reopened.sovereignty,
+            crate::constitution_admission::SovereigntyObservation::NoAssociationObserved
+        );
+        assert!(!crate::constitution_admission::blockers(&reopened).is_empty());
+        let tx = runtime.session().begin_transaction().await.unwrap();
+        let context = runtime.session().get_transaction(&tx).unwrap();
+        assert_eq!(
+            context
+                .lookup()
+                .get_saved_holon_by_key(&"PersonAgent.BioSocialAgent".into())
+                .unwrap()
+                .holon_id(),
+            descriptor_id
+        );
         assert!(!context.is_bootstrap_provisioning());
+        runtime.session().archive_transaction(&tx).unwrap();
+        drop(context);
+        // A package/version mismatch must not trigger a replacement Space or reload.
+        let incompatible = root.join("incompatible-resources");
+        let destination = incompatible.join("resources/core-schema-bootstrap");
+        std::fs::create_dir_all(&destination).unwrap();
+        let mut manifest: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(resources.join("core-schema-bootstrap/manifest.json")).unwrap(),
+        )
+        .unwrap();
+        manifest["core_schema_key"] = "Unsupported Core Schema version".into();
+        std::fs::write(destination.join("manifest.json"), serde_json::to_vec(&manifest).unwrap())
+            .unwrap();
+        assert!(prepare_core_schema(&runtime, &incompatible, None).await.is_err());
+        assert_eq!(
+            crate::constitution_admission::inspect_target(&runtime).await.unwrap().space,
+            id
+        );
+        assert_eq!(
+            loads.load(Ordering::SeqCst),
+            baseline,
+            "Open, missing dependencies and incompatible state must never replay imports"
+        );
+        drop(runtime);
         assert!(conductor.conductor_handle.get_arbitrary_admin_websocket_port().is_none());
         assert!(conductor.conductor_handle.list_app_interfaces().await.unwrap().is_empty());
-        drop(context);
         drop(manager);
         conductor.shutdown().await.unwrap();
         drop(conductor);

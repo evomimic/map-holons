@@ -1,5 +1,6 @@
 // Module declarations
 mod config;
+mod constitution_admission;
 pub mod env;
 mod map_commands;
 mod runtime;

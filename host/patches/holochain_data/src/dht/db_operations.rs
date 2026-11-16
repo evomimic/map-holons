@@ -1,0 +1,31 @@
+//! `DbRead<Dht>` / `DbWrite<Dht>` method API, split per DHT domain.
+//!
+//! Each submodule adds methods to the `DbRead<Dht>` / `DbWrite<Dht>` handle
+//! types via `impl` blocks. The methods delegate to free fns in
+//! [`super::inner`].
+
+mod action;
+mod cap_claim;
+mod cap_grant;
+mod chain_lock;
+mod chain_op;
+mod chain_op_publish;
+mod chain_write_permit;
+pub use chain_write_permit::ChainWritePermit;
+mod db_size;
+mod deleted_link;
+mod deleted_record;
+mod entry;
+mod limbo_chain_op;
+mod limbo_warrant;
+mod link;
+mod move_to_limbo;
+mod op_exists;
+mod remove_countersigning_session;
+mod scheduled_function;
+mod slice_hash;
+mod sync_queries;
+mod updated_record;
+mod validation_receipt;
+mod warrant;
+mod warrant_publish;

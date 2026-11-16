@@ -6,8 +6,8 @@
 use core_types::{ContentSet, FileData, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::{HolonSpaceBehavior, ReadableHolon};
-use map_commands_contract::{MapCommand, TransactionAction, TransactionCommand};
-use map_commands_runtime::ExecutionPolicy;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+use map_commands_runtime::{ExecutionPolicy, Runtime};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::{Component, Path};
@@ -18,6 +18,7 @@ use tauri::{AppHandle, Manager};
 use tracing::info;
 
 use crate::{runtime::RuntimeState, setup::application_launcher::ApplicationSessionState};
+use base_types::ToBaseValue;
 
 // Tauri preserves the source `resources/` path below the runtime resource
 // directory (including in dev mode under `target/debug/resources`).
@@ -158,22 +159,10 @@ fn discover_existing_space(context: &Arc<TransactionContext>) -> Result<bool, Ho
     Ok(true)
 }
 
-/// Reads the packaged, manifest-selected bootstrap inputs into the existing
-/// loader `ContentSet` transport shape. The caller still owns the bootstrap
-/// transaction and must not expose this content through ordinary IPC.
-pub fn packaged_bootstrap_content_set(handle: &AppHandle) -> anyhow::Result<ContentSet> {
-    let resource_root = handle
-        .path()
-        .resource_dir()
-        .map_err(|error| anyhow::anyhow!("resolving Conductora resource directory: {error}"))?;
-    bootstrap_content_set_from_directory(&resource_root.join(BUNDLE_DIRECTORY))
-}
-
 /// Opens the persisted local Space or provisions it only when no designation or
 /// partial authored state exists. This is intentionally called directly from
 /// startup, never through a Tauri command.
 pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<CoreSchemaStartup> {
-    let bootstrap_started_at = Instant::now();
     let gate = handle
         .try_state::<CoreSchemaBootstrapGate>()
         .ok_or_else(|| anyhow::anyhow!("CoreSchemaBootstrapGate is not managed"))?;
@@ -186,6 +175,21 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<Core
         .clone()
         .ok_or_else(|| anyhow::anyhow!("MAP Commands runtime is not initialized"))?;
 
+    let resources = handle.path().resource_dir()?;
+    let application = handle.state::<ApplicationSessionState>();
+    let result = prepare_core_schema(&runtime, &resources, Some(&application)).await?;
+    gate.mark_ready()?;
+    Ok(result)
+}
+
+/// Shared startup implementation used by the packaged host and native lifecycle tests.
+/// No caller may select bootstrap through IPC; absence is discovered from persisted state.
+pub(crate) async fn prepare_core_schema(
+    runtime: &Runtime,
+    resource_root: &Path,
+    application: Option<&ApplicationSessionState>,
+) -> anyhow::Result<CoreSchemaStartup> {
+    let bootstrap_started_at = Instant::now();
     let discovery_tx = runtime.session().begin_transaction().await?;
     let context = runtime.session().get_transaction(&discovery_tx)?;
     let existing = discover_existing_space(&context);
@@ -194,7 +198,7 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<Core
     archived?;
     if existing {
         // Supported schema identity is checked without replaying its original validation/load.
-        let root = handle.path().resource_dir()?.join(BUNDLE_DIRECTORY);
+        let root = resource_root.join(BUNDLE_DIRECTORY);
         let manifest: BootstrapManifest =
             serde_json::from_slice(&std::fs::read(root.join(MANIFEST_FILENAME))?)?;
         let verify_tx = runtime.session().begin_transaction().await?;
@@ -206,30 +210,26 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<Core
             "Existing local Space lacks the supported Core Schema; Open cannot reprovision or upgrade it: {error}"
         ))?;
         archived?;
-        gate.mark_ready()?;
+        info!("Opened retained local Space without bootstrap import replay");
         return Ok(CoreSchemaStartup::OpenedExisting);
     }
     if runtime.session().space_manager().get_space_holon_id()?.is_some() {
         anyhow::bail!("Runtime Space has no persisted local designation; refusing replacement");
     }
 
-    handle
-        .try_state::<ApplicationSessionState>()
-        .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
-        .mark_preparing_core_schema()
-        .map_err(anyhow::Error::msg)?;
+    if let Some(application) = application {
+        application.mark_preparing_core_schema().map_err(anyhow::Error::msg)?;
+    }
     let input_started_at = Instant::now();
-    let content_set = packaged_bootstrap_content_set(handle)?;
+    let content_set = bootstrap_content_set_from_directory(&resource_root.join(BUNDLE_DIRECTORY))?;
     let input_millis = input_started_at.elapsed().as_millis();
     let tx_id = runtime.session().begin_transaction().await?;
     let context = runtime.session().get_transaction(&tx_id)?;
     context.enable_bootstrap_provisioning();
 
-    handle
-        .try_state::<ApplicationSessionState>()
-        .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
-        .mark_loading_core_schema()
-        .map_err(anyhow::Error::msg)?;
+    if let Some(application) = application {
+        application.mark_loading_core_schema().map_err(anyhow::Error::msg)?;
+    }
     let load_started_at = Instant::now();
     let result = runtime
         .execute_command(
@@ -241,21 +241,19 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<Core
         )
         .await;
     let load_millis = load_started_at.elapsed().as_millis();
+    let result = result?;
+    require_complete_load(&result, "Core Schema bootstrap")?;
     runtime.session().archive_transaction(&tx_id)?;
-    result?;
 
-    handle
-        .try_state::<ApplicationSessionState>()
-        .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
-        .mark_verifying_core_schema()
-        .map_err(anyhow::Error::msg)?;
+    if let Some(application) = application {
+        application.mark_verifying_core_schema().map_err(anyhow::Error::msg)?;
+    }
     if runtime.session().space_manager().get_space_holon_id()?.is_none() {
         return Err(anyhow::anyhow!(
             "Core Schema bootstrap completed without injecting a LocalHolonSpace"
         ));
     }
 
-    gate.mark_ready()?;
     info!(
         "[PERF-688] conductora_bootstrap: input_ms={} load_and_commit_ms={} total_ms={}",
         input_millis,
@@ -263,6 +261,19 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<Core
         bootstrap_started_at.elapsed().as_millis(),
     );
     Ok(CoreSchemaStartup::Provisioned)
+}
+
+/// Only Complete permits lifecycle advancement. Failed loads retain their ordinary
+/// transaction/result state for diagnostics and supported remediation/resubmission.
+pub(crate) fn require_complete_load(result: &MapResult, label: &str) -> anyhow::Result<()> {
+    let MapResult::Reference(response) = result else {
+        anyhow::bail!("{label} returned no load response");
+    };
+    let status = response.property_value("LoadCommitStatus")?;
+    if status != Some("Complete".to_base_value()) {
+        anyhow::bail!("{label} did not complete: {status:?}; retained work requires remediation");
+    }
+    Ok(())
 }
 
 pub(crate) fn bootstrap_content_set_from_directory(
@@ -330,6 +341,24 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn only_complete_load_results_allow_startup_to_advance() -> Result<(), HolonError> {
+        use holons_core::WritableHolon;
+        let manager = holons_client::init_client_runtime(None);
+        let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
+        for status in ["Complete", "Rejected", "Incomplete", "Unknown"] {
+            let mut result = context.mutation().new_holon(Some(status.into()))?;
+            result.with_property_value("LoadCommitStatus", status)?;
+            assert_eq!(
+                require_complete_load(&MapResult::Reference(result.into()), "bootstrap").is_ok(),
+                status == "Complete"
+            );
+        }
+        let missing = context.mutation().new_holon(None)?;
+        assert!(require_complete_load(&MapResult::Reference(missing.into()), "bootstrap").is_err());
+        Ok(())
+    }
 
     #[derive(Debug)]
     struct DiscoveryTransport(Option<core_types::HolonId>);

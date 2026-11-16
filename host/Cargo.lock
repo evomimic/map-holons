@@ -3611,8 +3611,6 @@ dependencies = [
 [[package]]
 name = "holochain_data"
 version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d302613e1a2a5ec13a71f1a8af37b019b0918908138dbdce8de57c0bbe86611"
 dependencies = [
  "base64 0.22.1",
  "bytes",
