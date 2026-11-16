@@ -1,0 +1,138 @@
+schema "MAP Agent Spaces Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  header {
+    description: "Minimal Agent ontology and the sovereign interior association. AgentSpace, I-Space and We-Space are roles of an existing HolonSpace, not additional types."
+  }
+}
+
+abstract holon Agent.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Anything capable of sensing and responding; agency alone does not establish sovereignty or commitment authority."
+    display_name: "Agent"
+    display_plural: "Agents"
+    plural: "Agents"
+  }
+}
+
+abstract holon BioSocialAgent.Agent {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Agent.HolonType
+  header {
+    description: "An Agent grounded in biological and social life, with exactly one sovereign interior."
+    display_name: "BioSocial Agent"
+    display_plural: "BioSocial Agents"
+    plural: "BioSocialAgents"
+  }
+  relationships {
+    InstanceRelationships -> (BioSocialAgent.Agent)-[HasInterior]->(HolonSpace.HolonType)
+  }
+}
+
+holon PersonAgent.BioSocialAgent {
+  type MetaHolonType.MetaTypeDescriptor
+  extends BioSocialAgent.Agent
+  instance_keyrule PersonAgentName.FormatRule
+  header {
+    description: "A human being's sovereign digital extension in MAP, distinct from an informational Person holon."
+    display_name: "Person Agent"
+    display_plural: "Person Agents"
+    plural: "PersonAgents"
+  }
+  relationships {
+    InstanceProperties -> [FirstName.PropertyType, MiddleName.PropertyType, LastName.PropertyType]
+  }
+}
+
+property FirstName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired false
+  header {
+    description: "Optional first name of a PersonAgent."
+    display_name: "First Name"
+    display_plural: "First Names"
+    plural: "FirstNames"
+  }
+}
+
+property MiddleName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired false
+  header {
+    description: "Optional middle name of a PersonAgent."
+    display_name: "Middle Name"
+    display_plural: "Middle Names"
+    plural: "MiddleNames"
+  }
+}
+
+property LastName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Required last name of a PersonAgent."
+    display_name: "Last Name"
+    display_plural: "Last Names"
+    plural: "LastNames"
+  }
+}
+
+instance PersonAgentName.FormatRule {
+  type FormatRule.KeyRuleType
+  rule_of "MAP Agent Spaces Schema-v0.1.0"
+  TypeName "PersonAgentName"
+  TemplateString "{0}.[1].[2]"
+  relationships {
+    TemplateParameters -> [LastName.PropertyType, FirstName.PropertyType, MiddleName.PropertyType]
+  }
+}
+
+def relationship (BioSocialAgent.Agent)-[HasInterior]->(HolonSpace.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source BioSocialAgent.Agent
+  target HolonSpace.HolonType
+  IsOrdered false
+  AllowsDuplicates false
+  TargetBinding Version
+  deletion_semantic Block
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> IsInteriorOf
+  }
+  header {
+    description: "The sovereign interior of a BioSocialAgent; its authoritative Home Space must identify this same HolonSpace."
+    display_name: "Has Interior"
+    display_plural: "Has Interior Relationships"
+    plural: "HasInteriorRelationships"
+  }
+}
+
+inverse relationship (HolonSpace.HolonType)-[IsInteriorOf]->(BioSocialAgent.Agent) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonSpace.HolonType
+  target BioSocialAgent.Agent
+  IsDefinitional false
+  IsOrdered false
+  AllowsDuplicates false
+  TargetBinding Lineage
+  MembershipCacheMaxAgeMillis 86400000
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
+  header {
+    description: "The optional sovereign Agent lineage whose interior this HolonSpace provides; derived from HasInterior."
+    display_name: "Is Interior Of"
+    display_plural: "Is Interior Of Relationships"
+    plural: "IsInteriorOfRelationships"
+  }
+}

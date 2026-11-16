@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::client_shared_objects::client_holon_service::run_future_synchronously;
@@ -7,7 +7,6 @@ use base_types::MapString;
 use core_types::{ContentSet, FileData, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::{ReadableHolon, WritableHolon};
-use serde::Deserialize;
 
 /// Transitional host-owned catalog of locally bundled Dancer packages.
 ///
@@ -22,21 +21,6 @@ pub struct DancerPackageCatalog {
     packages: Arc<HashMap<MapString, PathBuf>>,
     presentation_package: PathBuf,
     activated: Arc<Mutex<HashSet<MapString>>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DancerPackageManifest {
-    package_identity: String,
-    schema_imports: Vec<String>,
-    required_holons: Vec<String>,
-    #[serde(default)]
-    offered_theme_keys: Vec<String>,
-}
-
-#[derive(Debug)]
-struct PackageActivationContent {
-    content_set: ContentSet,
-    offered_theme_keys: Vec<MapString>,
 }
 
 impl DancerPackageCatalog {
@@ -83,14 +67,15 @@ impl DancerPackageCatalog {
 
         let presentation_identity = MapString::from("DAHN.DefaultPresentation");
         if !activated.contains(&presentation_identity) {
-            let presentation =
-                package_content_set(&self.presentation_package, &presentation_identity)?;
+            let presentation = bundled_schema_content(&self.presentation_package)?;
             let isolated_context = context.open_isolated_transaction()?;
             run_future_synchronously(holons_loader_client::load_holons_from_files(
                 isolated_context,
-                presentation.content_set,
+                presentation,
             ))?;
-            establish_theme_offers(context, presentation.offered_theme_keys)?;
+            // Preserve the bundled default Theme offer while a general Dancer
+            // dependency/activation implementation remains separate work.
+            establish_theme_offers(context, vec![MapString::from("DAHN.DefaultTheme")])?;
             activated.insert(presentation_identity);
         }
 
@@ -99,76 +84,28 @@ impl DancerPackageCatalog {
                 "No locally bundled Dancer package resolves semantic identity `{package_identity}`"
             ))
         })?;
-        let package_content = package_content_set(package_directory, package_identity)?;
+        let package_content = bundled_schema_content(package_directory)?;
         let isolated_context = context.open_isolated_transaction()?;
         run_future_synchronously(holons_loader_client::load_holons_from_files(
             isolated_context,
-            package_content.content_set,
+            package_content,
         ))?;
-        establish_theme_offers(context, package_content.offered_theme_keys)?;
         activated.insert(package_identity.clone());
         Ok(())
     }
 }
 
-fn package_content_set(
-    package_directory: &Path,
-    requested_identity: &MapString,
-) -> Result<PackageActivationContent, HolonError> {
-    let manifest_path = package_directory.join("package.json");
-    let manifest: DancerPackageManifest =
-        serde_json::from_slice(&std::fs::read(&manifest_path).map_err(|error| {
-            HolonError::InvalidState(format!(
-                "Unable to read Dancer package manifest {}: {error}",
-                manifest_path.display()
-            ))
-        })?)
-        .map_err(|error| {
-            HolonError::InvalidState(format!(
-                "Unable to parse Dancer package manifest {}: {error}",
-                manifest_path.display()
-            ))
-        })?;
-
-    if manifest.package_identity != requested_identity.0
-        || manifest.schema_imports.is_empty()
-        || manifest.required_holons.is_empty()
-    {
-        return Err(HolonError::InvalidState(format!(
-            "Dancer package manifest {} is incomplete or incompatible",
-            manifest_path.display()
-        )));
-    }
-
-    let mut files_to_load = Vec::with_capacity(manifest.schema_imports.len());
-    for relative_path in manifest.schema_imports {
-        let relative_path = Path::new(&relative_path);
-        if relative_path.is_absolute()
-            || relative_path
-                .components()
-                .any(|component| !matches!(component, Component::Normal(_)))
-        {
-            return Err(HolonError::InvalidParameter(format!(
-                "Dancer package manifest contains unsafe schema import path {}",
-                relative_path.display()
-            )));
-        }
-        let path = package_directory.join(relative_path);
-        let raw_contents = std::fs::read_to_string(&path).map_err(|error| {
-            HolonError::InvalidState(format!(
-                "Unable to read Dancer package import {}: {error}",
-                path.display()
-            ))
-        })?;
-        files_to_load.push(FileData {
-            filename: relative_path.to_string_lossy().into_owned(),
-            raw_contents,
-        });
-    }
-
-    Ok(PackageActivationContent {
-        content_set: ContentSet { files_to_load },
-        offered_theme_keys: manifest.offered_theme_keys.into_iter().map(MapString::from).collect(),
+/// Reads the generated schema for a locally bundled resource directory.
+fn bundled_schema_content(directory: &Path) -> Result<ContentSet, HolonError> {
+    let path = directory.join("imports/schema.json");
+    let raw_contents = std::fs::read_to_string(&path).map_err(|error| {
+        HolonError::InvalidState(format!(
+            "Unable to read bundled schema import {}: {error}",
+            path.display()
+        ))
+    })?;
+    Ok(ContentSet {
+        files_to_load: vec![FileData { filename: "imports/schema.json".into(), raw_contents }],
     })
 }
 
@@ -231,36 +168,20 @@ mod tests {
     }
 
     #[test]
-    fn development_package_manifest_resolves_to_one_schema_import() {
+    fn bundled_dancer_and_presentation_imports_are_available() {
         let catalog = DancerPackageCatalog::development_default();
-        let package_directory = catalog
+        let dancer_directory = catalog
             .packages
             .get(&MapString::from("SpaceNavigator.Dancer"))
-            .expect("Space Navigator package entry");
-
-        let package_content =
-            package_content_set(package_directory, &MapString::from("SpaceNavigator.Dancer"))
-                .expect("packaged Space Navigator resources");
-
-        assert_eq!(package_content.content_set.files_to_load.len(), 1);
-        assert_eq!(package_content.content_set.files_to_load[0].filename, "imports/schema.json");
-        assert!(package_content.content_set.files_to_load[0]
-            .raw_contents
-            .contains("SpaceNavigator.Dancer"));
-        assert!(package_content.offered_theme_keys.is_empty());
-    }
-
-    #[test]
-    fn package_manifest_rejects_a_mismatched_semantic_identity() {
-        let catalog = DancerPackageCatalog::development_default();
-        let package_directory = catalog
-            .packages
-            .get(&MapString::from("SpaceNavigator.Dancer"))
-            .expect("Space Navigator package entry");
-
-        let error = package_content_set(package_directory, &MapString::from("Other.Dancer"))
-            .expect_err("manifest identity must match the requested package");
-
-        assert!(format!("{error}").contains("incomplete or incompatible"));
+            .expect("Space Navigator bundled resources");
+        for (directory, expected_key) in [
+            (dancer_directory, "SpaceNavigator.Dancer"),
+            (&catalog.presentation_package, "DAHN.DefaultTheme"),
+        ] {
+            let content = bundled_schema_content(directory).expect("bundled schema import");
+            assert_eq!(content.files_to_load.len(), 1);
+            assert_eq!(content.files_to_load[0].filename, "imports/schema.json");
+            assert!(content.files_to_load[0].raw_contents.contains(expected_key));
+        }
     }
 }

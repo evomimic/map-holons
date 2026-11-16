@@ -3832,14 +3832,6 @@
       },
       "relationships": [
         {
-          "name": "ApplicableToType",
-          "target": [
-            {
-              "$ref": "HolonLoadResponse.DanceResponseType"
-            }
-          ]
-        },
-        {
           "name": "ImplementedBy",
           "target": [
             {

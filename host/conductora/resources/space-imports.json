@@ -1,0 +1,6 @@
+{
+  "imports": [
+    "schema-packages/agent-spaces/imports/schema.json",
+    "house-troupe/space-navigator/imports/schema.json"
+  ]
+}
