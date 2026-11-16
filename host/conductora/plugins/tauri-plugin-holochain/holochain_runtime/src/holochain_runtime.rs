@@ -41,6 +41,7 @@ pub struct AppWebsocketAuth {
 }
 
 pub struct HolochainRuntime {
+    pub(crate) installation_lease: Option<crate::installation_lock::RuntimeInstallationLease>,
     pub backend_only: bool,
     pub filesystem: FileSystem,
     pub apps_websockets_auths: Arc<Mutex<Vec<AppWebsocketAuth>>>,
@@ -417,6 +418,9 @@ impl HolochainRuntime {
             .await
             .map_err(|e| crate::Error::HolochainShutdownError(e.to_string()))?
             .map_err(|e| crate::Error::HolochainShutdownError(e.to_string()))?;
+        if let Some(lease) = &self.installation_lease {
+            lease.release_after_shutdown();
+        }
         Ok(())
     }
 }

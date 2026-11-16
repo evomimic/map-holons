@@ -3,6 +3,7 @@
 //! The loader job itself is deliberately internal to Conductora.  Normal IPC
 //! ingress may observe this gate but cannot select bootstrap provisioning.
 
+use anyhow::Context as _;
 use core_types::{ContentSet, FileData, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::{HolonSpaceBehavior, ReadableHolon};
@@ -194,7 +195,8 @@ pub(crate) async fn prepare_core_schema(
     let context = runtime.session().get_transaction(&discovery_tx)?;
     let existing = discover_existing_space(&context);
     let archived = runtime.session().archive_transaction(&discovery_tx);
-    let existing = existing?;
+    let existing =
+        existing.context("Discovering the persisted local HolonSpace before Provision/Open")?;
     archived?;
     if existing {
         // Supported schema identity is checked without replaying its original validation/load.

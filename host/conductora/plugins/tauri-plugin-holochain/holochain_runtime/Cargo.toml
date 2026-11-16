@@ -46,6 +46,7 @@ base64 = "0.23"
 tokio = "1"
 anyhow = "1"
 zeroize = "1"
+libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = { version = "3.7", features = ["OSX_10_15"] }

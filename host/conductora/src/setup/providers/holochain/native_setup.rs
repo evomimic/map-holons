@@ -152,7 +152,10 @@ mod tests {
         assert!(conductor.conductor_handle.list_app_interfaces().await.unwrap().is_empty());
         assert!(conductor.admin_websocket().await.is_err());
         assert!(conductor.app_websocket("map_holons".into(), AllowedOrigins::Any).await.is_err());
+        assert!(HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.is_err());
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
+        let author =
+            conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key.clone();
         let initiator = Arc::new(TrustChannel::new(Arc::new(CountingTransport {
             inner: NativeDanceTransport(caller),
             loads: loads.clone(),
@@ -190,9 +193,33 @@ mod tests {
         conductor.shutdown().await.unwrap();
         drop(conductor);
 
-        let conductor =
-            HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.unwrap();
+        // Only this test-owned installation is changed. Production cutover's
+        // authenticated roll-forward/fault cases are tested in credential_custody.
+        std::fs::write(root.join(".credential-cutover"), b"interrupted fixture").unwrap();
+        assert!(HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.is_err());
+        std::fs::remove_file(root.join(".credential-cutover")).unwrap();
+        let protected = vec_to_locked(vec![8; 32]);
+        let wrappers = tauri_plugin_holochain::credential_custody::prepare_passphrase_transition(
+            &root,
+            vec_to_locked(vec![]),
+            protected.clone(),
+        )
+        .await
+        .unwrap();
+        std::fs::write(
+            root.join("keystore/lair-keystore-config.yaml"),
+            wrappers.lair_configuration,
+        )
+        .unwrap();
+        std::fs::write(root.join("conductor/databases/db.key"), wrappers.database_key_file)
+            .unwrap();
+        assert!(HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.is_err());
+        let conductor = HolochainRuntime::launch(protected, configuration()).await.unwrap();
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
+        assert_eq!(
+            conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key,
+            author
+        );
         let manager =
             holons_client::init_client_runtime(Some(Arc::new(TrustChannel::new(Arc::new(
                 CountingTransport { inner: NativeDanceTransport(caller), loads: loads.clone() },

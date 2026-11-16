@@ -1,27 +1,54 @@
 //! Native credential custody. This unlocks technical keys; it grants no MAP authority.
-use lair_keystore_api::{dependencies::sodoken, types::SharedLockedArray};
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
-};
+#[cfg(any(target_os = "macos", test))]
+use lair_keystore_api::dependencies::sodoken;
+use lair_keystore_api::types::SharedLockedArray;
+use std::path::Path;
+#[cfg(any(target_os = "macos", test))]
+use std::sync::{Arc, Mutex};
+#[cfg(any(target_os = "macos", test))]
 use zeroize::Zeroizing;
 
+#[cfg(any(target_os = "macos", test))]
+mod cutover;
 #[cfg(target_os = "macos")]
 mod macos;
 mod rewrap;
+#[cfg(target_os = "macos")]
+pub use cutover::transition_existing_installation;
 pub use rewrap::{prepare_passphrase_transition, rewrap_lair_config, PreparedCredentialWrappers};
+
+/// Unsupported platforms cannot enable protected custody by selecting a build flag.
+#[cfg(not(target_os = "macos"))]
+pub async fn transition_existing_installation(
+    _root: &Path,
+    _old: Option<SharedLockedArray>,
+) -> crate::Result<()> {
+    Err(denied("Protected cutover requires the approved macOS package"))
+}
+
+pub(crate) fn ensure_no_pending_transition(root: &Path) -> crate::Result<()> {
+    match root.join(".credential-cutover").symlink_metadata() {
+        Ok(_) => {
+            Err(denied("Credential transition is pending; explicit offline resumption is required"))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.into()),
+    }
+}
 
 fn denied(message: impl Into<String>) -> crate::Error {
     crate::Error::NativeBoundary(message.into())
 }
 
 /// Only the installation backend supplies these operations. No IPC exposes this surface.
+#[cfg(any(target_os = "macos", test))]
 trait PassphraseStore {
     fn read(&self) -> crate::Result<Option<Zeroizing<Vec<u8>>>>;
     /// Create only: an existing item must never be overwritten, including on a race.
     fn insert(&self, secret: &[u8]) -> crate::Result<()>;
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn locked(secret: &[u8]) -> crate::Result<SharedLockedArray> {
     if secret.len() != 32 {
         return Err(denied("Protected installation credential has an invalid length"));
@@ -34,6 +61,7 @@ fn locked(secret: &[u8]) -> crate::Result<SharedLockedArray> {
 
 /// Missing custody for any existing state is an explicit transition/recovery case.
 /// Ordinary Open never tries the legacy empty passphrase or issues a replacement.
+#[cfg(any(target_os = "macos", test))]
 fn resolve(store: &impl PassphraseStore, root: &Path) -> crate::Result<SharedLockedArray> {
     match root.symlink_metadata() {
         Ok(metadata) if !metadata.is_dir() || metadata.file_type().is_symlink() => {
@@ -43,6 +71,7 @@ fn resolve(store: &impl PassphraseStore, root: &Path) -> crate::Result<SharedLoc
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => return Err(error.into()),
     }
+    ensure_no_pending_transition(root)?;
     if let Some(secret) = store.read()? {
         // An existing credential is evidence of a prior initialization attempt,
         // not permission to recreate missing author/database state.
@@ -99,7 +128,7 @@ mod tests {
     use std::cell::{Cell, RefCell};
 
     #[derive(Default)]
-    struct MemoryStore {
+    pub(super) struct MemoryStore {
         secret: RefCell<Option<Vec<u8>>>,
         writes: Cell<usize>,
         fail_read: Cell<bool>,

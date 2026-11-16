@@ -41,6 +41,14 @@ pub(crate) async fn launch_holochain_runtime(
             "Native-only conductor cannot enable test keys or WebSocket-based mDNS".into(),
         ));
     }
+    let installation_lease = if config.dev_mode {
+        None
+    } else {
+        std::fs::create_dir_all(&config.holochain_dir)?;
+        let lease = crate::installation_lock::InstallationLease::acquire(&config.holochain_dir)?;
+        crate::credential_custody::ensure_no_pending_transition(&config.holochain_dir)?;
+        Some(lease)
+    };
     let filesystem = FileSystem::new(config.holochain_dir).await?;
     let admin_port = if config.backend_only {
         0
@@ -141,6 +149,8 @@ pub(crate) async fn launch_holochain_runtime(
         admin_port,
         conductor_handle,
         backend_only: config.backend_only,
+        installation_lease: installation_lease
+            .map(crate::installation_lock::RuntimeInstallationLease::new),
     })
 }
 
