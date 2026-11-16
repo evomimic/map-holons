@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { JsonDataUploader } from '../json-data-uploader/json-data-uploader.component';
 
@@ -12,6 +12,7 @@ import { JsonDataUploader } from '../json-data-uploader/json-data-uploader.compo
   selector: 'app-deprecated-load-holons',
   standalone: true,
   imports: [JsonDataUploader],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: '<app-json-data-uploader [standaloneMode]="true" (formClosed)="close()"></app-json-data-uploader>',
 })
 export class DeprecatedLoadHolonsComponent {

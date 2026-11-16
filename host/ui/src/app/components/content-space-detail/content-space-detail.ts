@@ -1,4 +1,4 @@
-import { Component, computed, effect, OnInit, signal, Signal, WritableSignal } from '@angular/core';
+import { Component, computed, effect, OnInit, signal, Signal, WritableSignal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ContentController } from '../../contollers/content.controller';
 import { DeprecatedHolonSpace, MetaHolon, DID } from '../../models/interface.space';
@@ -48,6 +48,7 @@ interface DisplayCommittedHolon {
   selector: 'app-content-space-detail',
   standalone: true,
   imports: [CommonModule, FormsModule, HolonFormComponent, JsonDataUploader],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './content-space-detail.html',
 })
 export class ContentSpaceDetail implements OnInit {

@@ -4,7 +4,7 @@ import { allocateInitialWindow } from '../../initial-window-allocation';
 import { SpaceNavigatorExperience } from '../../../dahn/runtime/space-navigator-experience';
 import { SingleContextHost } from '../../../dahn/context/single-context-host';
 import { offeredCanvasThemes } from '../../../dahn/themes/offered-canvas-themes';
-import { AfterViewInit, OnDestroy, Input, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, OnDestroy, Input, Component, ElementRef, ViewChild, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
 import { DefaultVisualizerRegistry } from '../../../dahn/registry/default-visualizer-registry';
 import { MapClient } from '../../../dahn/deps/map-sdk';
@@ -20,6 +20,7 @@ import { dismissStartupOverlay } from '../../startup-overlay';
 @Component({
   selector: 'app-canvas-host',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     @if (failure()) {
       <main class="launcher-error" data-dahn-canvas-state="realization-error" role="alert">

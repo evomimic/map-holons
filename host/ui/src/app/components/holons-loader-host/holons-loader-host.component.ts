@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FooterComponent } from '../footer/footer.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
@@ -16,6 +16,7 @@ import { dismissStartupOverlay } from '../../startup-overlay';
   selector: 'app-holons-loader-host',
   standalone: true,
   imports: [CommonModule, RouterOutlet, ToolbarComponent, FooterComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     @if (failure()) {
       <main data-holons-loader-state="failed" role="alert">

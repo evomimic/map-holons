@@ -20,8 +20,7 @@
     "start:debug": "npm run nix:check && npm run build:happ && RUST_LOG=host:debug WASM_LOG=info npm run start:host",
     "start:host": "MAP_START_MODE=prod npm run start -w map-host",
     "start:production": "npm run nix:check && npm run build:happ && RUST_LOG=host:info WASM_LOG=warn MAP_START_MODE=prod npm run start -w map-host",
-
-  "build": "npm run build:happ && npm run build:host",
+    "build": "npm run build:happ && npm run build:host",
     "build:host": "npm run build:agent-spaces && npm run build:house-troupe && npm run build -w map-host",
     "build:node-visualizers": "node scripts/build-node-visualizers.mjs",
     "prebuild:house-troupe": "npm run build:node-visualizers",
@@ -29,13 +28,11 @@
     "web:review": "npm run web:review -w map-host",
     "web:test": "npm run web:test:dahn -w map-host",
     "web:typecheck": "npm run web:typecheck -w map-host",
-
     "check": "npm run check -w map-host && npm run check -w map-happ && npm run web:typecheck",
     "fmt": "npm run fmt -w map-host && npm run fmt -w map-happ && npm run fmt:sweetests",
     "fmt:check": "npm run fmt:check -w map-host && npm run fmt:check -w map-happ && npm run fmt:sweetests:check",
     "fmt:sweetests": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all",
     "fmt:sweetests:check": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check",
-
     "pretest": "npm run deps:check",
     "test": "bash scripts/test-run.sh",
     "test:run": "npm run test:unit && npm run sweetest",
@@ -45,7 +42,6 @@
     "test:unit:shared": "bash scripts/test-shared-crates.sh",
     "test:unit:schema": "cargo test --manifest-path tools/map-schema/Cargo.toml --test validation_binding_inventory --test agent_spaces_schema",
     "test:unit:sweetests": "cargo test --manifest-path tests/sweetests/Cargo.toml --lib --test fixture_authoring_tests",
-
     "sweetest": "npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run sweet:test",
     "sweetest:nocapture": "npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run sweet:test:nocapture",
     "sweetest:ci": "npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run sweet:test:ci",
@@ -64,27 +60,25 @@
     "map-schema:decompile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile",
     "map-schema:help": "cargo run --manifest-path tools/map-schema/Cargo.toml -- help",
     "map-schema:compile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- compile",
-  "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",
-  "map-schema:sync-agent-spaces-resource": "bash scripts/sync-agent-spaces-resource.sh",
-  "build:agent-spaces": "npm run map-schema:compile:coreschema && npm run map-schema:sync-agent-spaces-resource",
-  "map-schema:compile:house-troupe:space-navigator": "npm run map-schema:compile -- house-troupe/space-navigator/schema --out-dir generated/house-troupe/space-navigator/imports",
-  "map-schema:compile:visualizer-commons:default-presentation": "npm run map-schema:compile -- visualizer-commons/default-presentation/schema --out-dir generated/visualizer-commons/default-presentation/imports",
-  "map-schema:check:house-troupe:space-navigator": "npm run map-schema:check -- house-troupe/space-navigator/schema",
-  "map-schema:compile:house-troupe": "npm run map-schema:compile:house-troupe:space-navigator",
-  "map-schema:sync-house-troupe-resource": "bash scripts/sync-house-troupe-resource.sh",
-  "build:house-troupe": "npm run map-schema:compile:house-troupe && npm run map-schema:sync-house-troupe-resource",
-  "map-schema:sync-visualizer-commons-resource": "bash scripts/sync-visualizer-commons-resource.sh",
-  "build:visualizer-commons": "npm run map-schema:compile:visualizer-commons:default-presentation && npm run map-schema:sync-visualizer-commons-resource",
+    "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",
+    "map-schema:sync-agent-spaces-resource": "bash scripts/sync-agent-spaces-resource.sh",
+    "build:agent-spaces": "npm run map-schema:compile:coreschema && npm run map-schema:sync-agent-spaces-resource",
+    "map-schema:compile:house-troupe:space-navigator": "npm run map-schema:compile -- house-troupe/space-navigator/schema --out-dir generated/house-troupe/space-navigator/imports",
+    "map-schema:compile:visualizer-commons:default-presentation": "npm run map-schema:compile -- visualizer-commons/default-presentation/schema --out-dir generated/visualizer-commons/default-presentation/imports",
+    "map-schema:check:house-troupe:space-navigator": "npm run map-schema:check -- house-troupe/space-navigator/schema",
+    "map-schema:compile:house-troupe": "npm run map-schema:compile:house-troupe:space-navigator",
+    "map-schema:sync-house-troupe-resource": "bash scripts/sync-house-troupe-resource.sh",
+    "build:house-troupe": "npm run map-schema:compile:house-troupe && npm run map-schema:sync-house-troupe-resource",
+    "map-schema:sync-visualizer-commons-resource": "bash scripts/sync-visualizer-commons-resource.sh",
+    "build:visualizer-commons": "npm run map-schema:compile:visualizer-commons:default-presentation && npm run map-schema:sync-visualizer-commons-resource",
     "map-schema:bootstrap-bundle": "npm run map-schema:compile:coreschema && npm run map-schema -- bootstrap-bundle generated/json-imports --manifest schema-src/core-schema-bootstrap-manifest.json --out-dir generated/core-schema-bootstrap && npm run map-schema:sync-bootstrap-resource",
     "map-schema:sync-bootstrap-resource": "bash scripts/sync-core-schema-bootstrap-resource.sh",
     "map-schema:check": "cargo run --manifest-path tools/map-schema/Cargo.toml -- check",
     "map-schema:check:coreschema": "npm run map-schema:check -- schema-src",
     "map-schema:roundtrip:coreschema": "npm run map-schema -- roundtrip-json generated/json-imports --tdl-out generated/tdl-decompiled --json-out generated/json-roundtrip",
     "map-schema:verify:coreschema": "bash scripts/check-map-schema-generated.sh",
-
     "regen:sdk-fixtures": "npm run regen:sdk-fixtures -w map-host",
     "hooks:install": "bash ./scripts/install-git-hooks.sh",
-
     "clean": "npm run clean:rust:deep && npm run clean:hc:deep -w map-host && npm run clean:ui && npm run clean:session",
     "clean:rust": "npm run clean:rust -w map-host && npm run clean:rust -w map-happ",
     "clean:rust:deep": "npm run clean:rust:deep -w map-host && npm run clean:rust:deep -w map-happ",
@@ -92,12 +86,21 @@
     "clean:session": "bash scripts/clean-session.sh"
   },
   "devDependencies": {
-    "autoprefixer": "^10.4",
-    "concurrently": "^9",
-    "rimraf": "^6"
+    "autoprefixer": "^10.6.2",
+    "concurrently": "^10.0.7",
+    "esbuild": "0.28.2",
+    "rimraf": "^6",
+    "typescript": "~6.0.3"
   },
   "engines": {
-    "node": ">=22.12.0",
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0",
     "npm": ">=10.9.0"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "msgpackr-extract": false,
+    "@parcel/watcher": false,
+    "lmdb": false,
+    "fsevents": false
   }
 }
