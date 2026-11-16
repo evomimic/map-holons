@@ -11,7 +11,9 @@ use crate::{
         application_launcher::{
             ApplicationExperience, ApplicationSessionState, HomeDancerLaunchSelection,
         },
-        core_schema_bootstrap::{ensure_core_schema_space, CoreSchemaBootstrapGate},
+        core_schema_bootstrap::{
+            ensure_core_schema_space, CoreSchemaBootstrapGate, CoreSchemaStartup,
+        },
         plugin_manager::PluginManager,
         provider_registry::ProviderRegistry,
         receptor_config_registry::ReceptorConfigRegistry,
@@ -156,7 +158,7 @@ impl AppBuilder {
                         .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?;
                     application_session.mark_opening_space().map_err(anyhow::Error::msg)?;
                     let bootstrap_started_at = Instant::now();
-                    ensure_core_schema_space(&handle)
+                    let startup = ensure_core_schema_space(&handle)
                         .await
                         .context("ensure_core_schema_space failed")?;
                     tracing::info!(
@@ -166,9 +168,11 @@ impl AppBuilder {
                     application_session
                         .mark_activating_base_packages()
                         .map_err(anyhow::Error::msg)?;
-                    ensure_configured_space_imports(&handle)
-                        .await
-                        .context("ensure_configured_space_imports failed")?;
+                    if startup == CoreSchemaStartup::Provisioned {
+                        ensure_configured_space_imports(&handle)
+                            .await
+                            .context("ensure_configured_space_imports failed")?;
+                    }
                     application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
                     let canvas_selection_started_at = Instant::now();
                     let (active_holon_space, canvas_selection, home_dancer_selection) = {

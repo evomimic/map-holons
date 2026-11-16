@@ -23,7 +23,8 @@ struct SpaceImportSet {
     imports: Vec<String>,
 }
 
-/// Loads every configured schema package through the ordinary post-Core loader.
+/// Loads configured base packages only during initial provisioning, never ordinary Open.
+/// Interrupted package loading is not repaired by replaying create imports on restart.
 /// Runtime Dancer discovery is exclusively relationship-driven after commit.
 pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Result<()> {
     let resource_root = handle
@@ -57,10 +58,8 @@ pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Resu
                 })?,
             }],
         };
-        // Core bootstrap provisions a local HolonSpace for this launch. A
-        // schema package may target that space through its ordinary authored
-        // relationships, so an existing package holon cannot make this load
-        // safely skippable on a later launch.
+        // The caller selected initial provisioning. Ordinary Open adopts persisted
+        // content; explicit Upgrade/recovery must handle changed or incomplete imports.
         let tx_id = runtime.session().begin_transaction().await?;
         let context = runtime.session().get_transaction(&tx_id)?;
         let result = runtime

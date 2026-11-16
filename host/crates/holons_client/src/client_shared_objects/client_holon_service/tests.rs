@@ -700,3 +700,81 @@ fn derived_reset_preserves_membership_and_its_retained_scalar_policy() -> Result
     assert_eq!(service.policy_calls.load(Ordering::Relaxed), 1);
     Ok(())
 }
+
+#[derive(Debug, Clone, Copy)]
+enum DiscoveryOutcome {
+    Missing,
+    Found,
+    Failed,
+}
+
+#[derive(Debug)]
+struct DiscoveryTransport(DiscoveryOutcome);
+
+#[async_trait::async_trait]
+impl holons_core::dances::DanceInitiator for DiscoveryTransport {
+    async fn initiate_dance(
+        &self,
+        context: &Arc<TransactionContext>,
+        request: holons_core::dances::DanceRequest,
+    ) -> holons_core::dances::DanceResponse {
+        use holons_core::dances::{DanceResponse, DanceType, RequestBody};
+        assert_eq!(request.dance_name.0, "discover_local_holon_space");
+        assert!(matches!(request.dance_type, DanceType::Standalone));
+        assert!(matches!(request.body, RequestBody::None));
+        assert!(!context.is_bootstrap_provisioning());
+        let response = match self.0 {
+            DiscoveryOutcome::Missing => DanceResponse::new(
+                ResponseStatusCode::OK,
+                "Absent".into(),
+                ResponseBody::None,
+                None,
+            ),
+            DiscoveryOutcome::Found => DanceResponse::new(
+                ResponseStatusCode::OK,
+                "Found".into(),
+                ResponseBody::HolonReference(HolonReference::smart_from_id(
+                    context.space_read_handle(),
+                    id(17),
+                )),
+                None,
+            ),
+            DiscoveryOutcome::Failed => {
+                let mut response = DanceResponse::new(
+                    ResponseStatusCode::BadRequest,
+                    "Ambiguous local designation".into(),
+                    ResponseBody::None,
+                    None,
+                );
+                response.error =
+                    Some(HolonError::InvalidState("Ambiguous local designation".into()));
+                response
+            }
+        };
+        // Discovery must work across the actual wire projection, not only shared handles.
+        holons_boundary::DanceResponseWire::from(&response).bind(context).unwrap()
+    }
+}
+
+#[test]
+fn discovery_distinguishes_absence_from_error_without_provisioning_or_adoption(
+) -> Result<(), HolonError> {
+    for outcome in [DiscoveryOutcome::Missing, DiscoveryOutcome::Found, DiscoveryOutcome::Failed] {
+        let space = HolonSpaceManager::new_with_managers(
+            Some(Arc::new(DiscoveryTransport(outcome))),
+            Arc::new(ClientHolonService::development_default()),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        );
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let result = context.discover_local_holon_space();
+        match outcome {
+            DiscoveryOutcome::Missing => assert!(result?.is_none()),
+            DiscoveryOutcome::Found => assert_eq!(result?.unwrap().holon_id()?, id(17)),
+            DiscoveryOutcome::Failed => assert!(matches!(result, Err(HolonError::InvalidState(_)))),
+        }
+        assert!(context.get_space_holon()?.is_none(), "discovery does not adopt or create a Space");
+        assert!(!context.is_bootstrap_provisioning());
+    }
+    Ok(())
+}

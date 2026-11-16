@@ -431,6 +431,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         Err(HolonError::NotImplemented("Canonical LoadHolons execution".into()))
     }
 
+    /// Discovers this cell's persisted local Space without provisioning or acquiring it.
+    /// Missing state is distinct from an unavailable, ambiguous or invalid index.
+    fn discover_local_holon_space_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        Err(HolonError::NotImplemented("discover_local_holon_space_internal".into()))
+    }
+
     /// Ensures a persisted local space holon exists and returns its reference.
     ///
     /// Default implementation is unsupported outside guest/runtime contexts.

@@ -42,6 +42,10 @@ impl Dancer {
         // Register functions into the dispatch table
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
+        dispatch_table.insert(
+            "discover_local_holon_space",
+            discover_local_holon_space_dance as DanceFunction,
+        );
         dispatch_table
             .insert("fetch_all_related_holons", fetch_all_related_holons_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);

@@ -77,6 +77,9 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         session_state,
         descriptor_registry,
         dance_name.0 == "commit",
+        dance_name.0 == "discover_local_holon_space"
+            && matches!(request.dance_type, holons_boundary::DanceTypeWire::Standalone)
+            && matches!(request.body, holons_boundary::RequestBodyWire::None),
     ) {
         Ok(ctx) => ctx,
         Err(error) => return Ok(create_error_response_envelope(error, session)),
@@ -176,7 +179,7 @@ fn execute_invocation_envelope(
     let context = session
         .as_ref()
         .ok_or_else(|| HolonError::InvalidParameter("Missing SessionStateWire".into()))
-        .and_then(|state| initialize_context_from_session_state(state, None, false));
+        .and_then(|state| initialize_context_from_session_state(state, None, false, false));
     let (context, _registry) = match context {
         Ok(context) => context,
         Err(error) => {
@@ -273,6 +276,7 @@ fn initialize_context_from_session_state(
     session_state: &SessionStateWire,
     registry: Option<holons_boundary::DescriptorRegistryWire>,
     profile_commit: bool,
+    discovery: bool,
 ) -> Result<(Arc<TransactionContext>, Option<Arc<EffectiveHolonDescriptorRegistry>>), HolonError> {
     let tx_id = session_state.get_tx_id().ok_or(HolonError::InvalidWireFormat {
         wire_type: "SessionStateWire".to_string(),
@@ -292,13 +296,14 @@ fn initialize_context_from_session_state(
         staged_holons,
         local_space_holon_id.clone(),
         tx_id,
-        session_state.is_restricted_cache_read(),
+        session_state.is_restricted_cache_read() || discovery,
         registry,
         profile_commit,
     )?;
 
-    let bootstrap_provisioning = session_state.is_bootstrap_provisioning();
-    if local_space_holon_id.is_none() && !bootstrap_provisioning {
+    // Discovery is the sole empty-Space read and cannot restore bootstrap privileges.
+    let bootstrap_provisioning = session_state.is_bootstrap_provisioning() && !discovery;
+    if local_space_holon_id.is_none() && !bootstrap_provisioning && !discovery {
         return Err(HolonError::InvalidState(
             "ordinary transaction is missing its persisted local HolonSpace".to_string(),
         ));

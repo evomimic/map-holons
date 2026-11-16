@@ -449,6 +449,13 @@ impl TransactionContext {
         self.new_transient_from_clone_model(source.holon_clone_model()?)
     }
 
+    /// Reads the persisted local-space designation without creating state or adopting authority.
+    pub fn discover_local_holon_space(
+        self: &Arc<Self>,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        self.get_holon_service().discover_local_holon_space_internal(self)
+    }
+
     pub fn ensure_local_holon_space(self: &Arc<Self>) -> Result<HolonReference, HolonError> {
         self.get_holon_service().ensure_local_holon_space_internal(self)
     }
