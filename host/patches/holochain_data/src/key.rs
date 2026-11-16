@@ -162,6 +162,16 @@ impl DbKey {
         Self::priv_gen(nonce, key, salt, passphrase).await
     }
 
+    /// Rewrap the existing database key without changing its SQLCipher key/salt.
+    /// Returns encrypted metadata only; no database or key file is written.
+    pub async fn rewrap(&self, passphrase: Arc<Mutex<sodoken::LockedArray>>) -> Result<Self> {
+        let mut nonce = [0; sodoken::secretbox::XSALSA_NONCEBYTES];
+        sodoken::random::randombytes_buf(&mut nonce)?;
+        let mut key = sodoken::SizedLockedArray::<32>::new()?;
+        key.lock().copy_from_slice(&*self.key.lock().unwrap().lock());
+        Self::priv_gen(nonce, key, self.salt.clone(), passphrase).await
+    }
+
     /// Format the key as a hex string for use in PRAGMA statements.
     pub(crate) fn key_hex(&self) -> String {
         self.key

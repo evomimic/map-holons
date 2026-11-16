@@ -3,7 +3,7 @@
 These patches apply only to the `host/Cargo.toml` workspace. They do not change
 hApp/WASM dependencies or the root IDE workspace.
 
-## `holochain_data` 0.7.1 — gossip sector range queries
+## `holochain_data` 0.7.1 — native range queries and credential wrapping
 
 Source: published `holochain_data` 0.7.1, upstream Holochain commit
 `c5f5028274c0406cb9d88d0fa48080135137fd75`, `crates/holochain_data`.
@@ -20,6 +20,10 @@ Local changes are limited to:
   `earliest_authored_timestamp_in_arc`. Arc bounds remain bound parameters; the
   SQL contains only fixed table names. SQLite can range-search location indexes
   instead of scanning the whole index for each Kitsune sector.
+- `DbKey::rewrap`, an in-memory passphrase rewrapping operation that preserves the
+  existing SQLCipher key and salt. It generates fresh wrapping ciphertext without
+  writing a database or changing its encryption key. The native credential
+  transition adapter uses it alongside the matching Lair 0.7.1 wrapper adapter.
 - Regression tests for query plans, inclusive/wrapping/singleton arcs, half-open
   time bounds, warrants and private/unvalidated-op filtering.
 
@@ -46,6 +50,13 @@ dependency from that temporary manifest. No runtime dependency versions changed.
 The host's real-conductor lifecycle test exercises the patched dependency through
 the application startup orchestration. Live packaged evidence is tracked in the
 Agent Spaces implementation plan in map-dev-docs.
+
+Credential-wrapper tests in `holochain_runtime::credential_custody` exercise a
+disposable encrypted Conductor database and Lair seed store. They verify unchanged
+content and signing identity after rewrapping, rejection of the old passphrase,
+and no writes during transition preparation. This does not implement a live
+two-file cutover or demonstrate app-private Keychain access. The wrapper adapter
+must be reviewed against upstream format/KDF changes on dependency upgrades.
 
 ### Removal and upgrades
 

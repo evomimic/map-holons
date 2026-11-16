@@ -1,4 +1,5 @@
 mod config;
+pub mod credential_custody;
 mod native_access;
 pub use native_access::{NativeAdministration, NativeZomeCaller};
 mod error;

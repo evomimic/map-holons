@@ -17,7 +17,18 @@ pub fn holochain_plugin(
         let dir = dev_conductor_dir(provider_key, &hc_cfg.app_id)?;
         plugin_config = plugin_config.dev_mode(true).dev_data_root(dir);
     }
-    Ok(tauri_plugin_holochain::async_init(vec_to_locked(vec![]), plugin_config))
+    let passphrase = if cfg!(feature = "protected-custody") {
+        if crate::env::development_enabled() || crate::env::dev_mode_enabled() {
+            anyhow::bail!(
+                "Protected custody requires the packaged application, not development mode"
+            );
+        }
+        tauri_plugin_holochain::credential_custody::protected_passphrase(&holochain_dir(hc_cfg)?)?
+    } else {
+        // Foundation-only engineering profile; constitution admission stays denied.
+        vec_to_locked(vec![])
+    };
+    Ok(tauri_plugin_holochain::async_init(passphrase, plugin_config))
 }
 
 pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) -> NetworkConfig {
