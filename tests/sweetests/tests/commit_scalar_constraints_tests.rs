@@ -19,6 +19,7 @@ use holons_test::{DanceTestStep, ExpectedCommitStatus, TestExecutionState};
 use holons_trust_channel::TrustChannel;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::mpsc::Receiver;
+use type_names::CoreValidationRuleName as Rule;
 
 async fn audit(signals: &mut Receiver<serde_json::Value>) -> serde_json::Value {
     tokio::time::timeout(Duration::from_secs(30), signals.recv())
@@ -63,7 +64,37 @@ async fn scalar_create_rejection_and_clean_bootstrap() {
     let (runtime, tx_id) = init_runtime_with_initiator(&mut case, initiator).await;
     let bootstrap = audit(&mut signals).await;
     assert_eq!(bootstrap["violations"], 0, "strict manifest-selected bootstrap");
-    assert_eq!(bootstrap["property_conformance_dispatched"], true);
+    let dispatched: Vec<&str> = bootstrap["dispatched_rule_keys"]
+        .as_array()
+        .expect("audit reports dispatched rule keys")
+        .iter()
+        .map(|key| key.as_str().unwrap())
+        .collect();
+    // The clean corpus exercises every active value, enum, default, and conformance rule.
+    for rule in [
+        Rule::PropertyValueConformance,
+        Rule::EnumTokenMembership,
+        Rule::EnumMemberNamesUnique,
+        Rule::DefaultsRequireRequiredProperties,
+        Rule::DefaultValueConformance,
+        Rule::ConcreteDescribingType,
+        Rule::AbstractMemberMinimumEnforcement,
+    ] {
+        assert!(
+            dispatched.contains(&rule.as_str()),
+            "{} not dispatched: {dispatched:?}",
+            rule.as_str()
+        );
+    }
+    // The vocabulary guard attributes this rule only when a populated name is ambiguous,
+    // and the retained historical-token rule has no implementation.
+    for rule in [Rule::UniquePropertyMemberBinding, Rule::EnumTokenNonRetroactivity] {
+        assert!(
+            !dispatched.contains(&rule.as_str()),
+            "{} dispatched: {dispatched:?}",
+            rule.as_str()
+        );
+    }
     assert!(bootstrap["reached_constraints"].as_u64().unwrap() > 0);
     assert!(bootstrap["evaluated_constraints"].as_u64().unwrap() > 0);
     // The selected corpus has only one executable configured scalar constraint.

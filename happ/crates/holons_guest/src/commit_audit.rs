@@ -3,7 +3,7 @@
 mod enabled {
     use hdk::prelude::*;
     use holons_validation::{AssessmentEvent, ValidationObservations};
-    use std::cell::RefCell;
+    use std::{cell::RefCell, collections::BTreeSet};
 
     #[derive(Debug, Default, Serialize)]
     pub(super) struct Audit {
@@ -15,7 +15,8 @@ mod enabled {
         pub(super) violations: Option<usize>,
         reached_constraints: usize,
         evaluated_constraints: usize,
-        property_conformance_dispatched: bool,
+        /// Rule keys whose compatible handlers ran, in lexical order.
+        dispatched_rule_keys: BTreeSet<String>,
     }
     thread_local! { pub(super) static AUDIT: RefCell<Option<Audit>> = const { RefCell::new(None) }; }
 
@@ -34,9 +35,7 @@ mod enabled {
                 }) => {
                     audit.reached_constraints = *effective_constraint_count;
                     audit.evaluated_constraints = *evaluated_value_constraint_count;
-                    audit.property_conformance_dispatched = dispatched_rule_keys.contains(
-                        type_names::CoreValidationRuleName::PropertyValueConformance.as_str(),
-                    );
+                    audit.dispatched_rule_keys = dispatched_rule_keys.clone();
                 }
                 _ => {}
             }
