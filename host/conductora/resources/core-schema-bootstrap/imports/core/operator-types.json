@@ -337,7 +337,7 @@
       "properties": {
         "TypeName": "Ordering",
         "DisplayName": "Ordering",
-        "Description": "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order."
+        "Description": "Operators that compare the relative order of values of the same type, such as a subject against one comparison value or against the bounds of a range. Applicable only to value types with a defined total order."
       },
       "relationships": [
         {
@@ -690,7 +690,7 @@
         "TypeNamePlural": "OperandRoles",
         "DisplayName": "operand_role",
         "DisplayNamePlural": "operand_roles",
-        "Description": "Durable role name of an authored operand position, such as ComparisonValue, Substring, Prefix, or Suffix.",
+        "Description": "Durable role name of an authored operand position, such as ComparisonValue, LowerBound, UpperBound, Substring, Prefix, or Suffix.",
         "IsValueRequired": true
       },
       "relationships": [
@@ -1204,6 +1204,46 @@
       ]
     },
     {
+      "key": "BetweenLowerBound.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Lower Bound",
+        "Description": "Inclusive lower bound of the range. It must not be ordered after the upper bound.",
+        "OperandRole": "LowerBound",
+        "OperandValueTypeRule": "SameAsSubject"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BetweenUpperBound.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Upper Bound",
+        "Description": "Inclusive upper bound of the range. It must not be ordered before the lower bound.",
+        "OperandRole": "UpperBound",
+        "OperandValueTypeRule": "SameAsSubject"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "ContainsSubstring.OperandSpecification",
       "type": "OperandSpecification.HolonType",
       "properties": {
@@ -1295,7 +1335,7 @@
         "TypeNamePlural": "Arities",
         "DisplayName": "arity",
         "DisplayNamePlural": "arities",
-        "Description": "Number of operands the operator accepts (1 = unary, 2 = binary).",
+        "Description": "Number of execution operands the operator accepts, subject included (1 = unary, 2 = binary, 3 = ternary).",
         "IsValueRequired": true
       },
       "relationships": [
@@ -1601,6 +1641,56 @@
           "target": [
             {
               "$ref": "GreaterThanOrEqualComparisonValue.OperandSpecification"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BetweenOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "BetweenOperator",
+        "TypeNamePlural": "BetweenOperators",
+        "DisplayName": "Between",
+        "DisplayNamePlural": "Between Operators",
+        "Description": "Returns true iff the subject is ordered at or after the lower bound and at or before the upper bound (a closed interval) under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion. Equal bounds match only an equal subject. A lower bound ordered after the upper bound is an invalid definition, never an empty range, and the bounds are never swapped.",
+        "Arity": 3,
+        "OperatorCategory": "Ordering"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "BetweenLowerBound.OperandSpecification"
+            },
+            {
+              "$ref": "BetweenUpperBound.OperandSpecification"
             }
           ]
         },

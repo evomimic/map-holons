@@ -1,6 +1,6 @@
 use crate::descriptors::value_descriptor_subtypes::helpers::{
-    single_operand, supported_operators, supports_operator, unsupported_operator,
-    value_kind_mismatch,
+    bound_operands, require_ordered_bounds, single_operand, supported_operators, supports_operator,
+    unsupported_operator, value_kind_mismatch,
 };
 use crate::descriptors::{
     Descriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, TypeHeader, ValueDescriptor,
@@ -61,28 +61,59 @@ impl IntegerValueDescriptor {
 
     /// Executes a resolved integer operator.
     ///
-    /// Ordered comparisons are numeric and compare directly, so no signed
-    /// extreme can overflow them.
+    /// Ordered comparisons and Between are numeric and compare directly, so no
+    /// signed extreme can overflow them. Between applies the same bound rule
+    /// as [`check_operand_relations`](Self::check_operand_relations).
     pub(crate) fn evaluate(
         &self,
         op: &ResolvedOperator,
         subject: &BaseValue,
         operands: &[BaseValue],
     ) -> Result<bool, HolonError> {
-        let (lhs, rhs) = (subject, single_operand(op, operands)?);
-        let lhs = match lhs {
-            BaseValue::IntegerValue(value) => value,
-            other => return Err(value_kind_mismatch(&self.holon, "Integer", other)),
-        };
-        let rhs = match rhs {
-            BaseValue::IntegerValue(value) => value,
-            other => return Err(value_kind_mismatch(&self.holon, "Integer", other)),
-        };
-
+        let subject = self.integer(subject)?;
         match op.kind() {
-            OperatorKind::Equals => Ok(lhs == rhs),
-            OperatorKind::Ordered(comparison) => Ok(comparison.holds(lhs.0.cmp(&rhs.0))),
+            OperatorKind::Equals => Ok(subject == self.integer(single_operand(op, operands)?)?),
+            OperatorKind::Ordered(comparison) => {
+                let rhs = self.integer(single_operand(op, operands)?)?;
+                Ok(comparison.holds(subject.cmp(rhs)))
+            }
+            OperatorKind::Between => {
+                let (lower, upper) = self.bounds(op, operands)?;
+                Ok(lower <= subject && subject <= upper)
+            }
             OperatorKind::Matching(..) => unsupported_operator(&self.holon, op.operator()),
+        }
+    }
+
+    /// Checks the cross-operand rules of authored integer operands: Between's
+    /// lower bound must not be ordered after its upper bound.
+    pub(crate) fn check_operand_relations(
+        &self,
+        op: &ResolvedOperator,
+        operands: &[BaseValue],
+    ) -> Result<(), HolonError> {
+        match op.kind() {
+            OperatorKind::Between => self.bounds(op, operands).map(|_| ()),
+            OperatorKind::Equals | OperatorKind::Ordered(_) | OperatorKind::Matching(..) => Ok(()),
+        }
+    }
+
+    /// Returns Between's validated `(lower, upper)` bounds.
+    fn bounds<'a>(
+        &self,
+        op: &ResolvedOperator,
+        operands: &'a [BaseValue],
+    ) -> Result<(&'a i64, &'a i64), HolonError> {
+        let (lower, upper) = bound_operands(op, operands)?;
+        let (lower, upper) = (self.integer(lower)?, self.integer(upper)?);
+        require_ordered_bounds(op, lower, upper)?;
+        Ok((lower, upper))
+    }
+
+    fn integer<'a>(&self, value: &'a BaseValue) -> Result<&'a i64, HolonError> {
+        match value {
+            BaseValue::IntegerValue(value) => Ok(&value.0),
+            other => Err(value_kind_mismatch(&self.holon, "Integer", other)),
         }
     }
 }

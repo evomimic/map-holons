@@ -46,6 +46,7 @@ use fixture_cases::query_f1_filter_fixture::*;
 use fixture_cases::query_f2_equality_fixture::*;
 use fixture_cases::query_f3_boolean_fixture::*;
 use fixture_cases::query_f4_ordering_fixture::*;
+use fixture_cases::query_f5_between_fixture::*;
 use fixture_cases::query_f6_string_matching_fixture::*;
 use fixture_cases::query_qry1_scaffold_fixture::*;
 use fixture_cases::query_qry2_seed_expand_fixture::*;
@@ -189,6 +190,7 @@ async fn query_semantic_matrix() {
             query_f2_equality_fixture().unwrap(),
             query_f3_boolean_fixture().unwrap(),
             query_f4_ordering_fixture().unwrap(),
+            query_f5_between_fixture().unwrap(),
             query_f6_string_matching_fixture().unwrap(),
         ],
     })
@@ -205,9 +207,10 @@ async fn query_semantic_matrix() {
 #[case::equality(query_f2_equality_fixture)]
 #[case::boolean(query_f3_boolean_fixture)]
 #[case::ordering(query_f4_ordering_fixture)]
+#[case::between(query_f5_between_fixture)]
 #[case::string_matching(query_f6_string_matching_fixture)]
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "focused extended diagnosis; query_semantic_matrix covers all eight fixtures"]
+#[ignore = "focused extended diagnosis; query_semantic_matrix covers all nine fixtures"]
 async fn query_fixture(
     #[case] build: fn() -> Result<holons_test::DancesTestCase, core_types::HolonError>,
 ) {

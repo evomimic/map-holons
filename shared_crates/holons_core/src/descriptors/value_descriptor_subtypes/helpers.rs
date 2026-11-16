@@ -69,3 +69,36 @@ pub(crate) fn single_operand<'a>(
         }),
     }
 }
+
+/// Returns the lower and upper bound operands of a range operator, in that order.
+pub(crate) fn bound_operands<'a>(
+    op: &ResolvedOperator,
+    operands: &'a [BaseValue],
+) -> Result<(&'a BaseValue, &'a BaseValue), HolonError> {
+    match operands {
+        [lower, upper] => Ok((lower, upper)),
+        _ => Err(HolonError::OperandCountMismatch {
+            operator: op.operator().operator_name()?.to_string(),
+            expected: 2,
+            found: operands.len(),
+        }),
+    }
+}
+
+/// Requires a range's lower bound not to be ordered after its upper bound.
+///
+/// A reversed range is an invalid definition, not an empty range, and the
+/// bounds are never swapped. Equal bounds are valid.
+pub(crate) fn require_ordered_bounds<T: Ord + std::fmt::Debug>(
+    op: &ResolvedOperator,
+    lower: &T,
+    upper: &T,
+) -> Result<(), HolonError> {
+    if lower <= upper {
+        return Ok(());
+    }
+    Err(HolonError::InvalidAuthoredOperands {
+        operator: op.operator().operator_name()?.to_string(),
+        reason: format!("lower bound {lower:?} is ordered after upper bound {upper:?}"),
+    })
+}

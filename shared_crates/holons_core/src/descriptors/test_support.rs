@@ -503,25 +503,39 @@ pub(crate) fn stage_operator(
     context: &Arc<TransactionContext>,
     fixture: OperatorFixture<'_>,
 ) -> Result<HolonReference, HolonError> {
+    stage_operator_with_roles(context, fixture, &["Operand"])
+}
+
+/// Stages an operator descriptor like [`stage_operator`], with one operand
+/// specification per entry of `roles`, in order, and `Arity` one more than
+/// their count. Every specification uses the fixture's operand rule.
+pub(crate) fn stage_operator_with_roles(
+    context: &Arc<TransactionContext>,
+    fixture: OperatorFixture<'_>,
+    roles: &[&str],
+) -> Result<HolonReference, HolonError> {
     use base_types::{MapEnumValue, MapInteger};
 
     let rule = if fixture.operand_type.is_some() { "FixedValueType" } else { "SameAsSubject" };
-    let mut specification =
-        new_test_holon(context, &format!("{}Operand.OperandSpecification", fixture.type_name))?;
-    specification
-        .with_property_value(CorePropertyTypeName::OperandRole, "Operand")?
-        .with_property_value(CorePropertyTypeName::DisplayName, "Operand")?
-        .with_property_value(
-            CorePropertyTypeName::OperandValueTypeRule,
-            MapEnumValue(MapString(rule.to_string())),
-        )?;
-    if let Some(operand_type) = fixture.operand_type {
-        specification.add_related_holons(
-            CoreRelationshipTypeName::OperandValueType,
-            vec![operand_type.clone()],
-        )?;
+    let mut specifications = Vec::with_capacity(roles.len());
+    for role in roles {
+        let mut specification =
+            new_test_holon(context, &format!("{}{role}.OperandSpecification", fixture.type_name))?;
+        specification
+            .with_property_value(CorePropertyTypeName::OperandRole, *role)?
+            .with_property_value(CorePropertyTypeName::DisplayName, *role)?
+            .with_property_value(
+                CorePropertyTypeName::OperandValueTypeRule,
+                MapEnumValue(MapString(rule.to_string())),
+            )?;
+        if let Some(operand_type) = fixture.operand_type {
+            specification.add_related_holons(
+                CoreRelationshipTypeName::OperandValueType,
+                vec![operand_type.clone()],
+            )?;
+        }
+        specifications.push(context.mutation().stage_new_holon(specification)?.into());
     }
-    let specification: HolonReference = context.mutation().stage_new_holon(specification)?.into();
 
     let mut operator = new_descriptor_holon(
         context,
@@ -529,18 +543,20 @@ pub(crate) fn stage_operator(
         fixture.type_name,
         "Operator",
     )?;
-    operator.with_property_value(CorePropertyTypeName::Arity, MapInteger(2))?.with_property_value(
-        CorePropertyTypeName::OperatorCategory,
-        MapEnumValue(MapString(fixture.category.to_string())),
-    )?;
+    let arity = i64::try_from(roles.len() + 1).expect("operand count fits in i64");
+    operator
+        .with_property_value(CorePropertyTypeName::Arity, MapInteger(arity))?
+        .with_property_value(
+            CorePropertyTypeName::OperatorCategory,
+            MapEnumValue(MapString(fixture.category.to_string())),
+        )?;
     if let Some(case_matching) = fixture.case_matching {
         operator.with_property_value(
             CorePropertyTypeName::CaseMatching,
             MapEnumValue(MapString(case_matching.to_string())),
         )?;
     }
-    operator
-        .add_related_holons(CoreRelationshipTypeName::OperandSpecifications, vec![specification])?;
+    operator.add_related_holons(CoreRelationshipTypeName::OperandSpecifications, specifications)?;
     if let Some(parent) = fixture.extends {
         operator.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone()])?;
     }
@@ -549,7 +565,8 @@ pub(crate) fn stage_operator(
 
 /// Returns the canonical core operator descriptor, staging it on first use.
 ///
-/// Equals and the ordering operators take a `SameAsSubject` operand. The
+/// Equals and the ordering operators take a `SameAsSubject` operand, and
+/// Between takes `LowerBound` then `UpperBound`, both `SameAsSubject`. The
 /// matching operators (Contains, StartsWith, EndsWith) take a fixed
 /// `substring_type` operand and declare `UnicodeDefaultCaseFold`.
 pub(crate) fn core_operator(
@@ -566,17 +583,18 @@ pub(crate) fn core_operator(
         Err(HolonError::HolonNotFound(_)) => {}
         Err(error) => return Err(error),
     }
-    let (category, case_matching, operand_type) = match operator {
-        EqualsOperator => ("Equality", None, None),
+    let (category, case_matching, operand_type, roles): (_, _, _, &[&str]) = match operator {
+        EqualsOperator => ("Equality", None, None, &["Operand"]),
         LessThanOperator
         | GreaterThanOperator
         | LessThanOrEqualOperator
-        | GreaterThanOrEqualOperator => ("Ordering", None, None),
+        | GreaterThanOrEqualOperator => ("Ordering", None, None, &["Operand"]),
+        BetweenOperator => ("Ordering", None, None, &["LowerBound", "UpperBound"]),
         ContainsOperator | StartsWithOperator | EndsWithOperator => {
-            ("Matching", Some("UnicodeDefaultCaseFold"), substring_type)
+            ("Matching", Some("UnicodeDefaultCaseFold"), substring_type, &["Operand"])
         }
     };
-    stage_operator(
+    stage_operator_with_roles(
         context,
         OperatorFixture {
             type_name: &type_name.0,
@@ -585,6 +603,7 @@ pub(crate) fn core_operator(
             operand_type,
             extends: None,
         },
+        roles,
     )
 }
 

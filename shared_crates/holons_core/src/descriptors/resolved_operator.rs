@@ -15,6 +15,10 @@ pub enum OperatorKind {
     Equals,
     /// An ordered comparison of the subject against one comparison value.
     Ordered(OrderedComparison),
+    /// Closed-interval range membership: lower bound ≤ subject ≤ upper bound,
+    /// under the subject value type's ordering. A lower bound ordered after the
+    /// upper bound is invalid, never an empty range.
+    Between,
     /// Literal string matching (Contains, StartsWith, or EndsWith) under the
     /// operator's case-matching policy.
     Matching(LiteralMatch, CaseMatching),
@@ -56,18 +60,23 @@ impl OperatorKind {
     fn authored_operand_count(self) -> usize {
         match self {
             Self::Equals | Self::Ordered(_) | Self::Matching(..) => 1,
+            Self::Between => 2,
         }
     }
 
     /// Whether this semantics is defined for a subject of `kind`.
     ///
-    /// Ordering is defined for integers and strings only. Other kinds do not
-    /// acquire it from their representation or from equality support.
+    /// Ordering, and so Between, is defined for integers and strings only.
+    /// Other kinds do not acquire it from their representation or from
+    /// equality support.
     fn applies_to(self, kind: &ValueDescriptorKind) -> bool {
         use BaseValueKind::*;
         match (self, kind) {
             (Self::Equals, ValueDescriptorKind::BaseValue(_)) => true,
-            (Self::Ordered(_), ValueDescriptorKind::BaseValue(Integer | String)) => true,
+            (
+                Self::Ordered(_) | Self::Between,
+                ValueDescriptorKind::BaseValue(Integer | String),
+            ) => true,
             (Self::Matching(..), ValueDescriptorKind::BaseValue(String)) => true,
             _ => false,
         }
@@ -175,26 +184,52 @@ impl ResolvedOperator {
         &self.operand_value_types
     }
 
+    /// Validates a complete ordered list of authored operand values, without a
+    /// subject.
+    ///
+    /// Checks the operand count, each value's runtime representation, and the
+    /// operator's cross-operand rules (Between: the lower bound must not be
+    /// ordered after the upper bound). Definition validation calls this once,
+    /// before any candidate is read, so an invalid combination fails even when
+    /// no candidate would ever be evaluated. [`invoke`](Self::invoke) applies
+    /// the same cross-operand rules.
+    pub fn validate_authored_operands(&self, operands: &[BaseValue]) -> Result<(), HolonError> {
+        self.require_operand_count(operands)?;
+        self.require_operand_representations(operands)?;
+        self.subject_type.check_operand_relations(self, operands)
+    }
+
     /// Applies the operator to a subject value and its ordered authored operands.
     ///
-    /// Checks the operand count and each value's runtime representation only.
-    /// Authored-literal validation belongs to query definition validation, and
-    /// stored subject values are never revalidated against configured constraints.
+    /// Checks the operand count, each value's runtime representation, and the
+    /// operator's cross-operand rules. Authored-literal validation belongs to
+    /// query definition validation, and stored subject values are never
+    /// revalidated against configured constraints.
     pub fn invoke(&self, subject: &BaseValue, operands: &[BaseValue]) -> Result<bool, HolonError> {
-        if operands.len() != self.operand_kinds.len() {
-            return Err(HolonError::OperandCountMismatch {
-                operator: self.operator.operator_name()?.to_string(),
-                expected: self.operand_kinds.len(),
-                found: operands.len(),
-            });
-        }
+        self.require_operand_count(operands)?;
         require_representation(&self.subject_type, &self.subject_kind, subject)?;
+        self.require_operand_representations(operands)?;
+        self.subject_type.evaluate_operator(self, subject, operands)
+    }
+
+    fn require_operand_count(&self, operands: &[BaseValue]) -> Result<(), HolonError> {
+        if operands.len() == self.operand_kinds.len() {
+            return Ok(());
+        }
+        Err(HolonError::OperandCountMismatch {
+            operator: self.operator.operator_name()?.to_string(),
+            expected: self.operand_kinds.len(),
+            found: operands.len(),
+        })
+    }
+
+    fn require_operand_representations(&self, operands: &[BaseValue]) -> Result<(), HolonError> {
         for ((operand, kind), value_type) in
             operands.iter().zip(&self.operand_kinds).zip(&self.operand_value_types)
         {
             require_representation(value_type, kind, operand)?;
         }
-        self.subject_type.evaluate_operator(self, subject, operands)
+        Ok(())
     }
 }
 
@@ -226,7 +261,7 @@ mod tests {
     use crate::core_shared_objects::transactions::TransactionContext;
     use crate::descriptors::test_support::{
         build_context, core_operator, new_descriptor_holon, new_kind_descriptor, stage_operator,
-        OperatorFixture,
+        stage_operator_with_roles, OperatorFixture,
     };
     use crate::reference_layer::{HolonReference, WritableHolon};
     use base_types::{MapBytes, MapEnumValue, MapInteger, MapString};
@@ -242,6 +277,7 @@ mod tests {
         greater_than: HolonReference,
         less_than_or_equal: HolonReference,
         greater_than_or_equal: HolonReference,
+        between: HolonReference,
         contains: HolonReference,
         starts_with: HolonReference,
         ends_with: HolonReference,
@@ -260,6 +296,7 @@ mod tests {
         let greater_than = ordered(CoreOperatorTypeName::GreaterThanOperator);
         let less_than_or_equal = ordered(CoreOperatorTypeName::LessThanOrEqualOperator);
         let greater_than_or_equal = ordered(CoreOperatorTypeName::GreaterThanOrEqualOperator);
+        let between = ordered(CoreOperatorTypeName::BetweenOperator);
         let matching = |name| core_operator(&context, name, Some(&string_type)).unwrap();
         let contains = matching(CoreOperatorTypeName::ContainsOperator);
         let starts_with = matching(CoreOperatorTypeName::StartsWithOperator);
@@ -272,6 +309,7 @@ mod tests {
             greater_than,
             less_than_or_equal,
             greater_than_or_equal,
+            between,
             contains,
             starts_with,
             ends_with,
@@ -1005,6 +1043,265 @@ mod tests {
         assert!(matches!(
             world.resolve(&world.equals, &title),
             Err(HolonError::InvalidOperatorMetadata { operator, .. }) if operator == "EqualsOperator"
+        ));
+    }
+
+    // ---- Between ------------------------------------------------------------
+
+    /// Results for a subject below, at the lower bound, inside, at the upper
+    /// bound, and above a range.
+    const CLOSED_INTERVAL: [bool; 5] = [false, true, true, true, false];
+
+    #[test]
+    fn between_is_a_closed_interval_over_two_subject_typed_bounds() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.between]);
+        let title = world.subject("StringValueType", &[&world.between]);
+        for (subject, values) in [
+            (&count, [4, 5, 6, 7, 8].map(integer)),
+            (&title, ["l", "m", "n", "o", "p"].map(string)),
+        ] {
+            let between = world.resolve(&world.between, subject).unwrap();
+            assert_eq!(between.kind(), OperatorKind::Between);
+            let required: Vec<_> =
+                between.operand_value_types().iter().map(|value_type| value_type.holon()).collect();
+            assert_eq!(required, vec![subject.holon(), subject.holon()]);
+
+            let bounds = [values[1].clone(), values[3].clone()];
+            let results = values.clone().map(|value| between.invoke(&value, &bounds).unwrap());
+            assert_eq!(results, CLOSED_INTERVAL, "{values:?}");
+            // Equal bounds match only an equal subject.
+            let point = [values[2].clone(), values[2].clone()];
+            let results = values.clone().map(|value| between.invoke(&value, &point).unwrap());
+            assert_eq!(results, [false, false, true, false, false], "{values:?}");
+        }
+    }
+
+    #[test]
+    fn integer_between_is_numeric_at_the_signed_extremes() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.between]);
+        let between = world.resolve(&world.between, &count).unwrap();
+        let (min, max) = (integer(i64::MIN), integer(i64::MAX));
+        let everything = [min.clone(), max.clone()];
+        for subject in [min.clone(), integer(-1), integer(0), integer(1), max.clone()] {
+            assert!(between.invoke(&subject, &everything).unwrap(), "{subject:?}");
+        }
+        assert!(between.invoke(&max, &[max.clone(), max.clone()]).unwrap());
+        assert!(!between.invoke(&integer(i64::MAX - 1), &[max.clone(), max.clone()]).unwrap());
+        assert!(between.invoke(&min, &[min.clone(), min.clone()]).unwrap());
+        assert!(!between.invoke(&integer(i64::MIN + 1), &[min.clone(), min.clone()]).unwrap());
+        assert!(!between.invoke(&integer(-1), &[integer(0), max]).unwrap());
+        assert!(!between.invoke(&integer(1), &[min, integer(0)]).unwrap());
+    }
+
+    #[test]
+    fn string_between_is_case_sensitive_ordinal_and_unfolded() {
+        let world = world();
+        let title = world.subject("StringValueType", &[&world.between]);
+        let between = world.resolve(&world.between, &title).unwrap();
+        let range = |lower: &str, upper: &str| [string(lower), string(upper)];
+        // Every ASCII uppercase letter precedes every lowercase one.
+        assert!(between.invoke(&string("Mango"), &range("A", "Z")).unwrap());
+        assert!(!between.invoke(&string("mango"), &range("A", "Z")).unwrap());
+        // Prefixes order before their extensions; the empty string is first.
+        assert!(between.invoke(&string("Atlas"), &range("Atlas", "Atlases")).unwrap());
+        assert!(between.invoke(&string(""), &range("", "a")).unwrap());
+        // No folding: Straße is not STRASSE, and orders after it.
+        assert!(!between.invoke(&string("Straße"), &range("STRASSE", "STRASSE")).unwrap());
+        assert!(between.invoke(&string("Straße"), &range("STRASSE", "Straßf")).unwrap());
+        assert!(!between.invoke(&string("ß"), &range("s", "ss")).unwrap());
+    }
+
+    #[test]
+    fn reversed_bounds_are_invalid_and_never_swapped() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.between]);
+        let title = world.subject("StringValueType", &[&world.between]);
+        for (subject, inside, lower, upper) in [
+            (&count, integer(5), integer(4), integer(6)),
+            (&title, string("m"), string("l"), string("n")),
+        ] {
+            let between = world.resolve(&world.between, subject).unwrap();
+            let reversed = [upper.clone(), lower.clone()];
+            for error in [
+                between.validate_authored_operands(&reversed).unwrap_err(),
+                between.invoke(&inside, &reversed).unwrap_err(),
+            ] {
+                assert!(
+                    matches!(&error, HolonError::InvalidAuthoredOperands { operator, .. }
+                        if operator == "BetweenOperator"),
+                    "unexpected error: {error:?}"
+                );
+            }
+            between.validate_authored_operands(&[lower.clone(), upper]).unwrap();
+            between.validate_authored_operands(&[lower.clone(), lower]).unwrap();
+        }
+    }
+
+    #[test]
+    fn between_requires_two_operands_of_the_subject_representation() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.between]);
+        let between = world.resolve(&world.between, &count).unwrap();
+
+        for operands in [vec![], vec![integer(1)], vec![integer(1), integer(2), integer(3)]] {
+            for result in [
+                between.invoke(&integer(1), &operands).map(|_| ()),
+                between.validate_authored_operands(&operands),
+            ] {
+                assert!(matches!(
+                    result,
+                    Err(HolonError::OperandCountMismatch { expected: 2, found, .. })
+                        if found == operands.len()
+                ));
+            }
+        }
+        for operands in [[string("1"), integer(2)], [integer(1), string("2")]] {
+            for result in [
+                between.invoke(&integer(1), &operands).map(|_| ()),
+                between.validate_authored_operands(&operands),
+            ] {
+                assert!(matches!(
+                    result,
+                    Err(HolonError::ValueKindMismatch { expected, found, .. })
+                        if expected == "Integer" && found == "String"
+                ));
+            }
+        }
+        assert!(matches!(
+            between.invoke(&string("1"), &[integer(1), integer(2)]),
+            Err(HolonError::ValueKindMismatch { expected, found, .. })
+                if expected == "Integer" && found == "String"
+        ));
+    }
+
+    #[test]
+    fn the_binary_convenience_api_rejects_between() {
+        let world = world();
+        let count = world.subject("IntegerValueType", &[&world.between]);
+        let between = OperatorDescriptor::from_holon(world.between.clone());
+        assert!(matches!(
+            count.apply_operator(&between, &integer(1), &integer(1)),
+            Err(HolonError::OperandCountMismatch { expected: 2, found: 1, .. })
+        ));
+    }
+
+    #[test]
+    fn single_operand_operators_have_no_cross_operand_rules() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.ordering().iter().map(|(operator, _)| *operator).chain([&world.equals]).collect();
+        let count = world.subject("IntegerValueType", &operators);
+        for operator in operators {
+            let resolved = world.resolve(operator, &count).unwrap();
+            resolved.validate_authored_operands(&[integer(i64::MIN)]).unwrap();
+            assert!(matches!(
+                resolved.validate_authored_operands(&[]),
+                Err(HolonError::OperandCountMismatch { expected: 1, found: 0, .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn between_and_the_ordered_comparisons_are_afforded_independently() {
+        let world = world();
+        let operators: Vec<&HolonReference> =
+            world.ordering().iter().map(|(operator, _)| *operator).collect();
+        let ordered_only = world.subject("IntegerValueType", &operators);
+        assert!(matches!(
+            world.resolve(&world.between, &ordered_only),
+            Err(HolonError::UnsupportedOperator { operator, .. }) if operator == "BetweenOperator"
+        ));
+        let between_only = world.subject("IntegerValueType", &[&world.between]);
+        world.resolve(&world.between, &between_only).expect("Between is afforded");
+        for operator in operators {
+            assert!(matches!(
+                world.resolve(operator, &between_only),
+                Err(HolonError::UnsupportedOperator { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn between_is_unsupported_outside_integers_and_strings_even_when_afforded() {
+        let world = world();
+        for kind_anchor in ["BooleanValueType", "BytesValueType", "EnumValueType"] {
+            let subject = world.subject(kind_anchor, &[&world.between]);
+            assert!(
+                matches!(
+                    world.resolve(&world.between, &subject),
+                    Err(HolonError::UnsupportedOperator { .. })
+                ),
+                "{kind_anchor} acquired Between"
+            );
+        }
+    }
+
+    #[test]
+    fn a_between_extension_operator_keeps_its_ancestor_semantics() {
+        let world = world();
+        let within = stage_operator_with_roles(
+            &world.context,
+            OperatorFixture {
+                type_name: "WithinOperator",
+                category: "Ordering",
+                case_matching: None,
+                operand_type: None,
+                extends: Some(&world.between),
+            },
+            &["From", "To"],
+        )
+        .unwrap();
+        let count = world.subject("IntegerValueType", &[&within]);
+        let resolved = world.resolve(&within, &count).unwrap();
+        assert_eq!(resolved.kind(), OperatorKind::Between);
+        assert!(resolved.invoke(&integer(2), &[integer(1), integer(3)]).unwrap());
+        assert!(matches!(
+            resolved.invoke(&integer(2), &[integer(3), integer(1)]),
+            Err(HolonError::InvalidAuthoredOperands { .. })
+        ));
+        // Affording the extension does not afford its ancestor.
+        assert!(matches!(
+            world.resolve(&world.between, &count),
+            Err(HolonError::UnsupportedOperator { .. })
+        ));
+    }
+
+    #[test]
+    fn between_metadata_must_declare_two_operand_specifications() {
+        let world = world();
+        // Arity 2 with one specification is self-consistent, but Between takes two.
+        let one_bound = stage_operator_with_roles(
+            &world.context,
+            OperatorFixture {
+                type_name: "OneBoundOperator",
+                category: "Ordering",
+                case_matching: None,
+                operand_type: None,
+                extends: Some(&world.between),
+            },
+            &["Bound"],
+        )
+        .unwrap();
+        let count = world.subject("IntegerValueType", &[&one_bound]);
+        assert!(matches!(
+            world.resolve(&one_bound, &count),
+            Err(HolonError::InvalidOperatorMetadata { operator, .. })
+                if operator == "OneBoundOperator"
+        ));
+    }
+
+    #[test]
+    fn an_unrelated_same_named_between_operator_has_no_semantics() {
+        let world = world();
+        let rogue: HolonReference =
+            new_descriptor_holon(&world.context, "rogue-between", "BetweenOperator", "Operator")
+                .unwrap()
+                .into();
+        assert!(matches!(
+            OperatorDescriptor::from_holon(rogue).kind(),
+            Err(HolonError::NotImplemented(_))
         ));
     }
 }

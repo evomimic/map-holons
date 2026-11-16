@@ -112,6 +112,7 @@ impl OperatorDescriptor {
             CoreOperatorTypeName::GreaterThanOperator,
             CoreOperatorTypeName::LessThanOrEqualOperator,
             CoreOperatorTypeName::GreaterThanOrEqualOperator,
+            CoreOperatorTypeName::BetweenOperator,
             CoreOperatorTypeName::ContainsOperator,
             CoreOperatorTypeName::StartsWithOperator,
             CoreOperatorTypeName::EndsWithOperator,
@@ -133,6 +134,7 @@ impl OperatorDescriptor {
             Some(CoreOperatorTypeName::GreaterThanOrEqualOperator) => {
                 Ok(OperatorKind::Ordered(OrderedComparison::GreaterThanOrEqual))
             }
+            Some(CoreOperatorTypeName::BetweenOperator) => Ok(OperatorKind::Between),
             Some(CoreOperatorTypeName::ContainsOperator) => self.matching(LiteralMatch::Contains),
             Some(CoreOperatorTypeName::StartsWithOperator) => {
                 self.matching(LiteralMatch::StartsWith)

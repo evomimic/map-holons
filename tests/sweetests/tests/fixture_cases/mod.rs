@@ -18,6 +18,7 @@ pub mod query_f1_filter_fixture;
 pub mod query_f2_equality_fixture;
 pub mod query_f3_boolean_fixture;
 pub mod query_f4_ordering_fixture;
+pub mod query_f5_between_fixture;
 pub mod query_f6_string_matching_fixture;
 pub mod query_qry1_scaffold_fixture;
 pub mod query_qry2_seed_expand_fixture;

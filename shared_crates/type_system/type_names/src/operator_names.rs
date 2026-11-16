@@ -78,6 +78,7 @@ impl ToOperatorName for &OperatorName {
 /// Stable MAP Core operator type names backed by concrete `OperatorType` descriptors.
 #[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
 pub enum CoreOperatorTypeName {
+    BetweenOperator,
     ContainsOperator,
     EndsWithOperator,
     EqualsOperator,
@@ -114,6 +115,7 @@ mod tests {
 
     fn all_core_operator_type_names() -> Vec<CoreOperatorTypeName> {
         vec![
+            CoreOperatorTypeName::BetweenOperator,
             CoreOperatorTypeName::ContainsOperator,
             CoreOperatorTypeName::EndsWithOperator,
             CoreOperatorTypeName::EqualsOperator,

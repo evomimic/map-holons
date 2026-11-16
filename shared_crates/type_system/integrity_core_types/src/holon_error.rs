@@ -172,6 +172,8 @@ pub enum HolonError {
     InvalidOperatorMetadata { operator: String, reason: String },
     #[error("Operator {operator} expects {expected} authored operand(s), found {found}")]
     OperandCountMismatch { operator: String, expected: usize, found: usize },
+    #[error("Operator {operator} received an invalid combination of authored operands: {reason}")]
+    InvalidAuthoredOperands { operator: String, reason: String },
     #[error(
         "Literal declared as {declared} is incompatible with operator {operator}, which requires {required}"
     )]
@@ -281,6 +283,7 @@ pub enum HolonErrorKind {
     UnknownOperandValueTypeRule,
     InvalidOperatorMetadata,
     OperandCountMismatch,
+    InvalidAuthoredOperands,
     IncompatibleLiteralType,
     UnsupportedValueConstraint,
     UnsupportedOperator,
@@ -357,6 +360,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::UnknownOperandValueTypeRule { .. } => Self::UnknownOperandValueTypeRule,
             HolonError::InvalidOperatorMetadata { .. } => Self::InvalidOperatorMetadata,
             HolonError::OperandCountMismatch { .. } => Self::OperandCountMismatch,
+            HolonError::InvalidAuthoredOperands { .. } => Self::InvalidAuthoredOperands,
             HolonError::IncompatibleLiteralType { .. } => Self::IncompatibleLiteralType,
             HolonError::UnsupportedValueConstraint { .. } => Self::UnsupportedValueConstraint,
             HolonError::UnsupportedOperator { .. } => Self::UnsupportedOperator,

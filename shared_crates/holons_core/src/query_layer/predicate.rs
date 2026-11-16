@@ -12,7 +12,7 @@
 //!
 //! Supported forms are a `ComparisonPredicate` whose operator is Equals, one of
 //! the ordered comparisons (LessThan, GreaterThan, LessThanOrEqual,
-//! GreaterThanOrEqual), or one of the literal string matching operators
+//! GreaterThanOrEqual), Between, or one of the literal string matching operators
 //! (Contains, StartsWith, EndsWith), and the composites `Not`, `AllOf` and
 //! `AnyOf`, nested to any depth. Any other predicate form, and comparison
 //! through an operator with no supported core semantics in its lineage, fails
@@ -22,8 +22,9 @@
 //! definitions.
 //!
 //! Authored literals are checked for declared-type compatibility, runtime
-//! representation, and the existing supported value checks (such as enum
-//! membership). A literal ValueType with any effective configured constraint,
+//! representation, the existing supported value checks (such as enum
+//! membership), and the operator's cross-operand rules (Between's lower bound
+//! must not be ordered after its upper bound). A literal ValueType with any effective configured constraint,
 //! inherited ones included, is rejected: this module evaluates no configured
 //! constraint. Stored member values are never revalidated.
 
@@ -267,13 +268,16 @@ fn validate_comparison(
     let operator = operator.resolve_for_subject(&subject_type)?;
     match operator.kind() {
         OperatorKind::Matching(..) => require_string_subject(&operator)?,
-        // Equals and the ordered comparisons take the subject's own ValueType
-        // as their operand, so resolution already carries their whole
-        // contract, including the integer/string ordering domain.
-        OperatorKind::Equals | OperatorKind::Ordered(_) => {}
+        // Equals, the ordered comparisons and Between take the subject's own
+        // ValueType at every operand position, so resolution already carries
+        // their whole contract, including the integer/string ordering domain.
+        OperatorKind::Equals | OperatorKind::Ordered(_) | OperatorKind::Between => {}
     }
 
     let operand_values = validate_operands(&operator, &operands)?;
+    // Cross-operand rules (Between's bound order) belong to the operator, and
+    // are checked here, before any candidate is read.
+    operator.validate_authored_operands(&operand_values)?;
     Ok(ResolvedComparison { property_name, required, operator, operands: operand_values })
 }
 
@@ -2001,5 +2005,201 @@ mod tests {
         let untitled = world.member("untitled", &world.book, &[("Title", text("t"))]);
         let negated = validate(&world.not(vec![world.ends_with("Subtitle", "")]), &book(&world));
         assert!(negated.unwrap().matches(&untitled).unwrap());
+    }
+
+    // ---- Between ------------------------------------------------------------
+
+    fn reversed_pages(world: &PredicateWorld) -> HolonReference {
+        world.between("PageCount", &world.integer, number(200), number(100))
+    }
+
+    fn assert_reversed(error: HolonError) {
+        assert!(
+            matches!(&error, HolonError::InvalidAuthoredOperands { operator, .. }
+                if operator == "BetweenOperator"),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn between_keeps_a_closed_interval_and_skips_absent_optional_values() {
+        let world = world();
+        let pages = |key: &str, count: Option<i64>| {
+            let mut values = vec![("Title", text(key))];
+            if let Some(count) = count {
+                values.push(("PageCount", number(count)));
+            }
+            world.member(key, &world.book, &values)
+        };
+        let members = [
+            pages("below", Some(99)),
+            pages("lower", Some(100)),
+            pages("inside", Some(150)),
+            pages("upper", Some(200)),
+            pages("above", Some(201)),
+            pages("unknown", None),
+        ];
+        let range = world.between("PageCount", &world.integer, number(100), number(200));
+        let predicate = validate(&range, &book(&world)).unwrap();
+        assert_eq!(
+            matches_of(&predicate, &members).unwrap(),
+            vec![false, true, true, true, false, false]
+        );
+        let point = world.between("PageCount", &world.integer, number(150), number(150));
+        let predicate = validate(&point, &book(&world)).unwrap();
+        assert_eq!(
+            matches_of(&predicate, &members).unwrap(),
+            vec![false, false, true, false, false, false]
+        );
+    }
+
+    #[test]
+    fn string_between_is_ordinal_and_required_absence_fails() {
+        let world = world();
+        let titled =
+            |key: &str, title: &str| world.member(key, &world.book, &[("Title", text(title))]);
+        let members = [
+            titled("a", "Atlas"),
+            titled("r", "Roads"),
+            titled("s", "Straße"),
+            titled("l", "atlas"),
+        ];
+        let range = world.between("Title", &world.text, text("Atlas"), text("STRASSE"));
+        let predicate = validate(&range, &book(&world)).unwrap();
+        assert_eq!(matches_of(&predicate, &members).unwrap(), vec![true, true, false, false]);
+
+        let untitled = world.member("untitled", &world.book, &[]);
+        assert!(
+            matches!(predicate.matches(&untitled), Err(HolonError::EmptyField(n)) if n == "Title")
+        );
+        let wrong = world.member("wrong", &world.book, &[("Subtitle", number(3))]);
+        let subtitle = world.between("Subtitle", &world.text, text("a"), text("z"));
+        let subtitle = validate(&subtitle, &book(&world)).unwrap();
+        assert!(matches!(subtitle.matches(&wrong), Err(HolonError::ValueKindMismatch { .. })));
+    }
+
+    #[test]
+    fn reversed_bounds_fail_validation_before_any_candidate() {
+        // `validate` takes no members, so these fail as they would on empty input.
+        let world = world();
+        assert_reversed(validate(&reversed_pages(&world), &book(&world)).unwrap_err());
+        // Swapping valid bounds is what reverses them.
+        let swapped = world.between("Title", &world.text, text("b"), text("a"));
+        assert_reversed(validate(&swapped, &book(&world)).unwrap_err());
+        // An optional subject that no candidate carries does not hide it.
+        let subtitle = world.between("Subtitle", &world.text, text("z"), text("a"));
+        assert_reversed(validate(&subtitle, &book(&world)).unwrap_err());
+    }
+
+    #[test]
+    fn reversed_bounds_fail_inside_any_composite_even_beside_a_decisive_branch() {
+        let world = world();
+        let always = || world.contains("Title", "");
+        for predicate in [
+            world.not(vec![reversed_pages(&world)]),
+            world.any_of(vec![always(), reversed_pages(&world)]),
+            world.all_of(vec![world.not(vec![always()]), reversed_pages(&world)]),
+            world.any_of(vec![
+                always(),
+                world.all_of(vec![world.not(vec![reversed_pages(&world)])]),
+            ]),
+        ] {
+            assert_reversed(validate(&predicate, &book(&world)).unwrap_err());
+        }
+    }
+
+    #[test]
+    fn between_requires_exactly_two_authored_bounds() {
+        let world = world();
+        let bound = |value: i64| world.literal(&world.integer, number(value));
+        for operands in [vec![], vec![bound(1)], vec![bound(1), bound(2), bound(3)]] {
+            let found = operands.len();
+            let comparison = world.comparison("PageCount", &world.between, operands);
+            let error = validate(&comparison, &book(&world)).unwrap_err();
+            assert!(
+                matches!(error, HolonError::OperandCountMismatch { expected: 2, found: f, .. } if f == found),
+                "unexpected error for {found} operands: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn each_bound_is_checked_against_the_subject_type() {
+        let world = world();
+        let lower = |value_type: &HolonReference, value| world.literal(value_type, value);
+        for operands in [
+            vec![lower(&world.map_string, text("1")), lower(&world.integer, number(2))],
+            vec![lower(&world.integer, number(1)), lower(&world.map_string, text("2"))],
+        ] {
+            let comparison = world.comparison("PageCount", &world.between, operands);
+            assert!(matches!(
+                validate(&comparison, &book(&world)),
+                Err(HolonError::IncompatibleLiteralType { .. })
+            ));
+        }
+        // A bound declared as a subtype of the subject type is accepted at either position.
+        for operands in [
+            vec![lower(&world.headline, text("a")), lower(&world.text, text("b"))],
+            vec![lower(&world.text, text("a")), lower(&world.headline, text("b"))],
+        ] {
+            let comparison = world.comparison("Title", &world.between, operands);
+            validate(&comparison, &book(&world)).expect("Headline extends Text");
+        }
+        // A constrained bound type fails closed at the upper position too.
+        let constrained = world.comparison(
+            "Title",
+            &world.between,
+            vec![lower(&world.text, text("a")), lower(&world.identifier, text("b"))],
+        );
+        assert!(matches!(
+            validate(&constrained, &book(&world)),
+            Err(HolonError::UnsupportedValueConstraint { .. })
+        ));
+    }
+
+    #[test]
+    fn between_is_unsupported_where_it_is_not_afforded_or_not_ordered() {
+        let world = world();
+        for (property, value_type, lower, upper) in [
+            ("Rank", &world.rank, number(1), number(2)),
+            ("IsPublished", &world.flag, flag(false), flag(true)),
+            ("Status", &world.status, token("Draft"), token("Published")),
+        ] {
+            let comparison = world.between(property, value_type, lower, upper);
+            let error = validate(&comparison, &book(&world)).unwrap_err();
+            assert!(
+                matches!(error, HolonError::UnsupportedOperator { .. }),
+                "{property}: unexpected error: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn between_composes_and_keeps_order_duplicates_and_its_definition() {
+        let world = world();
+        let book_of = |key: &str, title: &str, count: i64| {
+            world.member(key, &world.book, &[("Title", text(title)), ("PageCount", number(count))])
+        };
+        let (mid_atlas, mid_roads, long_roads) =
+            (book_of("ma", "Atlas", 150), book_of("mr", "Roads", 120), book_of("lr", "Roads", 400));
+        // PageCount in [100, 200] and not Title in ["A", "B"].
+        let predicate = world.all_of(vec![
+            world.between("PageCount", &world.integer, number(100), number(200)),
+            world.not(vec![world.between("Title", &world.text, text("A"), text("B"))]),
+        ]);
+        let definition = predicate.into_model().unwrap();
+        let resolved = validate(&predicate, &book(&world)).unwrap();
+        let retained = filter(
+            &[mid_roads.clone(), mid_atlas.clone(), long_roads, mid_roads.clone()],
+            &resolved,
+        )
+        .unwrap();
+        assert_eq!(retained, vec![mid_roads.clone(), mid_roads]);
+        assert_eq!(predicate.into_model().unwrap(), definition);
+        // Negating an absent optional range is true.
+        let unpaged = world.member("unpaged", &world.book, &[("Title", text("t"))]);
+        let negated =
+            world.not(vec![world.between("PageCount", &world.integer, number(0), number(9))]);
+        assert!(validate(&negated, &book(&world)).unwrap().matches(&unpaged).unwrap());
     }
 }

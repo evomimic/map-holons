@@ -55,7 +55,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "eb2f8666174eab686b5a3c8412b28fd971fdd73ee0d82458a83882158feb28e4"
+      "sha256": "4a797f43ba72cf5e2e1e52199aafa7fd8841c8de3b994c353baee6804583c2eb"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -71,7 +71,7 @@
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "0671cbd13cfb1e46f2f8562e101e641bfa1cb3e0c7f242f77f7edb48e2065b84"
+      "sha256": "9c502d6caaaf3072f6b7287c3ea1c3df0f9f0bdc56c4dca545c47273cebd0a7b"
     },
     {
       "path": "imports/core/property-types.json",
@@ -1654,6 +1654,18 @@
     {
       "key": "BeginTransaction.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "BetweenLowerBound.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
+    },
+    {
+      "key": "BetweenOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "BetweenUpperBound.OperandSpecification",
+      "type": "OperandSpecification.HolonType"
     },
     {
       "key": "BooleanValidationRule.HolonType",

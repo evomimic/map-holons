@@ -841,9 +841,68 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
         }
     }
 
+    // Between: one Ordering, Arity 3 operator whose two SameAsSubject bounds are
+    // exposed in LowerBound, UpperBound order, afforded by the integer and
+    // string families.
+    let between =
+        OperatorDescriptor::from_holon(find_holon_by_key(&holons, "BetweenOperator.OperatorType"));
+    assert_eq!(between.arity().expect("BetweenOperator arity"), 3);
+    assert_eq!(
+        between.operator_category().expect("BetweenOperator category"),
+        OperatorCategory::Ordering
+    );
+    assert_eq!(between.kind().expect("BetweenOperator kind"), OperatorKind::Between);
+    let bounds = between.operand_specifications().expect("BetweenOperator specifications");
+    let roles: Vec<(String, String)> = bounds
+        .iter()
+        .map(|bound| {
+            (bound.role().expect("bound role").0, bound.display_name().expect("bound label").0)
+        })
+        .collect();
+    assert_eq!(
+        roles,
+        vec![
+            ("LowerBound".to_string(), "Lower Bound".to_string()),
+            ("UpperBound".to_string(), "Upper Bound".to_string()),
+        ],
+        "the loaded schema must keep the authored operand specification order"
+    );
+    for bound in &bounds {
+        assert_eq!(bound.rule().expect("bound rule"), OperandValueTypeRule::SameAsSubject);
+        assert!(bound.operand_value_type().expect("bound operand type read").is_none());
+    }
+    assert_contains(&integer_operator_names, "BetweenOperator");
+    assert_contains(&string_operator_names, "BetweenOperator");
+    for (subject, [lower, inside, upper]) in [
+        (&map_integer, [1, 2, 3].map(|value| BaseValue::IntegerValue(MapInteger(value)))),
+        (
+            &map_string,
+            ["STRASSE", "Straße", "Stru"]
+                .map(|value| BaseValue::StringValue(MapString(value.to_string()))),
+        ),
+    ] {
+        let resolved = between
+            .resolve_for_subject(subject)
+            .unwrap_or_else(|error| panic!("Between resolves on Map* subjects: {error:?}"));
+        let range = [lower.clone(), upper.clone()];
+        for (value, expected) in [(&lower, true), (&inside, true), (&upper, true)] {
+            assert_eq!(resolved.invoke(value, &range).expect("Between execution"), expected);
+        }
+        assert!(!resolved.invoke(&lower, &[inside.clone(), upper.clone()]).expect("below"));
+        assert!(matches!(
+            resolved.validate_authored_operands(&[upper.clone(), lower.clone()]),
+            Err(HolonError::InvalidAuthoredOperands { .. })
+        ));
+    }
+
     let boolean =
         ValueDescriptor::from_holon(find_holon_by_key(&holons, "BooleanValueType.ValueType"));
-    for name in ["GreaterThanOperator", "LessThanOrEqualOperator", "GreaterThanOrEqualOperator"] {
+    for name in [
+        "GreaterThanOperator",
+        "LessThanOrEqualOperator",
+        "GreaterThanOrEqualOperator",
+        "BetweenOperator",
+    ] {
         let operator = OperatorDescriptor::from_holon(find_holon_by_key(
             &holons,
             &format!("{name}.OperatorType"),

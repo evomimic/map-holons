@@ -449,6 +449,7 @@ pub(super) struct PredicateTypes {
     pub(super) greater_than: TestReference,
     pub(super) less_than_or_equal: TestReference,
     pub(super) greater_than_or_equal: TestReference,
+    pub(super) between: TestReference,
     pub(super) map_string: TestReference,
     pub(super) map_integer: TestReference,
     pub(super) map_boolean: TestReference,
@@ -485,6 +486,7 @@ impl PredicateTypes {
             greater_than_or_equal: lookup(&operator(
                 CoreOperatorTypeName::GreaterThanOrEqualOperator,
             ))?,
+            between: lookup(&operator(CoreOperatorTypeName::BetweenOperator))?,
             map_string: lookup(&value(
                 CoreValueTypeName::MapStringValueType,
                 CoreValueTypeName::StringValueType,

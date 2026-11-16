@@ -289,7 +289,7 @@
         "TypeNamePlural": "StringValueTypes",
         "DisplayName": "String Value Type",
         "DisplayNamePlural": "String Value Types",
-        "Description": "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, Contains, StartsWith, and EndsWith operator affordances additively. A specialization retains those affordances and may add its own operators.",
+        "Description": "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, Between, Contains, StartsWith, and EndsWith operator affordances additively. A specialization retains those affordances and may add its own operators.",
         "IsAbstractType": true,
         "DefinesInstanceTypeKind": true
       },
@@ -327,6 +327,9 @@
             },
             {
               "$ref": "GreaterThanOrEqualOperator.OperatorType"
+            },
+            {
+              "$ref": "BetweenOperator.OperatorType"
             },
             {
               "$ref": "ContainsOperator.OperatorType"
@@ -357,7 +360,7 @@
         "TypeNamePlural": "IntegerValueTypes",
         "DisplayName": "Integer Value Type",
         "DisplayNamePlural": "Integer Value Types",
-        "Description": "Abstract descriptor family for integer-based value types. It does not directly describe runtime values; every concrete descendant inherits its integer classification and core Equals, LessThan, GreaterThan, LessThanOrEqual, and GreaterThanOrEqual operator affordances additively. A specialization retains those affordances and may add its own operators.",
+        "Description": "Abstract descriptor family for integer-based value types. It does not directly describe runtime values; every concrete descendant inherits its integer classification and core Equals, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, and Between operator affordances additively. A specialization retains those affordances and may add its own operators.",
         "IsAbstractType": true,
         "DefinesInstanceTypeKind": true
       },
@@ -395,6 +398,9 @@
             },
             {
               "$ref": "GreaterThanOrEqualOperator.OperatorType"
+            },
+            {
+              "$ref": "BetweenOperator.OperatorType"
             }
           ]
         },

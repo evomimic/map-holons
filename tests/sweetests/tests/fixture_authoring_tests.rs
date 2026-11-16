@@ -54,6 +54,7 @@ fn all_fixtures_author_without_a_conductor() {
     query_f2_equality_fixture::query_f2_equality_fixture().unwrap();
     query_f3_boolean_fixture::query_f3_boolean_fixture().unwrap();
     query_f4_ordering_fixture::query_f4_ordering_fixture().unwrap();
+    query_f5_between_fixture::query_f5_between_fixture().unwrap();
     query_f6_string_matching_fixture::query_f6_string_matching_fixture().unwrap();
     simple_add_remove_properties_fixture::simple_add_remove_properties_fixture().unwrap();
     simple_add_remove_related_holons_fixture::simple_add_remove_related_holons_fixture().unwrap();

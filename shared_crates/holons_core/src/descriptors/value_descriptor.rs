@@ -197,6 +197,28 @@ impl ValueDescriptor {
         }
     }
 
+    /// Checks the cross-operand rules of a resolved operator's authored operands,
+    /// whose count and representations are already checked. Dispatches on the
+    /// value kind cached at resolution. Kinds whose operators take at most one
+    /// authored operand have no such rules.
+    pub(crate) fn check_operand_relations(
+        &self,
+        op: &ResolvedOperator,
+        operands: &[BaseValue],
+    ) -> Result<(), HolonError> {
+        match op.subject_kind() {
+            ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => {
+                IntegerValueDescriptor::from_holon(self.holon.clone())
+                    .check_operand_relations(op, operands)
+            }
+            ValueDescriptorKind::BaseValue(BaseValueKind::String) => {
+                StringValueDescriptor::from_holon(self.holon.clone())
+                    .check_operand_relations(op, operands)
+            }
+            _ => Ok(()),
+        }
+    }
+
     /// Returns this descriptor's value kind, rejecting lineages with no supported anchor.
     pub(crate) fn supported_value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
         match self.value_kind()? {

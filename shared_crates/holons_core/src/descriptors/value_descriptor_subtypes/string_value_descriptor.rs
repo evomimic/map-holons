@@ -1,5 +1,6 @@
 use crate::descriptors::value_descriptor_subtypes::helpers::{
-    single_operand, supported_operators, supports_operator, value_kind_mismatch,
+    bound_operands, require_ordered_bounds, single_operand, supported_operators, supports_operator,
+    value_kind_mismatch,
 };
 use crate::descriptors::{
     Descriptor, OperatorDescriptor, OperatorKind, ResolvedOperator, TypeHeader, ValueDescriptor,
@@ -62,32 +63,64 @@ impl StringValueDescriptor {
     ///
     /// The matching operators (Contains, StartsWith, EndsWith) treat their
     /// operand as literal text, never a pattern, and match under the operator's
-    /// resolved case-matching policy. Ordered comparisons
-    /// use the original values in ordinal order (UTF-8 byte order, which is
-    /// Unicode code point order): case-sensitive, with no folding,
-    /// normalization or locale collation.
+    /// resolved case-matching policy. Ordered comparisons and Between use the
+    /// original values in ordinal order (UTF-8 byte order, which is Unicode
+    /// code point order): case-sensitive, with no folding, normalization or
+    /// locale collation. Between applies the same bound rule as
+    /// [`check_operand_relations`](Self::check_operand_relations).
     pub(crate) fn evaluate(
         &self,
         op: &ResolvedOperator,
         subject: &BaseValue,
         operands: &[BaseValue],
     ) -> Result<bool, HolonError> {
-        let (lhs, rhs) = (subject, single_operand(op, operands)?);
-        let lhs = match lhs {
-            BaseValue::StringValue(value) => value,
-            other => return Err(value_kind_mismatch(&self.holon, "String", other)),
-        };
-        let rhs = match rhs {
-            BaseValue::StringValue(value) => value,
-            other => return Err(value_kind_mismatch(&self.holon, "String", other)),
-        };
-
+        let subject = self.string(subject)?;
         match op.kind() {
-            OperatorKind::Equals => Ok(lhs == rhs),
-            OperatorKind::Ordered(comparison) => Ok(comparison.holds(lhs.0.cmp(&rhs.0))),
-            OperatorKind::Matching(literal_match, case_matching) => {
-                Ok(case_matching.matches(literal_match, &lhs.0, &rhs.0))
+            OperatorKind::Equals => Ok(subject == self.string(single_operand(op, operands)?)?),
+            OperatorKind::Ordered(comparison) => {
+                let rhs = self.string(single_operand(op, operands)?)?;
+                Ok(comparison.holds(subject.cmp(rhs)))
             }
+            OperatorKind::Between => {
+                let (lower, upper) = self.bounds(op, operands)?;
+                Ok(lower <= subject && subject <= upper)
+            }
+            OperatorKind::Matching(literal_match, case_matching) => {
+                let literal = self.string(single_operand(op, operands)?)?;
+                Ok(case_matching.matches(literal_match, subject, literal))
+            }
+        }
+    }
+
+    /// Checks the cross-operand rules of authored string operands: Between's
+    /// lower bound must not be ordered after its upper bound.
+    pub(crate) fn check_operand_relations(
+        &self,
+        op: &ResolvedOperator,
+        operands: &[BaseValue],
+    ) -> Result<(), HolonError> {
+        match op.kind() {
+            OperatorKind::Between => self.bounds(op, operands).map(|_| ()),
+            OperatorKind::Equals | OperatorKind::Ordered(_) | OperatorKind::Matching(..) => Ok(()),
+        }
+    }
+
+    /// Returns Between's validated `(lower, upper)` bounds.
+    fn bounds<'a>(
+        &self,
+        op: &ResolvedOperator,
+        operands: &'a [BaseValue],
+    ) -> Result<(&'a str, &'a str), HolonError> {
+        let (lower, upper) = bound_operands(op, operands)?;
+        let (lower, upper) = (self.string(lower)?, self.string(upper)?);
+        require_ordered_bounds(op, &lower, &upper)?;
+        Ok((lower, upper))
+    }
+
+    fn string<'a>(&self, value: &'a BaseValue) -> Result<&'a str, HolonError> {
+        match value {
+            BaseValue::StringValue(value) => Ok(value.0.as_str()),
+            other => Err(value_kind_mismatch(&self.holon, "String", other)),
         }
     }
 }

@@ -98,7 +98,7 @@ enum OperatorCategory.MapEnumValueType {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
       header {
-        description: "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order."
+        description: "Operators that compare the relative order of values of the same type, such as a subject against one comparison value or against the bounds of a range. Applicable only to value types with a defined total order."
         display_name: "Ordering"
       }
     }
@@ -189,7 +189,7 @@ property OperandRole.PropertyType {
   value MapStringValueType.StringValueType
   IsValueRequired true
   header {
-    description: "Durable role name of an authored operand position, such as ComparisonValue, Substring, Prefix, or Suffix."
+    description: "Durable role name of an authored operand position, such as ComparisonValue, LowerBound, UpperBound, Substring, Prefix, or Suffix."
     display_name: "operand_role"
     display_plural: "operand_roles"
     plural: "OperandRoles"
@@ -342,6 +342,22 @@ instance GreaterThanOrEqualComparisonValue.OperandSpecification {
   OperandValueTypeRule SameAsSubject
 }
 
+instance BetweenLowerBound.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "LowerBound"
+  DisplayName "Lower Bound"
+  Description "Inclusive lower bound of the range. It must not be ordered after the upper bound."
+  OperandValueTypeRule SameAsSubject
+}
+
+instance BetweenUpperBound.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "UpperBound"
+  DisplayName "Upper Bound"
+  Description "Inclusive upper bound of the range. It must not be ordered before the lower bound."
+  OperandValueTypeRule SameAsSubject
+}
+
 instance ContainsSubstring.OperandSpecification {
   type OperandSpecification.HolonType
   OperandRole "Substring"
@@ -381,7 +397,7 @@ property Arity.PropertyType {
   value MapIntegerValueType.IntegerValueType
   IsValueRequired true
   header {
-    description: "Number of operands the operator accepts (1 = unary, 2 = binary)."
+    description: "Number of execution operands the operator accepts, subject included (1 = unary, 2 = binary, 3 = ternary)."
     display_name: "arity"
     display_plural: "arities"
     plural: "Arities"
@@ -478,6 +494,25 @@ holon GreaterThanOrEqualOperator.OperatorType {
   }
   relationships {
     OperandSpecifications -> GreaterThanOrEqualComparisonValue.OperandSpecification
+  }
+}
+
+holon BetweenOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 3
+  OperatorCategory Ordering
+  header {
+    description: "Returns true iff the subject is ordered at or after the lower bound and at or before the upper bound (a closed interval) under the value type's ordering semantics: numeric for integers, case-sensitive ordinal (Unicode code point) for strings, with no folding, normalization, locale collation, or coercion. Equal bounds match only an equal subject. A lower bound ordered after the upper bound is an invalid definition, never an empty range, and the bounds are never swapped."
+    display_name: "Between"
+    display_plural: "Between Operators"
+    plural: "BetweenOperators"
+  }
+  relationships {
+    OperandSpecifications -> [
+      BetweenLowerBound.OperandSpecification,
+      BetweenUpperBound.OperandSpecification
+    ]
   }
 }
 

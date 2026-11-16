@@ -32,14 +32,14 @@ pub(crate) struct PredicateWorld {
     /// The canonical `MapStringValueType.StringValueType` (staged).
     pub(crate) map_string: HolonReference,
     /// A transient string subtype affording Contains, StartsWith, EndsWith,
-    /// Equals and all four ordered comparisons.
+    /// Equals, all four ordered comparisons and Between.
     pub(crate) text: HolonReference,
     /// A text subtype carrying a configured constraint.
     pub(crate) identifier: HolonReference,
-    /// An integer type affording Equals and all four ordered comparisons.
+    /// An integer type affording Equals, all four ordered comparisons and Between.
     pub(crate) integer: HolonReference,
     /// An integer type affording Equals and LessThan only, so that one ordered
-    /// affordance can be shown not to grant the others.
+    /// affordance can be shown not to grant the others, Between included.
     pub(crate) rank: HolonReference,
     /// A text subtype with no local affordance; it inherits Text's operators.
     pub(crate) headline: HolonReference,
@@ -59,6 +59,7 @@ pub(crate) struct PredicateWorld {
     pub(crate) greater_than: HolonReference,
     pub(crate) less_than_or_equal: HolonReference,
     pub(crate) greater_than_or_equal: HolonReference,
+    pub(crate) between: HolonReference,
     /// `Book`: required `Title`, optional `Subtitle`, optional `Code`
     /// (foreign string), optional `Identifier` (constrained), optional
     /// `PageCount`, and optional `Rank`, `Headline`, `IsPublished`, `Status`,
@@ -141,7 +142,9 @@ impl PredicateWorld {
         let greater_than = ordered(CoreOperatorTypeName::GreaterThanOperator);
         let less_than_or_equal = ordered(CoreOperatorTypeName::LessThanOrEqualOperator);
         let greater_than_or_equal = ordered(CoreOperatorTypeName::GreaterThanOrEqualOperator);
-        let ordering = [&less_than, &greater_than, &less_than_or_equal, &greater_than_or_equal];
+        let between = ordered(CoreOperatorTypeName::BetweenOperator);
+        let ordering =
+            [&less_than, &greater_than, &less_than_or_equal, &greater_than_or_equal, &between];
 
         let value_type = |key: &str, parent: &HolonReference, operators: &[&HolonReference]| {
             let mut holon = new_kind_descriptor(&context, key, Some(parent), false).unwrap();
@@ -240,6 +243,7 @@ impl PredicateWorld {
             greater_than,
             less_than_or_equal,
             greater_than_or_equal,
+            between,
             book,
             novel,
         }
@@ -317,6 +321,19 @@ impl PredicateWorld {
         value: BaseValue,
     ) -> HolonReference {
         self.comparison(property, operator, vec![self.literal(value_type, value)])
+    }
+
+    /// A Between comparison over `property` of `Book`, its two bounds declared
+    /// as `value_type`, in authored order.
+    pub(crate) fn between(
+        &self,
+        property: &str,
+        value_type: &HolonReference,
+        lower: BaseValue,
+        upper: BaseValue,
+    ) -> HolonReference {
+        let operands = vec![self.literal(value_type, lower), self.literal(value_type, upper)];
+        self.comparison(property, &self.between, operands)
     }
 
     /// The four ordered comparison operators, in a fixed order: LessThan,
