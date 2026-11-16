@@ -4,3 +4,9 @@ pub fn dev_mode_enabled() -> bool {
         Err(_) => false,
     }
 }
+
+/// Development privileges require both a debug build and Tauri's development mode.
+/// A release binary without packaged assets must fail closed, never enable development ingress.
+pub fn development_enabled() -> bool {
+    cfg!(debug_assertions) && tauri::is_dev()
+}

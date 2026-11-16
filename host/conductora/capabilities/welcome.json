@@ -1,0 +1,11 @@
+{
+  "identifier": "packaged-welcome",
+  "description": "Only the packaged Welcome status and disabled constitution request path",
+  "permissions": [
+    "allow-welcome-status",
+    "allow-constitute-personal-space"
+  ],
+  "webviews": [
+    "welcome"
+  ]
+}

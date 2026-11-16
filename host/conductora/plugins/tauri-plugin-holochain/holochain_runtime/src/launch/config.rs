@@ -41,6 +41,7 @@ pub fn conductor_config(
     mut network_config: NetworkConfig,
     //local_signal_url: Option<Url2>,
     dev_mode: bool,
+    backend_only: bool,
     dev_data_root: Option<std::path::PathBuf>,
 ) -> ConductorConfig {
     let mut config = ConductorConfig::default();
@@ -96,13 +97,17 @@ pub fn conductor_config(
 
     let allowed_origins = AllowedOrigins::Any;
 
-    config.admin_interfaces = Some(vec![AdminInterfaceConfig {
-        driver: InterfaceDriver::Websocket {
-            port: admin_port,
-            danger_bind_addr: None,
-            allowed_origins,
-        },
-    }]);
+    config.admin_interfaces = if backend_only {
+        None
+    } else {
+        Some(vec![AdminInterfaceConfig {
+            driver: InterfaceDriver::Websocket {
+                port: admin_port,
+                danger_bind_addr: None,
+                allowed_origins,
+            },
+        }])
+    };
 
     config
 }

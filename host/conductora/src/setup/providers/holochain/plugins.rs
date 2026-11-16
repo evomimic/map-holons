@@ -11,6 +11,7 @@ pub fn holochain_plugin(
         holochain_dir(hc_cfg)?,
         network_config_from_storage_config(hc_cfg),
     );
+    plugin_config = plugin_config.backend_only(!crate::env::development_enabled());
     //.signal_url_configured(hc_cfg.signal_url.is_some());
     if crate::env::dev_mode_enabled() {
         let dir = dev_conductor_dir(provider_key, &hc_cfg.app_id)?;
@@ -25,7 +26,7 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
     // Use configuration from storage config
     if let Some(bootstrap_url) = &holochain_config.bootstrap_url {
         network_config.bootstrap_url = url2::Url2::parse(bootstrap_url);
-    } else if tauri::is_dev() {
+    } else if crate::env::development_enabled() {
         // Fallback for dev mode
         network_config.bootstrap_url = url2::Url2::parse("http://0.0.0.0:8888");
     }
@@ -51,7 +52,7 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
 }
 
 pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error> {
-    if tauri::is_dev() {
+    if crate::env::development_enabled() {
         let tmp_dir = tempdir::TempDir::new(&hc_cfg.app_id)
             .map_err(|e| anyhow::anyhow!("Could not create temporary directory: {}", e))?;
         // Convert `tmp_dir` into a `Path`, destroying the `TempDir` without deleting the directory.

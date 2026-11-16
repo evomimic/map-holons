@@ -41,6 +41,7 @@ pub struct AppWebsocketAuth {
 }
 
 pub struct HolochainRuntime {
+    pub backend_only: bool,
     pub filesystem: FileSystem,
     pub apps_websockets_auths: Arc<Mutex<Vec<AppWebsocketAuth>>>,
     pub admin_port: u16,
@@ -58,6 +59,27 @@ fn local_websocket_config() -> WebsocketConfig {
 }
 
 impl HolochainRuntime {
+    /// Native administration reuses Holochain's request handler without a listener.
+    pub fn native_administration(&self) -> crate::NativeAdministration {
+        crate::NativeAdministration::new(self.conductor_handle.clone())
+    }
+
+    pub fn native_dance_caller(
+        &self,
+        cell: holochain_types::prelude::CellId,
+    ) -> crate::NativeZomeCaller {
+        crate::NativeZomeCaller::new(self.conductor_handle.clone(), cell)
+    }
+
+    fn require_external_interfaces(&self) -> crate::Result<()> {
+        if self.backend_only {
+            return Err(crate::Error::NativeBoundary(
+                "External conductor interfaces and generic frontend signing are disabled".into(),
+            ));
+        }
+        Ok(())
+    }
+
     pub async fn launch(
         passphrase: SharedLockedArray,
         config: HolochainRuntimeConfig,
@@ -67,6 +89,7 @@ impl HolochainRuntime {
 
     /// Builds an `AdminWebsocket` ready to use
     pub async fn admin_websocket(&self) -> crate::Result<AdminWebsocket> {
+        self.require_external_interfaces()?;
         let config = local_websocket_config();
 
         let admin_ws = AdminWebsocket::connect_with_config(
@@ -85,6 +108,7 @@ impl HolochainRuntime {
         app_id: &InstalledAppId,
         allowed_origins: AllowedOrigins,
     ) -> crate::Result<AppWebsocketAuth> {
+        self.require_external_interfaces()?;
         let mut apps_websockets_auths = self.apps_websockets_auths.lock().await;
         let existing_auth = apps_websockets_auths
             .iter()
@@ -329,6 +353,7 @@ impl HolochainRuntime {
         &self,
         zome_call_unsigned: ZomeCallParams,
     ) -> crate::Result<ZomeCallParamsSigned> {
+        self.require_external_interfaces()?;
         let signed_zome_call = sign_zome_call_with_client(
             zome_call_unsigned,
             &self.conductor_handle.keystore().lair_client().clone(),

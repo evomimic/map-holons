@@ -265,7 +265,9 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<Core
     Ok(CoreSchemaStartup::Provisioned)
 }
 
-fn bootstrap_content_set_from_directory(bundle_directory: &Path) -> anyhow::Result<ContentSet> {
+pub(crate) fn bootstrap_content_set_from_directory(
+    bundle_directory: &Path,
+) -> anyhow::Result<ContentSet> {
     let manifest_path = bundle_directory.join(MANIFEST_FILENAME);
     let manifest: BootstrapManifest = serde_json::from_slice(
         &std::fs::read(&manifest_path)

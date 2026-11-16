@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
@@ -11,6 +13,15 @@
     "core:resources:default",
     "fs:allow-read-text-file",
     "fs:scope-resource",
-    "fs:allow-resource-read-recursive"
+    "fs:allow-resource-read-recursive",
+    "allow-application-session",
+    "allow-select-loader-sources",
+    "allow-source-picker-capabilities",
+    "allow-root-space",
+    "allow-serde-test",
+    "allow-map-request",
+    "allow-all-spaces",
+    "allow-is-service-ready",
+    "allow-dispatch-map-command"
   ]
 }

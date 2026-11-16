@@ -1,4 +1,6 @@
 mod config;
+mod native_access;
+pub use native_access::{NativeAdministration, NativeZomeCaller};
 mod error;
 mod filesystem;
 mod happs;

@@ -18,7 +18,7 @@
     "start:loader": "MAP_APPLICATION_EXPERIENCE=holons-loader npm run start",
     "start:info": "npm run nix:check && npm run build:happ && RUST_LOG=host:info WASM_LOG=info npm run start:host",
     "start:debug": "npm run nix:check && npm run build:happ && RUST_LOG=host:debug WASM_LOG=info npm run start:host",
-    "start:host": "MAP_START_MODE=dev npm run start -w map-host",
+    "start:host": "MAP_START_MODE=prod npm run start -w map-host",
     "start:production": "npm run nix:check && npm run build:happ && RUST_LOG=host:info WASM_LOG=warn MAP_START_MODE=prod npm run start -w map-host",
 
   "build": "npm run build:happ && npm run build:host",

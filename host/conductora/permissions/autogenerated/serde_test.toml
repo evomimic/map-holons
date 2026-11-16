@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-serde-test"
+description = "Enables the serde_test command without any pre-configured scope."
+commands.allow = ["serde_test"]
+
+[[permission]]
+identifier = "deny-serde-test"
+description = "Denies the serde_test command without any pre-configured scope."
+commands.deny = ["serde_test"]

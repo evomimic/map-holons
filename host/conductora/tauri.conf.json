@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"identifier": "com.map-holons.tauri.dev",
 	"build": {
-		"frontendDist": "../ui/dist",
+		"frontendDist": "../ui/dist/map_sdk/browser",
 		"devUrl": "http://localhost:4200",
 		"beforeDevCommand": "npm run web:serve",
 		"beforeBuildCommand": "npm run web:prod"
@@ -20,11 +20,13 @@
 				"minHeight": 900,
 				"resizable": true,
 				"fullscreen": false,
-				"theme": "Dark"
+				"theme": "Dark",
+				"create": false
 			}
 		],
 		"security": {
-			"csp": null
+			"csp": "default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data:; frame-src 'none'; object-src 'none'; base-uri 'self'",
+			"devCsp": "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src * ipc: http://ipc.localhost ws: wss:"
 		}
 	},
 	"bundle": {
@@ -37,15 +39,16 @@
 			"icons/icon.icns",
 			"icons/icon.ico"
 		],
-		"resources": [
-			"resources/bootstrap-import.schema.json",
-			"resources/core-schema-bootstrap",
-			"resources/space-imports.json",
-			"resources/schema-packages",
-			"resources/house-troupe",
-			"resources/visualizer-commons",
-			"resources/dahn-visualizers"
-		],
+		"resources": {
+			"resources/bootstrap-import.schema.json": "resources/bootstrap-import.schema.json",
+			"resources/core-schema-bootstrap": "resources/core-schema-bootstrap",
+			"resources/space-imports.json": "resources/space-imports.json",
+			"resources/schema-packages": "resources/schema-packages",
+			"resources/house-troupe": "resources/house-troupe",
+			"resources/visualizer-commons": "resources/visualizer-commons",
+			"resources/dahn-visualizers": "resources/dahn-visualizers",
+			"../../happ/workdir/map-holons.happ": "resources/map-holons.happ"
+		},
 		"externalBin": [],
 		"copyright": "",
 		"category": "DeveloperTool",
@@ -53,7 +56,7 @@
 		"longDescription": "",
 		"macOS": {
 			"frameworks": [],
-			"minimumSystemVersion": "",
+			"minimumSystemVersion": "14.0",
 			"exceptionDomain": "",
 			"signingIdentity": null,
 			"providerShortName": null,

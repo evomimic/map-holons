@@ -33,6 +33,10 @@ pub enum StorageProvider {
 impl StorageManager {
     //discover and load the storage config file
     pub fn load_storage_config() -> anyhow::Result<StorageManager> {
+        if !crate::env::development_enabled() {
+            crate::trusted_welcome::validate_packaged_configuration()?;
+            return Ok(serde_json::from_str(include_str!("storage.packaged.json"))?);
+        }
         if let Ok(config_path) = std::env::var("STORAGE_CONFIG_PATH") {
             return Self::from_file(&config_path); // hard fail — they asked for a specific file
         }

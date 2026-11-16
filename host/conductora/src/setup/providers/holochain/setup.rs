@@ -29,6 +29,9 @@ impl HolochainSetup {
         let StorageProvider::Holochain(hc_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
+        if !crate::env::development_enabled() {
+            return super::native_setup::setup(&handle, hc_cfg).await;
+        }
         let app_id = &hc_cfg.app_id;
         let dev_mode = crate::env::dev_mode_enabled();
 

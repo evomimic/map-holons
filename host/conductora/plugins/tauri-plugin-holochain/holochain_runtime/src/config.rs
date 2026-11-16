@@ -2,6 +2,8 @@ use holochain_conductor_api::conductor::NetworkConfig;
 use std::path::PathBuf;
 
 pub struct HolochainRuntimeConfig {
+    /// No external conductor interfaces; only the trusted native host can submit calls.
+    pub backend_only: bool,
     /// The directory where the holochain files and databases will be stored in
     pub holochain_dir: PathBuf,
 
@@ -29,6 +31,7 @@ pub struct HolochainRuntimeConfig {
 impl HolochainRuntimeConfig {
     pub fn new(holochain_dir: PathBuf, network_config: NetworkConfig) -> Self {
         Self {
+            backend_only: false,
             holochain_dir,
             network_config,
             admin_port: None,
@@ -37,6 +40,11 @@ impl HolochainRuntimeConfig {
             dev_data_root: None,
             mdns_discovery: false,
         }
+    }
+
+    pub fn backend_only(mut self, enabled: bool) -> Self {
+        self.backend_only = enabled;
+        self
     }
 
     pub fn admin_port(mut self, admin_port: u16) -> Self {

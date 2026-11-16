@@ -95,8 +95,9 @@ impl AppBuilder {
             //.manage::<runtime::HolochainReceptorState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .manage(CoreSchemaBootstrapGate::new())
-            .manage(ApplicationSessionState::new(application_experience))
-            .invoke_handler(tauri::generate_handler![
+            .manage(ApplicationSessionState::new(application_experience));
+        let base = if crate::env::development_enabled() {
+            base.invoke_handler(tauri::generate_handler![
                 application_session,
                 crate::source_ingress::commands::select_loader_sources,
                 crate::source_ingress::picker::source_picker_capabilities,
@@ -106,7 +107,13 @@ impl AppBuilder {
                 commands::all_spaces,
                 commands::is_service_ready,
                 runtime::dispatch_map_command::dispatch_map_command,
-            ]);
+            ])
+        } else {
+            base.invoke_handler(tauri::generate_handler![
+                crate::trusted_welcome::welcome_status,
+                crate::trusted_welcome::constitute_personal_space,
+            ])
+        };
 
         tracing::debug!("[APP BUILDER] Applying provider plugins.");
         let with_plugins =
@@ -120,6 +127,10 @@ impl AppBuilder {
         let with_registry = with_plugins.manage(registry);
         let builder = with_registry.setup(|app| -> Result<(), Box<dyn std::error::Error>> {
             let handle = app.handle().clone();
+            if !crate::env::development_enabled() {
+                // Welcome has no mutation authority and can appear while trusted provisioning runs.
+                crate::trusted_welcome::create_window(&handle)?;
+            }
             let storage_cfg = app.state::<StorageManager>().inner().clone();
             let runtime_selection = app.state::<ProviderRuntimeSelection>().inner().clone();
 
@@ -157,6 +168,18 @@ impl AppBuilder {
                         .try_state::<ApplicationSessionState>()
                         .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?;
                     application_session.mark_opening_space().map_err(anyhow::Error::msg)?;
+                    if crate::env::development_enabled() {
+                        // The UI reports startup progress while semantic initialization runs.
+                        // Its conductor integration and command runtime must already exist.
+                        let window_started_at = Instant::now();
+                        SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
+                            .await
+                            .context("create_window failed")?;
+                        tracing::info!(
+                            "[PERF-688] conductora_startup: window_creation_ms={}",
+                            window_started_at.elapsed().as_millis(),
+                        );
+                    }
                     let bootstrap_started_at = Instant::now();
                     let startup = ensure_core_schema_space(&handle)
                         .await
@@ -172,6 +195,9 @@ impl AppBuilder {
                         ensure_configured_space_imports(&handle)
                             .await
                             .context("ensure_configured_space_imports failed")?;
+                    }
+                    if !crate::env::development_enabled() {
+                        return Ok::<(), anyhow::Error>(());
                     }
                     application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
                     let canvas_selection_started_at = Instant::now();
@@ -261,13 +287,8 @@ impl AppBuilder {
                         )
                         .map_err(anyhow::Error::msg)?;
 
-                    let window_started_at = Instant::now();
-                    SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
-                        .await
-                        .context("create_window failed")?;
                     tracing::info!(
-                        "[PERF-688] conductora_startup: window_creation_ms={} total_ms={}",
-                        window_started_at.elapsed().as_millis(),
+                        "[PERF-688] conductora_startup: total_ms={}",
                         startup_started_at.elapsed().as_millis(),
                     );
                     handle

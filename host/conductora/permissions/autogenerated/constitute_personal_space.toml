@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-constitute-personal-space"
+description = "Enables the constitute_personal_space command without any pre-configured scope."
+commands.allow = ["constitute_personal_space"]
+
+[[permission]]
+identifier = "deny-constitute-personal-space"
+description = "Denies the constitute_personal_space command without any pre-configured scope."
+commands.deny = ["constitute_personal_space"]

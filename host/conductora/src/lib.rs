@@ -5,6 +5,7 @@ mod map_commands;
 mod runtime;
 mod setup;
 pub mod source_ingress;
+mod trusted_welcome;
 
 // Re-exports for clean API
 //pub use config::APP_ID;

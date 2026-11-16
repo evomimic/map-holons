@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-dispatch-map-command"
+description = "Enables the dispatch_map_command command without any pre-configured scope."
+commands.allow = ["dispatch_map_command"]
+
+[[permission]]
+identifier = "deny-dispatch-map-command"
+description = "Denies the dispatch_map_command command without any pre-configured scope."
+commands.deny = ["dispatch_map_command"]

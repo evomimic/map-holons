@@ -13,5 +13,22 @@ fn main() {
 
     // You can also set rerun-if-changed
     //println!("cargo:rerun-if-changed=.env");
-    tauri_build::build()
+    let commands = &[
+        "application_session",
+        "select_loader_sources",
+        "source_picker_capabilities",
+        "root_space",
+        "serde_test",
+        "map_request",
+        "all_spaces",
+        "is_service_ready",
+        "dispatch_map_command",
+        "welcome_status",
+        "constitute_personal_space",
+    ];
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().commands(commands)),
+    )
+    .expect("Tauri build configuration");
 }

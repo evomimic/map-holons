@@ -7,6 +7,7 @@ mod map_commands;
 mod runtime;
 pub mod setup;
 mod source_ingress;
+mod trusted_welcome;
 
 fn main() {
     // Initialise logging before anything else.

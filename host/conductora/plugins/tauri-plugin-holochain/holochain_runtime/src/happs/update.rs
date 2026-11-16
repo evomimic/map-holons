@@ -154,7 +154,7 @@ pub async fn update_app(
     Ok(())
 }
 
-async fn resolve_dna_files(
+pub(crate) async fn resolve_dna_files(
     app_bundle: AppBundle,
 ) -> Result<BTreeMap<RoleName, DnaFile>, UpdateHappError> {
     let mut dna_files: BTreeMap<RoleName, DnaFile> = BTreeMap::new();

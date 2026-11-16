@@ -1,0 +1,7 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b1824; color: #e1edf4; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+main { max-width: 32rem; padding: 3rem; }
+h1 { font-size: 2.5rem; }
+p { line-height: 1.6; }
+button { padding: 0.8rem 1.2rem; border: 1px solid #699ba8; border-radius: 0.4rem; background: #214655; color: inherit; font: inherit; }
+button:disabled { opacity: 0.6; }
