@@ -954,11 +954,6 @@ impl DancesTestCase {
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = fixture_holons.copy_fixture_snapshot(new_source.snapshot())?;
-        let mut references_to_remove: Vec<HolonReference> = Vec::new();
-        // Set Targets
-        for token in &holons_to_remove {
-            references_to_remove.push(fixture_holons.resolve_expected_relationship_target(token)?);
-        }
         // A lookup stub omits unknown memberships; only execution can confirm their
         // presence. Retain the explicit removal below rather than treating omission as absence.
         let partial = new_snapshot.property_value(crate::SAVED_LOOKUP_STUB_MARKER)?.is_some();
@@ -969,6 +964,11 @@ impl DancesTestCase {
                 .into_iter()
                 .any(|(name, _)| name == relationship_name)
         {
+            let references_to_remove = fixture_holons.relationship_members_owned_by_targets(
+                &new_snapshot,
+                &relationship_name,
+                &holons_to_remove,
+            )?;
             new_snapshot.remove_related_holons(&relationship_name, references_to_remove)?;
         }
         // Set Expected
