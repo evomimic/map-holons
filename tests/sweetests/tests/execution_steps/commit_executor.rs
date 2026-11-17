@@ -704,7 +704,31 @@ fn assert_rejected_holons(
                 }
                 ExpectedValidationSubject::Transaction => ValidationSubjectPath::Transaction,
             };
-            assert_eq!(actual.kind, expected.kind);
+            let expected_kind = match expected.kind {
+                holons_test::ExpectedValidationKind::Exact(kind) => kind,
+                holons_test::ExpectedValidationKind::ConstraintViolation {
+                    code,
+                    constraint,
+                    constraint_type,
+                    descriptor,
+                } => {
+                    let resolve = |token: &holons_test::TestReference| {
+                        state
+                            .resolve_execution_reference(&context, ResolveBy::Expected, token)
+                            .expect("constraint provenance remains resolvable")
+                    };
+                    assert_eq!(
+                        actual.descriptor_identity,
+                        Some(resolve(&descriptor).reference_id_string())
+                    );
+                    core_types::CommitValidationViolationKind::ConstraintViolation {
+                        code,
+                        constraint_identity: resolve(&constraint).reference_id_string(),
+                        constraint_type_identity: resolve(&constraint_type).reference_id_string(),
+                    }
+                }
+            };
+            assert_eq!(actual.kind, expected_kind);
             assert_eq!(actual.rule_key, expected.rule_key);
             assert_eq!(actual.subject, subject);
         }

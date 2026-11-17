@@ -190,10 +190,28 @@ pub enum ExpectedValidationSubject {
     Transaction,
 }
 
+/// Finding identities are resolved from fixture correspondence, never from actual findings.
+#[derive(Clone, Debug)]
+pub enum ExpectedValidationKind {
+    Exact(CommitValidationViolationKind),
+    ConstraintViolation {
+        code: String,
+        constraint: TestReference,
+        constraint_type: TestReference,
+        descriptor: TestReference,
+    },
+}
+
+impl From<CommitValidationViolationKind> for ExpectedValidationKind {
+    fn from(kind: CommitValidationViolationKind) -> Self {
+        Self::Exact(kind)
+    }
+}
+
 /// Stable finding expectations deliberately omit diagnostic message text.
 #[derive(Clone, Debug)]
 pub struct ExpectedValidationFinding {
-    pub kind: CommitValidationViolationKind,
+    pub kind: ExpectedValidationKind,
     pub rule_key: Option<String>,
     pub subject: ExpectedValidationSubject,
 }

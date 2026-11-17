@@ -43,12 +43,15 @@ fn canonical_documents() -> Result<Vec<Value>> {
     Ok(documents)
 }
 
+/// Iterates canonical imports without repeating their container shape at each assertion.
+fn holons(documents: &[Value]) -> impl Iterator<Item = &Value> {
+    documents.iter().flat_map(|document| document["holons"].as_array().expect("canonical holons"))
+}
+
 /// Inheritance only spreads authored bindings, so their union is also the effective union.
 /// No validation runtime or descriptor traversal is needed to inventory the canonical corpus.
 fn authored_binding_placements(documents: &[Value]) -> BTreeSet<(String, String, String)> {
-    let families: BTreeMap<_, _> = documents
-        .iter()
-        .flat_map(|document| document["holons"].as_array().expect("canonical holons"))
+    let families: BTreeMap<_, _> = holons(documents)
         .filter_map(|holon| Some((holon["key"].as_str()?, holon["type"].as_str()?)))
         .collect();
     let mut bindings = BTreeSet::new();
@@ -84,6 +87,11 @@ fn authored_binding_inventory(documents: &[Value]) -> BTreeSet<String> {
 /// Hand-written Core expectations; never derive these from Rust registrations.
 fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
     [
+        (
+            "PropertyValueConformance.ValidationRule",
+            "PropertyValidationRule.HolonType",
+            "PropertyType.TypeDescriptor",
+        ),
         (
             "RequiredPropertyPresence.ValidationRule",
             "PropertyValidationRule.HolonType",
@@ -123,6 +131,41 @@ fn expected_rule_placements() -> BTreeSet<(String, String, String)> {
             "BaseValueKindMatchesEnum.ValidationRule",
             "EnumValueValidationRule.HolonType",
             "EnumValueType.ValueType",
+        ),
+        (
+            "EnumTokenMembership.ValidationRule",
+            "EnumValueValidationRule.HolonType",
+            "EnumValueType.ValueType",
+        ),
+        (
+            "ConcreteDescribingType.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "UniquePropertyMemberBinding.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "HolonType.TypeDescriptor",
+        ),
+        (
+            "AbstractMemberMinimumEnforcement.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaTypeDescriptor.HolonType",
+        ),
+        (
+            "EnumMemberNamesUnique.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaEnumValueType.MetaValueType",
+        ),
+        (
+            "DefaultsRequireRequiredProperties.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaPropertyType.MetaTypeDescriptor",
+        ),
+        (
+            "DefaultValueConformance.ValidationRule",
+            "HolonValidationRule.HolonType",
+            "MetaPropertyType.MetaTypeDescriptor",
         ),
         (
             "AtMostOneDirectParent.ValidationRule",
@@ -231,6 +274,40 @@ fn canonical_corpus_binds_expected_rules_with_expected_families_and_declarations
     require_expected_bindings(&canonical_documents()?)
 }
 
+/// Counts raw occurrences so duplicate edges cannot disappear into the placement set.
+#[test]
+fn scalar_activation_has_one_property_binding_and_one_string_attachment() -> Result<()> {
+    let documents = canonical_documents()?;
+    for (relationship_name, target_key, source_key) in [
+        (
+            "ValidationBindings",
+            "PropertyValueConformance.ValidationRule",
+            "PropertyType.TypeDescriptor",
+        ),
+        ("Constraints", "Length16k.StringLengthConstraint", "MapStringValueType.StringValueType"),
+    ] {
+        let mut sources = Vec::new();
+        for holon in holons(&documents) {
+            for relationship in holon["relationships"].as_array().into_iter().flatten() {
+                if relationship["name"] != relationship_name {
+                    continue;
+                }
+                let targets = relationship["target"]
+                    .as_array()
+                    .map(Vec::as_slice)
+                    .unwrap_or_else(|| std::slice::from_ref(&relationship["target"]));
+                for target in targets {
+                    if target["$ref"] == target_key {
+                        sources.push(holon["key"].as_str().unwrap());
+                    }
+                }
+            }
+        }
+        assert_eq!(sources, vec![source_key], "{relationship_name} -> {target_key}");
+    }
+    Ok(())
+}
+
 #[test]
 fn inventory_rejects_a_removed_canonical_validation_binding() -> Result<()> {
     let mut documents = canonical_documents()?;
@@ -266,9 +343,7 @@ fn schema_membership_bindings_preserve_directional_version_ownership() -> Result
         ("(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)", "Version"),
         ("(Rule.HolonType)-[RuleOf]->(Schema.HolonType)", "Version"),
     ] {
-        let holon = documents
-            .iter()
-            .flat_map(|document| document["holons"].as_array().unwrap())
+        let holon = holons(&documents)
             .find(|holon| holon["key"] == key)
             .with_context(|| format!("missing relationship {key}"))?;
         // Omitted TargetBinding retains the kernel's Version default.
@@ -285,9 +360,7 @@ fn schema_membership_bindings_preserve_directional_version_ownership() -> Result
 fn cross_schema_dependency_rule_is_retained_as_unbound_vocabulary() -> Result<()> {
     let documents = canonical_documents()?;
     let key = "CrossSchemaDependenciesDeclared.ValidationRule";
-    let rule = documents
-        .iter()
-        .flat_map(|document| document["holons"].as_array().unwrap())
+    let rule = holons(&documents)
         .find(|holon| holon["key"] == key)
         .context("DS-SCHEMA-002 vocabulary must remain available")?;
     assert_eq!(rule["properties"]["SemanticAuthority"], "DS-SCHEMA-002");
@@ -303,8 +376,7 @@ fn cross_schema_dependency_rule_is_retained_as_unbound_vocabulary() -> Result<()
 #[test]
 fn key_uniqueness_is_holon_contextual_and_key_inputs_are_definitional() -> Result<()> {
     let documents = canonical_documents()?;
-    let holons: Vec<_> =
-        documents.iter().flat_map(|document| document["holons"].as_array().unwrap()).collect();
+    let holons: Vec<_> = holons(&documents).collect();
     let rule = holons
         .iter()
         .find(|h| h["key"] == "KeyUniqueness.ValidationRule")
@@ -398,10 +470,7 @@ fn inventory_rejects_wrong_families_and_moved_bindings_even_when_rule_keys_match
 /// Lookup through a transitive schema dependency does not authorize a direct reference.
 fn require_direct_schema_dependencies(documents: &[Value]) -> Result<()> {
     use std::collections::BTreeMap;
-    let holons: Vec<_> = documents
-        .iter()
-        .flat_map(|document| document["holons"].as_array().expect("canonical holons"))
-        .collect();
+    let holons: Vec<_> = holons(documents).collect();
     let mut owners = BTreeMap::new();
     let mut dependencies = BTreeMap::new();
     for holon in &holons {
@@ -488,5 +557,106 @@ fn inventory_rejects_the_missing_design_token_dependency() -> Result<()> {
     let error = require_direct_schema_dependencies(&documents)
         .expect_err("Visualizer token references require the direct Design Token dependency");
     ensure!(error.to_string().contains("DesignToken.HolonType"), "unexpected finding: {error}");
+    Ok(())
+}
+
+#[test]
+fn enum_variant_anchors_select_the_variant_meta_type() -> Result<()> {
+    let documents = canonical_documents()?;
+    for key in ["EnumVariantValueType.ValueType", "MapEnumVariantValueType.EnumVariantValueType"] {
+        let mut anchors = holons(&documents).filter(|holon| holon["key"] == key);
+        let anchor = anchors.next().with_context(|| format!("missing variant anchor {key}"))?;
+        assert!(anchors.next().is_none(), "duplicate variant anchor {key}");
+        assert_eq!(anchor["type"], "MetaEnumVariantValueType.MetaValueType", "{key}");
+        assert_eq!(anchor["properties"]["IsAbstractType"], true, "{key}");
+    }
+    Ok(())
+}
+
+#[test]
+fn enum_ownership_binds_members_by_version_and_owner_by_lineage() -> Result<()> {
+    let documents = canonical_documents()?;
+    for (name, binding, cardinality) in [
+        ("Variants", "Version", "ZeroOrMore.CardinalityConstraint"),
+        ("VariantOf", "Lineage", "ExactlyOne.CardinalityConstraint"),
+    ] {
+        let mut relationships =
+            holons(&documents).filter(|holon| holon["properties"]["TypeName"] == name);
+        let relationship =
+            relationships.next().with_context(|| format!("missing relationship {name}"))?;
+        assert!(relationships.next().is_none(), "duplicate relationship {name}");
+        // Omitted TargetBinding retains the kernel's Version default.
+        assert_eq!(
+            relationship["properties"]["TargetBinding"].as_str().unwrap_or("Version"),
+            binding,
+            "{name}"
+        );
+        assert!(
+            relationship["relationships"]
+                .as_array()
+                .with_context(|| format!("{name} relationships"))?
+                .iter()
+                .any(|edge| edge["name"] == "Constraints"
+                    && edge["target"][0]["$ref"] == cardinality),
+            "{name}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn enum_non_retroactivity_is_retained_as_unbound_vocabulary() -> Result<()> {
+    let documents = canonical_documents()?;
+    let key = "EnumTokenNonRetroactivity.ValidationRule";
+    let rule = holons(&documents)
+        .find(|holon| holon["key"] == key)
+        .context("DS-ENUM-003 vocabulary must remain available")?;
+    assert_eq!(rule["properties"]["SemanticAuthority"], "DS-ENUM-003");
+    assert!(!authored_binding_inventory(&documents).contains(key));
+    for (key, level) in [
+        ("EnumMemberNamesUnique.ValidationRule", "Holon"),
+        ("EnumTokenMembership.ValidationRule", "Value"),
+    ] {
+        let rule = holons(&documents).find(|holon| holon["key"] == key).context("enum rule")?;
+        assert_eq!(rule["properties"]["ValidationLevel"], level);
+        assert_eq!(rule["properties"]["DeterminismClass"], "Deterministic");
+    }
+    Ok(())
+}
+
+#[test]
+fn default_declaration_rules_are_deterministic_holon_rules() -> Result<()> {
+    let documents = canonical_documents()?;
+    for key in [
+        "DefaultsRequireRequiredProperties.ValidationRule",
+        "DefaultValueConformance.ValidationRule",
+    ] {
+        let rule = holons(&documents)
+            .find(|holon| holon["key"] == key)
+            .context("default declaration rule")?;
+        assert_eq!(rule["properties"]["ValidationLevel"], "Holon");
+        assert_eq!(rule["properties"]["DeterminismClass"], "Deterministic");
+    }
+    Ok(())
+}
+
+/// Checks the actual bootstrap corpus across package boundaries, including unused definitions.
+#[test]
+fn bootstrap_holons_have_concrete_describing_types() -> Result<()> {
+    let documents = canonical_documents()?;
+    let definitions: BTreeMap<_, _> =
+        holons(&documents).filter_map(|holon| Some((holon["key"].as_str()?, holon))).collect();
+    let mut abstract_describers = Vec::new();
+    for holon in holons(&documents) {
+        let key = holon["key"].as_str().context("holon key")?;
+        let type_key = holon["type"].as_str().context("describing type")?;
+        let descriptor = definitions
+            .get(type_key)
+            .with_context(|| format!("{key} describes itself through missing {type_key}"))?;
+        if descriptor["properties"]["IsAbstractType"] == true {
+            abstract_describers.push(format!("{key} is described by abstract {type_key}"));
+        }
+    }
+    ensure!(abstract_describers.is_empty(), "{}", abstract_describers.join("\n"));
     Ok(())
 }

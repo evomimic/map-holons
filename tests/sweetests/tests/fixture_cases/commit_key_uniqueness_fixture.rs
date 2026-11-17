@@ -64,7 +64,8 @@ pub fn commit_historical_key_uniqueness_fixture() -> Result<DancesTestCase, Holo
             token: collision,
             validation_state: ValidationState::Invalid,
             findings: vec![ExpectedValidationFinding {
-                kind: CommitValidationViolationKind::RuleViolation { code: "DS-KEY-006".into() },
+                kind: CommitValidationViolationKind::RuleViolation { code: "DS-KEY-006".into() }
+                    .into(),
                 rule_key: Some("KeyUniqueness.ValidationRule".into()),
                 subject: ExpectedValidationSubject::Holon,
             }],

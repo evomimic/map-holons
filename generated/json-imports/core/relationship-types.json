@@ -1140,7 +1140,8 @@
         "DisplayName": "VariantOf",
         "DisplayNamePlural": "VariantOf Relationships",
         "Description": "Inverse of Variants, from an enum variant descriptor to its owning enum value-type descriptor.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
       },
       "relationships": [
         {

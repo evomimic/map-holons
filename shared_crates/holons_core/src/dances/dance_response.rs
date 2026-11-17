@@ -267,7 +267,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::PvlViolation(_) => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
-            HolonError::StringLengthOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::ValueConstraintViolation { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnknownOperatorCategory { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnknownCaseMatching { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnknownOperandValueTypeRule { .. } => {

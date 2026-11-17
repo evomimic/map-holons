@@ -29,7 +29,7 @@ holon MetaEnumVariantValueType.MetaValueType {
   instance_keyrule EnumVariantRule.KeyRuleType
   extends MetaValueType.MetaTypeDescriptor
   header {
-    description: "Meta-type describing concrete enum-member descriptor holons and prescribing owner-qualified descriptor keys."
+    description: "Meta-type describing abstract enum-variant anchors and concrete enum-member descriptor holons, and prescribing owner-qualified descriptor keys."
     display_name: "Meta Enum Variant Value Type"
     display_plural: "Meta Enum Variant Value Types"
     plural: "MetaEnumVariantValueTypes"
@@ -79,6 +79,7 @@ holon MetaEnumValueType.MetaValueType {
     plural: "MetaEnumValueTypes"
   }
   relationships {
+    ValidationBindings -> [EnumMemberNamesUnique.ValidationRule]
     InstanceRelationships -> [
       (EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)
     ]
@@ -204,7 +205,7 @@ abstract enum EnumValueType.ValueType {
     plural: "EnumValueTypes"
   }
   relationships {
-    ValidationBindings -> BaseValueKindMatchesEnum.ValidationRule
+    ValidationBindings -> [BaseValueKindMatchesEnum.ValidationRule, EnumTokenMembership.ValidationRule]
     AffordsOperator -> EqualsOperator.OperatorType
   }
 }
@@ -222,7 +223,7 @@ abstract enum MapEnumValueType.EnumValueType {
 }
 
 abstract variant EnumVariantValueType.ValueType {
-  type MetaValueType.MetaTypeDescriptor
+  type MetaEnumVariantValueType.MetaValueType
   extends ValueType.TypeDescriptor
   DefinesInstanceTypeKind true
   header {
@@ -234,7 +235,7 @@ abstract variant EnumVariantValueType.ValueType {
 }
 
 abstract variant MapEnumVariantValueType.EnumVariantValueType {
-  type MetaValueType.MetaTypeDescriptor
+  type MetaEnumVariantValueType.MetaValueType
   extends EnumVariantValueType.ValueType
   DefinesInstanceTypeKind true
   header {

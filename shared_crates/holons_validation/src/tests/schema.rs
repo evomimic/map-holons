@@ -623,13 +623,13 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
     assert_eq!(metrics.package_roots, 1);
     assert_eq!(metrics.subjects, 1);
     assert_eq!(metrics.affected_schemas, 0);
-    assert_eq!(metrics.distinct_content, 19);
+    assert_eq!(metrics.distinct_content, 20);
     assert_eq!(
         metrics.constructed_schema_products, 4,
         "governor, two properties and shared value type"
     );
-    assert_eq!(edges, 20, "declared discovery membership requests");
-    assert_eq!(metrics.identity_role_visits, 19);
+    assert_eq!(edges, 21, "declared discovery membership requests");
+    assert_eq!(metrics.identity_role_visits, 20);
     assert_eq!(metrics.contract_consumers, 1);
     assert!(!events.iter().any(|event| matches!(
         event,
@@ -661,7 +661,7 @@ fn profiling_observes_preparation_without_changing_the_validation_report() -> Re
             _ => None,
         })
         .sum();
-    assert_eq!(described_by_requests, 6);
+    assert_eq!(described_by_requests, 7);
     let typed_visits: Vec<_> = events
         .iter()
         .filter_map(|event| match event {
@@ -826,5 +826,62 @@ fn stale_cross_schema_dependency_binding_fails_closed() -> Result<(), HolonError
     assert!(!assessment.observations.dispatched_rule_keys.contains(rule.as_str()));
     // Pre-production stores must use the regenerated bootstrap: a stale mandatory
     // binding remains fail-closed even though its native handler has been retired.
+    Ok(())
+}
+
+/// A constraint's name can be governed by that same constraint without recursive preparation.
+#[test]
+fn length16k_validates_its_own_constraint_name_with_one_prepared_parameter_fact(
+) -> Result<(), HolonError> {
+    let mut fixture = super::support::length16k_fixture()?;
+    let constraint = &fixture.nodes["Length16k.StringLengthConstraint"];
+    let candidates = [staged(constraint)];
+    let mut prepared_parameters = None;
+    let report =
+        crate::validate_commit_candidates_with_profile(&fixture.context, &candidates, |event| {
+            if let crate::AssessmentEvent::Preparation(metrics) = event {
+                prepared_parameters = Some(metrics.prepared_constraint_parameters);
+            }
+        })?;
+    assert_eq!(prepared_parameters, Some(1));
+    assert!(report.is_accepted(), "{report:?}");
+    let assessment = assess_commit_candidates(&fixture.context, &candidates)?;
+    assert_eq!(assessment.observations.effective_constraint_count, 1);
+    assert_eq!(assessment.observations.evaluated_value_constraint_count, 1);
+    assert!(assessment
+        .observations
+        .dispatched_rule_keys
+        .contains(CoreValidationRuleName::PropertyValueConformance.as_str()));
+
+    // Tightening the same contribution proves the self-governed name was evaluated.
+    fixture
+        .nodes
+        .get_mut("Length16k.StringLengthConstraint")
+        .unwrap()
+        .with_property_value("Maximum", 8_i64)?;
+    let rejected = assess_commit_candidates(&fixture.context, &candidates)?;
+    assert_eq!(rejected.report.violation_count(), 1, "{:?}", rejected.report);
+    let finding = &rejected.report.violations[0];
+    assert_eq!(
+        finding.kind,
+        CommitValidationViolationKind::ConstraintViolation {
+            code: "StringLengthOutOfRange".into(),
+            constraint_identity: fixture.nodes["Length16k.StringLengthConstraint"]
+                .reference_id_string(),
+            constraint_type_identity: fixture.nodes["StringLengthConstraint.ConstraintType"]
+                .reference_id_string(),
+        }
+    );
+    assert_eq!(
+        finding.subject,
+        core_types::ValidationSubjectPath::Value {
+            holon_identity: candidates[0].full_reference_id_string(),
+            property: "ConstraintName".into(),
+        }
+    );
+    assert_eq!(
+        finding.descriptor_identity.as_deref(),
+        Some(fixture.nodes["MapStringValueType.StringValueType"].reference_id_string().as_str())
+    );
     Ok(())
 }

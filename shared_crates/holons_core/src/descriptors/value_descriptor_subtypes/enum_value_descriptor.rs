@@ -1,6 +1,4 @@
-use std::collections::HashSet;
-
-use crate::descriptors::inheritance::effective_relationship_targets;
+use super::{EnumMembers, EnumMembership};
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     single_operand, supported_operators, supports_operator, unsupported_operator,
     value_kind_mismatch, value_type_name,
@@ -11,7 +9,6 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
 use core_types::HolonError;
-use type_names::CoreRelationshipTypeName;
 
 /// Semantic wrapper for enum value descriptors.
 pub struct EnumValueDescriptor {
@@ -36,14 +33,23 @@ impl EnumValueDescriptor {
             other => return Err(value_kind_mismatch(&self.holon, "Enum", other)),
         };
 
-        if self.declared_variants()?.contains(&variant) {
+        let membership = EnumMembers::resolve(self)?.membership(&variant);
+        if matches!(membership, EnumMembership::Member(_)) {
             return Ok(());
         }
+        let detail = match membership {
+            EnumMembership::Ambiguous(identities) => format!(
+                "ambiguous token claimed by {} distinct concrete variant definitions",
+                identities.len()
+            ),
+            _ => "no concrete variant declares this token".into(),
+        };
 
         Err(HolonError::EnumVariantNotInSchema {
             variant,
             value_type: value_type_name(&self.holon)?,
             descriptor: crate::descriptors::accessor_helpers::descriptor_label(&self.holon),
+            detail,
         })
     }
 
@@ -92,16 +98,6 @@ impl EnumValueDescriptor {
                 Err(value_kind_mismatch(&self.holon, "Enum", other))
             }
         }
-    }
-
-    fn declared_variants(&self) -> Result<HashSet<String>, HolonError> {
-        let mut variants = HashSet::new();
-        for variant in
-            effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Variants)?
-        {
-            variants.insert(TypeHeader::new(&variant.member).type_name()?.to_string());
-        }
-        Ok(variants)
     }
 }
 
@@ -164,6 +160,127 @@ mod tests {
             vec![red.into(), blue.into()],
         )?;
         Ok(EnumValueDescriptor::from_holon(value.into()))
+    }
+
+    fn membership_fixture(rows: &[(&str, &str, bool)]) -> Result<EnumValueDescriptor, HolonError> {
+        let context = build_context();
+        let mut value = color_value_type(&context)?;
+        let mut targets = Vec::new();
+        for &(key, token, is_abstract) in rows {
+            let mut member = new_descriptor_holon(&context, key, token, "EnumVariant")?;
+            member.with_property_value("IsAbstractType", is_abstract)?;
+            member.with_property_value("DisplayName", "Presentation")?;
+            targets.push(member.into());
+        }
+        value.add_related_holons(CoreRelationshipTypeName::Variants, targets)?;
+        Ok(EnumValueDescriptor::from_holon(value.into()))
+    }
+
+    #[test]
+    fn membership_accepts_only_exact_tokens() -> Result<(), HolonError> {
+        let descriptor = membership_fixture(&[
+            ("Red.ColorValueType", "Red", false),
+            ("accent", "é", false),
+            ("key-token", "key-token", false),
+            ("display-token", "Presentation", false),
+        ])?;
+        for token in ["Red", "é", "key-token", "Presentation"] {
+            descriptor.is_valid(&enum_value(token))?;
+        }
+        for token in ["red", "Red.ColorValueType", "accent", "e\u{301}", "display-token"] {
+            assert!(
+                matches!(
+                    descriptor.is_valid(&enum_value(token)),
+                    Err(HolonError::EnumVariantNotInSchema { .. })
+                ),
+                "{token}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn display_name_does_not_substitute_for_a_token() -> Result<(), HolonError> {
+        let descriptor = membership_fixture(&[("Red.ColorValueType", "Red", false)])?;
+        assert!(matches!(
+            descriptor.is_valid(&enum_value("Presentation")),
+            Err(HolonError::EnumVariantNotInSchema { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_tokens_retain_distinct_claimants_and_provenance() -> Result<(), HolonError> {
+        let descriptor = membership_fixture(&[("red", "Red", false), ("other-red", "Red", false)])?;
+        let members = EnumMembers::resolve(&descriptor)?;
+        let identities: Vec<_> =
+            members.members().iter().map(|member| member.identity.clone()).collect();
+        assert_eq!(members.duplicate_tokens()["Red"], identities);
+        assert_eq!(members.membership("Red"), EnumMembership::Ambiguous(identities));
+        let owner = crate::DefinitionIdentity::for_optional_context(
+            descriptor.holon(),
+            descriptor.holon().transaction_context().as_ref(),
+        )?;
+        assert!(members.members().iter().all(|member| member.declared_on == owner));
+        match descriptor.is_valid(&enum_value("Red")).unwrap_err() {
+            HolonError::EnumVariantNotInSchema { descriptor: label, detail, .. } => {
+                assert_eq!(
+                    label,
+                    crate::descriptors::accessor_helpers::descriptor_label(descriptor.holon())
+                );
+                assert!(detail.contains("ambiguous"));
+                assert!(detail.contains("2 distinct"));
+            }
+            error => panic!("unexpected error: {error}"),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn abstract_targets_never_supply_or_duplicate_tokens() -> Result<(), HolonError> {
+        let descriptor = membership_fixture(&[
+            ("anchor", "Anchor", true),
+            ("red", "Red", false),
+            ("abstract-red", "Red", true),
+        ])?;
+        let members = EnumMembers::resolve(&descriptor)?;
+        assert_eq!(members.abstract_members().count(), 2);
+        assert!(members.duplicate_tokens().is_empty());
+        assert_eq!(members.membership("Anchor"), EnumMembership::Undeclared);
+        assert!(matches!(
+            descriptor.is_valid(&enum_value("Anchor")),
+            Err(HolonError::EnumVariantNotInSchema { detail, .. })
+                if detail.contains("no concrete variant declares")
+        ));
+        descriptor.is_valid(&enum_value("Red"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn repeated_identity_is_one_token_claimant() -> Result<(), HolonError> {
+        let descriptor = membership_fixture(&[("red", "Red", false)])?;
+        let members = EnumMembers::resolve(&descriptor)?;
+        let repeated =
+            EnumMembers::new(vec![members.members()[0].clone(), members.members()[0].clone()]);
+        assert!(repeated.duplicate_tokens().is_empty());
+        assert!(matches!(repeated.membership("Red"), EnumMembership::Member(_)));
+        Ok(())
+    }
+
+    #[test]
+    fn sub_enum_does_not_inherit_parent_tokens() -> Result<(), HolonError> {
+        let descriptor = membership_fixture(&[("red", "Red", false)])?;
+        let context = descriptor.holon().transaction_context().unwrap();
+        let mut child = new_descriptor_holon(&context, "child", "Child", "Value")?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor.holon().clone()],
+        )?;
+        assert_eq!(
+            EnumMembers::resolve(&EnumValueDescriptor::from_holon(child.into()))?.membership("Red"),
+            EnumMembership::Undeclared
+        );
+        Ok(())
     }
 
     #[test]

@@ -1,14 +1,14 @@
 //! Binding preparation and subject assessment through exact bound references.
+use crate::constraints::values::{assess_subject_constraints, evaluate_value_constraints};
 use crate::{
     assessment::support::{blocked, path},
-    commitments::{required_key, ResolvedConstraint},
+    commitments::required_key,
     diagnostics::{finding, rule_violation},
     dispatch::{
         registration, RuleImplementation, RuleRegistration, SubjectApplicability, SubjectLevel,
     },
-    ConstraintTypeKey, DescriptorRuleProducts, PreparedRuleSubject, ResolvedValidationBinding,
-    RuleOutcome, StaticConstraintRegistry, ValidationCollector, ValidationInvocation,
-    ValueValidationContext,
+    DescriptorRuleProducts, PreparedRuleSubject, ResolvedValidationBinding, RuleOutcome,
+    ValidationCollector, ValidationInvocation, ValueValidationContext,
 };
 use core_types::{
     BaseValue, CommitValidationViolationKind, HolonError, PropertyName, ValidationSubjectPath,
@@ -256,7 +256,8 @@ fn dispatch_subject(
     subject: &PreparedRuleSubject,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
-) -> Result<(), HolonError> {
+) -> Result<bool, HolonError> {
+    let mut native_kind_finding = false;
     for prepared in bindings {
         let Some(RuleImplementation::Subject(handler)) = prepared.registration.implementation
         else {
@@ -273,43 +274,11 @@ fn dispatch_subject(
             collector,
         )? == RuleOutcome::StopValueEvaluation
         {
+            native_kind_finding |= prepared.registration.native_kind.is_some();
             break;
         }
     }
-    Ok(())
-}
-
-/// Existing fail-closed subject evaluation. Declaration assessment has separate counters
-/// and never calls this traversal, even for a declaration with no evaluator.
-fn subject_constraints(
-    descriptor: &HolonReference,
-    path: &ValidationSubjectPath,
-    collector: &mut ValidationCollector,
-    packages: &crate::assessment::descriptor_package::DescriptorPackages,
-) -> Result<(), HolonError> {
-    let contributions = packages.effective_constraints(descriptor)?;
-    for contribution in contributions {
-        collector.observations.effective_constraint_count += 1;
-        let constraint = ResolvedConstraint::resolve(contribution)?;
-        let key = ConstraintTypeKey(required_key(constraint.constraint_type.holon())?);
-        if StaticConstraintRegistry::lookup(&key).is_none() {
-            finding(
-                collector,
-                CommitValidationViolationKind::UnsupportedConstraintType {
-                    constraint_identity: constraint.constraint.reference_id_string(),
-                    constraint_type_identity: constraint
-                        .constraint_type
-                        .holon()
-                        .reference_id_string(),
-                },
-                None,
-                path,
-                Some(constraint.declaring_descriptor.holon().reference_id_string()),
-                format!("Mandatory constraint type {} has no registered evaluator.", key.0),
-            );
-        }
-    }
-    Ok(())
+    Ok(native_kind_finding)
 }
 
 /// Conformance of H through D(H), never through the contract H defines for its instances.
@@ -333,17 +302,44 @@ pub(crate) fn assess_holon(
     for member in &contributions.properties {
         let property = PropertyDescriptor::from_holon(member.member.clone());
         let name = property.property_name()?;
-        if names.insert(name.clone()) {
-            properties.push((name, property));
+        if !names.insert(name.clone()) {
+            return Err(HolonError::InvalidState(format!(
+                "Ambiguous property {name} passed the contract guard"
+            )));
         }
+        properties.push((name, property));
     }
     let subject_path = path(subject);
+    let diagnosis = packages.diagnoses.get(subject)?;
+    let lineage = diagnosis.valid_lineage();
     let prepared = PreparedRuleSubject::Holon {
         undescribed_properties: subject.undescribed_property_names_in_contract(&names)?,
         key_claim: key_claim.cloned(),
+        default_declaration: if lineage
+            .is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::PropertyType))
+        {
+            packages.default_declaration(&packages.diagnoses.identity(subject)?)?.map(|value| {
+                crate::DefaultDeclarationAssessment::new(subject, value, values, roles, packages)
+            })
+        } else {
+            None
+        },
+        enum_members: if lineage
+            .is_some_and(|lineage| lineage.contains_role(CoreDefinitionRole::EnumValueType))
+        {
+            Some(packages.enum_members(&packages.diagnoses.identity(subject)?)?)
+        } else {
+            None
+        },
     };
     dispatch_subject(bindings, &prepared, &subject_path, collector)?;
-    subject_constraints(descriptor, &subject_path, collector, packages)?;
+    assess_subject_constraints(
+        descriptor,
+        SubjectLevel::Holon,
+        &subject_path,
+        collector,
+        packages,
+    )?;
     let mut declared_names = HashSet::new();
     for member in &contributions.relationships {
         match member.member.property_value(CorePropertyTypeName::TypeName)? {
@@ -464,7 +460,13 @@ fn assess_property(
         descriptor_identity: property.holon().reference_id_string(),
     };
     dispatch_subject(&bindings, &facts, &path, collector)?;
-    subject_constraints(property.holon(), &path, collector, packages)?;
+    assess_subject_constraints(
+        property.holon(),
+        SubjectLevel::Property,
+        &path,
+        collector,
+        packages,
+    )?;
     if let Some(value) = value {
         if !value_usable {
             blocked(
@@ -493,12 +495,21 @@ fn assess_property(
             holon_identity: subject.full_reference_id_string(),
             property: name.to_string(),
         };
-        assess_value(&value, &descriptor, &path, values, roles, collector, packages)?;
+        assess_value(
+            &value,
+            &descriptor,
+            &path,
+            values,
+            roles,
+            collector,
+            packages,
+            CoreValidationRuleName::PropertyValueConformance,
+        )?;
     }
     Ok(())
 }
 
-fn assess_value(
+pub(crate) fn assess_value(
     value: &BaseValue,
     descriptor: &ValueDescriptor,
     path: &ValidationSubjectPath,
@@ -506,6 +517,7 @@ fn assess_value(
     roles: &BindingRoleMemo,
     collector: &mut ValidationCollector,
     packages: &crate::assessment::descriptor_package::DescriptorPackages,
+    attributing_rule: CoreValidationRuleName,
 ) -> Result<(), HolonError> {
     let bindings = prepare_bindings(
         descriptor.holon(),
@@ -516,16 +528,113 @@ fn assess_value(
         collector,
         packages,
     )?;
-    subject_constraints(descriptor.holon(), path, collector, packages)?;
     holons_core::reference_layer::assert_reference_transaction_compatible(
         descriptor.holon(),
         &values.context,
     )?;
+    let expected = packages.value_kind(descriptor.holon())?;
     let facts = PreparedRuleSubject::Value {
-        expected: packages.value_kind(descriptor.holon())?,
+        expected: expected.clone(),
         actual: value.kind(),
+        enum_membership: match (value, &expected) {
+            (
+                BaseValue::EnumValue(token),
+                ValueDescriptorKind::BaseValue(base_types::BaseValueKind::Enum),
+            ) => {
+                let token = token.to_string();
+                let verdict = packages
+                    .enum_members(&packages.diagnoses.identity(descriptor.holon())?)?
+                    .map(|members| members.membership(&token));
+                Some((token, verdict))
+            }
+            _ => None,
+        },
         descriptor_identity: descriptor.holon().reference_id_string(),
     };
-    dispatch_subject(&bindings, &facts, path, collector)?;
+    let native_kind_finding = dispatch_subject(&bindings, &facts, path, collector)?;
+    let evaluators = assess_subject_constraints(
+        descriptor.holon(),
+        SubjectLevel::Value,
+        path,
+        collector,
+        packages,
+    )?;
+    let eligible = match &expected {
+        ValueDescriptorKind::BaseValue(kind) => *kind == value.kind(),
+        ValueDescriptorKind::AnyBaseValue => true,
+        ValueDescriptorKind::ValueArray | ValueDescriptorKind::Unsupported(_) => false,
+    };
+    if eligible {
+        evaluate_value_constraints(
+            value,
+            path,
+            descriptor.holon(),
+            &evaluators,
+            collector,
+            attributing_rule,
+        )?;
+    } else if expected == ValueDescriptorKind::ValueArray {
+        finding(
+            collector,
+            CommitValidationViolationKind::RuleViolation {
+                code: "UnsupportedValueRepresentation".into(),
+            },
+            None,
+            path,
+            Some(descriptor.holon().reference_id_string()),
+            "Populated array values are not supported.".into(),
+        );
+    } else if matches!(expected, ValueDescriptorKind::Unsupported(_))
+        || (!native_kind_finding && !evaluators.is_empty())
+    {
+        finding(
+            collector,
+            CommitValidationViolationKind::UnresolvedLocalDependency,
+            None,
+            path,
+            Some(descriptor.holon().reference_id_string()),
+            format!(
+                "Value evaluation requires a supported representation: expected {expected:?}, found {:?}.",
+                value.kind()
+            ),
+        );
+    }
     Ok(())
+}
+
+/// Attributes populated collisions while leaving rejection unconditional in the caller.
+/// Returns true when attribution is complete and the generic blocker can be omitted.
+pub(crate) fn dispatch_contract_guard(
+    bindings: &[PreparedBinding],
+    subject: &HolonReference,
+    interpretation: &crate::rules::descriptor::ContractInterpretation,
+    collector: &mut ValidationCollector,
+) -> Result<bool, HolonError> {
+    let mut attributed = false;
+    for prepared in bindings {
+        if !matches!(prepared.registration.implementation, Some(RuleImplementation::ContractGuard))
+        {
+            continue;
+        }
+        for (name, claims) in &interpretation.property_name_collisions {
+            if subject.property_value(name.as_str())?.is_none() {
+                continue;
+            }
+            let claimants = claims
+                .iter()
+                .map(|claim| format!("{} declared on {}", claim.member, claim.declared_on))
+                .collect::<Vec<_>>()
+                .join(", ");
+            rule_violation(
+                collector,
+                &prepared.binding,
+                &path(subject),
+                prepared.registration.code,
+                format!("Populated property {name} has ambiguous bindings: {claimants}."),
+            )?;
+            collector.observations.dispatched_rule_keys.insert(prepared.name.as_str().into());
+            attributed = true;
+        }
+    }
+    Ok(attributed && !interpretation.other_vocabulary_defect)
 }

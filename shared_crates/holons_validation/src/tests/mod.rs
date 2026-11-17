@@ -6,3 +6,5 @@ mod preparation_characterization;
 mod schema;
 mod subjects;
 mod support;
+
+mod enum_default_conformance;

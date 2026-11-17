@@ -55,11 +55,11 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "4a797f43ba72cf5e2e1e52199aafa7fd8841c8de3b994c353baee6804583c2eb"
+      "sha256": "ed7faa600b3ec7ba290222e1b31cddba48ac897af17a86cad131b2701a7f0adf"
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "312919fbb05750ededc4d34b451898cb225ca55cee845f74fa4a7387b7e4fdc1"
+      "sha256": "5dddfedcc9b82c7fe2def38ee4adbfa4d208925f60011172f8f8ca91ea3566d2"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -79,19 +79,19 @@
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "59ba6cc17ed76ea71d0c808d69e066e0ef9a5815c547c332cc80d37624e1a8dd"
+      "sha256": "6b1ebb1f4dac57e8b3534c0cd01e4cc898e30ca05a1c3603b468a2df1e050a09"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "48a4719972f5739d2cdef57ae7eac1ac75cc063234d790e44ad5ce57ca4bd52b"
+      "sha256": "afcb88510eab8bcff17b1fe8dd3319fad942341f7972856102c6faa0473bd1ff"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "0767a9b8e83ebf74f8f3b79fef8bc5d3d7f6ef07171b179fbd019d86ca49ffc9"
+      "sha256": "91a17f65e6fae82e21bb71c299580c0d3ffa8735aa20c28b30920b4de3125c76"
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "46d4447bcd3751c06809ba14562b39732fe7345db1e90db97884ae7a4acfd7bd"
+      "sha256": "fb83ca55be285a3604d5b74bae7b7ac30a2d10e55a824de74b587060777de969"
     },
     {
       "path": "imports/validation/schema.json",
@@ -2109,11 +2109,11 @@
     },
     {
       "key": "DefaultValueConformance.ValidationRule",
-      "type": "PropertyValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "DefaultsRequireRequiredProperties.ValidationRule",
-      "type": "PropertyValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "DefinesInstanceTypeKind.PropertyType",
@@ -2813,7 +2813,7 @@
     },
     {
       "key": "EnumMemberNamesUnique.ValidationRule",
-      "type": "EnumValueValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "EnumTokenMembership.ValidationRule",
@@ -2841,7 +2841,7 @@
     },
     {
       "key": "EnumVariantValueType.ValueType",
-      "type": "MetaValueType.MetaTypeDescriptor"
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "EqualsComparisonValue.OperandSpecification",
@@ -3633,7 +3633,7 @@
     },
     {
       "key": "MapEnumVariantValueType.EnumVariantValueType",
-      "type": "MetaValueType.MetaTypeDescriptor"
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "MapInteger.PropertyType",
@@ -4625,7 +4625,7 @@
     },
     {
       "key": "UniquePropertyMemberBinding.ValidationRule",
-      "type": "PropertyValidationRule.HolonType"
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "UniqueSemanticMemberNames.ValidationRule",
