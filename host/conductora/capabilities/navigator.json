@@ -1,0 +1,24 @@
+{
+  "identifier": "packaged-navigator",
+  "description": "Local acquired-space Navigator; no constitution or conductor administration",
+  "webviews": [
+    "navigator"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-set-size",
+    "allow-application-session",
+    "allow-dispatch-map-command",
+    "allow-select-loader-sources",
+    "allow-source-picker-capabilities",
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        {
+          "path": "$RESOURCE/resources/bootstrap-import.schema.json"
+        }
+      ]
+    }
+  ]
+}

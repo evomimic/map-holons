@@ -1,10 +1,9 @@
 //! Packaged Welcome admission and the bounded local constitution workflow.
 use crate::{
-    constitution_admission::{
-        self, AdmissionBlocker, ConstitutionTarget, SovereigntyObservation, WelcomeLifecycle,
-    },
     setup::application_launcher::{ApplicationSessionPhase, ApplicationSessionState},
+    welcome_lifecycle::{self, AdmissionBlocker, WelcomeLifecycle},
 };
+use map_commands_runtime::personal_constitution::{ConstitutionTarget, SovereigntyObservation};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
@@ -46,7 +45,7 @@ fn approved_page(label: &str, url: &tauri::Url) -> bool {
         && url.fragment().is_none()
 }
 
-fn admit(window: &WebviewWindow) -> Result<(), String> {
+pub(crate) fn admit(window: &WebviewWindow) -> Result<(), String> {
     let url = window.url().map_err(|e| e.to_string())?;
     if crate::env::development_enabled() || !approved_page(window.label(), &url) {
         return Err("Request did not originate from packaged Welcome".into());
@@ -71,6 +70,7 @@ pub struct WelcomeStatus {
     pub phase: WelcomePhase,
     pub stage: ApplicationSessionPhase,
     pub constitution_available: bool,
+    pub navigator_available: bool,
     pub message: &'static str,
     pub(crate) blockers: Vec<AdmissionBlocker>,
 }
@@ -87,7 +87,7 @@ fn status_for(
     } else {
         match observation {
             Some(Ok(target)) => {
-                let blockers = constitution_admission::blockers(&target);
+                let blockers = welcome_lifecycle::blockers(&target);
                 match target.sovereignty {
                     SovereigntyObservation::NoAssociationObserved => (WelcomePhase::FoundationPresent,
                         "Your space and its foundation are present. Personal space setup is not enabled yet; acquisition eligibility and security protections still require verification.", blockers),
@@ -109,11 +109,19 @@ fn status_for(
             },
         }
     };
-    WelcomeStatus { phase, stage, constitution_available: false, message, blockers }
+    WelcomeStatus {
+        phase,
+        stage,
+        constitution_available: false,
+        navigator_available: false,
+        message,
+        blockers,
+    }
 }
 
 /// Local engineering admission is a compiled profile, never a frontend flag.
 fn apply_local_workflow(status: &mut WelcomeStatus, available: bool) {
+    status.navigator_available = false;
     if !cfg!(all(feature = "local-constitution", debug_assertions)) || tauri::is_dev() {
         return;
     }
@@ -131,6 +139,7 @@ fn apply_local_workflow(status: &mut WelcomeStatus, available: bool) {
         status.message = "Your space is ready. Enter your name to create your personal space.";
         status.blockers.clear();
     } else if status.phase == WelcomePhase::AssociationPresent {
+        status.navigator_available = true;
         status.message = "Your existing personal space is open. MAP has retained your Agent and Space without repeating constitution.";
     }
 }
@@ -140,7 +149,7 @@ pub async fn welcome_status(
     window: WebviewWindow,
     application: State<'_, ApplicationSessionState>,
     lifecycle: State<'_, WelcomeLifecycle>,
-    constitution: State<'_, crate::personal_constitution::WelcomeConstitution>,
+    constitution: State<'_, map_commands_runtime::personal_constitution::PersonalConstitution>,
 ) -> Result<WelcomeStatus, String> {
     admit(&window)?;
     let phase = application.snapshot()?.phase;
@@ -166,7 +175,7 @@ pub(crate) async fn refresh_lifecycle(handle: &AppHandle) -> anyhow::Result<()> 
         .map_err(|e| anyhow::anyhow!(e.to_string()))?
         .clone()
         .ok_or_else(|| anyhow::anyhow!("MAP runtime is unavailable"))?;
-    let observation = constitution_admission::inspect_target(&runtime).await;
+    let observation = map_commands_runtime::personal_constitution::inspect_target(&runtime).await;
     if let Err(error) = &observation {
         tracing::warn!("Welcome lifecycle evidence unavailable: {error}");
     }
@@ -174,6 +183,28 @@ pub(crate) async fn refresh_lifecycle(handle: &AppHandle) -> anyhow::Result<()> 
         .state::<WelcomeLifecycle>()
         .record(observation.map_err(|_| ()))
         .map_err(anyhow::Error::msg)
+}
+
+/// IPC projection of an ordinary Commit outcome.
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConstitutionOutcome {
+    Complete,
+    Rejected,
+    Incomplete,
+}
+
+impl From<map_commands_runtime::personal_constitution::ConstitutionOutcome>
+    for ConstitutionOutcome
+{
+    fn from(outcome: map_commands_runtime::personal_constitution::ConstitutionOutcome) -> Self {
+        use map_commands_runtime::personal_constitution::ConstitutionOutcome as Domain;
+        match outcome {
+            Domain::Complete => Self::Complete,
+            Domain::Rejected => Self::Rejected,
+            Domain::Incomplete => Self::Incomplete,
+        }
+    }
 }
 
 /// Untrusted naming data only. Resource, author and principal selection belongs
@@ -190,7 +221,7 @@ pub struct PersonalConstitutionInput {
 pub async fn constitute_personal_space(
     window: WebviewWindow,
     input: PersonalConstitutionInput,
-) -> Result<crate::personal_constitution::ConstitutionOutcome, String> {
+) -> Result<ConstitutionOutcome, String> {
     admit(&window)?;
     if !cfg!(all(feature = "local-constitution", debug_assertions)) {
         return Err("Personal constitution is not enabled in this build".into());
@@ -210,10 +241,10 @@ pub async fn constitute_personal_space(
     // Admission comes from the exact packaged request path. Fresh domain checks
     // and serialization happen in the backend, not in presentation state.
     let outcome = handle
-        .state::<crate::personal_constitution::WelcomeConstitution>()
+        .state::<map_commands_runtime::personal_constitution::PersonalConstitution>()
         .submit(
             &runtime,
-            crate::personal_constitution::PersonalName {
+            map_commands_runtime::personal_constitution::PersonalName {
                 last_name: input.last_name.into(),
                 first_name: input.first_name.map(Into::into),
                 middle_name: input.middle_name.map(Into::into),
@@ -222,7 +253,7 @@ pub async fn constitute_personal_space(
         .await
         .map_err(|e| e.to_string())?;
     refresh_lifecycle(handle).await.map_err(|e| e.to_string())?;
-    Ok(outcome)
+    Ok(outcome.into())
 }
 
 pub fn create_window(handle: &tauri::AppHandle) -> anyhow::Result<()> {
@@ -291,7 +322,11 @@ mod tests {
         assert!(capability.get("remote").is_none());
         assert_eq!(
             capability["permissions"],
-            serde_json::json!(["allow-welcome-status", "allow-constitute-personal-space"])
+            serde_json::json!([
+                "allow-welcome-status",
+                "allow-constitute-personal-space",
+                "allow-open-space-navigator"
+            ])
         );
         let page = include_str!("../../ui/public/welcome.html");
         assert!(page.contains("script-src 'self';"));

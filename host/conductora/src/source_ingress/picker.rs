@@ -19,12 +19,15 @@ pub struct SourcePickerCapabilities {
 
 /// API capabilities, not a claim that native smoke verification has passed.
 #[tauri::command]
-pub fn source_picker_capabilities() -> SourcePickerCapabilities {
-    SourcePickerCapabilities {
+pub fn source_picker_capabilities(
+    window: tauri::WebviewWindow,
+) -> Result<SourcePickerCapabilities, String> {
+    crate::packaged_navigator::admit_operational_window(&window)?;
+    Ok(SourcePickerCapabilities {
         mixed_selection: cfg!(target_os = "macos"),
         multiple_files: true,
         multiple_directories: true,
-    }
+    })
 }
 
 /// Invoke on the main thread on macOS; Linux portal dialogs may run on a worker.

@@ -9,8 +9,10 @@ pub enum TypeDescriptor {
     Holon(HolonWire),
 }
 
+/// Legacy receptor discovery/routing metadata, not a reference-backed Space holon.
+/// Holochain adapters populate its identity fields from cell/DNA metadata.
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
-pub struct HolonSpace {
+pub struct DeprecatedHolonSpace {
     pub id: String,                //holon_id
     pub name: String,              // holon title
     pub branch_id: Option<String>, // in holochain this is the cell_id / target role / clone id
@@ -22,7 +24,7 @@ pub struct HolonSpace {
     /// Optional metadata as raw bytes, serialized efficiently
     pub metadata: Option<ByteBuf>,
     pub enabled: bool,
-    //pub children: Option<Vec<HolonSpace>>,
+    //pub children: Option<Vec<DeprecatedHolonSpace>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -30,13 +32,13 @@ pub struct RootSpace {
     pub name: String,
     pub typedescriptor: TypeDescriptor, //schema
     pub description: String,
-    pub children: Option<Vec<HolonSpace>>,
+    pub children: Option<Vec<DeprecatedHolonSpace>>,
 }
 
 //todo rename to spaces
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SpaceInfo {
-    spaces: HashMap<String, HolonSpace>, // Placeholder for actual space data
+    spaces: HashMap<String, DeprecatedHolonSpace>, // Placeholder for actual space data
 }
 
 impl SpaceInfo {
@@ -44,17 +46,17 @@ impl SpaceInfo {
         SpaceInfo { spaces: HashMap::new() }
     }
 
-    pub fn add_space(&mut self, key: String, value: HolonSpace) {
+    pub fn add_space(&mut self, key: String, value: DeprecatedHolonSpace) {
         self.spaces.insert(key, value);
     }
 
-    pub fn get_spaces(&self) -> &HashMap<String, HolonSpace> {
+    pub fn get_spaces(&self) -> &HashMap<String, DeprecatedHolonSpace> {
         &self.spaces
     }
 
     pub fn default() -> Self {
         let mut space_info = Self::new();
-        space_info.add_space("default_space".to_string(), HolonSpace::default());
+        space_info.add_space("default_space".to_string(), DeprecatedHolonSpace::default());
         space_info
     }
 }

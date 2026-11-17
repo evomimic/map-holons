@@ -23,7 +23,7 @@ import {
 } from './shared-types';
 
 import { Holon, StagedHolon} from './holon';
-import { HolonSpace, mockContentSpace } from './interface.space';
+import { DeprecatedHolonSpace, mockContentSpace } from './interface.space';
 
 
 // ===========================================
@@ -35,7 +35,7 @@ export interface MapRequest {
     name: MapString, // unique command - covers dance dispatch table eg stage_new_holon
     req_type: RequestType,  // same as Dancetype enum in rust
     body: RequestBody, //same as rust enum
-    space: HolonSpace, //the space context for the request + receptor_id
+    space: DeprecatedHolonSpace, //the space context for the request + receptor_id
 }
 
 // ===========================================
@@ -145,7 +145,7 @@ export class MapRequestFactory {
     name: string,
     type: RequestType,
     body: RequestBody,
-    space: HolonSpace
+    space: DeprecatedHolonSpace
   ): MapRequest {
     return {
       name,
@@ -158,7 +158,7 @@ export class MapRequestFactory {
   static standalone(
     name: string, 
     body: RequestBody,
-    space: HolonSpace = mockContentSpace
+    space: DeprecatedHolonSpace = mockContentSpace
   ): MapRequest {
     return this.create(name, "Standalone", body, space);
   }
@@ -167,7 +167,7 @@ export class MapRequestFactory {
     name: string, 
     nodeCollection: NodeCollection, 
     body: RequestBody,
-    space: HolonSpace = mockContentSpace
+    space: DeprecatedHolonSpace = mockContentSpace
   ): MapRequest {
     return this.create(name, { QueryMethod: nodeCollection }, body, space);
   }
@@ -176,7 +176,7 @@ export class MapRequestFactory {
     name: string, 
     holonRef: HolonReference, 
     body: RequestBody,
-    space: HolonSpace = mockContentSpace
+    space: DeprecatedHolonSpace = mockContentSpace
   ): MapRequest {
     return this.create(name, { CommandMethod: holonRef }, body, space);
   }
@@ -185,7 +185,7 @@ export class MapRequestFactory {
     name: string, 
     holonRef: HolonReference, 
     body: RequestBody,
-    space: HolonSpace = mockContentSpace
+    space: DeprecatedHolonSpace = mockContentSpace
   ): MapRequest {
     return this.create(name, { CloneMethod: holonRef }, body, space);
   }
@@ -194,7 +194,7 @@ export class MapRequestFactory {
     name: string, 
     holonId: HolonId, 
     body: RequestBody,
-    space: HolonSpace = mockContentSpace
+    space: DeprecatedHolonSpace = mockContentSpace
   ): MapRequest {
     return this.create(name, { NewVersionMethod: holonId }, body, space);
   }
@@ -203,7 +203,7 @@ export class MapRequestFactory {
     name: string, 
     localId: LocalId, 
     body: RequestBody,
-    space: HolonSpace = mockContentSpace
+    space: DeprecatedHolonSpace = mockContentSpace
   ): MapRequest {
     return this.create(name, { DeleteMethod: localId }, body, space);
   }
@@ -227,7 +227,7 @@ export function extractHolonIdFromRequestBody(body: RequestBody): HolonId | null
   return null;
 }
 
-export function createMapRequestForNewHolon(space: HolonSpace, props: PropertyMap): MapRequest {
+export function createMapRequestForNewHolon(space: DeprecatedHolonSpace, props: PropertyMap): MapRequest {
   return MapRequestFactory.standalone(
     "create_new_holon",
     RequestBodyFactory.parameterValues(props),
@@ -235,7 +235,7 @@ export function createMapRequestForNewHolon(space: HolonSpace, props: PropertyMa
   );
 }
 
-export function createMapRequestForLoadHolons(space: HolonSpace, contentSet: ContentSet): MapRequest {
+export function createMapRequestForLoadHolons(space: DeprecatedHolonSpace, contentSet: ContentSet): MapRequest {
   return MapRequestFactory.standalone(
     "load_holons",
     RequestBodyFactory.loadHolons(contentSet),
@@ -244,7 +244,7 @@ export function createMapRequestForLoadHolons(space: HolonSpace, contentSet: Con
 }
 
 export function createMapRequestForStageHolon(
-  space: HolonSpace,
+  space: DeprecatedHolonSpace,
   transientId: TemporaryId,
   tx_id: TxId = DEFAULT_TX_ID
 ): MapRequest {
@@ -255,7 +255,7 @@ export function createMapRequestForStageHolon(
   );
 }
 
-export function createMapRequestForReadAll(space: HolonSpace): MapRequest {
+export function createMapRequestForReadAll(space: DeprecatedHolonSpace): MapRequest {
   return MapRequestFactory.standalone(
     "get_all_holons",
     RequestBodyFactory.none(),
@@ -263,7 +263,7 @@ export function createMapRequestForReadAll(space: HolonSpace): MapRequest {
   );
 }
 
-export function createMapRequestForStageCloneHolon(space: HolonSpace, id: HolonId): MapRequest {
+export function createMapRequestForStageCloneHolon(space: DeprecatedHolonSpace, id: HolonId): MapRequest {
   return MapRequestFactory.standalone(
     "stage_clone_holon",
     RequestBodyFactory.holonId(id),
@@ -271,7 +271,7 @@ export function createMapRequestForStageCloneHolon(space: HolonSpace, id: HolonI
   );
 }
 
-export function createMapRequestForUpdateHolon(space: HolonSpace, stagedref: StagedReference, properties: PropertyMap): MapRequest {
+export function createMapRequestForUpdateHolon(space: DeprecatedHolonSpace, stagedref: StagedReference, properties: PropertyMap): MapRequest {
   return MapRequestFactory.commandMethod(
     "with_properties",
     { Staged: stagedref },
@@ -280,7 +280,7 @@ export function createMapRequestForUpdateHolon(space: HolonSpace, stagedref: Sta
   );
 }
 
-export function createMapRequestForCommitHolon(space: HolonSpace, stageref: StagedReference): MapRequest {
+export function createMapRequestForCommitHolon(space: DeprecatedHolonSpace, stageref: StagedReference): MapRequest {
   return MapRequestFactory.commandMethod(
     "commit",
     { Staged: stageref },
@@ -289,7 +289,7 @@ export function createMapRequestForCommitHolon(space: HolonSpace, stageref: Stag
   );
 }
 
-export function createMapRequestForCommitAll(space: HolonSpace): MapRequest {
+export function createMapRequestForCommitAll(space: DeprecatedHolonSpace): MapRequest {
   return MapRequestFactory.standalone(
     "commit",
     RequestBodyFactory.none(),
@@ -297,7 +297,7 @@ export function createMapRequestForCommitAll(space: HolonSpace): MapRequest {
   );
 }
 
-export function createMapRequestForGetHolon(space: HolonSpace, id: HolonId): MapRequest {
+export function createMapRequestForGetHolon(space: DeprecatedHolonSpace, id: HolonId): MapRequest {
   return MapRequestFactory.standalone(
     "get_holon_by_id",
     RequestBodyFactory.holonId(id),

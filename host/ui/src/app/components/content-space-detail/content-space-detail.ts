@@ -1,7 +1,7 @@
 import { Component, computed, effect, OnInit, signal, Signal, WritableSignal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ContentController } from '../../contollers/content.controller';
-import { HolonSpace, MetaHolon, DID } from '../../models/interface.space';
+import { DeprecatedHolonSpace, MetaHolon, DID } from '../../models/interface.space';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SpaceController } from '../../contollers/space.controller';
@@ -51,7 +51,7 @@ interface DisplayCommittedHolon {
   templateUrl: './content-space-detail.html',
 })
 export class ContentSpaceDetail implements OnInit {
-  space: Signal<HolonSpace | undefined> = signal(undefined);
+  space: Signal<DeprecatedHolonSpace | undefined> = signal(undefined);
   store: WritableSignal<ContentStoreInstance | undefined> = signal(undefined);
   displayTransientHolons: Signal<DisplayTransientHolon[]> // Computed signal for transient holons
   displayStagedHolons: Signal<DisplayStagedHolon[]>; // Computed signal for display

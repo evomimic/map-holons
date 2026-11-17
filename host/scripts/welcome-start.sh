@@ -7,4 +7,4 @@ if [[ ! -x "$application" ]]; then
   echo 'Build Welcome first: npm run welcome:build -w map-host' >&2
   exit 1
 fi
-exec env -u MAP_START_MODE -u STORAGE_CONFIG_PATH -u MAP_APPLICATION_EXPERIENCE "$application"
+exec env -u MAP_START_MODE -u STORAGE_CONFIG_PATH -u MAP_APPLICATION_EXPERIENCE "$application" "$@"

@@ -17,6 +17,39 @@ afterEach(() => {
 });
 
 describe('packaged Welcome', () => {
+  it('automatically hands the existing acquired installation to Navigator once', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
+      .mockResolvedValueOnce(undefined);
+    await start(invoke);
+    await vi.waitFor(() => expect(invoke.mock.calls).toEqual([['welcome_status'], ['open_space_navigator']]));
+    document.getElementById('constitute')?.dispatchEvent(new MouseEvent('click'));
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(document.getElementById('activity-stage')?.textContent).toBe('Opening Space Navigator');
+  });
+
+  it('retries a failed handoff without repeating constitution', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
+      .mockRejectedValueOnce('Navigator selection failed.').mockResolvedValueOnce(undefined);
+    await start(invoke);
+    const retry = document.getElementById('open-navigator') as HTMLButtonElement;
+    await vi.waitFor(() => expect(retry.hidden).toBe(false));
+    expect(document.getElementById('status')?.textContent).toBe('Navigator selection failed.');
+    retry.click();
+    await vi.waitFor(() => expect(invoke.mock.calls).toEqual([['welcome_status'], ['open_space_navigator'], ['open_space_navigator']]));
+    expect((document.getElementById('constitute') as HTMLButtonElement).hidden).toBe(true);
+  });
+
+  it('hands off after Complete and fresh saved association confirmation', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'foundation-present', constitution_available: true, message: 'Ready.' })
+      .mockResolvedValueOnce('complete')
+      .mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
+      .mockResolvedValueOnce(undefined);
+    await start(invoke);
+    (document.getElementById('last-name') as HTMLInputElement).value='Example';
+    document.getElementById('constitute')?.click();
+    await vi.waitFor(() => expect(invoke.mock.calls.map(call => call[0])).toEqual(['welcome_status', 'constitute_personal_space', 'welcome_status', 'open_space_navigator']));
+  });
+
   it('sends only naming data and suppresses duplicate submissions', async () => {
     let rejectRequest!: (reason: string) => void;
     const invoke = vi.fn().mockResolvedValueOnce({ phase: 'foundation-present', constitution_available: true, message: 'Eligible fixture.' })

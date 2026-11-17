@@ -1,7 +1,7 @@
 import { inject, Injectable, OnDestroy } from "@angular/core";
 import { invoke } from '@tauri-apps/api/core';
 import { once, type UnlistenFn } from '@tauri-apps/api/event';
-import { HolonSpace, mockContentSpace, mockMetaSpace, ProtoAgentSpace, SpaceType } from "../models/interface.space";
+import { DeprecatedHolonSpace, mockContentSpace, mockMetaSpace, ProtoAgentSpace, SpaceType } from "../models/interface.space";
 import { ApiService } from "./api.service";
 import { environment } from "../../environments/environment";
 import { SpacesStore } from "../stores/spaces.store";
@@ -112,7 +112,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
         }
 
         // 5. Create the final AgentSpace object with the correct structure
-        const agentSpace: HolonSpace = {
+        const agentSpace: DeprecatedHolonSpace = {
           id: rawSpace.id,
           receptor_id: rawSpace.receptor_id,
           name: rawSpace.name,
@@ -152,7 +152,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
     async createSpace(newSpace: ProtoAgentSpace): Promise<void> {
         try {
             this.spacesStore.setLoading(true);
-            const createdSpace = await invoke<HolonSpace>('create_space', newSpace);
+            const createdSpace = await invoke<DeprecatedHolonSpace>('create_space', newSpace);
             this.spacesStore.addOrUpdateSpace(createdSpace);
         } catch (e) {
             console.error("Failed to create space:", e);
@@ -165,7 +165,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
     /**
      * Calls the backend to delete a space and updates the store on success.
      */
-    async deleteSpace(space: HolonSpace): Promise<void> {
+    async deleteSpace(space: DeprecatedHolonSpace): Promise<void> {
         try {
             this.spacesStore.setLoading(true);
             await invoke('delete_space', { id: space.id });
@@ -179,7 +179,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
 
 
 
-    get_space(space_type:string, space_id:string):HolonSpace {
+    get_space(space_type:string, space_id:string):DeprecatedHolonSpace {
       if (environment.mock) {
         if (space_type == SpaceType.Content) {
           return mockContentSpace; // Replace with actual mock data if needed
@@ -194,7 +194,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
       return space
     }
 
-    get_home_space(space_type:string): HolonSpace {
+    get_home_space(space_type:string): DeprecatedHolonSpace {
       if (environment.mock){
         if (space_type == SpaceType.Content) {
           return mockContentSpace; // Replace with actual mock data if needed
@@ -209,7 +209,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
         return space
     }
 
-    get_spaces_by_type(space_type:string):HolonSpace[]{
+    get_spaces_by_type(space_type:string):DeprecatedHolonSpace[]{
       //if (environment.mock) {
        // const cells:Cell[] = [mockProvisionedCell,mockClonedCell]
        // return cells

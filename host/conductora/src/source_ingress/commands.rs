@@ -4,9 +4,11 @@ use super::{discover_sources, pick_sources, SourceSelection, SourceSelectionMode
 /// No arbitrary filesystem path is accepted from the webview.
 #[tauri::command]
 pub async fn select_loader_sources(
+    window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     mode: SourceSelectionMode,
 ) -> Result<SourceSelection, String> {
+    crate::packaged_navigator::admit_operational_window(&window)?;
     #[cfg(target_os = "macos")]
     let selection = {
         let (sender, receiver) = futures::channel::oneshot::channel();

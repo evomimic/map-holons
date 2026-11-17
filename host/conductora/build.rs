@@ -24,6 +24,7 @@ fn main() {
         "is_service_ready",
         "dispatch_map_command",
         "welcome_status",
+        "open_space_navigator",
         "constitute_personal_space",
     ];
     tauri_build::try_build(

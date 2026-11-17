@@ -85,6 +85,7 @@ struct ApplicationSession {
     dev_mode: bool,
     phase: ApplicationSessionPhase,
     active_holon_space: Option<HolonReferenceWire>,
+    active_agent: Option<HolonReferenceWire>,
     canvas_selection: Option<CanvasLaunchSelection>,
     home_dancer_selection: Option<HomeDancerLaunchSelection>,
     failure: Option<String>,
@@ -97,6 +98,7 @@ pub struct ApplicationSessionSnapshot {
     pub dev_mode: bool,
     pub phase: ApplicationSessionPhase,
     pub active_holon_space: Option<HolonReferenceWire>,
+    pub active_agent: Option<HolonReferenceWire>,
     pub canvas_selection: Option<CanvasLaunchSelection>,
     pub home_dancer_selection: Option<HomeDancerLaunchSelection>,
     pub failure: Option<String>,
@@ -128,6 +130,7 @@ impl ApplicationSessionState {
                 dev_mode,
                 phase: ApplicationSessionPhase::InitializingHost,
                 active_holon_space: None,
+                active_agent: None,
                 canvas_selection: None,
                 home_dancer_selection: None,
                 failure: None,
@@ -194,6 +197,31 @@ impl ApplicationSessionState {
         Ok(())
     }
 
+    pub fn mark_launch_ready(
+        &self,
+        selected: map_commands_runtime::application_launch::ApplicationLaunch,
+    ) -> Result<(), String> {
+        fn wire(id: core_types::HolonId) -> HolonReferenceWire {
+            HolonReferenceWire::Smart(holons_boundary::SmartReferenceWire::new(id, None))
+        }
+        let mut session = self.write()?;
+        session.active_agent = selected.agent.map(wire);
+        session.active_holon_space = Some(wire(selected.space));
+        session.canvas_selection = Some(CanvasLaunchSelection {
+            theme_key: selected.theme_key,
+            canvas_key: selected.canvas_key,
+            canvas_visualizer_key: selected.canvas_visualizer_key,
+        });
+        session.home_dancer_selection = selected.home.map(|home| HomeDancerLaunchSelection {
+            dancer: wire(home.dancer),
+            rooted_navigation_visualizer: wire(home.rooted_navigation_visualizer),
+            root_node_visualizer: wire(home.root_node_visualizer),
+        });
+        session.phase = ApplicationSessionPhase::Ready;
+        session.failure = None;
+        Ok(())
+    }
+
     pub fn mark_failed(&self, failure: impl Into<String>) -> Result<(), String> {
         let mut session = self.write()?;
         session.phase = ApplicationSessionPhase::Failed;
@@ -211,6 +239,7 @@ impl ApplicationSessionState {
             dev_mode: session.dev_mode,
             phase: session.phase,
             active_holon_space: session.active_holon_space.clone(),
+            active_agent: session.active_agent.clone(),
             canvas_selection: session.canvas_selection.clone(),
             home_dancer_selection: session.home_dancer_selection.clone(),
             failure: session.failure.clone(),
@@ -227,6 +256,25 @@ impl ApplicationSessionState {
     fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, ApplicationSession>, String> {
         self.session.write().map_err(|error| format!("ApplicationSession lock poisoned: {error}"))
     }
+}
+
+/// Select with the existing runtime, then project the result for the UI.
+pub async fn prepare_application_launch(
+    runtime: &map_commands_runtime::Runtime,
+    application: &ApplicationSessionState,
+    requirement: map_commands_runtime::application_launch::LaunchRequirement,
+) -> Result<(), core_types::HolonError> {
+    use map_commands_runtime::application_launch::{select_application_launch, LaunchStage};
+    let selected = select_application_launch(runtime, requirement, |stage| {
+        match stage {
+            LaunchStage::Canvas => application.mark_realizing_canvas(),
+            LaunchStage::HomeDancer => application.mark_selecting_home_dancer(),
+            LaunchStage::DancerRealization => application.mark_realizing_home_dancer(),
+        }
+        .map_err(core_types::HolonError::InvalidState)
+    })
+    .await?;
+    application.mark_launch_ready(selected).map_err(core_types::HolonError::InvalidState)
 }
 
 #[cfg(test)]

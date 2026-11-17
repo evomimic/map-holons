@@ -1,7 +1,7 @@
 import { inject, Injectable, Signal } from '@angular/core';
 import { SpacesStore } from '../stores/spaces.store';
 import { MultiPlexService } from '../services/multiplex.service';
-import { HolonSpace, ProtoAgentSpace, SpaceType } from '../models/interface.space';
+import { DeprecatedHolonSpace, ProtoAgentSpace, SpaceType } from '../models/interface.space';
 
 @Injectable({
   providedIn: 'root',
@@ -21,7 +21,7 @@ export class SpaceController {
    * @param id The ID of the space to retrieve.
    * @returns The space object, or undefined if not found.
    */
-  getContentSpaceById(id: string): Signal<HolonSpace | undefined> {
+  getContentSpaceById(id: string): Signal<DeprecatedHolonSpace | undefined> {
     return this.spacesStore.getSpaceById(id,SpaceType.Content);
   }
 
@@ -30,7 +30,7 @@ export class SpaceController {
    * @param id The ID of the space to retrieve.
    * @returns The space object, or undefined if not found.
    */
-  getMetaSpaceById(id: string): Signal<HolonSpace | undefined> {
+  getMetaSpaceById(id: string): Signal<DeprecatedHolonSpace | undefined> {
     return this.spacesStore.getSpaceById(id,SpaceType.Meta);
   }
 
@@ -60,7 +60,7 @@ export class SpaceController {
    * Orchestrates the deletion of a space.
    * @param space The space object to delete.
    */
-  async removeSpace(space: HolonSpace): Promise<void> {
+  async removeSpace(space: DeprecatedHolonSpace): Promise<void> {
     await this.multiplexService.deleteSpace(space);
   }
 }

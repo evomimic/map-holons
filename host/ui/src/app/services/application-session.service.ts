@@ -37,6 +37,7 @@ export interface ApplicationSessionSnapshot {
   experience: ApplicationExperience;
   dev_mode: boolean;
   phase: ApplicationSessionPhase;
+  active_agent?: HolonReferenceWire | null;
   active_holon_space: HolonReferenceWire | null;
   canvas_selection: CanvasLaunchSelection | null;
   home_dancer_selection: HomeDancerLaunchSelection | null;

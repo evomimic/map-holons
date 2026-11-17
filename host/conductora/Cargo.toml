@@ -56,6 +56,7 @@ tauri-plugin-holochain = { path = "plugins/tauri-plugin-holochain" }
 tokio = { version = "1.5", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies] # for unit tests
+type_names = { workspace = true }
 base_types = { workspace = true }
 #tauri = { version = "2", features = ["test"] } #"devtools"
 #tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

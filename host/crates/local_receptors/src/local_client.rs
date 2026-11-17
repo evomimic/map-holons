@@ -1,5 +1,5 @@
 use core_types::HolonError;
-use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
+use holons_client::shared_types::holon_space::{DeprecatedHolonSpace, SpaceInfo};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::SavedHolon;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ impl LocalClient {
         Ok(SpaceInfo::default())
     }
 
-    pub fn convert_to_holonspace(&self, _holon: SavedHolon) -> Result<HolonSpace, HolonError> {
+    pub fn convert_to_holonspace(&self, _holon: SavedHolon) -> Result<DeprecatedHolonSpace, HolonError> {
         // Implement conversion logic from SavedHolon to SpaceInfo
         todo!("Implement convert_to_space_info to convert SavedHolon to SpaceInfo");
     }

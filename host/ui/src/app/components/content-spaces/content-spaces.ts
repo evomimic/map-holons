@@ -1,6 +1,6 @@
 import { Component, effect, OnInit, signal, Signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { HolonSpace } from '../../models/interface.space';
+import { DeprecatedHolonSpace } from '../../models/interface.space';
 import { CommonModule } from '@angular/common';
 import { SpaceController } from '../../contollers/space.controller';
 
@@ -11,7 +11,7 @@ import { SpaceController } from '../../contollers/space.controller';
   templateUrl: './content-spaces.html',
 })
 export class ContentSpace implements OnInit {
-  contentSpaces: HolonSpace[] = [];
+  contentSpaces: DeprecatedHolonSpace[] = [];
 
 
   constructor(

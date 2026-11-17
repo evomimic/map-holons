@@ -6,6 +6,10 @@ const names = document.getElementById('personal-name');
 const firstName = document.getElementById('first-name');
 const middleName = document.getElementById('middle-name');
 const lastName = document.getElementById('last-name');
+const navigatorButton = document.getElementById('open-navigator');
+let handoffAttempted = false;
+let openingNavigator = false;
+let navigatorAvailable = false;
 let available = false;
 let submitting = false;
 let constitutionCommitted = false;
@@ -64,6 +68,7 @@ function render(result) {
   } else {
     stopActivity();
   }
+  navigatorAvailable = result.navigator_available === true;
   available = !constitutionCommitted && result.constitution_available === true && result.phase === 'foundation-present';
   button.disabled = !available || submitting;
   names.hidden = !available;
@@ -81,6 +86,7 @@ async function refresh() {
   try {
     const result = await window.__TAURI__.core.invoke('welcome_status');
     render(result);
+    if (navigatorAvailable && !handoffAttempted) await openNavigator();
     if (['initializing', 'provisioning', 'checking-space'].includes(result.phase)
       || (constitutionCommitted && result.phase === 'foundation-present')) {
       window.setTimeout(refresh, 1000);
@@ -93,6 +99,27 @@ async function refresh() {
     status.textContent = 'MAP could not verify this Welcome session. Personal setup is unavailable.';
   }
 }
+async function openNavigator() {
+  if (!navigatorAvailable || openingNavigator) return;
+  handoffAttempted = true;
+  openingNavigator = true;
+  navigatorButton.disabled = true;
+  navigatorButton.hidden = true;
+  status.textContent = 'Opening Space Navigator…';
+  showActivity('Opening Space Navigator');
+  try {
+    await window.__TAURI__.core.invoke('open_space_navigator');
+    stopActivity();
+  } catch (error) {
+    stopActivity();
+    status.textContent = typeof error === 'string' ? error : 'MAP could not open Space Navigator. Your personal space is retained.';
+    navigatorButton.hidden = false;
+  } finally {
+    openingNavigator = false;
+    navigatorButton.disabled = false;
+  }
+}
+navigatorButton.addEventListener('click', () => { void openNavigator(); });
 button.addEventListener('click', async () => {
   if (!available || submitting || !lastName.reportValidity()) return;
   const input = { lastName: lastName.value };

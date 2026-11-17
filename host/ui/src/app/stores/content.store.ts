@@ -1,7 +1,7 @@
 import { computed, Injector } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 //import { Cell } from '../helpers/interface.cell';
-import { HolonSpace } from '../models/interface.space';
+import { DeprecatedHolonSpace } from '../models/interface.space';
 import { SavedHolon, StagedHolon, TransientHolon } from '../models/holon';
 import { HolonsClient } from '../clients/holons.client';
 import { StoreState } from '../models/interface.store';
@@ -25,7 +25,7 @@ export interface ContentStoreState extends StoreState{
  */
 export function createContentStore(
   injector: Injector,
-  initialSpace: HolonSpace
+  initialSpace: DeprecatedHolonSpace
 ) {
     const client = injector.get(HolonsClient);
     const mapClient = new MapClient();

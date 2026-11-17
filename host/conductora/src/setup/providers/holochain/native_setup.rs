@@ -28,10 +28,16 @@ pub async fn setup(handle: &AppHandle, config: &HolochainConfig) -> anyhow::Resu
         .state::<crate::setup::application_launcher::ApplicationSessionState>()
         .mark_activating_holochain_app()
         .map_err(anyhow::Error::msg)?;
-    let caller = initialize_app(
+    let upgrade = std::env::args_os().any(|arg| arg == "--upgrade-coordinators");
+    anyhow::ensure!(
+        !upgrade || cfg!(all(feature = "local-constitution", debug_assertions)),
+        "Explicit local coordinator upgrade requires the packaged local-constitution build"
+    );
+    let caller = initialize_app_with_upgrade(
         runtime,
         &config.app_id,
         &handle.path().resource_dir()?.join("resources/map-holons.happ"),
+        upgrade,
     )
     .await?;
     *handle
@@ -43,15 +49,29 @@ pub async fn setup(handle: &AppHandle, config: &HolochainConfig) -> anyhow::Resu
 }
 
 /// Fixed app/role/cell admission shared by startup and the native-boundary test.
+#[cfg(test)]
 async fn initialize_app(
     runtime: &tauri_plugin_holochain::HolochainRuntime,
     app_id: &str,
     happ_path: &std::path::Path,
 ) -> anyhow::Result<NativeZomeCaller> {
+    initialize_app_with_upgrade(runtime, app_id, happ_path, false).await
+}
+
+async fn initialize_app_with_upgrade(
+    runtime: &tauri_plugin_holochain::HolochainRuntime,
+    app_id: &str,
+    happ_path: &std::path::Path,
+    upgrade: bool,
+) -> anyhow::Result<NativeZomeCaller> {
     let admin = runtime.native_administration();
     let apps = admin.list_apps().await?;
     anyhow::ensure!(apps.len() <= 1, "Packaged startup supports one installed application");
     let existing = apps.into_iter().next();
+    anyhow::ensure!(
+        !upgrade || existing.is_some(),
+        "Coordinator upgrade requires an existing application; it cannot provision an installation"
+    );
     if let Some(app) = &existing {
         anyhow::ensure!(app.installed_app_id == app_id, "Unexpected installed application");
     } else {
@@ -74,7 +94,17 @@ async fn initialize_app(
         .into_iter()
         .find(|app| app.installed_app_id == app_id)
         .ok_or_else(|| anyhow::anyhow!("Packaged app is missing after installation"))?;
-    admin.verify_packaged_app(&app, happ_path).await?;
+    if upgrade {
+        let started = std::time::Instant::now();
+        let changed = admin.upgrade_packaged_coordinators(&app, happ_path).await?;
+        tracing::info!(
+            changed,
+            elapsed_ms = started.elapsed().as_millis(),
+            "[UPGRADE] Explicit coordinator-only upgrade completed"
+        );
+    } else {
+        admin.verify_packaged_app(&app, happ_path).await?;
+    }
     let app = admin.enable_app(app_id.to_string()).await?;
     let cells: Vec<_> = app.cell_info.values().flatten().collect();
     anyhow::ensure!(
@@ -96,8 +126,18 @@ mod tests {
     };
     use base_types::ToBaseValue;
     use holons_core::{descriptors::Descriptor, reference_layer::ReadableHolon};
-    use map_commands_runtime::{Runtime, RuntimeSession};
+    use map_commands_runtime::{
+        personal_constitution::{
+            inspect_target, ConstitutionOutcome, PersonalConstitution, PersonalName,
+            SovereigntyObservation,
+        },
+        Runtime, RuntimeSession,
+    };
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use type_names::{
+        AgentSpaceHolonTypeName, AgentSpacePropertyTypeName, AgentSpaceRelationshipTypeName,
+        CoreRelationshipTypeName,
+    };
 
     #[derive(Debug)]
     struct CountingTransport {
@@ -187,24 +227,34 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(crate::constitution_admission::inspect_target(&runtime).await.is_err());
+        assert!(inspect_target(&runtime).await.is_err());
         assert_eq!(loads.load(Ordering::SeqCst), 1);
         prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::Provisioned, None)
             .await
             .unwrap();
         assert_eq!(loads.load(Ordering::SeqCst), 3);
-        let target = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
-        assert_eq!(
-            target.sovereignty,
-            crate::constitution_admission::SovereigntyObservation::NoAssociationObserved
-        );
+        let target = inspect_target(&runtime).await.unwrap();
+        assert_eq!(target.sovereignty, SovereigntyObservation::NoAssociationObserved);
         let id = target.space;
+        assert!(
+            map_commands_runtime::application_launch::select_application_launch(
+                &runtime,
+                map_commands_runtime::application_launch::LaunchRequirement::AcquiredSpace,
+                |_| Ok(())
+            )
+            .await
+            .is_err(),
+            "unclaimed spaces cannot launch acquired Navigator"
+        );
         assert_eq!(discoveries.load(Ordering::SeqCst), 1, "status reuses the adopted Space");
         let tx = runtime.session().begin_transaction().await.unwrap();
         let context = runtime.session().get_transaction(&tx).unwrap();
         let descriptor_id = context
             .lookup()
-            .get_saved_holon_by_key(&"PersonAgent.BioSocialAgent".into())
+            .get_saved_holon_by_key(
+                &AgentSpaceHolonTypeName::PersonAgent
+                    .descriptor_key(AgentSpaceHolonTypeName::BioSocialAgent),
+            )
             .unwrap()
             .holon_id();
         runtime.session().archive_transaction(&tx).unwrap();
@@ -212,12 +262,12 @@ mod tests {
         let baseline = loads.load(Ordering::SeqCst);
         // Create in the same runtime that provisioned the foundation, matching Welcome.
         // This test-owned conductor has no production admission or Keychain claim.
-        let admission = crate::personal_constitution::WelcomeConstitution::default();
+        let admission = PersonalConstitution::default();
         assert!(admission.available());
         let (outcome, competing) = tokio::join!(
             admission.submit(
                 &runtime,
-                crate::personal_constitution::PersonalName {
+                PersonalName {
                     last_name: "Example".into(),
                     first_name: Some("Alex".into()),
                     middle_name: None,
@@ -225,36 +275,29 @@ mod tests {
             ),
             admission.submit(
                 &runtime,
-                crate::personal_constitution::PersonalName {
-                    last_name: "Competing".into(),
-                    first_name: None,
-                    middle_name: None,
-                },
+                PersonalName { last_name: "Competing".into(), first_name: None, middle_name: None },
             ),
         );
         let outcome = outcome.unwrap();
         assert!(competing.is_err(), "a concurrent Welcome request must not stage another Agent");
-        assert_eq!(outcome, crate::personal_constitution::ConstitutionOutcome::Complete);
+        assert_eq!(outcome, ConstitutionOutcome::Complete);
         // This runtime observed an empty inverse before Commit. Welcome must
         // now observe saved membership instead of reusing that cached absence.
-        let after_creation = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
+        let after_creation = inspect_target(&runtime).await.unwrap();
         assert_eq!(after_creation.space, id);
         assert_eq!(
             discoveries.load(Ordering::SeqCst),
             1,
             "fresh membership must not rediscover Space identity"
         );
-        assert_eq!(
-            after_creation.sovereignty,
-            crate::constitution_admission::SovereigntyObservation::AssociationPresent
-        );
+        assert_eq!(after_creation.sovereignty, SovereigntyObservation::AssociationPresent);
         let verify_tx = runtime.session().begin_transaction().await.unwrap();
         let verify_context = runtime.session().get_transaction(&verify_tx).unwrap();
         let space = verify_context.discover_local_holon_space().unwrap().unwrap();
         assert_eq!(space.holon_id().unwrap(), id);
         let owners = space
             .related_holons_with_hint(
-                "IsInteriorOf",
+                AgentSpaceRelationshipTypeName::IsInteriorOf,
                 holons_core::RelationshipReadHint::RequireFresh,
             )
             .unwrap();
@@ -265,10 +308,21 @@ mod tests {
         };
         let created_id = person.holon_id().unwrap();
         assert_eq!(person.key().unwrap(), None);
-        assert_eq!(person.property_value("LastName").unwrap(), Some("Example".to_base_value()));
-        assert_eq!(person.property_value("FirstName").unwrap(), Some("Alex".to_base_value()));
-        assert_eq!(person.property_value("MiddleName").unwrap(), None);
-        for name in ["HasInterior", "OwnedBy"] {
+        assert_eq!(
+            person.property_value(AgentSpacePropertyTypeName::LastName).unwrap(),
+            Some("Example".to_base_value())
+        );
+        assert_eq!(
+            person.property_value(AgentSpacePropertyTypeName::FirstName).unwrap(),
+            Some("Alex".to_base_value())
+        );
+        assert_eq!(person.property_value(AgentSpacePropertyTypeName::MiddleName).unwrap(), None);
+        for name in [
+            type_names::ToRelationshipName::to_relationship_name(
+                AgentSpaceRelationshipTypeName::HasInterior,
+            ),
+            type_names::ToRelationshipName::to_relationship_name(CoreRelationshipTypeName::OwnedBy),
+        ] {
             let related = person
                 .related_holons_with_hint(name, holons_core::RelationshipReadHint::RequireFresh)
                 .unwrap();
@@ -277,14 +331,23 @@ mod tests {
         }
         assert_eq!(person.holon_descriptor().unwrap().holon().holon_id().unwrap(), descriptor_id);
         runtime.session().archive_transaction(&verify_tx).unwrap();
+        let launch = map_commands_runtime::application_launch::select_application_launch(
+            &runtime,
+            map_commands_runtime::application_launch::LaunchRequirement::AcquiredSpace,
+            |_| Ok(()),
+        )
+        .await
+        .unwrap();
+        assert_eq!(launch.space, id);
+        assert_eq!(launch.agent, Some(created_id.clone()));
+        assert!(launch.home.is_some());
+        assert_eq!(loads.load(Ordering::SeqCst), baseline, "Navigator launch does not import");
+        assert_eq!(discoveries.load(Ordering::SeqCst), 1, "Navigator reuses adopted Space");
+
         assert!(admission
             .submit(
                 &runtime,
-                crate::personal_constitution::PersonalName {
-                    last_name: "Another".into(),
-                    first_name: None,
-                    middle_name: None,
-                },
+                PersonalName { last_name: "Another".into(), first_name: None, middle_name: None },
             )
             .await
             .is_err());
@@ -337,24 +400,24 @@ mod tests {
         prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::OpenedExisting, None)
             .await
             .unwrap();
-        let reopened = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
+        let reopened = inspect_target(&runtime).await.unwrap();
         assert_eq!(reopened.space, id);
         assert_eq!(
             discoveries.load(Ordering::SeqCst),
             2,
             "one guest discovery per cold host runtime"
         );
-        assert_eq!(
-            reopened.sovereignty,
-            crate::constitution_admission::SovereigntyObservation::AssociationPresent
-        );
-        assert!(!crate::constitution_admission::blockers(&reopened).is_empty());
+        assert_eq!(reopened.sovereignty, SovereigntyObservation::AssociationPresent);
+        assert!(!crate::welcome_lifecycle::blockers(&reopened).is_empty());
         let tx = runtime.session().begin_transaction().await.unwrap();
         let context = runtime.session().get_transaction(&tx).unwrap();
         assert_eq!(
             context
                 .lookup()
-                .get_saved_holon_by_key(&"PersonAgent.BioSocialAgent".into())
+                .get_saved_holon_by_key(
+                    &AgentSpaceHolonTypeName::PersonAgent
+                        .descriptor_key(AgentSpaceHolonTypeName::BioSocialAgent)
+                )
                 .unwrap()
                 .holon_id(),
             descriptor_id
@@ -374,10 +437,7 @@ mod tests {
         std::fs::write(destination.join("manifest.json"), serde_json::to_vec(&manifest).unwrap())
             .unwrap();
         assert!(prepare_core_schema(&runtime, &incompatible, None).await.is_err());
-        assert_eq!(
-            crate::constitution_admission::inspect_target(&runtime).await.unwrap().space,
-            id
-        );
+        assert_eq!(inspect_target(&runtime).await.unwrap().space, id);
         assert_eq!(
             loads.load(Ordering::SeqCst),
             baseline,
@@ -417,23 +477,15 @@ mod tests {
             conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key,
             author
         );
-        let observed =
-            crate::constitution_admission::inspect_target(&reopened_runtime).await.unwrap();
+        let observed = inspect_target(&reopened_runtime).await.unwrap();
         assert_eq!(observed.space, id);
         assert_eq!(discoveries.load(Ordering::SeqCst), 3, "warm status adds no guest discovery");
-        assert_eq!(
-            observed.sovereignty,
-            crate::constitution_admission::SovereigntyObservation::AssociationPresent
-        );
+        assert_eq!(observed.sovereignty, SovereigntyObservation::AssociationPresent);
         // A new backend admission object after restart must also refuse constitution.
-        assert!(crate::personal_constitution::WelcomeConstitution::default()
+        assert!(PersonalConstitution::default()
             .submit(
                 &reopened_runtime,
-                crate::personal_constitution::PersonalName {
-                    last_name: "Repeat".into(),
-                    first_name: None,
-                    middle_name: None,
-                },
+                PersonalName { last_name: "Repeat".into(), first_name: None, middle_name: None },
             )
             .await
             .is_err());
@@ -443,7 +495,7 @@ mod tests {
         assert_eq!(retained_space.holon_id().unwrap(), id);
         let association = retained_space
             .related_holons_with_hint(
-                "IsInteriorOf",
+                AgentSpaceRelationshipTypeName::IsInteriorOf,
                 holons_core::RelationshipReadHint::RequireFresh,
             )
             .unwrap();
@@ -451,7 +503,7 @@ mod tests {
         assert_eq!(retained_person.holon_id().unwrap(), created_id);
         assert_eq!(retained_person.key().unwrap(), None);
         assert_eq!(
-            retained_person.property_value("LastName").unwrap(),
+            retained_person.property_value(AgentSpacePropertyTypeName::LastName).unwrap(),
             Some("Example".to_base_value())
         );
         assert_eq!(loads.load(Ordering::SeqCst), baseline);
