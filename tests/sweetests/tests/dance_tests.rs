@@ -31,10 +31,16 @@ use rstest::*;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::attachment_defaults_fixture::*;
+use fixture_cases::commit_conformance_fixture::*;
+use fixture_cases::commit_default_declaration_fixture::*;
 use fixture_cases::commit_disposition_fixture::*;
+use fixture_cases::commit_enum_conformance_fixture::*;
+use fixture_cases::commit_enum_evolution_fixture::*;
 use fixture_cases::commit_lineage_fixture::*;
+use fixture_cases::commit_scalar_constraints_fixture::*;
 use fixture_cases::commit_schema_fixture::*;
 use fixture_cases::commit_sibling_fixture::*;
+use fixture_cases::commit_staged_scalar_fixture::*;
 use fixture_cases::commit_strict_contract_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
@@ -120,6 +126,8 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             stage_new_version_fixture().unwrap(),
             simple_create_holon_fixture().unwrap(),
             commit_validation_fixture().unwrap(),
+            commit_scalar_constraints_fixture().unwrap(),
+            commit_staged_scalar_fixture().unwrap(),
             attachment_defaults_fixture().unwrap(),
             commit_no_action_fixture().unwrap(),
             commit_mixed_dispositions_fixture().unwrap(),
@@ -139,6 +147,10 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_schema_cycle_fixture().unwrap(),
             commit_schema_successor_membership_fixture().unwrap(),
             commit_book_title_exact_references_fixture().unwrap(),
+            commit_enum_conformance_fixture().unwrap(),
+            commit_default_declaration_fixture().unwrap(),
+            commit_enum_evolution_fixture().unwrap(),
+            commit_conformance_fixture().unwrap(),
             commit_strict_contract_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),
             simple_add_remove_properties_fixture().unwrap(),
@@ -225,6 +237,46 @@ async fn book_value_presentation_acceptance() {
     run_dance_test_suite(DanceTestSuite {
         name: "book_value_presentation_acceptance",
         test_cases: vec![load_book_person_inverse_schema_fixture().unwrap()],
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused conformance acceptance; covered by runtime matrix"]
+async fn commit_enum_conformance_fixture_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "commit_enum_conformance_fixture",
+        test_cases: vec![commit_enum_conformance_fixture().unwrap()],
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused conformance acceptance; covered by runtime matrix"]
+async fn commit_default_declaration_fixture_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "commit_default_declaration_fixture",
+        test_cases: vec![commit_default_declaration_fixture().unwrap()],
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused conformance acceptance; covered by runtime matrix"]
+async fn commit_conformance_fixture_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "commit_conformance_fixture",
+        test_cases: vec![commit_conformance_fixture().unwrap()],
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused enum evolution; covered by runtime matrix"]
+async fn commit_enum_evolution_fixture_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "commit_enum_evolution_fixture",
+        test_cases: vec![commit_enum_evolution_fixture().unwrap()],
     })
     .await;
 }

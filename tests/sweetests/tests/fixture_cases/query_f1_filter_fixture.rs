@@ -158,6 +158,9 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
     let bob = saved(&mut test_case, &mut fixture_holons, PERSON_BOB_KEY)?;
 
     let types = PredicateTypes::look_up(&mut test_case, &fixture_context, &mut fixture_holons)?;
+    let tight_string = saved(&mut test_case, &mut fixture_holons, "ShortText.MapStringValueType")?;
+    let inherited_tight_string =
+        saved(&mut test_case, &mut fixture_holons, "ShortTextChild.ShortText")?;
     let mut authoring = query_authoring(&mut test_case, &fixture_context, &mut fixture_holons)?;
     let mut author =
         PredicateAuthoring { authoring: &mut authoring, types: &types, prefix: "QryF1" };
@@ -270,6 +273,71 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
         author.relate(misplaced, QueryRelationshipTypeName::SeedPredicate, vec![misplaced_leaf])?;
     let misplaced_query = author.query("Misplaced", misplaced)?;
 
+    // Scalar literal contracts are checked before candidates are read, including empty inputs.
+    let tight_boundary = author.compare(
+        "TightBoundary",
+        "Title",
+        &types.contains,
+        &tight_string,
+        "atlas".to_base_value(),
+    )?;
+    let tight_boundary = author.filter("TightBoundary", tight_boundary)?;
+    let tight_boundary = author.query("TightBoundary", tight_boundary)?;
+    let invalid_filter = author.compare(
+        "TightFilter",
+        "Title",
+        &types.contains,
+        &tight_string,
+        "abcdef".to_base_value(),
+    )?;
+    let invalid_filter = author.filter("TightFilter", invalid_filter)?;
+    let invalid_filter = author.query("TightFilter", invalid_filter)?;
+    let invalid_seed = author.compare(
+        "TightSeed",
+        "Key",
+        &types.contains,
+        &tight_string,
+        "abcdef".to_base_value(),
+    )?;
+    let invalid_seed = author.seed("TightSeed", Some(invalid_seed))?;
+    let invalid_seed = author.query("TightSeed", invalid_seed)?;
+    let invalid_expand = author.compare(
+        "TightExpand",
+        "Name",
+        &types.contains,
+        &tight_string,
+        "abcdef".to_base_value(),
+    )?;
+    let expand = author.authoring.expand("Expand.TightLiteral", BOOK_TO_PERSON_RELATIONSHIP)?;
+    let expand = author.relate(
+        expand,
+        QueryRelationshipTypeName::ExpansionPredicate,
+        vec![invalid_expand],
+    )?;
+    let invalid_expand = author.query("TightExpand", expand)?;
+    let invalid_any_leaf = author.compare(
+        "TightAnyOf",
+        "Title",
+        &types.contains,
+        &tight_string,
+        "abcdef".to_base_value(),
+    )?;
+    let valid_any_leaf = author.contains("ValidAnyOf", "Title", "atlas")?;
+    let invalid_any = author.any_of("TightAnyOf", vec![valid_any_leaf, invalid_any_leaf])?;
+    let invalid_any = author.filter("TightAnyOf", invalid_any)?;
+    let invalid_any = author.query("TightAnyOf", invalid_any)?;
+
+    // Equals requires ShortText itself; D inherits its bound from this required type R.
+    let inherited_invalid = author.compare(
+        "InheritedTight",
+        "ShortText",
+        &types.equals,
+        &inherited_tight_string,
+        "abcdef".to_base_value(),
+    )?;
+    let inherited_invalid = author.filter("InheritedTight", inherited_invalid)?;
+    let inherited_invalid = author.query("InheritedTight", inherited_invalid)?;
+
     for route in [QueryRoute::Direct, QueryRoute::QueryDance] {
         let books = |members: &[&TestReference]| {
             QueryInputSpec::collection("Book", members.iter().map(|book| (*book).clone()).collect())
@@ -278,6 +346,32 @@ pub fn query_f1_filter_fixture() -> Result<DancesTestCase, HolonError> {
             QueryExpectation::Members(members.iter().map(|member| (*member).clone()).collect())
         };
         let error = QueryExpectation::Error;
+        test_case.add_execute_query_step(
+            tight_boundary.clone(),
+            books(&[&atlas, &plain]),
+            route,
+            members(&[&atlas]),
+            Some("A tight declared literal accepts its grapheme boundary".into()),
+        )?;
+        for (query, input) in [
+            (invalid_filter.clone(), books(&[&atlas])),
+            (invalid_filter.clone(), books(&[])),
+            (invalid_seed.clone(), QueryInputSpec::None),
+            (invalid_expand.clone(), books(&[&strasse])),
+            (invalid_expand.clone(), books(&[])),
+            (invalid_any.clone(), books(&[])),
+            (inherited_invalid.clone(), books(&[])),
+        ] {
+            test_case.add_execute_query_step(
+                query,
+                input,
+                route,
+                error(HolonErrorKind::ValueConstraintViolation),
+                Some(format!(
+                    "Configured literal constraints fail before candidate reads via {route:?}"
+                )),
+            )?;
+        }
 
         test_case.add_execute_query_step(
             title_filter.clone(),

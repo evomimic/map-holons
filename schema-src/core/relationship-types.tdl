@@ -349,6 +349,7 @@ inverse relationship (EnumVariantValueType.ValueType)-[VariantOf]->(EnumValueTyp
   extends InverseRelationshipType.RelationshipType
   source EnumVariantValueType.ValueType
   target EnumValueType.ValueType
+  TargetBinding Lineage
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
   }

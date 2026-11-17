@@ -55,7 +55,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
             token: staged,
             validation_state: ValidationState::NoDescriptor,
             findings: vec![ExpectedValidationFinding {
-                kind: CommitValidationViolationKind::NoDescriptor,
+                kind: CommitValidationViolationKind::NoDescriptor.into(),
                 rule_key: None,
                 subject: ExpectedValidationSubject::Holon,
             }],

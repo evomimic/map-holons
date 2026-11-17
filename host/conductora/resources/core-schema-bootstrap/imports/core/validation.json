@@ -920,8 +920,7 @@
         "TypeNamePlural": "HolonValidationRules",
         "DisplayName": "Holon Validation Rule",
         "DisplayNamePlural": "Holon Validation Rules",
-        "Description": "ValidationRule family for rules evaluated over holons and their descriptor-level contracts.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for rules evaluated over holons and their descriptor-level contracts."
       },
       "relationships": [
         {
@@ -958,8 +957,7 @@
         "TypeNamePlural": "PropertyValidationRules",
         "DisplayName": "Property Validation Rule",
         "DisplayNamePlural": "Property Validation Rules",
-        "Description": "ValidationRule family for rules evaluated over property descriptors, required properties, and populated property members.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for rules evaluated over property descriptors, required properties, and populated property members."
       },
       "relationships": [
         {
@@ -996,8 +994,7 @@
         "TypeNamePlural": "ValueValidationRules",
         "DisplayName": "Value Validation Rule",
         "DisplayNamePlural": "Value Validation Rules",
-        "Description": "ValidationRule family for rules evaluated over property values and their selected ValueType descriptors.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for rules evaluated over property values and their selected ValueType descriptors."
       },
       "relationships": [
         {
@@ -1034,8 +1031,7 @@
         "TypeNamePlural": "StringValidationRules",
         "DisplayName": "String Validation Rule",
         "DisplayNamePlural": "String Validation Rules",
-        "Description": "ValidationRule family for string value rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for string value rules."
       },
       "relationships": [
         {
@@ -1072,8 +1068,7 @@
         "TypeNamePlural": "IntegerValidationRules",
         "DisplayName": "Integer Validation Rule",
         "DisplayNamePlural": "Integer Validation Rules",
-        "Description": "ValidationRule family for integer value rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for integer value rules."
       },
       "relationships": [
         {
@@ -1110,8 +1105,7 @@
         "TypeNamePlural": "BooleanValidationRules",
         "DisplayName": "Boolean Validation Rule",
         "DisplayNamePlural": "Boolean Validation Rules",
-        "Description": "ValidationRule family for boolean value rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for boolean value rules."
       },
       "relationships": [
         {
@@ -1148,8 +1142,7 @@
         "TypeNamePlural": "EnumValueValidationRules",
         "DisplayName": "Enum Value Validation Rule",
         "DisplayNamePlural": "Enum Value Validation Rules",
-        "Description": "ValidationRule family for enum value and enum variant membership rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for enum value and enum variant membership rules."
       },
       "relationships": [
         {
@@ -1186,8 +1179,7 @@
         "TypeNamePlural": "BytesValidationRules",
         "DisplayName": "Bytes Validation Rule",
         "DisplayNamePlural": "Bytes Validation Rules",
-        "Description": "ValidationRule family for bytes value rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for bytes value rules."
       },
       "relationships": [
         {
@@ -1224,8 +1216,7 @@
         "TypeNamePlural": "ValueArrayValidationRules",
         "DisplayName": "Value Array Validation Rule",
         "DisplayNamePlural": "Value Array Validation Rules",
-        "Description": "ValidationRule family for value-array and collection value rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for value-array and collection value rules."
       },
       "relationships": [
         {
@@ -1262,8 +1253,7 @@
         "TypeNamePlural": "RelationshipValidationRules",
         "DisplayName": "Relationship Validation Rule",
         "DisplayNamePlural": "Relationship Validation Rules",
-        "Description": "ValidationRule family for relationship descriptor and relationship occurrence rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for relationship descriptor and relationship occurrence rules."
       },
       "relationships": [
         {
@@ -1300,8 +1290,7 @@
         "TypeNamePlural": "TransactionValidationRules",
         "DisplayName": "Transaction Validation Rule",
         "DisplayNamePlural": "Transaction Validation Rules",
-        "Description": "ValidationRule family for staged transaction rules.",
-        "IsAbstractType": true
+        "Description": "ValidationRule family for staged transaction rules."
       },
       "relationships": [
         {
@@ -1941,11 +1930,11 @@
     },
     {
       "key": "DefaultsRequireRequiredProperties.ValidationRule",
-      "type": "PropertyValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-DEFAULT-001",
-        "ValidationLevel": "Property",
+        "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Only required properties may declare defaults."
       },
       "relationships": [
@@ -1969,11 +1958,11 @@
     },
     {
       "key": "DefaultValueConformance.ValidationRule",
-      "type": "PropertyValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-DEFAULT-002",
-        "ValidationLevel": "Property",
+        "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every declared default value must conform to its effective value definition."
       },
       "relationships": [
@@ -2137,12 +2126,12 @@
     },
     {
       "key": "EnumMemberNamesUnique.ValidationRule",
-      "type": "EnumValueValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-ENUM-001",
-        "ValidationLevel": "Value",
-        "ValidationRuleDescription": "Enum member names must be unique within each effective enum definition."
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."
       },
       "relationships": [
         {
@@ -2193,11 +2182,11 @@
     },
     {
       "key": "UniquePropertyMemberBinding.ValidationRule",
-      "type": "PropertyValidationRule.HolonType",
+      "type": "HolonValidationRule.HolonType",
       "properties": {
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-BIND-001",
-        "ValidationLevel": "Property",
+        "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
       },
       "relationships": [
@@ -2450,7 +2439,7 @@
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-PROP-002",
         "ValidationLevel": "Property",
-        "ValidationRuleDescription": "A populated property value must conform to the selected ValueType descriptor."
+        "ValidationRuleDescription": "A populated property value must conform to its selected ValueType descriptor. Representation and configured-constraint findings are reported by the value-kind rules and the constraint traversal; this rule adds none of its own."
       },
       "relationships": [
         {

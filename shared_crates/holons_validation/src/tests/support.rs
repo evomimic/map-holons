@@ -199,10 +199,50 @@ pub(super) fn subject_rules(
     })
 }
 
+/// Native representation handlers, excluding semantic rules that also constrain native kind.
+pub(super) fn native_kind_rules(
+) -> impl Iterator<Item = (CoreValidationRuleName, &'static str, &'static str)> {
+    subject_rules().filter(|(name, _, _)| {
+        matches!(
+            name,
+            CoreValidationRuleName::BaseValueKindMatchesString
+                | CoreValidationRuleName::BaseValueKindMatchesInteger
+                | CoreValidationRuleName::BaseValueKindMatchesBoolean
+                | CoreValidationRuleName::BaseValueKindMatchesBytes
+                | CoreValidationRuleName::BaseValueKindMatchesEnum
+        )
+    })
+}
+
 impl Fixture {
     /// Opens structural evidence for one unchanged assessment; share it across its consumers.
     pub fn diagnoses(&self) -> Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses> {
         Arc::new(crate::assessment::structural_diagnoses::StructuralDiagnoses::new(&self.context))
+    }
+
+    /// Uses production preparation for declaration tests, including unattached constraints.
+    pub fn constraint_packages(
+        &self,
+        diagnoses: Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
+    ) -> Result<crate::assessment::descriptor_package::DescriptorPackages, HolonError> {
+        let mut roots = Vec::new();
+        for reference in self.nodes.values() {
+            if diagnoses.get(reference)?.valid_lineage().is_some_and(|lineage| {
+                lineage.contains_role(type_names::CoreDefinitionRole::TypeDescriptor)
+            }) {
+                roots.push(reference.clone());
+            }
+        }
+        let packages =
+            crate::assessment::descriptor_package::DescriptorPackages::construct_with_observer(
+                &self.context,
+                &roots,
+                &self.nodes.values().cloned().collect::<Vec<_>>(),
+                &crate::assessment::schema_view::SchemaWorkset { schemas: Vec::new() },
+                diagnoses,
+                &mut |_| {},
+            )?;
+        Ok(packages)
     }
 
     /// Opens an empty schema snapshot for bootstrap precondition tests.
@@ -240,7 +280,8 @@ impl Fixture {
             fixture.node(family)?;
             fixture.node(target)?;
             fixture.link(rule.as_str(), CoreRelationshipTypeName::DescribedBy, family)?;
-            if binding_roots.insert(target) {
+            // The anchor seeding helper supplies MetaTypeDescriptor's HolonType parent.
+            if binding_roots.insert(target) && target != "MetaTypeDescriptor.HolonType" {
                 fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
             }
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;
@@ -609,7 +650,8 @@ impl Fixture {
     }
 }
 
-pub(super) fn c2_kind_semantics(
+/// Seeds Core anchor designations and ancestry for graph-derived kind assessment.
+pub(super) fn seed_instance_type_kind_anchors(
     fixture: &mut Fixture,
 ) -> Result<holons_core::DescriptorKindSemantics, HolonError> {
     use type_names::CorePropertyTypeName;
@@ -649,7 +691,7 @@ pub(super) fn c2_kind_semantics(
 /// Complete the roots and member structure consumed by prospective Commit assessment.
 pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
     let mut fixture = Fixture::new()?;
-    c2_kind_semantics(&mut fixture)?;
+    seed_instance_type_kind_anchors(&mut fixture)?;
     for key in [
         "Schema.HolonType",
         "Rule.HolonType",
@@ -681,9 +723,7 @@ pub(super) fn readiness_fixture() -> Result<Fixture, HolonError> {
         "TypeDescriptor",
     )?;
     // Native value anchors inherit from ValueType rather than directly from TypeDescriptor.
-    for (_, _, key) in subject_rules()
-        .filter(|(name, _, _)| crate::dispatch::registration(*name).native_kind.is_some())
-    {
+    for (_, _, key) in native_kind_rules() {
         let type_descriptor = fixture.nodes["TypeDescriptor"].clone();
         fixture
             .nodes
@@ -864,7 +904,8 @@ pub(super) fn prepare_meta_contract(fixture: &mut Fixture) -> Result<(), HolonEr
     Ok(())
 }
 
-pub(super) fn dispatch_c2_rule(
+/// Emits one prepared descriptor product through a fixture binding, without dispatch.
+pub(super) fn emit_descriptor_product_rule(
     fixture: &mut Fixture,
     rule: CoreValidationRuleName,
     products: &DescriptorRuleProducts,
@@ -886,4 +927,126 @@ pub(super) fn dispatch_c2_rule(
     ));
     products.emit(rule, registration.code, &binding, &path, &mut collector)?;
     Ok(collector.into_report().violations)
+}
+
+/// Adds a concrete constraint type and configured contribution to an exact descriptor.
+pub(super) fn bounded_constraint(
+    fixture: &mut Fixture,
+    name: &str,
+    constraint_type: &str,
+    descriptor: &str,
+    minimum: Option<i64>,
+    maximum: Option<i64>,
+) -> Result<(), HolonError> {
+    fixture.node("ConstraintType.HolonType")?;
+    if fixture.nodes["ConstraintType.HolonType"]
+        .related_holons(CoreRelationshipTypeName::Extends)?
+        .read()
+        .unwrap()
+        .get_members()
+        .is_empty()
+    {
+        fixture.link(
+            "ConstraintType.HolonType",
+            CoreRelationshipTypeName::Extends,
+            "HolonType.TypeDescriptor",
+        )?;
+    }
+    fixture.node(constraint_type)?;
+    if fixture.nodes[constraint_type]
+        .related_holons(CoreRelationshipTypeName::Extends)?
+        .read()
+        .unwrap()
+        .get_members()
+        .is_empty()
+    {
+        fixture.link(
+            constraint_type,
+            CoreRelationshipTypeName::Extends,
+            "ConstraintType.HolonType",
+        )?;
+    }
+    fixture.link(
+        constraint_type,
+        CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+        descriptor,
+    )?;
+    let mut constraint = fixture.node(name)?;
+    constraint.with_property_value("ConstraintName", name)?;
+    if let Some(minimum) = minimum {
+        constraint
+            .with_property_value("Minimum", minimum)?
+            .with_property_value("MinimumIsInclusive", true)?;
+    }
+    if let Some(maximum) = maximum {
+        constraint
+            .with_property_value("Maximum", maximum)?
+            .with_property_value("MaximumIsInclusive", true)?;
+    }
+    fixture.link(name, CoreRelationshipTypeName::DescribedBy, constraint_type)?;
+    fixture.link(descriptor, CoreRelationshipTypeName::Constraints, name)?;
+    Ok(())
+}
+
+/// Models the canonical MapString attachment, including the constraint's self-governed name.
+pub(super) fn length16k_fixture() -> Result<Fixture, HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture
+        .node("MapStringValueType.StringValueType")?
+        .with_property_value("TypeName", "MapStringValueType")?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("MapStringValueType.StringValueType", R::Extends, "StringValueType.ValueType")?;
+    bounded_constraint(
+        &mut fixture,
+        "Length16k.StringLengthConstraint",
+        "StringLengthConstraint.ConstraintType",
+        "MapStringValueType.StringValueType",
+        None,
+        Some(16384),
+    )?;
+    for (name, value_type) in [
+        ("ConstraintName", "MapStringValueType.StringValueType"),
+        ("Maximum", "IntegerValueType.ValueType"),
+        ("MaximumIsInclusive", "BooleanValueType.ValueType"),
+    ] {
+        let key = format!("{name}.PropertyType");
+        fixture
+            .node(&key)?
+            .with_property_value("TypeName", name)?
+            .with_property_value("DefinesInstanceTypeKind", false)?;
+        fixture.link(&key, R::Extends, "PropertyType.TypeDescriptor")?;
+        fixture.link(&key, R::ValueType, value_type)?;
+        fixture.link("StringLengthConstraint.ConstraintType", R::InstanceProperties, &key)?;
+    }
+    fixture.link(
+        "StringLengthConstraint.ConstraintType",
+        R::InstanceProperties,
+        "Key.PropertyType",
+    )?;
+    fixture.link("Schema.HolonType", R::Extends, "HolonType.TypeDescriptor")?;
+    fixture.node("CoreOwner")?;
+    fixture.link("CoreOwner", R::DescribedBy, "Schema.HolonType")?;
+    fixture
+        .node("RuleOf.Relationship")?
+        .with_property_value("TypeName", "RuleOf")?
+        .with_property_value("AllowsDuplicates", false)?
+        .with_property_value("IsOrdered", false)?
+        .with_property_value("IsDefinitional", true)?
+        .with_property_value("DefinesInstanceTypeKind", false)?;
+    fixture.link("RuleOf.Relationship", R::Extends, "DeclaredRelationshipType")?;
+    fixture.link("RuleOf.Relationship", R::SourceType, "ConstraintType.HolonType")?;
+    fixture.link("RuleOf.Relationship", R::TargetType, "Schema.HolonType")?;
+    fixture.link(
+        "StringLengthConstraint.ConstraintType",
+        R::InstanceRelationships,
+        "RuleOf.Relationship",
+    )?;
+    fixture.link("Length16k.StringLengthConstraint", R::RuleOf, "CoreOwner")?;
+    let constraint = fixture.nodes.get_mut("Length16k.StringLengthConstraint").unwrap();
+    constraint.with_property_value("ConstraintName", "Length16k")?;
+    // Undo node()'s descriptor-style defaults, which are not part of this constraint's contract.
+    for name in ["TypeName", "IsAbstractType", "IsValueRequired"] {
+        constraint.remove_property_value(name)?;
+    }
+    Ok(fixture)
 }

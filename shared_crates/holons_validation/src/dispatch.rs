@@ -1,10 +1,11 @@
 use core_types::{BaseValue, BaseValueKind, HolonError, ValidationSubjectPath};
-use holons_core::ValueDescriptor;
+use holons_core::descriptors::value_constraints::{
+    ConstraintEvaluationOutcome, ScalarConstraintFamily, ScalarConstraintParameters,
+};
+use holons_core::descriptors::value_descriptor_subtypes::{EnumMembers, EnumMembership};
 use type_names::{CoreDefinitionRole, CoreValidationRuleName};
 
-use crate::{
-    ResolvedConstraint, ResolvedValidationBinding, ValidationCollector, ValueValidationContext,
-};
+use crate::{ResolvedValidationBinding, ValidationCollector};
 
 /// Canonical fully qualified schema key of a validation rule.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -21,7 +22,7 @@ pub enum ValidationInvocation<'a> {
         code: &'static str,
         binding: &'a ResolvedValidationBinding,
         path: &'a ValidationSubjectPath,
-        subject: &'a crate::PreparedRuleSubject,
+        subject: &'a crate::PreparedRuleSubject<'a>,
     },
     /// Aggregate products computed once for a Schema, even when it is unstaged.
     Schema {
@@ -45,19 +46,29 @@ pub enum RuleOutcome {
 pub type StaticRuleHandler =
     fn(ValidationInvocation<'_>, &mut ValidationCollector) -> Result<RuleOutcome, HolonError>;
 
-/// Internal configured-constraint evaluator contract; no evaluators are registered.
-pub type StaticConstraintHandler = fn(
-    &ResolvedConstraint,
-    ValueValidationSubject<'_>,
-    &ValueValidationContext,
-    &mut ValidationCollector,
-) -> Result<(), HolonError>;
+/// Pure scalar execution over prepared parameters and an actual value.
+pub type StaticValueConstraintEvaluator =
+    fn(&ScalarConstraintParameters, &BaseValue) -> ConstraintEvaluationOutcome;
+
+/// Subject-specific evaluator selected by the single constraint registry.
+#[derive(Clone, Copy)]
+pub enum StaticConstraintEvaluator {
+    Value(StaticValueConstraintEvaluator),
+}
+
+impl StaticConstraintEvaluator {
+    /// An implementation for another subject level does not establish support.
+    pub fn supports(self, level: SubjectLevel) -> bool {
+        matches!((self, level), (Self::Value(_), SubjectLevel::Value))
+    }
+}
 
 /// Execution route selected by a built-in rule's registration.
 #[derive(Clone, Copy)]
 pub(crate) enum RuleImplementation {
     Subject(StaticRuleHandler),
     DescriptorProduct,
+    ContractGuard,
     SchemaAggregate(StaticRuleHandler),
 }
 
@@ -94,6 +105,16 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             declaring: Role::PropertyType,
             native_kind: None,
             code: "DS-PROP-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        PropertyValueConformance => RuleRegistration {
+            implementation: Some(Subject(crate::rules::conformance::property_value_conformance)),
+            level: Property,
+            family: Role::PropertyValidationRule,
+            declaring: Role::PropertyType,
+            native_kind: None,
+            code: "DS-PROP-002",
             prerequisite: false,
             applicability: SubjectApplicability::AnySubject,
         },
@@ -167,6 +188,93 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
             prerequisite: false,
             applicability: SubjectApplicability::AnySubject,
         },
+        EnumTokenMembership => RuleRegistration {
+            implementation: Some(Subject(crate::rules::conformance::assess_enum_token_membership)),
+            level: Value,
+            family: Role::EnumValueValidationRule,
+            declaring: Role::EnumValueType,
+            native_kind: Some(BaseValueKind::Enum),
+            code: "DS-ENUM-002",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        EnumMemberNamesUnique => RuleRegistration {
+            implementation: Some(Subject(crate::rules::conformance::assess_enum_members)),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaEnumValueType,
+            native_kind: None,
+            code: "DS-ENUM-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        EnumTokenNonRetroactivity => RuleRegistration {
+            implementation: None,
+            level: Value,
+            family: Role::EnumValueValidationRule,
+            declaring: Role::EnumValueType,
+            native_kind: Some(BaseValueKind::Enum),
+            code: "DS-ENUM-003",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        DefaultsRequireRequiredProperties => RuleRegistration {
+            implementation: Some(Subject(
+                crate::rules::conformance::assess_defaults_require_required_properties,
+            )),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaPropertyType,
+            native_kind: None,
+            code: "DS-DEFAULT-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        DefaultValueConformance => RuleRegistration {
+            implementation: Some(Subject(
+                crate::rules::conformance::assess_default_value_conformance,
+            )),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaPropertyType,
+            native_kind: None,
+            code: "DS-DEFAULT-002",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        ConcreteDescribingType => RuleRegistration {
+            implementation: Some(DescriptorProduct),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::HolonType,
+            native_kind: None,
+            code: "DS-CONFORM-001",
+            prerequisite: true,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        UniquePropertyMemberBinding => RuleRegistration {
+            implementation: Some(RuleImplementation::ContractGuard),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::HolonType,
+            native_kind: None,
+            code: "DS-BIND-001",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+        AbstractMemberMinimumEnforcement => RuleRegistration {
+            implementation: Some(Subject(
+                crate::rules::conformance::abstract_member_minimum_enforcement,
+            )),
+            level: Holon,
+            family: Role::HolonValidationRule,
+            declaring: Role::MetaTypeDescriptor,
+            native_kind: None,
+            code: "DS-CONFORM-002",
+            prerequisite: false,
+            applicability: SubjectApplicability::AnySubject,
+        },
+
         AtMostOneDirectParent => RuleRegistration {
             implementation: Some(DescriptorProduct),
             level: Holon,
@@ -346,30 +454,28 @@ pub(crate) fn registration(name: CoreValidationRuleName) -> RuleRegistration {
 pub struct StaticConstraintRegistry;
 
 impl StaticConstraintRegistry {
-    /// No configured value or cardinality evaluator is registered.
-    pub fn lookup(_key: &ConstraintTypeKey) -> Option<StaticConstraintHandler> {
-        None
+    /// Selects exact concrete scalar types and filters by evaluation subject.
+    pub fn lookup(
+        key: &ConstraintTypeKey,
+        level: SubjectLevel,
+    ) -> Option<StaticConstraintEvaluator> {
+        ScalarConstraintFamily::for_concrete_type(&key.0)?;
+        let evaluator = StaticConstraintEvaluator::Value(ScalarConstraintParameters::evaluate);
+        evaluator.supports(level).then_some(evaluator)
     }
-}
-
-/// A populated native value and its selected value-type descriptor.
-#[derive(Clone, Copy)]
-pub struct ValueValidationSubject<'a> {
-    /// Descriptor governing this value independently of its containing property.
-    pub descriptor: &'a ValueDescriptor,
-    /// Native representation being assessed.
-    pub value: &'a BaseValue,
-    /// Immutable diagnostic provenance, with no property or holon handle.
-    pub path: &'a ValidationSubjectPath,
 }
 
 /// Read-only inputs prepared through the Commit assessment's bound references.
 /// Handlers consume these facts without navigating to containing subjects.
-pub enum PreparedRuleSubject {
+pub enum PreparedRuleSubject<'a> {
     /// Populated names absent from the selected effective contract.
     Holon {
         undescribed_properties: Vec<core_types::PropertyName>,
         key_claim: Option<crate::KeyClaim>,
+        /// Present only for enum definitions; malformed declarations retain their diagnosis.
+        enum_members: Option<Result<&'a EnumMembers, HolonError>>,
+        /// Local default declaration and its sealed assessment inputs, for property candidates.
+        default_declaration: Option<crate::DefaultDeclarationAssessment<'a>>,
     },
     /// A missing property whose minimum and requiredness have already been resolved.
     Property { missing_required: bool, name: String, descriptor_identity: String },
@@ -377,13 +483,15 @@ pub enum PreparedRuleSubject {
     Value {
         expected: holons_core::ValueDescriptorKind,
         actual: core_types::BaseValueKind,
+        /// Present only when both actual and selected native kinds are enum.
+        enum_membership: Option<(String, Result<EnumMembership, HolonError>)>,
         descriptor_identity: String,
     },
 }
 
 /// Expected invocation boundary, distinct from a schema's authored display labels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum SubjectLevel {
+pub enum SubjectLevel {
     Holon,
     Property,
     Value,

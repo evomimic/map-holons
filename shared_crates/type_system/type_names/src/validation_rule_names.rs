@@ -10,6 +10,8 @@ pub enum CoreValidationRuleName {
     RequiredPropertyPresence,
     /// DS-PROP-003: populated properties must belong to the effective contract.
     NoUndescribedProperties,
+    /// DS-PROP-002: property value execution and binding compatibility.
+    PropertyValueConformance,
     /// DS-KEY-006: complete local keys remain associated with one lineage.
     KeyUniqueness,
     /// String values use the native string representation.
@@ -22,6 +24,22 @@ pub enum CoreValidationRuleName {
     BaseValueKindMatchesBytes,
     /// Enum values use the native enum representation.
     BaseValueKindMatchesEnum,
+    /// DS-ENUM-002: tokens identify exactly one concrete variant.
+    EnumTokenMembership,
+    /// DS-ENUM-001: enum members are concrete and their tokens are unique.
+    EnumMemberNamesUnique,
+    /// DS-ENUM-003: exact version references preserve historical token interpretation.
+    EnumTokenNonRetroactivity,
+    /// DS-DEFAULT-001: only required properties may declare defaults.
+    DefaultsRequireRequiredProperties,
+    /// DS-DEFAULT-002: defaults conform to the declaring property's value type.
+    DefaultValueConformance,
+    /// DS-CONFORM-001: describing types must be concrete.
+    ConcreteDescribingType,
+    /// DS-BIND-001: populated property names bind unambiguously.
+    UniquePropertyMemberBinding,
+    /// DS-CONFORM-002: abstract minimum exemptions are member-specific.
+    AbstractMemberMinimumEnforcement,
     /// DS-STRUCT-002: at most one direct Extends parent.
     AtMostOneDirectParent,
     /// DS-STRUCT-006: concrete property definitions cannot be extended.
@@ -74,6 +92,19 @@ impl CoreValidationRuleName {
     /// Fully qualified schema key; display labels never select a handler.
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::EnumTokenMembership => "EnumTokenMembership.ValidationRule",
+            Self::EnumMemberNamesUnique => "EnumMemberNamesUnique.ValidationRule",
+            Self::EnumTokenNonRetroactivity => "EnumTokenNonRetroactivity.ValidationRule",
+            Self::DefaultsRequireRequiredProperties => {
+                "DefaultsRequireRequiredProperties.ValidationRule"
+            }
+            Self::DefaultValueConformance => "DefaultValueConformance.ValidationRule",
+            Self::ConcreteDescribingType => "ConcreteDescribingType.ValidationRule",
+            Self::UniquePropertyMemberBinding => "UniquePropertyMemberBinding.ValidationRule",
+            Self::AbstractMemberMinimumEnforcement => {
+                "AbstractMemberMinimumEnforcement.ValidationRule"
+            }
+
             Self::SchemaDependenciesAcyclic => "SchemaDependenciesAcyclic.ValidationRule",
             Self::CrossSchemaDependenciesDeclared => {
                 "CrossSchemaDependenciesDeclared.ValidationRule"
@@ -81,6 +112,7 @@ impl CoreValidationRuleName {
             Self::InheritedValueConstraintNonRelaxation => {
                 "InheritedValueConstraintNonRelaxation.ValidationRule"
             }
+            Self::PropertyValueConformance => "PropertyValueConformance.ValidationRule",
             Self::RequiredPropertyPresence => "RequiredPropertyPresence.ValidationRule",
             Self::KeyUniqueness => "KeyUniqueness.ValidationRule",
             Self::NoUndescribedProperties => "NoUndescribedProperties.ValidationRule",
@@ -150,6 +182,15 @@ mod tests {
     #[test]
     fn canonical_keys_are_fully_qualified() {
         for (rule, expected) in [
+            (EnumTokenMembership, "EnumTokenMembership.ValidationRule"),
+            (EnumMemberNamesUnique, "EnumMemberNamesUnique.ValidationRule"),
+            (EnumTokenNonRetroactivity, "EnumTokenNonRetroactivity.ValidationRule"),
+            (DefaultsRequireRequiredProperties, "DefaultsRequireRequiredProperties.ValidationRule"),
+            (DefaultValueConformance, "DefaultValueConformance.ValidationRule"),
+            (ConcreteDescribingType, "ConcreteDescribingType.ValidationRule"),
+            (UniquePropertyMemberBinding, "UniquePropertyMemberBinding.ValidationRule"),
+            (AbstractMemberMinimumEnforcement, "AbstractMemberMinimumEnforcement.ValidationRule"),
+            (PropertyValueConformance, "PropertyValueConformance.ValidationRule"),
             (RequiredPropertyPresence, "RequiredPropertyPresence.ValidationRule"),
             (NoUndescribedProperties, "NoUndescribedProperties.ValidationRule"),
             (KeyUniqueness, "KeyUniqueness.ValidationRule"),

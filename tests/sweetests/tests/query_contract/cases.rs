@@ -262,6 +262,70 @@ pub async fn run(runtime: &Runtime) {
         HolonErrorKind::MissingRequiredRelationship,
     )
     .await;
+    constrained_literal_errors(runtime, &context, &book_descriptor, &books[0], &book_type).await;
+}
+
+/// The transport preserves the complete typed constraint error, including inherited provenance.
+async fn constrained_literal_errors(
+    runtime: &Runtime,
+    context: &Arc<TransactionContext>,
+    books: &HolonDescriptor,
+    book: &HolonReference,
+    book_type: &HolonReference,
+) {
+    use holons_core::query_layer::query_core::{FocalSpaceReference, QueryReference};
+    use holons_core::{Descriptor, ValueDescriptor};
+    let saved = |key: &str| -> HolonReference {
+        context.lookup().get_saved_holon_by_key(&MapString::from(key)).unwrap().into()
+    };
+    let declared = ValueDescriptor::from_holon(saved("ShortTextChild.ShortText"));
+    let operand =
+        authoring::new_literal_operand(context, &declared, "abcdef".to_base_value()).unwrap();
+    let predicate = authoring::new_comparison_predicate(
+        context,
+        books,
+        "ShortText",
+        CoreOperatorTypeName::EqualsOperator,
+        vec![operand.into()],
+    )
+    .unwrap();
+    let filter = authoring::new_filter(context, predicate.into()).unwrap();
+    let definition = query(context, "ConstrainedLiteral", filter.into());
+    let focal = FocalSpaceReference::new(context.get_space_holon().unwrap().unwrap()).unwrap();
+    let direct = QueryReference::new(definition.clone())
+        .unwrap()
+        .begin_execution_for_holon(context, focal, book.clone(), vec![])
+        .unwrap()
+        .run()
+        .unwrap_err();
+    assert_eq!(
+        direct,
+        HolonError::ValueConstraintViolation {
+            code: "StringLengthOutOfRange".into(),
+            value_type: declared.holon().reference_id_string(),
+            constraint: saved("ShortText.StringLengthConstraint").reference_id_string(),
+            constraint_type: saved("StringLengthConstraint.ConstraintType").reference_id_string(),
+            descriptor: saved("ShortText.MapStringValueType").reference_id_string(),
+            detail: match &direct {
+                HolonError::ValueConstraintViolation { detail, .. } => detail.clone(),
+                _ => panic!("typed scalar error: {direct:?}"),
+            },
+        }
+    );
+    // The empty collection must not hide an invalid authored literal at the wire boundary.
+    let invocation =
+        query_dance_invocation(context, definition, Some((book_type.clone(), vec![])), vec![]);
+    let error = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::DanceV2 { invocation },
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error, direct, "QueryDance must preserve every constraint error field");
 }
 
 fn described(

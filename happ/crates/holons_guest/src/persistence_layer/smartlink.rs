@@ -541,6 +541,7 @@ fn create_prepared_smartlink(
 ) -> Result<SmartLinkId, HolonError> {
     let source_hash = try_action_hash_from_local_id(&prepared.source_id)?;
     let target_hash = try_action_hash_from_local_id(prepared.target_id.local_id())?;
+    crate::commit_audit::smartlink_create();
     let create_hash =
         create_link(source_hash, target_hash, LinkTypes::SmartLink, LinkTag(validated_tag))
             .map_err(holon_error_from_wasm_error)?;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isMapIpcResponse, type HolonErrorWire } from '../src/internal/wire-types';
 
 import {
   DomainError,
@@ -94,5 +95,44 @@ describe('errors', () => {
     expect(error.payload).toEqual({
       PropertyError: 'title is required',
     });
+  });
+});
+
+// Explicit fixtures match integrity_core_types' query_errors_preserve_sdk_json_contract_in_both_directions.
+describe('Query domain error wire contract', () => {
+  it('accepts Rust serde errors through the transport envelope and retains domain payloads', () => {
+    const errors: HolonErrorWire[] = [
+      {ValueConstraintViolation: {code: 'StringLengthOutOfRange', value_type: 'value-type', constraint: 'constraint', constraint_type: 'constraint-type', descriptor: 'descriptor', detail: 'measured 6 graphemes; required [0, 5]'}},
+      {UnsupportedValueConstraint: {constraint_type: 'constraint-type', value_type: 'value-type', descriptor: 'descriptor'}},
+      {IncompatibleLiteralType: {declared: 'declared', required: 'required', operator: 'Contains'}},
+      {ValueKindMismatch: {expected: 'String', found: 'Integer', descriptor: 'descriptor'}},
+      {MultipleDescribedBy: {holon: 'holon', count: 2}},
+      {OperandCountMismatch: {operator: 'Contains', expected: 1, found: 2}},
+      {MissingDescribedBy: {holon: 'holon'}},
+    ];
+    for (const kind of ['ContradictoryConstraints', 'MissingConstraintParameter', 'IncompatibleConstraintFamily', 'UnsupportedExecutableConstraint', 'UnclassifiedConstraint', 'InvalidConstraintConfiguration'] as const) {
+      errors.push({ DescriptorSchemaInvalid: { kind, descriptor: 'descriptor', detail: 'invalid configuration' } });
+    }
+    for (const error of errors) {
+      const wire = JSON.parse(JSON.stringify(error));
+      expect(isMapIpcResponse({ request_id: 1, result: { Err: wire } })).toBe(true);
+      const domain = parseDomainError(wire);
+      const [variant, payload] = Object.entries(error)[0];
+      expect(domain.variant).toBe(variant);
+      expect(domain.payload).toEqual(payload);
+    }
+  });
+  it('rejects malformed query errors at the transport boundary', () => {
+    for (const error of [
+      { ValueConstraintViolation: { code: 'code' } },
+      { DescriptorSchemaInvalid: { kind: 'Unknown', descriptor: 'descriptor', detail: 'detail' } },
+      { UnsupportedValueConstraint: { constraint_type: 'type', value_type: 'value' } },
+      { IncompatibleLiteralType: { declared: 1, required: 'required', operator: 'Contains' } },
+      { ValueKindMismatch: { expected: 'String', found: 1, descriptor: 'descriptor' } },
+      { MultipleDescribedBy: { holon: 'holon', count: 'two' } },
+      { OperandCountMismatch: { operator: 'Contains', expected: 1 } },
+    ]) {
+      expect(isMapIpcResponse({ request_id: 1, result: { Err: error } })).toBe(false);
+    }
   });
 });

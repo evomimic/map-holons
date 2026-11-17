@@ -308,6 +308,7 @@ pub fn commit(
     context: &Arc<TransactionContext>,
     staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
+    let _audit = crate::commit_audit::Scope::start();
     // Clone bound handles once so assessment and Pass 1 share exactly the same workset.
     // Pass 2 still scans the complete Nursery for previously committed sources on retry.
     let mut candidates = Vec::new();
@@ -376,6 +377,7 @@ pub fn commit(
     let mut preparation_visit_start = None;
     let mut preparation_types: BTreeMap<String, PreparationTypeMetrics> = BTreeMap::new();
     let mut observe = |event| {
+        crate::commit_audit::observe(&event);
         if !profile {
             return;
         }
@@ -506,6 +508,7 @@ pub fn commit(
                     metrics.distinct_content, metrics.identity_role_visits, metrics.contract_consumers,
                     metrics.constraint_consumers, metrics.binding_consumers, metrics.requested_schema_products, metrics.constructed_schema_products);
             }
+            holons_validation::AssessmentEvent::Coverage(_) => {}
             holons_validation::AssessmentEvent::PreparationEdge {
                 role,
                 edge,
@@ -580,6 +583,7 @@ pub fn commit(
             metrics.link_queries, metrics.returned_links, metrics.node_reads, metrics.micros);
     }
     let report = report?;
+    crate::commit_audit::violations(report.violation_count());
     record_elapsed_micros(validation_started_at, &mut performance_metrics.validation_micros);
     response_reference
         .with_property_value(ValidationViolationCount, report.violation_count() as i64)?;
