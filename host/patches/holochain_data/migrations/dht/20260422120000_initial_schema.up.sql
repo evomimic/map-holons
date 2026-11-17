@@ -1,0 +1,258 @@
+-- DHT database schema (per-DNA). See docs/design/state_model.md.
+--
+-- Integer convention summary:
+--   ActionType         : 1..=10 (Dna, AgentValidationPkg, InitZomesComplete,
+--                                Create, Update, Delete, CreateLink, DeleteLink,
+--                                CloseChain, OpenChain)
+--   ChainOpType        : 1..=9 (see state_model.md)
+--   CapAccess          : 0=Unrestricted, 1=Transferable, 2=Assigned
+--   record_validity /
+--   sys_validation_status /
+--   app_validation_status: NULL=pending, 1=accepted, 2=rejected
+--   Booleans           : stored as INTEGER 0/1
+--
+-- Foreign-key delete behaviour:
+--   Index tables (Link, DeletedLink, UpdatedRecord, DeletedRecord) cascade on
+--   delete of the referenced Action — the index is derivative and must follow
+--   the parent. All other FKs (CapGrant, LimboChainOp, ChainOp, ChainOpPublish,
+--   ValidationReceipt, LimboWarrantOp, WarrantOp, WarrantPublish) intentionally
+--   do NOT cascade: deletes must be done explicitly by workflow code, so
+--   accidental loss of first-class state can't happen via parent removal.
+
+-- Actions: both self-authored and network-received.
+CREATE TABLE Action (
+    hash            BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    author          BLOB    NOT NULL,
+    seq             INTEGER NOT NULL,
+    prev_hash       BLOB,                     -- NULL only for the genesis Dna action
+    timestamp       INTEGER NOT NULL,
+    action_type     INTEGER NOT NULL,
+    action_data     BLOB    NOT NULL,         -- serialized ActionData
+    signature       BLOB    NOT NULL,
+
+    -- No FK to Entry: private entries live in PrivateEntry, and public
+    -- entries may not yet have arrived when the action is inserted.
+    entry_hash      BLOB,
+    private_entry   INTEGER,                  -- 0/1, NULL when no entry
+
+    record_validity INTEGER                   -- NULL=pending, 1=accepted, 2=rejected
+) STRICT, WITHOUT ROWID;
+
+-- Public entries.
+CREATE TABLE Entry (
+    hash BLOB PRIMARY KEY ON CONFLICT IGNORE,
+    blob BLOB NOT NULL
+) STRICT, WITHOUT ROWID;
+
+-- Private entries (local author only).
+CREATE TABLE PrivateEntry (
+    hash   BLOB NOT NULL,
+    author BLOB NOT NULL,
+    blob   BLOB NOT NULL,
+    -- Keyed on (hash, author): the same private entry content can be authored
+    -- independently by different agents (the author lives in the action, not
+    -- the entry, so identical entries share a hash). A per-hash key would let
+    -- the first author's row shadow every other agent's.
+    PRIMARY KEY (hash, author) ON CONFLICT IGNORE
+) STRICT, WITHOUT ROWID;
+
+-- Capability grants index.
+CREATE TABLE CapGrant (
+    action_hash BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    cap_access  INTEGER NOT NULL,             -- 0=Unrestricted, 1=Transferable, 2=Assigned
+    tag         TEXT,
+    FOREIGN KEY(action_hash) REFERENCES Action(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Capability claims (not chain entries).
+CREATE TABLE CapClaim (
+    id      INTEGER PRIMARY KEY,              -- rowid alias
+    author  BLOB NOT NULL,
+    tag     TEXT NOT NULL,
+    grantor BLOB NOT NULL,
+    secret  BLOB NOT NULL
+) STRICT;
+
+-- Chain lock (one per author).
+CREATE TABLE ChainLock (
+    author               BLOB    PRIMARY KEY,
+    subject              BLOB    NOT NULL,
+    expires_at_timestamp INTEGER NOT NULL
+) STRICT, WITHOUT ROWID;
+
+-- Limbo for network-received chain ops awaiting validation.
+CREATE TABLE LimboChainOp (
+    hash                    BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    op_type                 INTEGER NOT NULL,
+    action_hash             BLOB    NOT NULL,
+
+    basis_hash              BLOB    NOT NULL,
+    storage_center_loc      INTEGER NOT NULL,
+
+    sys_validation_status   INTEGER,
+    app_validation_status   INTEGER,
+    abandoned_at            INTEGER,
+
+    require_receipt         INTEGER NOT NULL,
+    when_received           INTEGER NOT NULL,
+    sys_validation_attempts INTEGER NOT NULL DEFAULT 0,
+    app_validation_attempts INTEGER NOT NULL DEFAULT 0,
+    last_validation_attempt INTEGER,
+
+    serialized_size         INTEGER NOT NULL,
+
+    FOREIGN KEY(action_hash) REFERENCES Action(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Warrant content (matches `SignedWarrant` on the wire).
+--
+-- Shared between limbo and integrated states; op-level metadata lives in
+-- `LimboWarrantOp` / `WarrantOp`. This mirrors the way `Action` is shared
+-- between `LimboChainOp` and `ChainOp`.
+CREATE TABLE Warrant (
+    hash      BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    author    BLOB    NOT NULL,
+    timestamp INTEGER NOT NULL,
+    warrantee BLOB    NOT NULL,
+    proof     BLOB    NOT NULL,
+    signature BLOB    NOT NULL,
+    -- Human-readable rejection reason, denormalized out of `proof` for
+    -- queryability. NULL for warrants that carry no reason (e.g. chain forks).
+    reason    TEXT
+) STRICT, WITHOUT ROWID;
+
+-- Op metadata for network-received warrants awaiting validation.
+CREATE TABLE LimboWarrantOp (
+    hash                    BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+
+    storage_center_loc      INTEGER NOT NULL,
+
+    sys_validation_status   INTEGER,
+    abandoned_at            INTEGER,
+
+    when_received           INTEGER NOT NULL,
+    sys_validation_attempts INTEGER NOT NULL DEFAULT 0,
+    last_validation_attempt INTEGER,
+
+    serialized_size         INTEGER NOT NULL,
+
+    FOREIGN KEY(hash) REFERENCES Warrant(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Integrated chain ops.
+CREATE TABLE ChainOp (
+    hash               BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    op_type            INTEGER NOT NULL,
+    action_hash        BLOB    NOT NULL,
+
+    basis_hash         BLOB    NOT NULL,
+    storage_center_loc INTEGER NOT NULL,
+
+    validation_status  INTEGER NOT NULL,
+    locally_validated  INTEGER NOT NULL,
+
+    require_receipt    INTEGER NOT NULL,
+
+    when_received      INTEGER NOT NULL,
+    when_integrated    INTEGER NOT NULL,
+
+    serialized_size    INTEGER NOT NULL,
+
+    FOREIGN KEY(action_hash) REFERENCES Action(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Publish state for self-authored chain ops.
+CREATE TABLE ChainOpPublish (
+    op_hash           BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    last_publish_time INTEGER,
+    receipts_complete INTEGER,
+    withhold_publish  INTEGER,
+    FOREIGN KEY(op_hash) REFERENCES ChainOp(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Validation receipts for authored ops.
+CREATE TABLE ValidationReceipt (
+    hash          BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    op_hash       BLOB    NOT NULL,
+    -- Full serialized `SignedValidationReceipt`. Stored whole (rather than as
+    -- split columns) so readers can reconstruct the validator-reported
+    -- validation status and validator set exactly as received.
+    blob          BLOB    NOT NULL,
+    when_received INTEGER NOT NULL,
+    FOREIGN KEY(op_hash) REFERENCES ChainOp(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Op metadata for integrated warrants. Content lives in `Warrant`.
+CREATE TABLE WarrantOp (
+    hash               BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    storage_center_loc INTEGER NOT NULL,
+    when_received      INTEGER NOT NULL,
+    when_integrated    INTEGER NOT NULL,
+    -- 1 = accepted, 2 = rejected.
+    validation_status  INTEGER NOT NULL,
+    serialized_size    INTEGER NOT NULL,
+    FOREIGN KEY(hash) REFERENCES Warrant(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Publish state for self-authored warrants.
+CREATE TABLE WarrantPublish (
+    warrant_hash      BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    last_publish_time INTEGER,
+    FOREIGN KEY(warrant_hash) REFERENCES Warrant(hash)
+) STRICT, WITHOUT ROWID;
+
+-- Link index.
+CREATE TABLE Link (
+    action_hash BLOB    PRIMARY KEY ON CONFLICT IGNORE,
+    base_hash   BLOB    NOT NULL,
+    zome_index  INTEGER NOT NULL,
+    link_type   INTEGER NOT NULL,
+    tag         BLOB,
+    FOREIGN KEY(action_hash) REFERENCES Action(hash) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
+-- Deleted-link index.
+CREATE TABLE DeletedLink (
+    action_hash      BLOB PRIMARY KEY ON CONFLICT IGNORE,
+    create_link_hash BLOB NOT NULL,
+    FOREIGN KEY(action_hash) REFERENCES Action(hash) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
+-- Updated-record index.
+CREATE TABLE UpdatedRecord (
+    action_hash          BLOB PRIMARY KEY ON CONFLICT IGNORE,
+    original_action_hash BLOB NOT NULL,
+    original_entry_hash  BLOB NOT NULL,
+    FOREIGN KEY(action_hash) REFERENCES Action(hash) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
+-- Deleted-record index.
+CREATE TABLE DeletedRecord (
+    action_hash         BLOB PRIMARY KEY ON CONFLICT IGNORE,
+    deletes_action_hash BLOB NOT NULL,
+    deletes_entry_hash  BLOB NOT NULL,
+    FOREIGN KEY(action_hash) REFERENCES Action(hash) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
+-- Scheduled function records (per-author within this DNA's DB).
+CREATE TABLE ScheduledFunction (
+    author         BLOB    NOT NULL,
+    zome_name      TEXT    NOT NULL,
+    scheduled_fn   TEXT    NOT NULL,
+    maybe_schedule BLOB    NOT NULL,
+    start_at       INTEGER NOT NULL,
+    end_at         INTEGER NOT NULL,
+    ephemeral      INTEGER NOT NULL,             -- 0/1
+    PRIMARY KEY (author, zome_name, scheduled_fn) ON CONFLICT ROLLBACK
+) STRICT, WITHOUT ROWID;
+
+-- K2 slice-hashes: one row per (arc, slice_index). Storing a
+-- slice hash replaces any prior value at the same key (gossip may
+-- re-compute and re-store after detecting divergence).
+CREATE TABLE SliceHash (
+    arc_start   INTEGER NOT NULL,
+    arc_end     INTEGER NOT NULL,
+    slice_index INTEGER NOT NULL,
+    hash        BLOB    NOT NULL,
+    PRIMARY KEY (arc_start, arc_end, slice_index) ON CONFLICT REPLACE
+) STRICT, WITHOUT ROWID;

@@ -26,3 +26,7 @@ mod usage_tests;
 
 #[cfg(test)]
 mod prepared_descriptor_fixture;
+
+pub mod personal_constitution;
+
+pub mod application_launch;

@@ -2,7 +2,7 @@ import { effect, inject, Injectable, Injector, OnDestroy } from '@angular/core';
 import { ContentStoreInstance, createContentStore } from '../stores/content.store';
 import { SignalStore } from '../models/interface.store';
 import { Controller } from '../helpers/abstract.controller';
-import { HolonSpace, SpaceType } from '../models/interface.space';
+import { DeprecatedHolonSpace, SpaceType } from '../models/interface.space';
 //import { HolonsClient } from '../clients/holons.client';
 import { StoreManager } from '../services/storemanager.service';
 import { SpacesStore } from '../stores/spaces.store';

@@ -2,9 +2,12 @@
 mod config;
 pub mod env;
 mod map_commands;
+mod packaged_navigator;
 mod runtime;
 mod setup;
 pub mod source_ingress;
+mod trusted_welcome;
+mod welcome_lifecycle;
 
 // Re-exports for clean API
 //pub use config::APP_ID;

@@ -9,7 +9,7 @@ use serde_bytes::ByteBuf;
 use crate::conductor_dance_caller::ConductorDanceCaller;
 use async_trait::async_trait;
 use base_types::MapString;
-use client_shared_types::holon_space::{HolonSpace, SpaceInfo};
+use client_shared_types::holon_space::{DeprecatedHolonSpace, SpaceInfo};
 use core_types::HolonError;
 use holochain_client::{
     AdminWebsocket, AgentPubKey, AppInfo, AppWebsocket, CellInfo, ExternIO, SerializedBytes,
@@ -204,7 +204,7 @@ pub fn convert_to_space_info(app_info: AppInfo) -> Result<SpaceInfo, HolonError>
         for cell_info in cells {
             match cell_info {
                 CellInfo::Provisioned(provisioned_cell) => {
-                    let sprops = HolonSpace {
+                    let sprops = DeprecatedHolonSpace {
                         id: provisioned_cell.cell_id.dna_hash().to_string(),
                         name: provisioned_cell.name.clone(),
                         branch_id: Some(provisioned_cell.cell_id.dna_hash().to_string()),
@@ -221,7 +221,7 @@ pub fn convert_to_space_info(app_info: AppInfo) -> Result<SpaceInfo, HolonError>
                     space_info.add_space(role.clone(), sprops);
                 }
                 CellInfo::Cloned(cloned_cell) => {
-                    let sprops = HolonSpace {
+                    let sprops = DeprecatedHolonSpace {
                         id: cloned_cell.cell_id.dna_hash().to_string(),
                         name: cloned_cell.name.clone(),
                         branch_id: None,

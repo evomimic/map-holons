@@ -1,0 +1,78 @@
+//! `DbRead<Dht>` / `DbWrite<Dht>` API for the `Warrant` + `LimboWarrantOp` tables.
+
+use super::super::inner::limbo_warrant::{self, InsertLimboWarrant};
+use crate::handles::{DbRead, DbWrite};
+use crate::kind::Dht;
+use crate::models::dht::LimboWarrantRow;
+use holo_hash::DhtOpHash;
+use holochain_timestamp::Timestamp;
+
+impl DbWrite<Dht> {
+    /// Insert a limbo warrant atomically into `Warrant` + `LimboWarrantOp`.
+    pub async fn insert_limbo_warrant(&self, w: InsertLimboWarrant<'_>) -> sqlx::Result<()> {
+        let mut tx = self.begin().await?;
+        limbo_warrant::insert_limbo_warrant(tx.conn_mut(), w).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Delete a limbo warrant atomically from `LimboWarrantOp` + `Warrant`.
+    pub async fn delete_limbo_warrant(&self, hash: DhtOpHash) -> sqlx::Result<()> {
+        let mut tx = self.begin().await?;
+        limbo_warrant::delete_limbo_warrant(tx.conn_mut(), hash).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Set the system-validation status for the given warrant. Returns the number of rows updated.
+    pub async fn set_limbo_warrant_sys_validation_status(
+        &self,
+        hash: &DhtOpHash,
+        status: Option<i64>,
+    ) -> sqlx::Result<u64> {
+        limbo_warrant::set_sys_validation_status(self.pool(), hash, status).await
+    }
+
+    /// Atomically promote a limbo warrant: move metadata from `LimboWarrantOp`
+    /// to `WarrantOp`, stamping `when_integrated`. `Warrant` content stays put.
+    ///
+    /// Returns `true` if the limbo row existed and was promoted, `false`
+    /// if it did not exist.
+    pub async fn promote_limbo_warrant(
+        &self,
+        hash: &DhtOpHash,
+        when_integrated: Timestamp,
+    ) -> sqlx::Result<bool> {
+        let mut tx = self.begin().await?;
+        let result =
+            limbo_warrant::promote_to_warrant(tx.conn_mut(), hash, when_integrated).await?;
+        tx.commit().await?;
+        Ok(result)
+    }
+}
+
+impl DbRead<Dht> {
+    pub async fn get_limbo_warrant(
+        &self,
+        hash: DhtOpHash,
+    ) -> sqlx::Result<Option<LimboWarrantRow>> {
+        let mut conn = self.timed_conn().await?;
+        limbo_warrant::get_limbo_warrant(&mut *conn, hash).await
+    }
+
+    pub async fn limbo_warrants_pending_sys_validation(
+        &self,
+        limit: u32,
+    ) -> sqlx::Result<Vec<LimboWarrantRow>> {
+        let mut conn = self.timed_conn().await?;
+        limbo_warrant::limbo_warrants_pending_sys_validation(&mut *conn, limit).await
+    }
+
+    pub async fn limbo_warrants_ready_for_integration(
+        &self,
+        limit: u32,
+    ) -> sqlx::Result<Vec<LimboWarrantRow>> {
+        let mut conn = self.timed_conn().await?;
+        limbo_warrant::limbo_warrants_ready_for_integration(&mut *conn, limit).await
+    }
+}

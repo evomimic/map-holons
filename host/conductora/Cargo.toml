@@ -56,6 +56,14 @@ tauri-plugin-holochain = { path = "plugins/tauri-plugin-holochain" }
 tokio = { version = "1.5", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies] # for unit tests
+type_names = { workspace = true }
 base_types = { workspace = true }
 #tauri = { version = "2", features = ["test"] } #"devtools"
 #tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+# Explicit signed custody build.
+protected-custody = []
+# Packaged debug workflow; not a production security-assurance claim.
+local-constitution = []

@@ -9,7 +9,7 @@ use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use client_shared_types::{
     deprecated_base_receptor::DeprecatedBaseReceptor,
-    holon_space::{HolonSpace, SpaceInfo},
+    holon_space::{DeprecatedHolonSpace, SpaceInfo},
     map_request::{MapRequest, MapRequestBody},
     map_response::MapResponse,
     ReceptorType,
@@ -30,7 +30,7 @@ pub struct DeprecatedHolochainReceptor {
     properties: HashMap<String, String>,
     context: Arc<TransactionContext>,
     client_handler: Arc<HolochainConductorClient>,
-    _home_space_holon: HolonSpace,
+    _home_space_holon: DeprecatedHolonSpace,
 }
 
 impl DeprecatedHolochainReceptor {
@@ -62,7 +62,7 @@ impl DeprecatedHolochainReceptor {
         let context = init_client_context(Some(initiator));
 
         // Default until we fully implement space discovery
-        let _home_space_holon = HolonSpace::default();
+        let _home_space_holon = DeprecatedHolonSpace::default();
 
         Self {
             receptor_id: base.receptor_id.clone(),

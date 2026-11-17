@@ -1,6 +1,6 @@
 import { MultiPlexService } from "../services/multiplex.service";
 //import { Cell } from "../models/interface.cell";
-import { HolonSpace } from "../models/interface.space";
+import { DeprecatedHolonSpace } from "../models/interface.space";
 import { SignalStore } from "../models/interface.store";
 import { Dictionary } from "./utils";
 import { inject, Injector } from '@angular/core';

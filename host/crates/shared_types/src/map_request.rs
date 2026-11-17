@@ -1,4 +1,4 @@
-use crate::holon_space::HolonSpace;
+use crate::holon_space::DeprecatedHolonSpace;
 use base_types::MapString;
 use core_types::{ContentSet, HolonError, HolonId, PropertyMap, RelationshipName};
 use holons_boundary::{
@@ -85,7 +85,7 @@ pub struct MapRequest {
     pub name: String, // unique key within the (single) dispatch table
     pub req_type: DanceType,
     pub body: MapRequestBody,
-    pub space: HolonSpace,
+    pub space: DeprecatedHolonSpace,
 }
 
 /// IPC-safe wire-form map request.
@@ -97,7 +97,7 @@ pub struct MapRequestWire {
     pub name: String, // unique key within the (single) dispatch table
     pub req_type: DanceTypeWire,
     pub body: MapRequestBodyWire,
-    pub space: HolonSpace,
+    pub space: DeprecatedHolonSpace,
 }
 
 impl MapRequest {
@@ -105,7 +105,7 @@ impl MapRequest {
         let name = "get_all_holons".to_string();
         let req_type = DanceType::Standalone;
         let body = MapRequestBody::TransientReference(reference);
-        let space = HolonSpace::default();
+        let space = DeprecatedHolonSpace::default();
         Self { name, req_type, body, space }
     }
 }

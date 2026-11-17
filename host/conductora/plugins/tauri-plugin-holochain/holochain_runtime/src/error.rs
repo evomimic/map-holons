@@ -10,6 +10,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Native conductor boundary: {0}")]
+    NativeBoundary(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 

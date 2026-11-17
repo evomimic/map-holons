@@ -25,10 +25,13 @@ impl HolochainSetup {
         provider: &StorageProvider,
     ) -> anyhow::Result<()> {
         let t_setup = std::time::Instant::now();
-        tracing::info!("[HOLOCHAIN SETUP] Installing Holochain App.");
+        tracing::info!("[HOLOCHAIN SETUP] Preparing Holochain App.");
         let StorageProvider::Holochain(hc_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
+        if !crate::env::development_enabled() {
+            return super::native_setup::setup(&handle, hc_cfg).await;
+        }
         let app_id = &hc_cfg.app_id;
         let dev_mode = crate::env::dev_mode_enabled();
 

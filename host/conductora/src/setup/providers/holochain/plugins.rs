@@ -11,12 +11,24 @@ pub fn holochain_plugin(
         holochain_dir(hc_cfg)?,
         network_config_from_storage_config(hc_cfg),
     );
+    plugin_config = plugin_config.backend_only(!crate::env::development_enabled());
     //.signal_url_configured(hc_cfg.signal_url.is_some());
     if crate::env::dev_mode_enabled() {
         let dir = dev_conductor_dir(provider_key, &hc_cfg.app_id)?;
         plugin_config = plugin_config.dev_mode(true).dev_data_root(dir);
     }
-    Ok(tauri_plugin_holochain::async_init(vec_to_locked(vec![]), plugin_config))
+    let passphrase = if cfg!(feature = "protected-custody") {
+        if crate::env::development_enabled() || crate::env::dev_mode_enabled() {
+            anyhow::bail!(
+                "Protected custody requires the packaged application, not development mode"
+            );
+        }
+        tauri_plugin_holochain::credential_custody::protected_passphrase(&holochain_dir(hc_cfg)?)?
+    } else {
+        // Unsigned engineering custody. Production assurance requires protected custody.
+        vec_to_locked(vec![])
+    };
+    Ok(tauri_plugin_holochain::async_init(passphrase, plugin_config))
 }
 
 pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) -> NetworkConfig {
@@ -25,7 +37,7 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
     // Use configuration from storage config
     if let Some(bootstrap_url) = &holochain_config.bootstrap_url {
         network_config.bootstrap_url = url2::Url2::parse(bootstrap_url);
-    } else if tauri::is_dev() {
+    } else if crate::env::development_enabled() {
         // Fallback for dev mode
         network_config.bootstrap_url = url2::Url2::parse("http://0.0.0.0:8888");
     }
@@ -51,21 +63,21 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
 }
 
 pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error> {
-    if tauri::is_dev() {
-        let tmp_dir = tempdir::TempDir::new(&hc_cfg.app_id)
-            .map_err(|e| anyhow::anyhow!("Could not create temporary directory: {}", e))?;
-        // Convert `tmp_dir` into a `Path`, destroying the `TempDir` without deleting the directory.
-        Ok(tmp_dir.into_path())
+    let app_name: &'static str = Box::leak(hc_cfg.app_id.clone().into_boxed_str());
+    let path = app_dirs2::app_root(
+        app_dirs2::AppDataType::UserData,
+        &app_dirs2::AppInfo { name: app_name, author: env!("CARGO_PKG_AUTHORS") },
+    )?
+    .join("holochain");
+    // Every ordinary launch retains its store. Explicit cache-reset mode below
+    // remains separate; Tauri development itself must not imply disposable data.
+    Ok(if cfg!(feature = "local-constitution") {
+        path.join("local-constitution")
+    } else if crate::env::development_enabled() {
+        path.join("development")
     } else {
-        let app_name: &'static str = Box::leak(hc_cfg.app_id.clone().into_boxed_str());
-        let path = app_dirs2::app_root(
-            app_dirs2::AppDataType::UserData,
-            &app_dirs2::AppInfo { name: app_name, author: env!("CARGO_PKG_AUTHORS") },
-        )
-        .expect("Could not get app root")
-        .join("holochain");
-        Ok(path)
-    }
+        path
+    })
 }
 
 // Generate a deterministic dev conductor directory path based on provider name, app id, and network seed.

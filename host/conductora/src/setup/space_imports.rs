@@ -1,18 +1,15 @@
-//! Loads configured schema imports into the local HolonSpace.
-//!
-//! Imports are ordinary loader inputs. They may contribute Dancers, Themes,
-//! or other Holons and their authored relationships. Conductora does not
-//! select, activate, or otherwise special-case any imported Dancer.
-
-use base_types::ToBaseValue;
+//! Loads configured definition packages only on first provisioning and checks
+//! newly loaded definitions once. Open reuses committed definitions. It never activates a Dancer.
 use core_types::{ContentSet, FileData};
 use holons_core::ReadableHolon;
-use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
-use map_commands_runtime::ExecutionPolicy;
+use map_commands_contract::{MapCommand, TransactionAction, TransactionCommand};
+use map_commands_runtime::{ExecutionPolicy, Runtime};
 use serde::Deserialize;
 use std::path::{Component, Path};
 use tauri::{AppHandle, Manager};
 
+use super::application_launcher::ApplicationSessionState;
+use super::core_schema_bootstrap::{require_complete_load, CoreSchemaStartup};
 use crate::runtime::RuntimeState;
 
 const IMPORT_ROOT: &str = "resources";
@@ -23,90 +20,172 @@ struct SpaceImportSet {
     imports: Vec<String>,
 }
 
-/// Loads every configured schema package through the ordinary post-Core loader.
-/// Runtime Dancer discovery is exclusively relationship-driven after commit.
-pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Result<()> {
-    let resource_root = handle
-        .path()
-        .resource_dir()
-        .map_err(|error| anyhow::anyhow!("resolving Conductora resource directory: {error}"))?;
-    let import_root = resource_root.join(IMPORT_ROOT);
-    let import_set: SpaceImportSet = serde_json::from_slice(
-        &std::fs::read(import_root.join(IMPORT_SET_FILENAME))
-            .map_err(|error| anyhow::anyhow!("reading configured space imports: {error}"))?,
-    )
-    .map_err(|error| anyhow::anyhow!("parsing configured space imports: {error}"))?;
+#[derive(Debug, Deserialize)]
+struct DefinitionFile {
+    holons: Vec<RequiredDefinition>,
+}
+#[derive(Debug, Deserialize)]
+struct RequiredDefinition {
+    key: String,
+    #[serde(rename = "type")]
+    descriptor: String,
+    #[serde(default)]
+    relationships: Vec<RequiredRelationship>,
+}
+#[derive(Debug, Deserialize)]
+struct RequiredRelationship {
+    name: String,
+    target: Vec<RequiredTarget>,
+}
+#[derive(Debug, Deserialize)]
+struct RequiredTarget {
+    #[serde(rename = "$ref")]
+    key: String,
+}
 
+pub async fn ensure_configured_space_imports(
+    handle: &AppHandle,
+    startup: CoreSchemaStartup,
+) -> anyhow::Result<()> {
+    let resources = handle.path().resource_dir()?;
     let runtime = handle
-        .try_state::<RuntimeState>()
-        .ok_or_else(|| anyhow::anyhow!("RuntimeState is not managed"))?
+        .state::<RuntimeState>()
         .read()
-        .map_err(|error| anyhow::anyhow!("reading RuntimeState: {error}"))?
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?
         .clone()
         .ok_or_else(|| anyhow::anyhow!("MAP Commands runtime is not initialized"))?;
+    let application = handle.state::<ApplicationSessionState>();
+    prepare_space_imports(&runtime, &resources, startup, Some(&application)).await
+}
 
-    for import in import_set.imports {
+/// The same orchestration runs in the packaged host and real-runtime tests.
+/// Existing state is inspected, never repaired by replaying create imports.
+pub(crate) async fn prepare_space_imports(
+    runtime: &Runtime,
+    resources: &Path,
+    startup: CoreSchemaStartup,
+    application: Option<&ApplicationSessionState>,
+) -> anyhow::Result<()> {
+    if startup == CoreSchemaStartup::OpenedExisting {
+        tracing::info!(
+            "Using committed packaged definitions without import replay or graph revalidation"
+        );
+        return Ok(());
+    }
+    let import_root = resources.join(IMPORT_ROOT);
+    let imports: SpaceImportSet =
+        serde_json::from_slice(&std::fs::read(import_root.join(IMPORT_SET_FILENAME))?)?;
+    let mut required = Vec::new();
+    for import in imports.imports {
+        let relative = safe_relative_path(&import)?;
+        let raw = std::fs::read_to_string(import_root.join(relative))?;
+        let definitions: DefinitionFile = serde_json::from_str(&raw)?;
+        required.extend(definitions.holons);
+        if let Some(application) = application {
+            application.mark_loading_space_definitions().map_err(anyhow::Error::msg)?;
+        }
         let started = std::time::Instant::now();
-        let import = safe_relative_path(&import)?;
-        let path = import_root.join(import);
-        let content_set = ContentSet {
-            files_to_load: vec![FileData {
-                filename: import.to_string_lossy().into_owned(),
-                raw_contents: std::fs::read_to_string(&path).map_err(|error| {
-                    anyhow::anyhow!("reading schema import {}: {error}", path.display())
-                })?,
-            }],
-        };
-        // Core bootstrap provisions a local HolonSpace for this launch. A
-        // schema package may target that space through its ordinary authored
-        // relationships, so an existing package holon cannot make this load
-        // safely skippable on a later launch.
-        let tx_id = runtime.session().begin_transaction().await?;
-        let context = runtime.session().get_transaction(&tx_id)?;
+        let tx = runtime.session().begin_transaction().await?;
+        let context = runtime.session().get_transaction(&tx)?;
         let result = runtime
             .execute_command(
                 MapCommand::Transaction(TransactionCommand {
                     context,
-                    action: TransactionAction::LoadHolons { content_set },
+                    action: TransactionAction::LoadHolons {
+                        content_set: ContentSet {
+                            files_to_load: vec![FileData {
+                                filename: import.clone(),
+                                raw_contents: raw,
+                            }],
+                        },
+                    },
                 }),
                 ExecutionPolicy::default(),
             )
-            .await
-            .and_then(|result| {
-                let MapResult::Reference(response) = result else {
-                    return Err(core_types::HolonError::InvalidState(
-                        "schema import returned no load response".into(),
-                    ));
-                };
-                let status = response.property_value("LoadCommitStatus")?;
-                if status != Some("Complete".to_base_value()) {
-                    return Err(core_types::HolonError::InvalidState(format!(
-                        "schema import {} did not complete: {status:?}",
-                        import.display()
-                    )));
-                }
-                Ok(())
-            });
-        runtime.session().archive_transaction(&tx_id)?;
-        if std::env::var_os("MAP_PROFILE").is_some() {
-            eprintln!(
-                "[MAP-PROFILE] import={} total_ms={:.3} succeeded={}",
-                import.display(),
-                started.elapsed().as_secs_f64() * 1000.0,
-                result.is_ok()
-            );
-        }
-        result?;
+            .await?;
+        require_complete_load(&result, &format!("schema import {import}"))?;
+        runtime.session().archive_transaction(&tx)?;
+        tracing::info!(
+            "Provisioned configured definitions: {import}, elapsed_ms={}",
+            started.elapsed().as_millis()
+        );
     }
+    if let Some(application) = application {
+        application.mark_verifying_space_definitions().map_err(anyhow::Error::msg)?;
+    }
+    verify_definitions(runtime, &required).await
+}
+
+async fn verify_definitions(
+    runtime: &Runtime,
+    required: &[RequiredDefinition],
+) -> anyhow::Result<()> {
+    let tx = runtime.session().begin_transaction().await?;
+    let checked = (|| -> anyhow::Result<()> {
+        let context = runtime.session().get_transaction(&tx)?;
+        for definition in required {
+            let saved = context.lookup().get_saved_holon_by_key(&definition.key.clone().into())?;
+            let relationships =
+                std::iter::once(("DescribedBy", vec![definition.descriptor.as_str()])).chain(
+                    definition.relationships.iter().map(|r| {
+                        (r.name.as_str(), r.target.iter().map(|t| t.key.as_str()).collect())
+                    }),
+                );
+            for (name, expected) in relationships {
+                let related = saved.related_holons(name)?;
+                let targets: Vec<_> = related
+                    .read()
+                    .map_err(|e| anyhow::anyhow!(e.to_string()))?
+                    .clone()
+                    .into_iter()
+                    .collect();
+                let keys = targets.iter().map(|r| r.key()).collect::<Result<Vec<_>, _>>()?;
+                for key in expected {
+                    if !keys.iter().flatten().any(|actual| actual.0 == key) {
+                        anyhow::bail!("Packaged foundation is incomplete or incompatible: {} lacks {name} -> {key}; explicit remediation/Upgrade is required", definition.key);
+                    }
+                }
+            }
+        }
+        Ok(())
+    })();
+    let archived = runtime.session().archive_transaction(&tx);
+    checked?;
+    archived?;
+    tracing::info!(
+        "Verified packaged definition dependencies without import replay: {} definitions",
+        required.len()
+    );
     Ok(())
 }
 
 fn safe_relative_path(value: &str) -> anyhow::Result<&Path> {
     let path = Path::new(value);
-    if path.is_absolute()
-        || path.components().any(|component| matches!(component, Component::ParentDir))
-    {
-        anyhow::bail!("space import path must be relative: {value}");
+    if path.is_absolute() || path.components().any(|c| !matches!(c, Component::Normal(_))) {
+        anyhow::bail!("space import path must be a normal relative path: {value}");
     }
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use map_commands_runtime::RuntimeSession;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn open_reuses_committed_definitions_without_reading_import_files() {
+        // There is no transport and no import directory. Any replay, lookup or
+        // graph audit would fail; normal Open must not perform those operations.
+        let manager = holons_client::init_client_runtime(None);
+        let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager, None)));
+        prepare_space_imports(
+            &runtime,
+            Path::new("imports-must-not-be-read-on-open"),
+            CoreSchemaStartup::OpenedExisting,
+            None,
+        )
+        .await
+        .unwrap();
+    }
 }

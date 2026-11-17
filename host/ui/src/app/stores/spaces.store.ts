@@ -1,10 +1,10 @@
 import { computed, Signal } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
-import { HolonSpace, SpaceType } from '../models/interface.space';
+import { DeprecatedHolonSpace, SpaceType } from '../models/interface.space';
 
 // 1. Define the shape of our state
 export interface SpacesState {
-  spaces: Record<SpaceType, Record<string, HolonSpace>>;
+  spaces: Record<SpaceType, Record<string, DeprecatedHolonSpace>>;
   loading: boolean;
   error: string | null;
 }
@@ -37,7 +37,7 @@ export const SpacesStore = signalStore(
 
   // C. Define methods to mutate the state
   withMethods((store) => ({
-    addOrUpdateSpace(space: HolonSpace) {
+    addOrUpdateSpace(space: DeprecatedHolonSpace) {
       // Use patchState for immutable, declarative updates
       patchState(store, (state) => ({
         spaces: {
@@ -61,14 +61,14 @@ export const SpacesStore = signalStore(
         };
       });
     },
-    getSpaceById(id: string, type?:SpaceType): Signal<HolonSpace | undefined> {
+    getSpaceById(id: string, type?:SpaceType): Signal<DeprecatedHolonSpace | undefined> {
         if (type) {
             return computed(() => store.spaces()[type][id])
         } else {
             return computed(() => store.spaces()[SpaceType.Content][id] || store.spaces()[SpaceType.Meta][id]);
         }
     },
-    getHomeSpace(spaceType: SpaceType): HolonSpace | undefined {
+    getHomeSpace(spaceType: SpaceType): DeprecatedHolonSpace | undefined {
     const spaces = Object.values(store.spaces()[spaceType]);
     for (const space of spaces) {
       if (space.id === space.origin_holon_id) {

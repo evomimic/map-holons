@@ -2,7 +2,7 @@
 import { Observable, Observer } from "rxjs";
 //import { Cell, mockClonedCell, mockProvisionedCell } from "../models/interface.cell";
 //import { environment } from "@environment";
-import { HolonSpace, SpaceType } from "../models/interface.space";
+import { DeprecatedHolonSpace, SpaceType } from "../models/interface.space";
 
 export enum ConnectionState{
   CONNECTING,
@@ -19,7 +19,7 @@ export class ApiService {
   //private socketObservable: Observable<MessageEvent>;
  // protected signalCallbacks: SignalCallback[] = []
   //private space_data: Record<RoleName, Cell[]> = {}
-  private space_data: Record<SpaceType,HolonSpace[]> = {
+  private space_data: Record<SpaceType,DeprecatedHolonSpace[]> = {
     [SpaceType.Content]: [],
     [SpaceType.Meta]: []
   }
@@ -44,7 +44,7 @@ export class ApiService {
     });  
   }*/
 
-  protected addSpace(space:HolonSpace){
+  protected addSpace(space:DeprecatedHolonSpace){
     if (this.space_data[space.space_type as SpaceType] === undefined)
       this.space_data[space.space_type as SpaceType] = []
     this.space_data[space.space_type as SpaceType].push(space)
@@ -56,7 +56,7 @@ export class ApiService {
 
 
 
-  protected getSpacesByType(space_type: string): HolonSpace[] {
+  protected getSpacesByType(space_type: string): DeprecatedHolonSpace[] {
     const key = space_type as SpaceType;
     if (Object.entries(this.space_data).length === 0)
       throw new Error("no space data available .. check the connection settings");
@@ -66,9 +66,9 @@ export class ApiService {
       return this.space_data[key];
   }
 
-  protected getHomeSpace(space_type:string):HolonSpace | undefined{
+  protected getHomeSpace(space_type:string):DeprecatedHolonSpace | undefined{
     const spaceData = this.getSpacesByType(space_type);
-    let result: HolonSpace | undefined = undefined;
+    let result: DeprecatedHolonSpace | undefined = undefined;
     for (const space of spaceData) {
       if (space.id === space.origin_holon_id) {
         result = space
@@ -78,9 +78,9 @@ export class ApiService {
   }
 
   //checks cache first .. then network
-  protected getSpace(space_type:string, space_id:string):HolonSpace | undefined{ 
+  protected getSpace(space_type:string, space_id:string):DeprecatedHolonSpace | undefined{
     const space_data = this.getSpacesByType(space_type);
-    let result: HolonSpace | undefined = undefined;
+    let result: DeprecatedHolonSpace | undefined = undefined;
     for (const space of space_data) {
       if (space.id === space_id) {
         result = space

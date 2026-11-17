@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-source-picker-capabilities"
+description = "Enables the source_picker_capabilities command without any pre-configured scope."
+commands.allow = ["source_picker_capabilities"]
+
+[[permission]]
+identifier = "deny-source-picker-capabilities"
+description = "Denies the source_picker_capabilities command without any pre-configured scope."
+commands.deny = ["source_picker_capabilities"]

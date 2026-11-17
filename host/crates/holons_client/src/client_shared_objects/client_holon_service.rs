@@ -723,6 +723,37 @@ impl HolonServiceApi for ClientHolonService {
         self.dancer_package_catalog.activate(context, package_identity)
     }
 
+    fn discover_local_holon_space_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        // The adopted identity belongs to this host runtime. Mint a reference
+        // bound to the caller's transaction; only a cache miss crosses to guest.
+        if let Some(space) = context.get_space_holon()? {
+            return Ok(Some(space));
+        }
+        let request = holons_core::dances::DanceRequest::new(
+            "discover_local_holon_space".into(),
+            holons_core::dances::DanceType::Standalone,
+            RequestBody::None,
+        );
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
+        if response.status_code != ResponseStatusCode::OK {
+            if let Some(error) = response.error {
+                return Err(error);
+            }
+            return Err(map_dance_error("DiscoverLocalHolonSpace", &response));
+        }
+        match response.body {
+            ResponseBody::None => Ok(None),
+            ResponseBody::HolonReference(space @ HolonReference::Smart(_)) => Ok(Some(space)),
+            other => Err(HolonError::InvalidParameter(format!(
+                "DiscoverLocalHolonSpace: expected saved Space or None, got {other:?}"
+            ))),
+        }
+    }
+
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,

@@ -1,5 +1,4 @@
 use anyhow::Context;
-use base_types::MapString;
 use std::sync::RwLock;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
@@ -8,9 +7,7 @@ use crate::{
     config::{providers::ProviderRuntimeSelection, storage_manager::StorageManager},
     map_commands as commands, runtime,
     setup::{
-        application_launcher::{
-            ApplicationExperience, ApplicationSessionState, HomeDancerLaunchSelection,
-        },
+        application_launcher::{ApplicationExperience, ApplicationSessionState},
         core_schema_bootstrap::{ensure_core_schema_space, CoreSchemaBootstrapGate},
         plugin_manager::PluginManager,
         provider_registry::ProviderRegistry,
@@ -22,7 +19,6 @@ use crate::{
 
 use client_shared_types::storage_receptor::ActiveStorageReceptor;
 use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
-use holons_core::reference_layer::ReadableHolon;
 
 pub struct AppBuilder;
 
@@ -93,8 +89,12 @@ impl AppBuilder {
             //.manage::<runtime::HolochainReceptorState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .manage(CoreSchemaBootstrapGate::new())
+            .manage(crate::welcome_lifecycle::WelcomeLifecycle::default())
+            .manage(map_commands_runtime::personal_constitution::PersonalConstitution::default())
             .manage(ApplicationSessionState::new(application_experience))
-            .invoke_handler(tauri::generate_handler![
+            .manage(crate::packaged_navigator::NavigatorLaunchLock::default());
+        let base = if crate::env::development_enabled() {
+            base.invoke_handler(tauri::generate_handler![
                 application_session,
                 crate::source_ingress::commands::select_loader_sources,
                 crate::source_ingress::picker::source_picker_capabilities,
@@ -104,7 +104,18 @@ impl AppBuilder {
                 commands::all_spaces,
                 commands::is_service_ready,
                 runtime::dispatch_map_command::dispatch_map_command,
-            ]);
+            ])
+        } else {
+            base.invoke_handler(tauri::generate_handler![
+                crate::trusted_welcome::welcome_status,
+                crate::trusted_welcome::constitute_personal_space,
+                crate::packaged_navigator::open_space_navigator,
+                application_session,
+                runtime::dispatch_map_command::dispatch_map_command,
+                crate::source_ingress::commands::select_loader_sources,
+                crate::source_ingress::picker::source_picker_capabilities,
+            ])
+        };
 
         tracing::debug!("[APP BUILDER] Applying provider plugins.");
         let with_plugins =
@@ -118,6 +129,10 @@ impl AppBuilder {
         let with_registry = with_plugins.manage(registry);
         let builder = with_registry.setup(|app| -> Result<(), Box<dyn std::error::Error>> {
             let handle = app.handle().clone();
+            if !crate::env::development_enabled() {
+                // Welcome appears during provisioning; backend admission remains closed until ready.
+                crate::trusted_welcome::create_window(&handle)?;
+            }
             let storage_cfg = app.state::<StorageManager>().inner().clone();
             let runtime_selection = app.state::<ProviderRuntimeSelection>().inner().clone();
 
@@ -155,115 +170,48 @@ impl AppBuilder {
                         .try_state::<ApplicationSessionState>()
                         .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?;
                     application_session.mark_opening_space().map_err(anyhow::Error::msg)?;
+                    if crate::env::development_enabled() {
+                        // The UI reports startup progress while semantic initialization runs.
+                        // Its conductor integration and command runtime must already exist.
+                        let window_started_at = Instant::now();
+                        SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
+                            .await
+                            .context("create_window failed")?;
+                        tracing::info!(
+                            "[PERF-688] conductora_startup: window_creation_ms={}",
+                            window_started_at.elapsed().as_millis(),
+                        );
+                    }
                     let bootstrap_started_at = Instant::now();
-                    ensure_core_schema_space(&handle)
+                    let startup = ensure_core_schema_space(&handle)
                         .await
                         .context("ensure_core_schema_space failed")?;
                     tracing::info!(
                         "[PERF-688] conductora_startup: core_schema_bootstrap_ms={}",
                         bootstrap_started_at.elapsed().as_millis(),
                     );
-                    application_session
-                        .mark_activating_base_packages()
-                        .map_err(anyhow::Error::msg)?;
-                    ensure_configured_space_imports(&handle)
+                    if startup
+                        == crate::setup::core_schema_bootstrap::CoreSchemaStartup::Provisioned
+                    {
+                        application_session
+                            .mark_activating_base_packages()
+                            .map_err(anyhow::Error::msg)?;
+                    }
+                    ensure_configured_space_imports(&handle, startup)
                         .await
                         .context("ensure_configured_space_imports failed")?;
-                    application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
-                    let canvas_selection_started_at = Instant::now();
-                    let (active_holon_space, canvas_selection, home_dancer_selection) = {
-                        let runtime = handle
-                            .state::<runtime::RuntimeState>()
-                            .read()
-                            .map_err(|error| anyhow::anyhow!("reading RuntimeState: {error}"))?
-                            .as_ref()
-                            .ok_or_else(|| {
-                                anyhow::anyhow!("MAP Commands runtime is not initialized")
-                            })?
-                            .clone();
-                        tracing::info!("[PERF-707] canvas_selection: opening transaction");
-                        let tx_id = runtime.session().begin_transaction().await?;
-                        tracing::info!("[PERF-707] canvas_selection: transaction opened");
-                        let context = runtime.session().get_transaction(&tx_id)?;
-                        let active_holon_space = context.get_space_holon()?.ok_or_else(|| {
-                            anyhow::anyhow!("Core bootstrap completed without a local HolonSpace")
-                        })?;
-                        let selection = dahn_selection::select_bootstrap_canvas(&context)?;
-                        tracing::info!("[PERF-707] canvas_selection: resources selected");
-                        let result = crate::setup::application_launcher::CanvasLaunchSelection {
-                            theme_key: selection
-                                .theme
-                                .key()?
-                                .ok_or_else(|| anyhow::anyhow!("Selected Theme has no key"))?
-                                .to_string(),
-                            canvas_key: selection
-                                .canvas_visualizer
-                                .canvas
-                                .key()?
-                                .ok_or_else(|| anyhow::anyhow!("Selected Canvas has no key"))?
-                                .to_string(),
-                            canvas_visualizer_key: selection
-                                .canvas_visualizer
-                                .visualizer
-                                .key()?
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!("Selected Canvas Visualizer has no key")
-                                })?
-                                .to_string(),
-                        };
-                        application_session
-                            .mark_selecting_home_dancer()
-                            .map_err(anyhow::Error::msg)?;
-                        let meta_design_system =
-                            holons_core::reference_layer::HolonReference::Smart(
-                                context.lookup().get_saved_holon_by_key(&MapString::from(
-                                    "Demo1.MetaDesignSystem",
-                                ))?,
-                            );
-                        let home_dancer = dahn_selection::select_home_dancer(
-                            &context,
-                            dahn_selection::HomeDancerSelectionContext {
-                                active_holon_space: active_holon_space.clone(),
-                                selected_theme: selection.theme,
-                                selected_meta_design_system: meta_design_system,
-                                runtime: dahn_selection::HomeDancerRuntime::Local,
-                                person: None,
-                            },
-                        )?;
-                        application_session
-                            .mark_realizing_home_dancer()
-                            .map_err(anyhow::Error::msg)?;
-                        let home_dancer_selection =
-                            home_dancer.map(|selection| HomeDancerLaunchSelection {
-                                dancer: selection.dancer.into(),
-                                rooted_navigation_visualizer: selection
-                                    .rooted_navigation_visualizer
-                                    .into(),
-                                root_node_visualizer: selection.root_node_visualizer.into(),
-                            });
-                        runtime.session().archive_transaction(&tx_id)?;
-                        tracing::info!("[PERF-707] canvas_selection: transaction archived");
-                        (active_holon_space, result, home_dancer_selection)
-                    };
-                    tracing::info!(
-                        "[PERF-707] conductora_startup: canvas_selection_ms={}",
-                        canvas_selection_started_at.elapsed().as_millis(),
-                    );
-                    application_session
-                        .mark_ready(
-                            active_holon_space.into(),
-                            canvas_selection,
-                            home_dancer_selection,
-                        )
-                        .map_err(anyhow::Error::msg)?;
+                    if !crate::env::development_enabled() {
+                        crate::trusted_welcome::refresh_lifecycle(&handle).await?;
+                        return Ok::<(), anyhow::Error>(());
+                    }
+                    let runtime = handle.state::<runtime::RuntimeState>().read()
+                        .map_err(|e| anyhow::anyhow!(e.to_string()))?.clone()
+                        .ok_or_else(|| anyhow::anyhow!("MAP runtime is unavailable"))?;
+                    crate::setup::application_launcher::prepare_application_launch(&runtime, &application_session,
+                        map_commands_runtime::application_launch::LaunchRequirement::ProvisionedSpace).await?;
 
-                    let window_started_at = Instant::now();
-                    SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
-                        .await
-                        .context("create_window failed")?;
                     tracing::info!(
-                        "[PERF-688] conductora_startup: window_creation_ms={} total_ms={}",
-                        window_started_at.elapsed().as_millis(),
+                        "[PERF-688] conductora_startup: total_ms={}",
                         startup_started_at.elapsed().as_millis(),
                     );
                     handle
@@ -294,7 +242,12 @@ impl AppBuilder {
                     // eprintln flushes synchronously before process::exit kills async writers
                     eprintln!("[APP BUILDER] FATAL startup error: {:#}", e);
                     tracing::error!("[APP BUILDER] startup failed: {}", e);
-                    std::process::exit(1);
+                    if crate::env::development_enabled() {
+                        std::process::exit(1);
+                    }
+                    // Keep packaged Welcome available to explain failure. Neither
+                    // startup failure nor another launch may grant acquisition authority.
+                    return;
                 }
                 tracing::info!("[APP BUILDER] App builder done, Startup complete.");
             });
@@ -322,7 +275,9 @@ impl AppBuilder {
 /// Returns the runtime-only session established by the MAP Application Launcher.
 #[tauri::command]
 fn application_session(
+    window: tauri::WebviewWindow,
     application_session: tauri::State<'_, ApplicationSessionState>,
 ) -> Result<crate::setup::application_launcher::ApplicationSessionSnapshot, String> {
+    crate::packaged_navigator::admit_operational_window(&window)?;
     application_session.snapshot()
 }

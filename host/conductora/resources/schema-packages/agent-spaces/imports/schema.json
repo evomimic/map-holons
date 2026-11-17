@@ -117,7 +117,7 @@
           "name": "InstanceKeyRule",
           "target": [
             {
-              "$ref": "PersonAgentName.FormatRule"
+              "$ref": "NoneRule.KeyRuleType"
             }
           ]
         },

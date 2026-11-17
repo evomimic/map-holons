@@ -11,7 +11,7 @@
     "check": "cargo check --workspace",
     "fmt": "cargo fmt --all",
     "fmt:check": "cargo fmt --all --check",
-    "test:unit": "cargo test --workspace",
+    "test:unit": "npm run build:happ -w map-happ && cargo test --workspace",
     "test:unit:no-run": "cargo test --workspace --no-run",
     "regen:sdk-fixtures": "cargo test -p map_commands_wire --test generate_fixtures -- --ignored",
     "web:review": "cd ui && ng serve --configuration source-review --port 4201",
@@ -27,7 +27,9 @@
     "clean:rust": "cargo clean",
     "clean:rust:deep": "npx rimraf target .cargo && cargo clean",
     "clean:ui": "npx rimraf ../node_modules",
-    "tauri:bundle": "tauri build"
+    "tauri:bundle": "tauri build",
+    "welcome:build": "npm run build:happ -w map-happ && tauri build --debug --bundles app --features local-constitution",
+    "welcome:start": "bash ./scripts/welcome-start.sh"
   },
   "prettier": {
     "overrides": [

@@ -631,19 +631,22 @@ pub fn commit(
             match commit_holon(staged_reference, context, &mut performance_metrics) {
                 Ok(CommitOutcome::Saved { establishes_key_index_entry }) => {
                     let holon_id = staged_reference.holon_id()?;
-                    let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
-                        HolonError::HolonNotFound("Committed holon has no key".into())
-                    })?;
+                    let key = staged_reference.key()?;
                     saved_ids.push(holon_id.local_id().clone());
                     if establishes_key_index_entry {
                         descriptor_effects.record_new_node(holon_id.local_id().clone());
                         key_index_source_ids.insert(holon_id.local_id().clone());
                     }
-                    let saved_reference = HolonReference::smart_with_key(
-                        context.space_read_handle(),
-                        holon_id,
-                        key_string,
-                    );
+                    let saved_reference = match key {
+                        Some(key) => HolonReference::smart_with_key(
+                            context.space_read_handle(),
+                            holon_id,
+                            key,
+                        ),
+                        None => {
+                            HolonReference::smart_from_id(context.space_read_handle(), holon_id)
+                        }
+                    };
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::NoAction) => {

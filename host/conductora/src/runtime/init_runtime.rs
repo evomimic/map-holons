@@ -41,25 +41,17 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
         return false;
     };
 
-    let artifact_root = handle
-        .path()
-        .resource_dir()
-        .map(|root| root.join("resources/dahn-visualizers"))
-        .unwrap_or_else(|_| {
-            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/dahn-visualizers")
-        });
+    let resource_root = match handle.path().resource_dir() {
+        Ok(root) => root,
+        Err(error) if !crate::env::development_enabled() => {
+            tracing::error!("Packaged resources are unavailable: {error}");
+            return false;
+        }
+        Err(_) => std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+    };
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService::new(
-        DahnMaterializer::new(artifact_root),
-        DancerPackageCatalog::new(
-            handle
-                .path()
-                .resource_dir()
-                .map(|root| root.join("resources/house-troupe"))
-                .unwrap_or_else(|_| {
-                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("resources/house-troupe")
-                }),
-        ),
+        DahnMaterializer::new(resource_root.join("resources/dahn-visualizers")),
+        DancerPackageCatalog::new(resource_root.join("resources/house-troupe")),
     ));
     let space_manager = init_client_runtime_with_holon_service(Some(initiator), holon_service);
 

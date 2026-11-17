@@ -63,6 +63,11 @@ impl<R: Runtime> HolochainPlugin<R> {
     ) -> crate::Result<WebviewWindowBuilder<'_, R, AppHandle<R>>> {
         let app_id: String = app_id.into();
 
+        if self.holochain_runtime.backend_only {
+            return Err(crate::Error::OpenAppError(
+                "Additional privileged windows are disabled".into(),
+            ));
+        }
         let allowed_origins = self.get_allowed_origins(&app_id, false);
         let app_websocket_auth =
             self.holochain_runtime.get_app_websocket_auth(&app_id, allowed_origins).await?;
@@ -117,6 +122,12 @@ impl<R: Runtime> HolochainPlugin<R> {
         enabled_app: Option<InstalledAppId>,
         url_path: Option<String>,
     ) -> crate::Result<WebviewWindowBuilder<'_, R, AppHandle<R>>> {
+        if self.holochain_runtime.backend_only && (enable_admin_websocket || enabled_app.is_some())
+        {
+            return Err(crate::Error::OpenAppError(
+                "Frontend conductor credentials are disabled".into(),
+            ));
+        }
         let url_path = url_path.unwrap_or_default();
 
         let mut window_builder = WebviewWindowBuilder::new(

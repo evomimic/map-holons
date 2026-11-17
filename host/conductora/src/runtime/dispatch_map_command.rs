@@ -18,6 +18,7 @@ pub type RuntimeState = RwLock<Option<Runtime>>;
 #[command]
 #[tracing::instrument(target = "map_profile", level = "debug", name = "ipc.dispatch", skip_all, fields(request_id = request.request_id.value()))]
 pub async fn dispatch_map_command(
+    window: tauri::WebviewWindow,
     request: MapIpcRequest,
     runtime_state: State<'_, RuntimeState>,
     bootstrap_gate: State<'_, CoreSchemaBootstrapGate>,
@@ -25,11 +26,14 @@ pub async fn dispatch_map_command(
     tracing::debug!("[TAURI COMMAND] 'dispatch_map_command' invoked");
 
     let request_id = request.request_id;
-    let result = bootstrap_gate.ensure_ready().and_then(|()| {
-        // Keep the gate check outside the async execution helper so its unit
-        // tests remain focused on binding and runtime routing.
-        Ok(())
-    });
+    let result = crate::packaged_navigator::admit_operational_window(&window)
+        .map_err(HolonError::InvalidState)
+        .and_then(|()| bootstrap_gate.ensure_ready())
+        .and_then(|()| {
+            // Keep the gate check outside the async execution helper so its unit
+            // tests remain focused on binding and runtime routing.
+            Ok(())
+        });
     let result = match result {
         Ok(()) => {
             dispatch_inner(&request_id, request.command, request.options, &runtime_state).await

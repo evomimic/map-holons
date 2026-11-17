@@ -4,9 +4,12 @@ pub mod config;
 pub mod env;
 mod logging;
 mod map_commands;
+mod packaged_navigator;
 mod runtime;
 pub mod setup;
 mod source_ingress;
+mod trusted_welcome;
+mod welcome_lifecycle;
 
 fn main() {
     // Initialise logging before anything else.

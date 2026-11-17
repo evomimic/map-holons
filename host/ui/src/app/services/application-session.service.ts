@@ -11,6 +11,8 @@ export type ApplicationSessionPhase =
   | 'loading-core-schema'
   | 'verifying-core-schema'
   | 'activating-base-packages'
+  | 'loading-space-definitions'
+  | 'verifying-space-definitions'
   | 'realizing-canvas'
   | 'selecting-home-dancer'
   | 'realizing-home-dancer'
@@ -35,6 +37,7 @@ export interface ApplicationSessionSnapshot {
   experience: ApplicationExperience;
   dev_mode: boolean;
   phase: ApplicationSessionPhase;
+  active_agent?: HolonReferenceWire | null;
   active_holon_space: HolonReferenceWire | null;
   canvas_selection: CanvasLaunchSelection | null;
   home_dancer_selection: HomeDancerLaunchSelection | null;

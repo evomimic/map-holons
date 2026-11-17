@@ -772,6 +772,15 @@ impl HolonServiceApi for GuestHolonService {
         holons_core::dances::DanceResponseReference::new(response.into())
     }
 
+    fn discover_local_holon_space_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        Ok(crate::persistence_layer::discover_local_holon_space_id()?.map(|id| {
+            HolonReference::smart_from_id(context.space_read_handle(), HolonId::Local(id))
+        }))
+    }
+
     fn ensure_local_holon_space_internal(
         &self,
         context: &Arc<TransactionContext>,

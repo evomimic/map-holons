@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { HolonSpace, ProtoAgentSpace, SpaceType } from '../../models/interface.space';
+import { DeprecatedHolonSpace, ProtoAgentSpace, SpaceType } from '../../models/interface.space';
 import { SpaceController } from '../../contollers/space.controller';
 
 @Component({

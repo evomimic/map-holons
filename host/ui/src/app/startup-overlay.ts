@@ -55,6 +55,8 @@ const startupPhaseLabels: Record<string, string> = {
     'loading-core-schema': 'Executing Core Schema LoadHolons dance...',
     'verifying-core-schema': 'Verifying Core Schema...',
     'activating-base-packages': 'Activating base packages...',
+    'loading-space-definitions': 'Loading required packages...',
+    'verifying-space-definitions': 'Verifying packaged definitions...',
     'realizing-canvas': 'Realizing Canvas...',
     'selecting-home-dancer': 'Selecting home Dancer...',
     'realizing-home-dancer': 'Realizing home Dancer...',

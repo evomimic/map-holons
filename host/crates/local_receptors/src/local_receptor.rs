@@ -1,7 +1,7 @@
 //NOT IMPLEMENTED - IGNORE THIS FILE
 
 use core_types::{HolonError};
-use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
+use holons_client::shared_types::holon_space::{DeprecatedHolonSpace, SpaceInfo};
 use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use holons_client::{ClientHolonService, init_client_context};
 use holons_client::shared_types::map_request::MapRequest;
@@ -25,7 +25,7 @@ pub struct LocalReceptor {
     context: Arc<TransactionContext>,
     client_handler: Arc<LocalClient>,
     _holon_service: Arc<dyn HolonServiceApi>,
-    _root_space: HolonSpace,
+    _root_space: DeprecatedHolonSpace,
 }
 
 /// Implementation of LocalReceptor - local host level - no dancing
@@ -51,7 +51,7 @@ impl LocalReceptor {
             context,
             client_handler,
             _holon_service,
-           _root_space: HolonSpace::default(), //root_space,
+           _root_space: DeprecatedHolonSpace::default(), //root_space,
         })
     }
 }

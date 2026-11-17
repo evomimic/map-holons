@@ -36,8 +36,23 @@ pub(crate) async fn launch_holochain_runtime(
     config: HolochainRuntimeConfig,
 ) -> crate::error::Result<HolochainRuntime> {
     let t_total: std::time::Instant = std::time::Instant::now();
+    if config.backend_only && (config.dev_mode || config.mdns_discovery) {
+        return Err(crate::Error::NativeBoundary(
+            "Native-only conductor cannot enable test keys or WebSocket-based mDNS".into(),
+        ));
+    }
+    let installation_lease = if config.dev_mode {
+        None
+    } else {
+        std::fs::create_dir_all(&config.holochain_dir)?;
+        let lease = crate::installation_lock::InstallationLease::acquire(&config.holochain_dir)?;
+        crate::credential_custody::ensure_no_pending_transition(&config.holochain_dir)?;
+        Some(lease)
+    };
     let filesystem = FileSystem::new(config.holochain_dir).await?;
-    let admin_port = if let Some(admin_port) = config.admin_port {
+    let admin_port = if config.backend_only {
+        0
+    } else if let Some(admin_port) = config.admin_port {
         admin_port
     } else {
         portpicker::pick_unused_port().expect("No ports free")
@@ -61,8 +76,20 @@ pub(crate) async fn launch_holochain_runtime(
         filesystem.keystore_dir().into(),
         network_config,
         config.dev_mode,
+        config.backend_only,
         dev_dir,
     );
+
+    tracing::info!(
+        "[LAUNCH] Storage/configuration preparation: {}ms",
+        t_total.elapsed().as_millis()
+    );
+    if config.backend_only {
+        let started = std::time::Instant::now();
+        super::native_access::ensure_no_saved_interfaces(&conductor_config, passphrase.clone())
+            .await?;
+        tracing::info!("[LAUNCH] Saved-interface preflight: {}ms", started.elapsed().as_millis());
+    }
 
     log::debug!("Built conductor config: {:?}.", conductor_config);
 
@@ -74,15 +101,18 @@ pub(crate) async fn launch_holochain_runtime(
         true => {
             clean_dev_conductor_state(
                 &config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"),
-            );
+            )?;
 
             Conductor::builder().config(conductor_config).build().await?
         }
         false => {
+            let started = std::time::Instant::now();
             let keystore =
                 spawn_lair_keystore_in_proc(&filesystem.keystore_config_path(), passphrase.clone())
                     .map_err(|err| crate::Error::LairError(err))?;
 
+            tracing::info!("[LAUNCH] Lair keystore startup: {}ms", started.elapsed().as_millis());
+            let seed_started = std::time::Instant::now();
             log::info!("Keystore spawned successfully.");
 
             let seed_already_exists = keystore
@@ -101,16 +131,26 @@ pub(crate) async fn launch_holochain_runtime(
                 log::info!("Device seed already exists in keystore, skipping generation.");
             }
 
-            Conductor::builder()
+            tracing::info!(
+                "[LAUNCH] Device-seed lookup/initialization: {}ms",
+                seed_started.elapsed().as_millis()
+            );
+            let build_started = std::time::Instant::now();
+            let handle = Conductor::builder()
                 .config(conductor_config)
                 .passphrase(Some(passphrase))
                 .with_keystore(keystore)
                 .build()
-                .await?
+                .await?;
+            tracing::info!(
+                "[LAUNCH] Conductor construction: {}ms",
+                build_started.elapsed().as_millis()
+            );
+            handle
         }
     };
 
-    log::info!("Connected to the admin websocket");
+    log::info!("Conductor initialized; native-only access: {}", config.backend_only);
 
     if config.dev_mode {
         log::warn!("Running in DEV MODE: using in-memory keystore and forcing local-only network config. NOT FOR PRODUCTION USE!");
@@ -127,6 +167,9 @@ pub(crate) async fn launch_holochain_runtime(
         apps_websockets_auths: Arc::new(Mutex::new(Vec::new())),
         admin_port,
         conductor_handle,
+        backend_only: config.backend_only,
+        installation_lease: installation_lease
+            .map(crate::installation_lock::RuntimeInstallationLease::new),
     })
 }
 
@@ -157,23 +200,49 @@ pub(crate) async fn launch_holochain_runtime(
 ///   - `databases/wasm.db` and its SQLite recovery files
 ///
 /// Result: conductor boots with zero installed apps (fresh agent key) but with
-/// precompiled WASM available for reuse by `install_app`.
-fn clean_dev_conductor_state(conductor_dir: &std::path::Path) {
+/// precompiled WASM available for reuse by `install_app`. An incomplete cache/key
+/// pair is moved to a sibling backup before resetting ephemeral state.
+fn clean_dev_conductor_state(conductor_dir: &std::path::Path) -> std::io::Result<()> {
     if !conductor_dir.exists() {
         tracing::warn!("[LAUNCH] DEV MODE: conductor dir does not exist yet — cold start");
-        return;
+        return Ok(());
     }
 
     let t = std::time::Instant::now();
     let db_dir = conductor_dir.join("databases");
     let wasm_db_path = db_dir.join("wasm.db");
 
+    let cache_files = ["wasm.db", "wasm.db-wal", "wasm.db-shm", "wasm.db-journal"];
+    let reusable = wasm_db_path.is_file() && db_dir.join("db.key").is_file();
+    if !reusable && cache_files.iter().any(|name| db_dir.join(name).exists()) {
+        // A fresh encryption key cannot open an orphaned cache. Preserve the
+        // evidence outside the directory whose ephemeral state is reset below.
+        let mut backup_name = conductor_dir.file_name().unwrap_or_default().to_os_string();
+        backup_name.push(format!(
+            "-orphaned-wasm-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(std::io::Error::other)?
+                .as_nanos()
+        ));
+        let backup = conductor_dir.with_file_name(backup_name);
+        std::fs::create_dir(&backup)?;
+        for name in cache_files {
+            let source = db_dir.join(name);
+            if source.exists() {
+                std::fs::rename(source, backup.join(name))?;
+            }
+        }
+        tracing::warn!("[LAUNCH] DEV MODE: orphaned WASM cache preserved at {}", backup.display());
+    }
+
     // Check whether the WASM cache artifacts exist from a previous run.
     // Holochain encrypts its SQLite DBs with databases/db.key, so we cannot
     // open them with plain rusqlite to checkpoint the WAL.  Instead we just
     // preserve the files in-place and let holochain replay its own WAL on the
     // next open.
-    if wasm_db_path.is_file() && db_dir.join("db.key").is_file() {
+    if reusable {
         tracing::warn!(
             "[LAUNCH] DEV MODE: existing wasm.db found — preserving cached modules for reuse"
         );
@@ -193,7 +262,7 @@ fn clean_dev_conductor_state(conductor_dir: &std::path::Path) {
     match std::fs::read_dir(conductor_dir) {
         Err(err) => {
             tracing::warn!("[LAUNCH] DEV MODE: cannot read conductor dir: {err}");
-            return;
+            return Err(err);
         }
         Ok(top_entries) => {
             for entry in top_entries.flatten() {
@@ -240,4 +309,76 @@ fn clean_dev_conductor_state(conductor_dir: &std::path::Path) {
         "[LAUNCH] DEV MODE: conductor state reset in {:.2}s (wasm cache preserved in-place)",
         t.elapsed().as_secs_f64()
     );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dev_cleanup_preserves_complete_cache_and_recovery_files() {
+        let root = std::env::temp_dir().join(format!(
+            "map-dev-complete-cache-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        let dev = root.join("dev");
+        let db = dev.join("databases");
+        std::fs::create_dir_all(&db).unwrap();
+        let retained = ["db.key", "wasm.db", "wasm.db-wal", "wasm.db-shm", "wasm.db-journal"];
+        for name in retained {
+            std::fs::write(db.join(name), name).unwrap();
+        }
+        std::fs::write(db.join("conductor.db"), "ephemeral").unwrap();
+        clean_dev_conductor_state(&dev).unwrap();
+        for name in retained {
+            assert_eq!(std::fs::read(db.join(name)).unwrap(), name.as_bytes());
+        }
+        assert!(!db.join("conductor.db").exists());
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// Reproduce a retained encrypted WASM cache whose key was lost between dev launches.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn dev_start_recovers_orphaned_wasm_cache_without_losing_its_backup() {
+        let root = std::env::temp_dir().join(format!(
+            "map-dev-cache-recovery-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        let dev = root.join("dev");
+        let configuration = || {
+            crate::HolochainRuntimeConfig::new(
+                root.join("runtime"),
+                crate::NetworkConfig::default(),
+            )
+            .dev_mode(true)
+            .dev_data_root(dev.clone())
+        };
+        let runtime =
+            crate::HolochainRuntime::launch(crate::vec_to_locked(vec![]), configuration())
+                .await
+                .unwrap();
+        runtime.shutdown().await.unwrap();
+        drop(runtime);
+        let original_cache = std::fs::read(dev.join("databases/wasm.db")).unwrap();
+        // Retain the key as test evidence outside the dev cleanup boundary.
+        std::fs::rename(dev.join("databases/db.key"), root.join("original-key")).unwrap();
+        let runtime =
+            crate::HolochainRuntime::launch(crate::vec_to_locked(vec![]), configuration())
+                .await
+                .unwrap();
+        runtime.shutdown().await.unwrap();
+        drop(runtime);
+        let backups: Vec<_> = std::fs::read_dir(&root)
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.file_name().to_string_lossy().starts_with("dev-orphaned-wasm-"))
+            .collect();
+        assert_eq!(backups.len(), 1);
+        assert_eq!(std::fs::read(backups[0].path().join("wasm.db")).unwrap(), original_cache);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

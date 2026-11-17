@@ -58,3 +58,7 @@ session_receptor = { path = "crates/session_receptor" }
 
 [profile.dev]
 opt-level = "z"
+
+# Native-only, bounded upstream DHT query/index correction; see patches/README.md.
+[patch.crates-io]
+holochain_data = { path = "patches/holochain_data" }

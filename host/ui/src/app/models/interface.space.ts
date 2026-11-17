@@ -120,9 +120,8 @@ export const getTypeRef = (td?: TypeDescriptor): TypeRef | undefined =>
 // A space is a holon with containment relationships with other holons 
 // and a holon can become a space by adding relationships + schema
 
-// The AgentSpace object is derived from receptor details and the actual representation
-// holon created on the network 
-export type HolonSpace = {
+/** Legacy receptor discovery/routing DTO; distinct from the Space holon domain wrapper. */
+export type DeprecatedHolonSpace = {
     id:string //network:branch:content_address_id_hash (created in the destination space)
     name:string //user defined name of the space
     branch_id?:string // branch id (equal to the cell in holochain)
@@ -146,7 +145,7 @@ export type ProtoAgentSpace = {
     metadata?: Dictionary<any> //optional metadata
 }
 
-export const mockContentSpace: HolonSpace = {
+export const mockContentSpace: DeprecatedHolonSpace = {
     id: "mock_space_id1",
     receptor_id: "holochain_receptor",
     name: "Mock content Space",
@@ -162,7 +161,7 @@ export const mockContentSpace: HolonSpace = {
     enabled: true
 };
 
-export const mockMetaSpace: HolonSpace = {
+export const mockMetaSpace: DeprecatedHolonSpace = {
     id: "mock_space_id2",
     receptor_id: "local_receptor",
     name: "Mock Meta Space",

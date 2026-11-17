@@ -1,7 +1,7 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HolonSpace, ProtoAgentSpace, SpaceType } from '../../models/interface.space';
+import { DeprecatedHolonSpace, ProtoAgentSpace, SpaceType } from '../../models/interface.space';
 import { SpaceController } from '../../contollers/space.controller';
 import { CreateSpace } from '../new-space/createspace.component';
 
@@ -16,8 +16,8 @@ export class AllSpaces implements OnInit {
   private spaceController = inject(SpaceController);
   //private metaController = inject(MetaController);
   
-  contentSpaces: HolonSpace[] = [];
-  metaSpaces: HolonSpace[] = [];
+  contentSpaces: DeprecatedHolonSpace[] = [];
+  metaSpaces: DeprecatedHolonSpace[] = [];
   
   //allMetaTypes: Signal<Holon[]>;
 

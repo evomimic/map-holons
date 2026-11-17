@@ -83,6 +83,25 @@ pub fn delete_holon_dance(
     }
 }
 
+/// Reads the designated local Space before a host has adopted its persisted identity.
+/// This infrastructure read never provisions a Space or grants bootstrap authority.
+pub fn discover_local_holon_space_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    if !matches!(request.dance_type, DanceType::Standalone)
+        || !matches!(request.body, RequestBody::None)
+    {
+        return Err(HolonError::InvalidParameter(
+            "Local Space discovery requires an empty standalone request".into(),
+        ));
+    }
+    Ok(match context.discover_local_holon_space()? {
+        Some(space) => ResponseBody::HolonReference(space),
+        None => ResponseBody::None,
+    })
+}
+
 /// Get all holons from the persistent store
 ///
 /// *DanceRequest:*

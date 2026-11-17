@@ -1,0 +1,19 @@
+{
+  "window_provider": "holochain",
+  "storage_providers": {
+    "holochain_packaged": {
+      "type": "holochain",
+      "app_id": "map_holons",
+      "cell_details": [
+        {
+          "role_name": "map_holons",
+          "zome_name": "holons",
+          "zome_function": "dance"
+        }
+      ],
+      "happ_path": null,
+      "enabled": true,
+      "production": true
+    }
+  }
+}

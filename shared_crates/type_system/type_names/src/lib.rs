@@ -17,3 +17,6 @@ pub use property_names::*;
 pub use relationship_names::*;
 pub use validation_rule_names::*;
 pub use value_names::*;
+
+pub mod agent_space_names;
+pub use agent_space_names::*;

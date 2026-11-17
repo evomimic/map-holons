@@ -37,6 +37,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "type_names",
  "url2",
 ]
 
@@ -3611,8 +3612,6 @@ dependencies = [
 [[package]]
 name = "holochain_data"
 version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d302613e1a2a5ec13a71f1a8af37b019b0918908138dbdce8de57c0bbe86611"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -3803,10 +3802,12 @@ dependencies = [
  "async-std",
  "async-trait",
  "base64 0.23.1",
+ "core-foundation 0.10.1",
  "derive_arbitrary",
  "holochain",
  "holochain_client",
  "holochain_conductor_api",
+ "holochain_data",
  "holochain_keystore",
  "holochain_types",
  "holochain_util",
@@ -3815,11 +3816,14 @@ dependencies = [
  "kitsune_p2p_mdns",
  "lair_keystore",
  "lair_keystore_api",
+ "libc",
  "local-ip-address",
  "log",
  "mr_bundle",
  "one_err",
  "portpicker",
+ "security-framework",
+ "security-framework-sys",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -3828,6 +3832,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url2",
+ "zeroize",
  "zip 9.0.3",
 ]
 

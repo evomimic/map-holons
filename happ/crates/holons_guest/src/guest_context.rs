@@ -74,7 +74,7 @@ pub(crate) fn init_guest_context_with_registry(
     //
     // A missing local-space id is represented faithfully here. The dance adapter
     // rejects it for ordinary transactions and accepts it only for the
-    // host-authorized bootstrap-provisioning transaction.
+    // bootstrap-provisioning transaction or the read-only local-space discovery request.
     let space_manager = HolonSpaceManager::new_with_managers(
         None,
         guest_holon_service,

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-root-space"
+description = "Enables the root_space command without any pre-configured scope."
+commands.allow = ["root_space"]
+
+[[permission]]
+identifier = "deny-root-space"
+description = "Denies the root_space command without any pre-configured scope."
+commands.deny = ["root_space"]

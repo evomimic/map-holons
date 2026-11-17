@@ -4,7 +4,7 @@ import { SpaceClient } from './space.client';
 //import { Cell } from '../models/interface.cell';
 //import { StagingArea } from '../models/holon';
 import { HolonType, mockHolonTypeArray } from '../models/holontype';
-import { HolonSpace } from '../models/interface.space';
+import { DeprecatedHolonSpace } from '../models/interface.space';
 
 //import { CrudService } from './crud-base.service';
 const ZOME_ID = "descriptor"
@@ -17,7 +17,7 @@ export class TypeDescriptorClient extends SpaceClient {//implements CrudService<
    
 
 //TODO new feature should scaffold client from cell api creating zome names dynamically
- async readall(space:HolonSpace): Promise<HolonType[]> {
+ async readall(space:DeprecatedHolonSpace): Promise<HolonType[]> {
   //if (this.mock)
    // return new Promise<HolonType[]>((resolve) => {setTimeout(()=> resolve(mockHolonTypeArray),1)})
   //else
