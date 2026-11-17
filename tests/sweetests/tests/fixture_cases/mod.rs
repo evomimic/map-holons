@@ -38,3 +38,12 @@ pub mod commit_graph_only_fixture;
 pub mod commit_key_uniqueness_fixture;
 
 pub mod query_boundary_fixture;
+
+pub mod commit_scalar_constraints_fixture;
+
+pub mod commit_conformance_fixture;
+pub mod commit_default_declaration_fixture;
+pub mod commit_enum_conformance_fixture;
+pub mod commit_enum_evolution_fixture;
+pub mod commit_staged_scalar_fixture;
+mod enum_default_helpers;

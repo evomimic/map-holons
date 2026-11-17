@@ -32,8 +32,14 @@ fn all_fixtures_author_without_a_conductor() {
     commit_sibling_fixture::commit_book_title_exact_references_fixture().unwrap();
     commit_schema_fixture::commit_core_successor_fixture().unwrap();
     commit_schema_fixture::loader_core_successor_fixture().unwrap();
+    commit_enum_conformance_fixture::commit_enum_conformance_fixture().unwrap();
+    commit_default_declaration_fixture::commit_default_declaration_fixture().unwrap();
+    commit_enum_evolution_fixture::commit_enum_evolution_fixture().unwrap();
+    commit_conformance_fixture::commit_conformance_fixture().unwrap();
     commit_strict_contract_fixture::commit_strict_contract_fixture().unwrap();
     commit_validation_fixture::commit_validation_fixture().unwrap();
+    commit_scalar_constraints_fixture::commit_scalar_constraints_fixture().unwrap();
+    commit_staged_scalar_fixture::commit_staged_scalar_fixture().unwrap();
     attachment_defaults_fixture::attachment_defaults_fixture().unwrap();
     delete_holon_fixture::delete_holon_fixture().unwrap();
     ergonomic_add_remove_properties_fixture::ergonomic_add_remove_properties_fixture().unwrap();
@@ -445,4 +451,126 @@ fn abandoned_targets_are_removed_from_pending_commit_intent() {
         .edits
         .iter()
         .all(|edit| matches!(edit, ExpectedMembershipEdit::Add(targets) if targets.is_empty())));
+}
+
+#[test]
+fn relationship_removal_follows_fixture_ownership_but_not_target_versions() {
+    use holons_prelude::prelude::*;
+    use holons_test::{ExpectedCommitCandidate, TestCaseInit};
+    for remove_successor in [false, true] {
+        let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } =
+            TestCaseInit::new(
+                "Historical membership removal",
+                "Exact fixture identity across Commit",
+            );
+        let mut tokens = Vec::new();
+        for key in ["Source", "Target"] {
+            let key = MapString(key.into());
+            let snapshot = fixture_context.mutation().new_holon(Some(key.clone())).unwrap();
+            let token = test_case
+                .add_new_holon_step(
+                    &mut fixture_holons,
+                    snapshot,
+                    PropertyMap::new(),
+                    Some(key),
+                    None,
+                    None,
+                )
+                .unwrap();
+            tokens.push(
+                test_case.add_stage_holon_step(&mut fixture_holons, token, None, None).unwrap(),
+            );
+        }
+        let source = test_case
+            .add_add_related_holons_step(
+                &mut fixture_holons,
+                tokens[0].clone(),
+                "Variants".to_relationship_name(),
+                vec![tokens[1].clone()],
+                None,
+                None,
+            )
+            .unwrap();
+        test_case
+            .add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)
+            .unwrap();
+        let source = test_case
+            .add_stage_new_version_step(
+                &mut fixture_holons,
+                source,
+                None,
+                MapInteger(1),
+                None,
+                None,
+            )
+            .unwrap();
+        let target = if remove_successor {
+            test_case
+                .add_stage_new_version_step(
+                    &mut fixture_holons,
+                    tokens[1].clone(),
+                    None,
+                    MapInteger(2),
+                    None,
+                    None,
+                )
+                .unwrap()
+        } else {
+            tokens[1].clone()
+        };
+        let source = test_case
+            .add_remove_related_holons_step(
+                &mut fixture_holons,
+                source,
+                "Variants".to_relationship_name(),
+                vec![target.clone()],
+                None,
+                None,
+            )
+            .unwrap();
+        let collection = source.expected_reference().related_holons("Variants").unwrap();
+        let members = collection.read().unwrap().get_members().clone();
+        if remove_successor {
+            let [HolonReference::Transient(member)] = members.as_slice() else {
+                panic!("original target must remain")
+            };
+            assert_eq!(
+                fixture_holons.head_snapshot_id_for(&member.temporary_id()),
+                fixture_holons.head_snapshot_id_for(&tokens[1].expected_id())
+            );
+        } else {
+            assert!(members.is_empty(), "removing the original target clears the collection");
+        }
+        let mut declarations =
+            vec![ExpectedCommitCandidate::new(source, ExpectedDisposition::NewVersion)];
+        if remove_successor {
+            declarations.push(ExpectedCommitCandidate::new(target, ExpectedDisposition::NoAction));
+        }
+        test_case
+            .add_commit_step_with_dispositions(
+                &mut fixture_holons,
+                ExpectedCommitStatus::Complete,
+                declarations,
+                vec![],
+                None,
+                None,
+            )
+            .unwrap();
+        let DanceTestStep::Commit { candidates, .. } = test_case.steps.last().unwrap() else {
+            unreachable!()
+        };
+        let relationship =
+            candidates[0].relationships.iter().find(|r| r.name.to_string() == "Variants").unwrap();
+        if remove_successor {
+            let [remaining] = relationship.after.as_slice() else {
+                panic!("Commit must retain the original target")
+            };
+            assert_eq!(
+                fixture_holons.head_snapshot_id_for(&remaining.expected_id()),
+                fixture_holons.head_snapshot_id_for(&tokens[1].expected_id())
+            );
+        } else {
+            assert!(relationship.after.is_empty(), "Commit must persist the removal");
+        }
+    }
 }

@@ -35,10 +35,19 @@ struct PreparedDiagnostic {
     message: String,
 }
 
+/// One distinct property definition claiming a semantic name in a contract.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct PropertyNameClaim {
+    pub member: holons_core::DefinitionIdentity,
+    pub declared_on: holons_core::DefinitionIdentity,
+}
+
 /// Usability facts are independent of contract acceptance and scoped to their consumers.
 #[derive(Clone)]
 pub(crate) struct ContractInterpretation {
     pub vocabulary_usable: bool,
+    pub other_vocabulary_defect: bool,
+    pub property_name_collisions: BTreeMap<String, Vec<PropertyNameClaim>>,
     pub unusable_properties: std::collections::HashSet<holons_core::DefinitionIdentity>,
     pub unusable_values: std::collections::HashSet<holons_core::DefinitionIdentity>,
 }
@@ -46,6 +55,8 @@ impl Default for ContractInterpretation {
     fn default() -> Self {
         Self {
             vocabulary_usable: true,
+            other_vocabulary_defect: false,
+            property_name_collisions: BTreeMap::new(),
             unusable_properties: Default::default(),
             unusable_values: Default::default(),
         }
@@ -238,6 +249,24 @@ impl DescriptorRuleProducts {
             }
         }
         if let Some((_, governing_lineage)) = prerequisites.valid_lineages() {
+            match governing_lineage
+                .subject()
+                .property_value(CorePropertyTypeName::IsAbstractType)?
+            {
+                Some(BaseValue::BooleanValue(value)) if value.0 => self.violation(
+                    ConcreteDescribingType,
+                    format!(
+                        "Describing type {} must be concrete.",
+                        governing_lineage.subject().reference_id_string()
+                    ),
+                ),
+                Some(BaseValue::BooleanValue(_)) => {}
+                _ => self.unresolved(
+                    ConcreteDescribingType,
+                    "Describing-type abstractness is unusable.".into(),
+                ),
+            }
+
             if is_descriptor != roots.is_meta_type(governing_lineage)? {
                 self.violation(DescriptorMetaTypeCorrespondence, format!(
                     "Holon {} has incompatible descriptor/meta-type correspondence with its direct describer.",
@@ -500,6 +529,24 @@ impl DescriptorRuleProducts {
                         names.iter().find(|(prior_name, _, _)| prior_name == &name.0)
                     {
                         interpretation.vocabulary_usable = false;
+                        if matches!(definition.expected_kind, CoreDefinitionRole::PropertyType) {
+                            let claims = interpretation
+                                .property_name_collisions
+                                .entry(name.0.clone())
+                                .or_default();
+                            if claims.is_empty() {
+                                claims.push(PropertyNameClaim {
+                                    member: self.diagnoses.identity(prior)?,
+                                    declared_on: self.diagnoses.identity(first_owner)?,
+                                });
+                            }
+                            claims.push(PropertyNameClaim {
+                                member: self.diagnoses.identity(&member)?,
+                                declared_on: self.diagnoses.identity(&declared_on)?,
+                            });
+                        } else {
+                            interpretation.other_vocabulary_defect = true;
+                        }
                         self.violation(UniqueSemanticMemberNames, format!(
                             "Distinct {namespace} members {} and {} claim semantic name {}; declared on {} and {}, respectively.",
                             prior.reference_id_string(), member.reference_id_string(), name.0,
@@ -511,6 +558,7 @@ impl DescriptorRuleProducts {
                 }
                 other => {
                     interpretation.vocabulary_usable = false;
+                    interpretation.other_vocabulary_defect = true;
                     let actual = other
                         .as_ref()
                         .map(|value| format!("{:?}", value.kind()))
@@ -524,7 +572,7 @@ impl DescriptorRuleProducts {
             let member_usable =
                 self.check_member_kind(&member, definition.expected_kind, namespace, kind_roots)?;
             if !member_usable {
-                if namespace == "property" {
+                if matches!(definition.expected_kind, CoreDefinitionRole::PropertyType) {
                     interpretation.unusable_properties.insert(self.diagnoses.identity(&member)?);
                 }
                 if self.diagnose(&member)?.defects.iter().any(|defect| {
@@ -548,7 +596,7 @@ impl DescriptorRuleProducts {
                         kind_roots,
                     )?;
                 }
-                if namespace == "property" && !usable {
+                if matches!(definition.expected_kind, CoreDefinitionRole::PropertyType) && !usable {
                     interpretation.unusable_values.insert(self.diagnoses.identity(&member)?);
                 }
             }

@@ -19,6 +19,9 @@ instance Length16k.StringLengthConstraint {
 value MapStringValueType.StringValueType {
   type MetaStringValueType.MetaValueType
   extends StringValueType.ValueType
+  relationships {
+    Constraints -> Length16k.StringLengthConstraint
+  }
   header {
     description: "Concrete value type representing strings."
     display_name: "MapStringValueType"

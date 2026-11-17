@@ -294,6 +294,47 @@ impl FixtureHolons {
         Ok(fixture_holon.head_snapshot.snapshot().into())
     }
 
+    /// Finds linked snapshots owned by the target FixtureHolons, preserving version exactness.
+    /// This does not equate distinct NoAction/GraphOnly aliases or their source, even when
+    /// they realize the same saved node. That requires resolving AliasOf for saved snapshots.
+    pub fn relationship_members_owned_by_targets(
+        &self,
+        snapshot: &TransientReference,
+        relationship: &core_types::RelationshipName,
+        targets: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        let owners = targets
+            .iter()
+            .map(|token| self.fixture_id_for_token(token))
+            .collect::<Result<BTreeSet<_>, _>>()?;
+        let collection = snapshot.related_holons(relationship)?;
+        let members = collection
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+            .get_members()
+            .clone();
+        members
+            .into_iter()
+            .filter_map(|member| {
+                let id = match &member {
+                    HolonReference::Transient(reference) => reference.temporary_id(),
+                    HolonReference::Staged(_) | HolonReference::Smart(_) => {
+                        return Some(Err(HolonError::InvalidState(
+                            "Expected a fixture snapshot".into(),
+                        )))
+                    }
+                };
+                match self.snapshot_to_fixture_holon.get(&id) {
+                    Some(owner) if owners.contains(owner) => Some(Ok(member)),
+                    Some(_) => None,
+                    None => Some(Err(HolonError::InvalidState(
+                        "Unregistered relationship snapshot".into(),
+                    ))),
+                }
+            })
+            .collect()
+    }
+
     /// Resolves a relationship-target token to its logical holon's current head token.
     ///
     /// Relationship adders use this so execution steps carry the target's current

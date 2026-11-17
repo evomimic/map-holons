@@ -2,20 +2,20 @@
 //! DS-CONSTRAINT-001 prepares a seeded rule product; -002 and -003 are fixed checks.
 //! Instantiate one assessment per prospective Schema, then discard it before mutation.
 
+use crate::assessment::descriptor_package::{
+    AttachmentApplicability, DescriptorPackages, PreparedConstraint, PreparedConstraintParameters,
+};
+use holons_core::descriptors::value_constraints::ConstraintTypeDefect;
 use std::collections::HashSet;
 
 use base_types::BaseValue;
 use core_types::{CommitValidationViolationKind, HolonError, PropertyName};
 use holons_core::{
-    descriptors::{
-        constraint_applies_to, constraint_applies_to_lineage, resolve_describing_type,
-        same_definition, ConstraintContributions, DescribingTypeResolution, ValidExtendsLineage,
-    },
+    descriptors::{same_definition, ConstraintContributions, ValidExtendsLineage},
     HolonReference, ReadableHolon,
 };
 use type_names::{
-    CoreDefinitionRole, CorePropertyTypeName as P, CoreRelationshipTypeName as R,
-    CoreValidationRuleName,
+    CorePropertyTypeName as P, CoreRelationshipTypeName as R, CoreValidationRuleName,
 };
 
 use crate::{
@@ -40,16 +40,14 @@ struct CheckedConstraint {
 /// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it
 /// neither evaluates attached constraints nor replaces the shared subject validators.
-pub struct ConstraintDeclarationAssessment {
+pub struct ConstraintDeclarationAssessment<'p> {
     checked: Vec<CheckedConstraint>,
-    diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
+    packages: &'p DescriptorPackages,
 }
 
-impl ConstraintDeclarationAssessment {
-    pub(crate) fn new(
-        diagnoses: std::sync::Arc<crate::assessment::structural_diagnoses::StructuralDiagnoses>,
-    ) -> Self {
-        Self { diagnoses, checked: Vec::new() }
+impl<'p> ConstraintDeclarationAssessment<'p> {
+    pub(crate) fn new(packages: &'p DescriptorPackages) -> Self {
+        Self { checked: Vec::new(), packages }
     }
 
     /// Checks a configured holon once, including owned constraints with no attachments.
@@ -63,6 +61,7 @@ impl ConstraintDeclarationAssessment {
     }
 
     /// Reads kernel contributions only after structural prerequisites succeeded.
+    #[cfg(test)]
     pub fn assess_descriptor(
         &mut self,
         lineage: ValidExtendsLineage<'_>,
@@ -88,7 +87,10 @@ impl ConstraintDeclarationAssessment {
             collector.observations.constraint_attachment_count += 1;
             let checked = self.check_constraint(&attachment.member, collector)?;
             if let Some(constraint_type) = &checked.constraint_type {
-                if !constraint_applies_to_lineage(constraint_type, lineage)? {
+                if matches!(
+                    self.packages.attachment_applicability(&subject, &attachment.member)?,
+                    AttachmentApplicability::DoesNotApply
+                ) {
                     fixed_violation(collector, &subject, "DS-CONSTRAINT-002", format!(
                         "Constraint {} of type {} contributed by {} is not applicable to descriptor {} through ApplicableToDescriptorTypes and Extends.",
                         checked.constraint.reference_id_string(), constraint_type.reference_id_string(),
@@ -117,14 +119,17 @@ impl ConstraintDeclarationAssessment {
                 let checked = self.check_constraint(&inherited.member, collector)?;
                 valid &= checked.valid;
                 let rule = CoreValidationRuleName::InheritedValueConstraintNonRelaxation;
-                let Some(constraint_type) = &checked.constraint_type else {
+                let Some(_) = &checked.constraint_type else {
                     products.unresolved(rule, format!(
                         "Cannot assess inherited obligation {} from {} until its constraint type is corrected.",
                         inherited.member.reference_id_string(), parent.reference_id_string()));
                     valid = false;
                     continue;
                 };
-                if constraint_applies_to(constraint_type, parent)? {
+                if matches!(
+                    self.packages.attachment_applicability(parent, &inherited.member)?,
+                    AttachmentApplicability::Applies
+                ) {
                     products.violation(rule, format!(
                         "Descriptor {} loses inherited constraint {} from parent {} with original contribution on {}; retain the obligation and its provenance in the combined effective set.",
                         subject.reference_id_string(), inherited.member.reference_id_string(),
@@ -148,120 +153,78 @@ impl ConstraintDeclarationAssessment {
             }
         }
         collector.observations.constraint_declaration_count += 1;
-        let resolution = resolve_describing_type(&constraint)?;
-        let constraint_type = match resolution {
-            DescribingTypeResolution::Unique(descriptor) => Some(descriptor),
-            DescribingTypeResolution::Missing => {
-                finding(
-                    collector,
-                    CommitValidationViolationKind::NoDescriptor,
-                    None,
-                    &path(&constraint),
-                    None,
-                    format!("Constraint {}: MissingDescribedBy.", constraint.reference_id_string()),
-                );
-                None
+        let prepared = self.packages.prepared_constraint(&constraint)?;
+        let constraint_type = match prepared {
+            PreparedConstraint::Interpreted { constraint_type: reference, .. } => {
+                Some(reference.clone())
             }
-            DescribingTypeResolution::Multiple(targets) => {
-                finding(
-                    collector,
-                    CommitValidationViolationKind::NoDescriptor,
-                    None,
-                    &path(&constraint),
-                    None,
-                    format!(
-                        "Constraint {}: MultipleDescribedBy ({} targets).",
-                        constraint.reference_id_string(),
-                        targets.len()
-                    ),
+            PreparedConstraint::Defective { defect, describing_type } => {
+                let message = format!(
+                    "Constraint {}{}: {defect}.",
+                    constraint.reference_id_string(),
+                    describing_type
+                        .as_ref()
+                        .map(|reference| format!(
+                            " described by {}",
+                            reference.reference_id_string()
+                        ))
+                        .unwrap_or_default()
                 );
+                match defect {
+                    ConstraintTypeDefect::MissingDescribedBy
+                    | ConstraintTypeDefect::MultipleDescribedBy(_) => {
+                        finding(
+                            collector,
+                            CommitValidationViolationKind::NoDescriptor,
+                            None,
+                            &path(&constraint),
+                            None,
+                            message,
+                        );
+                    }
+                    ConstraintTypeDefect::UnusableLineage => {
+                        dependency(collector, &constraint, message)
+                    }
+                    ConstraintTypeDefect::NotConcreteConstraintType => {
+                        fixed_violation(collector, &constraint, "DS-CONSTRAINT-003", message)
+                    }
+                }
                 None
             }
         };
         let mut checked =
             CheckedConstraint { constraint: constraint.clone(), constraint_type, valid: false };
         if let Some(constraint_type) = checked.constraint_type.clone() {
-            let diagnosis = self.diagnoses.get(&constraint_type)?;
-            if let Some(lineage) = diagnosis.valid_lineage() {
-                let root = CoreDefinitionRole::ConstraintType;
-                if lineage.contains_role(root)
-                    && matches!(constraint_type.property_value(P::IsAbstractType)?, Some(BaseValue::BooleanValue(value)) if !value.0)
-                {
-                    let configuration = Configuration {
-                        constraint: &constraint,
-                        constraint_type: &constraint_type,
-                    };
-                    let membership_valid = configuration.check_membership(collector, lineage)?;
-                    let family_valid = self.check_family(lineage, &configuration, collector)?;
-                    checked.valid = membership_valid && family_valid;
-                } else {
-                    fixed_violation(collector, &constraint, "DS-CONSTRAINT-003", format!(
-                        "Constraint {} must select a concrete ConstraintType; describing type {} must specialize {} and have IsAbstractType false.",
-                        constraint.reference_id_string(), constraint_type.reference_id_string(), root.key()));
-                    checked.constraint_type = None;
+            let diagnosis = self.packages.diagnoses.get(&constraint_type)?;
+            let lineage = diagnosis.valid_lineage().ok_or_else(|| {
+                HolonError::InvalidState("Prepared concrete type lacks a valid lineage".into())
+            })?;
+            let configuration =
+                Configuration { constraint: &constraint, constraint_type: &constraint_type };
+            let membership_valid = configuration.check_membership(collector, lineage)?;
+            let PreparedConstraint::Interpreted { parameters, .. } = prepared else {
+                return Ok(checked);
+            };
+            let family_valid = match parameters {
+                PreparedConstraintParameters::Valid(_)
+                | PreparedConstraintParameters::Uninterpreted => true,
+                PreparedConstraintParameters::Invalid(diagnoses) => {
+                    for diagnosis in diagnoses {
+                        configuration.violation(collector, diagnosis.message.clone());
+                    }
+                    false
                 }
-            } else {
-                dependency(collector, &constraint, format!(
-                    "Constraint {} cannot use describing type {} until its Extends lineage is corrected.",
-                    constraint.reference_id_string(), constraint_type.reference_id_string()));
-                checked.constraint_type = None;
-            }
+            };
+            checked.valid = membership_valid && family_valid;
         }
         self.checked.push(checked.clone());
         Ok(checked)
-    }
-
-    fn check_family(
-        &self,
-        lineage: ValidExtendsLineage<'_>,
-        configuration: &Configuration<'_>,
-        collector: &mut ValidationCollector,
-    ) -> Result<bool, HolonError> {
-        let mut valid = true;
-        // Family roles also apply to extension-owned subtypes.
-        for root in [
-            CoreDefinitionRole::StringLengthConstraint,
-            CoreDefinitionRole::BytesLengthConstraint,
-            CoreDefinitionRole::NumericRangeConstraint,
-            CoreDefinitionRole::ItemCountConstraint,
-        ] {
-            if lineage.contains_role(root) {
-                valid &= configuration.check_bounds(false, collector)?;
-                break;
-            }
-        }
-        if lineage.contains_role(CoreDefinitionRole::CardinalityConstraint) {
-            valid &= configuration.check_bounds(true, collector)?;
-        }
-        if lineage.contains_role(CoreDefinitionRole::UniqueItemsConstraint) {
-            // No Boolean parameter controls this commitment. Undeclared parameters,
-            // including any enable/disable field, are rejected by membership checking.
-            for field in [P::Minimum, P::Maximum, P::MinimumIsInclusive, P::MaximumIsInclusive] {
-                if configuration.constraint.property_value(&field)?.is_some() {
-                    configuration.violation(
-                        collector,
-                        format!(
-                            "UniqueItemsConstraint is presence-only and has no {} parameter.",
-                            field.as_property_name()
-                        ),
-                    );
-                    valid = false;
-                }
-            }
-        }
-        Ok(valid)
     }
 }
 
 struct Configuration<'a> {
     constraint: &'a HolonReference,
     constraint_type: &'a HolonReference,
-}
-
-/// Retains presence separately from native-kind validity for conditional fields.
-struct Field<T> {
-    present: bool,
-    value: Option<T>,
 }
 
 impl Configuration<'_> {
@@ -306,124 +269,6 @@ impl Configuration<'_> {
             );
         }
         Ok(undescribed.is_empty())
-    }
-
-    fn integer(
-        &self,
-        field: P,
-        collector: &mut ValidationCollector,
-    ) -> Result<Field<i64>, core_types::HolonError> {
-        let value = self.constraint.property_value(&field)?;
-        let parsed = match &value {
-            Some(BaseValue::IntegerValue(value)) if value.0 >= 0 => Some(value.0),
-            Some(BaseValue::IntegerValue(value)) => {
-                self.violation(
-                    collector,
-                    format!(
-                        "{} must be non-negative; found integer {}.",
-                        field.as_property_name(),
-                        value.0
-                    ),
-                );
-                None
-            }
-            None => None,
-            Some(value) => {
-                self.violation(
-                    collector,
-                    format!(
-                        "{} must be an integer; found value kind {:?}.",
-                        field.as_property_name(),
-                        value.kind()
-                    ),
-                );
-                None
-            }
-        };
-        Ok(Field { present: value.is_some(), value: parsed })
-    }
-
-    fn boolean(
-        &self,
-        field: P,
-        collector: &mut ValidationCollector,
-    ) -> Result<Field<bool>, core_types::HolonError> {
-        let value = self.constraint.property_value(&field)?;
-        let parsed = match &value {
-            Some(BaseValue::BooleanValue(value)) => Some(value.0),
-            None => None,
-            _ => {
-                self.violation(collector, format!("{} must be Boolean.", field.as_property_name()));
-                None
-            }
-        };
-        Ok(Field { present: value.is_some(), value: parsed })
-    }
-
-    fn check_bounds(
-        &self,
-        cardinality: bool,
-        collector: &mut ValidationCollector,
-    ) -> Result<bool, core_types::HolonError> {
-        let minimum = self.integer(P::Minimum, collector)?;
-        let maximum = self.integer(P::Maximum, collector)?;
-        let lower_inclusive = self.boolean(P::MinimumIsInclusive, collector)?;
-        let upper_inclusive = self.boolean(P::MaximumIsInclusive, collector)?;
-        let mut valid = (!minimum.present || minimum.value.is_some())
-            && (!maximum.present || maximum.value.is_some())
-            && (!lower_inclusive.present || lower_inclusive.value.is_some())
-            && (!upper_inclusive.present || upper_inclusive.value.is_some());
-        if cardinality {
-            if !minimum.present {
-                self.violation(collector, "CardinalityConstraint requires Minimum.".into());
-                valid = false;
-            }
-            if lower_inclusive.present || upper_inclusive.present {
-                self.violation(
-                    collector,
-                    "CardinalityConstraint has inclusive bounds and admits no inclusivity flags."
-                        .into(),
-                );
-                valid = false;
-            }
-        } else {
-            if !minimum.present && !maximum.present {
-                self.violation(
-                    collector,
-                    "At least one of Minimum and Maximum is required.".into(),
-                );
-                valid = false;
-            }
-            for (bound, flag, name) in [
-                (minimum.present, lower_inclusive.present, "MinimumIsInclusive"),
-                (maximum.present, upper_inclusive.present, "MaximumIsInclusive"),
-            ] {
-                if bound != flag {
-                    self.violation(
-                        collector,
-                        format!("{name} must be present exactly when its bound is present."),
-                    );
-                    valid = false;
-                }
-            }
-        }
-        // Missing or malformed flags already have findings. Equal-endpoint checks
-        // require two valid flags so their absence does not produce a second interval finding.
-        if let (Some(minimum), Some(maximum)) = (minimum.value, maximum.value) {
-            if minimum > maximum
-                || (minimum == maximum
-                    && !cardinality
-                    && matches!((lower_inclusive.value, upper_inclusive.value), (Some(lower), Some(upper)) if !lower || !upper))
-            {
-                self.violation(
-                    collector,
-                    "Bounds form an invalid interval; equal endpoints require both ends inclusive."
-                        .into(),
-                );
-                valid = false;
-            }
-        }
-        Ok(valid)
     }
 }
 

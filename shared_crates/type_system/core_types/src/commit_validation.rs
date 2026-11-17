@@ -23,8 +23,18 @@ pub struct CommitValidationViolation {
 pub enum CommitValidationViolationKind {
     NoDescriptor,
     UnsupportedValidationRule,
-    UnsupportedConstraintType { constraint_identity: String, constraint_type_identity: String },
-    RuleViolation { code: String },
+    UnsupportedConstraintType {
+        constraint_identity: String,
+        constraint_type_identity: String,
+    },
+    ConstraintViolation {
+        code: String,
+        constraint_identity: String,
+        constraint_type_identity: String,
+    },
+    RuleViolation {
+        code: String,
+    },
     UnresolvedLocalDependency,
     RelationshipCoordinationRequired,
 }
@@ -89,6 +99,18 @@ mod tests {
                     constraint_type_identity: "constraint-type".into(),
                 },
                 json!({"UnsupportedConstraintType": {
+                    "constraint_identity": "constraint",
+                    "constraint_type_identity": "constraint-type"
+                }}),
+            ),
+            (
+                CommitValidationViolationKind::ConstraintViolation {
+                    code: "StringLengthOutOfRange".into(),
+                    constraint_identity: "constraint".into(),
+                    constraint_type_identity: "constraint-type".into(),
+                },
+                json!({"ConstraintViolation": {
+                    "code": "StringLengthOutOfRange",
                     "constraint_identity": "constraint",
                     "constraint_type_identity": "constraint-type"
                 }}),

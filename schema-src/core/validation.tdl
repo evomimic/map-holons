@@ -234,7 +234,7 @@ abstract holon ValidationRule.HolonType {
   }
 }
 
-abstract holon HolonValidationRule.HolonType {
+holon HolonValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -245,7 +245,7 @@ abstract holon HolonValidationRule.HolonType {
   }
 }
 
-abstract holon PropertyValidationRule.HolonType {
+holon PropertyValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -256,7 +256,7 @@ abstract holon PropertyValidationRule.HolonType {
   }
 }
 
-abstract holon ValueValidationRule.HolonType {
+holon ValueValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -267,7 +267,7 @@ abstract holon ValueValidationRule.HolonType {
   }
 }
 
-abstract holon StringValidationRule.HolonType {
+holon StringValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -278,7 +278,7 @@ abstract holon StringValidationRule.HolonType {
   }
 }
 
-abstract holon IntegerValidationRule.HolonType {
+holon IntegerValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -289,7 +289,7 @@ abstract holon IntegerValidationRule.HolonType {
   }
 }
 
-abstract holon BooleanValidationRule.HolonType {
+holon BooleanValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -300,7 +300,7 @@ abstract holon BooleanValidationRule.HolonType {
   }
 }
 
-abstract holon EnumValueValidationRule.HolonType {
+holon EnumValueValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -311,7 +311,7 @@ abstract holon EnumValueValidationRule.HolonType {
   }
 }
 
-abstract holon BytesValidationRule.HolonType {
+holon BytesValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -322,7 +322,7 @@ abstract holon BytesValidationRule.HolonType {
   }
 }
 
-abstract holon ValueArrayValidationRule.HolonType {
+holon ValueArrayValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValueValidationRule.HolonType
   header {
@@ -333,7 +333,7 @@ abstract holon ValueArrayValidationRule.HolonType {
   }
 }
 
-abstract holon RelationshipValidationRule.HolonType {
+holon RelationshipValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -344,7 +344,7 @@ abstract holon RelationshipValidationRule.HolonType {
   }
 }
 
-abstract holon TransactionValidationRule.HolonType {
+holon TransactionValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
   extends ValidationRule.HolonType
   header {
@@ -545,8 +545,8 @@ instance InheritedValueConstraintNonRelaxation.ValidationRule {
 }
 
 instance DefaultsRequireRequiredProperties.ValidationRule {
-  type PropertyValidationRule.HolonType
-  ValidationLevel Property
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-001"
   ValidationRuleDescription "Only required properties may declare defaults."
@@ -554,8 +554,8 @@ instance DefaultsRequireRequiredProperties.ValidationRule {
 }
 
 instance DefaultValueConformance.ValidationRule {
-  type PropertyValidationRule.HolonType
-  ValidationLevel Property
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-002"
   ValidationRuleDescription "Every declared default value must conform to its effective value definition."
@@ -608,11 +608,11 @@ instance ExplicitKeylessBaseline.ValidationRule {
 }
 
 instance EnumMemberNamesUnique.ValidationRule {
-  type EnumValueValidationRule.HolonType
-  ValidationLevel Value
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-001"
-  ValidationRuleDescription "Enum member names must be unique within each effective enum definition."
+  ValidationRuleDescription "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
@@ -626,8 +626,8 @@ instance AbstractMemberMinimumEnforcement.ValidationRule {
 }
 
 instance UniquePropertyMemberBinding.ValidationRule {
-  type PropertyValidationRule.HolonType
-  ValidationLevel Property
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-BIND-001"
   ValidationRuleDescription "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
@@ -711,7 +711,7 @@ instance PropertyValueConformance.ValidationRule {
   ValidationLevel Property
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-002"
-  ValidationRuleDescription "A populated property value must conform to the selected ValueType descriptor."
+  ValidationRuleDescription "A populated property value must conform to its selected ValueType descriptor. Representation and configured-constraint findings are reported by the value-kind rules and the constraint traversal; this rule adds none of its own."
   rule_of "MAP Core Schema-v0.0.7"
 }
 

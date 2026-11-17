@@ -34,6 +34,8 @@ abstract holon HolonType.TypeDescriptor {
   }
   relationships {
     ValidationBindings -> [
+      ConcreteDescribingType.ValidationRule,
+      UniquePropertyMemberBinding.ValidationRule,
       NoUndescribedProperties.ValidationRule,
       KeyUniqueness.ValidationRule,
       DescribingCategoryCompatibility.ValidationRule,
@@ -59,7 +61,7 @@ abstract holon PropertyType.TypeDescriptor {
     plural: "PropertyTypes"
   }
   relationships {
-    ValidationBindings -> RequiredPropertyPresence.ValidationRule
+    ValidationBindings -> [RequiredPropertyPresence.ValidationRule, PropertyValueConformance.ValidationRule]
   }
 }
 
@@ -111,6 +113,7 @@ abstract holon MetaTypeDescriptor.HolonType {
   }
   relationships {
     ValidationBindings -> [
+      AbstractMemberMinimumEnforcement.ValidationRule,
       AtMostOneDirectParent.ValidationRule,
       AbstractPropertyParent.ValidationRule,
       AcyclicExtendsLineage.ValidationRule,
@@ -174,6 +177,7 @@ holon MetaPropertyType.MetaTypeDescriptor {
     plural: "MetaPropertyTypes"
   }
   relationships {
+    ValidationBindings -> [DefaultsRequireRequiredProperties.ValidationRule, DefaultValueConformance.ValidationRule]
     InstanceProperties -> [
       IsValueRequired.PropertyType,
       DefaultValue.PropertyType,
@@ -396,7 +400,7 @@ property Minimum.PropertyType {
   extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
   header {
-    description: "Optional non-negative lower bound for a configured constraint."
+    description: "Optional integer lower bound for a configured constraint. Signedness is determined by the constraint family."
     display_name: "Minimum"
     display_plural: "Minimums"
     plural: "Minimums"
@@ -421,7 +425,7 @@ property Maximum.PropertyType {
   extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
   header {
-    description: "Optional non-negative upper bound for a configured constraint. Absence means unbounded."
+    description: "Optional integer upper bound for a configured constraint. Signedness is determined by the constraint family. Absence means unbounded."
     display_name: "Maximum"
     display_plural: "Maximums"
     plural: "Maximums"

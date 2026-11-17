@@ -60,7 +60,7 @@
         "TypeNamePlural": "MetaEnumVariantValueTypes",
         "DisplayName": "Meta Enum Variant Value Type",
         "DisplayNamePlural": "Meta Enum Variant Value Types",
-        "Description": "Meta-type describing concrete enum-member descriptor holons and prescribing owner-qualified descriptor keys."
+        "Description": "Meta-type describing abstract enum-variant anchors and concrete enum-member descriptor holons, and prescribing owner-qualified descriptor keys."
       },
       "relationships": [
         {
@@ -208,6 +208,14 @@
           "target": [
             {
               "$ref": "(EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "EnumMemberNamesUnique.ValidationRule"
             }
           ]
         }
@@ -530,6 +538,9 @@
           "target": [
             {
               "$ref": "BaseValueKindMatchesEnum.ValidationRule"
+            },
+            {
+              "$ref": "EnumTokenMembership.ValidationRule"
             }
           ]
         }
@@ -568,7 +579,7 @@
     },
     {
       "key": "EnumVariantValueType.ValueType",
-      "type": "MetaValueType.MetaTypeDescriptor",
+      "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
         "TypeName": "ValueType",
         "TypeNamePlural": "EnumVariantValueTypes",
@@ -599,7 +610,7 @@
     },
     {
       "key": "MapEnumVariantValueType.EnumVariantValueType",
-      "type": "MetaValueType.MetaTypeDescriptor",
+      "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
         "TypeName": "EnumVariantValueType",
         "TypeNamePlural": "MapEnumVariantValueTypes",

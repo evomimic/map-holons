@@ -90,6 +90,11 @@ impl ValueDescriptor {
         }
     }
 
+    /// Validates an authored literal against representation, value semantics and every constraint.
+    pub fn validate_literal(&self, value: &BaseValue) -> Result<(), HolonError> {
+        super::value_constraints::literal::validate_literal(self, value)
+    }
+
     /// Returns inherited constraint occurrences with their declaring descriptors.
     /// Ancestor contributions precede local contributions; duplicates remain visible.
     ///

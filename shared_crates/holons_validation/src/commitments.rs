@@ -20,29 +20,6 @@ impl From<EffectiveRelationshipMember> for ResolvedValidationBinding {
     }
 }
 
-/// One configured constraint with concrete type and attachment provenance.
-///
-/// Construction requires an unambiguous describing type. Unlike validating this
-/// holon as a subject, consuming it as a commitment cannot continue without that
-/// execution dependency: descriptor-resolution failures return `HolonError`.
-/// A resolved but unsupported concrete type instead produces a blocking finding.
-pub struct ResolvedConstraint {
-    /// Configured constraint instance; parameters are not reconstructed elsewhere.
-    pub constraint: HolonReference,
-    /// Concrete describing type used by static constraint dispatch.
-    pub constraint_type: HolonDescriptor,
-    /// Descriptor that contributed this occurrence to the effective contract.
-    pub declaring_descriptor: HolonDescriptor,
-}
-
-impl TryFrom<EffectiveRelationshipMember> for ResolvedConstraint {
-    type Error = HolonError;
-
-    fn try_from(contribution: EffectiveRelationshipMember) -> Result<Self, Self::Error> {
-        Self::resolve(contribution)
-    }
-}
-
 pub(crate) fn required_key(reference: &HolonReference) -> Result<String, HolonError> {
     reference.key()?.map(|key| key.to_string()).ok_or_else(|| {
         HolonError::EmptyField(format!(
@@ -54,35 +31,4 @@ pub(crate) fn required_key(reference: &HolonReference) -> Result<String, HolonEr
 
 pub(crate) fn declaring_identity(binding: &ResolvedValidationBinding) -> String {
     binding.declaring_descriptor.holon().reference_id_string()
-}
-
-impl ResolvedConstraint {
-    /// Resolves configured parameters and their describing type from their exact bound references.
-    /// This is declaration preparation, not instance constraint evaluation.
-    pub fn resolve(contribution: EffectiveRelationshipMember) -> Result<Self, HolonError> {
-        use holons_core::DescribingTypeResolution;
-        let constraint = contribution.member.clone();
-        let constraint_type = match holons_core::descriptors::resolve_describing_type(&constraint)?
-        {
-            DescribingTypeResolution::Unique(descriptor) => descriptor,
-            DescribingTypeResolution::Missing => {
-                return Err(HolonError::MissingDescribedBy {
-                    holon: constraint.reference_id_string(),
-                }
-                .into())
-            }
-            DescribingTypeResolution::Multiple(targets) => {
-                return Err(HolonError::MultipleDescribedBy {
-                    holon: constraint.reference_id_string(),
-                    count: targets.len(),
-                }
-                .into())
-            }
-        };
-        Ok(Self {
-            constraint,
-            constraint_type: HolonDescriptor::from_holon(constraint_type),
-            declaring_descriptor: HolonDescriptor::from_holon(contribution.declared_on.clone()),
-        })
-    }
 }

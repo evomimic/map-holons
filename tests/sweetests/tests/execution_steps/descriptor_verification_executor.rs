@@ -831,7 +831,7 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
     );
     assert_contains(&instance_property_names, "Key"); // inherited from HolonType.TypeDescriptor
     assert_contains(&instance_property_names, "Title");
-    assert_eq!(instance_property_names.len(), 8);
+    assert_eq!(instance_property_names.len(), 11);
     for (name, value_type) in [
         ("IsPublished", "MapBooleanValueType"),
         ("PageCount", "MapIntegerValueType"),
@@ -839,6 +839,9 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         ("CoverDigest", "MapBytesValueType"),
         ("ContentDigest", "ContentDigestValueType"),
         ("Subtitle", "MapStringValueType"),
+        ("ShortText", "ShortText"),
+        ("SignedScore", "SignedScore"),
+        ("ShortBytes", "ShortBytes"),
     ] {
         let property = EffectiveHolonDescriptor::acquire(book_descriptor.holon().clone())
             .expect("prepared Holon schema")
