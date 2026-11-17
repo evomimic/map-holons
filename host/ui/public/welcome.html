@@ -13,6 +13,15 @@
     <h1>Welcome to MAP</h1>
     <p id="introduction">Your personal space is yours to constitute.</p>
     <p id="status" role="status">Checking availability…</p>
+    <fieldset id="personal-name" disabled hidden>
+      <legend>Your name</legend>
+      <label for="first-name">First name (optional)</label>
+      <input id="first-name" name="firstName" autocomplete="given-name">
+      <label for="middle-name">Middle name (optional)</label>
+      <input id="middle-name" name="middleName" autocomplete="additional-name">
+      <label for="last-name">Last name</label>
+      <input id="last-name" name="lastName" autocomplete="family-name" required>
+    </fieldset>
     <button id="constitute" type="button" disabled>Create my personal space</button>
   </main>
 </body>

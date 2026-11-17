@@ -5,7 +5,7 @@ use crate::{
     },
     setup::application_launcher::{ApplicationSessionPhase, ApplicationSessionState},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 pub const WINDOW_LABEL: &str = "welcome";
@@ -132,9 +132,25 @@ pub(crate) async fn refresh_lifecycle(handle: &AppHandle) -> anyhow::Result<()> 
         .map_err(anyhow::Error::msg)
 }
 
+/// Untrusted naming data only. Resource, author and principal selection belongs
+/// to the backend; these fields never carry an acquisition permit or a key.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PersonalConstitutionInput {
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: String,
+}
+
 #[tauri::command]
-pub async fn constitute_personal_space(window: WebviewWindow) -> Result<(), String> {
+pub async fn constitute_personal_space(
+    window: WebviewWindow,
+    input: PersonalConstitutionInput,
+) -> Result<(), String> {
     admit(&window)?;
+    // Parse names at ingress, but stage nothing until the full backend admission
+    // and shared constitution contract are available. Naming is not authority.
+    let _ = (input.first_name, input.middle_name, input.last_name);
     let handle = window.app_handle();
     let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
     let observation = handle.state::<WelcomeLifecycle>().observation()?;
@@ -165,6 +181,50 @@ pub fn create_window(handle: &tauri::AppHandle) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn constitution_input_accepts_only_names_without_rewriting_them() {
+        let names: PersonalConstitutionInput = serde_json::from_value(serde_json::json!({
+            "lastName": "van den Berg", "firstName": " Élodie ", "middleName": null
+        }))
+        .unwrap();
+        assert_eq!(names.last_name, "van den Berg");
+        assert_eq!(names.first_name.as_deref(), Some(" Élodie "));
+        assert_eq!(names.middle_name, None);
+        let minimal: PersonalConstitutionInput =
+            serde_json::from_value(serde_json::json!({"lastName": "李"})).unwrap();
+        assert_eq!(minimal.last_name, "李");
+        assert_eq!(minimal.first_name, None);
+        assert_eq!(minimal.middle_name, None);
+        for invalid in [
+            serde_json::json!({}),
+            serde_json::json!({"lastName":null}),
+            serde_json::json!({"lastName":12}),
+        ] {
+            assert!(serde_json::from_value::<PersonalConstitutionInput>(invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn constitution_input_rejects_authority_fields_and_unknown_properties() {
+        for field in [
+            "spaceId",
+            "agentId",
+            "agentPubKey",
+            "bootstrap",
+            "credential",
+            "permit",
+            "key",
+            "properties",
+        ] {
+            let mut value = serde_json::json!({"lastName":"Example"});
+            value[field] = serde_json::json!("untrusted assertion");
+            assert!(
+                serde_json::from_value::<PersonalConstitutionInput>(value).is_err(),
+                "accepted {field}"
+            );
+        }
+    }
+
     #[test]
     fn welcome_permissions_exclude_conductor_and_generic_map_commands() {
         let capability: serde_json::Value =

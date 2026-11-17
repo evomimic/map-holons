@@ -5,3 +5,8 @@ h1 { font-size: 2.5rem; }
 p { line-height: 1.6; }
 button { padding: 0.8rem 1.2rem; border: 1px solid #699ba8; border-radius: 0.4rem; background: #214655; color: inherit; font: inherit; }
 button:disabled { opacity: 0.6; }
+
+fieldset { border: 0; padding: 0; margin: 1.5rem 0; }
+legend { font-weight: 600; margin-bottom: 0.5rem; }
+label { display: block; margin-top: 0.75rem; }
+input { box-sizing: border-box; width: 100%; padding: 0.6rem; margin-top: 0.25rem; border: 1px solid #699ba8; border-radius: 0.4rem; background: #152d3c; color: inherit; font: inherit; }
