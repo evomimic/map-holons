@@ -3,6 +3,7 @@ mod config;
 mod constitution_admission;
 pub mod env;
 mod map_commands;
+pub mod personal_constitution;
 mod runtime;
 mod setup;
 pub mod source_ingress;

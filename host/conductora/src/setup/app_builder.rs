@@ -94,6 +94,7 @@ impl AppBuilder {
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .manage(CoreSchemaBootstrapGate::new())
             .manage(crate::constitution_admission::WelcomeLifecycle::default())
+            .manage(crate::personal_constitution::WelcomeConstitution::default())
             .manage(ApplicationSessionState::new(application_experience));
         let base = if crate::env::development_enabled() {
             base.invoke_handler(tauri::generate_handler![
@@ -127,7 +128,7 @@ impl AppBuilder {
         let builder = with_registry.setup(|app| -> Result<(), Box<dyn std::error::Error>> {
             let handle = app.handle().clone();
             if !crate::env::development_enabled() {
-                // Welcome has no mutation authority and can appear while trusted provisioning runs.
+                // Welcome appears during provisioning; backend admission remains closed until ready.
                 crate::trusted_welcome::create_window(&handle)?;
             }
             let storage_cfg = app.state::<StorageManager>().inner().clone();
@@ -187,9 +188,13 @@ impl AppBuilder {
                         "[PERF-688] conductora_startup: core_schema_bootstrap_ms={}",
                         bootstrap_started_at.elapsed().as_millis(),
                     );
-                    application_session
-                        .mark_activating_base_packages()
-                        .map_err(anyhow::Error::msg)?;
+                    if startup
+                        == crate::setup::core_schema_bootstrap::CoreSchemaStartup::Provisioned
+                    {
+                        application_session
+                            .mark_activating_base_packages()
+                            .map_err(anyhow::Error::msg)?;
+                    }
                     ensure_configured_space_imports(&handle, startup)
                         .await
                         .context("ensure_configured_space_imports failed")?;

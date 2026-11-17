@@ -27,7 +27,9 @@
     "clean:rust": "cargo clean",
     "clean:rust:deep": "npx rimraf target .cargo && cargo clean",
     "clean:ui": "npx rimraf ../node_modules",
-    "tauri:bundle": "tauri build"
+    "tauri:bundle": "tauri build",
+    "welcome:build": "npm run build:happ -w map-happ && tauri build --debug --bundles app --features local-constitution",
+    "welcome:start": "bash ./scripts/welcome-start.sh"
   },
   "prettier": {
     "overrides": [

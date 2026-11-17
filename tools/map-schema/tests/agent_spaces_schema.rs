@@ -52,7 +52,7 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     }
     let person = holon(&document, "PersonAgent.BioSocialAgent");
     assert_eq!(targets(person, "InstanceProperties").len(), 3);
-    assert_eq!(targets(person, "InstanceKeyRule"), ["PersonAgentName.FormatRule"]);
+    assert_eq!(targets(person, "InstanceKeyRule"), ["NoneRule.KeyRuleType"]);
     let rule = holon(&document, "PersonAgentName.FormatRule");
     assert_eq!(rule["properties"]["TemplateString"], "{0}.[1].[2]");
     assert_eq!(

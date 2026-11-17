@@ -236,13 +236,19 @@ impl HolonPool {
 
     /// Inserts a new Holon into the pool.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
-        if matches!(&holon, Holon::Transient(_)) && holon.key().is_none() {
+        if matches!(&holon, Holon::Transient(_) | Holon::Staged(_)) && holon.key().is_none() {
             // Allocation identity is pool-local bookkeeping, never a semantic Key.
             // Start beyond current membership and probe so imported pools remain safe.
             let mut candidate = self.holons.len() as u128;
             loop {
-                let id =
-                    TemporaryId(uuid::Uuid::from_u128((0x7472616e7369656e_u128 << 64) | candidate));
+                // Phase namespaces prevent a transient and its staged clone
+                // from accidentally sharing a temporary lineage identity.
+                let namespace = match &holon {
+                    Holon::Transient(_) => 0x7472616e7369656e_u128,
+                    Holon::Staged(_) => 0x7374616765640000_u128,
+                    _ => unreachable!(),
+                };
+                let id = TemporaryId(uuid::Uuid::from_u128((namespace << 64) | candidate));
                 if !self.holons.contains_key(&id) {
                     self.holons.insert(id.clone(), Arc::new(RwLock::new(holon)));
                     return Ok(id);
@@ -295,6 +301,36 @@ mod tests {
             BaseValue::StringValue(MapString(key.into())),
         )?;
         Ok(Holon::Staged(holon))
+    }
+
+    #[test]
+    fn keyless_staged_holons_have_distinct_allocation_ids_without_keys() -> Result<(), HolonError> {
+        let mut transient_pool = HolonPool::new();
+        let transient_id = transient_pool.insert_holon(Holon::Transient(
+            crate::core_shared_objects::holon::TransientHolon::from_parts(
+                base_types::MapInteger(0),
+                crate::core_shared_objects::holon::state::HolonState::Mutable,
+                crate::core_shared_objects::holon::state::ValidationState::ValidationRequired,
+                core_types::PropertyMap::new(),
+                crate::core_shared_objects::TransientRelationshipMap::new_empty(),
+                None,
+            ),
+        ))?;
+        let mut pool = HolonPool::new();
+        let first = pool.insert_holon(Holon::Staged(StagedHolon::new_for_create()))?;
+        let second = pool.insert_holon(Holon::Staged(StagedHolon::new_for_create()))?;
+        assert_ne!(first, second);
+        assert_ne!(first, transient_id);
+        assert!(pool.keyed_index().is_empty());
+        assert!(pool.get_holon_by_id(&first)?.read().unwrap().key().is_none());
+        let existing = pool.holons_by_id().clone();
+        pool.import_pool(HolonPool::from_parts(existing, pool.keyed_index().clone()));
+        let third = pool.insert_holon(Holon::Staged(StagedHolon::new_for_create()))?;
+        assert_ne!(third, first);
+        assert_ne!(third, second);
+        assert_eq!(pool.len(), 3);
+        assert!(pool.keyed_index().is_empty());
+        Ok(())
     }
 
     #[test]

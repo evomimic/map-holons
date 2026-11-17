@@ -144,7 +144,8 @@ pub enum CoreSchemaStartup {
     OpenedExisting,
 }
 
-/// Reads and adopts a persisted local Space; errors must never fall back to provisioning.
+/// Resolves and adopts the local Space, using persisted discovery on a host cache miss.
+/// Errors must never fall back to provisioning.
 /// Finding the Space is not proof of sovereign acquisition or authorization.
 fn discover_existing_space(context: &Arc<TransactionContext>) -> Result<bool, HolonError> {
     let Some(space) = context.discover_local_holon_space()? else { return Ok(false) };
@@ -193,8 +194,13 @@ pub(crate) async fn prepare_core_schema(
     let bootstrap_started_at = Instant::now();
     let discovery_tx = runtime.session().begin_transaction().await?;
     let context = runtime.session().get_transaction(&discovery_tx)?;
+    let transaction_ms = bootstrap_started_at.elapsed().as_millis();
+    let discovery_started = Instant::now();
     let existing = discover_existing_space(&context);
+    let discovery_ms = discovery_started.elapsed().as_millis();
+    let cleanup_started = Instant::now();
     let archived = runtime.session().archive_transaction(&discovery_tx);
+    tracing::info!("[OPEN] transaction_setup_ms={transaction_ms} local_space_discovery_ms={discovery_ms} transaction_cleanup_ms={}", cleanup_started.elapsed().as_millis());
     let existing =
         existing.context("Discovering the persisted local HolonSpace before Provision/Open")?;
     archived?;
@@ -203,6 +209,7 @@ pub(crate) async fn prepare_core_schema(
         let root = resource_root.join(BUNDLE_DIRECTORY);
         let manifest: BootstrapManifest =
             serde_json::from_slice(&std::fs::read(root.join(MANIFEST_FILENAME))?)?;
+        let compatibility_started = Instant::now();
         let verify_tx = runtime.session().begin_transaction().await?;
         let verify_context = runtime.session().get_transaction(&verify_tx)?;
         let verified =
@@ -212,6 +219,10 @@ pub(crate) async fn prepare_core_schema(
             "Existing local Space lacks the supported Core Schema; Open cannot reprovision or upgrade it: {error}"
         ))?;
         archived?;
+        tracing::info!(
+            "[OPEN] Supported CoreSchema identity lookup: {}ms",
+            compatibility_started.elapsed().as_millis()
+        );
         info!("Opened retained local Space without bootstrap import replay");
         return Ok(CoreSchemaStartup::OpenedExisting);
     }
@@ -363,7 +374,10 @@ mod tests {
     }
 
     #[derive(Debug)]
-    struct DiscoveryTransport(Option<core_types::HolonId>);
+    struct DiscoveryTransport {
+        persisted: Option<core_types::HolonId>,
+        adopt_during_discovery: Option<core_types::HolonId>,
+    }
 
     #[async_trait::async_trait]
     impl holons_core::dances::DanceInitiator for DiscoveryTransport {
@@ -375,8 +389,11 @@ mod tests {
             use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
             assert_eq!(request.dance_name.0, "discover_local_holon_space");
             assert!(!context.is_bootstrap_provisioning());
+            if let Some(adopted) = &self.adopt_during_discovery {
+                context.set_space_holon_id(adopted.clone()).unwrap();
+            }
             let body = self
-                .0
+                .persisted
                 .clone()
                 .map(|id| {
                     ResponseBody::HolonReference(holons_core::HolonReference::smart_from_id(
@@ -390,23 +407,33 @@ mod tests {
     }
 
     #[test]
-    fn startup_adopts_only_the_persisted_designation() -> Result<(), HolonError> {
+    fn startup_adopts_on_cache_miss_and_reuses_host_identity() -> Result<(), HolonError> {
         use core_types::{HolonId, LocalId};
         let id = HolonId::Local(LocalId(vec![8; 39]));
         for persisted in [None, Some(id.clone())] {
-            let manager = holons_client::init_client_runtime(Some(Arc::new(DiscoveryTransport(
-                persisted.clone(),
-            ))));
+            let manager = holons_client::init_client_runtime(Some(Arc::new(DiscoveryTransport {
+                persisted: persisted.clone(),
+                adopt_during_discovery: None,
+            })));
             let context =
                 manager.get_transaction_manager().open_public_transaction(manager.clone())?;
             assert_eq!(discover_existing_space(&context)?, persisted.is_some());
             assert_eq!(manager.get_space_holon_id()?, persisted);
             assert!(!context.is_bootstrap_provisioning());
         }
-        let manager =
-            holons_client::init_client_runtime(Some(Arc::new(DiscoveryTransport(Some(id)))));
+        // An adopted identity resolves locally, without a guest transport.
+        let manager = holons_client::init_client_runtime(None);
         let adopted = HolonId::Local(LocalId(vec![9; 39]));
         manager.set_space_holon_id(adopted.clone())?;
+        let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
+        assert!(discover_existing_space(&context)?);
+        assert_eq!(manager.get_space_holon_id()?, Some(adopted.clone()));
+
+        // A conflicting adoption during a cold discovery still cannot be replaced.
+        let manager = holons_client::init_client_runtime(Some(Arc::new(DiscoveryTransport {
+            persisted: Some(id),
+            adopt_during_discovery: Some(adopted.clone()),
+        })));
         let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
         assert!(discover_existing_space(&context).is_err());
         assert_eq!(manager.get_space_holon_id()?, Some(adopted));

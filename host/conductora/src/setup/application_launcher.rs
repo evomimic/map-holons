@@ -68,6 +68,8 @@ pub enum ApplicationSessionPhase {
     LoadingCoreSchema,
     VerifyingCoreSchema,
     ActivatingBasePackages,
+    LoadingSpaceDefinitions,
+    VerifyingSpaceDefinitions,
     RealizingCanvas,
     SelectingHomeDancer,
     RealizingHomeDancer,
@@ -159,6 +161,14 @@ impl ApplicationSessionState {
 
     pub fn mark_activating_base_packages(&self) -> Result<(), String> {
         self.set_phase(ApplicationSessionPhase::ActivatingBasePackages)
+    }
+
+    pub fn mark_loading_space_definitions(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::LoadingSpaceDefinitions)
+    }
+
+    pub fn mark_verifying_space_definitions(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::VerifyingSpaceDefinitions)
     }
 
     pub fn mark_selecting_home_dancer(&self) -> Result<(), String> {

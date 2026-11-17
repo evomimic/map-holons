@@ -35,12 +35,65 @@ describe('packaged Welcome', () => {
       ['constitute_personal_space', { input: { lastName: 'van den Berg', firstName: 'Élodie' } }],
     ]);
     expect(names.disabled).toBe(true);
+    expect(document.getElementById('status')?.textContent).toContain('Creating');
+    expect(document.getElementById('activity-stage')?.textContent).toBe('Creating your personal space');
     rejectRequest('Shared acquisition enforcement is unavailable.');
     await Promise.resolve();
     await Promise.resolve();
     expect(document.getElementById('status')?.textContent).toBe('Shared acquisition enforcement is unavailable.');
     expect(button.disabled).toBe(true);
     expect((document.getElementById('last-name') as HTMLInputElement).value).toBe('van den Berg');
+  });
+
+  it('creates through the backend and returns as the same acquired installation', async () => {
+    const returning = { phase: 'association-present', constitution_available: false, message: 'Your existing personal space is open.' };
+    const invoke = vi.fn()
+      .mockResolvedValueOnce({ phase: 'foundation-present', constitution_available: true, message: 'Ready.' })
+      .mockResolvedValueOnce('complete')
+      .mockResolvedValueOnce(returning);
+    await start(invoke);
+    (document.getElementById('last-name') as HTMLInputElement).value = 'Example';
+    (document.getElementById('constitute') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(document.querySelector('h1')?.textContent).toBe('Welcome back to MAP'));
+    expect((document.getElementById('constitute') as HTMLButtonElement).hidden).toBe(true);
+    expect(invoke.mock.calls.map(call => call[0])).toEqual(['welcome_status', 'constitute_personal_space', 'welcome_status']);
+    // A freshly loaded page on the next launch only reads status.
+    const reopen = vi.fn().mockResolvedValue(returning);
+    await start(reopen);
+    document.getElementById('constitute')?.dispatchEvent(new MouseEvent('click'));
+    expect(reopen.mock.calls).toEqual([['welcome_status']]);
+  });
+
+  it('keeps creation disabled after Complete while confirming saved state', async () => {
+    vi.useFakeTimers();
+    const ready = { phase: 'foundation-present', constitution_available: true, message: 'Ready.' };
+    const invoke = vi.fn().mockResolvedValueOnce(ready)
+      .mockResolvedValueOnce('complete').mockResolvedValueOnce(ready)
+      .mockResolvedValueOnce({ phase: 'association-present', constitution_available: false, message: 'Your existing personal space is open.' });
+    await start(invoke);
+    (document.getElementById('last-name') as HTMLInputElement).value = 'Example';
+    const button = document.getElementById('constitute') as HTMLButtonElement;
+    button.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(button.disabled).toBe(true);
+    button.dispatchEvent(new MouseEvent('click'));
+    expect(invoke.mock.calls.filter(call => call[0] === 'constitute_personal_space')).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.querySelector('h1')?.textContent).toBe('Welcome back to MAP');
+    expect(button.hidden).toBe(true);
+  });
+
+  it.each(['rejected', 'incomplete'])('retains %s work without submitting a new create', async outcome => {
+    const invoke = vi.fn()
+      .mockResolvedValueOnce({ phase: 'foundation-present', constitution_available: true, message: 'Ready.' })
+      .mockResolvedValueOnce(outcome);
+    await start(invoke);
+    (document.getElementById('last-name') as HTMLInputElement).value = 'Example';
+    (document.getElementById('constitute') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(document.getElementById('status')?.textContent).toContain('resubmission'));
+    document.getElementById('constitute')?.dispatchEvent(new MouseEvent('click'));
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect((document.getElementById('constitute') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('requires a last name before sending a request', async () => {
@@ -58,6 +111,25 @@ describe('packaged Welcome', () => {
     expect(invoke.mock.calls).toEqual([['welcome_status']]);
     expect((document.getElementById('personal-name') as HTMLFieldSetElement).hidden).toBe(true);
   });
+  it('shows live elapsed time and actual startup stages until readiness', async () => {
+    vi.useFakeTimers();
+    const invoke = vi.fn().mockResolvedValue({ phase: 'provisioning', stage: 'loading-core-schema', constitution_available: false, message: 'Preparing your space.' });
+    await start(invoke);
+    const activity = document.getElementById('activity') as HTMLDivElement;
+    expect(activity.hidden).toBe(false);
+    expect(document.getElementById('activity-stage')?.textContent).toBe('Loading the foundation');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(document.getElementById('activity-elapsed')?.textContent).toBe('This step: 0:03 · Total: 0:03');
+    invoke.mockResolvedValueOnce({ phase: 'checking-space', stage: 'verifying-space-definitions', constitution_available: false, message: 'Checking your space.' })
+      .mockResolvedValueOnce({ phase: 'association-present', constitution_available: false, message: 'Your personal space is open.' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.getElementById('activity-stage')?.textContent).toBe('Verifying packaged definitions');
+    expect(document.getElementById('activity-elapsed')?.textContent).toBe('This step: 0:00 · Total: 0:04');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(activity.hidden).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('follows backend startup progress while keeping constitution disabled', async () => {
     vi.useFakeTimers();
     const invoke = vi.fn()

@@ -1,5 +1,5 @@
 //! Loads configured definition packages only on first provisioning and checks
-//! the fixed packaged dependencies on Open. It never activates a Dancer.
+//! newly loaded definitions once. Open reuses committed definitions. It never activates a Dancer.
 use core_types::{ContentSet, FileData};
 use holons_core::ReadableHolon;
 use map_commands_contract::{MapCommand, TransactionAction, TransactionCommand};
@@ -8,6 +8,7 @@ use serde::Deserialize;
 use std::path::{Component, Path};
 use tauri::{AppHandle, Manager};
 
+use super::application_launcher::ApplicationSessionState;
 use super::core_schema_bootstrap::{require_complete_load, CoreSchemaStartup};
 use crate::runtime::RuntimeState;
 
@@ -53,7 +54,8 @@ pub async fn ensure_configured_space_imports(
         .map_err(|e| anyhow::anyhow!(e.to_string()))?
         .clone()
         .ok_or_else(|| anyhow::anyhow!("MAP Commands runtime is not initialized"))?;
-    prepare_space_imports(&runtime, &resources, startup).await
+    let application = handle.state::<ApplicationSessionState>();
+    prepare_space_imports(&runtime, &resources, startup, Some(&application)).await
 }
 
 /// The same orchestration runs in the packaged host and real-runtime tests.
@@ -62,7 +64,14 @@ pub(crate) async fn prepare_space_imports(
     runtime: &Runtime,
     resources: &Path,
     startup: CoreSchemaStartup,
+    application: Option<&ApplicationSessionState>,
 ) -> anyhow::Result<()> {
+    if startup == CoreSchemaStartup::OpenedExisting {
+        tracing::info!(
+            "Using committed packaged definitions without import replay or graph revalidation"
+        );
+        return Ok(());
+    }
     let import_root = resources.join(IMPORT_ROOT);
     let imports: SpaceImportSet =
         serde_json::from_slice(&std::fs::read(import_root.join(IMPORT_SET_FILENAME))?)?;
@@ -72,8 +81,8 @@ pub(crate) async fn prepare_space_imports(
         let raw = std::fs::read_to_string(import_root.join(relative))?;
         let definitions: DefinitionFile = serde_json::from_str(&raw)?;
         required.extend(definitions.holons);
-        if startup == CoreSchemaStartup::OpenedExisting {
-            continue;
+        if let Some(application) = application {
+            application.mark_loading_space_definitions().map_err(anyhow::Error::msg)?;
         }
         let started = std::time::Instant::now();
         let tx = runtime.session().begin_transaction().await?;
@@ -100,6 +109,9 @@ pub(crate) async fn prepare_space_imports(
             "Provisioned configured definitions: {import}, elapsed_ms={}",
             started.elapsed().as_millis()
         );
+    }
+    if let Some(application) = application {
+        application.mark_verifying_space_definitions().map_err(anyhow::Error::msg)?;
     }
     verify_definitions(runtime, &required).await
 }
@@ -153,4 +165,27 @@ fn safe_relative_path(value: &str) -> anyhow::Result<&Path> {
         anyhow::bail!("space import path must be a normal relative path: {value}");
     }
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use map_commands_runtime::RuntimeSession;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn open_reuses_committed_definitions_without_reading_import_files() {
+        // There is no transport and no import directory. Any replay, lookup or
+        // graph audit would fail; normal Open must not perform those operations.
+        let manager = holons_client::init_client_runtime(None);
+        let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager, None)));
+        prepare_space_imports(
+            &runtime,
+            Path::new("imports-must-not-be-read-on-open"),
+            CoreSchemaStartup::OpenedExisting,
+            None,
+        )
+        .await
+        .unwrap();
+    }
 }

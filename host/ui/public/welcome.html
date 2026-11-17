@@ -13,6 +13,13 @@
     <h1>Welcome to MAP</h1>
     <p id="introduction">Your personal space is yours to constitute.</p>
     <p id="status" role="status">Checking availability…</p>
+    <div id="activity" class="activity" hidden>
+      <span class="spinner" aria-hidden="true"></span>
+      <div class="activity-details">
+        <span id="activity-stage" role="status"></span>
+        <span id="activity-elapsed" aria-live="off"></span>
+      </div>
+    </div>
     <fieldset id="personal-name" disabled hidden>
       <legend>Your name</legend>
       <label for="first-name">First name (optional)</label>

@@ -10,3 +10,11 @@ fieldset { border: 0; padding: 0; margin: 1.5rem 0; }
 legend { font-weight: 600; margin-bottom: 0.5rem; }
 label { display: block; margin-top: 0.75rem; }
 input { box-sizing: border-box; width: 100%; padding: 0.6rem; margin-top: 0.25rem; border: 1px solid #699ba8; border-radius: 0.4rem; background: #152d3c; color: inherit; font: inherit; }
+
+.activity { display: flex; align-items: center; gap: 0.9rem; margin: 1.25rem 0; }
+.activity[hidden] { display: none; }
+.activity-details { display: grid; gap: 0.25rem; }
+#activity-elapsed { font-size: 0.9rem; color: #aec2cf; font-variant-numeric: tabular-nums; }
+.spinner { width: 1.5rem; height: 1.5rem; flex: 0 0 auto; border: 3px solid #214655; border-top-color: #7bd9d0; border-radius: 50%; animation: welcome-spin 1s linear infinite; }
+@keyframes welcome-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }

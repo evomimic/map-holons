@@ -80,9 +80,15 @@ pub(crate) async fn launch_holochain_runtime(
         dev_dir,
     );
 
+    tracing::info!(
+        "[LAUNCH] Storage/configuration preparation: {}ms",
+        t_total.elapsed().as_millis()
+    );
     if config.backend_only {
+        let started = std::time::Instant::now();
         super::native_access::ensure_no_saved_interfaces(&conductor_config, passphrase.clone())
             .await?;
+        tracing::info!("[LAUNCH] Saved-interface preflight: {}ms", started.elapsed().as_millis());
     }
 
     log::debug!("Built conductor config: {:?}.", conductor_config);
@@ -100,10 +106,13 @@ pub(crate) async fn launch_holochain_runtime(
             Conductor::builder().config(conductor_config).build().await?
         }
         false => {
+            let started = std::time::Instant::now();
             let keystore =
                 spawn_lair_keystore_in_proc(&filesystem.keystore_config_path(), passphrase.clone())
                     .map_err(|err| crate::Error::LairError(err))?;
 
+            tracing::info!("[LAUNCH] Lair keystore startup: {}ms", started.elapsed().as_millis());
+            let seed_started = std::time::Instant::now();
             log::info!("Keystore spawned successfully.");
 
             let seed_already_exists = keystore
@@ -122,12 +131,22 @@ pub(crate) async fn launch_holochain_runtime(
                 log::info!("Device seed already exists in keystore, skipping generation.");
             }
 
-            Conductor::builder()
+            tracing::info!(
+                "[LAUNCH] Device-seed lookup/initialization: {}ms",
+                seed_started.elapsed().as_millis()
+            );
+            let build_started = std::time::Instant::now();
+            let handle = Conductor::builder()
                 .config(conductor_config)
                 .passphrase(Some(passphrase))
                 .with_keystore(keystore)
                 .build()
-                .await?
+                .await?;
+            tracing::info!(
+                "[LAUNCH] Conductor construction: {}ms",
+                build_started.elapsed().as_millis()
+            );
+            handle
         }
     };
 

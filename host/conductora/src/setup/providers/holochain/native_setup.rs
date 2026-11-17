@@ -94,6 +94,8 @@ mod tests {
         core_schema_bootstrap::{prepare_core_schema, CoreSchemaStartup},
         space_imports::prepare_space_imports,
     };
+    use base_types::ToBaseValue;
+    use holons_core::{descriptors::Descriptor, reference_layer::ReadableHolon};
     use map_commands_runtime::{Runtime, RuntimeSession};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -101,6 +103,7 @@ mod tests {
     struct CountingTransport {
         inner: NativeDanceTransport,
         loads: Arc<AtomicUsize>,
+        discoveries: Arc<AtomicUsize>,
     }
     #[async_trait::async_trait]
     impl DanceEnvelopeTransport for CountingTransport {
@@ -110,6 +113,9 @@ mod tests {
         ) -> Result<DanceResponseEnvelope, HolonError> {
             if request.request.transport_label() == "load_holons" {
                 self.loads.fetch_add(1, Ordering::SeqCst);
+            }
+            if request.request.transport_label() == "discover_local_holon_space" {
+                self.discoveries.fetch_add(1, Ordering::SeqCst);
             }
             self.inner.initiate_dance_envelope(request).await
         }
@@ -121,7 +127,7 @@ mod tests {
     /// Real persistent conductor and packaged hApp; no test keystore, probes or external ingress.
     /// This is a mechanism test, not a packaged WebView/security-assurance test.
     #[tokio::test(flavor = "multi_thread")]
-    async fn native_only_provisioning_retains_identity_without_external_interfaces() {
+    async fn native_only_keyless_personal_constitution_preserves_space() {
         let root = std::env::temp_dir().join(format!(
             "map-native-boundary-{}-{}",
             std::process::id(),
@@ -146,6 +152,7 @@ mod tests {
             HolochainRuntimeConfig::new(root.clone(), network).backend_only(true)
         };
         let loads = Arc::new(AtomicUsize::new(0));
+        let discoveries = Arc::new(AtomicUsize::new(0));
         let conductor =
             HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.unwrap();
         assert!(conductor.conductor_handle.get_arbitrary_admin_websocket_port().is_none());
@@ -159,6 +166,7 @@ mod tests {
         let initiator = Arc::new(TrustChannel::new(Arc::new(CountingTransport {
             inner: NativeDanceTransport(caller),
             loads: loads.clone(),
+            discoveries: discoveries.clone(),
         })));
         let manager = holons_client::init_client_runtime(Some(initiator));
         let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
@@ -168,17 +176,30 @@ mod tests {
             CoreSchemaStartup::Provisioned
         );
         assert_eq!(loads.load(Ordering::SeqCst), 1);
-        // Interrupted post-Core provisioning is refused on Open, not repaired by import replay.
-        assert!(prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::OpenedExisting)
-            .await
-            .is_err());
+        assert_eq!(discoveries.load(Ordering::SeqCst), 1);
+        // Open does not inspect or replay import files. A missing dependency is
+        // resolved by its consumer, not by revalidating the saved foundation.
+        prepare_space_imports(
+            &runtime,
+            &root.join("no-import-files-on-open"),
+            CoreSchemaStartup::OpenedExisting,
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(crate::constitution_admission::inspect_target(&runtime).await.is_err());
         assert_eq!(loads.load(Ordering::SeqCst), 1);
-        prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::Provisioned)
+        prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::Provisioned, None)
             .await
             .unwrap();
         assert_eq!(loads.load(Ordering::SeqCst), 3);
         let target = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
+        assert_eq!(
+            target.sovereignty,
+            crate::constitution_admission::SovereigntyObservation::NoAssociationObserved
+        );
         let id = target.space;
+        assert_eq!(discoveries.load(Ordering::SeqCst), 1, "status reuses the adopted Space");
         let tx = runtime.session().begin_transaction().await.unwrap();
         let context = runtime.session().get_transaction(&tx).unwrap();
         let descriptor_id = context
@@ -188,6 +209,86 @@ mod tests {
             .holon_id();
         runtime.session().archive_transaction(&tx).unwrap();
         drop(context);
+        let baseline = loads.load(Ordering::SeqCst);
+        // Create in the same runtime that provisioned the foundation, matching Welcome.
+        // This test-owned conductor has no production admission or Keychain claim.
+        let admission = crate::personal_constitution::WelcomeConstitution::default();
+        assert!(admission.available());
+        let (outcome, competing) = tokio::join!(
+            admission.submit(
+                &runtime,
+                crate::personal_constitution::PersonalName {
+                    last_name: "Example".into(),
+                    first_name: Some("Alex".into()),
+                    middle_name: None,
+                },
+            ),
+            admission.submit(
+                &runtime,
+                crate::personal_constitution::PersonalName {
+                    last_name: "Competing".into(),
+                    first_name: None,
+                    middle_name: None,
+                },
+            ),
+        );
+        let outcome = outcome.unwrap();
+        assert!(competing.is_err(), "a concurrent Welcome request must not stage another Agent");
+        assert_eq!(outcome, crate::personal_constitution::ConstitutionOutcome::Complete);
+        // This runtime observed an empty inverse before Commit. Welcome must
+        // now observe saved membership instead of reusing that cached absence.
+        let after_creation = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
+        assert_eq!(after_creation.space, id);
+        assert_eq!(
+            discoveries.load(Ordering::SeqCst),
+            1,
+            "fresh membership must not rediscover Space identity"
+        );
+        assert_eq!(
+            after_creation.sovereignty,
+            crate::constitution_admission::SovereigntyObservation::AssociationPresent
+        );
+        let verify_tx = runtime.session().begin_transaction().await.unwrap();
+        let verify_context = runtime.session().get_transaction(&verify_tx).unwrap();
+        let space = verify_context.discover_local_holon_space().unwrap().unwrap();
+        assert_eq!(space.holon_id().unwrap(), id);
+        let owners = space
+            .related_holons_with_hint(
+                "IsInteriorOf",
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        let person = {
+            let owners = owners.read().unwrap();
+            assert_eq!(owners.get_members().len(), 1);
+            owners.get_members()[0].clone()
+        };
+        let created_id = person.holon_id().unwrap();
+        assert_eq!(person.key().unwrap(), None);
+        assert_eq!(person.property_value("LastName").unwrap(), Some("Example".to_base_value()));
+        assert_eq!(person.property_value("FirstName").unwrap(), Some("Alex".to_base_value()));
+        assert_eq!(person.property_value("MiddleName").unwrap(), None);
+        for name in ["HasInterior", "OwnedBy"] {
+            let related = person
+                .related_holons_with_hint(name, holons_core::RelationshipReadHint::RequireFresh)
+                .unwrap();
+            assert_eq!(related.read().unwrap().get_members().len(), 1);
+            assert_eq!(related.read().unwrap().get_members()[0].holon_id().unwrap(), id);
+        }
+        assert_eq!(person.holon_descriptor().unwrap().holon().holon_id().unwrap(), descriptor_id);
+        runtime.session().archive_transaction(&verify_tx).unwrap();
+        assert!(admission
+            .submit(
+                &runtime,
+                crate::personal_constitution::PersonalName {
+                    last_name: "Another".into(),
+                    first_name: None,
+                    middle_name: None,
+                },
+            )
+            .await
+            .is_err());
+        assert_eq!(loads.load(Ordering::SeqCst), baseline);
         drop(runtime);
         drop(manager);
         conductor.shutdown().await.unwrap();
@@ -214,30 +315,38 @@ mod tests {
         std::fs::write(root.join("conductor/databases/db.key"), wrappers.database_key_file)
             .unwrap();
         assert!(HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.is_err());
-        let conductor = HolochainRuntime::launch(protected, configuration()).await.unwrap();
+        let conductor = HolochainRuntime::launch(protected.clone(), configuration()).await.unwrap();
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
         assert_eq!(
             conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key,
             author
         );
-        let manager =
-            holons_client::init_client_runtime(Some(Arc::new(TrustChannel::new(Arc::new(
-                CountingTransport { inner: NativeDanceTransport(caller), loads: loads.clone() },
-            )))));
+        let manager = holons_client::init_client_runtime(Some(Arc::new(TrustChannel::new(
+            Arc::new(CountingTransport {
+                inner: NativeDanceTransport(caller),
+                loads: loads.clone(),
+                discoveries: discoveries.clone(),
+            }),
+        ))));
         let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
         let baseline = loads.load(Ordering::SeqCst);
         assert_eq!(
             prepare_core_schema(&runtime, resource_root, None).await.unwrap(),
             CoreSchemaStartup::OpenedExisting
         );
-        prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::OpenedExisting)
+        prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::OpenedExisting, None)
             .await
             .unwrap();
         let reopened = crate::constitution_admission::inspect_target(&runtime).await.unwrap();
         assert_eq!(reopened.space, id);
         assert_eq!(
+            discoveries.load(Ordering::SeqCst),
+            2,
+            "one guest discovery per cold host runtime"
+        );
+        assert_eq!(
             reopened.sovereignty,
-            crate::constitution_admission::SovereigntyObservation::NoAssociationObserved
+            crate::constitution_admission::SovereigntyObservation::AssociationPresent
         );
         assert!(!crate::constitution_admission::blockers(&reopened).is_empty());
         let tx = runtime.session().begin_transaction().await.unwrap();
@@ -278,6 +387,75 @@ mod tests {
         assert!(conductor.conductor_handle.get_arbitrary_admin_websocket_port().is_none());
         assert!(conductor.conductor_handle.list_app_interfaces().await.unwrap().is_empty());
         drop(manager);
+        conductor.shutdown().await.unwrap();
+        drop(conductor);
+
+        // Reconstruct host caches and the conductor after the PersonAgent commit.
+        let conductor = HolochainRuntime::launch(protected, configuration()).await.unwrap();
+        let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
+        let manager = holons_client::init_client_runtime(Some(Arc::new(TrustChannel::new(
+            Arc::new(CountingTransport {
+                inner: NativeDanceTransport(caller),
+                loads: loads.clone(),
+                discoveries: discoveries.clone(),
+            }),
+        ))));
+        let reopened_runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
+        assert_eq!(
+            prepare_core_schema(&reopened_runtime, resource_root, None).await.unwrap(),
+            CoreSchemaStartup::OpenedExisting
+        );
+        prepare_space_imports(
+            &reopened_runtime,
+            resource_root,
+            CoreSchemaStartup::OpenedExisting,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key,
+            author
+        );
+        let observed =
+            crate::constitution_admission::inspect_target(&reopened_runtime).await.unwrap();
+        assert_eq!(observed.space, id);
+        assert_eq!(discoveries.load(Ordering::SeqCst), 3, "warm status adds no guest discovery");
+        assert_eq!(
+            observed.sovereignty,
+            crate::constitution_admission::SovereigntyObservation::AssociationPresent
+        );
+        // A new backend admission object after restart must also refuse constitution.
+        assert!(crate::personal_constitution::WelcomeConstitution::default()
+            .submit(
+                &reopened_runtime,
+                crate::personal_constitution::PersonalName {
+                    last_name: "Repeat".into(),
+                    first_name: None,
+                    middle_name: None,
+                },
+            )
+            .await
+            .is_err());
+        let tx = reopened_runtime.session().begin_transaction().await.unwrap();
+        let context = reopened_runtime.session().get_transaction(&tx).unwrap();
+        let retained_space = context.discover_local_holon_space().unwrap().unwrap();
+        assert_eq!(retained_space.holon_id().unwrap(), id);
+        let association = retained_space
+            .related_holons_with_hint(
+                "IsInteriorOf",
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        let retained_person = association.read().unwrap().get_members()[0].clone();
+        assert_eq!(retained_person.holon_id().unwrap(), created_id);
+        assert_eq!(retained_person.key().unwrap(), None);
+        assert_eq!(
+            retained_person.property_value("LastName").unwrap(),
+            Some("Example".to_base_value())
+        );
+        assert_eq!(loads.load(Ordering::SeqCst), baseline);
+        reopened_runtime.session().archive_transaction(&tx).unwrap();
         conductor.shutdown().await.unwrap();
         drop(conductor);
         std::fs::remove_dir_all(root).unwrap();

@@ -154,24 +154,26 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     let context = transaction(&runtime).await;
     assert_eq!(saved(&context, SCHEMA).holon_id().unwrap(), schema_id);
     assert_eq!(saved(&context, PERSON_TYPE).holon_id().unwrap(), person_type_id);
-    let mut transient = context.mutation().new_holon(Some("Smith..".into())).unwrap();
+    let mut transient = context.mutation().new_holon(None).unwrap();
     transient.with_descriptor(saved(&context, PERSON_TYPE)).unwrap();
     let mut person = context.mutation().stage_new_holon(transient).unwrap();
     person
         .add_related_holons("HasInterior", vec![context.get_space_holon().unwrap().unwrap()])
         .unwrap();
-    // The explicit key is fixture input, not evidence of FormatRule execution.
+    // NoneRule preserves an absent Key; required names remain independently enforced.
     let rejected = execute(&runtime, &context, TransactionAction::Commit).await;
     status(&rejected, "CommitRequestStatus", "Rejected");
     assert!(person.validation_findings().unwrap().iter().any(|v| matches!(&v.subject, core_types::ValidationSubjectPath::Property { name, .. } if name == "LastName")));
     person.with_property_value("LastName", "Smith").unwrap();
     let committed = execute(&runtime, &context, TransactionAction::Commit).await;
     status(&committed, "CommitRequestStatus", "Complete");
+    let first_id = person.holon_id().unwrap();
     runtime.session().archive_transaction(&context.tx_id()).unwrap();
 
     let context = transaction(&runtime).await;
-    let first = saved(&context, "Smith..");
-    let first_id = first.holon_id().unwrap();
+    let first: HolonReference =
+        SmartReference::new_from_id(context.space_read_handle(), first_id.clone()).into();
+    assert_eq!(first.key().unwrap(), None);
     assert_eq!(first.property_value("FirstName").unwrap(), None);
     assert_eq!(first.property_value("MiddleName").unwrap(), None);
     let interior = context.get_space_holon().unwrap().unwrap();
@@ -183,32 +185,32 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     assert_eq!(inverse.membership_cache_max_age_millis().unwrap(), 86_400_000);
     runtime.session().archive_transaction(&context.tx_id()).unwrap();
 
-    let mut previous_key = "Smith..";
     let mut predecessor = first_id.clone();
-    for (property, value, key) in
-        [("FirstName", "Jane", "Smith.Jane."), ("MiddleName", "Marie", "Smith.Jane.Marie")]
-    {
+    for (property, value) in [("FirstName", "Jane"), ("MiddleName", "Marie")] {
         let context = transaction(&runtime).await;
-        let previous = context.lookup().get_saved_holon_by_key(&previous_key.into()).unwrap();
+        let previous =
+            SmartReference::new_from_id(context.space_read_handle(), predecessor.clone());
         let mut next = context.mutation().stage_new_version(previous).unwrap();
         next.with_property_value(property, value).unwrap();
-        next.with_property_value("Key", key).unwrap();
+
         status(
             &execute(&runtime, &context, TransactionAction::Commit).await,
             "CommitRequestStatus",
             "Complete",
         );
+        let current_id = next.holon_id().unwrap();
         runtime.session().archive_transaction(&context.tx_id()).unwrap();
 
         let context = transaction(&runtime).await;
-        let current = saved(&context, key);
+        let current: HolonReference =
+            SmartReference::new_from_id(context.space_read_handle(), current_id).into();
+        assert_eq!(current.key().unwrap(), None);
         assert_eq!(current.predecessor().unwrap().unwrap().holon_id().unwrap(), predecessor);
         assert_eq!(members(&current, "HasInterior")[0].holon_id().unwrap(), space_id);
         let inverse = members(&context.get_space_holon().unwrap().unwrap(), "IsInteriorOf");
         assert_eq!(inverse.len(), 1, "versions contribute one sovereign lineage membership");
         assert_eq!(inverse[0].holon_id().unwrap(), first_id, "inverse is Lineage-bound");
         predecessor = current.holon_id().unwrap();
-        previous_key = key;
         runtime.session().archive_transaction(&context.tx_id()).unwrap();
     }
 }

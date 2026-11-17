@@ -25,7 +25,7 @@ impl HolochainSetup {
         provider: &StorageProvider,
     ) -> anyhow::Result<()> {
         let t_setup = std::time::Instant::now();
-        tracing::info!("[HOLOCHAIN SETUP] Installing Holochain App.");
+        tracing::info!("[HOLOCHAIN SETUP] Preparing Holochain App.");
         let StorageProvider::Holochain(hc_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };

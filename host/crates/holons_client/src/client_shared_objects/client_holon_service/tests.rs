@@ -709,7 +709,15 @@ enum DiscoveryOutcome {
 }
 
 #[derive(Debug)]
-struct DiscoveryTransport(DiscoveryOutcome);
+struct DiscoveryTransport {
+    outcome: DiscoveryOutcome,
+    calls: AtomicUsize,
+}
+impl DiscoveryTransport {
+    fn new(outcome: DiscoveryOutcome) -> Self {
+        Self { outcome, calls: AtomicUsize::new(0) }
+    }
+}
 
 #[async_trait::async_trait]
 impl holons_core::dances::DanceInitiator for DiscoveryTransport {
@@ -723,7 +731,8 @@ impl holons_core::dances::DanceInitiator for DiscoveryTransport {
         assert!(matches!(request.dance_type, DanceType::Standalone));
         assert!(matches!(request.body, RequestBody::None));
         assert!(!context.is_bootstrap_provisioning());
-        let response = match self.0 {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        let response = match self.outcome {
             DiscoveryOutcome::Missing => DanceResponse::new(
                 ResponseStatusCode::OK,
                 "Absent".into(),
@@ -760,8 +769,9 @@ impl holons_core::dances::DanceInitiator for DiscoveryTransport {
 fn discovery_distinguishes_absence_from_error_without_provisioning_or_adoption(
 ) -> Result<(), HolonError> {
     for outcome in [DiscoveryOutcome::Missing, DiscoveryOutcome::Found, DiscoveryOutcome::Failed] {
+        let transport = Arc::new(DiscoveryTransport::new(outcome));
         let space = HolonSpaceManager::new_with_managers(
-            Some(Arc::new(DiscoveryTransport(outcome))),
+            Some(transport.clone()),
             Arc::new(ClientHolonService::development_default()),
             None,
             ServiceRoutingPolicy::BlockExternal,
@@ -774,7 +784,57 @@ fn discovery_distinguishes_absence_from_error_without_provisioning_or_adoption(
             DiscoveryOutcome::Failed => assert!(matches!(result, Err(HolonError::InvalidState(_)))),
         }
         assert!(context.get_space_holon()?.is_none(), "discovery does not adopt or create a Space");
+        assert_eq!(transport.calls.load(Ordering::Relaxed), 1);
+        if matches!(outcome, DiscoveryOutcome::Missing | DiscoveryOutcome::Failed) {
+            let _ = context.discover_local_holon_space();
+            assert_eq!(
+                transport.calls.load(Ordering::Relaxed),
+                2,
+                "absence/errors must not be cached as an identity"
+            );
+        }
         assert!(!context.is_bootstrap_provisioning());
     }
+    Ok(())
+}
+
+#[test]
+fn discovery_uses_adopted_host_space_without_transport() -> Result<(), HolonError> {
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(ClientHolonService::development_default()),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    context.set_space_holon_id(id(41))?;
+    assert_eq!(context.discover_local_holon_space()?.unwrap().holon_id()?, id(41));
+    assert!(!context.is_bootstrap_provisioning());
+    Ok(())
+}
+
+#[test]
+fn discovery_calls_guest_on_miss_then_reuses_adoption_across_transactions() -> Result<(), HolonError>
+{
+    let transport = Arc::new(DiscoveryTransport::new(DiscoveryOutcome::Found));
+    let space = HolonSpaceManager::new_with_managers(
+        Some(transport.clone()),
+        Arc::new(ClientHolonService::development_default()),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let found = context.discover_local_holon_space()?.unwrap();
+    assert_eq!(found.holon_id()?, id(17));
+    assert_eq!(transport.calls.load(Ordering::Relaxed), 1);
+    assert!(
+        context.get_space_holon()?.is_none(),
+        "guest discovery does not grant adoption authority"
+    );
+    context.set_space_holon_id(found.holon_id()?)?;
+    assert_eq!(context.discover_local_holon_space()?.unwrap().holon_id()?, id(17));
+    let next = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    assert_eq!(next.discover_local_holon_space()?.unwrap().holon_id()?, id(17));
+    assert_eq!(transport.calls.load(Ordering::Relaxed), 1, "warm resolution must remain on host");
     Ok(())
 }

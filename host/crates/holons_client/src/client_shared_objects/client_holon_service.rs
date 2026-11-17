@@ -727,6 +727,11 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         context: &Arc<TransactionContext>,
     ) -> Result<Option<HolonReference>, HolonError> {
+        // The adopted identity belongs to this host runtime. Mint a reference
+        // bound to the caller's transaction; only a cache miss crosses to guest.
+        if let Some(space) = context.get_space_holon()? {
+            return Ok(Some(space));
+        }
         let request = holons_core::dances::DanceRequest::new(
             "discover_local_holon_space".into(),
             holons_core::dances::DanceType::Standalone,

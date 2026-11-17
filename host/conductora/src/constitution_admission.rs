@@ -1,6 +1,6 @@
 //! Bounded initial-constitution admission. Observed domain state is not execution authority.
 use core_types::{HolonError, HolonId};
-use holons_core::{reference_layer::ReadableHolon, HolonCollectionApi};
+use holons_core::{reference_layer::ReadableHolon, HolonCollectionApi, RelationshipReadHint};
 use map_commands_runtime::Runtime;
 use serde::Serialize;
 use std::sync::RwLock;
@@ -31,12 +31,14 @@ pub(crate) enum AdmissionBlocker {
     CredentialCustodyUnverified,
     AcquisitionEnforcementUnavailable,
     RestartAuthorizationUnavailable,
+    ConstitutionTransactionPending,
 }
 
 /// No credential is issued here. The existing backend signer is a technical
 /// author, not an authorization grant or a sovereign principal. Until custody,
 /// historical eligibility and complete acquisition enforcement are delivered,
-/// every request remains denied even from the approved Welcome page.
+/// these blockers gate production admission. The explicit local engineering
+/// workflow uses the packaged request boundary without claiming that assurance.
 pub(crate) fn blockers(target: &ConstitutionTarget) -> Vec<AdmissionBlocker> {
     match target.sovereignty {
         SovereigntyObservation::NoAssociationObserved => vec![
@@ -76,16 +78,19 @@ pub(crate) async fn inspect_target(runtime: &Runtime) -> Result<ConstitutionTarg
     let tx = runtime.session().begin_transaction().await?;
     let observed = (|| {
         let context = runtime.session().get_transaction(&tx)?;
-        let space = context.discover_local_holon_space()?.ok_or_else(|| {
-            HolonError::InvalidState(
-                "No persisted local Space is available for constitution".into(),
-            )
+        // Startup owns discovery/adoption. Status only reuses its host identity;
+        // sovereign membership below remains an independently fresh read.
+        let space = context.get_space_holon()?.ok_or_else(|| {
+            HolonError::InvalidState("Startup has not adopted a local HolonSpace".into())
         })?;
         // Verify the supported semantic foundation exists on Open without replaying imports.
         for key in ["MAP Agent Spaces Schema-v0.1.0", "PersonAgent.BioSocialAgent"] {
             context.lookup().get_saved_holon_by_key(&key.into())?;
         }
-        let related = space.related_holons("IsInteriorOf")?;
+        // Startup may have cached an empty inverse before constitution. Lifecycle
+        // checks must observe persisted membership after Commit in this runtime.
+        let related =
+            space.related_holons_with_hint("IsInteriorOf", RelationshipReadHint::RequireFresh)?;
         let count = related
             .read()
             .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
@@ -96,7 +101,16 @@ pub(crate) async fn inspect_target(runtime: &Runtime) -> Result<ConstitutionTarg
             1 => SovereigntyObservation::AssociationPresent,
             _ => SovereigntyObservation::Ambiguous,
         };
-        Ok(ConstitutionTarget { space: space.holon_id()?, sovereignty })
+        let space_id = space.holon_id()?;
+        if sovereignty == SovereigntyObservation::AssociationPresent {
+            let person = related
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .get_members()[0]
+                .clone();
+            tracing::info!(space = ?space_id, person = ?person.holon_id()?, "Reopened recorded sovereign association");
+        }
+        Ok(ConstitutionTarget { space: space_id, sovereignty })
     })();
     let archived = runtime.session().archive_transaction(&tx);
     let target = observed?;
@@ -108,6 +122,18 @@ pub(crate) async fn inspect_target(runtime: &Runtime) -> Result<ConstitutionTarg
 mod tests {
     use super::*;
     use core_types::LocalId;
+
+    #[tokio::test]
+    async fn status_requires_adoption_without_attempting_guest_discovery() {
+        let manager = holons_client::init_client_runtime(None);
+        let runtime = Runtime::new(std::sync::Arc::new(map_commands_runtime::RuntimeSession::new(
+            manager, None,
+        )));
+        let result = inspect_target(&runtime).await;
+        assert!(
+            matches!(result, Err(HolonError::InvalidState(message)) if message.contains("not adopted"))
+        );
+    }
 
     #[test]
     fn observation_does_not_issue_authority_or_reopen_acquisition() {

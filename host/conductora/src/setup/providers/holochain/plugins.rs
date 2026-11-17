@@ -25,7 +25,7 @@ pub fn holochain_plugin(
         }
         tauri_plugin_holochain::credential_custody::protected_passphrase(&holochain_dir(hc_cfg)?)?
     } else {
-        // Foundation-only engineering profile; constitution admission stays denied.
+        // Unsigned engineering custody. Production assurance requires protected custody.
         vec_to_locked(vec![])
     };
     Ok(tauri_plugin_holochain::async_init(passphrase, plugin_config))
@@ -63,21 +63,21 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
 }
 
 pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error> {
-    if crate::env::development_enabled() {
-        let tmp_dir = tempdir::TempDir::new(&hc_cfg.app_id)
-            .map_err(|e| anyhow::anyhow!("Could not create temporary directory: {}", e))?;
-        // Convert `tmp_dir` into a `Path`, destroying the `TempDir` without deleting the directory.
-        Ok(tmp_dir.into_path())
+    let app_name: &'static str = Box::leak(hc_cfg.app_id.clone().into_boxed_str());
+    let path = app_dirs2::app_root(
+        app_dirs2::AppDataType::UserData,
+        &app_dirs2::AppInfo { name: app_name, author: env!("CARGO_PKG_AUTHORS") },
+    )?
+    .join("holochain");
+    // Every ordinary launch retains its store. Explicit cache-reset mode below
+    // remains separate; Tauri development itself must not imply disposable data.
+    Ok(if cfg!(feature = "local-constitution") {
+        path.join("local-constitution")
+    } else if crate::env::development_enabled() {
+        path.join("development")
     } else {
-        let app_name: &'static str = Box::leak(hc_cfg.app_id.clone().into_boxed_str());
-        let path = app_dirs2::app_root(
-            app_dirs2::AppDataType::UserData,
-            &app_dirs2::AppInfo { name: app_name, author: env!("CARGO_PKG_AUTHORS") },
-        )
-        .expect("Could not get app root")
-        .join("holochain");
-        Ok(path)
-    }
+        path
+    })
 }
 
 // Generate a deterministic dev conductor directory path based on provider name, app id, and network seed.

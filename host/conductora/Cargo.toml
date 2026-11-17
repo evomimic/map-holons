@@ -62,5 +62,7 @@ base_types = { workspace = true }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
-# Explicit signed custody build. The ordinary engineering build remains deny-only.
+# Explicit signed custody build.
 protected-custody = []
+# Packaged debug workflow; not a production security-assurance claim.
+local-constitution = []

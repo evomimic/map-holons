@@ -11,6 +11,8 @@ export type ApplicationSessionPhase =
   | 'loading-core-schema'
   | 'verifying-core-schema'
   | 'activating-base-packages'
+  | 'loading-space-definitions'
+  | 'verifying-space-definitions'
   | 'realizing-canvas'
   | 'selecting-home-dancer'
   | 'realizing-home-dancer'

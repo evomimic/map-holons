@@ -1,4 +1,4 @@
-//! Packaged Welcome admission. Constitution stays disabled until its authorization contract exists.
+//! Packaged Welcome admission and the bounded local constitution workflow.
 use crate::{
     constitution_admission::{
         self, AdmissionBlocker, ConstitutionTarget, SovereigntyObservation, WelcomeLifecycle,
@@ -20,6 +20,13 @@ pub fn validate_packaged_configuration() -> anyhow::Result<()> {
         !tauri::is_dev(),
         "Packaged Welcome requires the custom-protocol build feature"
     );
+    if cfg!(feature = "local-constitution") {
+        anyhow::ensure!(cfg!(debug_assertions), "Local constitution requires a debug build");
+        anyhow::ensure!(
+            !cfg!(feature = "protected-custody"),
+            "Local constitution and signed custody profiles must not be combined"
+        );
+    }
     for name in ["MAP_START_MODE", "STORAGE_CONFIG_PATH", "MAP_APPLICATION_EXPERIENCE"] {
         if std::env::var_os(name).is_some() {
             anyhow::bail!(
@@ -62,6 +69,7 @@ pub enum WelcomePhase {
 #[derive(Debug, Serialize)]
 pub struct WelcomeStatus {
     pub phase: WelcomePhase,
+    pub stage: ApplicationSessionPhase,
     pub constitution_available: bool,
     pub message: &'static str,
     pub(crate) blockers: Vec<AdmissionBlocker>,
@@ -71,6 +79,7 @@ fn status_for(
     phase: ApplicationSessionPhase,
     observation: Option<Result<ConstitutionTarget, ()>>,
 ) -> WelcomeStatus {
+    let stage = phase;
     let (phase, message, blockers) = if phase == ApplicationSessionPhase::Failed {
         (WelcomePhase::Blocked,
          "MAP could not finish opening this installation. Personal setup is unavailable; existing state has been retained.",
@@ -92,25 +101,60 @@ fn status_for(
                 "MAP could not verify this space and its required foundation. Personal setup is unavailable; existing state has been retained.",
                 vec![AdmissionBlocker::LifecycleEvidenceUnavailable]),
             None => match phase {
-                ApplicationSessionPhase::PreparingCoreSchema | ApplicationSessionPhase::LoadingCoreSchema =>
+                ApplicationSessionPhase::PreparingCoreSchema | ApplicationSessionPhase::LoadingCoreSchema | ApplicationSessionPhase::LoadingSpaceDefinitions =>
                     (WelcomePhase::Provisioning, "MAP is preparing your space and its foundation.", vec![AdmissionBlocker::StartupIncomplete]),
-                ApplicationSessionPhase::OpeningSpace | ApplicationSessionPhase::VerifyingCoreSchema | ApplicationSessionPhase::ActivatingBasePackages =>
+                ApplicationSessionPhase::OpeningSpace | ApplicationSessionPhase::VerifyingCoreSchema | ApplicationSessionPhase::ActivatingBasePackages | ApplicationSessionPhase::VerifyingSpaceDefinitions =>
                     (WelcomePhase::CheckingSpace, "MAP is checking your existing space and its foundation.", vec![AdmissionBlocker::StartupIncomplete]),
                 _ => (WelcomePhase::Initializing, "MAP is starting its trusted local runtime.", vec![AdmissionBlocker::StartupIncomplete]),
             },
         }
     };
-    WelcomeStatus { phase, constitution_available: false, message, blockers }
+    WelcomeStatus { phase, stage, constitution_available: false, message, blockers }
+}
+
+/// Local engineering admission is a compiled profile, never a frontend flag.
+fn apply_local_workflow(status: &mut WelcomeStatus, available: bool) {
+    if !cfg!(all(feature = "local-constitution", debug_assertions)) || tauri::is_dev() {
+        return;
+    }
+    if !available
+        && matches!(
+            status.phase,
+            WelcomePhase::FoundationPresent | WelcomePhase::AssociationPresent
+        )
+    {
+        status.phase = WelcomePhase::Blocked;
+        status.message = "A constitution transaction is in progress or retained for remediation. MAP will not create another Agent.";
+        status.blockers = vec![AdmissionBlocker::ConstitutionTransactionPending];
+    } else if status.phase == WelcomePhase::FoundationPresent {
+        status.constitution_available = true;
+        status.message = "Your space is ready. Enter your name to create your personal space.";
+        status.blockers.clear();
+    } else if status.phase == WelcomePhase::AssociationPresent {
+        status.message = "Your existing personal space is open. MAP has retained your Agent and Space without repeating constitution.";
+    }
 }
 
 #[tauri::command]
-pub fn welcome_status(
+pub async fn welcome_status(
     window: WebviewWindow,
     application: State<'_, ApplicationSessionState>,
     lifecycle: State<'_, WelcomeLifecycle>,
+    constitution: State<'_, crate::personal_constitution::WelcomeConstitution>,
 ) -> Result<WelcomeStatus, String> {
     admit(&window)?;
-    Ok(status_for(application.snapshot()?.phase, lifecycle.observation()?))
+    let phase = application.snapshot()?.phase;
+    // Once startup has established the runtime, each status request refreshes
+    // saved evidence. Polling must not replay a pre-Commit observation forever.
+    if phase != ApplicationSessionPhase::Failed
+        && lifecycle.observation()?.is_some()
+        && constitution.available()
+    {
+        refresh_lifecycle(window.app_handle()).await.map_err(|e| e.to_string())?;
+    }
+    let mut status = status_for(phase, lifecycle.observation()?);
+    apply_local_workflow(&mut status, constitution.available());
+    Ok(status)
 }
 
 /// Refresh display evidence through the configured native runtime. Only startup
@@ -146,32 +190,45 @@ pub struct PersonalConstitutionInput {
 pub async fn constitute_personal_space(
     window: WebviewWindow,
     input: PersonalConstitutionInput,
-) -> Result<(), String> {
+) -> Result<crate::personal_constitution::ConstitutionOutcome, String> {
     admit(&window)?;
-    // Parse names at ingress, but stage nothing until the full backend admission
-    // and shared constitution contract are available. Naming is not authority.
-    let _ = (input.first_name, input.middle_name, input.last_name);
+    if !cfg!(all(feature = "local-constitution", debug_assertions)) {
+        return Err("Personal constitution is not enabled in this build".into());
+    }
     let handle = window.app_handle();
     let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
     let observation = handle.state::<WelcomeLifecycle>().observation()?;
     if phase == ApplicationSessionPhase::Failed || observation.is_none() {
         return Err(status_for(phase, observation).message.into());
     }
-    // Resolve the target again on the trusted backend. Display evidence and any
-    // extra caller-supplied IDs/flags are never acquisition authority.
-    refresh_lifecycle(handle)
+    let runtime = handle
+        .state::<crate::runtime::RuntimeState>()
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
+        .ok_or("MAP runtime is unavailable")?;
+    // Admission comes from the exact packaged request path. Fresh domain checks
+    // and serialization happen in the backend, not in presentation state.
+    let outcome = handle
+        .state::<crate::personal_constitution::WelcomeConstitution>()
+        .submit(
+            &runtime,
+            crate::personal_constitution::PersonalName {
+                last_name: input.last_name.into(),
+                first_name: input.first_name.map(Into::into),
+                middle_name: input.middle_name.map(Into::into),
+            },
+        )
         .await
-        .map_err(|_| "MAP could not verify this installation".to_string())?;
-    let status = status_for(phase, handle.state::<WelcomeLifecycle>().observation()?);
-    // CS3 custody and shared acquisition enforcement are not yet verified. Do
-    // not issue a token, commit a partial PersonAgent or mark constitution complete.
-    Err(status.message.into())
+        .map_err(|e| e.to_string())?;
+    refresh_lifecycle(handle).await.map_err(|e| e.to_string())?;
+    Ok(outcome)
 }
 
 pub fn create_window(handle: &tauri::AppHandle) -> anyhow::Result<()> {
     WebviewWindowBuilder::new(handle, WINDOW_LABEL, WebviewUrl::App(PAGE.into()))
         .title("Welcome to MAP")
-        .inner_size(720.0, 540.0)
+        .inner_size(720.0, 760.0)
         .on_navigation(|url| approved_page(WINDOW_LABEL, url))
         .build()?;
     Ok(())
@@ -251,6 +308,7 @@ mod tests {
         };
         let startup = status_for(ApplicationSessionPhase::LoadingCoreSchema, None);
         assert_eq!(startup.phase, WelcomePhase::Provisioning);
+        assert_eq!(startup.stage, ApplicationSessionPhase::LoadingCoreSchema);
         let provisioned = status_for(
             ApplicationSessionPhase::ActivatingBasePackages,
             Some(Ok(target(SovereigntyObservation::NoAssociationObserved))),
@@ -282,6 +340,37 @@ mod tests {
             let wire = serde_json::to_value(status).unwrap();
             assert!(wire.get("space").is_none());
             assert!(wire.get("credential").is_none());
+        }
+    }
+
+    #[test]
+    fn local_workflow_requires_the_compiled_profile_and_an_available_attempt() {
+        use core_types::{HolonId, LocalId};
+        let mut status = status_for(
+            ApplicationSessionPhase::ActivatingBasePackages,
+            Some(Ok(ConstitutionTarget {
+                space: HolonId::Local(LocalId(vec![9; 39])),
+                sovereignty: SovereigntyObservation::NoAssociationObserved,
+            })),
+        );
+        apply_local_workflow(&mut status, true);
+        assert_eq!(
+            status.constitution_available,
+            cfg!(all(feature = "local-constitution", debug_assertions)) && !tauri::is_dev()
+        );
+        status.constitution_available = false;
+        apply_local_workflow(&mut status, false);
+        assert!(!status.constitution_available);
+        if cfg!(all(feature = "local-constitution", debug_assertions)) && !tauri::is_dev() {
+            assert_eq!(status.phase, WelcomePhase::Blocked);
+            assert_eq!(status.blockers, vec![AdmissionBlocker::ConstitutionTransactionPending]);
+            status.phase = WelcomePhase::AssociationPresent;
+            apply_local_workflow(&mut status, false);
+            assert_eq!(
+                status.phase,
+                WelcomePhase::Blocked,
+                "retained work is not a completed Open"
+            );
         }
     }
 
