@@ -13,13 +13,14 @@ use super::query_qry2_seed_expand_fixture::{instance_properties, lookup_by_key, 
 
 /// Committed Book/Person data. `Falling` has no Subtitle (an optional
 /// property). `Plain`'s Title ends in pattern metacharacters. Only `Shouted`
-/// carries `PrefixTarget` in its key, for the SeedPredicate prefix. Seed
-/// predicates scan every saved holon in the shared conductor, so the marker
-/// avoids the `SeedTarget` keys the F1 and F4 seeds select.
+/// carries `PrefixTarget` at the start of its key, and only `Plain` carries
+/// `SuffixTarget` at the end, for the SeedPredicate prefix and suffix. Seed
+/// predicates scan every saved holon in the shared conductor, so the markers
+/// avoid the `SeedTarget` keys the F1 and F4 seeds select.
 const BOOK_RISING_KEY: &str = "QryF6.Book.Rising";
 const BOOK_FALLING_KEY: &str = "QryF6.Book.Falling";
 const BOOK_SHOUTED_KEY: &str = "QryF6.PrefixTarget.Book.Shouted";
-const BOOK_PLAIN_KEY: &str = "QryF6.Book.Plain";
+const BOOK_PLAIN_KEY: &str = "QryF6.Book.Plain.SuffixTarget";
 /// (key, Title, Subtitle)
 const BOOKS: [(&str, &str, Option<&str>); 4] = [
     (BOOK_RISING_KEY, "Straße der Graphen", Some("A Field Guide")),
@@ -49,9 +50,10 @@ const PERSON_CY_KEY: &str = "QryF6.Person.Cy";
 /// - `Filter(Title startsWith "graph")` over [Falling, Rising, Falling]:
 ///   [Falling, Falling];
 /// - `SeedHolons` with `SeedPredicate(Key startsWith "QryF6.PrefixTarget.")`:
-///   [Shouted];
-/// - `Expand(AuthoredBy)` with `ExpansionPredicate(Name startsWith "b")` over
-///   [Rising, Falling, Plain]: [Bob, Bob];
+///   [Shouted]; with `SeedPredicate(Key endsWith ".SuffixTarget")`: [Plain];
+/// - `Expand(AuthoredBy)` over [Rising, Falling, Plain] with
+///   `ExpansionPredicate(Name startsWith "b")`: [Bob, Bob]; with
+///   `ExpansionPredicate(Name endsWith "LACE")`: [Ada];
 /// - `Filter(AnyOf(AllOf(Title endsWith "strasse", Not(Title startsWith
 ///   "graph")), Subtitle endsWith "ROADS"))`: [Shouted, Plain];
 /// - failures, on empty input unless noted: a boundary operator on an integer
@@ -149,6 +151,7 @@ pub fn query_f6_string_matching_fixture() -> Result<DancesTestCase, HolonError> 
     let falling = saved(&mut test_case, &mut fixture_holons, BOOK_FALLING_KEY)?;
     let shouted = saved(&mut test_case, &mut fixture_holons, BOOK_SHOUTED_KEY)?;
     let plain = saved(&mut test_case, &mut fixture_holons, BOOK_PLAIN_KEY)?;
+    let ada = saved(&mut test_case, &mut fixture_holons, PERSON_ADA_KEY)?;
     let bob = saved(&mut test_case, &mut fixture_holons, PERSON_BOB_KEY)?;
 
     let types = PredicateTypes::look_up(&mut test_case, &fixture_context, &mut fixture_holons)?;
@@ -187,6 +190,11 @@ pub fn query_f6_string_matching_fixture() -> Result<DancesTestCase, HolonError> 
     let seed = author.seed("SeedPrefix", Some(seed_prefix))?;
     let seed_query = author.query("SeedPrefix", seed)?;
 
+    let seed_suffix =
+        author.compare("SeedSuffix", "Key", &ends_with, &map_string, string(".SuffixTarget"))?;
+    let seed = author.seed("SeedSuffix", Some(seed_suffix))?;
+    let seed_suffix_query = author.query("SeedSuffix", seed)?;
+
     let named_b = author.compare("NamedB", "Name", &starts_with, &map_string, string("b"))?;
     let expand_named_b =
         author.authoring.expand("Expand.QryF6NamedB", BOOK_TO_PERSON_RELATIONSHIP)?;
@@ -196,6 +204,17 @@ pub fn query_f6_string_matching_fixture() -> Result<DancesTestCase, HolonError> 
         vec![named_b],
     )?;
     let expansion_query = author.query("NamedBExpansion", expand_named_b)?;
+
+    let named_lace =
+        author.compare("NamedLace", "Name", &ends_with, &map_string, string("LACE"))?;
+    let expand_named_lace =
+        author.authoring.expand("Expand.QryF6NamedLace", BOOK_TO_PERSON_RELATIONSHIP)?;
+    let expand_named_lace = author.relate(
+        expand_named_lace,
+        QueryRelationshipTypeName::ExpansionPredicate,
+        vec![named_lace],
+    )?;
+    let expansion_suffix_query = author.query("NamedLaceExpansion", expand_named_lace)?;
 
     // Composition with Not, AllOf and AnyOf.
     let ends_strasse =
@@ -287,10 +306,22 @@ pub fn query_f6_string_matching_fixture() -> Result<DancesTestCase, HolonError> 
                 "SeedHolons filtered by a Key prefix",
             ),
             (
+                &seed_suffix_query,
+                QueryInputSpec::None,
+                members(&[&plain]),
+                "SeedHolons filtered by a Key suffix",
+            ),
+            (
                 &expansion_query,
                 books(&[&rising, &falling, &plain]),
                 members(&[&bob, &bob]),
                 "Expand filtered by ExpansionPredicate(Name startsWith b)",
+            ),
+            (
+                &expansion_suffix_query,
+                books(&[&rising, &falling, &plain]),
+                members(&[&ada]),
+                "Expand filtered by ExpansionPredicate(Name endsWith LACE)",
             ),
             (
                 &mixed_query,
