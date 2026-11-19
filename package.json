@@ -37,7 +37,7 @@
     "fmt:sweetests:check": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check",
 
     "pretest": "npm run deps:check",
-    "test": "bash scripts/test-run.sh",
+    "test": "MAP_SWEET_STARTUP_TIMEOUT_SECS=${MAP_SWEET_STARTUP_TIMEOUT_SECS:-60} bash scripts/test-run.sh",
     "test:run": "npm run test:unit && npm run sweetest",
     "test:light": "npm run deps:check && bash scripts/test-run.sh npm run test:unit",
     "test:heavy": "npm run deps:check && bash scripts/test-run.sh npm run sweetest:ci",
