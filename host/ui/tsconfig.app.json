@@ -4,6 +4,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/app",
+    // The app compiles map-sdk from source (its package exports src/index.ts),
+    // so the root must span host/ rather than default to this config's folder.
+    "rootDir": "..",
     "types": [],
   },
   "include": [
@@ -13,5 +16,13 @@
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
     "conductora"
-  ]
+  ],
+  "angularCompilerOptions": {
+    "extendedDiagnostics": {
+      "checks": {
+        "nullishCoalescingNotNullable": "suppress",
+        "optionalChainNotNullable": "suppress"
+      }
+    }
+  }
 }

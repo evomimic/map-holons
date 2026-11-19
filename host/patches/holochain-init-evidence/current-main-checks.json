@@ -1,0 +1,24 @@
+{
+  "pr-host-tests": {
+    "passed": 324,
+    "failed": 0,
+    "ignored": 1,
+    "reported_execution_seconds": 246.79999999999998
+  },
+  "pr-sweet-checks": {
+    "passed": 71,
+    "failed": 0,
+    "ignored": 1,
+    "reported_execution_seconds": 0.08
+  },
+  "base_commit": "dc70c6d7",
+  "full_npm_test_on_current_head": false,
+  "format_checks": [
+    "cargo fmt --manifest-path host/Cargo.toml --all --check",
+    "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check"
+  ],
+  "version_check": "No dependency version changes in either native lockfile; all three backported crates resolve as local 0.7.1.",
+  "preservation_check": "All existing data-crate files outside the three source-chain query files are byte-identical to main.",
+  "production_happ_build": "passed: release wasm32-unknown-unknown, holons_integrity and holons",
+  "production_artifact_audit": "passed: production DNA/hApp with deny-production-test-only"
+}

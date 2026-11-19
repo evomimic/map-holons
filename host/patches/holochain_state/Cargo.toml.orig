@@ -1,0 +1,92 @@
+[package]
+name = "holochain_state"
+version = "0.7.1"
+description = "Holochain persisted state datatypes and functions"
+license = "Apache-2.0"
+repository = "https://github.com/holochain/holochain"
+documentation = "https://docs.rs/holochain_state"
+authors = ["Holochain Core Dev Team <devcore@holochain.org>"]
+edition = "2021"
+
+# reminder - do not use workspace deps
+[dependencies]
+chrono = { version = "0.4.22", default-features = false, features = [
+  "clock",
+  "std",
+  "oldtime",
+  "serde",
+] }
+derive_more = { version = "2.0", features = ["display", "deref", "deref_mut"] }
+holo_hash = { version = "^0.7.1", path = "../holo_hash", features = ["full"] }
+fallible-iterator = "0.3.0"
+holochain_data = { version = "^0.7.1", path = "../holochain_data" }
+holochain_conductor_api = { version = "^0.7.1", path = "../holochain_conductor_api" }
+holochain_keystore = { version = "^0.7.1", path = "../holochain_keystore" }
+holochain_serialized_bytes = "=0.0.57"
+sqlx = { version = "0.9.0" }
+holochain_types = { version = "^0.7.1", path = "../holochain_types" }
+holochain_zome_types = { version = "^0.7.1", path = "../holochain_zome_types", features = [
+  "full",
+] }
+holochain_state_types = { version = "^0.7.1", path = "../holochain_state_types" }
+holochain_nonce = { version = "^0.7.1", path = "../holochain_nonce" }
+holochain_timestamp = { version = "^0.7.1", path = "../timestamp", optional = true }
+one_err = "0.0.8"
+shrinkwraprs = "0.3.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "2.0"
+tokio = { version = "1.36.0", features = ["full"] }
+tracing = "0.1.26"
+cron = "0.15"
+async-recursion = "1.1"
+bytes = "1"
+
+kitsune2_api = "0.5.1"
+
+tempfile = { version = "3.3", optional = true }
+base64 = { version = "0.22", optional = true }
+nanoid = { version = "0.4", optional = true }
+
+[dev-dependencies]
+holochain_state = { path = ".", features = ["test_utils"] }
+
+fixt = { path = "../fixt" }
+holochain_wasm_test_utils = { path = "../test_utils/wasm", features = [
+  "build",
+] }
+holochain_trace = { version = "^0.7.1", path = "../holochain_trace" }
+matches = "0.1.8"
+tempfile = "3.3"
+rand = "0.9"
+test-case = "3.3"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+
+fuzzing = ["holochain_types/fuzzing", "holochain_zome_types/fuzzing"]
+
+# Exposes the read-only inspection queries (op counts, existence checks, etc.)
+# on the DhtStore that are otherwise only compiled for tests. `test_utils`
+# turns it on for test consumers.
+inspection = ["holochain_data/inspection"]
+
+test_utils = [
+  "inspection",
+  "holochain_conductor_api/test-utils",
+  "holochain_data/test-utils",
+  "holochain_keystore/test_utils",
+  "holochain_types/test_utils",
+  "holochain_zome_types/test_utils",
+  "dep:holochain_timestamp",
+  "dep:base64",
+  "dep:tempfile",
+  "dep:nanoid",
+]
+
+instrument = []
+
+encryption = ["holochain_data/encryption"]

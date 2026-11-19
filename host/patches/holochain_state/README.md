@@ -1,0 +1,35 @@
+
+# holochain_state
+
+[![Project](https://img.shields.io/badge/project-holochain-blue.svg?style=flat-square)](http://holochain.org/)
+[![Discord](https://img.shields.io/badge/Discord-blue.svg?style=flat-square)](https://discord.gg/k55DS5dmPH)
+[![Twitter Follow](https://img.shields.io/twitter/follow/holochain.svg?style=social&label=Follow)](https://twitter.com/holochain)
+
+[![Crate](https://img.shields.io/crates/v/holochain_state.svg)](https://crates.io/crates/holochain_state)
+[![API Docs](https://docs.rs/holochain_state/badge.svg)](https://docs.rs/holochain_state)
+
+<!-- cargo-rdme start -->
+
+The Holochain state crate provides helpers and abstractions for working
+with Holochain's persistent data stores.
+
+### Reads
+The [`DhtStore`] and [`DhtStoreRead`] types are the main abstractions for
+reading data, combining database access with the in-memory scratch space.
+
+The [`source_chain`] module provides the `SourceChain` type,
+which is the abstraction for working with chains of actions.
+
+The [`host_fn_workspace`] module provides abstractions for reading data during workflows.
+
+### Writes
+The [`mutations`] module provides error types for state write operations.
+
+### In-memory
+The [`scratch`] module provides the `Scratch` type for
+reading and writing data in memory that is not visible anywhere else.
+
+The SourceChain type uses the Scratch for in-memory operations which
+can be flushed to the database.
+
+<!-- cargo-rdme end -->

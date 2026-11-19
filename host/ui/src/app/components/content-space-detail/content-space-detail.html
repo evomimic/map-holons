@@ -6,7 +6,7 @@
       <p>ID: {{ currentSpace?.id }}</p>
       <p>Type: {{ currentSpace?.space_type }}</p>
       <p>Provider: {{ currentSpace?.receptor_id }}</p>
-      <p>Created At: {{ currentSpace?.created_at | date }}</p>
+      <p>Created At: {{ $safeNavigationMigration(currentSpace?.created_at) | date }}</p>
     </div>
 
     <!-- Space Holon Table -->

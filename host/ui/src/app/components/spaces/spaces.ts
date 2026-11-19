@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -9,6 +9,7 @@ import { SpaceController } from '../../contollers/space.controller';
   selector: 'app-spaces',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './spaces.html',
 })
 export class Spaces {

@@ -1,0 +1,44 @@
+{
+  "upstream_fix_commit": "ff9cf800c76aebe1c84b6ec40dab6c8bc0bc78bf",
+  "published_crate_version": "0.7.1",
+  "published_upstream_commit": "c5f5028274c0406cb9d88d0fa48080135137fd75",
+  "composition_base": "dc70c6d71af33b7f01d908c16bb5ff2d10d3d141",
+  "registry_checksums": {
+    "holochain": "f4bfdd6137ee65f2966cf0bbabed0ebfd71edc3a25443596c1bcad20c9a39035",
+    "holochain_state": "3e8235de91cee98a60e8599636008111153bc89c37e72758267d5a1f48e37895",
+    "holochain_data": "5d302613e1a2a5ec13a71f1a8af37b019b0918908138dbdce8de57c0bbe86611"
+  },
+  "licenses": {
+    "holochain": "CAL-1.0",
+    "holochain_state": "Apache-2.0",
+    "holochain_data": "Apache-2.0"
+  },
+  "backport_patch_sha256": "64fefb33457beb694a0898c1c77bae319aa0bb31c0e90ea3e8781a88f3fc388f",
+  "packaging_changes": [
+    "Published crate sources vendored; registry bookkeeping and nested lockfiles omitted.",
+    "Upstream license texts included.",
+    "Exact 0.7.1 constraints on conductor -> state -> data in normalized manifests.",
+    "Existing main data-crate fixes retained."
+  ],
+  "evidence_sha256": {
+    "historical-sweettest-targets.json": "1b73406047d92b90f923afdfd0eb628b69605846bce2d3e8872af4c8133ea9b2",
+    "current-main-checks.json": "3e19ed3e4e0b03e13a96313e7a5f7ce7c67217dfa2ea3a1ce37827b05029c363",
+    "control-2.log": "15655e2fd2a4df2ad005086cc7443cf67788a9688ac259c6b0b32fb68ffc7457",
+    "control-1.log": "aef6e9ecf17aae432cfd5ff599bd7df239363cf4b478646a06a61c682cd65497",
+    "patched-1.log": "f97824edc3689d9c373767b24975272fb9329849616e55986c7a7dae7a33df25",
+    "README.md": "31361a668fe019854056849a15d0ce74f738472142fabcde879acb0800c244c9",
+    "patched-2.log": "f726222d19a5516ff355d26d9241aa02d7579ba00a1e4952caf0e8b5aa7ebfb3",
+    "matched-provenance.json": "3253a45e08538ed0239a36a6938c81d72d185ac0f07683e2a4bcfcd01afcff63",
+    "historical-npm-test-summary.json": "b8524a671adec739df4914d14e7e0795dfa595dc525ef79434f9b6295d5fdbc9",
+    "matched-samples.json": "646f081401207d0e1b94d6e6dfc27879212cc81395d79a895ab729af10c6488e",
+    "matched-summary.json": "2ad324bcf6e5f4fbf7a2ab9f8944237fcd4bb54d9044abbce2812db8c7dc8228"
+  },
+  "backport_runtime_file_sha256": {
+    "holochain/src/conductor/cell.rs": "49a7ced48412dd263074824d5938ff524fdcb341604a4d6a735a0917d391c5a8",
+    "holochain_state/src/source_chain.rs": "81aed60c91d0b382c3599b606039ae9d9fe8af6c0a9d3546906d89188e4b6950",
+    "holochain_state/src/dht_store/reads.rs": "1765631625bf98ff0ee744a672e2067cc529a47156391aaa095d477599592132",
+    "holochain_data/src/dht.rs": "71dc3dc3f9ba343a0bab187122378f7c1b3c43bf0ee9fbd99afeae83087aabfe",
+    "holochain_data/src/dht/inner/action.rs": "b6cc443889d9a42116b7ee1c85ecc0876051acfdc19df6a6b4fb1129bcbeefaf",
+    "holochain_data/src/dht/db_operations/action.rs": "016f39debb32bbc890ab9fd04120fd8fd78e7b763532fb628af55adb45fb462a"
+  }
+}

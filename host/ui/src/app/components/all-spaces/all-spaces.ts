@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { DeprecatedHolonSpace, ProtoAgentSpace, SpaceType } from '../../models/interface.space';
@@ -10,6 +10,7 @@ import { CreateSpace } from '../new-space/createspace.component';
   selector: 'app-main',
   standalone: true,
   imports: [CommonModule, RouterModule, CreateSpace],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './all-spaces.html',
 })
 export class AllSpaces implements OnInit {

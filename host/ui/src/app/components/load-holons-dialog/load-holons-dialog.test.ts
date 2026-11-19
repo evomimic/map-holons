@@ -120,7 +120,9 @@ it('updates elapsed time without repeating live phase announcements and clears t
     expect(document.querySelector('.load-holons-timer')?.textContent).toBe('Total elapsed: 3s');
     expect(status.textContent).toBe('Parsing and preparing files');
     reject(new Error('Invalid source'));
-    await vi.advanceTimersByTimeAsync(0);
+    // Advance past one jsdom rendering frame so its focus-fixup interval, which can start
+    // under the fake clock, goes idle; the dialog's 1s elapsed interval still counts if leaked.
+    await vi.advanceTimersByTimeAsync(50);
     expect(vi.getTimerCount()).toBe(0);
   } finally { vi.useRealTimers(); }
 });

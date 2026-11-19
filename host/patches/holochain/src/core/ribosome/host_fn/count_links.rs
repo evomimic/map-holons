@@ -1,0 +1,249 @@
+use crate::core::ribosome::host_fn::cascade_from_call_context;
+use crate::core::ribosome::{CallContext, Ribosome};
+use crate::core::ribosome::HostFnAccess;
+use crate::core::ribosome::RibosomeError;
+use holochain_types::prelude::*;
+use holochain_wasmer_host::prelude::*;
+use std::sync::Arc;
+use wasmer::RuntimeError;
+
+/// Count links
+#[allow(clippy::extra_unused_lifetimes)]
+#[cfg_attr(feature = "instrument", tracing::instrument(skip(_ribosome, call_context), fields(? call_context.zome, function = ? call_context.function_name)))]
+pub fn count_links<'a>(
+    _ribosome: Arc<Ribosome>,
+    call_context: Arc<CallContext>,
+    query: LinkQuery,
+) -> Result<usize, RuntimeError> {
+    tracing::debug!(msg = "Counting links", ?query);
+    match HostFnAccess::from(&call_context.host_context()) {
+        HostFnAccess {
+            read_workspace: Permission::Allow,
+            ..
+        } => tokio_helper::block_forever_on(async move {
+            let wire_query = WireLinkQuery {
+                base: query.base,
+                link_type: query.link_type,
+                tag_prefix: query.tag_prefix,
+                before: query.before,
+                after: query.after,
+                author: query.author,
+            };
+
+            cascade_from_call_context(&call_context)
+                .dht_count_links(wire_query)
+                .await
+                .map_err(|cascade_error| {
+                    wasm_error!(WasmErrorInner::Host(cascade_error.to_string())).into()
+                })
+        }),
+        _ => Err(wasm_error!(WasmErrorInner::Host(
+            RibosomeError::HostFnPermissions(
+                call_context.zome.zome_name().clone(),
+                call_context.function_name().clone(),
+                "count_links".into(),
+            )
+            .to_string(),
+        ))
+        .into()),
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "slow_tests")]
+mod tests {
+    use crate::sweettest::{SweetConductorHandle, SweetZome};
+    use crate::test_utils::RibosomeTestFixture;
+    use hdk::prelude::*;
+    use holochain_wasm_test_utils::TestWasm;
+    use tokio::time::error::Elapsed;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn count_links() {
+        holochain_trace::test_run();
+        let RibosomeTestFixture {
+            conductor,
+            alice,
+            bob,
+            ..
+        } = RibosomeTestFixture::new(TestWasm::Link).await;
+
+        // Create a link for Alice
+        let _: ActionHash = conductor.call(&alice, "create_link", ()).await;
+
+        let base: AnyLinkableHash = conductor.call(&alice, "get_base_hash", ()).await;
+
+        let count: usize = conductor
+            .call(
+                &alice,
+                "get_count",
+                LinkQuery::new(
+                    base.clone(),
+                    LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]),
+                ),
+            )
+            .await;
+        assert_eq!(1, count);
+
+        // Create a link for Bob
+        let _: ActionHash = conductor.call(&bob, "create_link", ()).await;
+
+        // Check that Alice can see her link and Bob's
+        wait_for_link_count(conductor.sweet_handle(), &alice, base, 2)
+            .await
+            .expect("Timed out waiting for agent to see both links");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn count_links_filtered_by_author() {
+        holochain_trace::test_run();
+        let RibosomeTestFixture {
+            conductor,
+            alice,
+            bob,
+            ..
+        } = RibosomeTestFixture::new(TestWasm::Link).await;
+
+        // Create a link for Alice
+        let _: ActionHash = conductor.call(&alice, "create_link", ()).await;
+
+        let base: AnyLinkableHash = conductor.call(&alice, "get_base_hash", ()).await;
+
+        let count: usize = conductor
+            .call(
+                &alice,
+                "get_count",
+                LinkQuery::new(
+                    base.clone(),
+                    LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]),
+                ),
+            )
+            .await;
+        assert_eq!(1, count);
+
+        // Create a link for Bob
+        let _: ActionHash = conductor.call(&bob, "create_link", ()).await;
+
+        // Check that Alice can count her link and Bob's
+        wait_for_link_count(conductor.sweet_handle(), &alice, base.clone(), 2)
+            .await
+            .expect("Timed out waiting for alice to see both links");
+
+        // Only count Alice's links
+        let count: usize = conductor
+            .call(
+                &alice,
+                "get_count",
+                LinkQuery::new(
+                    base.clone(),
+                    LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]),
+                )
+                .author(alice.cell_id().agent_pubkey().clone()),
+            )
+            .await;
+        assert_eq!(1, count);
+
+        // Only count Bob's links
+        let count: usize = conductor
+            .call(
+                &bob,
+                "get_count",
+                LinkQuery::new(base, LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]))
+                    .author(bob.cell_id().agent_pubkey().clone()),
+            )
+            .await;
+        assert_eq!(1, count);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn count_links_filtered_by_timestamp() {
+        holochain_trace::test_run();
+        let RibosomeTestFixture {
+            conductor,
+            alice,
+            bob,
+            ..
+        } = RibosomeTestFixture::new(TestWasm::Link).await;
+
+        // Create a link for Alice
+        let _: ActionHash = conductor.call(&alice, "create_link", ()).await;
+
+        let base: AnyLinkableHash = conductor.call(&alice, "get_base_hash", ()).await;
+
+        let count: usize = conductor
+            .call(
+                &alice,
+                "get_count",
+                LinkQuery::new(
+                    base.clone(),
+                    LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]),
+                ),
+            )
+            .await;
+        assert_eq!(1, count);
+
+        let mid_time = Timestamp::now();
+
+        // Create a link for Bob
+        let _: ActionHash = conductor.call(&bob, "create_link", ()).await;
+
+        // Check that Alice can count her link and Bob's
+        wait_for_link_count(conductor.sweet_handle(), &alice, base.clone(), 2)
+            .await
+            .expect("Timed out waiting for alice to see both links");
+
+        // Get links created before the mid-time (only Alice's)
+        let count: usize = conductor
+            .call(
+                &alice,
+                "get_count",
+                LinkQuery::new(
+                    base.clone(),
+                    LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]),
+                )
+                .after(mid_time),
+            )
+            .await;
+        assert_eq!(1, count);
+
+        // Get links created after the mid-time (only Bob's)
+        let count: usize = conductor
+            .call(
+                &bob,
+                "get_count",
+                LinkQuery::new(base, LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]))
+                    .before(mid_time),
+            )
+            .await;
+        assert_eq!(1, count);
+    }
+
+    async fn wait_for_link_count(
+        conductor: SweetConductorHandle,
+        zome: &SweetZome,
+        base: AnyLinkableHash,
+        count: usize,
+    ) -> Result<(), Elapsed> {
+        tokio::time::timeout(std::time::Duration::from_secs(10), async move {
+            loop {
+                let current_count: usize = conductor
+                    .call(
+                        zome,
+                        "get_count",
+                        LinkQuery::new(
+                            base.clone(),
+                            LinkTypeFilter::Dependencies(vec![ZomeIndex(0)]),
+                        ),
+                    )
+                    .await;
+
+                if current_count == count {
+                    break;
+                }
+
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+        })
+        .await
+    }
+}

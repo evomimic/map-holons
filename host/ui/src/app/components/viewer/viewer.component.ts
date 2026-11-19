@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Inject, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Inject, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { Observable } from 'rxjs'; //it must use the same rxjs as the ngrx package!
 import { Holon } from '../../models/holon';
 //import { ContentStore } from '../../stores/content.store';
@@ -11,6 +11,7 @@ import { ClickOutsideDirective } from '../../helpers/clickout';
   standalone: true,
   imports: [CommonModule],//,ClickOutsideDirective],
   templateUrl: './viewer.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [ContentController],
 })
 export class ViewerComponent implements OnInit {
