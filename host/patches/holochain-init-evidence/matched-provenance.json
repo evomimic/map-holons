@@ -1,0 +1,88 @@
+{
+  "baseline_commit": "9bf273a766dd79954b3c63be6ad0ec7e04b4e817",
+  "upstream_fix": "ff9cf800c76aebe1c84b6ec40dab6c8bc0bc78bf",
+  "worktree": "/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons",
+  "native_rust": "1.95.0",
+  "native_opt_level": "z",
+  "guest_profile": "release; opt-level=z; holon-fetch-profiling",
+  "guest_artifacts_shared_by_both_variants": true,
+  "hashes": {
+    "tests/sweetests/tests/holon_fetch_profile_tests.rs": "8e31267b25269968fb9c3782ee93b1bdfd1980ef066167f8ca1de071996f52b8",
+    "happ/crates/holons_guest/src/dances_guest/dance_adapter.rs": "8f9b9a4802c15f756406a87c9d89f0b843a3c6ffaa3649f0e9a94bbd628c78a7",
+    "happ/target/wasm32-unknown-unknown/release/holons.wasm": "7e2a9765c230676854a49fc24fb423e00318740a967fb2aedcfd09003bbe7d7f",
+    "happ/target/wasm32-unknown-unknown/release/holons_integrity.wasm": "8c082e181b31f803a4ef79c037e57a3f54c9a22c51a0c77abec114229f7f2942",
+    "happ/workdir/map_holons.dna": "3057d6ca6c92d6de99bfc78118525d53c86acf4e12ec6dbb835d9f09522229f3",
+    "happ/workdir/map-holons.happ": "ea12684e4a30bd10f8c624058ea7faccb4eb646b1f96796542922e70985cba80",
+    "Cargo.lock": "4cfbbd092635901335680468effd185928fafd963efe86b4a554654a6926f545",
+    "happ/Cargo.lock": "c33d35d5bff249937bdd38dd6899f040465959c60bb580bc4c61e4068c71703c"
+  },
+  "upstream_patch_sha256": "29c69108a53ed064c6ea47ece67e0ff000b800cb53f467954fb29b20c6814b45",
+  "backport_patch_sha256": "64fefb33457beb694a0898c1c77bae319aa0bb31c0e90ea3e8781a88f3fc388f",
+  "control_executable_sha256": "c3b11f85cd4c40585a07f8a7ddc6b80ef2b3f44b83352141d3933af339bcad27",
+  "patched_executable_sha256": "1d9e5ebc30d2eb72b784edf7409ef5e57af7988d1083c791bcf3d47f48ce675b",
+  "run_order": [
+    "control-1",
+    "patched-1",
+    "patched-2",
+    "control-2"
+  ],
+  "result": "All four runs passed; 10 samples per operation per variant.",
+  "patch_build_source_root": "/private/tmp/map-hc07-init-scan/vendor",
+  "preserved_source_root": "/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/experiments/hc07-init-scan/vendor",
+  "native_build_jobs": 6,
+  "nix_enforce_purity": "0",
+  "measurement_env": {
+    "RUST_LOG": "warn",
+    "WASM_LOG": "info"
+  },
+  "machine": "Darwin Steves-2025-MacBook.local 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:28:34 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6041 arm64",
+  "artifact_audit": "passed: production DNA and hApp, deny-production-test-only",
+  "bootstrap_counts": {
+    "control-1": {
+      "loader_total_ms": 36506,
+      "bundles": 21,
+      "loader_holons": 1060,
+      "staged_holons": 1060,
+      "queued_relationships": 5275,
+      "links_created": 5839
+    },
+    "patched-1": {
+      "loader_total_ms": 36295,
+      "bundles": 21,
+      "loader_holons": 1060,
+      "staged_holons": 1060,
+      "queued_relationships": 5275,
+      "links_created": 5839
+    },
+    "patched-2": {
+      "loader_total_ms": 44616,
+      "bundles": 21,
+      "loader_holons": 1060,
+      "staged_holons": 1060,
+      "queued_relationships": 5275,
+      "links_created": 5839
+    },
+    "control-2": {
+      "loader_total_ms": 128946,
+      "bundles": 21,
+      "loader_holons": 1060,
+      "staged_holons": 1060,
+      "queued_relationships": 5275,
+      "links_created": 5839
+    }
+  },
+  "evidence_sha256": {
+    "combined.json": "2ad324bcf6e5f4fbf7a2ab9f8944237fcd4bb54d9044abbce2812db8c7dc8228",
+    "patched-build.log": "ab9ab4017ccfe2f7c2581d07dc6d0e501fa2fc0064068c1809f5f03414e7975c",
+    "results.json": "646f081401207d0e1b94d6e6dfc27879212cc81395d79a895ab729af10c6488e",
+    "control-Cargo.lock": "4cfbbd092635901335680468effd185928fafd963efe86b4a554654a6926f545",
+    "patched-Cargo.lock": "74136beb9a469c2e4624cab0ec5ea8ed7f107aba3a0905a454876f7a353a62c2",
+    "control-2.log": "15655e2fd2a4df2ad005086cc7443cf67788a9688ac259c6b0b32fb68ffc7457",
+    "control-1.log": "aef6e9ecf17aae432cfd5ff599bd7df239363cf4b478646a06a61c682cd65497",
+    "patched-1.log": "f97824edc3689d9c373767b24975272fb9329849616e55986c7a7dae7a33df25",
+    "patched-2.log": "f726222d19a5516ff355d26d9241aa02d7579ba00a1e4952caf0e8b5aa7ebfb3",
+    "artifact-audit.log": "51f3fff001d27996a1e9e824db82c8497daf16883a62a5cf33e94bfceb4e1f3b",
+    "guest-build.log": "cc77494e8bf9a8d7f69bfa7bb7bc24eebd9476dad37440bf65635f28fa142cef",
+    "control-build.log": "2f15d51231b75733d99b985117bfd48e04440cb60cbf1f1a0aacafe55cca9219"
+  }
+}

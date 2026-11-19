@@ -1,0 +1,38 @@
+{
+  "control": {
+    "get_holon_by_id": {
+      "call_ms": 151.5395,
+      "adapter_ms": 1.3005,
+      "outside_ms": 149.978,
+      "signer_ms": 0.105,
+      "n": 10
+    },
+    "query_relationships": {
+      "call_ms": 191.939,
+      "adapter_ms": 2.8595,
+      "outside_ms": 187.2245,
+      "signer_ms": 0.093,
+      "n": 10
+    }
+  },
+  "patched": {
+    "get_holon_by_id": {
+      "call_ms": 2.6275,
+      "adapter_ms": 1.15,
+      "outside_ms": 1.4775,
+      "signer_ms": 0.0895,
+      "n": 10,
+      "outside_reduction_ms": 148.50050000000002,
+      "outside_reduction_percent": 99.01485551214179
+    },
+    "query_relationships": {
+      "call_ms": 3.6525,
+      "adapter_ms": 2.315,
+      "outside_ms": 1.373,
+      "signer_ms": 0.084,
+      "n": 10,
+      "outside_reduction_ms": 185.85150000000002,
+      "outside_reduction_percent": 99.26665580626467
+    }
+  }
+}

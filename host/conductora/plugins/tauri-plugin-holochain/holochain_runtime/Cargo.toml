@@ -5,13 +5,13 @@ edition = "2021"
 
 [dependencies]
 # Holochain dependencies
-holochain = { version = "0.7", default-features = false, features = [ "wasmer-sys-cranelift", "schema" ] }
+holochain = { version = "=0.7.1", default-features = false, features = [ "wasmer-sys-cranelift", "schema" ] }
 mr_bundle = {version = "0.7", default-features = false }
 holochain_types = {version = "0.7", default-features = false }
 holochain_keystore = {version = "0.7", default-features = false }
 holochain_conductor_api = {version = "0.7", default-features = false }
 holochain_util = {version = "0.7", default-features = false }
-holochain_data = { version = "0.7.1", default-features = false }
+holochain_data = { version = "=0.7.1", default-features = false }
 
 #kitsune_p2p_mdns = { path = "../mdns" }
 kitsune_p2p_mdns = "*"

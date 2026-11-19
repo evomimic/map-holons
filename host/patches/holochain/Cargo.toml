@@ -209,7 +209,7 @@ version = "^0.7.1"
 version = "=0.0.57"
 
 [dependencies.holochain_state]
-version = "^0.7.1"
+version = "=0.7.1"
 
 [dependencies.holochain_test_wasm_common]
 version = "^0.7.1"

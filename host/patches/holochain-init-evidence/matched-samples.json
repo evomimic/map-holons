@@ -1,0 +1,1542 @@
+[
+  {
+    "log": "/private/tmp/map-hc07-init-scan/control-1.log",
+    "summary": {
+      "get_holon_by_id": {
+        "samples": 5,
+        "call_ms": 149.475,
+        "adapter_ms": 1.009,
+        "outside_ms": 148.52,
+        "get_details_ms": 0.304,
+        "get_links_ms": 0.0,
+        "request_bytes": [
+          410
+        ],
+        "response_bytes": [
+          999
+        ]
+      },
+      "query_relationships": {
+        "samples": 5,
+        "call_ms": 195.079,
+        "adapter_ms": 2.549,
+        "outside_ms": 192.53,
+        "get_details_ms": 0.432,
+        "get_links_ms": 0.755,
+        "request_bytes": [
+          546
+        ],
+        "response_bytes": [
+          729
+        ]
+      }
+    },
+    "samples": [
+      {
+        "dance": "get_holon_by_id",
+        "index": 0,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 5,
+          "hydration_us": 101,
+          "binding_us": 5,
+          "dispatch_us": 786,
+          "projection_us": 6,
+          "export_us": 8,
+          "total_us": 1009,
+          "hdk_get_details_us": 274,
+          "node_decode_us": 392,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 7,
+          "call_us": 93153,
+          "signer_us": 88,
+          "decode_us": 67,
+          "request_bytes": 410,
+          "response_bytes": 999
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 93253
+        },
+        "outside_us": 92144
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 1,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 5,
+          "hydration_us": 96,
+          "binding_us": 4,
+          "dispatch_us": 780,
+          "projection_us": 5,
+          "export_us": 6,
+          "total_us": 997,
+          "hdk_get_details_us": 299,
+          "node_decode_us": 353,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 6,
+          "call_us": 129617,
+          "signer_us": 92,
+          "decode_us": 39,
+          "request_bytes": 410,
+          "response_bytes": 999
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 129692
+        },
+        "outside_us": 128620
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 2,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 4,
+          "hydration_us": 93,
+          "binding_us": 4,
+          "dispatch_us": 806,
+          "projection_us": 5,
+          "export_us": 8,
+          "total_us": 1027,
+          "hdk_get_details_us": 309,
+          "node_decode_us": 381,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 6,
+          "call_us": 165329,
+          "signer_us": 95,
+          "decode_us": 37,
+          "request_bytes": 410,
+          "response_bytes": 999
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 165392
+        },
+        "outside_us": 164302
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 3,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 3,
+          "hydration_us": 94,
+          "binding_us": 4,
+          "dispatch_us": 755,
+          "projection_us": 4,
+          "export_us": 6,
+          "total_us": 955,
+          "hdk_get_details_us": 304,
+          "node_decode_us": 345,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 6,
+          "call_us": 149475,
+          "signer_us": 88,
+          "decode_us": 39,
+          "request_bytes": 410,
+          "response_bytes": 999
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 149539
+        },
+        "outside_us": 148520
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 4,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 4,
+          "hydration_us": 75,
+          "binding_us": 3,
+          "dispatch_us": 968,
+          "projection_us": 4,
+          "export_us": 5,
+          "total_us": 1159,
+          "hdk_get_details_us": 429,
+          "node_decode_us": 447,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 6,
+          "call_us": 190089,
+          "signer_us": 87,
+          "decode_us": 38,
+          "request_bytes": 410,
+          "response_bytes": 999
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 190149
+        },
+        "outside_us": 188930
+      },
+      {
+        "dance": "query_relationships",
+        "index": 0,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 4,
+          "hydration_us": 81,
+          "binding_us": 5,
+          "dispatch_us": 2335,
+          "projection_us": 7,
+          "export_us": 5,
+          "total_us": 2549,
+          "hdk_get_details_us": 432,
+          "node_decode_us": 427,
+          "hdk_get_links_us": 807,
+          "link_decode_us": 9,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 6,
+          "call_us": 188071,
+          "signer_us": 76,
+          "decode_us": 33,
+          "request_bytes": 546,
+          "response_bytes": 729
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 188130
+        },
+        "outside_us": 185522
+      },
+      {
+        "dance": "query_relationships",
+        "index": 1,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 4,
+          "hydration_us": 77,
+          "binding_us": 5,
+          "dispatch_us": 1839,
+          "projection_us": 7,
+          "export_us": 5,
+          "total_us": 2051,
+          "hdk_get_details_us": 458,
+          "node_decode_us": 431,
+          "hdk_get_links_us": 282,
+          "link_decode_us": 8,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 6,
+          "call_us": 200387,
+          "signer_us": 72,
+          "decode_us": 34,
+          "request_bytes": 546,
+          "response_bytes": 729
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 200445
+        },
+        "outside_us": 198336
+      },
+      {
+        "dance": "query_relationships",
+        "index": 2,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 77,
+          "binding_us": 4,
+          "dispatch_us": 2332,
+          "projection_us": 7,
+          "export_us": 5,
+          "total_us": 2549,
+          "hdk_get_details_us": 407,
+          "node_decode_us": 451,
+          "hdk_get_links_us": 755,
+          "link_decode_us": 10,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 6,
+          "call_us": 195079,
+          "signer_us": 73,
+          "decode_us": 34,
+          "request_bytes": 546,
+          "response_bytes": 729
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 195139
+        },
+        "outside_us": 192530
+      },
+      {
+        "dance": "query_relationships",
+        "index": 3,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 4,
+          "hydration_us": 76,
+          "binding_us": 5,
+          "dispatch_us": 2157,
+          "projection_us": 6,
+          "export_us": 5,
+          "total_us": 2376,
+          "hdk_get_details_us": 378,
+          "node_decode_us": 448,
+          "hdk_get_links_us": 690,
+          "link_decode_us": 6,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 6,
+          "call_us": 71409,
+          "signer_us": 75,
+          "decode_us": 30,
+          "request_bytes": 546,
+          "response_bytes": 729
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 71466
+        },
+        "outside_us": 69033
+      },
+      {
+        "dance": "query_relationships",
+        "index": 4,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 5,
+          "hydration_us": 79,
+          "binding_us": 5,
+          "dispatch_us": 2457,
+          "projection_us": 7,
+          "export_us": 5,
+          "total_us": 2683,
+          "hdk_get_details_us": 477,
+          "node_decode_us": 495,
+          "hdk_get_links_us": 770,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 6,
+          "call_us": 205941,
+          "signer_us": 73,
+          "decode_us": 35,
+          "request_bytes": 546,
+          "response_bytes": 729
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 206005
+        },
+        "outside_us": 203258
+      }
+    ]
+  },
+  {
+    "log": "/private/tmp/map-hc07-init-scan/patched-1.log",
+    "summary": {
+      "get_holon_by_id": {
+        "samples": 5,
+        "call_ms": 4.883,
+        "adapter_ms": 1.467,
+        "outside_ms": 2.552,
+        "get_details_ms": 0.544,
+        "get_links_ms": 0.0,
+        "request_bytes": [
+          406
+        ],
+        "response_bytes": [
+          995
+        ]
+      },
+      "query_relationships": {
+        "samples": 5,
+        "call_ms": 3.823,
+        "adapter_ms": 2.442,
+        "outside_ms": 1.47,
+        "get_details_ms": 0.316,
+        "get_links_ms": 0.607,
+        "request_bytes": [
+          542
+        ],
+        "response_bytes": [
+          728
+        ]
+      }
+    },
+    "samples": [
+      {
+        "dance": "get_holon_by_id",
+        "index": 0,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 5,
+          "hydration_us": 108,
+          "binding_us": 5,
+          "dispatch_us": 1185,
+          "projection_us": 4,
+          "export_us": 7,
+          "total_us": 1467,
+          "hdk_get_details_us": 544,
+          "node_decode_us": 498,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 10,
+          "call_us": 4883,
+          "signer_us": 167,
+          "decode_us": 71,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 5004
+        },
+        "outside_us": 3416
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 1,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 2,
+          "hydration_us": 79,
+          "binding_us": 4,
+          "dispatch_us": 982,
+          "projection_us": 5,
+          "export_us": 5,
+          "total_us": 1136,
+          "hdk_get_details_us": 521,
+          "node_decode_us": 351,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 9,
+          "call_us": 2635,
+          "signer_us": 103,
+          "decode_us": 38,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 2706
+        },
+        "outside_us": 1499
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 2,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 4,
+          "hydration_us": 97,
+          "binding_us": 4,
+          "dispatch_us": 2201,
+          "projection_us": 5,
+          "export_us": 8,
+          "total_us": 2444,
+          "hdk_get_details_us": 932,
+          "node_decode_us": 936,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 5,
+          "call_us": 4996,
+          "signer_us": 75,
+          "decode_us": 58,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 5108
+        },
+        "outside_us": 2552
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 3,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 8,
+          "hydration_us": 168,
+          "binding_us": 9,
+          "dispatch_us": 2276,
+          "projection_us": 6,
+          "export_us": 7,
+          "total_us": 2684,
+          "hdk_get_details_us": 749,
+          "node_decode_us": 1270,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 13,
+          "call_us": 8888,
+          "signer_us": 192,
+          "decode_us": 52,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 9013
+        },
+        "outside_us": 6204
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 4,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 3,
+          "hydration_us": 82,
+          "binding_us": 3,
+          "dispatch_us": 1095,
+          "projection_us": 5,
+          "export_us": 7,
+          "total_us": 1285,
+          "hdk_get_details_us": 435,
+          "node_decode_us": 534,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 11,
+          "call_us": 3541,
+          "signer_us": 152,
+          "decode_us": 33,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 3606
+        },
+        "outside_us": 2256
+      },
+      {
+        "dance": "query_relationships",
+        "index": 0,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 4,
+          "hydration_us": 87,
+          "binding_us": 5,
+          "dispatch_us": 2315,
+          "projection_us": 8,
+          "export_us": 5,
+          "total_us": 2513,
+          "hdk_get_details_us": 316,
+          "node_decode_us": 396,
+          "hdk_get_links_us": 788,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 8,
+          "call_us": 3983,
+          "signer_us": 87,
+          "decode_us": 35,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 4048
+        },
+        "outside_us": 1470
+      },
+      {
+        "dance": "query_relationships",
+        "index": 1,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 77,
+          "binding_us": 5,
+          "dispatch_us": 2030,
+          "projection_us": 10,
+          "export_us": 6,
+          "total_us": 2227,
+          "hdk_get_details_us": 305,
+          "node_decode_us": 513,
+          "hdk_get_links_us": 379,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 7,
+          "call_us": 3581,
+          "signer_us": 97,
+          "decode_us": 35,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3647
+        },
+        "outside_us": 1354
+      },
+      {
+        "dance": "query_relationships",
+        "index": 2,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 5,
+          "hydration_us": 133,
+          "binding_us": 7,
+          "dispatch_us": 3082,
+          "projection_us": 17,
+          "export_us": 6,
+          "total_us": 3394,
+          "hdk_get_details_us": 369,
+          "node_decode_us": 587,
+          "hdk_get_links_us": 963,
+          "link_decode_us": 10,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 8,
+          "call_us": 4941,
+          "signer_us": 87,
+          "decode_us": 33,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 5002
+        },
+        "outside_us": 1547
+      },
+      {
+        "dance": "query_relationships",
+        "index": 3,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 2,
+          "hydration_us": 66,
+          "binding_us": 5,
+          "dispatch_us": 2288,
+          "projection_us": 6,
+          "export_us": 5,
+          "total_us": 2442,
+          "hdk_get_details_us": 354,
+          "node_decode_us": 490,
+          "hdk_get_links_us": 607,
+          "link_decode_us": 8,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 7,
+          "call_us": 3823,
+          "signer_us": 82,
+          "decode_us": 23,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3873
+        },
+        "outside_us": 1381
+      },
+      {
+        "dance": "query_relationships",
+        "index": 4,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 4,
+          "hydration_us": 90,
+          "binding_us": 6,
+          "dispatch_us": 1862,
+          "projection_us": 9,
+          "export_us": 5,
+          "total_us": 2083,
+          "hdk_get_details_us": 252,
+          "node_decode_us": 434,
+          "hdk_get_links_us": 368,
+          "link_decode_us": 8,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 6,
+          "call_us": 3579,
+          "signer_us": 59,
+          "decode_us": 48,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3654
+        },
+        "outside_us": 1496
+      }
+    ]
+  },
+  {
+    "log": "/private/tmp/map-hc07-init-scan/patched-2.log",
+    "summary": {
+      "get_holon_by_id": {
+        "samples": 5,
+        "call_ms": 2.336,
+        "adapter_ms": 0.959,
+        "outside_ms": 1.389,
+        "get_details_ms": 0.262,
+        "get_links_ms": 0.0,
+        "request_bytes": [
+          406
+        ],
+        "response_bytes": [
+          995
+        ]
+      },
+      "query_relationships": {
+        "samples": 5,
+        "call_ms": 3.651,
+        "adapter_ms": 2.289,
+        "outside_ms": 1.329,
+        "get_details_ms": 0.312,
+        "get_links_ms": 0.602,
+        "request_bytes": [
+          542
+        ],
+        "response_bytes": [
+          728
+        ]
+      }
+    },
+    "samples": [
+      {
+        "dance": "get_holon_by_id",
+        "index": 0,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 3,
+          "hydration_us": 137,
+          "binding_us": 4,
+          "dispatch_us": 734,
+          "projection_us": 4,
+          "export_us": 6,
+          "total_us": 959,
+          "hdk_get_details_us": 250,
+          "node_decode_us": 377,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 7,
+          "call_us": 2396,
+          "signer_us": 96,
+          "decode_us": 36,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 2458
+        },
+        "outside_us": 1437
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 1,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 3,
+          "hydration_us": 82,
+          "binding_us": 3,
+          "dispatch_us": 653,
+          "projection_us": 4,
+          "export_us": 4,
+          "total_us": 815,
+          "hdk_get_details_us": 215,
+          "node_decode_us": 353,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 6,
+          "call_us": 2114,
+          "signer_us": 74,
+          "decode_us": 32,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 2178
+        },
+        "outside_us": 1299
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 2,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 3,
+          "hydration_us": 83,
+          "binding_us": 3,
+          "dispatch_us": 1000,
+          "projection_us": 5,
+          "export_us": 7,
+          "total_us": 1164,
+          "hdk_get_details_us": 448,
+          "node_decode_us": 436,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 6,
+          "call_us": 2620,
+          "signer_us": 78,
+          "decode_us": 34,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 2680
+        },
+        "outside_us": 1456
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 3,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 3,
+          "hydration_us": 82,
+          "binding_us": 4,
+          "dispatch_us": 781,
+          "projection_us": 5,
+          "export_us": 5,
+          "total_us": 947,
+          "hdk_get_details_us": 272,
+          "node_decode_us": 423,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 5,
+          "call_us": 2336,
+          "signer_us": 78,
+          "decode_us": 24,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 2381
+        },
+        "outside_us": 1389
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 4,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 4,
+          "hydration_us": 75,
+          "binding_us": 3,
+          "dispatch_us": 823,
+          "projection_us": 5,
+          "export_us": 6,
+          "total_us": 971,
+          "hdk_get_details_us": 262,
+          "node_decode_us": 435,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 5,
+          "call_us": 2216,
+          "signer_us": 83,
+          "decode_us": 23,
+          "request_bytes": 406,
+          "response_bytes": 995
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 2260
+        },
+        "outside_us": 1245
+      },
+      {
+        "dance": "query_relationships",
+        "index": 0,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 71,
+          "binding_us": 5,
+          "dispatch_us": 2234,
+          "projection_us": 8,
+          "export_us": 5,
+          "total_us": 2395,
+          "hdk_get_details_us": 280,
+          "node_decode_us": 399,
+          "hdk_get_links_us": 703,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 7,
+          "call_us": 3795,
+          "signer_us": 71,
+          "decode_us": 37,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3868
+        },
+        "outside_us": 1400
+      },
+      {
+        "dance": "query_relationships",
+        "index": 1,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 87,
+          "binding_us": 6,
+          "dispatch_us": 2081,
+          "projection_us": 8,
+          "export_us": 5,
+          "total_us": 2289,
+          "hdk_get_details_us": 325,
+          "node_decode_us": 410,
+          "hdk_get_links_us": 602,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 8,
+          "call_us": 3654,
+          "signer_us": 84,
+          "decode_us": 32,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3715
+        },
+        "outside_us": 1365
+      },
+      {
+        "dance": "query_relationships",
+        "index": 2,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 69,
+          "binding_us": 5,
+          "dispatch_us": 2064,
+          "projection_us": 9,
+          "export_us": 6,
+          "total_us": 2223,
+          "hdk_get_details_us": 312,
+          "node_decode_us": 520,
+          "hdk_get_links_us": 485,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 7,
+          "call_us": 3552,
+          "signer_us": 79,
+          "decode_us": 33,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3615
+        },
+        "outside_us": 1329
+      },
+      {
+        "dance": "query_relationships",
+        "index": 3,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 72,
+          "binding_us": 4,
+          "dispatch_us": 2173,
+          "projection_us": 8,
+          "export_us": 5,
+          "total_us": 2341,
+          "hdk_get_details_us": 316,
+          "node_decode_us": 436,
+          "hdk_get_links_us": 725,
+          "link_decode_us": 8,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 7,
+          "call_us": 3651,
+          "signer_us": 84,
+          "decode_us": 61,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3746
+        },
+        "outside_us": 1310
+      },
+      {
+        "dance": "query_relationships",
+        "index": 4,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 3,
+          "hydration_us": 79,
+          "binding_us": 5,
+          "dispatch_us": 1835,
+          "projection_us": 8,
+          "export_us": 6,
+          "total_us": 2027,
+          "hdk_get_details_us": 297,
+          "node_decode_us": 426,
+          "hdk_get_links_us": 317,
+          "link_decode_us": 7,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 7,
+          "call_us": 3288,
+          "signer_us": 102,
+          "decode_us": 33,
+          "request_bytes": 542,
+          "response_bytes": 728
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 3348
+        },
+        "outside_us": 1261
+      }
+    ]
+  },
+  {
+    "log": "/private/tmp/map-hc07-init-scan/control-2.log",
+    "summary": {
+      "get_holon_by_id": {
+        "samples": 5,
+        "call_ms": 152.439,
+        "adapter_ms": 1.577,
+        "outside_ms": 150.862,
+        "get_details_ms": 0.503,
+        "get_links_ms": 0.0,
+        "request_bytes": [
+          395
+        ],
+        "response_bytes": [
+          984
+        ]
+      },
+      "query_relationships": {
+        "samples": 5,
+        "call_ms": 188.799,
+        "adapter_ms": 3.431,
+        "outside_ms": 185.763,
+        "get_details_ms": 0.608,
+        "get_links_ms": 0.517,
+        "request_bytes": [
+          531
+        ],
+        "response_bytes": [
+          718
+        ]
+      }
+    },
+    "samples": [
+      {
+        "dance": "get_holon_by_id",
+        "index": 0,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 6,
+          "hydration_us": 117,
+          "binding_us": 5,
+          "dispatch_us": 1504,
+          "projection_us": 7,
+          "export_us": 8,
+          "total_us": 1769,
+          "hdk_get_details_us": 580,
+          "node_decode_us": 612,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 8,
+          "call_us": 156153,
+          "signer_us": 122,
+          "decode_us": 289,
+          "request_bytes": 395,
+          "response_bytes": 984
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 156509
+        },
+        "outside_us": 154384
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 1,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 8,
+          "hydration_us": 182,
+          "binding_us": 6,
+          "dispatch_us": 1260,
+          "projection_us": 6,
+          "export_us": 9,
+          "total_us": 1633,
+          "hdk_get_details_us": 456,
+          "node_decode_us": 630,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 9,
+          "call_us": 159834,
+          "signer_us": 141,
+          "decode_us": 50,
+          "request_bytes": 395,
+          "response_bytes": 984
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 159922
+        },
+        "outside_us": 158201
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 2,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 5,
+          "hydration_us": 119,
+          "binding_us": 5,
+          "dispatch_us": 1288,
+          "projection_us": 6,
+          "export_us": 8,
+          "total_us": 1577,
+          "hdk_get_details_us": 544,
+          "node_decode_us": 576,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 8,
+          "call_us": 152439,
+          "signer_us": 129,
+          "decode_us": 46,
+          "request_bytes": 395,
+          "response_bytes": 984
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 152517
+        },
+        "outside_us": 150862
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 3,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 5,
+          "hydration_us": 115,
+          "binding_us": 5,
+          "dispatch_us": 1177,
+          "projection_us": 6,
+          "export_us": 8,
+          "total_us": 1442,
+          "hdk_get_details_us": 485,
+          "node_decode_us": 535,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 8,
+          "call_us": 150030,
+          "signer_us": 115,
+          "decode_us": 47,
+          "request_bytes": 395,
+          "response_bytes": 984
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 150127
+        },
+        "outside_us": 148588
+      },
+      {
+        "dance": "get_holon_by_id",
+        "index": 4,
+        "guest": {
+          "dance": "get_holon_by_id",
+          "validation_us": 6,
+          "hydration_us": 126,
+          "binding_us": 5,
+          "dispatch_us": 1255,
+          "projection_us": 7,
+          "export_us": 9,
+          "total_us": 1546,
+          "hdk_get_details_us": 503,
+          "node_decode_us": 552,
+          "hdk_get_links_us": 0,
+          "link_decode_us": 0,
+          "link_calls": 0,
+          "returned_links": 0,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "get_holon_by_id",
+          "encode_us": 8,
+          "call_us": 150640,
+          "signer_us": 118,
+          "decode_us": 43,
+          "request_bytes": 395,
+          "response_bytes": 984
+        },
+        "logical": {
+          "dance": "get_holon_by_id",
+          "elapsed_us": 150722
+        },
+        "outside_us": 149094
+      },
+      {
+        "dance": "query_relationships",
+        "index": 0,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 14,
+          "hydration_us": 295,
+          "binding_us": 9,
+          "dispatch_us": 16491,
+          "projection_us": 30,
+          "export_us": 8,
+          "total_us": 17208,
+          "hdk_get_details_us": 7483,
+          "node_decode_us": 2678,
+          "hdk_get_links_us": 3225,
+          "link_decode_us": 14,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 11,
+          "call_us": 205894,
+          "signer_us": 125,
+          "decode_us": 53,
+          "request_bytes": 531,
+          "response_bytes": 718
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 206011
+        },
+        "outside_us": 188686
+      },
+      {
+        "dance": "query_relationships",
+        "index": 1,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 8,
+          "hydration_us": 130,
+          "binding_us": 7,
+          "dispatch_us": 2699,
+          "projection_us": 11,
+          "export_us": 7,
+          "total_us": 3036,
+          "hdk_get_details_us": 499,
+          "node_decode_us": 662,
+          "hdk_get_links_us": 445,
+          "link_decode_us": 12,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 13,
+          "call_us": 188799,
+          "signer_us": 408,
+          "decode_us": 43,
+          "request_bytes": 531,
+          "response_bytes": 718
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 188891
+        },
+        "outside_us": 185763
+      },
+      {
+        "dance": "query_relationships",
+        "index": 2,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 12,
+          "hydration_us": 137,
+          "binding_us": 7,
+          "dispatch_us": 3014,
+          "projection_us": 10,
+          "export_us": 8,
+          "total_us": 3431,
+          "hdk_get_details_us": 608,
+          "node_decode_us": 677,
+          "hdk_get_links_us": 517,
+          "link_decode_us": 11,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 9,
+          "call_us": 149244,
+          "signer_us": 135,
+          "decode_us": 42,
+          "request_bytes": 531,
+          "response_bytes": 718
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 149333
+        },
+        "outside_us": 145813
+      },
+      {
+        "dance": "query_relationships",
+        "index": 3,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 6,
+          "hydration_us": 112,
+          "binding_us": 6,
+          "dispatch_us": 2801,
+          "projection_us": 9,
+          "export_us": 6,
+          "total_us": 3108,
+          "hdk_get_details_us": 614,
+          "node_decode_us": 677,
+          "hdk_get_links_us": 463,
+          "link_decode_us": 11,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 10,
+          "call_us": 305920,
+          "signer_us": 110,
+          "decode_us": 40,
+          "request_bytes": 531,
+          "response_bytes": 718
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 305994
+        },
+        "outside_us": 302812
+      },
+      {
+        "dance": "query_relationships",
+        "index": 4,
+        "guest": {
+          "dance": "query_relationships",
+          "validation_us": 5,
+          "hydration_us": 110,
+          "binding_us": 7,
+          "dispatch_us": 3234,
+          "projection_us": 9,
+          "export_us": 7,
+          "total_us": 3546,
+          "hdk_get_details_us": 519,
+          "node_decode_us": 627,
+          "hdk_get_links_us": 1070,
+          "link_decode_us": 9,
+          "link_calls": 1,
+          "returned_links": 1,
+          "node_calls": 1
+        },
+        "client": {
+          "dance": "query_relationships",
+          "encode_us": 8,
+          "call_us": 117284,
+          "signer_us": 144,
+          "decode_us": 45,
+          "request_bytes": 531,
+          "response_bytes": 718
+        },
+        "logical": {
+          "dance": "query_relationships",
+          "elapsed_us": 117382
+        },
+        "outside_us": 113738
+      }
+    ]
+  }
+]

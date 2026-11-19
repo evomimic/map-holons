@@ -22,7 +22,7 @@ use holochain_types::prelude::{
 };
 use holochain_types::warrant::WarrantOp;
 use holochain_zome_types::prelude::{
-    Action, ActionData, CapAccess, CapSecret, ChainFilter, ChainFork, ChainHead, ChainQueryFilter,
+    Action, ActionData, ActionType, CapAccess, CapSecret, ChainFilter, ChainFork, ChainHead, ChainQueryFilter,
     ChainStatus, EntryType, EntryVisibility, GrantConstraintType, HighestObserved, LimitConditions,
     LinkTag, LinkTypeFilter, Record, RecordEntry, RecordValidity, SignedActionHashed,
     SignedWarrant, ValidationReceiptSet,
@@ -2194,9 +2194,15 @@ impl DhtStore<DbRead<Dht>> {
     /// order, as a [`Record`].
     /// This is the committed-record source behind
     /// [`SourceChain::query`](crate::source_chain::SourceChain::query): no
-    /// [`ChainQueryFilter`] filtering or fork disambiguation is applied here.
-    /// The caller overlays the scratch and then applies
-    /// [`ChainQueryFilter::filter_records`], which is the authoritative filter.
+    /// fork disambiguation is applied here. The caller overlays the scratch
+    /// and then applies [`ChainQueryFilter::filter_records`], which is the
+    /// authoritative filter.
+    ///
+    /// `action_types` and `seq_range` (inclusive) are SQL pre-filters so a
+    /// query for a few action types or a bounded sequence window does not
+    /// load and deserialize the whole chain. They must be a superset of what
+    /// the caller's [`ChainQueryFilter`] accepts; pass `None` for a query
+    /// that needs the whole chain, such as a hash-bounded range.
     ///
     /// An entry is attached only when `include_entries` is set and the entry is
     /// either public or `public_only` is `false`. A private entry is therefore
@@ -2208,8 +2214,13 @@ impl DhtStore<DbRead<Dht>> {
         author: &AgentPubKey,
         include_entries: bool,
         public_only: bool,
+        action_types: Option<&[ActionType]>,
+        seq_range: Option<(u32, u32)>,
     ) -> StateQueryResult<Vec<Record>> {
-        let sahs: Vec<SignedActionHashed> = self.db().get_actions_by_author(author.clone()).await?;
+        let sahs: Vec<SignedActionHashed> = self
+            .db()
+            .get_actions_by_author_filtered(author, action_types, seq_range)
+            .await?;
 
         // Decide which entries to attach. Collect the entry hashes that
         // actually need fetching so they can be read in a single batch rather

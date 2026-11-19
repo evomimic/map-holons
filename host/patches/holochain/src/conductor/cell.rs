@@ -101,6 +101,9 @@ pub struct Cell {
     queue_triggers: QueueTriggers,
     signal_tx: broadcast::Sender<Signal>,
     init_mutex: tokio::sync::Mutex<()>,
+    /// Set once zome init is known to have completed for this cell, so later
+    /// zome calls skip the source chain query that checks for it.
+    zomes_initialized: std::sync::atomic::AtomicBool,
     /// We store the P2P config overrides used to create this cell here
     /// so we can later check for conflicts if we try to install a cell with the same dna
     overrides: CellConfigOverrides,
@@ -147,6 +150,7 @@ impl Cell {
                     signal_tx,
                     overrides,
                     init_mutex: Default::default(),
+                    zomes_initialized: Default::default(),
                 },
                 initial_queue_triggers,
             ))
@@ -836,6 +840,13 @@ impl Cell {
     /// Check if each Zome's init callback has been run, and if not, run it.
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self)))]
     pub(crate) async fn check_or_run_zome_init(&self) -> CellResult<()> {
+        use std::sync::atomic::Ordering;
+
+        // Fast path: init was already confirmed for this cell.
+        if self.zomes_initialized.load(Ordering::Acquire) {
+            return Ok(());
+        }
+
         // Ensure that only one init check is run at a time
         let _guard = tokio::time::timeout(
             std::time::Duration::from_secs(INIT_MUTEX_TIMEOUT_SECS),
@@ -843,6 +854,11 @@ impl Cell {
         )
         .await
         .map_err(|_| CellError::InitTimeout)?;
+
+        // Another caller may have confirmed init while we waited for the lock.
+        if self.zomes_initialized.load(Ordering::Acquire) {
+            return Ok(());
+        }
 
         let keystore = self.conductor_api.keystore().clone();
         let id = self.id.clone();
@@ -861,6 +877,7 @@ impl Cell {
 
         // Check if initialization has run
         if workspace.source_chain().zomes_initialized().await? {
+            self.zomes_initialized.store(true, Ordering::Release);
             return Ok(());
         }
         trace!("running init");
@@ -887,6 +904,7 @@ impl Cell {
             InitResult::Pass => {}
             r => return Err(CellError::InitFailed(Box::new(r))),
         }
+        self.zomes_initialized.store(true, Ordering::Release);
         Ok(())
     }
 

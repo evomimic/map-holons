@@ -94,7 +94,7 @@ features = ["full"]
 version = "^0.7.1"
 
 [dependencies.holochain_data]
-version = "^0.7.1"
+version = "=0.7.1"
 
 [dependencies.holochain_keystore]
 version = "^0.7.1"

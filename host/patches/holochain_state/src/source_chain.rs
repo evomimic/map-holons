@@ -23,8 +23,8 @@ use holochain_types::op::{
 use holochain_types::warrant::WarrantOp;
 use holochain_zome_types::prelude::{
     build_action, from_countersigning_data, Action, ActionData, ActionHeader,
-    AgentValidationPkgData, CreateData, DeleteData, DnaData, Record, RecordValidity, SignedAction,
-    SignedActionHashed,
+    AgentValidationPkgData, ChainQueryFilterRange, CreateData, DeleteData, DnaData, Record,
+    RecordValidity, SignedAction, SignedActionHashed,
 };
 use kitsune2_api::DhtArc;
 use std::sync::atomic::AtomicBool;
@@ -861,13 +861,33 @@ where
     ) -> SourceChainResult<Vec<holochain_zome_types::prelude::Record>> {
         let public_only = self.public_only;
 
-        // Fetch the author's committed records from the DhtStore (no filtering
-        // applied here). Ordering and filtering are handled below;
-        // `ChainQueryFilter::filter_records` is the final authority.
+        // Push the parts of the filter that SQL applies cheaply down to the
+        // store, so a query for a few action types or a bounded sequence
+        // window does not load and deserialize the whole chain. A hash-bounded
+        // range walks `prev_action` links over the whole chain, so it gets no
+        // pre-filter. `ChainQueryFilter::filter_records` below remains the
+        // final authority.
+        let (action_types, seq_range) = match query.sequence_range {
+            ChainQueryFilterRange::Unbounded => (query.action_type.as_deref(), None),
+            ChainQueryFilterRange::ActionSeqRange(start, end) => {
+                (query.action_type.as_deref(), Some((start, end)))
+            }
+            ChainQueryFilterRange::ActionHashRange(..)
+            | ChainQueryFilterRange::ActionHashTerminated(..) => (None, None),
+        };
+
+        // Fetch the author's committed records from the DhtStore. Ordering and
+        // filtering are handled below.
         let mut records = self
             .dht_store
             .as_read()
-            .source_chain_records(self.author.as_ref(), query.include_entries, public_only)
+            .source_chain_records(
+                self.author.as_ref(),
+                query.include_entries,
+                public_only,
+                action_types,
+                seq_range,
+            )
             .await?;
 
         // The store returns committed records in ascending sequence order.
@@ -3148,5 +3168,201 @@ mod tests {
             warrant.clone(),
             author.sign(keystore, warrant).await.unwrap(),
         )
+    }
+
+    /// Writes `n` app entries to `author`'s chain in batches of 100.
+    async fn write_app_entries(
+        dht_store: &crate::dht_store::DhtStore,
+        keystore: &MetaLairClient,
+        author: &AgentPubKey,
+        n: usize,
+    ) {
+        let mut written = 0usize;
+        while written < n {
+            let sc = SourceChain::new(dht_store.clone(), keystore.clone(), author.clone())
+                .await
+                .unwrap();
+            for _ in 0..100 {
+                let entry = Entry::App(fixt!(AppEntryBytes));
+                let create = ActionData::Create(CreateData {
+                    entry_type: EntryType::App(fixt!(AppEntryDef)),
+                    entry_hash: EntryHash::with_data_sync(&entry),
+                });
+                sc.put(create, Some(entry), ChainTopOrdering::default())
+                    .await
+                    .unwrap();
+            }
+            sc.flush(vec![DhtArc::Empty]).await.unwrap();
+            written += 100;
+        }
+    }
+
+    /// Best-of-5 wall time of `f` over a fresh `SourceChain`. A fresh
+    /// `SourceChain` is what `Cell::check_or_run_zome_init` builds the first
+    /// time it runs for a cell.
+    async fn best_of_5<F, Fut>(
+        dht_store: &crate::dht_store::DhtStore,
+        keystore: &MetaLairClient,
+        author: &AgentPubKey,
+        f: F,
+    ) -> std::time::Duration
+    where
+        F: Fn(SourceChain) -> Fut,
+        Fut: std::future::Future<Output = ()>,
+    {
+        let mut best = std::time::Duration::MAX;
+        for _ in 0..5 {
+            let sc = SourceChain::new(dht_store.clone(), keystore.clone(), author.clone())
+                .await
+                .unwrap();
+            let start = std::time::Instant::now();
+            f(sc).await;
+            best = best.min(start.elapsed());
+        }
+        best
+    }
+
+    /// The init check must not load the whole source chain.
+    /// `zomes_initialized()` asks `query()` for `InitZomesComplete` actions;
+    /// the action-type filter is applied in SQL, so the chain is not loaded
+    /// and deserialized to answer it. Over a 3000-entry chain the filtered
+    /// query is compared with a full-chain `query()` in the same process: the
+    /// full load is roughly 18x slower in a debug build, while without the SQL
+    /// filter the two take the same time.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn zomes_initialized_does_not_load_whole_chain() {
+        let keystore = test_keystore();
+        let dna_hash = fixt!(DnaHash);
+        let dht_store = crate::test_utils::test_dht_store(dna_hash.clone()).await;
+        let author = keystore.new_sign_keypair_random().await.unwrap();
+        genesis(
+            dht_store.clone(),
+            keystore.clone(),
+            dna_hash,
+            author.clone(),
+            None,
+        )
+        .await
+        .unwrap();
+        write_app_entries(&dht_store, &keystore, &author, 3000).await;
+
+        let init_check = best_of_5(&dht_store, &keystore, &author, |sc| async move {
+            assert!(!sc.zomes_initialized().await.unwrap());
+        })
+        .await;
+        let full_load = best_of_5(&dht_store, &keystore, &author, |sc| async move {
+            assert_eq!(sc.query(QueryFilter::default()).await.unwrap().len(), 3003);
+        })
+        .await;
+        eprintln!("3000 entries: init check = {init_check:?}, full chain load = {full_load:?}");
+
+        assert!(
+            init_check * 5 <= full_load,
+            "init check costs as much as loading the whole chain: init check = {init_check:?}, full chain load = {full_load:?}"
+        );
+    }
+
+    /// Queries that get a SQL pre-filter (action type, sequence range) return
+    /// exactly what the in-memory `ChainQueryFilter` returns over the whole
+    /// chain, with scratch records included.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn query_prefilter_matches_in_memory_filter() {
+        let keystore = test_keystore();
+        let dna_hash = fixt!(DnaHash);
+        let dht_store = crate::test_utils::test_dht_store(dna_hash.clone()).await;
+        let author = keystore.new_sign_keypair_random().await.unwrap();
+        genesis(
+            dht_store.clone(),
+            keystore.clone(),
+            dna_hash,
+            author.clone(),
+            None,
+        )
+        .await
+        .unwrap();
+        write_app_entries(&dht_store, &keystore, &author, 200).await;
+
+        // A chain with two unflushed scratch records on top.
+        let sc = SourceChain::new(dht_store.clone(), keystore.clone(), author.clone())
+            .await
+            .unwrap();
+        for _ in 0..2 {
+            let entry = Entry::App(fixt!(AppEntryBytes));
+            let create = ActionData::Create(CreateData {
+                entry_type: EntryType::App(fixt!(AppEntryDef)),
+                entry_hash: EntryHash::with_data_sync(&entry),
+            });
+            sc.put(create, Some(entry), ChainTopOrdering::default())
+                .await
+                .unwrap();
+        }
+
+        let all = sc.query(QueryFilter::default()).await.unwrap();
+        assert_eq!(all.len(), 3 + 200 + 2);
+
+        let queries = vec![
+            QueryFilter {
+                action_type: Some(vec![ActionType::InitZomesComplete]),
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                action_type: Some(vec![ActionType::Dna, ActionType::AgentValidationPkg]),
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                action_type: Some(vec![ActionType::Create]),
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                action_type: Some(vec![]),
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                sequence_range: ChainQueryFilterRange::ActionSeqRange(50, 60),
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                sequence_range: ChainQueryFilterRange::ActionSeqRange(1, 2),
+                action_type: Some(vec![ActionType::Create]),
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                sequence_range: ChainQueryFilterRange::ActionSeqRange(200, 300),
+                action_type: Some(vec![ActionType::Create]),
+                include_entries: true,
+                ..QueryFilter::default()
+            },
+            QueryFilter {
+                action_type: Some(vec![ActionType::Create]),
+                order_descending: true,
+                ..QueryFilter::default()
+            },
+        ];
+        for query in queries {
+            let mut expected = query.filter_records(all.clone());
+            if query.order_descending {
+                // `all` is ascending; a descending query reverses the committed
+                // records and appends the scratch ascending, so compare as sets.
+                expected.sort_by_key(|r| r.action().action_seq());
+            }
+            let mut actual = sc.query(query.clone()).await.unwrap();
+            if query.order_descending {
+                actual.sort_by_key(|r| r.action().action_seq());
+            }
+            assert_eq!(
+                actual
+                    .iter()
+                    .map(|r| r.action_address())
+                    .collect::<Vec<_>>(),
+                expected
+                    .iter()
+                    .map(|r| r.action_address())
+                    .collect::<Vec<_>>(),
+                "query {query:?}"
+            );
+            if query.include_entries {
+                assert!(actual.iter().all(|r| r.entry().as_option().is_some()));
+            }
+        }
     }
 }

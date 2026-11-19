@@ -111,6 +111,10 @@ uuid = { version = "1", features = ["serde"] }
 # -------------------------------------------------------------------
 [patch.crates-io]
 portmapper = { path = "patches/portmapper" }
+# Native init/source-chain backport shared with the embedded host conductor.
+holochain = { path = "host/patches/holochain" }
+holochain_state = { path = "host/patches/holochain_state" }
+holochain_data = { path = "host/patches/holochain_data" }
 
 # -------------------------------------------------------------------
 # Profiles

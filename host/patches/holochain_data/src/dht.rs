@@ -164,6 +164,56 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn actions_by_author_filtered_by_type_and_seq() {
+        use holochain_integrity_types::action::ActionType;
+
+        let db = test_open_db(dht_db_id()).await.unwrap();
+        // seq 0 is a Dna action, seq 1..=4 are InitZomesComplete.
+        let inserted: Vec<_> = (0..5u8).map(sample_action).collect();
+        for action in &inserted {
+            db.insert_action(action, Some(RecordValidity::Accepted))
+                .await
+                .unwrap();
+        }
+        let author = AgentPubKey::from_raw_36(vec![1u8; 36]);
+        let fetch = |types: Option<Vec<ActionType>>, range| {
+            let db = db.clone();
+            let author = author.clone();
+            async move {
+                db.as_ref()
+                    .get_actions_by_author_filtered(&author, types.as_deref(), range)
+                    .await
+                    .unwrap()
+            }
+        };
+
+        assert_eq!(fetch(None, None).await, inserted);
+        assert_eq!(
+            fetch(Some(vec![ActionType::InitZomesComplete]), None).await,
+            inserted[1..]
+        );
+        assert_eq!(
+            fetch(Some(vec![ActionType::Dna]), None).await,
+            inserted[..1]
+        );
+        assert_eq!(
+            fetch(
+                Some(vec![ActionType::Dna, ActionType::InitZomesComplete]),
+                None
+            )
+            .await,
+            inserted
+        );
+        assert!(fetch(Some(vec![ActionType::Create]), None).await.is_empty());
+        assert!(fetch(Some(vec![]), None).await.is_empty());
+        assert_eq!(fetch(None, Some((2, 3))).await, inserted[2..=3]);
+        assert_eq!(
+            fetch(Some(vec![ActionType::InitZomesComplete]), Some((0, 1))).await,
+            inserted[1..=1]
+        );
+    }
+
+    #[tokio::test]
     async fn actions_by_author_excludes_other_authors() {
         let db = test_open_db(dht_db_id()).await.unwrap();
         let author_a = AgentPubKey::from_raw_36(vec![1u8; 36]);
