@@ -5,7 +5,7 @@ use crate::handles::{DbRead, DbWrite};
 use crate::kind::Dht;
 use crate::models::dht::AgentActivityItem;
 use holo_hash::{ActionHash, AgentPubKey, AnyLinkableHash, EntryHash};
-use holochain_integrity_types::prelude::RecordValidity;
+use holochain_integrity_types::prelude::{ActionType, RecordValidity};
 use holochain_zome_types::prelude::SignedActionHashed;
 
 impl DbWrite<Dht> {
@@ -34,6 +34,19 @@ impl DbRead<Dht> {
     ) -> sqlx::Result<Vec<SignedActionHashed>> {
         let mut conn = self.timed_conn().await?;
         action::get_actions_by_author(&mut *conn, author).await
+    }
+
+    /// Fetch accepted actions for `author`, ordered by `seq` ascending,
+    /// restricted in SQL to `action_types` and the inclusive `seq_range` when
+    /// given. See `action::get_actions_by_author_filtered`.
+    pub async fn get_actions_by_author_filtered(
+        &self,
+        author: &AgentPubKey,
+        action_types: Option<&[ActionType]>,
+        seq_range: Option<(u32, u32)>,
+    ) -> sqlx::Result<Vec<SignedActionHashed>> {
+        let mut conn = self.timed_conn().await?;
+        action::get_actions_by_author_filtered(&mut *conn, author, action_types, seq_range).await
     }
 
     /// Fetch an exclusive page of accepted actions authored by `author`.

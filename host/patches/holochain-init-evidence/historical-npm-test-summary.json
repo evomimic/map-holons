@@ -1,0 +1,33 @@
+{
+  "backport_commit": "ff9cf800c76aebe1c84b6ec40dab6c8bc0bc78bf",
+  "map_base_commit": "9bf273a766dd79954b3c63be6ad0ec7e04b4e817",
+  "successful_run": "npm-test-20261119T004728Z",
+  "wall_seconds": 1884.145,
+  "unit_gate_seconds": 60.556,
+  "artifact_preparation_seconds": 14.087000000000003,
+  "sweettest_command_seconds": 1808.969,
+  "sweettest_reported_test_seconds": 1755.73,
+  "sweettest_passed": 95,
+  "sweettest_failed": 0,
+  "sweettest_ignored": 7,
+  "native_cargo_target": "/private/tmp/map-hc07-init-scan/target",
+  "native_rust": "1.95.0",
+  "node_architecture": "arm64",
+  "native_profiles": {
+    "host": "dev/test default unoptimized",
+    "sweettest": "dev/test opt-level=z"
+  },
+  "network": "disposable local conductor, inherited matched diagnostic support",
+  "cache_note": "Successful attempt used compilation caches warmed by earlier diagnostic/setup attempts; dependency installation excluded. No concurrent user npm test. Not a matched unpatched-vs-patched full npm comparison.",
+  "hashes": {
+    "host/Cargo.toml": "d3747b1ffb1cd4d520d20925cc5c59b092ed7ee80fd625138cda62f4c407c492",
+    "host/Cargo.lock": "71d78a30480fc78f9e3a2c8bae21cee6dee6c11957b99e066df9d5f5bc075b68",
+    "Cargo.toml": "15528d76766d12e4be45daf7c20ed1e6309eac9ac65958119a36e8ad55b91254",
+    "Cargo.lock": "74136beb9a469c2e4624cab0ec5ea8ed7f107aba3a0905a454876f7a353a62c2",
+    "happ/Cargo.lock": "c33d35d5bff249937bdd38dd6899f040465959c60bb580bc4c61e4068c71703c",
+    "tests/sweetests/tests/performance_support/link_queries.rs": "80c2bf948723c2f4e29c4ccce6a8591e2096ab387eba3beeac1be059ad162281",
+    "happ/coordinator-surface.toml": "c117a9fe82b09b43e88f6ce3ec4c43c51b43c8a88902f0e7e6626d380a98060a",
+    "happ/workdir/map_holons.dna": "ea8d981e0651bf0c816fdf90a11463e7b97d58b804aecb9571e12def9613e647",
+    "happ/workdir/map-holons.happ": "4da97507ca76f97844e917e81f7935db29e04b90a52a2cfe548af4b7062a3538"
+  }
+}

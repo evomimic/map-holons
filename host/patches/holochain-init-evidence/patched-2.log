@@ -1,0 +1,371 @@
+
+running 1 test
+2026-11-18T22:37:18.897199Z  WARN holons_test::harness::helpers::tracing_utils: ✅ Tracing initialized at level: LevelFilter::WARN
+2026-11-18T22:37:18.939002Z ERROR holochain::conductor::conductor::builder: could not set crypto provider for tls
+2026-11-18T22:37:19.681527Z  WARN kitsune2_api::config: this config parameter may be unused debug_path="ConfigMap({\"coreBootstrap\": ConfigMap({\"serverUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"irohTransport\": ConfigMap({\"connectTimeoutS\": ConfigEntry(ConfigEntry { value: Number(22), has_update_cb: false }), \"relayUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"k2Gossip\": ConfigMap({\"initiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"initiateJitterMs\": ConfigEntry(ConfigEntry { value: Number(100), has_update_cb: false }), \"minInitiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"roundTimeoutMs\": ConfigEntry(ConfigEntry { value: Number(10000), has_update_cb: false })})})"
+2026-11-18T22:37:19.681551Z  WARN kitsune2_api::config: this config parameter may be unused debug_path="ConfigMap({\"coreBootstrap\": ConfigMap({\"serverUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"irohTransport\": ConfigMap({\"connectTimeoutS\": ConfigEntry(ConfigEntry { value: Number(22), has_update_cb: false }), \"relayUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"k2Gossip\": ConfigMap({\"initiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"initiateJitterMs\": ConfigEntry(ConfigEntry { value: Number(100), has_update_cb: false }), \"minInitiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"roundTimeoutMs\": ConfigEntry(ConfigEntry { value: Number(10000), has_update_cb: false })})})"
+2026-11-18T22:37:19.681556Z  WARN kitsune2_api::config: this config parameter may be unused debug_path="ConfigMap({\"coreBootstrap\": ConfigMap({\"serverUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"irohTransport\": ConfigMap({\"connectTimeoutS\": ConfigEntry(ConfigEntry { value: Number(22), has_update_cb: false }), \"relayUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"k2Gossip\": ConfigMap({\"initiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"initiateJitterMs\": ConfigEntry(ConfigEntry { value: Number(100), has_update_cb: false }), \"minInitiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"roundTimeoutMs\": ConfigEntry(ConfigEntry { value: Number(10000), has_update_cb: false })})})"
+2026-11-18T22:37:19.681560Z  WARN kitsune2_api::config: this config parameter may be unused debug_path="ConfigMap({\"coreBootstrap\": ConfigMap({\"serverUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"irohTransport\": ConfigMap({\"connectTimeoutS\": ConfigEntry(ConfigEntry { value: Number(22), has_update_cb: false }), \"relayUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"k2Gossip\": ConfigMap({\"initiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"initiateJitterMs\": ConfigEntry(ConfigEntry { value: Number(100), has_update_cb: false }), \"minInitiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"roundTimeoutMs\": ConfigEntry(ConfigEntry { value: Number(10000), has_update_cb: false })})})"
+2026-11-18T22:37:19.681564Z  WARN kitsune2_api::config: this config parameter may be unused debug_path="ConfigMap({\"coreBootstrap\": ConfigMap({\"serverUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"irohTransport\": ConfigMap({\"connectTimeoutS\": ConfigEntry(ConfigEntry { value: Number(22), has_update_cb: false }), \"relayUrl\": ConfigEntry(ConfigEntry { value: String(\"http://127.0.0.1:53614/\"), has_update_cb: false })}), \"k2Gossip\": ConfigMap({\"initiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"initiateJitterMs\": ConfigEntry(ConfigEntry { value: Number(100), has_update_cb: false }), \"minInitiateIntervalMs\": ConfigEntry(ConfigEntry { value: Number(1000), has_update_cb: false }), \"roundTimeoutMs\": ConfigEntry(ConfigEntry { value: Number(10000), has_update_cb: false })})})"
+2026-11-18T22:37:28.839012Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:38 [PERF-688] guest_dance_adapter: load_holons_entered
+2026-11-18T22:37:28.840065Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "load_holons", dance_type: Standalone, 
+  body:   TransientReferenceWire: TransientReferenceWire { tx_id: TxId(1), id: TemporaryId(374ff649-f947-8069-892b-4fe9258f21c4) } }
+
+2026-11-18T22:37:28.840135Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:37:30.789313Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:37:30.889428Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:175 ----- Entered load holons dance
+2026-11-18T22:37:30.889547Z  INFO holons_loader::controller:crates/holons_loader/src/controller.rs:623 discover_bundle_transients: fetching CONTAINS collection from HolonLoadSet
+2026-11-18T22:37:30.889624Z  INFO holons_loader::controller:crates/holons_loader/src/controller.rs:155 HolonLoaderController::load_set - pass1_stage_all_bundles
+2026-11-18T22:37:31.272158Z  INFO holons_loader::controller:crates/holons_loader/src/controller.rs:324 HolonLoaderController::load_set - pass2_resolve_all
+2026-11-18T22:37:33.488903Z  INFO holons_loader::controller:crates/holons_loader/src/controller.rs:421 HolonLoaderController::load_set - commit
+2026-11-18T22:37:33.489048Z  INFO holons_guest::guest_shared_objects::commit_functions:crates/holons_guest/src/guest_shared_objects/commit_functions.rs:301 Entering commit...
+2026-11-18T22:37:36.991191Z  INFO holons_guest::guest_shared_objects::commit_functions:crates/holons_guest/src/guest_shared_objects/commit_functions.rs:526 
+
+Starting FIRST PASS... commit staged holons...
+2026-11-18T22:38:15.483831Z  INFO holons_guest::guest_shared_objects::commit_functions:crates/holons_guest/src/guest_shared_objects/commit_functions.rs:734 [commit-relationship-preparation] descriptor_resolutions=5275 descriptor_resolution_us=1429172 endpoint_resolutions=5839 endpoint_resolution_us=233411
+2026-11-18T22:38:15.484865Z  INFO holons_guest::guest_shared_objects::commit_functions:crates/holons_guest/src/guest_shared_objects/commit_functions.rs:747 Commit completed: all staged holons processed and commit response constructed.
+2026-11-18T22:38:15.484908Z  INFO holons_guest::guest_shared_objects::commit_functions:crates/holons_guest/src/guest_shared_objects/commit_functions.rs:748 [PERF-688] guest_commit: validation_ms=3501 validation_candidates=1060 pass_1_ms=561 pass_2_ms=37932 holon_persists=1060 holon_persist_ms=507 inverse_resolutions=5275 inverse_resolution_ms=3437 smartlink_attempts=11678 smartlink_total_ms=11662 smartlink_expansions=6522 smartlink_expansion_ms=5258 smartlink_expansion_links=0 smartlink_action_creates=11678 smartlink_action_create_ms=6200 semantic_forward_attempts=5839 semantic_inverse_attempts=5839 keyed_owns_index_attempts=0 smartlink_inserted=11678 smartlink_already_present=0 owns_key_lookups=1060 owns_key_lookup_ms=18707 owns_key_lookup_links=1060 lineage_target_materializations=2120 lineage_target_materialization_ms=1683 exact_historical_get_details_calls=2120 exact_historical_batch_requests=0 exact_historical_read_ms=1692 inverse_dedup_expansions=1 inverse_dedup_expansion_ms=0 inverse_dedup_candidates=0 inverse_dedup_membership_checks=1060 inverse_dedup_skips=0
+2026-11-18T22:38:15.484943Z  INFO holons_guest::guest_shared_objects::commit_functions:crates/holons_guest/src/guest_shared_objects/commit_functions.rs:813 Commit response: status=Complete attempted=1060 saved=1060 rejected=0 failed=0
+2026-11-18T22:38:15.505895Z  INFO holons_loader::controller:crates/holons_loader/src/controller.rs:570 [PERF-688] loader: total_ms=44616 bundles=21 loader_holons=1060 staged_holons=1060 queued_relationships=5275 pass_1_ms=382 pass_2_ms=1584 links_created=5839 default_population_ms=632 guest_commit_ms=42010 resolver_described_by_ms=363 resolver_described_by_endpoint_calls=1060 resolver_described_by_endpoint_us=118016 resolver_extends_ms=223 resolver_extends_endpoint_calls=724 resolver_extends_endpoint_us=80088 resolver_assembly_ms=836 resolver_assembly_endpoint_calls=3491 resolver_assembly_endpoint_us=412939 resolver_endpoint_calls=5275
+2026-11-18T22:38:15.567676Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:131 [PERF-688] guest_dance_adapter: validation_ms=0 hydration_ms=2049 request_binding_ms=0 dispatch_ms=44616 response_projection_ms=0 session_export_ms=61 total_ms=46728
+2026-11-18T22:38:15.567748Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "load_holons" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: HolonReference(Transient(TransientReferenceWire { tx_id: TxId(1), id: TemporaryId(334d6f0d-e04c-8f17-a717-95f7e331b0b0) })), descriptor: None }
+2026-11-18T22:38:15.567770Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:152 [PERF-688] guest_dance_adapter: load_holons_returning
+test split_read_call_costs has been running for over 60 seconds
+2026-11-18T22:38:52.351614Z  WARN sqlx::query: slow statement: execution time exceeded alert threshold summary="DELETE FROM ScheduledFunction WHERE …" db.statement="\n\nDELETE FROM ScheduledFunction\n         WHERE ephemeral = 1 AND author = ? AND start_at <= ?\n" rows_affected=0 rows_returned=0 elapsed=5.461720583s elapsed_secs=5.461720583 slow_threshold=1s
+2026-11-18T22:38:52.495328Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_saved_holon_by_key", dance_type: Standalone, 
+  body:   Key: MapString("HolonSpace.HolonType") }
+
+2026-11-18T22:38:52.495390Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.495457Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.510689Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_saved_holon_by_key" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: HolonReference(Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }), smart_property_values: None })), descriptor: None }
+2026-11-18T22:38:52.512379Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_saved_holon_by_key", dance_type: Standalone, 
+  body:   Key: MapString("MetaHolonType.MetaTypeDescriptor") }
+
+2026-11-18T22:38:52.512429Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.512490Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.529892Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_saved_holon_by_key" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: HolonReference(Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "84292482b31c92ba7da966e7de718845230f3724f9338e56bb5c868b63cd97d2e8d867bd6ebc9c" }), smart_property_values: None })), descriptor: None }
+[read-call-sample] dance=get_holon_by_id index=0
+2026-11-18T22:38:52.531416Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_holon_by_id", dance_type: Standalone, 
+  body:   HolonId: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }) }
+
+2026-11-18T22:38:52.531450Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.531541Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.531614Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:125 ----- Entered get_holon_by_id_dance.
+2026-11-18T22:38:52.532297Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.532355Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=get_holon_by_id validation_us=3 hydration_us=137 binding_us=4 dispatch_us=734 projection_us=4 export_us=6 total_us=959 hdk_get_details_us=250 node_decode_us=377 hdk_get_links_us=0 link_decode_us=0 link_calls=0 returned_links=0 node_calls=1
+2026-11-18T22:38:52.532391Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_holon_by_id" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: Holon(Saved(SavedHolon { holon_state: Immutable, validation_state: ValidationRequired, saved_id: LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }, version: MapInteger(1), saved_state: Fetched, property_map: {PropertyName(MapString("DefinesInstanceTypeKind")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Description")): StringValue(MapString("Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope.")), PropertyName(MapString("DisplayName")): StringValue(MapString("Holon Space")), PropertyName(MapString("DisplayNamePlural")): StringValue(MapString("Holon Spaces")), PropertyName(MapString("InstanceDeletionAllowed")): BooleanValue(MapBoolean(false)), PropertyName(MapString("IsAbstractType")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Key")): StringValue(MapString("HolonSpace.HolonType")), PropertyName(MapString("TypeName")): StringValue(MapString("HolonSpace")), PropertyName(MapString("TypeNamePlural")): StringValue(MapString("HolonSpaces"))}, original_id: None })), descriptor: None }
+[read-call-client] dance=get_holon_by_id encode_us=7 call_us=2396 signer_us=96 decode_us=36 request_bytes=406 response_bytes=995
+[read-call-total] dance=get_holon_by_id elapsed_us=2458
+[read-call-sample] dance=get_holon_by_id index=1
+2026-11-18T22:38:52.533754Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_holon_by_id", dance_type: Standalone, 
+  body:   HolonId: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }) }
+
+2026-11-18T22:38:52.533791Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.533841Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.533890Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:125 ----- Entered get_holon_by_id_dance.
+2026-11-18T22:38:52.534503Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.534554Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=get_holon_by_id validation_us=3 hydration_us=82 binding_us=3 dispatch_us=653 projection_us=4 export_us=4 total_us=815 hdk_get_details_us=215 node_decode_us=353 hdk_get_links_us=0 link_decode_us=0 link_calls=0 returned_links=0 node_calls=1
+2026-11-18T22:38:52.534586Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_holon_by_id" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: Holon(Saved(SavedHolon { holon_state: Immutable, validation_state: ValidationRequired, saved_id: LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }, version: MapInteger(1), saved_state: Fetched, property_map: {PropertyName(MapString("DefinesInstanceTypeKind")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Description")): StringValue(MapString("Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope.")), PropertyName(MapString("DisplayName")): StringValue(MapString("Holon Space")), PropertyName(MapString("DisplayNamePlural")): StringValue(MapString("Holon Spaces")), PropertyName(MapString("InstanceDeletionAllowed")): BooleanValue(MapBoolean(false)), PropertyName(MapString("IsAbstractType")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Key")): StringValue(MapString("HolonSpace.HolonType")), PropertyName(MapString("TypeName")): StringValue(MapString("HolonSpace")), PropertyName(MapString("TypeNamePlural")): StringValue(MapString("HolonSpaces"))}, original_id: None })), descriptor: None }
+[read-call-client] dance=get_holon_by_id encode_us=6 call_us=2114 signer_us=74 decode_us=32 request_bytes=406 response_bytes=995
+[read-call-total] dance=get_holon_by_id elapsed_us=2178
+[read-call-sample] dance=get_holon_by_id index=2
+2026-11-18T22:38:52.535967Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_holon_by_id", dance_type: Standalone, 
+  body:   HolonId: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }) }
+
+2026-11-18T22:38:52.536005Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.536054Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.536104Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:125 ----- Entered get_holon_by_id_dance.
+2026-11-18T22:38:52.537053Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.537119Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=get_holon_by_id validation_us=3 hydration_us=83 binding_us=3 dispatch_us=1000 projection_us=5 export_us=7 total_us=1164 hdk_get_details_us=448 node_decode_us=436 hdk_get_links_us=0 link_decode_us=0 link_calls=0 returned_links=0 node_calls=1
+2026-11-18T22:38:52.537218Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_holon_by_id" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: Holon(Saved(SavedHolon { holon_state: Immutable, validation_state: ValidationRequired, saved_id: LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }, version: MapInteger(1), saved_state: Fetched, property_map: {PropertyName(MapString("DefinesInstanceTypeKind")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Description")): StringValue(MapString("Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope.")), PropertyName(MapString("DisplayName")): StringValue(MapString("Holon Space")), PropertyName(MapString("DisplayNamePlural")): StringValue(MapString("Holon Spaces")), PropertyName(MapString("InstanceDeletionAllowed")): BooleanValue(MapBoolean(false)), PropertyName(MapString("IsAbstractType")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Key")): StringValue(MapString("HolonSpace.HolonType")), PropertyName(MapString("TypeName")): StringValue(MapString("HolonSpace")), PropertyName(MapString("TypeNamePlural")): StringValue(MapString("HolonSpaces"))}, original_id: None })), descriptor: None }
+[read-call-client] dance=get_holon_by_id encode_us=6 call_us=2620 signer_us=78 decode_us=34 request_bytes=406 response_bytes=995
+[read-call-total] dance=get_holon_by_id elapsed_us=2680
+[read-call-sample] dance=get_holon_by_id index=3
+2026-11-18T22:38:52.538662Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_holon_by_id", dance_type: Standalone, 
+  body:   HolonId: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }) }
+
+2026-11-18T22:38:52.538697Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.538745Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.538798Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:125 ----- Entered get_holon_by_id_dance.
+2026-11-18T22:38:52.539537Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.539589Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=get_holon_by_id validation_us=3 hydration_us=82 binding_us=4 dispatch_us=781 projection_us=5 export_us=5 total_us=947 hdk_get_details_us=272 node_decode_us=423 hdk_get_links_us=0 link_decode_us=0 link_calls=0 returned_links=0 node_calls=1
+2026-11-18T22:38:52.539621Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_holon_by_id" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: Holon(Saved(SavedHolon { holon_state: Immutable, validation_state: ValidationRequired, saved_id: LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }, version: MapInteger(1), saved_state: Fetched, property_map: {PropertyName(MapString("DefinesInstanceTypeKind")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Description")): StringValue(MapString("Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope.")), PropertyName(MapString("DisplayName")): StringValue(MapString("Holon Space")), PropertyName(MapString("DisplayNamePlural")): StringValue(MapString("Holon Spaces")), PropertyName(MapString("InstanceDeletionAllowed")): BooleanValue(MapBoolean(false)), PropertyName(MapString("IsAbstractType")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Key")): StringValue(MapString("HolonSpace.HolonType")), PropertyName(MapString("TypeName")): StringValue(MapString("HolonSpace")), PropertyName(MapString("TypeNamePlural")): StringValue(MapString("HolonSpaces"))}, original_id: None })), descriptor: None }
+[read-call-client] dance=get_holon_by_id encode_us=5 call_us=2336 signer_us=78 decode_us=24 request_bytes=406 response_bytes=995
+[read-call-total] dance=get_holon_by_id elapsed_us=2381
+[read-call-sample] dance=get_holon_by_id index=4
+2026-11-18T22:38:52.540922Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "get_holon_by_id", dance_type: Standalone, 
+  body:   HolonId: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }) }
+
+2026-11-18T22:38:52.540953Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.540998Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.541049Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:125 ----- Entered get_holon_by_id_dance.
+2026-11-18T22:38:52.541816Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.541883Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=get_holon_by_id validation_us=4 hydration_us=75 binding_us=3 dispatch_us=823 projection_us=5 export_us=6 total_us=971 hdk_get_details_us=262 node_decode_us=435 hdk_get_links_us=0 link_decode_us=0 link_calls=0 returned_links=0 node_calls=1
+2026-11-18T22:38:52.541923Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "get_holon_by_id" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: Holon(Saved(SavedHolon { holon_state: Immutable, validation_state: ValidationRequired, saved_id: LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }, version: MapInteger(1), saved_state: Fetched, property_map: {PropertyName(MapString("DefinesInstanceTypeKind")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Description")): StringValue(MapString("Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope.")), PropertyName(MapString("DisplayName")): StringValue(MapString("Holon Space")), PropertyName(MapString("DisplayNamePlural")): StringValue(MapString("Holon Spaces")), PropertyName(MapString("InstanceDeletionAllowed")): BooleanValue(MapBoolean(false)), PropertyName(MapString("IsAbstractType")): BooleanValue(MapBoolean(false)), PropertyName(MapString("Key")): StringValue(MapString("HolonSpace.HolonType")), PropertyName(MapString("TypeName")): StringValue(MapString("HolonSpace")), PropertyName(MapString("TypeNamePlural")): StringValue(MapString("HolonSpaces"))}, original_id: None })), descriptor: None }
+[read-call-client] dance=get_holon_by_id encode_us=5 call_us=2216 signer_us=83 decode_us=23 request_bytes=406 response_bytes=995
+[read-call-total] dance=get_holon_by_id elapsed_us=2260
+[read-call-sample] dance=query_relationships index=0
+2026-11-18T22:38:52.543345Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "query_relationships", dance_type: QueryMethod(NodeCollectionWire: NodeCollectionWire {
+    members: [
+        NodeWire {
+            source_holon: Smart(
+                SmartReferenceWire {
+                    holon_id: Local(
+                        LocalId {
+                            bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce",
+                        },
+                    ),
+                    smart_property_values: None,
+                },
+            ),
+            relationships: None,
+        },
+    ],
+    query_spec: None,
+}), 
+  body:   QueryExpression: QueryExpression {
+    relationship_name: RelationshipName(
+        MapString(
+            "DescribedBy",
+        ),
+    ),
+} }
+
+2026-11-18T22:38:52.543375Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.543420Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.543466Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:215 Entered query_relationships_dance
+2026-11-18T22:38:52.543508Z  INFO holons_core::core_shared_objects::holon_cache_manager:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/core_shared_objects/holon_cache_manager.rs:84 [PERF-674] holon cache miss
+2026-11-18T22:38:52.544248Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.545714Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=query_relationships validation_us=3 hydration_us=71 binding_us=5 dispatch_us=2234 projection_us=8 export_us=5 total_us=2395 hdk_get_details_us=280 node_decode_us=399 hdk_get_links_us=703 link_decode_us=7 link_calls=1 returned_links=1 node_calls=1
+2026-11-18T22:38:52.545751Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "query_relationships" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: NodeCollection(NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }), smart_property_values: None }), relationships: Some(QueryPathMapWire({RelationshipName(MapString("DescribedBy")): NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "84292482b31c92ba7da966e7de718845230f3724f9338e56bb5c868b63cd97d2e8d867bd6ebc9c" }), smart_property_values: Some({PropertyName(MapString("Key")): StringValue(MapString("MetaHolonType.MetaTypeDescriptor"))}) }), relationships: None }], query_spec: None }})) }], query_spec: None }), descriptor: None }
+[read-call-client] dance=query_relationships encode_us=7 call_us=3795 signer_us=71 decode_us=37 request_bytes=542 response_bytes=728
+[read-call-total] dance=query_relationships elapsed_us=3868
+[read-call-sample] dance=query_relationships index=1
+2026-11-18T22:38:52.547223Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "query_relationships", dance_type: QueryMethod(NodeCollectionWire: NodeCollectionWire {
+    members: [
+        NodeWire {
+            source_holon: Smart(
+                SmartReferenceWire {
+                    holon_id: Local(
+                        LocalId {
+                            bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce",
+                        },
+                    ),
+                    smart_property_values: None,
+                },
+            ),
+            relationships: None,
+        },
+    ],
+    query_spec: None,
+}), 
+  body:   QueryExpression: QueryExpression {
+    relationship_name: RelationshipName(
+        MapString(
+            "DescribedBy",
+        ),
+    ),
+} }
+
+2026-11-18T22:38:52.547269Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.547320Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.547376Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:215 Entered query_relationships_dance
+2026-11-18T22:38:52.547397Z  INFO holons_core::core_shared_objects::holon_cache_manager:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/core_shared_objects/holon_cache_manager.rs:84 [PERF-674] holon cache miss
+2026-11-18T22:38:52.548191Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.549468Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=query_relationships validation_us=3 hydration_us=87 binding_us=6 dispatch_us=2081 projection_us=8 export_us=5 total_us=2289 hdk_get_details_us=325 node_decode_us=410 hdk_get_links_us=602 link_decode_us=7 link_calls=1 returned_links=1 node_calls=1
+2026-11-18T22:38:52.549506Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "query_relationships" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: NodeCollection(NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }), smart_property_values: None }), relationships: Some(QueryPathMapWire({RelationshipName(MapString("DescribedBy")): NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "84292482b31c92ba7da966e7de718845230f3724f9338e56bb5c868b63cd97d2e8d867bd6ebc9c" }), smart_property_values: Some({PropertyName(MapString("Key")): StringValue(MapString("MetaHolonType.MetaTypeDescriptor"))}) }), relationships: None }], query_spec: None }})) }], query_spec: None }), descriptor: None }
+[read-call-client] dance=query_relationships encode_us=8 call_us=3654 signer_us=84 decode_us=32 request_bytes=542 response_bytes=728
+[read-call-total] dance=query_relationships elapsed_us=3715
+[read-call-sample] dance=query_relationships index=2
+2026-11-18T22:38:52.550903Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "query_relationships", dance_type: QueryMethod(NodeCollectionWire: NodeCollectionWire {
+    members: [
+        NodeWire {
+            source_holon: Smart(
+                SmartReferenceWire {
+                    holon_id: Local(
+                        LocalId {
+                            bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce",
+                        },
+                    ),
+                    smart_property_values: None,
+                },
+            ),
+            relationships: None,
+        },
+    ],
+    query_spec: None,
+}), 
+  body:   QueryExpression: QueryExpression {
+    relationship_name: RelationshipName(
+        MapString(
+            "DescribedBy",
+        ),
+    ),
+} }
+
+2026-11-18T22:38:52.550933Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.550975Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.551022Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:215 Entered query_relationships_dance
+2026-11-18T22:38:52.551039Z  INFO holons_core::core_shared_objects::holon_cache_manager:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/core_shared_objects/holon_cache_manager.rs:84 [PERF-674] holon cache miss
+2026-11-18T22:38:52.551926Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.553106Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=query_relationships validation_us=3 hydration_us=69 binding_us=5 dispatch_us=2064 projection_us=9 export_us=6 total_us=2223 hdk_get_details_us=312 node_decode_us=520 hdk_get_links_us=485 link_decode_us=7 link_calls=1 returned_links=1 node_calls=1
+2026-11-18T22:38:52.553143Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "query_relationships" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: NodeCollection(NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }), smart_property_values: None }), relationships: Some(QueryPathMapWire({RelationshipName(MapString("DescribedBy")): NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "84292482b31c92ba7da966e7de718845230f3724f9338e56bb5c868b63cd97d2e8d867bd6ebc9c" }), smart_property_values: Some({PropertyName(MapString("Key")): StringValue(MapString("MetaHolonType.MetaTypeDescriptor"))}) }), relationships: None }], query_spec: None }})) }], query_spec: None }), descriptor: None }
+[read-call-client] dance=query_relationships encode_us=7 call_us=3552 signer_us=79 decode_us=33 request_bytes=542 response_bytes=728
+[read-call-total] dance=query_relationships elapsed_us=3615
+[read-call-sample] dance=query_relationships index=3
+2026-11-18T22:38:52.554488Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "query_relationships", dance_type: QueryMethod(NodeCollectionWire: NodeCollectionWire {
+    members: [
+        NodeWire {
+            source_holon: Smart(
+                SmartReferenceWire {
+                    holon_id: Local(
+                        LocalId {
+                            bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce",
+                        },
+                    ),
+                    smart_property_values: None,
+                },
+            ),
+            relationships: None,
+        },
+    ],
+    query_spec: None,
+}), 
+  body:   QueryExpression: QueryExpression {
+    relationship_name: RelationshipName(
+        MapString(
+            "DescribedBy",
+        ),
+    ),
+} }
+
+2026-11-18T22:38:52.554528Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.554572Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.554620Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:215 Entered query_relationships_dance
+2026-11-18T22:38:52.554639Z  INFO holons_core::core_shared_objects::holon_cache_manager:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/core_shared_objects/holon_cache_manager.rs:84 [PERF-674] holon cache miss
+2026-11-18T22:38:52.555435Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.556807Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=query_relationships validation_us=3 hydration_us=72 binding_us=4 dispatch_us=2173 projection_us=8 export_us=5 total_us=2341 hdk_get_details_us=316 node_decode_us=436 hdk_get_links_us=725 link_decode_us=8 link_calls=1 returned_links=1 node_calls=1
+2026-11-18T22:38:52.556845Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "query_relationships" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: NodeCollection(NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }), smart_property_values: None }), relationships: Some(QueryPathMapWire({RelationshipName(MapString("DescribedBy")): NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "84292482b31c92ba7da966e7de718845230f3724f9338e56bb5c868b63cd97d2e8d867bd6ebc9c" }), smart_property_values: Some({PropertyName(MapString("Key")): StringValue(MapString("MetaHolonType.MetaTypeDescriptor"))}) }), relationships: None }], query_spec: None }})) }], query_spec: None }), descriptor: None }
+[read-call-client] dance=query_relationships encode_us=7 call_us=3651 signer_us=84 decode_us=61 request_bytes=542 response_bytes=728
+[read-call-total] dance=query_relationships elapsed_us=3746
+[read-call-sample] dance=query_relationships index=4
+2026-11-18T22:38:52.558252Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:41 
+
+
+***********************  Entered dance_adapter() with DanceRequestWire { 
+  dance_name: "query_relationships", dance_type: QueryMethod(NodeCollectionWire: NodeCollectionWire {
+    members: [
+        NodeWire {
+            source_holon: Smart(
+                SmartReferenceWire {
+                    holon_id: Local(
+                        LocalId {
+                            bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce",
+                        },
+                    ),
+                    smart_property_values: None,
+                },
+            ),
+            relationships: None,
+        },
+    ],
+    query_spec: None,
+}), 
+  body:   QueryExpression: QueryExpression {
+    relationship_name: RelationshipName(
+        MapString(
+            "DescribedBy",
+        ),
+    ),
+} }
+
+2026-11-18T22:38:52.558297Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:232 ==Initializing context from session state==
+2026-11-18T22:38:52.558343Z  INFO holons_guest::guest_context:crates/holons_guest/src/guest_context.rs:49 
+ ========== Initializing GUEST CONTEXT ============
+2026-11-18T22:38:52.558410Z  INFO holons_core::dances::holon_dance_adapter:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/dances/holon_dance_adapter.rs:215 Entered query_relationships_dance
+2026-11-18T22:38:52.558433Z  INFO holons_core::core_shared_objects::holon_cache_manager:/Users/stevemelville/.codex/worktrees/hc07-init-scan-diagnostic/map-holons/shared_crates/holons_core/src/core_shared_objects/holon_cache_manager.rs:84 [PERF-674] holon cache miss
+2026-11-18T22:38:52.559205Z  INFO holons_guest::guest_shared_objects::guest_holon_service:crates/holons_guest/src/guest_shared_objects/guest_holon_service.rs:491 [PERF-674] persisted holon fetch: elapsed_ms=0
+2026-11-18T22:38:52.560244Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:117 [read-call-profile] dance=query_relationships validation_us=3 hydration_us=79 binding_us=5 dispatch_us=1835 projection_us=8 export_us=6 total_us=2027 hdk_get_details_us=297 node_decode_us=426 hdk_get_links_us=317 link_decode_us=7 link_calls=1 returned_links=1 node_calls=1
+2026-11-18T22:38:52.560278Z  INFO holons_guest::dances_guest::dance_adapter:crates/holons_guest/src/dances_guest/dance_adapter.rs:149 
+======== RETURNING FROM "query_relationships" Dance with DanceResponseWire { status_code: OK, description: MapString("Success"), error: None, body: NodeCollection(NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "842924a0c608334b5ef936ab15b714b9be5e75d9f701d45a880efed6030a1747f06883258ccfce" }), smart_property_values: None }), relationships: Some(QueryPathMapWire({RelationshipName(MapString("DescribedBy")): NodeCollectionWire { members: [NodeWire { source_holon: Smart(SmartReferenceWire { holon_id: Local(LocalId { bytes: "84292482b31c92ba7da966e7de718845230f3724f9338e56bb5c868b63cd97d2e8d867bd6ebc9c" }), smart_property_values: Some({PropertyName(MapString("Key")): StringValue(MapString("MetaHolonType.MetaTypeDescriptor"))}) }), relationships: None }], query_spec: None }})) }], query_spec: None }), descriptor: None }
+[read-call-client] dance=query_relationships encode_us=7 call_us=3288 signer_us=102 decode_us=33 request_bytes=542 response_bytes=728
+[read-call-total] dance=query_relationships elapsed_us=3348
+2026-11-18T22:38:52.560559Z  WARN holochain::conductor::manager: Tried to shutdown cell's tasks while they're already shutting down
+2026-11-18T22:38:52.560654Z  WARN holochain_websocket: WebsocketReceiver Error err=Close("None")
+2026-11-18T22:38:52.560684Z  WARN holochain_websocket: WebsocketReceiver Error err=Close("None")
+test split_read_call_costs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 93.71s
+

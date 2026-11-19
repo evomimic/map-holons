@@ -1,0 +1,154 @@
+[
+  {
+    "target": "library",
+    "status": "ok",
+    "passed": 44,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 0.03
+  },
+  {
+    "target": "attachment_defaults_tests.rs",
+    "status": "ok",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 89.75
+  },
+  {
+    "target": "bootstrap_performance_tests.rs",
+    "status": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 1,
+    "seconds": 0.0
+  },
+  {
+    "target": "canonical_loader_tests.rs",
+    "status": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 218.75
+  },
+  {
+    "target": "commit_conflict_tests.rs",
+    "status": "ok",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 143.17
+  },
+  {
+    "target": "commit_disposition_tests.rs",
+    "status": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 171.53
+  },
+  {
+    "target": "commit_incomplete_tests.rs",
+    "status": "ok",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 112.48
+  },
+  {
+    "target": "commit_performance_tests.rs",
+    "status": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 1,
+    "seconds": 0.01
+  },
+  {
+    "target": "coordinator_surface_tests.rs",
+    "status": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 18.09
+  },
+  {
+    "target": "dance_tests.rs",
+    "status": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 1,
+    "seconds": 584.51
+  },
+  {
+    "target": "fixture_authoring_tests.rs",
+    "status": "ok",
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 0.02
+  },
+  {
+    "target": "holon_fetch_profile_tests.rs",
+    "status": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 1,
+    "seconds": 0.0
+  },
+  {
+    "target": "holon_storage_tests.rs",
+    "status": "ok",
+    "passed": 18,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 137.38
+  },
+  {
+    "target": "pvl_validation_tests.rs",
+    "status": "ok",
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 79.03
+  },
+  {
+    "target": "relationship_cache_policy_tests.rs",
+    "status": "ok",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 70.35
+  },
+  {
+    "target": "relationship_retrieval_performance_tests.rs",
+    "status": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 1,
+    "seconds": 0.0
+  },
+  {
+    "target": "smartlink_tests.rs",
+    "status": "ok",
+    "passed": 6,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 40.67
+  },
+  {
+    "target": "space_dancer_import_tests.rs",
+    "status": "ok",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "seconds": 89.96
+  },
+  {
+    "target": "doc-tests",
+    "status": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 2,
+    "seconds": 0.0
+  }
+]

@@ -1,0 +1,1672 @@
+//! ### The sys validation workflow
+//!
+//! This workflow runs against all [`DhtOp`]s that are in the DHT database, either coming from the authored database or from other nodes on the network via gossip and publishing.
+//!
+//! The purpose of the workflow is to make fundamental checks on the integrity of the data being put into the DHT. This ensures that invalid data is not served
+//! to other nodes on the network. It also saves hApp developers from having to write these checks themselves since they set the minimum standards that all data
+//! should meet regardless of the requirements of a given hApp.
+//!
+//! #### Validation checks
+//!
+//! The workflow operates on [`DhtOp`]s which can be either a [`ChainOp`] or a [`WarrantOp`].
+//!
+//! A [`ChainOp`] is a container for a [`Record`], sent to a specific type of authority.
+//! Checks that you can rely on sys validation having performed are:
+//! - For a [`ChainOp::CreateRecord`]
+//!    - Check that the [`Action`] is either a [`ActionData::Dna`] at sequence number 0, or has a previous action with sequence number strictly greater than 0.
+//!    - If the [`Entry`] is an [`Entry::CounterSign`], then the countersigning session data is mapped to a set of [`Action`]s and each of those actions must be found locally before this op can progress.
+//!    - The [`Action`] must be either a [`ActionData::Create`] or an [`ActionData::Update`].
+//!    - Run the [store entry checks](#store-entry-checks).
+//! - For a [`ChainOp::CreateEntry`]
+//!    - If the [`Entry`] is an [`Entry::CounterSign`], then the countersigning session data is mapped to a set of [`Action`]s and each of those actions must be found locally before this op is accepted.
+//!    - Check that the [`Action`] is either a [`ActionData::Dna`] at sequence number 0, or has a previous action with sequence number strictly greater than 0.
+//!    - Run the [store entry checks](#store-entry-checks).
+//! - For a [`ChainOp::AgentActivity`]
+//!    - Check that the [`Action`] is either a [`ActionData::Dna`] at sequence number 0, or has a previous action with sequence number strictly greater than 0.
+//!    - If the [`Action`] is a [`ActionData::Dna`], then verify the contained DNA hash matches the DNA hash that sys validation is being run for.
+//!    - Check that the previous action is never a [`ActionData::CloseChain`], since this is always required to be the last action in a chain.
+//!    - Run the [store record checks](#store-record-checks).
+//! - For a [`ChainOp::UpdateEntry`]
+//!    - The [`UpdateData::original_action_address`] reference to the [`Action`] being updated must point to an [`Action`] that can be found locally. Once the [`Action`] address has been resolved, the [`UpdateData::original_entry_address`] is checked against the entry address that the referenced [`Action`] specified.
+//!    - If there is an [`Entry`], then the [store entry checks](#store-entry-checks) are run.
+//! - For a [`ChainOp::UpdateRecord`]
+//!    - The [`UpdateData::original_action_address`] reference to the [`Action`] being updated must point to an [`Action`] that can be found locally. Once the [`Action`] address has been resolved, the [`UpdateData::original_entry_address`] is checked against the entry address that the referenced [`Action`] specified.
+//!    - If there is an [`Entry`], then the [store entry checks](#store-entry-checks) are run.
+//! - For a [`ChainOp::DeleteRecord`]
+//!    - The [`DeleteData::deletes_address`] reference to the [`Action`] being deleted must point to an [`Action`] that can be found locally. The action being deleted must be a [`ActionData::Create`] or [`ActionData::Update`].
+//! - For a [`ChainOp::DeleteEntry`]
+//!    - The [`DeleteData::deletes_address`] reference to the [`Action`] being deleted must point to an [`Action`] that can be found locally. The action being deleted must be a [`ActionData::Create`] or [`ActionData::Update`].
+//! - For a [`ChainOp::CreateLink`]
+//!   - The size of the [`CreateLinkData::tag`] must be less than or equal to the maximum size that is accepted for this link tag. This is specified in the constant [`MAX_TAG_SIZE`].
+//! - For a [`ChainOp::DeleteLink`]
+//!   - The [`DeleteLinkData::link_add_address`] reference to the [`Action`] of the link being deleted must point to an [`Action`] that can be found locally. That action being deleted must also
+//!     be a [`ActionData::CreateLink`].
+//!
+//! A [`WarrantOp`] is produced as a proof that an agent broke the rules of the DHT. That may be the
+//! rules of this workflow or the rules set by the application and checked in the app validation
+//! workflow.
+//! Checking a [`WarrantOp`] is triggered from this workflow, but it waits on the validation status
+//! of the warranted [`Action`], which is only settled once that action has gone through the full
+//! validation pipeline, including app validation. The steps performed once that status is
+//! available are:
+//! - For a [`WarrantOpType::ChainIntegrityWarrant`]:
+//!   - The warranted [`Action`] must be found locally. If it is not found, then it will be fetched.
+//!   - The warranted [`Action`] will be completely validated, including app validation.
+//!   - If the [`Action`] is rejected, then the warrant is accepted, and the author of the warrant
+//!     will be blocked.
+//!   - If the [`Action`] is accepted, then the warrant is rejected. The author of the warrant will
+//!     then be blocked.
+//!
+//! ##### Store record checks
+//!
+//! These checks are run when storing a new action for a [`DhtOp`].
+//!
+//! - Check that the [`Action`] is either a [`ActionData::Dna`] at sequence number 0, or has a previous action with sequence number strictly greater than 0.
+//! - Checks that the previous action is never a [`ActionData::CloseChain`], since this is always required to be the last action in a chain.
+//! - Checks that the author of the current action is the same as the author of the previous action.
+//! - Checks that the timestamp of the current action is greater than the timestamp of the previous action.
+//! - Checks that the sequence number of the current action is exactly 1 more than the sequence number of the previous action.
+//! - Checks that every [`ActionData::Create`] or [`ActionData::Update`] of an `AgentPubKey` is preceded by an [`ActionData::AgentValidationPkg`].
+//! - Runs the store entry checks if there is an entry present on the record.
+//!
+//! ##### Store entry checks
+//!
+//! These checks are run when storing an entry that is included as part of a [`DhtOp`].
+//!
+//! - The entry type specified in the [`Action`] must match the entry type specified in the [`Entry`].
+//! - The entry hash specified in the [`Action`] must match the entry hash specified in the [`Entry`], which will be hashed as part of the check to obtain a value that is deterministic.
+//! - The size of the [`Entry`] must be less than or equal to the maximum size that is accepted for this entry type. This is specified in the constant [`MAX_ENTRY_SIZE`].
+//! - If the [`Action`] is an [`ActionData::Update`], then the [`UpdateData::original_action_address`] reference to the [`Action`] being updated must point to an [`Action`] that can be found locally. Once the [`Action`] address has been resolved, the [`UpdateData::original_entry_address`] is checked against the entry address that the referenced [`Action`] specified.
+//! - If the [`Entry`] is an [`Entry::CounterSign`], then the pre-flight response signatures are checked.
+//!
+//! #### Workflow description
+//!
+//! - The workflow starts by fetching all the ops that need to be validated from the database. The ops are processed as follows:
+//!     - Ops are sorted by op order, to make it more likely that incoming ops will be processed in the order they were created.
+//!     - The dependencies of these ops are then concurrently fetched from any of the local databases. Missing dependencies are handled later.
+//!     - The [validation checks](#validation-checks) are run for each op.
+//!     - For any chain ops that passed validation, they will be marked as ready for app validation in the database.
+//!     - Any chain ops that were rejected will be marked rejected in the database.
+//!     - Any warrant ops that were accepted will be marked as valid in the database.
+//!     - Any warrant ops that were rejected will be marked as rejected in the database.
+//! - If any ops passed validation, then app validation will be triggered.
+//! - For action dependencies not found locally, the workflow will then attempt to fetch them from the network.
+//! - If any actions that were missing are found on the network, then sys validation is re-triggered to see if the newly fetched actions allow any outstanding ops to pass validation.
+//! - If fewer actions were fetched from the network than there were actions missing, then the workflow will sleep for a short time before re-triggering itself.
+//! - Once all ops have an outcome, the workflow is complete and will wait to be triggered again by new incoming ops.
+//!
+
+use self::validation_deps::SysValDeps;
+use self::validation_deps::ValidationDependencies;
+use self::validation_deps::ValidationDependencyState;
+use crate::conductor::Conductor;
+use crate::core::queue_consumer::TriggerSender;
+use crate::core::queue_consumer::WorkComplete;
+use crate::core::sys_validate::*;
+use crate::core::validation::*;
+use crate::core::workflow::error::WorkflowResult;
+use crate::core::workflow::sys_validation_workflow::validation_deps::{
+    ValidationDependencyType, ValidationDependencyValue, WarrantedDep,
+};
+use crate::core::workflow::WorkflowError;
+use futures::FutureExt;
+use futures::StreamExt;
+use holo_hash::DhtOpHash;
+use holochain_cascade::Cascade;
+use holochain_cascade::CascadeImpl;
+use holochain_keystore::{MetaLairClient, WarrantOpExt};
+use holochain_p2p::DynHolochainP2pDna;
+use holochain_state::dht_store::DhtStore;
+use holochain_state::prelude::*;
+use std::sync::Arc;
+use std::time::Duration;
+use types::Outcome;
+
+pub mod types;
+
+pub mod validation_deps;
+
+#[cfg(test)]
+mod chain_test;
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod unit_tests;
+#[cfg(test)]
+mod validate_op_tests;
+#[cfg(test)]
+mod validate_warrant_tests;
+
+/// The sys validation workflow. It is described in the module level documentation.
+#[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+#[allow(clippy::too_many_arguments)]
+pub async fn sys_validation_workflow(
+    workspace: Arc<SysValidationWorkspace>,
+    current_validation_dependencies: SysValDeps,
+    trigger_app_validation: TriggerSender,
+    trigger_integration: TriggerSender,
+    trigger_publish: TriggerSender,
+    trigger_self: TriggerSender,
+    network: DynHolochainP2pDna,
+    keystore: MetaLairClient,
+    representative_agent: AgentPubKey,
+) -> WorkflowResult<WorkComplete> {
+    // Run the actual sys validation using data we have locally
+    let outcome_summary = sys_validation_workflow_inner(
+        workspace.clone(),
+        current_validation_dependencies.clone(),
+        network.clone(),
+        keystore,
+        representative_agent,
+    )
+    .await?;
+
+    // trigger app validation to process any ops that have been processed so far
+    if outcome_summary.accepted > 0 {
+        tracing::debug!("Sys validation accepted {} ops", outcome_summary.accepted);
+
+        // If a chain op was accepted
+        trigger_app_validation.trigger(&"sys_validation_workflow");
+        // If a warrant op was accepted
+        trigger_integration.trigger(&"sys_validation_workflow");
+    }
+
+    if outcome_summary.warranted > 0 {
+        tracing::debug!(
+            "Sys validation created {} warrants",
+            outcome_summary.warranted
+        );
+
+        trigger_publish.trigger(&"sys_validation_workflow");
+        trigger_integration.trigger(&"sys_validation_workflow");
+    } else if outcome_summary.warrants_rejected > 0 {
+        tracing::debug!(
+            "Sys validation rejected {} warrants",
+            outcome_summary.warrants_rejected
+        );
+
+        trigger_integration.trigger(&"sys_validation_workflow");
+    }
+
+    // Now go to the network to try to fetch missing dependencies
+    let num_fetched =
+        fetch_missing_dependencies(&workspace, network, current_validation_dependencies).await;
+
+    if outcome_summary.missing > 0 {
+        tracing::debug!(
+            "Fetched {}/{} missing dependencies from the network",
+            num_fetched,
+            outcome_summary.missing
+        );
+    }
+
+    if num_fetched > 0 || outcome_summary.warrant_deps_copied > 0 {
+        // - If we fetched anything, then we can re-run sys validation
+        // - If any warrant dependencies were copied, the workflow could attempt validation for those
+        //   right away, so trigger it again.
+        trigger_self.trigger(&"sys_validation_workflow");
+    }
+
+    if num_fetched < outcome_summary.missing {
+        tracing::info!(
+            "Sys validation sleeping for {:?}, with {num_fetched} fetched of {} missing dependencies",
+            workspace.sys_validation_retry_delay,
+            outcome_summary.missing
+        );
+        Ok(WorkComplete::Incomplete(Some(
+            workspace.sys_validation_retry_delay,
+        )))
+    } else {
+        Ok(WorkComplete::Complete)
+    }
+}
+
+/// Evidence of a chain fork: two actions at the same sequence number with a common predecessor.
+struct ForkedPair {
+    action_pair: ((ActionHash, Signature), (ActionHash, Signature)),
+    seq: u32,
+}
+
+async fn sys_validation_workflow_inner(
+    workspace: Arc<SysValidationWorkspace>,
+    current_validation_dependencies: SysValDeps,
+    _network: DynHolochainP2pDna,
+    _keystore: MetaLairClient,
+    _representative_agent: AgentPubKey,
+) -> WorkflowResult<OutcomeSummary> {
+    let sorted_ops = workspace
+        .dht_store
+        .as_read()
+        .ops_pending_sys_validation(10_000)
+        .await?;
+
+    // Forget what dependencies are currently in use
+    current_validation_dependencies
+        .lock()
+        .expect("poisoned")
+        .clear_retained_deps();
+
+    if sorted_ops.is_empty() {
+        tracing::trace!(
+            "Skipping sys_validation_workflow because there are no ops to be validated"
+        );
+
+        // If there's nothing to validate then we can clear the dependencies and save some memory.
+        current_validation_dependencies
+            .lock()
+            .expect("poisoned")
+            .purge_held_deps();
+
+        return Ok(OutcomeSummary::new());
+    }
+
+    let num_ops_to_validate = sorted_ops.len();
+    tracing::debug!("Sys validating {} ops", num_ops_to_validate);
+
+    let cascade = Arc::new(workspace.local_cascade());
+
+    retrieve_previous_actions_for_ops(
+        current_validation_dependencies.clone(),
+        cascade.clone(),
+        sorted_ops.clone().into_iter(),
+    )
+    .await;
+
+    // Now drop all the dependencies that we didn't just try to access while searching the current set of ops to validate.
+    current_validation_dependencies
+        .lock()
+        .expect("poisoned")
+        .purge_held_deps();
+
+    let mut warrant_deps_copied = 0;
+    move_and_check_warrant_deps(
+        &workspace,
+        &current_validation_dependencies,
+        &mut warrant_deps_copied,
+    )
+    .await;
+
+    let mut validation_outcomes = Vec::with_capacity(sorted_ops.len());
+    for hashed_op in sorted_ops {
+        // Note that this is async only because of the signature checks done during countersigning.
+        // In most cases this will be a fast synchronous call.
+        let r = validate_op(
+            hashed_op.as_content(),
+            &workspace.dna_hash,
+            current_validation_dependencies.clone(),
+        )
+        .await;
+
+        match r {
+            Ok(outcome) => validation_outcomes.push((hashed_op, outcome)),
+            Err(e) => {
+                tracing::error!(error = ?e, "Error validating op");
+            }
+        }
+    }
+
+    let mut summary = OutcomeSummary {
+        warrant_deps_copied,
+        ..Default::default()
+    };
+    let mut invalid_ops = vec![];
+    // Collect (action, incoming_signature, incoming_hash) for each chain op so
+    // that fork detection can run asynchronously afterwards.
+    let mut pending_fork_checks: Vec<(Action, Signature, ActionHash)> = Vec::with_capacity(0);
+    let mut chain_op_sys_outcomes: Vec<(DhtOpHash, SysOutcome)> = Vec::new();
+    let mut warrant_sys_outcomes: Vec<(DhtOpHash, SysOutcome)> = Vec::new();
+
+    for (hashed_op, outcome) in validation_outcomes {
+        let (op, op_hash) = hashed_op.into_inner();
+
+        if let DhtOp::ChainOp(chain_op) = &op {
+            // Collect the data needed for async fork detection.
+            let signed_action = chain_op.signed_action();
+            let action = signed_action.data().clone();
+            let signature = signed_action.signature().clone();
+            let action_hash = action.to_hash();
+            pending_fork_checks.push((action, signature, action_hash));
+        }
+
+        match outcome {
+            Outcome::Accepted => {
+                summary.accepted += 1;
+                match &op {
+                    DhtOp::ChainOp(_) => {
+                        chain_op_sys_outcomes.push((op_hash.clone(), SysOutcome::Accepted));
+                    }
+                    DhtOp::WarrantOp(_) => {
+                        warrant_sys_outcomes.push((op_hash.clone(), SysOutcome::Accepted));
+                    }
+                };
+            }
+            Outcome::MissingDhtDep => {
+                // Awaiting dependencies — status stays NULL; no outcome to record.
+                summary.missing += 1;
+            }
+            Outcome::Rejected(reason) => {
+                invalid_ops.push((op_hash.clone(), op.clone(), reason));
+
+                match op {
+                    DhtOp::ChainOp(_) => {
+                        summary.rejected += 1;
+                        chain_op_sys_outcomes.push((op_hash.clone(), SysOutcome::Rejected));
+                    }
+                    DhtOp::WarrantOp(_) => {
+                        summary.warrants_rejected += 1;
+                        warrant_sys_outcomes.push((op_hash.clone(), SysOutcome::Rejected));
+                    }
+                }
+            }
+        }
+    }
+
+    let mut forked_pairs: Vec<(AgentPubKey, ForkedPair)> = Vec::with_capacity(0);
+    for (action, incoming_sig, incoming_hash) in pending_fork_checks {
+        match workspace
+            .dht_store
+            .as_read()
+            .find_fork_for_action(&action)
+            .await
+        {
+            Ok(Some((sibling_hash, sibling_sig))) => {
+                forked_pairs.push((
+                    action.author().clone(),
+                    ForkedPair {
+                        action_pair: ((incoming_hash, incoming_sig), (sibling_hash, sibling_sig)),
+                        seq: action.action_seq(),
+                    },
+                ));
+            }
+            Ok(None) => {}
+            Err(e) => {
+                tracing::error!(error = ?e, "Error detecting chain fork");
+            }
+        }
+    }
+
+    workspace
+        .dht_store
+        .record_chain_op_sys_validation_outcomes(chain_op_sys_outcomes)
+        .await?;
+    workspace
+        .dht_store
+        .record_warrant_sys_validation_outcomes(warrant_sys_outcomes)
+        .await?;
+
+    {
+        let mut warrants = vec![];
+        // Track action hashes already warranted in this batch to avoid creating duplicate
+        // warrants for the same action. Multiple op types (CreateRecord, CreateEntry,
+        // AgentActivity) can share the same action, and without this deduplication
+        // all of them would trigger a separate warrant when processed in the same run.
+        let mut warranted_in_batch = std::collections::HashSet::new();
+        for (op_hash, chain_op, reason) in
+            invalid_ops
+                .into_iter()
+                .filter_map(|(h, op, reason)| match op {
+                    DhtOp::ChainOp(op) => Some((h, *op, reason)),
+                    DhtOp::WarrantOp(_) => None,
+                })
+        {
+            let action = chain_op.signed_action().data();
+            let action_hash = action.to_hash();
+            let action_author = action.author().clone();
+
+            if warranted_in_batch.contains(&action_hash) {
+                tracing::trace!(
+                    "Op {} action is already being warranted in this batch, skipping",
+                    op_hash
+                );
+                continue;
+            }
+
+            match workspace
+                .dht_store
+                .as_read()
+                .is_action_warranted_as_invalid(&action_hash, &action_author)
+                .await
+            {
+                Ok(true) => {
+                    tracing::trace!(
+                        "Op {} is already warranted, not issuing a new warrant",
+                        op_hash
+                    );
+                    continue;
+                }
+                Ok(false) => {
+                    // Not warranted yet, should issue a warrant.
+                }
+                Err(e) => {
+                    tracing::error!(error = ?e, "Error checking if op is warranted");
+                    continue;
+                }
+            }
+
+            warranted_in_batch.insert(action_hash);
+            let warrant_op = make_invalid_chain_warrant_op(
+                &_keystore,
+                _representative_agent.clone(),
+                &chain_op,
+                &reason,
+            )
+            .await?;
+            warrants.push(warrant_op);
+        }
+
+        for (author, fork) in forked_pairs {
+            let warrant_op = make_fork_warrant_op_inner(
+                &_keystore,
+                _representative_agent.clone(),
+                author,
+                fork.action_pair,
+                fork.seq,
+            )
+            .await?;
+            warrants.push(warrant_op);
+        }
+
+        let warranted = warrants.len();
+        if warranted > 0 {
+            // "self-publish" warrants, i.e. record them as if they were published
+            // to us by another node.
+            workspace
+                .dht_store
+                .record_locally_validated_warrants(warrants)
+                .await?;
+        }
+
+        summary.warranted = warranted;
+    }
+
+    tracing::debug!(
+        ?summary,
+        ?num_ops_to_validate,
+        "Finished sys validation workflow"
+    );
+
+    Ok(summary)
+}
+
+async fn fetch_missing_dependencies(
+    workspace: &SysValidationWorkspace,
+    network: DynHolochainP2pDna,
+    current_validation_dependencies: SysValDeps,
+) -> usize {
+    let network_cascade = Arc::new(workspace.network_cascade(network));
+    let missing_dependencies = current_validation_dependencies
+        .lock()
+        .expect("poisoned")
+        .get_missing_dependencies();
+
+    futures::stream::iter(missing_dependencies.into_iter().map(|(hash, dep_type)| {
+        let network_cascade = network_cascade.clone();
+        let current_validation_dependencies = current_validation_dependencies.clone();
+        async move {
+            match dep_type {
+                ValidationDependencyType::Action => {
+                    match network_cascade
+                        .retrieve_action(hash, Default::default())
+                        .await
+                    {
+                        Ok(Some((action, source))) => {
+                            let mut deps =
+                                current_validation_dependencies.lock().expect("poisoned");
+
+                            if deps.insert_action(action, source) {
+                                1
+                            } else {
+                                0
+                            }
+                        }
+                        Ok(None) => {
+                            // This is fine, we didn't find it on the network, so we'll have to try again.
+                            // TODO This will hit the network again fairly quickly if sys validation is triggered again soon.
+                            //      It would be more efficient to wait a bit before trying again.
+                            0
+                        }
+                        Err(err) => {
+                            tracing::error!(?err, "Error fetching missing dependency");
+                            0
+                        }
+                    }
+                }
+                ValidationDependencyType::Warranted(chain_op_type) => {
+                    match network_cascade
+                        .retrieve_public_record(hash.clone().into(), Default::default())
+                        .await
+                    {
+                        Ok(Some((record, source))) => {
+                            let mut deps =
+                                current_validation_dependencies.lock().expect("poisoned");
+
+                            if deps.insert_pending_validation_warranted(
+                                record.signed_action,
+                                chain_op_type,
+                                source,
+                            ) {
+                                1
+                            } else {
+                                0
+                            }
+                        }
+                        Ok(None) => {
+                            // This is fine, we didn't find it on the network, so we'll have to try again.
+                            // TODO This will hit the network again fairly quickly if sys validation is triggered again soon.
+                            //      It would be more efficient to wait a bit before trying again.
+                            0
+                        }
+                        Err(err) => {
+                            tracing::error!(?err, "Error fetching missing dependency");
+                            0
+                        }
+                    }
+                }
+            }
+        }
+        .boxed()
+    }))
+    .buffer_unordered(10)
+    .collect::<Vec<usize>>()
+    .await
+    .into_iter()
+    .sum()
+}
+
+// - Move any cached warranted ops into limbo because they need to be validated now.
+// - Check the validation status of any warranted ops that are in the DHT store.
+// - Any ops that have a validation status can be used to mark warrants as ready to validate.
+async fn move_and_check_warrant_deps(
+    workspace: &Arc<SysValidationWorkspace>,
+    current_validation_dependencies: &SysValDeps,
+    warrant_deps_copied: &mut usize,
+) {
+    let warrant_deps = current_validation_dependencies
+        .lock()
+        .expect("poisoned")
+        .get_pending_warrant_dependencies();
+    for (action_hash, op_type) in warrant_deps {
+        // The warranted op has to be in limbo to be validated. If a cached
+        // copy of the op is already stored under the warranted type, re-queue
+        // it by moving it into limbo (a table move within the single database).
+        // Otherwise it arrives from the network cascade as a cached record
+        // under a different op type, so materialise the op of the required type
+        // from that record and record it into limbo. If neither is available
+        // yet, it is re-fetched and cached on a later tick.
+        let moved = match workspace
+            .dht_store
+            .move_warranted_op_to_limbo(&action_hash, op_type)
+            .await
+        {
+            Ok(true) => true,
+            Ok(false) => {
+                materialise_warranted_op_into_limbo(workspace, &action_hash, op_type).await
+            }
+            Err(e) => {
+                tracing::debug!(error = ?e, "Could not move warranted op to limbo (may already be integrated)");
+                false
+            }
+        };
+        if moved {
+            *warrant_deps_copied += 1;
+        }
+
+        match workspace
+            .dht_store
+            .as_read()
+            .op_validation_status(&action_hash, op_type)
+            .await
+        {
+            Ok(Some(validation_status)) => {
+                // The dependency has been validated. The warrant dependency is ready to be used to
+                // check the warrant.
+                current_validation_dependencies
+                    .lock()
+                    .expect("poisoned")
+                    .update_warrant_dep_validated(&action_hash, validation_status);
+            }
+            Ok(None) => {
+                // The dependency is not yet locally validated (still in limbo or absent).
+                tracing::debug!(?action_hash, "Warranted op not yet locally validated");
+            }
+            Err(e) => {
+                tracing::error!(error = ?e, "Error checking warranted op validation state");
+            }
+        }
+    }
+}
+
+/// Build the warranted op of `op_type` from the cached record for `action_hash`
+/// and record it into limbo so it can be validated. Returns whether an op was
+/// recorded. The record is fetched into the cache by the network cascade during
+/// dependency resolution; if it is not cached yet, nothing is recorded and the
+/// caller retries on a later tick.
+async fn materialise_warranted_op_into_limbo(
+    workspace: &Arc<SysValidationWorkspace>,
+    action_hash: &ActionHash,
+    op_type: ChainOpType,
+) -> bool {
+    let record = match workspace
+        .dht_store
+        .as_read()
+        .retrieve_record(action_hash, None)
+        .await
+    {
+        Ok(Some(record)) => record,
+        Ok(None) => return false,
+        Err(e) => {
+            tracing::debug!(error = ?e, "Could not read warranted record from the DhtStore");
+            return false;
+        }
+    };
+
+    let signed_action = SignedAction::new(record.action().clone(), record.signature().clone());
+    let op_entry = match record.entry() {
+        RecordEntry::Present(entry) => OpEntry::Present(entry.clone()),
+        RecordEntry::Hidden => OpEntry::Hidden,
+        RecordEntry::NA | RecordEntry::NotStored => OpEntry::ActionOnly,
+    };
+    let chain_op = ChainOp::from_type(op_type, signed_action, op_entry);
+    let op = DhtOpHashed::from_content_sync(DhtOp::from(chain_op));
+
+    // Warranted deps do not require a validation receipt.
+    if let Err(e) = workspace
+        .dht_store
+        .record_incoming_ops(vec![(op, false)])
+        .await
+    {
+        tracing::error!(error = ?e, "Could not record warranted op into limbo");
+        return false;
+    }
+    true
+}
+
+async fn retrieve_dependencies(
+    current_validation_dependencies: SysValDeps,
+    cascade: Arc<impl Cascade + Send + Sync>,
+    dependencies: impl Iterator<Item = (ActionHash, ValidationDependencyType)>,
+) {
+    let dependency_fetches = dependencies
+        .filter(|(hash, _)| {
+            !current_validation_dependencies
+                .lock()
+                .expect("poisoned")
+                .has(hash)
+        })
+        .map(|(hash, dep_type)| {
+            // For each previous action that will be needed for validation, map the action to a fetch Action for its hash
+            let cascade = cascade.clone();
+            async move {
+                match dep_type {
+                    ValidationDependencyType::Action => {
+                        let fetched = cascade.retrieve_action(hash.clone(), Default::default()).await;
+                        tracing::trace!(hash = ?hash, fetched = ?fetched, "Fetched action for validation");
+                        (hash, dep_type, fetched.map(|ok| ok.map(|(a, s)| (ValidationDependencyValue::Action(a), s))))
+                    }
+                    ValidationDependencyType::Warranted(chain_op_type) => {
+                        let fetched = match chain_op_type {
+                            // These chain op types require the entry to be present.
+                            ChainOpType::CreateRecord |
+                            ChainOpType::CreateEntry |
+                            ChainOpType::UpdateEntry |
+                            ChainOpType::UpdateRecord => {
+                                cascade.retrieve_public_record(hash.clone().into(), Default::default()).await.map(|ok|ok.map(|(a, s)|(a.signed_action, s)))
+                            }
+                            // Other top types can be constructed without an entry.
+                            _ => {
+                                cascade.retrieve_action(hash.clone(), Default::default()).await
+                            }
+                        };
+                        tracing::trace!(hash = ?hash, fetched = ?fetched, "Fetched warranted record for validation");
+                        (hash, dep_type, fetched.map(|ok| ok.map(|(a, s)| (ValidationDependencyValue::Warranted(WarrantedDep::Pending(a, chain_op_type)), s))))
+                    }
+                }
+            }
+                .boxed()
+        });
+
+    let new_deps: ValidationDependencies = ValidationDependencies::new_from_iter(futures::future::join_all(dependency_fetches)
+        .await
+        .into_iter()
+        .filter_map(|r| {
+            // Filter out errors, preparing the rest to be put into a HashMap for easy access.
+            match r {
+                (hash, _, Ok(Some((value, source)))) => {
+                    Some((hash, ValidationDependencyState::new_present(value, source)))
+                }
+                (hash, dep_type, Ok(None)) => {
+                    Some((hash, ValidationDependencyState::new_pending(dep_type)))
+                }
+                (hash, dep_type, Err(e)) => {
+                    tracing::error!(error = ?e, action_hash = ?hash, ?dep_type, "Error retrieving prev action");
+                    None
+                }
+            }
+        }));
+
+    current_validation_dependencies
+        .lock()
+        .expect("poisoned")
+        .merge(new_deps);
+}
+
+fn get_dependency_hashes_from_actions(
+    actions: impl Iterator<Item = Action>,
+) -> Vec<(ActionHash, ValidationDependencyType)> {
+    actions
+        .flat_map(|action| {
+            vec![
+                match action.prev_action().cloned() {
+                    None => None,
+                    hash => hash,
+                },
+                match &action.data {
+                    ActionData::Update(UpdateData {
+                        original_action_address,
+                        ..
+                    }) => Some(original_action_address.clone()),
+                    ActionData::Delete(DeleteData {
+                        deletes_address, ..
+                    }) => Some(deletes_address.clone()),
+                    ActionData::DeleteLink(DeleteLinkData {
+                        link_add_address, ..
+                    }) => Some(link_add_address.clone()),
+                    _ => None,
+                },
+            ]
+            .into_iter()
+            .filter_map(|opt| opt.map(|a| (a, ValidationDependencyType::Action)))
+        })
+        .collect()
+}
+
+/// Examine the list of provided actions and create a list of actions which are sys validation
+/// dependencies for those actions. The actions are merged into `current_validation_dependencies`.
+async fn fetch_previous_actions(
+    current_validation_dependencies: SysValDeps,
+    cascade: Arc<impl Cascade + Send + Sync>,
+    actions: impl Iterator<Item = Action>,
+) {
+    retrieve_dependencies(
+        current_validation_dependencies,
+        cascade,
+        get_dependency_hashes_from_actions(actions).into_iter(),
+    )
+    .await;
+}
+
+fn get_dependencies_from_ops(
+    ops: impl Iterator<Item = DhtOpHashed>,
+) -> Vec<(ActionHash, ValidationDependencyType)> {
+    ops.into_iter()
+        .filter_map(|op| {
+            // For each previous action that will be needed for validation, map the action to a fetch Record for its hash
+            match &op.content {
+                DhtOp::ChainOp(op) => {
+                    let action = op.signed_action().data();
+                    let chain_op_dependencies = match &**op {
+                        // `CreateRecord`/`CreateEntry` share the same action, so
+                        // the countersigning-set and Update-reference checks apply
+                        // identically to both.
+                        ChainOp::CreateRecord(_, op_entry) | ChainOp::CreateEntry(_, op_entry) => {
+                            let mut actions = match op_entry {
+                                // TODO we should be doing something similar to this in app validation!
+                                OpEntry::Present(entry @ Entry::CounterSign(session_data, _)) => {
+                                    // Discard errors here because we'll check later whether the input is valid. If it's not then it
+                                    // won't matter that we've skipped fetching deps for it
+                                    make_action_set_for_session_data(entry, session_data)
+                                        .unwrap_or_else(|_| vec![])
+                                        .into_iter()
+                                        .map(|action| action.into_hash())
+                                        .collect::<Vec<_>>()
+                                }
+                                _ => vec![],
+                            };
+
+                            if let ActionData::Update(update) = &action.data {
+                                actions.push(update.original_action_address.clone());
+                            }
+                            Some(actions)
+                        }
+                        ChainOp::AgentActivity(_) => action.prev_action().map(|h| vec![h.clone()]),
+                        ChainOp::UpdateEntry(..) | ChainOp::UpdateRecord(..) => {
+                            match &action.data {
+                                ActionData::Update(update) => {
+                                    Some(vec![update.original_action_address.clone()])
+                                }
+                                _ => None,
+                            }
+                        }
+                        ChainOp::DeleteEntry(_) | ChainOp::DeleteRecord(_) => match &action.data {
+                            ActionData::Delete(delete) => {
+                                Some(vec![delete.deletes_address.clone()])
+                            }
+                            _ => None,
+                        },
+                        ChainOp::DeleteLink(_) => match &action.data {
+                            ActionData::DeleteLink(delete_link) => {
+                                Some(vec![delete_link.link_add_address.clone()])
+                            }
+                            _ => None,
+                        },
+                        ChainOp::CreateLink(_) => None,
+                    };
+
+                    chain_op_dependencies.map(|deps| {
+                        deps.into_iter()
+                            .map(|hash| (hash, ValidationDependencyType::Action))
+                            .collect::<Vec<_>>()
+                    })
+                }
+                DhtOp::WarrantOp(op) => match &op.proof {
+                    WarrantProof::ChainIntegrity(warrant) => match warrant {
+                        ChainIntegrityWarrant::InvalidChainOp {
+                            action: (action_hash, _),
+                            chain_op_type,
+                            ..
+                        } => Some(vec![(
+                            action_hash.clone(),
+                            ValidationDependencyType::Warranted(*chain_op_type),
+                        )]),
+                        ChainIntegrityWarrant::ChainFork {
+                            action_pair: ((a1, _), (a2, _)),
+                            ..
+                        } => Some(vec![
+                            (a1.clone(), ValidationDependencyType::Action),
+                            (a2.clone(), ValidationDependencyType::Action),
+                        ]),
+                    },
+                },
+            }
+        })
+        .flatten()
+        .collect()
+}
+
+/// Examine the list of provided ops and create a list of actions which are sys validation
+/// dependencies for those ops. The actions are merged into `current_validation_dependencies`.
+async fn retrieve_previous_actions_for_ops(
+    current_validation_dependencies: SysValDeps,
+    cascade: Arc<impl Cascade + Send + Sync>,
+    ops: impl Iterator<Item = DhtOpHashed>,
+) {
+    retrieve_dependencies(
+        current_validation_dependencies,
+        cascade,
+        get_dependencies_from_ops(ops).into_iter(),
+    )
+    .await;
+}
+
+/// Validate a single DhtOp, using the supplied Cascade to draw dependencies from
+pub(crate) async fn validate_op(
+    op: &DhtOp,
+    dna_hash: &DnaHash,
+    validation_dependencies: SysValDeps,
+) -> WorkflowResult<Outcome> {
+    let result = match op {
+        DhtOp::ChainOp(op) => validate_chain_op(op, dna_hash, validation_dependencies).await,
+        DhtOp::WarrantOp(op) => validate_warrant_op(op, validation_dependencies).await,
+    };
+    match result {
+        Ok(_) => Ok(Outcome::Accepted),
+        // Handle the errors that result in pending or awaiting deps
+        Err(SysValidationError::ValidationOutcome(e)) => {
+            if e.is_indeterminate() {
+                // This is expected if the dependency isn't held locally and needs to be fetched from the network
+                // so downgrade the logging to trace.
+                tracing::debug!(
+                    msg = "DhtOp has a missing dependency",
+                    ?op,
+                    error = ?e,
+                    error_msg = %e
+                );
+                Ok(Outcome::MissingDhtDep)
+            } else {
+                tracing::warn!(msg = "DhtOp was rejected during system validation.", ?op, error = ?e, error_msg = %e);
+                Ok(Outcome::Rejected(e.to_string()))
+            }
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+fn make_action_set_for_session_data(
+    entry: &Entry,
+    session_data: &CounterSigningSessionData,
+) -> SysValidationResult<Vec<ActionHash>> {
+    let entry_hash = EntryHash::with_data_sync(entry);
+    Ok(build_action_set(session_data, entry_hash)?
+        .into_iter()
+        .map(|action| ActionHash::with_data_sync(&action))
+        .collect())
+}
+
+/// The op's action does not match the data its `ChainOp` variant requires
+/// (e.g. an `UpdateEntry` op wrapping a `Create` action). The flat `Action`
+/// inside `SignedAction` carries no structural guarantee that the action shape
+/// fits the op type, so this check catches a same-shaped swap between two
+/// entry-bearing variants (Create vs. Update) or a mismatch on a
+/// non-entry-bearing op (AgentActivity/Delete*/*Link), which `check_entry_visibility`
+/// does not.
+fn malformed(op: &ChainOp, action: &Action) -> SysValidationError {
+    ValidationOutcome::MalformedDhtOp(
+        Box::new(action.clone()),
+        op.op_type(),
+        "action variant does not match the op's type".to_string(),
+    )
+    .into()
+}
+
+async fn validate_chain_op(
+    op: &ChainOp,
+    dna_hash: &DnaHash,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    check_entry_visibility(op)?;
+    let action = op.signed_action().data();
+    match op {
+        ChainOp::CreateRecord(_, op_entry) => {
+            check_prev_action(action)?;
+            if let OpEntry::Present(entry) = op_entry {
+                // Retrieve for all other actions on countersigned entry.
+                if let Entry::CounterSign(session_data, _) = entry {
+                    for action_hash in make_action_set_for_session_data(entry, session_data)? {
+                        // Just require that we are holding all the other actions
+                        let validation_dependencies =
+                            validation_dependencies.lock().expect("poisoned");
+                        validation_dependencies
+                            .get(&action_hash)
+                            .and_then(|s| s.as_action())
+                            .ok_or_else(|| {
+                                ValidationOutcome::DepMissingFromDht(action_hash.clone().into())
+                            })?;
+                    }
+                }
+                // Has to be async because of signature checks being async
+                store_entry(action, entry, validation_dependencies).await?;
+            }
+            Ok(())
+        }
+        ChainOp::CreateEntry(_, op_entry) => {
+            // `check_entry_visibility` above already guarantees `CreateEntry`
+            // carries a present entry for a public entry type.
+            let OpEntry::Present(entry) = op_entry else {
+                return Ok(());
+            };
+
+            // Check and hold for all other actions on countersigned entry.
+            if let Entry::CounterSign(session_data, _) = entry {
+                for action_hash in make_action_set_for_session_data(entry, session_data)? {
+                    // Just require that we are holding all the other actions
+                    let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+                    validation_dependencies
+                        .get(&action_hash)
+                        .and_then(|s| s.as_action())
+                        .ok_or_else(|| {
+                            ValidationOutcome::DepMissingFromDht(action_hash.clone().into())
+                        })?;
+                }
+            }
+
+            check_prev_action(action)?;
+            store_entry(action, entry, validation_dependencies.clone()).await
+        }
+        ChainOp::AgentActivity(_) => {
+            register_agent_activity(action, validation_dependencies.clone(), dna_hash)?;
+            store_record(action, validation_dependencies)
+        }
+        ChainOp::UpdateEntry(_, op_entry) => {
+            let ActionData::Update(update) = &action.data else {
+                return Err(malformed(op, action));
+            };
+            register_updated_content(update, validation_dependencies.clone())?;
+            if let OpEntry::Present(entry) = op_entry {
+                store_entry(action, entry, validation_dependencies).await?;
+            }
+
+            Ok(())
+        }
+        ChainOp::UpdateRecord(_, op_entry) => {
+            let ActionData::Update(update) = &action.data else {
+                return Err(malformed(op, action));
+            };
+            register_updated_record(update, validation_dependencies.clone())?;
+            if let OpEntry::Present(entry) = op_entry {
+                store_entry(action, entry, validation_dependencies).await?;
+            }
+
+            Ok(())
+        }
+        ChainOp::DeleteRecord(_) => {
+            let ActionData::Delete(delete) = &action.data else {
+                return Err(malformed(op, action));
+            };
+            register_deleted_by(delete, validation_dependencies)
+        }
+        ChainOp::DeleteEntry(_) => {
+            let ActionData::Delete(delete) = &action.data else {
+                return Err(malformed(op, action));
+            };
+            register_deleted_entry_action(delete, validation_dependencies)
+        }
+        ChainOp::CreateLink(_) => {
+            let ActionData::CreateLink(create_link) = &action.data else {
+                return Err(malformed(op, action));
+            };
+            register_add_link(create_link)
+        }
+        ChainOp::DeleteLink(_) => {
+            let ActionData::DeleteLink(delete_link) = &action.data else {
+                return Err(malformed(op, action));
+            };
+            register_delete_link(delete_link, validation_dependencies)
+        }
+    }
+}
+
+async fn validate_warrant_op(
+    op: &holochain_types::warrant::WarrantOp,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    match &op.proof {
+        WarrantProof::ChainIntegrity(warrant) => match warrant {
+            ChainIntegrityWarrant::InvalidChainOp {
+                action: (action_hash, action_sig),
+                action_author,
+                reason,
+                ..
+            } => {
+                if reason.len() > holochain_zome_types::warrant::MAX_WARRANT_REASON_BYTES {
+                    return Err(ValidationOutcome::InvalidWarrant(
+                        Box::new(op.warrant().clone()),
+                        "reason exceeds maximum length".into(),
+                    )
+                    .into());
+                }
+                let (action, validation_status) = {
+                    let deps = validation_dependencies.lock().expect("poisoned");
+                    let (signed_action, validation_status) = deps
+                        .get(action_hash)
+                        .and_then(|s| s.as_signed_action_and_validation_status())
+                        .ok_or_else(|| {
+                            ValidationOutcome::DepMissingFromDht(action_hash.clone().into())
+                        })?;
+                    let action = &signed_action.hashed.content;
+
+                    if action.author() != action_author {
+                        return Err(ValidationOutcome::InvalidWarrant(
+                            Box::new(op.warrant().clone()),
+                            "action author mismatch".into(),
+                        )
+                        .into());
+                    }
+                    (signed_action.clone(), validation_status)
+                };
+                verify_action_signature(action_sig, &action.hashed.content).await?;
+
+                match validation_status {
+                    ValidationStatus::Valid => {
+                        return Err(SysValidationError::ValidationOutcome(
+                            ValidationOutcome::InvalidWarrant(
+                                Box::new(op.warrant().clone()),
+                                "Warranted op is valid".into(),
+                            ),
+                        ));
+                    }
+                    ValidationStatus::Abandoned => {
+                        // TODO This isn't really the right way to handle this. If the op is abandoned
+                        //       then this warrant should probably also be abandoned. But there is
+                        //       no implementation of abandon yet.
+                        return Err(SysValidationError::WorkflowError(Box::new(
+                            WorkflowError::Other(Box::new(std::io::Error::other(
+                                "Warranted op is abandoned",
+                            ))),
+                        )));
+                    }
+                    ValidationStatus::Rejected => {
+                        // This is good, the warrant is valid because we also rejected the op
+                    }
+                }
+
+                Ok(())
+            }
+            ChainIntegrityWarrant::ChainFork {
+                action_pair: ((a1, a1_sig), (a2, a2_sig)),
+                chain_author,
+                seq,
+            } => {
+                let (action1, action2) = {
+                    let deps = validation_dependencies.lock().expect("poisoned");
+                    let signed_action1 = deps
+                        .get(a1)
+                        .and_then(|s| s.as_signed_action())
+                        .ok_or_else(|| ValidationOutcome::DepMissingFromDht(a1.clone().into()))?;
+                    let signed_action2 = deps
+                        .get(a2)
+                        .and_then(|s| s.as_signed_action())
+                        .ok_or_else(|| ValidationOutcome::DepMissingFromDht(a2.clone().into()))?;
+                    let action1 = &signed_action1.hashed.content;
+                    let action2 = &signed_action2.hashed.content;
+
+                    // chain_author basis must match the author of the action
+                    if action1.author() != chain_author {
+                        return Err(ValidationOutcome::InvalidWarrant(
+                            Box::new(op.warrant().clone()),
+                            "chain author mismatch".into(),
+                        )
+                        .into());
+                    }
+
+                    // Both actions must be by same author
+                    if action1.author() != action2.author() {
+                        return Err(ValidationOutcome::InvalidWarrant(
+                            Box::new(op.warrant().clone()),
+                            "action pair author mismatch".into(),
+                        )
+                        .into());
+                    }
+
+                    // Both actions must have the same sequence number (a fork occurs at a single seq)
+                    if action1.action_seq() != action2.action_seq() {
+                        return Err(ValidationOutcome::InvalidWarrant(
+                            Box::new(op.warrant().clone()),
+                            "action pair seq mismatch".into(),
+                        )
+                        .into());
+                    }
+
+                    // The actions' sequence number must match the warrant's declared seq
+                    if action1.action_seq() != *seq {
+                        return Err(ValidationOutcome::InvalidWarrant(
+                            Box::new(op.warrant().clone()),
+                            "warrant seq mismatch".into(),
+                        )
+                        .into());
+                    }
+
+                    // A fork is evidenced by two actions with a common predecessor.
+                    if action1.prev_action() != action2.prev_action() {
+                        return Err(ValidationOutcome::InvalidWarrant(
+                            Box::new(op.warrant().clone()),
+                            "action pair prev_action mismatch".into(),
+                        )
+                        .into());
+                    }
+
+                    (signed_action1.clone(), signed_action2.clone())
+                };
+
+                verify_action_signature(a1_sig, &action1.hashed.content).await?;
+                verify_action_signature(a2_sig, &action2.hashed.content).await?;
+
+                Ok(())
+            }
+        },
+    }
+}
+
+/// Verify a freshly authored record's signature, checked directly against its
+/// action content, before running [`sys_validate_record`] on it.
+pub async fn counterfeit_check_authored_record(record: &Record) -> SysValidationOutcome<()> {
+    match verify_action_signature(record.signature(), record.action()).await {
+        Ok(()) => Ok(()),
+        Err(SysValidationError::ValidationOutcome(validation_outcome)) => {
+            validation_outcome.into_outcome()
+        }
+        Err(e) => Err(OutcomeOrError::Err(e)),
+    }
+}
+
+/// Run system validation for a single [`Record`] instead of the usual [`DhtOp`] input for the system validation workflow.
+/// It is expected that the provided cascade will include a network so that dependencies which we either do not hold yet, or
+/// should not hold, can be fetched and cached for use in validation.
+///
+/// Note that the conditions on the action being validated are slightly stronger than the usual system validation workflow. This is because
+/// it is intended to be used for validation of records which have been authored locally so we should always be able to check the previous action.
+///
+/// The caller must already have verified the record's signature (e.g. via
+/// [`counterfeit_check_authored_record`]); this function validates structure and
+/// dependencies only and does not check the signature.
+pub async fn sys_validate_record(
+    record: &Record,
+    cascade: Arc<impl Cascade + Send + Sync>,
+) -> SysValidationOutcome<()> {
+    match sys_validate_record_inner(record, cascade).await {
+        // Validation succeeded
+        Ok(_) => Ok(()),
+        // Validation failed so exit with that outcome
+        Err(SysValidationError::ValidationOutcome(validation_outcome)) => {
+            tracing::error!(
+                msg = "Direct validation failed",
+                ?validation_outcome,
+                ?record,
+            );
+            validation_outcome.into_outcome()
+        }
+        // An error occurred so return it
+        Err(e) => Err(OutcomeOrError::Err(e)),
+    }
+}
+
+async fn sys_validate_record_inner(
+    record: &Record,
+    cascade: Arc<impl Cascade + Send + Sync>,
+) -> SysValidationResult<()> {
+    let maybe_entry = record.entry().as_option();
+    let action = record.action().clone();
+
+    async fn validate(
+        action: &Action,
+        maybe_entry: Option<&Entry>,
+        cascade: Arc<impl Cascade + Send + Sync>,
+    ) -> SysValidationResult<()> {
+        let validation_dependencies = SysValDeps::default();
+        fetch_previous_actions(
+            validation_dependencies.clone(),
+            cascade.clone(),
+            vec![action.clone()].into_iter(),
+        )
+        .await;
+
+        store_record(action, validation_dependencies.clone())?;
+        if let Some(maybe_entry) = maybe_entry {
+            store_entry(action, maybe_entry, validation_dependencies.clone()).await?;
+        }
+        match &action.data {
+            ActionData::Update(update) => {
+                register_updated_content(update, validation_dependencies.clone())
+            }
+            ActionData::Delete(delete) => {
+                register_deleted_entry_action(delete, validation_dependencies.clone())
+            }
+            ActionData::CreateLink(create_link) => register_add_link(create_link),
+            ActionData::DeleteLink(delete_link) => {
+                register_delete_link(delete_link, validation_dependencies.clone())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    match maybe_entry {
+        Some(Entry::CounterSign(session, _)) => {
+            // Validate every per-agent action the countersigning session implies.
+            let entry_hash = EntryHash::with_data_sync(maybe_entry.unwrap());
+            for session_action in build_action_set(session, entry_hash)? {
+                validate(&session_action, maybe_entry, cascade.clone()).await?;
+            }
+            Ok(())
+        }
+        _ => validate(&action, maybe_entry, cascade).await,
+    }
+}
+
+/// Check if the chain op has valid signature and author.
+/// Ops that fail this check should be dropped.
+pub async fn counterfeit_check_action(
+    signature: &Signature,
+    action: &Action,
+) -> SysValidationResult<()> {
+    verify_action_signature(signature, action).await
+}
+
+/// Check if the warrant op has valid signature and author.
+pub async fn counterfeit_check_warrant(
+    warrant_op: &holochain_types::warrant::WarrantOp,
+) -> SysValidationResult<()> {
+    verify_warrant_signature(warrant_op).await?;
+    Ok(())
+}
+
+/// Check that the entry carried by a chain op hashes to the entry hash named
+/// by its action.
+///
+/// The entry is not covered by the action signature, so a third party can pair
+/// a genuine, signed action with fabricated entry bytes. Ops that fail this
+/// check must be dropped before anything is written and without warranting the
+/// action's author, who may not have produced the entry.
+///
+/// Ops without a `Present` entry pass. An op that carries an entry while its
+/// action names no entry hash is malformed and fails too.
+pub fn counterfeit_check_entry(op: &ChainOp) -> SysValidationResult<()> {
+    let Some(OpEntry::Present(entry)) = op.op_entry() else {
+        return Ok(());
+    };
+    let action = op.signed_action().data();
+    let entry_hash = action.entry_hash().ok_or_else(|| {
+        ValidationOutcome::MalformedDhtOp(
+            Box::new(action.clone()),
+            op.op_type(),
+            "op carries an entry but its action names no entry hash".to_string(),
+        )
+    })?;
+    check_entry_hash(entry_hash, entry)
+}
+
+fn register_agent_activity(
+    action: &Action,
+    validation_dependencies: SysValDeps,
+    dna_hash: &DnaHash,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let prev_action_hash = action.prev_action();
+
+    // Checks
+    check_prev_action(action)?;
+    check_valid_if_dna(action, dna_hash)?;
+    if let Some(prev_action_hash) = prev_action_hash {
+        // Just make sure we have the dependency and if not then don't mark this action as valid yet
+        let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+        let prev_action = validation_dependencies
+            .get(prev_action_hash)
+            .and_then(|s| s.as_action())
+            .ok_or_else(|| ValidationOutcome::DepMissingFromDht(prev_action_hash.clone().into()))?;
+
+        check_prev_action_not_close_chain(action, prev_action)
+    } else {
+        Ok(())
+    }
+}
+
+fn store_record(action: &Action, validation_dependencies: SysValDeps) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let prev_action_hash = action.prev_action();
+
+    // Checks
+    check_prev_action(action)?;
+    if let Some(prev_action_hash) = prev_action_hash {
+        let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+        let prev_action = validation_dependencies
+            .get(prev_action_hash)
+            .and_then(|s| s.as_action())
+            .ok_or_else(|| ValidationOutcome::DepMissingFromDht(prev_action_hash.clone().into()))?;
+        check_prev_action_not_close_chain(action, prev_action)?;
+        check_prev_author(action, prev_action)?;
+        check_prev_timestamp(action, prev_action)?;
+        check_prev_seq(action, prev_action)?;
+        check_agent_validation_pkg_predecessor(action, prev_action)?;
+    }
+
+    Ok(())
+}
+
+async fn store_entry(
+    action: &Action,
+    entry: &Entry,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let (entry_hash, entry_type) = action
+        .entry_data()
+        .ok_or_else(|| ValidationOutcome::NotNewEntry(Box::new(action.clone())))?;
+
+    // Checks
+    check_entry_type(entry_type, entry)?;
+    check_entry_hash(entry_hash, entry)?;
+    check_entry_size(entry)?;
+
+    // Additional checks if this is an Update
+    if let ActionData::Update(entry_update) = &action.data {
+        let original_action_address = &entry_update.original_action_address;
+        let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+        let original_action = validation_dependencies
+            .get(original_action_address)
+            .and_then(|s| s.as_action())
+            .ok_or_else(|| {
+                ValidationOutcome::DepMissingFromDht(original_action_address.clone().into())
+            })?;
+        update_check(entry_update, original_action)?;
+    }
+
+    // Additional checks if this is a countersigned entry.
+    if let Entry::CounterSign(session_data, _) = entry {
+        // Only Create/Update actions carry a countersigned entry.
+        if !matches!(action.data, ActionData::Create(_) | ActionData::Update(_)) {
+            return Err(ValidationOutcome::NotNewEntry(Box::new(action.clone())).into());
+        }
+        check_countersigning_session_data(EntryHash::with_data_sync(entry), session_data, action)
+            .await?;
+    }
+    Ok(())
+}
+
+fn register_updated_content(
+    entry_update: &UpdateData,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let original_action_address = &entry_update.original_action_address;
+
+    let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+    let original_action = validation_dependencies
+        .get(original_action_address)
+        .and_then(|s| s.as_action())
+        .ok_or_else(|| {
+            ValidationOutcome::DepMissingFromDht(original_action_address.clone().into())
+        })?;
+
+    update_check(entry_update, original_action)
+}
+
+fn register_updated_record(
+    record_update: &UpdateData,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let original_action_address = &record_update.original_action_address;
+
+    let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+    let original_action = validation_dependencies
+        .get(original_action_address)
+        .and_then(|s| s.as_action())
+        .ok_or_else(|| {
+            ValidationOutcome::DepMissingFromDht(original_action_address.clone().into())
+        })?;
+
+    update_check(record_update, original_action)
+}
+
+fn register_deleted_by(
+    record_delete: &DeleteData,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let removed_action_address = &record_delete.deletes_address;
+
+    let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+    let action = validation_dependencies
+        .get(removed_action_address)
+        .and_then(|s| s.as_action())
+        .ok_or_else(|| {
+            ValidationOutcome::DepMissingFromDht(removed_action_address.clone().into())
+        })?;
+
+    check_new_entry_action(action)
+}
+
+fn register_deleted_entry_action(
+    record_delete: &DeleteData,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let removed_action_address = &record_delete.deletes_address;
+
+    let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+    let action = validation_dependencies
+        .get(removed_action_address)
+        .and_then(|s| s.as_action())
+        .ok_or_else(|| {
+            ValidationOutcome::DepMissingFromDht(removed_action_address.clone().into())
+        })?;
+
+    check_new_entry_action(action)
+}
+
+fn register_add_link(link_add: &CreateLinkData) -> SysValidationResult<()> {
+    check_tag_size(&link_add.tag)
+}
+
+fn register_delete_link(
+    link_remove: &DeleteLinkData,
+    validation_dependencies: SysValDeps,
+) -> SysValidationResult<()> {
+    // Get data ready to validate
+    let link_add_address = &link_remove.link_add_address;
+
+    // Just require that this link exists, don't need to check anything else about it here
+    let validation_dependencies = validation_dependencies.lock().expect("poisoned");
+    let add_link_action = validation_dependencies
+        .get(link_add_address)
+        .and_then(|s| s.as_action())
+        .ok_or_else(|| ValidationOutcome::DepMissingFromDht(link_add_address.clone().into()))?;
+
+    match add_link_action.data {
+        ActionData::CreateLink(_) => Ok(()),
+        _ => Err(ValidationOutcome::NotCreateLink(add_link_action.to_hash()).into()),
+    }
+}
+
+fn update_check(entry_update: &UpdateData, original_action: &Action) -> SysValidationResult<()> {
+    check_new_entry_action(original_action)?;
+    check_update_reference(entry_update, original_action)?;
+    Ok(())
+}
+
+pub struct SysValidationWorkspace {
+    scratch: Option<SyncScratch>,
+    dht_store: DhtStore,
+    dna_hash: DnaHash,
+    sys_validation_retry_delay: Duration,
+}
+
+impl SysValidationWorkspace {
+    pub fn new(
+        dht_store: DhtStore,
+        dna_hash: DnaHash,
+        sys_validation_retry_delay: Duration,
+    ) -> Self {
+        Self {
+            scratch: None,
+            dht_store,
+            dna_hash,
+            sys_validation_retry_delay,
+        }
+    }
+
+    /// Create a cascade with local data only
+    pub fn local_cascade(&self) -> CascadeImpl {
+        let cascade = CascadeImpl::empty(self.dht_store.clone());
+        match &self.scratch {
+            Some(scratch) => cascade.with_scratch(scratch.clone()),
+            None => cascade,
+        }
+    }
+
+    pub fn network_cascade(&self, network: DynHolochainP2pDna) -> CascadeImpl {
+        CascadeImpl::empty(self.dht_store.clone()).with_network(network)
+    }
+}
+
+/// Gets an arbitrary agent with a cell running the given DNA, needed for processes
+/// which require an agent signature but happen at the DNA level, i.e. not bound to any
+/// particular cell.
+///
+/// A restoring cell's agent is also accepted as representative for its DNA because even though it
+/// is deliberately kept out of `running_cell_ids` until the app is enabled, its DNA space still
+/// needs sys/app validation to run so that encountered warrants can reach a verdict.
+pub fn get_representative_agent(conductor: &Conductor, dna_hash: &DnaHash) -> Option<AgentPubKey> {
+    conductor
+        .running_cell_ids()
+        .into_iter()
+        .chain(conductor.restoring_cell_ids())
+        .find(|id| id.dna_hash() == dna_hash)
+        .map(|id| id.agent_pubkey().clone())
+}
+
+pub async fn make_invalid_chain_warrant_op(
+    keystore: &MetaLairClient,
+    warrant_author: AgentPubKey,
+    op: &ChainOp,
+    reason: &str,
+) -> WorkflowResult<DhtOpHashed> {
+    let signed_action = op.signed_action();
+    let action = signed_action.data();
+    let action_author = action.author().clone();
+    tracing::warn!("Authoring warrant for invalid op authored by {action_author}");
+
+    let proof = WarrantProof::ChainIntegrity(ChainIntegrityWarrant::InvalidChainOp {
+        action_author: action_author.clone(),
+        action: (action.to_hash(), signed_action.signature().clone()),
+        chain_op_type: op.op_type(),
+        reason: holochain_zome_types::warrant::truncate_warrant_reason(reason),
+    });
+    let warrant = Warrant::new(proof, warrant_author, Timestamp::now(), action_author);
+    let warrant_op = WarrantOp::sign(keystore, warrant)
+        .await
+        .map_err(|e| super::WorkflowError::Other(e.into()))?;
+    let op = DhtOp::from((*warrant_op).clone()).into_hashed();
+    Ok(op)
+}
+
+pub async fn make_fork_warrant_op_inner(
+    keystore: &MetaLairClient,
+    warrant_author: AgentPubKey,
+    chain_author: AgentPubKey,
+    action_pair: ((ActionHash, Signature), (ActionHash, Signature)),
+    seq: u32,
+) -> WorkflowResult<DhtOpHashed> {
+    debug_assert_ne!(action_pair.0 .0, action_pair.1 .0);
+    tracing::warn!(
+        "Authoring warrant for chain fork by {chain_author}. Action hashes: ({}, {})",
+        action_pair.0 .0,
+        action_pair.1 .0
+    );
+
+    let warrant = Warrant::new(
+        WarrantProof::ChainIntegrity(ChainIntegrityWarrant::ChainFork {
+            chain_author: chain_author.clone(),
+            action_pair,
+            seq,
+        }),
+        warrant_author,
+        Timestamp::now(),
+        chain_author.clone(),
+    );
+    let warrant_op = WarrantOp::sign(keystore, warrant)
+        .await
+        .map_err(|e| super::WorkflowError::Other(e.into()))?;
+    let op = DhtOp::from((*warrant_op).clone()).into_hashed();
+    Ok(op)
+}
+
+#[derive(Debug, Clone)]
+struct OutcomeSummary {
+    accepted: usize,
+    missing: usize,
+    /// The number of chain ops that were rejected during sys validation
+    rejected: usize,
+    warranted: usize,
+    /// The number of warrant ops that were rejected during sys validation
+    warrants_rejected: usize,
+    /// The number of warrant dependencies that were moved into limbo for validation
+    warrant_deps_copied: usize,
+}
+
+impl OutcomeSummary {
+    fn new() -> Self {
+        OutcomeSummary {
+            accepted: 0,
+            missing: 0,
+            rejected: 0,
+            warranted: 0,
+            warrants_rejected: 0,
+            warrant_deps_copied: 0,
+        }
+    }
+}
+
+impl Default for OutcomeSummary {
+    fn default() -> Self {
+        OutcomeSummary::new()
+    }
+}

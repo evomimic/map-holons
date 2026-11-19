@@ -3431,8 +3431,6 @@ dependencies = [
 [[package]]
 name = "holochain"
 version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4bfdd6137ee65f2966cf0bbabed0ebfd71edc3a25443596c1bcad20c9a39035"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3875,8 +3873,6 @@ dependencies = [
 [[package]]
 name = "holochain_state"
 version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e8235de91cee98a60e8599636008111153bc89c37e72758267d5a1f48e37895"
 dependencies = [
  "async-recursion",
  "bytes",

@@ -129,7 +129,7 @@ async fn observe(store: &DhtStoreRead, base: &AnyLinkableHash) -> Value {
 pub async fn profile(backend: &MockConductorConfig, output: &str) {
     let store = backend.cell.dht_store().as_read();
     let records = store
-        .source_chain_records(backend.cell.agent_pubkey(), false, true)
+        .source_chain_records(backend.cell.agent_pubkey(), false, true, None, None)
         .await
         .expect("source discovery must read the committed source chain");
     let mut counts = BTreeMap::new();

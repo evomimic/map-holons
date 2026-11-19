@@ -1,0 +1,31 @@
+use crate::query::StateQueryError;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum StateMutationError {
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    DhtOpError(#[from] holochain_types::error::DhtOpError),
+
+    #[error(transparent)]
+    StateQueryError(#[from] StateQueryError),
+
+    #[error(transparent)]
+    SerializedBytesError(#[from] holochain_serialized_bytes::SerializedBytesError),
+
+    #[error(transparent)]
+    ScheduleError(#[from] holochain_zome_types::schedule::ScheduleError),
+
+    #[error("Authors of actions must all be the same when inserting to the source chain")]
+    AuthorsMustMatch,
+
+    #[error("Cannot remove a fully published countersigning session")]
+    CannotRemoveFullyPublished,
+
+    #[error("{0}")]
+    Other(String),
+}
+
+pub type StateMutationResult<T> = Result<T, StateMutationError>;

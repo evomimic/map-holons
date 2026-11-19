@@ -570,7 +570,7 @@
         "TypeNamePlural": "OperandRoles",
         "DisplayName": "operand_role",
         "DisplayNamePlural": "operand_roles",
-        "Description": "Durable role name of an authored operand position, such as ComparisonValue or Substring.",
+        "Description": "Durable role name of an authored operand position, such as ComparisonValue, Substring, Prefix, or Suffix.",
         "IsValueRequired": true
       },
       "relationships": [
@@ -998,6 +998,46 @@
       ]
     },
     {
+      "key": "StartsWithPrefix.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Prefix",
+        "Description": "Literal text the subject must begin with. It need not satisfy the subject's specialized constraints.",
+        "OperandRole": "Prefix",
+        "OperandValueTypeRule": "FixedValueType"
+      },
+      "relationships": [
+        {
+          "name": "OperandValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EndsWithSuffix.OperandSpecification",
+      "type": "OperandSpecification.HolonType",
+      "properties": {
+        "DisplayName": "Suffix",
+        "Description": "Literal text the subject must end with. It need not satisfy the subject's specialized constraints.",
+        "OperandRole": "Suffix",
+        "OperandValueTypeRule": "FixedValueType"
+      },
+      "relationships": [
+        {
+          "name": "OperandValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "Arity.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
@@ -1303,6 +1343,86 @@
           "target": [
             {
               "$ref": "ContainsSubstring.OperandSpecification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StartsWithOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "StartsWithOperator",
+        "TypeNamePlural": "StartsWithOperators",
+        "DisplayName": "Starts With",
+        "DisplayNamePlural": "Starts With Operators",
+        "Description": "Returns true iff the subject string begins with the authored prefix under the operator's case-matching policy. The prefix is literal text, never a pattern; an empty prefix matches every present string.",
+        "Arity": 2,
+        "CaseMatching": "UnicodeDefaultCaseFold",
+        "OperatorCategory": "Matching"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "StartsWithPrefix.OperandSpecification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EndsWithOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "EndsWithOperator",
+        "TypeNamePlural": "EndsWithOperators",
+        "DisplayName": "Ends With",
+        "DisplayNamePlural": "Ends With Operators",
+        "Description": "Returns true iff the subject string ends with the authored suffix under the operator's case-matching policy. The suffix is literal text, never a pattern; an empty suffix matches every present string.",
+        "Arity": 2,
+        "CaseMatching": "UnicodeDefaultCaseFold",
+        "OperatorCategory": "Matching"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OperandSpecifications",
+          "target": [
+            {
+              "$ref": "EndsWithSuffix.OperandSpecification"
             }
           ]
         }

@@ -1,0 +1,221 @@
+//! Tests for local and remote signals using rendezvous config
+//!
+
+mod direct;
+
+use hdk::prelude::ExternIO;
+use holochain::sweettest::*;
+use holochain_types::prelude::*;
+use holochain_wasm_test_utils::TestWasm;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SignalMessage {
+    value: String,
+}
+
+fn to_signal_message(signal: Signal) -> SignalMessage {
+    match signal {
+        Signal::App { signal, .. } => signal.into_inner().decode().unwrap(),
+        _ => {
+            panic!("Only expected app signals");
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg_attr(target_os = "windows", ignore = "flaky")]
+async fn remote_signals_work_after_relay_restart() {
+    holochain_trace::test_run();
+
+    const MAX: u64 = 30;
+
+    let vous = SweetLocalRendezvous::new_raw().await;
+
+    let vous_dyn: DynSweetRendezvous = vous.clone();
+    let mut c1 = SweetConductor::from_config_rendezvous(
+        SweetConductorConfig::rendezvous(true),
+        vous_dyn.clone(),
+    )
+    .await;
+
+    let mut c2 = SweetConductor::from_config_rendezvous(
+        SweetConductorConfig::rendezvous(true),
+        vous_dyn.clone(),
+    )
+    .await;
+
+    let dna_file = SweetDnaFile::unique_from_test_wasms(vec![TestWasm::EmitSignal])
+        .await
+        .0;
+
+    let (app1,) = c1
+        .setup_app("app", std::slice::from_ref(&dna_file))
+        .await
+        .unwrap()
+        .into_tuple();
+    let (app2,) = c2.setup_app("app", &[dna_file]).await.unwrap().into_tuple();
+    let a2 = app2.agent_pubkey().clone();
+
+    c1.require_initial_gossip_activity_for_cell(&app1, 1, Duration::from_secs(30))
+        .await
+        .unwrap();
+
+    c2.require_initial_gossip_activity_for_cell(&app2, 1, Duration::from_secs(30))
+        .await
+        .unwrap();
+
+    let mut c2_rx = c2.subscribe_to_app_signals("app".to_string());
+
+    let _: () = c1
+        .call(
+            &app1.zome(TestWasm::EmitSignal),
+            "signal_others",
+            RemoteSignal {
+                agents: vec![a2.clone()],
+                signal: ExternIO::encode(SignalMessage {
+                    value: "hello".to_string(),
+                })
+                .unwrap(),
+            },
+        )
+        .await;
+
+    let msg = tokio::time::timeout(std::time::Duration::from_secs(MAX), c2_rx.recv())
+        .await
+        .unwrap()
+        .map(to_signal_message)
+        .unwrap()
+        .value;
+
+    assert_eq!("hello", &msg);
+
+    // restart the relay server so we get new ids
+    vous.start_relay().await;
+
+    // wait for that to propagate in holochain
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    let done1 = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let done2 = done1.clone();
+
+    tokio::join!(
+        async {
+            let msg = tokio::time::timeout(std::time::Duration::from_secs(MAX), c2_rx.recv())
+                .await
+                .unwrap()
+                .map(to_signal_message)
+                .unwrap()
+                .value;
+
+            assert_eq!("world", &msg);
+
+            done1.store(true, std::sync::atomic::Ordering::SeqCst);
+        },
+        async {
+            for _ in 0..MAX {
+                let _: () = c1
+                    .call(
+                        &app1.zome(TestWasm::EmitSignal),
+                        "signal_others",
+                        RemoteSignal {
+                            agents: vec![a2.clone()],
+                            signal: ExternIO::encode(SignalMessage {
+                                value: "world".to_string(),
+                            })
+                            .unwrap(),
+                        },
+                    )
+                    .await;
+
+                if done2.load(std::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+        },
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg(feature = "slow_tests")]
+async fn remote_signals_batch() {
+    holochain_trace::test_run();
+
+    let mut conductors =
+        SweetConductorBatch::from_config_rendezvous(3, SweetConductorConfig::rendezvous(true))
+            .await;
+
+    let dna_file = SweetDnaFile::unique_from_test_wasms(vec![TestWasm::EmitSignal])
+        .await
+        .0;
+
+    let app_batch = conductors.setup_app("app", &[dna_file]).await.unwrap();
+
+    let ((alice,), (bob,), (carol,)): ((SweetCell,), (SweetCell,), (SweetCell,)) =
+        app_batch.into_tuples();
+
+    // Make sure the conductors are talking to each other before sending signals.
+    conductors[0]
+        .require_initial_gossip_activity_for_cell(&alice, 2, Duration::from_secs(90))
+        .await
+        .unwrap();
+
+    // Listen for signals on Bob's and Carol's conductors.
+    // These are all the signals on that conductor but the only app installed
+    // is the one for this test.
+    let mut conductor_1_signal_rx = conductors[1].subscribe_to_app_signals("app".to_string());
+    let mut conductor_2_signal_rx = conductors[2].subscribe_to_app_signals("app".to_string());
+
+    // Call `signal_others` multiple times as Alice to send signals to Bob.
+    for i in 0..6 {
+        let _: () = conductors[0]
+            .call(
+                &alice.zome(TestWasm::EmitSignal),
+                "signal_others",
+                RemoteSignal {
+                    agents: vec![bob.agent_pubkey().clone(), carol.agent_pubkey().clone()],
+                    signal: ExternIO::encode(SignalMessage {
+                        value: format!("message {i}"),
+                    })
+                    .unwrap(),
+                },
+            )
+            .await;
+    }
+
+    // Check that Bob and Carol receive all the signals.
+    tokio::time::timeout(Duration::from_secs(60), async move {
+        let mut signals_1 = Vec::with_capacity(6);
+        let mut signals_2 = Vec::with_capacity(6);
+
+        for _ in 0..6 {
+            let msg_1 = conductor_1_signal_rx
+                .recv()
+                .await
+                .map(to_signal_message)
+                .unwrap()
+                .value;
+            signals_1.push(msg_1);
+            let msg_2 = conductor_2_signal_rx
+                .recv()
+                .await
+                .map(to_signal_message)
+                .unwrap()
+                .value;
+            signals_2.push(msg_2);
+        }
+
+        assert_eq!(6, signals_1.len());
+        assert_eq!(6, signals_2.len());
+
+        // Received all the signals, but might have received them in a different order.
+        signals_1.sort();
+        signals_2.sort();
+        assert_eq!(signals_1, signals_2);
+    })
+    .await
+    .unwrap();
+}

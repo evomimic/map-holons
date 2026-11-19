@@ -1,8 +1,8 @@
 //! Descriptor world for predicate unit tests.
 //!
 //! Stages the canonical descriptors predicate validation resolves by key
-//! (`MapStringValueType.StringValueType`, the Contains, Equals and ordered
-//! comparison operators, `QueryPredicate` and the predicate forms extending it, and the
+//! (`MapStringValueType.StringValueType`, the string matching, Equals and
+//! ordered comparison operators, `QueryPredicate` and the predicate forms extending it, and the
 //! Query literal and Filter types) and builds transient
 //! member types over them. Staged holons cannot reference transient ones, so
 //! operator affordances sit on a transient `Text` subtype of the canonical
@@ -31,8 +31,8 @@ pub(crate) struct PredicateWorld {
     pub(crate) context: Arc<TransactionContext>,
     /// The canonical `MapStringValueType.StringValueType` (staged).
     pub(crate) map_string: HolonReference,
-    /// A transient string subtype affording Contains, Equals and all four
-    /// ordered comparisons.
+    /// A transient string subtype affording Contains, StartsWith, EndsWith,
+    /// Equals and all four ordered comparisons.
     pub(crate) text: HolonReference,
     /// A text subtype carrying an unsupported configured pattern constraint.
     pub(crate) identifier: HolonReference,
@@ -52,6 +52,8 @@ pub(crate) struct PredicateWorld {
     /// A bytes type affording nothing, as canonical `MapBytesValueType` does.
     pub(crate) raw_digest: HolonReference,
     pub(crate) contains: HolonReference,
+    pub(crate) starts_with: HolonReference,
+    pub(crate) ends_with: HolonReference,
     pub(crate) equals: HolonReference,
     pub(crate) less_than: HolonReference,
     pub(crate) greater_than: HolonReference,
@@ -182,9 +184,11 @@ impl PredicateWorld {
         }
         let map_string = stage(map_string);
 
-        let contains =
-            core_operator(&context, CoreOperatorTypeName::ContainsOperator, Some(&map_string))
-                .unwrap();
+        let matching = |name| core_operator(&context, name, Some(&map_string)).unwrap();
+        let contains = matching(CoreOperatorTypeName::ContainsOperator);
+        let starts_with = matching(CoreOperatorTypeName::StartsWithOperator);
+        let ends_with = matching(CoreOperatorTypeName::EndsWithOperator);
+        let string_matching = [&contains, &starts_with, &ends_with];
         let equals = core_operator(&context, CoreOperatorTypeName::EqualsOperator, None).unwrap();
         let ordered = |name| core_operator(&context, name, None).unwrap();
         let less_than = ordered(CoreOperatorTypeName::LessThanOperator);
@@ -205,9 +209,12 @@ impl PredicateWorld {
             }
             holon
         };
-        let text: HolonReference =
-            value_type("Text", &map_string, &[&[&contains, &equals][..], &ordering].concat())
-                .into();
+        let text: HolonReference = value_type(
+            "Text",
+            &map_string,
+            &[&string_matching[..], &[&equals], &ordering].concat(),
+        )
+        .into();
         let mut identifier = value_type("Identifier", &text, &[]);
         identifier
             .add_related_holons(
@@ -222,7 +229,7 @@ impl PredicateWorld {
             .unwrap();
         let identifier: HolonReference = identifier.into();
         let foreign_string: HolonReference =
-            value_type("ForeignString", &string_anchor, &[&contains]).into();
+            value_type("ForeignString", &string_anchor, &string_matching).into();
         let integer_anchor =
             stage(new_kind_descriptor(&context, "IntegerValueType", None, true).unwrap());
         let integer: HolonReference =
@@ -285,6 +292,8 @@ impl PredicateWorld {
             digest,
             raw_digest,
             contains,
+            starts_with,
+            ends_with,
             equals,
             less_than,
             greater_than,
@@ -325,7 +334,8 @@ impl PredicateWorld {
         .into()
     }
 
-    /// A Contains substring literal declared as the canonical string type.
+    /// A string matching literal (substring, prefix or suffix) declared as the
+    /// canonical string type.
     pub(crate) fn substring(&self, value: &str) -> HolonReference {
         self.literal(&self.map_string, text(value))
     }
@@ -333,6 +343,16 @@ impl PredicateWorld {
     /// A Contains comparison over `property` of `Book`.
     pub(crate) fn contains(&self, property: &str, value: &str) -> HolonReference {
         self.comparison(property, &self.contains, vec![self.substring(value)])
+    }
+
+    /// A StartsWith comparison over `property` of `Book`.
+    pub(crate) fn starts_with(&self, property: &str, value: &str) -> HolonReference {
+        self.comparison(property, &self.starts_with, vec![self.substring(value)])
+    }
+
+    /// An EndsWith comparison over `property` of `Book`.
+    pub(crate) fn ends_with(&self, property: &str, value: &str) -> HolonReference {
+        self.comparison(property, &self.ends_with, vec![self.substring(value)])
     }
 
     /// An Equals comparison over `property` of `Book`, its literal declared as

@@ -79,11 +79,13 @@ impl ToOperatorName for &OperatorName {
 #[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
 pub enum CoreOperatorTypeName {
     ContainsOperator,
+    EndsWithOperator,
     EqualsOperator,
     GreaterThanOperator,
     GreaterThanOrEqualOperator,
     LessThanOperator,
     LessThanOrEqualOperator,
+    StartsWithOperator,
 }
 
 impl CoreOperatorTypeName {
@@ -113,11 +115,13 @@ mod tests {
     fn all_core_operator_type_names() -> Vec<CoreOperatorTypeName> {
         vec![
             CoreOperatorTypeName::ContainsOperator,
+            CoreOperatorTypeName::EndsWithOperator,
             CoreOperatorTypeName::EqualsOperator,
             CoreOperatorTypeName::GreaterThanOperator,
             CoreOperatorTypeName::GreaterThanOrEqualOperator,
             CoreOperatorTypeName::LessThanOperator,
             CoreOperatorTypeName::LessThanOrEqualOperator,
+            CoreOperatorTypeName::StartsWithOperator,
         ]
     }
 

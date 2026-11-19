@@ -1,0 +1,515 @@
+--- a/crates/holochain/src/conductor/cell.rs
++++ b/crates/holochain/src/conductor/cell.rs
+@@ -101,6 +101,9 @@
+     queue_triggers: QueueTriggers,
+     signal_tx: broadcast::Sender<Signal>,
+     init_mutex: tokio::sync::Mutex<()>,
++    /// Set once zome init is known to have completed for this cell, so later
++    /// zome calls skip the source chain query that checks for it.
++    zomes_initialized: std::sync::atomic::AtomicBool,
+     /// We store the P2P config overrides used to create this cell here
+     /// so we can later check for conflicts if we try to install a cell with the same dna
+     overrides: CellConfigOverrides,
+@@ -147,6 +150,7 @@
+                     signal_tx,
+                     overrides,
+                     init_mutex: Default::default(),
++                    zomes_initialized: Default::default(),
+                 },
+                 initial_queue_triggers,
+             ))
+@@ -836,6 +840,13 @@
+     /// Check if each Zome's init callback has been run, and if not, run it.
+     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self)))]
+     pub(crate) async fn check_or_run_zome_init(&self) -> CellResult<()> {
++        use std::sync::atomic::Ordering;
++
++        // Fast path: init was already confirmed for this cell.
++        if self.zomes_initialized.load(Ordering::Acquire) {
++            return Ok(());
++        }
++
+         // Ensure that only one init check is run at a time
+         let _guard = tokio::time::timeout(
+             std::time::Duration::from_secs(INIT_MUTEX_TIMEOUT_SECS),
+@@ -844,6 +855,11 @@
+         .await
+         .map_err(|_| CellError::InitTimeout)?;
+ 
++        // Another caller may have confirmed init while we waited for the lock.
++        if self.zomes_initialized.load(Ordering::Acquire) {
++            return Ok(());
++        }
++
+         let keystore = self.conductor_api.keystore().clone();
+         let id = self.id.clone();
+         let conductor_handle = self.conductor_handle.clone();
+@@ -861,6 +877,7 @@
+ 
+         // Check if initialization has run
+         if workspace.source_chain().zomes_initialized().await? {
++            self.zomes_initialized.store(true, Ordering::Release);
+             return Ok(());
+         }
+         trace!("running init");
+@@ -887,6 +904,7 @@
+             InitResult::Pass => {}
+             r => return Err(CellError::InitFailed(Box::new(r))),
+         }
++        self.zomes_initialized.store(true, Ordering::Release);
+         Ok(())
+     }
+ 
+--- a/crates/holochain_state/src/source_chain.rs
++++ b/crates/holochain_state/src/source_chain.rs
+@@ -23,8 +23,8 @@
+ use holochain_types::warrant::WarrantOp;
+ use holochain_zome_types::prelude::{
+     build_action, from_countersigning_data, Action, ActionData, ActionHeader,
+-    AgentValidationPkgData, CreateData, DeleteData, DnaData, Record, RecordValidity, SignedAction,
+-    SignedActionHashed,
++    AgentValidationPkgData, ChainQueryFilterRange, CreateData, DeleteData, DnaData, Record,
++    RecordValidity, SignedAction, SignedActionHashed,
+ };
+ use kitsune2_api::DhtArc;
+ use std::sync::atomic::AtomicBool;
+@@ -861,13 +861,33 @@
+     ) -> SourceChainResult<Vec<holochain_zome_types::prelude::Record>> {
+         let public_only = self.public_only;
+ 
+-        // Fetch the author's committed records from the DhtStore (no filtering
+-        // applied here). Ordering and filtering are handled below;
+-        // `ChainQueryFilter::filter_records` is the final authority.
++        // Push the parts of the filter that SQL applies cheaply down to the
++        // store, so a query for a few action types or a bounded sequence
++        // window does not load and deserialize the whole chain. A hash-bounded
++        // range walks `prev_action` links over the whole chain, so it gets no
++        // pre-filter. `ChainQueryFilter::filter_records` below remains the
++        // final authority.
++        let (action_types, seq_range) = match query.sequence_range {
++            ChainQueryFilterRange::Unbounded => (query.action_type.as_deref(), None),
++            ChainQueryFilterRange::ActionSeqRange(start, end) => {
++                (query.action_type.as_deref(), Some((start, end)))
++            }
++            ChainQueryFilterRange::ActionHashRange(..)
++            | ChainQueryFilterRange::ActionHashTerminated(..) => (None, None),
++        };
++
++        // Fetch the author's committed records from the DhtStore. Ordering and
++        // filtering are handled below.
+         let mut records = self
+             .dht_store
+             .as_read()
+-            .source_chain_records(self.author.as_ref(), query.include_entries, public_only)
++            .source_chain_records(
++                self.author.as_ref(),
++                query.include_entries,
++                public_only,
++                action_types,
++                seq_range,
++            )
+             .await?;
+ 
+         // The store returns committed records in ascending sequence order.
+@@ -3149,4 +3169,200 @@
+             author.sign(keystore, warrant).await.unwrap(),
+         )
+     }
++
++    /// Writes `n` app entries to `author`'s chain in batches of 100.
++    async fn write_app_entries(
++        dht_store: &crate::dht_store::DhtStore,
++        keystore: &MetaLairClient,
++        author: &AgentPubKey,
++        n: usize,
++    ) {
++        let mut written = 0usize;
++        while written < n {
++            let sc = SourceChain::new(dht_store.clone(), keystore.clone(), author.clone())
++                .await
++                .unwrap();
++            for _ in 0..100 {
++                let entry = Entry::App(fixt!(AppEntryBytes));
++                let create = ActionData::Create(CreateData {
++                    entry_type: EntryType::App(fixt!(AppEntryDef)),
++                    entry_hash: EntryHash::with_data_sync(&entry),
++                });
++                sc.put(create, Some(entry), ChainTopOrdering::default())
++                    .await
++                    .unwrap();
++            }
++            sc.flush(vec![DhtArc::Empty]).await.unwrap();
++            written += 100;
++        }
++    }
++
++    /// Best-of-5 wall time of `f` over a fresh `SourceChain`. A fresh
++    /// `SourceChain` is what `Cell::check_or_run_zome_init` builds the first
++    /// time it runs for a cell.
++    async fn best_of_5<F, Fut>(
++        dht_store: &crate::dht_store::DhtStore,
++        keystore: &MetaLairClient,
++        author: &AgentPubKey,
++        f: F,
++    ) -> std::time::Duration
++    where
++        F: Fn(SourceChain) -> Fut,
++        Fut: std::future::Future<Output = ()>,
++    {
++        let mut best = std::time::Duration::MAX;
++        for _ in 0..5 {
++            let sc = SourceChain::new(dht_store.clone(), keystore.clone(), author.clone())
++                .await
++                .unwrap();
++            let start = std::time::Instant::now();
++            f(sc).await;
++            best = best.min(start.elapsed());
++        }
++        best
++    }
++
++    /// The init check must not load the whole source chain.
++    /// `zomes_initialized()` asks `query()` for `InitZomesComplete` actions;
++    /// the action-type filter is applied in SQL, so the chain is not loaded
++    /// and deserialized to answer it. Over a 3000-entry chain the filtered
++    /// query is compared with a full-chain `query()` in the same process: the
++    /// full load is roughly 18x slower in a debug build, while without the SQL
++    /// filter the two take the same time.
++    #[tokio::test(flavor = "multi_thread")]
++    async fn zomes_initialized_does_not_load_whole_chain() {
++        let keystore = test_keystore();
++        let dna_hash = fixt!(DnaHash);
++        let dht_store = crate::test_utils::test_dht_store(dna_hash.clone()).await;
++        let author = keystore.new_sign_keypair_random().await.unwrap();
++        genesis(
++            dht_store.clone(),
++            keystore.clone(),
++            dna_hash,
++            author.clone(),
++            None,
++        )
++        .await
++        .unwrap();
++        write_app_entries(&dht_store, &keystore, &author, 3000).await;
++
++        let init_check = best_of_5(&dht_store, &keystore, &author, |sc| async move {
++            assert!(!sc.zomes_initialized().await.unwrap());
++        })
++        .await;
++        let full_load = best_of_5(&dht_store, &keystore, &author, |sc| async move {
++            assert_eq!(sc.query(QueryFilter::default()).await.unwrap().len(), 3003);
++        })
++        .await;
++        eprintln!("3000 entries: init check = {init_check:?}, full chain load = {full_load:?}");
++
++        assert!(
++            init_check * 5 <= full_load,
++            "init check costs as much as loading the whole chain: init check = {init_check:?}, full chain load = {full_load:?}"
++        );
++    }
++
++    /// Queries that get a SQL pre-filter (action type, sequence range) return
++    /// exactly what the in-memory `ChainQueryFilter` returns over the whole
++    /// chain, with scratch records included.
++    #[tokio::test(flavor = "multi_thread")]
++    async fn query_prefilter_matches_in_memory_filter() {
++        let keystore = test_keystore();
++        let dna_hash = fixt!(DnaHash);
++        let dht_store = crate::test_utils::test_dht_store(dna_hash.clone()).await;
++        let author = keystore.new_sign_keypair_random().await.unwrap();
++        genesis(
++            dht_store.clone(),
++            keystore.clone(),
++            dna_hash,
++            author.clone(),
++            None,
++        )
++        .await
++        .unwrap();
++        write_app_entries(&dht_store, &keystore, &author, 200).await;
++
++        // A chain with two unflushed scratch records on top.
++        let sc = SourceChain::new(dht_store.clone(), keystore.clone(), author.clone())
++            .await
++            .unwrap();
++        for _ in 0..2 {
++            let entry = Entry::App(fixt!(AppEntryBytes));
++            let create = ActionData::Create(CreateData {
++                entry_type: EntryType::App(fixt!(AppEntryDef)),
++                entry_hash: EntryHash::with_data_sync(&entry),
++            });
++            sc.put(create, Some(entry), ChainTopOrdering::default())
++                .await
++                .unwrap();
++        }
++
++        let all = sc.query(QueryFilter::default()).await.unwrap();
++        assert_eq!(all.len(), 3 + 200 + 2);
++
++        let queries = vec![
++            QueryFilter {
++                action_type: Some(vec![ActionType::InitZomesComplete]),
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                action_type: Some(vec![ActionType::Dna, ActionType::AgentValidationPkg]),
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                action_type: Some(vec![ActionType::Create]),
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                action_type: Some(vec![]),
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                sequence_range: ChainQueryFilterRange::ActionSeqRange(50, 60),
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                sequence_range: ChainQueryFilterRange::ActionSeqRange(1, 2),
++                action_type: Some(vec![ActionType::Create]),
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                sequence_range: ChainQueryFilterRange::ActionSeqRange(200, 300),
++                action_type: Some(vec![ActionType::Create]),
++                include_entries: true,
++                ..QueryFilter::default()
++            },
++            QueryFilter {
++                action_type: Some(vec![ActionType::Create]),
++                order_descending: true,
++                ..QueryFilter::default()
++            },
++        ];
++        for query in queries {
++            let mut expected = query.filter_records(all.clone());
++            if query.order_descending {
++                // `all` is ascending; a descending query reverses the committed
++                // records and appends the scratch ascending, so compare as sets.
++                expected.sort_by_key(|r| r.action().action_seq());
++            }
++            let mut actual = sc.query(query.clone()).await.unwrap();
++            if query.order_descending {
++                actual.sort_by_key(|r| r.action().action_seq());
++            }
++            assert_eq!(
++                actual
++                    .iter()
++                    .map(|r| r.action_address())
++                    .collect::<Vec<_>>(),
++                expected
++                    .iter()
++                    .map(|r| r.action_address())
++                    .collect::<Vec<_>>(),
++                "query {query:?}"
++            );
++            if query.include_entries {
++                assert!(actual.iter().all(|r| r.entry().as_option().is_some()));
++            }
++        }
++    }
+ }
+--- a/crates/holochain_state/src/dht_store/reads.rs
++++ b/crates/holochain_state/src/dht_store/reads.rs
+@@ -22,7 +22,7 @@
+ };
+ use holochain_types::warrant::WarrantOp;
+ use holochain_zome_types::prelude::{
+-    Action, ActionData, CapAccess, CapSecret, ChainFilter, ChainFork, ChainHead, ChainQueryFilter,
++    Action, ActionData, ActionType, CapAccess, CapSecret, ChainFilter, ChainFork, ChainHead, ChainQueryFilter,
+     ChainStatus, EntryType, EntryVisibility, GrantConstraintType, HighestObserved, LimitConditions,
+     LinkTag, LinkTypeFilter, Record, RecordEntry, RecordValidity, SignedActionHashed,
+     SignedWarrant, ValidationReceiptSet,
+@@ -2194,9 +2194,15 @@
+     /// order, as a [`Record`].
+     /// This is the committed-record source behind
+     /// [`SourceChain::query`](crate::source_chain::SourceChain::query): no
+-    /// [`ChainQueryFilter`] filtering or fork disambiguation is applied here.
+-    /// The caller overlays the scratch and then applies
+-    /// [`ChainQueryFilter::filter_records`], which is the authoritative filter.
++    /// fork disambiguation is applied here. The caller overlays the scratch
++    /// and then applies [`ChainQueryFilter::filter_records`], which is the
++    /// authoritative filter.
++    ///
++    /// `action_types` and `seq_range` (inclusive) are SQL pre-filters so a
++    /// query for a few action types or a bounded sequence window does not
++    /// load and deserialize the whole chain. They must be a superset of what
++    /// the caller's [`ChainQueryFilter`] accepts; pass `None` for a query
++    /// that needs the whole chain, such as a hash-bounded range.
+     ///
+     /// An entry is attached only when `include_entries` is set and the entry is
+     /// either public or `public_only` is `false`. A private entry is therefore
+@@ -2208,8 +2214,13 @@
+         author: &AgentPubKey,
+         include_entries: bool,
+         public_only: bool,
++        action_types: Option<&[ActionType]>,
++        seq_range: Option<(u32, u32)>,
+     ) -> StateQueryResult<Vec<Record>> {
+-        let sahs: Vec<SignedActionHashed> = self.db().get_actions_by_author(author.clone()).await?;
++        let sahs: Vec<SignedActionHashed> = self
++            .db()
++            .get_actions_by_author_filtered(author, action_types, seq_range)
++            .await?;
+ 
+         // Decide which entries to attach. Collect the entry hashes that
+         // actually need fetching so they can be read in a single batch rather
+--- a/crates/holochain_data/src/dht.rs
++++ b/crates/holochain_data/src/dht.rs
+@@ -161,6 +161,56 @@
+         let author = AgentPubKey::from_raw_36(vec![1u8; 36]);
+         let actions = db.as_ref().get_actions_by_author(author).await.unwrap();
+         assert_eq!(actions, inserted);
++    }
++
++    #[tokio::test]
++    async fn actions_by_author_filtered_by_type_and_seq() {
++        use holochain_integrity_types::action::ActionType;
++
++        let db = test_open_db(dht_db_id()).await.unwrap();
++        // seq 0 is a Dna action, seq 1..=4 are InitZomesComplete.
++        let inserted: Vec<_> = (0..5u8).map(sample_action).collect();
++        for action in &inserted {
++            db.insert_action(action, Some(RecordValidity::Accepted))
++                .await
++                .unwrap();
++        }
++        let author = AgentPubKey::from_raw_36(vec![1u8; 36]);
++        let fetch = |types: Option<Vec<ActionType>>, range| {
++            let db = db.clone();
++            let author = author.clone();
++            async move {
++                db.as_ref()
++                    .get_actions_by_author_filtered(&author, types.as_deref(), range)
++                    .await
++                    .unwrap()
++            }
++        };
++
++        assert_eq!(fetch(None, None).await, inserted);
++        assert_eq!(
++            fetch(Some(vec![ActionType::InitZomesComplete]), None).await,
++            inserted[1..]
++        );
++        assert_eq!(
++            fetch(Some(vec![ActionType::Dna]), None).await,
++            inserted[..1]
++        );
++        assert_eq!(
++            fetch(
++                Some(vec![ActionType::Dna, ActionType::InitZomesComplete]),
++                None
++            )
++            .await,
++            inserted
++        );
++        assert!(fetch(Some(vec![ActionType::Create]), None).await.is_empty());
++        assert!(fetch(Some(vec![]), None).await.is_empty());
++        assert_eq!(fetch(None, Some((2, 3))).await, inserted[2..=3]);
++        assert_eq!(
++            fetch(Some(vec![ActionType::InitZomesComplete]), Some((0, 1))).await,
++            inserted[1..=1]
++        );
+     }
+ 
+     #[tokio::test]
+--- a/crates/holochain_data/src/dht/inner/action.rs
++++ b/crates/holochain_data/src/dht/inner/action.rs
+@@ -3,8 +3,8 @@
+ use crate::models::dht::{ActionRow, AgentActivityItem, AgentActivityRow, ValidatedActionRow};
+ use holo_hash::{ActionHash, AgentPubKey, AnyLinkableHash, EntryHash, HoloHashed};
+ use holochain_integrity_types::prelude::{
+-    Action, ActionData, ActionHeader, Entry, EntryVisibility, RecordValidity, Signature,
+-    SignedHashed,
++    Action, ActionData, ActionHeader, ActionType, Entry, EntryVisibility, RecordValidity,
++    Signature, SignedHashed,
+ };
+ use holochain_zome_types::prelude::{ChainOpType, SignedActionHashed};
+ use sqlx::{Executor, QueryBuilder, Sqlite};
+@@ -139,6 +139,52 @@
+     rows.into_iter().map(row_to_signed_action_hashed).collect()
+ }
+ 
++/// Fetch accepted actions authored by `author`, ordered by `seq` ascending,
++/// restricted in SQL to `action_types` (when given) and to the inclusive
++/// sequence range `seq_range` (when given).
++///
++/// This is the pre-filter behind source-chain queries: a query for a few
++/// action types or a bounded sequence window must not load and deserialize
++/// the whole chain. An empty `action_types` list matches nothing.
++pub(crate) async fn get_actions_by_author_filtered<'e, E>(
++    executor: E,
++    author: &AgentPubKey,
++    action_types: Option<&[ActionType]>,
++    seq_range: Option<(u32, u32)>,
++) -> sqlx::Result<Vec<SignedActionHashed>>
++where
++    E: Executor<'e, Database = Sqlite>,
++{
++    if action_types.is_some_and(|types| types.is_empty()) {
++        return Ok(Vec::new());
++    }
++    let mut query = QueryBuilder::<Sqlite>::new(
++        "SELECT hash, author, seq, prev_hash, timestamp, action_type,
++                action_data, signature, entry_hash, private_entry, record_validity
++         FROM Action WHERE author = ",
++    );
++    query.push_bind(author.get_raw_36().to_vec());
++    query.push(" AND record_validity = ");
++    query.push_bind(i64::from(RecordValidity::Accepted));
++    if let Some(action_types) = action_types {
++        query.push(" AND action_type IN (");
++        let mut separated = query.separated(", ");
++        for action_type in action_types {
++            separated.push_bind(i64::from(*action_type));
++        }
++        separated.push_unseparated(")");
++    }
++    if let Some((start, end)) = seq_range {
++        query.push(" AND seq >= ");
++        query.push_bind(i64::from(start));
++        query.push(" AND seq <= ");
++        query.push_bind(i64::from(end));
++    }
++    query.push(" ORDER BY seq ASC");
++    let rows: Vec<ActionRow> = query.build_query_as().fetch_all(executor).await?;
++    rows.into_iter().map(row_to_signed_action_hashed).collect()
++}
++
+ /// Fetch an exclusive page of accepted actions authored by `author`.
+ pub(crate) async fn get_actions_by_author_paginated<'e, E>(
+     executor: E,
+--- a/crates/holochain_data/src/dht/db_operations/action.rs
++++ b/crates/holochain_data/src/dht/db_operations/action.rs
+@@ -5,7 +5,7 @@
+ use crate::kind::Dht;
+ use crate::models::dht::AgentActivityItem;
+ use holo_hash::{ActionHash, AgentPubKey, AnyLinkableHash, EntryHash};
+-use holochain_integrity_types::prelude::RecordValidity;
++use holochain_integrity_types::prelude::{ActionType, RecordValidity};
+ use holochain_zome_types::prelude::SignedActionHashed;
+ 
+ impl DbWrite<Dht> {
+@@ -34,6 +34,19 @@
+     ) -> sqlx::Result<Vec<SignedActionHashed>> {
+         let mut conn = self.timed_conn().await?;
+         action::get_actions_by_author(&mut *conn, author).await
++    }
++
++    /// Fetch accepted actions for `author`, ordered by `seq` ascending,
++    /// restricted in SQL to `action_types` and the inclusive `seq_range` when
++    /// given. See `action::get_actions_by_author_filtered`.
++    pub async fn get_actions_by_author_filtered(
++        &self,
++        author: &AgentPubKey,
++        action_types: Option<&[ActionType]>,
++        seq_range: Option<(u32, u32)>,
++    ) -> sqlx::Result<Vec<SignedActionHashed>> {
++        let mut conn = self.timed_conn().await?;
++        action::get_actions_by_author_filtered(&mut *conn, author, action_types, seq_range).await
+     }
+ 
+     /// Fetch an exclusive page of accepted actions authored by `author`.

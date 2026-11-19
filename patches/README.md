@@ -3,9 +3,11 @@
 This directory contains patched versions of upstream crates applied via `[patch.crates-io]` in the
 root `Cargo.toml`. Each subdirectory is a full crate copy with a targeted fix.
 
-The host workspace has its own, separate patch directory at
-[`host/patches/`](../host/patches/README.md). The two are independent — a patch here does not
-affect host builds, and vice versa.
+The host workspace has its own patch declarations and source directory at
+[`host/patches/`](../host/patches/README.md). Both native workspaces explicitly select the
+pinned Holochain init/source-chain backport stored there. Patch declarations are not inherited
+between workspaces: the `portmapper` patch below remains root/Sweettest-only and does not
+disable NAT traversal in the embedded host conductor.
 
 ---
 
