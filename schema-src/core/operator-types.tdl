@@ -189,7 +189,7 @@ property OperandRole.PropertyType {
   value MapStringValueType.StringValueType
   IsValueRequired true
   header {
-    description: "Durable role name of an authored operand position, such as ComparisonValue or Substring."
+    description: "Durable role name of an authored operand position, such as ComparisonValue, Substring, Prefix, or Suffix."
     display_name: "operand_role"
     display_plural: "operand_roles"
     plural: "OperandRoles"
@@ -353,6 +353,28 @@ instance ContainsSubstring.OperandSpecification {
   }
 }
 
+instance StartsWithPrefix.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "Prefix"
+  DisplayName "Prefix"
+  Description "Literal text the subject must begin with. It need not satisfy the subject's specialized constraints."
+  OperandValueTypeRule FixedValueType
+  relationships {
+    OperandValueType -> MapStringValueType.StringValueType
+  }
+}
+
+instance EndsWithSuffix.OperandSpecification {
+  type OperandSpecification.HolonType
+  OperandRole "Suffix"
+  DisplayName "Suffix"
+  Description "Literal text the subject must end with. It need not satisfy the subject's specialized constraints."
+  OperandValueTypeRule FixedValueType
+  relationships {
+    OperandValueType -> MapStringValueType.StringValueType
+  }
+}
+
 property Arity.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
@@ -473,5 +495,39 @@ holon ContainsOperator.OperatorType {
   }
   relationships {
     OperandSpecifications -> ContainsSubstring.OperandSpecification
+  }
+}
+
+holon StartsWithOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Matching
+  CaseMatching UnicodeDefaultCaseFold
+  header {
+    description: "Returns true iff the subject string begins with the authored prefix under the operator's case-matching policy. The prefix is literal text, never a pattern; an empty prefix matches every present string."
+    display_name: "Starts With"
+    display_plural: "Starts With Operators"
+    plural: "StartsWithOperators"
+  }
+  relationships {
+    OperandSpecifications -> StartsWithPrefix.OperandSpecification
+  }
+}
+
+holon EndsWithOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Matching
+  CaseMatching UnicodeDefaultCaseFold
+  header {
+    description: "Returns true iff the subject string ends with the authored suffix under the operator's case-matching policy. The suffix is literal text, never a pattern; an empty suffix matches every present string."
+    display_name: "Ends With"
+    display_plural: "Ends With Operators"
+    plural: "EndsWithOperators"
+  }
+  relationships {
+    OperandSpecifications -> EndsWithSuffix.OperandSpecification
   }
 }

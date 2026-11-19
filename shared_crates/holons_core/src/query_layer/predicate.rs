@@ -10,9 +10,10 @@
 //! - [`filter`] applies the resolved predicate to each occurrence, reading the
 //!   selected property through ordinary bound reference access.
 //!
-//! Supported forms are a `ComparisonPredicate` whose operator is Contains,
-//! Equals, or one of the ordered comparisons (LessThan, GreaterThan,
-//! LessThanOrEqual, GreaterThanOrEqual), and the composites `Not`, `AllOf` and
+//! Supported forms are a `ComparisonPredicate` whose operator is Equals, one of
+//! the ordered comparisons (LessThan, GreaterThan, LessThanOrEqual,
+//! GreaterThanOrEqual), or one of the literal string matching operators
+//! (Contains, StartsWith, EndsWith), and the composites `Not`, `AllOf` and
 //! `AnyOf`, nested to any depth. Any other predicate form, and comparison
 //! through an operator with no supported core semantics in its lineage, fails
 //! with `NotImplemented` wherever it appears. Malformed child cardinalities,
@@ -263,7 +264,7 @@ fn validate_comparison(
 
     let operator = operator.resolve_for_subject(&subject_type)?;
     match operator.kind() {
-        OperatorKind::Contains(_) => require_string_subject(&operator)?,
+        OperatorKind::Matching(..) => require_string_subject(&operator)?,
         // Equals and the ordered comparisons take the subject's own ValueType
         // as their operand, so resolution already carries their whole
         // contract, including the integer/string ordering domain.
@@ -288,8 +289,8 @@ fn read_property_name(predicate: &HolonReference) -> Result<PropertyName, HolonE
     }
 }
 
-/// Contains requires a subject ValueType in the `MapStringValueType` lineage,
-/// by descriptor identity. This is stricter than the string value-kind check
+/// The string matching operators require a subject ValueType in the
+/// `MapStringValueType` lineage, by descriptor identity. This is stricter than the string value-kind check
 /// that operator resolution applies.
 fn require_string_subject(operator: &ResolvedOperator) -> Result<(), HolonError> {
     let subject_type = operator.subject_type();
@@ -1858,6 +1859,168 @@ mod tests {
             filter(&[long.clone(), short.clone(), long.clone(), short], &predicate).unwrap();
         assert_eq!(retained, vec![long.clone(), long]);
         assert_eq!(comparison.into_model().unwrap(), definition);
+    }
+
+    // ---- Boundary string matching (StartsWith, EndsWith) --------------------
+
+    /// The StartsWith and EndsWith comparison builders, paired with their names.
+    fn boundary_builders(
+        world: &PredicateWorld,
+    ) -> [(&'static str, fn(&PredicateWorld, &str, &str) -> HolonReference, &HolonReference); 2]
+    {
+        [
+            ("StartsWith", PredicateWorld::starts_with, &world.starts_with),
+            ("EndsWith", PredicateWorld::ends_with, &world.ends_with),
+        ]
+    }
+
+    #[test]
+    fn starts_with_and_ends_with_fold_case_at_their_boundary() {
+        let world = world();
+        let members = [
+            world.member("a", &world.book, &[("Title", text("Straße der Graphen"))]),
+            world.member("b", &world.book, &[("Title", text("Graphen der Straße"))]),
+            world.member("c", &world.book, &[("Title", text("Die Straße"))]),
+        ];
+        let starts = validate(&world.starts_with("Title", "STRASSE"), &book(&world)).unwrap();
+        assert_eq!(matches_of(&starts, &members).unwrap(), vec![true, false, false]);
+        let ends = validate(&world.ends_with("Title", "STRASSE"), &book(&world)).unwrap();
+        assert_eq!(matches_of(&ends, &members).unwrap(), vec![false, true, true]);
+        // Interior text matches Contains but neither boundary operator.
+        let interior = validate(&world.starts_with("Title", "der"), &book(&world)).unwrap();
+        assert_eq!(matches_of(&interior, &members).unwrap(), vec![false, false, false]);
+    }
+
+    #[test]
+    fn boundary_operators_require_a_subject_in_the_map_string_lineage() {
+        let world = world();
+        for (name, build, _) in boundary_builders(&world) {
+            let error = validate(&build(&world, "Code", "x"), &book(&world)).unwrap_err();
+            assert!(
+                matches!(&error, HolonError::UnsupportedOperator { value_type, .. } if value_type == "ForeignString"),
+                "{name}: unexpected error: {error:?}"
+            );
+            let error = validate(&build(&world, "PageCount", "1"), &book(&world)).unwrap_err();
+            assert!(
+                matches!(error, HolonError::UnsupportedOperator { .. }),
+                "{name}: unexpected error: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn boundary_operators_take_one_literal_of_the_canonical_string_type() {
+        let world = world();
+        for (name, _, operator) in boundary_builders(&world) {
+            for operands in [vec![], vec![world.substring("a"), world.substring("b")]] {
+                let found = operands.len();
+                let error = validate(&world.comparison("Title", operator, operands), &book(&world))
+                    .unwrap_err();
+                assert!(
+                    matches!(error, HolonError::OperandCountMismatch { expected: 1, found: f, .. } if f == found),
+                    "{name} with {found} operands: {error:?}"
+                );
+            }
+            let integer_literal =
+                world.comparison("Title", operator, vec![world.literal(&world.integer, number(5))]);
+            assert!(matches!(
+                validate(&integer_literal, &book(&world)),
+                Err(HolonError::IncompatibleLiteralType { .. })
+            ));
+            // A literal declared as a subtype of the required type is accepted.
+            let subtype_literal =
+                world.comparison("Title", operator, vec![world.literal(&world.text, text("G"))]);
+            validate(&subtype_literal, &book(&world)).expect("Text extends MapStringValueType");
+            // A constrained literal type fails closed.
+            let constrained = world.comparison(
+                "Title",
+                operator,
+                vec![world.literal(&world.identifier, text("graph"))],
+            );
+            assert!(
+                matches!(
+                    validate(&constrained, &book(&world)),
+                    Err(HolonError::UnsupportedValueConstraint { .. })
+                ),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_constrained_subject_accepts_an_unconstrained_prefix_or_suffix() {
+        let world = world();
+        let member = world.member("a", &world.book, &[("Identifier", text("map-graph-7"))]);
+        let starts = validate(&world.starts_with("Identifier", "MAP-"), &book(&world)).unwrap();
+        let ends = validate(&world.ends_with("Identifier", "-7"), &book(&world)).unwrap();
+        assert!(starts.matches(&member).unwrap());
+        assert!(ends.matches(&member).unwrap());
+    }
+
+    #[test]
+    fn a_constrained_required_type_accepts_ordinary_and_empty_boundary_literals() {
+        let world = PredicateWorld::with_constrained_map_string(build_context());
+        for (name, build, _) in boundary_builders(&world) {
+            for value in ["x", ""] {
+                validate(&build(&world, "Title", value), &book(&world))
+                    .unwrap_or_else(|error| panic!("{name} {value:?}: {error:?}"));
+            }
+        }
+    }
+
+    #[test]
+    fn boundary_operators_follow_the_absence_and_empty_literal_rules() {
+        let world = world();
+        let untitled = world.member("untitled", &world.book, &[]);
+        let empty_title = world.member("empty", &world.book, &[("Title", text(""))]);
+        for (name, build, _) in boundary_builders(&world) {
+            let subtitle = validate(&build(&world, "Subtitle", ""), &book(&world)).unwrap();
+            assert!(!subtitle.matches(&untitled).unwrap(), "{name}: absence stays false");
+            let title = validate(&build(&world, "Title", ""), &book(&world)).unwrap();
+            assert!(title.matches(&empty_title).unwrap(), "{name}: empty matches empty");
+            assert!(
+                matches!(title.matches(&untitled), Err(HolonError::EmptyField(n)) if n == "Title"),
+                "{name}: required absence fails"
+            );
+            let representation = world.member("n", &world.book, &[("Subtitle", number(3))]);
+            assert!(matches!(
+                subtitle.matches(&representation),
+                Err(HolonError::ValueKindMismatch { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn boundary_operators_compose_and_keep_order_duplicates_and_their_definition() {
+        let world = world();
+        let titled =
+            |key: &str, title: &str| world.member(key, &world.book, &[("Title", text(title))]);
+        let (graph, theory, other) = (
+            titled("graph", "Graph Theory"),
+            titled("theory", "Theory of Graphs"),
+            titled("o", "Atlas"),
+        );
+        // StartsWith "graph" or (EndsWith "graphs" and not StartsWith "atlas").
+        let predicate = world.any_of(vec![
+            world.starts_with("Title", "graph"),
+            world.all_of(vec![
+                world.ends_with("Title", "GRAPHS"),
+                world.not(vec![world.starts_with("Title", "atlas")]),
+            ]),
+        ]);
+        let definition = predicate.into_model().unwrap();
+        let resolved = validate(&predicate, &book(&world)).unwrap();
+        let retained = filter(
+            &[other.clone(), graph.clone(), theory.clone(), graph.clone(), other],
+            &resolved,
+        )
+        .unwrap();
+        assert_eq!(retained, vec![graph.clone(), theory, graph]);
+        assert_eq!(predicate.into_model().unwrap(), definition);
+        // Negating an absent optional value is true.
+        let untitled = world.member("untitled", &world.book, &[("Title", text("t"))]);
+        let negated = validate(&world.not(vec![world.ends_with("Subtitle", "")]), &book(&world));
+        assert!(negated.unwrap().matches(&untitled).unwrap());
     }
 
     #[test]

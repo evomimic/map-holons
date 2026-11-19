@@ -549,8 +549,9 @@ pub(crate) fn stage_operator(
 
 /// Returns the canonical core operator descriptor, staging it on first use.
 ///
-/// Equals and the ordering operators take a `SameAsSubject` operand. Contains
-/// takes a fixed `substring_type` operand and declares `UnicodeDefaultCaseFold`.
+/// Equals and the ordering operators take a `SameAsSubject` operand. The
+/// matching operators (Contains, StartsWith, EndsWith) take a fixed
+/// `substring_type` operand and declare `UnicodeDefaultCaseFold`.
 pub(crate) fn core_operator(
     context: &Arc<TransactionContext>,
     operator: type_names::CoreOperatorTypeName,
@@ -571,7 +572,9 @@ pub(crate) fn core_operator(
         | GreaterThanOperator
         | LessThanOrEqualOperator
         | GreaterThanOrEqualOperator => ("Ordering", None, None),
-        ContainsOperator => ("Matching", Some("UnicodeDefaultCaseFold"), substring_type),
+        ContainsOperator | StartsWithOperator | EndsWithOperator => {
+            ("Matching", Some("UnicodeDefaultCaseFold"), substring_type)
+        }
     };
     stage_operator(
         context,
