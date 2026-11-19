@@ -1,0 +1,207 @@
+//! Error types for the conductor.
+
+use super::entry_def_store::error::EntryDefStoreError;
+use super::interface::error::InterfaceError;
+use crate::conductor::cell::error::CellError;
+use crate::core::workflow::WorkflowError;
+use holochain_conductor_api::conductor::ConductorConfigError;
+use holochain_types::prelude::*;
+use holochain_wasmer_host::prelude::WasmErrorInner;
+use holochain_zome_types::cell::CellId;
+use thiserror::Error;
+
+/// Custom result type for conductor errors with [`ConductorError`] as the error type.
+pub type ConductorResult<T> = Result<T, ConductorError>;
+
+/// Why a referenced cell is not currently running.
+///
+/// A cell can be registered in the conductor's state without being callable,
+/// either because the app that owns it is not in a state that runs cells, or
+/// because the cell itself is disabled or has not finished starting.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum CellUnavailableReason {
+    /// The app that owns the cell is disabled.
+    #[error("the app is disabled: {0:?}")]
+    AppDisabled(DisabledAppReason),
+
+    /// The app that owns the cell is still awaiting its membrane proofs.
+    #[error("the app is awaiting membrane proofs")]
+    AppAwaitingMemproofs,
+
+    /// The app that owns the cell is restoring its source chains from the DHT.
+    #[error("the app is restoring its source chains from the DHT")]
+    AppAwaitingRestore,
+
+    /// The app that owns the cell failed to restore a source chain and cannot be enabled.
+    #[error("the app's source chain restore failed permanently: {0:?}")]
+    AppUnrecoverable(UnrecoverableCellReason),
+
+    /// The cell is a clone cell which has been disabled.
+    #[error("the clone cell is disabled")]
+    CloneCellDisabled,
+
+    /// The app that owns the cell is enabled but the cell has not finished starting.
+    #[error("the cell has not finished starting")]
+    NotStarted,
+}
+
+#[allow(missing_docs)]
+#[derive(Error, Debug)]
+pub enum ConductorError {
+    #[error("Internal Cell error: {0}")]
+    InternalCellError(#[from] CellError),
+
+    #[error(transparent)]
+    AppError(#[from] AppError),
+
+    #[error(transparent)]
+    AppBundleError(#[from] AppBundleError),
+
+    #[error("App can't be disabled/uninstalled because it is protected by its dependents. App: {0} Dependents: {1:?}")]
+    AppHasDependents(InstalledAppId, Vec<InstalledAppId>),
+
+    #[error(transparent)]
+    AppManifestError(#[from] AppManifestError),
+
+    #[error("Cell already exists. CellId: {0:?}")]
+    CellAlreadyExists(CellId),
+
+    #[error("Cell was referenced, but is not running. CellId: {0:?} Reason: {1}")]
+    CellNotRunning(CellId, CellUnavailableReason),
+
+    #[error("Cell was referenced, but is missing from the conductor. CellId: {0:?}")]
+    CellMissing(CellId),
+
+    #[error("Error while cloning cell: {0}")]
+    CloneCellError(String),
+
+    #[error(transparent)]
+    ConductorConfigError(#[from] ConductorConfigError),
+
+    #[error(transparent)]
+    CountersigningError(#[from] CountersigningError),
+
+    #[error("Config deserialization error: {0}")]
+    SerializationError(#[from] yaml_serde::Error),
+
+    #[error("Attempted to call into the conductor while it is shutting down")]
+    ShuttingDown,
+
+    #[error("Error while performing IO for the Conductor: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("Error while trying to send a task to the task manager: {0}")]
+    SubmitTaskError(String),
+
+    #[error("ZomeError: {0}")]
+    ZomeError(#[from] holochain_zome_types::zome::ZomeError),
+
+    #[error("DnaError: {0}")]
+    DnaError(#[from] holochain_types::dna::DnaError),
+
+    #[error("Workflow error: {0:?}")]
+    WorkflowError(#[from] WorkflowError),
+
+    // Box is to avoid cycle in error definition
+    #[error(transparent)]
+    InterfaceError(#[from] Box<InterfaceError>),
+
+    #[error("Failed to run genesis on the following cells in the app: {errors:?}")]
+    GenesisFailed { errors: Vec<(CellId, CellError)> },
+
+    #[error(transparent)]
+    SerializedBytesError(#[from] holochain_serialized_bytes::SerializedBytesError),
+
+    #[error("Wasm code was not found in the WASM store")]
+    WasmMissing,
+
+    #[error("DNA definition was not found in the store: {0}")]
+    DnaDefMissing(CellId),
+
+    #[error("Tried to access an app that was not installed: {0}")]
+    AppNotInstalled(InstalledAppId),
+
+    #[error("Tried to install an app using an already-used InstalledAppId: {0}")]
+    AppAlreadyInstalled(InstalledAppId),
+
+    #[error("App status could not be changed: {0}")]
+    AppStatusError(String),
+
+    #[error("Invalid combination of app install options in the payload: {0}")]
+    InvalidInstallAppPayload(String),
+
+    #[error("Init properties error: {0}")]
+    InitPropertiesError(String),
+
+    #[error(transparent)]
+    HolochainP2pError(#[from] holochain_p2p::HolochainP2pError),
+
+    #[error(transparent)]
+    EntryDefStoreError(#[from] EntryDefStoreError),
+
+    #[error(transparent)]
+    KeystoreError(#[from] holochain_keystore::KeystoreError),
+
+    #[error(transparent)]
+    MrBundleError(#[from] mr_bundle::error::MrBundleError),
+
+    #[error(transparent)]
+    SourceChainError(#[from] holochain_state::source_chain::SourceChainError),
+
+    #[error(transparent)]
+    StateQueryError(#[from] holochain_state::query::StateQueryError),
+
+    #[error(transparent)]
+    StateMutationError(#[from] holochain_state::mutations::StateMutationError),
+
+    #[error(transparent)]
+    JoinError(#[from] tokio::task::JoinError),
+
+    #[error(transparent)]
+    RibosomeError(#[from] crate::core::ribosome::error::RibosomeError),
+
+    #[error("Agent key {0} is not present in the local Lair keystore")]
+    AgentKeyNotInKeystore(holo_hash::AgentPubKey),
+
+    #[error("Authentication failed with reason: {0}")]
+    FailedAuthenticationError(String),
+
+    #[error("App {0} is not allowed to access: {1:?}")]
+    AppAccessError(InstalledAppId, Box<dyn std::fmt::Debug + Send + Sync>),
+
+    /// Other
+    #[error("Other: {0}")]
+    Other(Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("The conductor has no data directory.")]
+    NoDataRootPath,
+}
+
+impl ConductorError {
+    /// promote a custom error type to a ConductorError
+    pub fn other(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
+        Self::Other(e.into())
+    }
+}
+
+impl From<one_err::OneErr> for ConductorError {
+    fn from(e: one_err::OneErr) -> Self {
+        Self::other(e)
+    }
+}
+
+impl From<holochain_conductor_api::state::ConductorStateError> for ConductorError {
+    fn from(e: holochain_conductor_api::state::ConductorStateError) -> Self {
+        use holochain_conductor_api::state::ConductorStateError;
+        match e {
+            ConductorStateError::AppNotInstalled(id) => Self::AppNotInstalled(id),
+            ConductorStateError::AppAlreadyInstalled(id) => Self::AppAlreadyInstalled(id),
+        }
+    }
+}
+
+impl From<ConductorError> for WasmErrorInner {
+    fn from(e: ConductorError) -> Self {
+        Self::Host(e.to_string())
+    }
+}

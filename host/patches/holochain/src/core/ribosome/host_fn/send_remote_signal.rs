@@ -1,0 +1,227 @@
+use crate::core::metrics::send_remote_signal_metric;
+use crate::core::ribosome::{CallContext, Ribosome};
+use crate::core::ribosome::HostFnAccess;
+use crate::core::ribosome::RibosomeError;
+use holochain_keystore::AgentPubKeyExt;
+use holochain_nonce::fresh_nonce;
+use holochain_types::access::Permission;
+use holochain_types::prelude::CellId;
+use holochain_types::prelude::ExternIO;
+use holochain_wasmer_host::prelude::*;
+use holochain_zome_types::prelude::{RemoteSignal, FunctionName, ZomeCallParams};
+use std::sync::Arc;
+use tracing::Instrument;
+use wasmer::RuntimeError;
+use holo_hash::HasHash;
+use holochain_timestamp::Timestamp;
+
+#[cfg_attr(
+    feature = "instrument",
+    tracing::instrument(skip(_ribosome, call_context, input))
+)]
+pub fn send_remote_signal(
+    ribosome: Arc<Ribosome>,
+    call_context: Arc<CallContext>,
+    input: RemoteSignal,
+) -> Result<(), RuntimeError> {
+    match HostFnAccess::from(&call_context.host_context()) {
+        HostFnAccess {
+            write_network: Permission::Allow,
+            agent_info: Permission::Allow,
+            ..
+        } => {
+            const FN_NAME: &str = "recv_remote_signal";
+            let from_agent =
+                super::agent_info::agent_info(ribosome.clone(), call_context.clone(), ())?
+                    .agent_initial_pubkey;
+            // Timeouts and errors are ignored,
+            // this is a send and forget operation.
+            let network = call_context.host_context().network().clone();
+            let RemoteSignal { agents, signal } = input;
+            let zome_name = call_context.zome().zome_name().clone();
+            let fn_name: FunctionName = FN_NAME.into();
+
+            tokio::task::spawn(
+                {
+                    let dna_hash = ribosome.dna_def().as_hash().clone();
+                    async move {
+                        let mut to_agent_list = Vec::new();
+
+                        let (nonce, expires_at) = match fresh_nonce(Timestamp::now()) {
+                            Ok(nonce) => nonce,
+                            Err(e) => {
+                                tracing::info!("Failed to get a fresh nonce because of {:?}", e);
+                                return;
+                            }
+                        };
+
+                        for agent in agents {
+                            let zome_call_params = ZomeCallParams {
+                                provenance: from_agent.clone(),
+                                cell_id: CellId::new(network.dna_hash(), agent.clone()),
+                                zome_name: zome_name.clone(),
+                                fn_name: fn_name.clone(),
+                                cap_secret: None,
+                                payload: signal.clone(),
+                                nonce,
+                                expires_at,
+                            };
+                            let (bytes, bytes_hash) = match zome_call_params.serialize_and_hash() {
+                                Ok(bytes_and_hash) => bytes_and_hash,
+                                Err(e) => {
+                                    tracing::info!(
+                                        "Failed to serialize zome call for signal because of {:?}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            };
+
+                            match from_agent
+                                .sign_raw(call_context.host_context.keystore(), bytes_hash.into())
+                                .await
+                            {
+                                Ok(signature) => {
+                                    to_agent_list.push((agent, ExternIO(bytes), signature))
+                                }
+                                Err(e) => {
+                                    tracing::info!(
+                                        "Failed to sign and send remote signals because of {:?}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            };
+                        }
+
+                        if let Err(e) = network.send_remote_signal(to_agent_list).await {
+                            tracing::info!("Failed to send remote signals because of {:?}", e);
+                        } else {
+                            // Record sent remote signal
+                            send_remote_signal_metric().add(
+                                1,
+                                &[
+                                    opentelemetry::KeyValue::new("dna_hash", dna_hash.to_string()),
+                                    opentelemetry::KeyValue::new(
+                                        "zome",
+                                        call_context.zome.zome_name().to_string(),
+                                    ),
+                                ],
+                            );
+                        }
+                    }
+                }
+                .in_current_span(),
+            );
+            Ok(())
+        }
+        _ => Err(wasm_error!(WasmErrorInner::Host(
+            RibosomeError::HostFnPermissions(
+                call_context.zome.zome_name().clone(),
+                call_context.function_name().clone(),
+                "send_remote_signal".into(),
+            )
+            .to_string(),
+        ))
+        .into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    use super::*;
+    use crate::sweettest::*;
+    use futures::future;
+    use hdk::prelude::*;
+
+    fn test_zome(agents: Vec<AgentPubKey>, num_signals: Arc<AtomicUsize>) -> InlineIntegrityZome {
+        let entry_def = EntryDef::default_from_id("entrydef");
+
+        InlineIntegrityZome::new_unique(vec![entry_def.clone()], 0)
+            .function("signal_others", move |api, ()| {
+                let signal = ExternIO::encode("Hey").unwrap();
+                let signal = RemoteSignal {
+                    agents: agents.clone(),
+                    signal,
+                };
+                tracing::debug!("sending remote signal to {:?}", agents);
+                api.send_remote_signal(signal)?;
+                Ok(())
+            })
+            .function("recv_remote_signal", move |api, signal: ExternIO| {
+                tracing::debug!("remote signal");
+                num_signals.fetch_add(1, Ordering::SeqCst);
+                api.emit_signal(AppSignal::new(signal)).map_err(Into::into)
+            })
+            .function("init", move |api, ()| {
+                let mut fns = HashSet::new();
+                fns.insert((api.zome_info(()).unwrap().name, "recv_remote_signal".into()));
+                let functions = GrantedFunctions::Listed(fns);
+                let cap_grant_entry = CapGrantEntry {
+                    tag: "".into(),
+                    // empty constraint converts to unrestricted
+                    constraint: ().into(),
+                    capability: Capability::ZomeCall(ZomeCallGrant {
+                        functions,
+                    })
+                };
+                api.create(CreateInput::new(
+                    EntryDefLocation::CapGrant,
+                    EntryVisibility::Private,
+                    Entry::CapGrant(cap_grant_entry),
+                    ChainTopOrdering::default(),
+                ))
+                .unwrap();
+
+                Ok(InitCallbackResult::Pass)
+            })
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[cfg(feature = "test_utils")]
+    async fn remote_signal_test() -> anyhow::Result<()> {
+        holochain_trace::test_run();
+        const NUM_CONDUCTORS: usize = 5;
+
+        let num_signals = Arc::new(AtomicUsize::new(0));
+
+        let config = SweetConductorConfig::rendezvous(true);
+        let mut conductors =
+            SweetConductorBatch::from_config_rendezvous(NUM_CONDUCTORS, config).await;
+
+        let agents =
+            future::join_all(conductors.iter().map(|c| SweetAgents::one(c.keystore()))).await;
+
+        let zome = test_zome(agents.clone(), num_signals.clone());
+        let (dna_file, _, _) = SweetDnaFile::unique_from_inline_zomes(("zome", zome)).await;
+
+        let apps = conductors
+            .setup_app_for_zipped_agents("app", &agents, std::slice::from_ref(&dna_file))
+            .await
+            .unwrap();
+
+        conductors.exchange_peer_info().await;
+
+        let cells: Vec<_> = apps.cells_flattened();
+
+        let mut signals = Vec::new();
+        for h in conductors.iter() {
+            signals.push(h.subscribe_to_app_signals("app".to_string()))
+        }
+
+        let _: () = conductors[0]
+            .call(&cells[0].zome("zome"), "signal_others", ())
+            .await;
+
+        crate::assert_eq_retry_10s!(num_signals.load(Ordering::SeqCst), NUM_CONDUCTORS);
+
+        for mut signal in signals {
+            signal.recv().await.expect("Failed to recv signal");
+        }
+
+        Ok(())
+    }
+}

@@ -1,0 +1,5 @@
+# Preserve published third-party source bytes and collapse vendor copies in review.
+host/patches/holochain/** linguist-vendored=true -whitespace
+host/patches/holochain_state/** linguist-vendored=true -whitespace
+# Context-only blank lines in unified patches intentionally contain a space.
+host/patches/holochain-init-backport.patch -whitespace

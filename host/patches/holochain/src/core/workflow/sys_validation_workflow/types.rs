@@ -1,0 +1,12 @@
+/// The outcome of sys validation
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Outcome {
+    /// Moves to app validation
+    Accepted,
+    /// Stays in limbo because a dependency could not
+    /// be found currently on the DHT.
+    /// Note this is not proof it doesn't exist.
+    MissingDhtDep,
+    /// Moves to integration with status rejected, with an informational reason
+    Rejected(String),
+}

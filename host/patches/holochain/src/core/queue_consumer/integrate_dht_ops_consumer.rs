@@ -1,0 +1,34 @@
+//! The workflow and queue consumer for DhtOp integration
+
+use super::*;
+use crate::conductor::manager::TaskManagerClient;
+use crate::core::workflow::integrate_dht_ops_workflow::integrate_dht_ops_workflow;
+use holochain_state::dht_store::DhtStore;
+use std::sync::Arc;
+
+/// Spawn the QueueConsumer for DhtOpIntegration workflow
+#[cfg_attr(
+    feature = "instrument",
+    tracing::instrument(skip(dht_store, trigger_receipt, tm, network))
+)]
+pub fn spawn_integrate_dht_ops_consumer(
+    dna_hash: Arc<DnaHash>,
+    dht_store: DhtStore,
+    tm: TaskManagerClient,
+    trigger_receipt: TriggerSender,
+    network: DynHolochainP2pDna,
+) -> TriggerSender {
+    let (tx, rx) = TriggerSender::new();
+
+    super::queue_consumer_dna_bound(
+        "integrate_dht_ops_consumer",
+        dna_hash,
+        tm,
+        (tx.clone(), rx),
+        move || {
+            integrate_dht_ops_workflow(dht_store.clone(), trigger_receipt.clone(), network.clone())
+        },
+    );
+
+    tx
+}
