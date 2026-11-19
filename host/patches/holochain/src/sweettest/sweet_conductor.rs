@@ -1,0 +1,1095 @@
+//! A wrapper around ConductorHandle with more convenient methods for testing
+// TODO [ B-03669 ] move to own crate
+
+use super::*;
+use crate::conductor::api::error::ConductorApiError;
+use crate::conductor::conductor::InstallAppCommonFlags;
+use crate::conductor::ConductorHandle;
+use crate::conductor::{
+    api::error::ConductorApiResult, config::ConductorConfig, error::ConductorResult, Conductor,
+};
+use crate::core::ribosome::inline_ribosome::InlineZomeStore;
+use crate::retry_until_timeout;
+use crate::test_utils::retry_fn_until_timeout;
+use ::fixt::prelude::StdRng;
+use hdk::prelude::*;
+use holochain_conductor_api::{
+    AdminRequest, AdminResponse, AppAuthenticationRequest, CellInfo, ProvisionedCell,
+};
+use holochain_keystore::MetaLairClient;
+use holochain_state::mutations::StateMutationResult;
+use holochain_state::prelude::test_db_dir;
+use holochain_state::source_chain::SourceChain;
+use holochain_state::test_utils::TestDir;
+use holochain_types::prelude::*;
+use holochain_types::websocket::AllowedOrigins;
+use holochain_websocket::*;
+use kitsune2_api::DhtArc;
+use nanoid::nanoid;
+use rand::Rng;
+use std::collections::HashMap;
+use std::net::ToSocketAddrs;
+use std::path::Path;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+/// A stream of signals.
+pub type SignalStream = Box<dyn tokio_stream::Stream<Item = Signal> + Send + Sync + Unpin>;
+
+/// A useful Conductor abstraction for testing, allowing startup and shutdown as well
+/// as easy installation of apps across multiple Conductors and Agents.
+///
+/// This is intentionally NOT `Clone`, because the drop handle triggers a shutdown of
+/// the conductor handle, which would render all other cloned instances useless,
+/// as well as the fact that the SweetConductor has some extra state which would not
+/// be tracked by cloned instances.
+/// If you need multiple references to a SweetConductor, put it in an Arc
+#[derive(derive_more::From)]
+pub struct SweetConductor {
+    handle: Option<SweetConductorHandle>,
+    db_dir: TestDir,
+    keystore: MetaLairClient,
+    config: Arc<ConductorConfig>,
+    inline_zome_store_ref: InlineZomeStore,
+    rendezvous: Option<DynSweetRendezvous>,
+}
+
+/// ID based equality is good for SweetConductors so we can track them
+/// independently no matter what kind of mutations/state might eventuate.
+impl PartialEq for SweetConductor {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl Eq for SweetConductor {}
+
+impl SweetConductor {
+    /// Get the ID of this conductor for manual equality checks.
+    pub fn id(&self) -> String {
+        self.config
+            .tracing_scope()
+            .expect("SweetConductor must have a tracing scope set")
+    }
+
+    /// Create a SweetConductor from an already-built ConductorHandle and environments
+    /// RibosomeStore
+    /// The conductor will be supplied with a single test AppInterface named
+    /// "sweet-interface" so that signals may be emitted
+    async fn new(
+        handle: ConductorHandle,
+        env_dir: TestDir,
+        config: Arc<ConductorConfig>,
+        rendezvous: Option<DynSweetRendezvous>,
+    ) -> SweetConductor {
+        let keystore = handle.keystore().clone();
+
+        Self {
+            inline_zome_store_ref: handle.inline_zome_store.clone(),
+            handle: Some(SweetConductorHandle(handle)),
+            db_dir: env_dir,
+            keystore,
+            config,
+            rendezvous,
+        }
+    }
+
+    /// Create a SweetConductor with a local rendezvous server.
+    ///
+    /// This is the default way of constructing a sweet conductor for testing,
+    /// with bootstrapping enabled by default. A local rendezvous server
+    /// is spawned and referenced in the conductor config for bootstrapping
+    /// and direct connection establishment.
+    pub async fn standard() -> SweetConductor {
+        SweetConductor::from_config_rendezvous(
+            SweetConductorConfig::rendezvous(true),
+            SweetLocalRendezvous::new().await,
+        )
+        .await
+    }
+
+    /// Create a SweetConductor with a local rendezvous server and a custom
+    /// configuration. URLs for bootstrapping and direct connection establishment
+    /// are updated in the passed in conductor configuration anyway.
+    pub async fn from_config_rendezvous<C, R>(config: C, rendezvous: R) -> SweetConductor
+    where
+        C: Into<SweetConductorConfig>,
+        R: Into<DynSweetRendezvous> + Clone,
+    {
+        Self::create_with_defaults(config, None, Some(rendezvous)).await
+    }
+
+    /// Create a SweetConductor with a new set of TestEnvs from the given config
+    pub async fn create_with_defaults<C, R>(
+        config: C,
+        keystore: Option<MetaLairClient>,
+        rendezvous: Option<R>,
+    ) -> SweetConductor
+    where
+        C: Into<SweetConductorConfig>,
+        R: Into<DynSweetRendezvous> + Clone,
+    {
+        Self::create_with_defaults_and_metrics(config, keystore, rendezvous, false).await
+    }
+
+    /// Create a SweetConductor with a new set of TestEnvs from the given config
+    /// and a metrics initialization.
+    pub async fn create_with_defaults_and_metrics<C, R>(
+        config: C,
+        keystore: Option<MetaLairClient>,
+        rendezvous: Option<R>,
+        with_metrics: bool,
+    ) -> SweetConductor
+    where
+        C: Into<SweetConductorConfig>,
+        R: Into<DynSweetRendezvous> + Clone,
+    {
+        let rendezvous = rendezvous.map(|r| r.into());
+        let dir = TestDir::new(test_db_dir());
+
+        assert!(
+            dir.read_dir().unwrap().next().is_none(),
+            "Test dir not empty - {:?}",
+            dir.to_path_buf()
+        );
+
+        if with_metrics {
+            holochain_metrics::HolochainMetricsConfig::new_from_env_vars(dir.as_ref())
+                .init()
+                .await;
+        }
+
+        let config: SweetConductorConfig = config.into();
+        let mut config: ConductorConfig = if let Some(r) = rendezvous.clone() {
+            config.apply_rendezvous(&r).into()
+        } else {
+            if config
+                .network
+                .bootstrap_url
+                .as_str()
+                .starts_with("rendezvous:")
+            {
+                panic!("Must use rendezvous SweetConductor if rendezvous: is specified in config.network.bootstrap_service");
+            }
+            if config.network.relay_url.as_str().starts_with("rendezvous:") {
+                panic!("Must use rendezvous SweetConductor if rendezvous: is specified in config.network.relay_url");
+            }
+            config.into()
+        };
+
+        if config.tracing_scope().is_none() {
+            config.tracing_scope = Some(format!(
+                "{}.{}",
+                NUM_CREATED.load(Ordering::SeqCst),
+                nanoid!(5)
+            ));
+        }
+
+        if config.data_root_path.is_none() {
+            config.data_root_path = Some(dir.as_ref().to_path_buf().into());
+        }
+
+        let keystore = keystore.unwrap_or_else(holochain_keystore::test_keystore);
+
+        let handle = Self::handle_from_existing(keystore, &config, Default::default()).await;
+
+        info!("Starting with config: {:?}", config);
+
+        Self::new(handle, dir, Arc::new(config), rendezvous).await
+    }
+
+    /// Create a handle from an existing environment and config
+    pub async fn handle_from_existing(
+        keystore: MetaLairClient,
+        config: &ConductorConfig,
+        inline_zome_store_ref: InlineZomeStore,
+    ) -> ConductorHandle {
+        NUM_CREATED.fetch_add(1, Ordering::SeqCst);
+
+        Conductor::builder()
+            .config(config.clone())
+            .with_keystore(keystore)
+            .with_inline_zome_store(inline_zome_store_ref)
+            .no_print_setup()
+            .test()
+            .await
+            .unwrap()
+    }
+
+    /// Get the rendezvous config that this conductor is using, if any
+    pub fn get_rendezvous_config(&self) -> Option<DynSweetRendezvous> {
+        self.rendezvous.clone()
+    }
+
+    /// Access the database path for this conductor
+    pub fn db_path(&self) -> &Path {
+        &self.db_dir
+    }
+
+    /// Make the temp db dir persistent
+    pub fn persist_dbs(&mut self) -> &Path {
+        self.db_dir.persist();
+        &self.db_dir
+    }
+
+    /// Access the MetaLairClient for this conductor
+    pub fn keystore(&self) -> MetaLairClient {
+        self.keystore.clone()
+    }
+
+    /// Convenience function that uses the internal handle to enable an app
+    pub async fn enable_app(&self, id: InstalledAppId) -> ConductorResult<InstalledApp> {
+        self.raw_handle().enable_app(id).await
+    }
+
+    /// Convenience function that uses the internal handle to disable an app
+    pub async fn disable_app(
+        &self,
+        id: InstalledAppId,
+        reason: DisabledAppReason,
+    ) -> ConductorResult<InstalledApp> {
+        self.raw_handle().disable_app(id, reason).await
+    }
+
+    /// Install an app
+    // TODO: make this take a more flexible config for specifying things like
+    // membrane proofs
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+    pub async fn install_app(
+        &mut self,
+        installed_app_id: &str,
+        agent: Option<AgentPubKey>,
+        dnas_with_roles: &[impl DnaWithRole],
+        flags: Option<InstallAppCommonFlags>,
+    ) -> ConductorApiResult<AgentPubKey> {
+        let installed_app_id = installed_app_id.to_string();
+
+        let dnas_with_proof: Vec<_> = dnas_with_roles
+            .iter()
+            .map(|dr| (dr.to_owned(), None))
+            .collect();
+
+        let agent = self
+            .raw_handle()
+            .install_app_minimal(
+                installed_app_id.clone(),
+                agent,
+                &dnas_with_proof,
+                None,
+                flags,
+            )
+            .await?;
+
+        Ok(agent)
+    }
+
+    /// Install an app with a given manifest
+    ///
+    /// Similar to [`Self::install_app`], but accepts an [`AppManifest`] to enable
+    /// manifest-driven configuration overrides (e.g., bootstrap_url, signal_url).
+    /// Use this when you need per-app network configuration that differs from
+    /// the conductor's default settings.
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+    pub async fn install_app_with_manifest<'a>(
+        &mut self,
+        installed_app_id: &str,
+        agent: Option<AgentPubKey>,
+        dnas_with_roles: impl IntoIterator<Item = &'a (impl DnaWithRole + 'a)>,
+        flags: Option<InstallAppCommonFlags>,
+        manifest: AppManifest,
+    ) -> ConductorApiResult<AgentPubKey> {
+        let dnas_with_roles: Vec<_> = dnas_with_roles.into_iter().cloned().collect();
+        let installed_app_id = installed_app_id.to_string();
+
+        let dnas_with_proof: Vec<_> = dnas_with_roles
+            .iter()
+            .map(|dr| (dr.to_owned(), None))
+            .collect();
+
+        let agent = self
+            .raw_handle()
+            .install_app_with_manifest(
+                installed_app_id.clone(),
+                agent,
+                &dnas_with_proof,
+                flags,
+                manifest,
+            )
+            .await?;
+
+        Ok(agent)
+    }
+
+    /// Install an app and enable it
+    // TODO: make this take a more flexible config for specifying things like
+    //       membrane proofs
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+    async fn install_and_enable_app(
+        &mut self,
+        installed_app_id: &str,
+        agent: Option<AgentPubKey>,
+        dnas_with_roles: &[impl DnaWithRole],
+        flags: Option<InstallAppCommonFlags>,
+    ) -> ConductorApiResult<AgentPubKey> {
+        let agent = self
+            .install_app(installed_app_id, agent, dnas_with_roles, flags)
+            .await?;
+        self.raw_handle()
+            .enable_app(installed_app_id.to_string())
+            .await?;
+        // While it takes ~ 3 seconds to receive a URL from the home relay, await the agent
+        // info of each DNA of the just installed app's agent to show up in the peer stores.
+        for dna_with_role in dnas_with_roles {
+            let dna_hash = dna_with_role.dna().dna_hash();
+            retry_fn_until_timeout(
+                || async {
+                    self.holochain_p2p()
+                        .test_kitsune()
+                        .space(dna_hash.to_k2_space(), None)
+                        .await
+                        .unwrap()
+                        .peer_store()
+                        .get(agent.to_k2_agent())
+                        .await
+                        .unwrap()
+                        .is_some()
+                },
+                Some(10_000),
+                None,
+            )
+            .await
+            .expect("agent info didn't make it to the peer store");
+        }
+        Ok(agent)
+    }
+
+    /// Build the SweetCells after `setup_cells` has been run
+    /// The setup is split into two parts because the Cell environments
+    /// are not available until after `setup_cells` has run, and it is
+    /// better to do that once for all apps in the case of multiple apps being
+    /// set up at once.
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+    async fn create_sweet_app_for_installed_app(
+        &self,
+        installed_app_id: &str,
+        agent: AgentPubKey,
+        roles: &[RoleName],
+    ) -> ConductorApiResult<SweetApp> {
+        let info = self
+            .raw_handle()
+            .get_app_info(&installed_app_id.to_owned())
+            .await
+            .expect("Error getting AppInfo for just-installed app")
+            .expect("Couldn't get AppInfo for just-installed app");
+
+        let mut sweet_cells = Vec::new();
+
+        for role in roles {
+            if let Some(CellInfo::Provisioned(ProvisionedCell { cell_id, .. })) =
+                info.cell_info[role].first()
+            {
+                assert_eq!(cell_id.agent_pubkey(), &agent, "Agent mismatch for cell");
+
+                // Initialize per-space databases
+                let _space = self.spaces.get_or_create_space(cell_id.dna_hash())?;
+
+                // Create and add the SweetCell
+                sweet_cells.push(self.get_sweet_cell(cell_id.clone())?);
+            }
+        }
+
+        Ok(SweetApp::new(installed_app_id.into(), sweet_cells))
+    }
+
+    /// Construct a SweetCell for a cell which has already been created
+    pub fn get_sweet_cell(&self, cell_id: CellId) -> ConductorApiResult<SweetCell> {
+        let cell_dht_store = self.raw_handle().get_dht_store(cell_id.dna_hash())?;
+        let conductor_config = self.config.clone();
+        Ok(SweetCell {
+            cell_id,
+            cell_dht_store,
+            conductor_config,
+        })
+    }
+
+    /// Opinionated app setup.
+    /// Creates an app for the given agent, if specified, using the given DnaFiles,
+    /// with no extra configuration.
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+    async fn setup_app_for_optional_agent<'a>(
+        &mut self,
+        installed_app_id: &str,
+        agent: Option<AgentPubKey>,
+        dnas_with_roles: impl IntoIterator<Item = &'a (impl DnaWithRole + 'a)>,
+    ) -> ConductorApiResult<SweetApp> {
+        let dnas_with_roles: Vec<_> = dnas_with_roles.into_iter().cloned().collect();
+
+        let agent = self
+            .install_and_enable_app(
+                installed_app_id,
+                agent.clone(),
+                dnas_with_roles.as_slice(),
+                None,
+            )
+            .await?;
+
+        let roles = dnas_with_roles
+            .iter()
+            .map(|dr| dr.role())
+            .collect::<Vec<_>>();
+        self.create_sweet_app_for_installed_app(installed_app_id, agent, &roles)
+            .await
+    }
+
+    /// Opinionated app setup.
+    /// Creates an app for the given agent, using the given DnaFiles, with no extra configuration.
+    pub async fn setup_app_for_agent<'a>(
+        &mut self,
+        installed_app_id: &str,
+        agent: AgentPubKey,
+        dnas_with_roles: impl IntoIterator<Item = &'a (impl DnaWithRole + 'a)>,
+    ) -> ConductorApiResult<SweetApp> {
+        self.setup_app_for_optional_agent(installed_app_id, Some(agent), dnas_with_roles)
+            .await
+    }
+
+    /// Opinionated app setup.
+    /// Creates an app using the given DnaFiles, with no extra configuration.
+    /// An AgentPubKey will be generated, and is accessible via the returned SweetApp.
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip_all))]
+    pub async fn setup_app<'a>(
+        &mut self,
+        installed_app_id: &str,
+        dnas_with_roles: impl IntoIterator<Item = &'a (impl DnaWithRole + 'a)> + Clone,
+    ) -> ConductorApiResult<SweetApp> {
+        self.setup_app_for_optional_agent(installed_app_id, None, dnas_with_roles)
+            .await
+    }
+
+    /// Opinionated app setup. Creates one app per agent, using the given DnaFiles.
+    ///
+    /// All InstalledAppIds and RoleNames are auto-generated. In tests driven directly
+    /// by Rust, you typically won't care what these values are set to, but in case you
+    /// do, they are set as so:
+    /// - InstalledAppId: {app_id_prefix}-{agent_pub_key}
+    /// - RoleName: {dna_hash}
+    ///
+    /// Returns a batch of SweetApps, sorted in the same order as Agents passed in.
+    pub async fn setup_app_for_agents<'a>(
+        &mut self,
+        app_id_prefix: &str,
+        agents: impl IntoIterator<Item = &AgentPubKey>,
+        dnas_with_roles: impl IntoIterator<Item = &'a (impl DnaWithRole + 'a)>,
+    ) -> ConductorApiResult<SweetAppBatch> {
+        let agents: Vec<_> = agents.into_iter().collect();
+        let dnas_with_roles: Vec<_> = dnas_with_roles.into_iter().cloned().collect();
+        let roles: Vec<RoleName> = dnas_with_roles.iter().map(|dr| dr.role()).collect();
+
+        for &agent in agents.iter() {
+            let installed_app_id = format!("{app_id_prefix}{agent}");
+            self.install_and_enable_app(
+                &installed_app_id,
+                Some(agent.to_owned()),
+                &dnas_with_roles,
+                None,
+            )
+            .await?;
+        }
+
+        let mut apps = Vec::new();
+        for agent in agents {
+            let installed_app_id = format!("{app_id_prefix}{agent}");
+            apps.push(
+                self.create_sweet_app_for_installed_app(&installed_app_id, agent.clone(), &roles)
+                    .await?,
+            );
+        }
+
+        Ok(SweetAppBatch(apps))
+    }
+
+    /// Setup N apps with generated agent keys and the same set of DNAs
+    pub async fn setup_apps<'a>(
+        &mut self,
+        app_id_prefix: &str,
+        num: usize,
+        dnas_with_roles: impl IntoIterator<Item = &'a (impl DnaWithRole + 'a)>,
+    ) -> ConductorApiResult<SweetAppBatch> {
+        let dnas_with_roles: Vec<_> = dnas_with_roles.into_iter().cloned().collect();
+
+        let mut apps = vec![];
+
+        for i in 0..num {
+            let app = self
+                .setup_app(&format!("{app_id_prefix}{i}"), &dnas_with_roles)
+                .await?;
+            apps.push(app);
+        }
+
+        Ok(SweetAppBatch(apps))
+    }
+
+    /// Call into the underlying create_clone_cell function, and register the
+    /// created dna with SweetConductor so it will be reloaded on restart.
+    pub async fn create_clone_cell(
+        &mut self,
+        installed_app_id: &InstalledAppId,
+        payload: CreateCloneCellPayload,
+    ) -> ConductorResult<holochain_zome_types::clone::ClonedCell> {
+        let clone = self
+            .raw_handle()
+            .create_clone_cell(installed_app_id, payload)
+            .await?;
+        Ok(clone)
+    }
+
+    /// Call into the underlying [`Conductor::update_coordinators`] function and update the
+    /// associated [`DnaFile`] in the [`SweetConductor`] such that the up-to-date [`DnaFile`]
+    /// will be loaded into the [`crate::conductor::ribosome_store::RibosomeStore`] in case of
+    /// a conductor restart.
+    pub async fn update_coordinators(
+        &mut self,
+        cell_id: CellId,
+        coordinator_zomes: CoordinatorZomes,
+        wasms: Vec<wasm::DnaWasmHashed>,
+    ) -> ConductorResult<()> {
+        // Update the coordinators in the conductor
+        self.raw_handle()
+            .update_coordinators(cell_id.clone(), coordinator_zomes, wasms)
+            .await
+    }
+
+    /// Get a new websocket client which can send requests over the admin
+    /// interface. It presupposes that an admin interface has been configured.
+    /// (The standard_config includes an admin interface at port 0.)
+    pub async fn admin_ws_client<D>(&self) -> (WebsocketSender, WsPollRecv)
+    where
+        D: std::fmt::Debug,
+        SerializedBytes: TryInto<D, Error = SerializedBytesError>,
+    {
+        let port = self
+            .get_arbitrary_admin_websocket_port()
+            .expect("No admin port open on conductor");
+        let (tx, rx) = websocket_client_by_port(port).await.unwrap();
+
+        (tx, WsPollRecv::new::<D>(rx))
+    }
+
+    /// Create a new app interface and get a websocket client which can send requests
+    /// to it.
+    pub async fn app_ws_client<D>(
+        &self,
+        installed_app_id: InstalledAppId,
+    ) -> (WebsocketSender, WsPollRecv)
+    where
+        D: std::fmt::Debug,
+        SerializedBytes: TryInto<D, Error = SerializedBytesError>,
+    {
+        let port = self
+            .raw_handle()
+            .add_app_interface(either::Either::Left(0), None, AllowedOrigins::Any, None)
+            .await
+            .expect("Couldn't create app interface");
+        let (tx, rx) = websocket_client_by_port(port).await.unwrap();
+
+        authenticate_app_ws_client(
+            tx.clone(),
+            self.get_arbitrary_admin_websocket_port()
+                .expect("No admin ports on this conductor"),
+            installed_app_id,
+        )
+        .await;
+
+        (tx, WsPollRecv::new::<D>(rx))
+    }
+
+    /// Shutdown this conductor.
+    /// This will wait for the conductor to shut down but
+    /// keep the inner state to restart it.
+    ///
+    /// Attempting to use this conductor without starting it up again will cause a panic.
+    pub async fn shutdown(&mut self) {
+        self.try_shutdown().await.unwrap();
+    }
+
+    /// Shutdown this conductor.
+    /// This will wait for the conductor to shutdown but
+    /// keep the inner state to restart it.
+    ///
+    /// Attempting to use this conductor without starting it up again will cause a panic.
+    pub async fn try_shutdown(&mut self) -> std::io::Result<()> {
+        if let Some(handle) = self.handle.take() {
+            handle
+                .clone()
+                .shutdown()
+                .await
+                .map_err(Error::other)?
+                .map_err(Error::other)
+        } else {
+            panic!("Attempted to shutdown conductor which was already shutdown");
+        }
+    }
+
+    /// Start up this conductor if it's not already running.
+    ///
+    /// * `ignore_dna_files_cache` - Force the SweetConductor to load wasms and
+    ///   dna definitions from the database instead of using cached values.
+    pub async fn startup(&mut self) {
+        if self.handle.is_none() {
+            // There's a db dir in the sweet conductor and the config, that are
+            // supposed to be the same. Let's assert that they are.
+            assert_eq!(
+                Some(self.db_dir.as_ref().to_path_buf().into()),
+                self.config.data_root_path,
+                "SweetConductor db_dir and config.data_root_path are not the same",
+            );
+
+            self.handle = Some(SweetConductorHandle(
+                Self::handle_from_existing(
+                    self.keystore.clone(),
+                    &self.config,
+                    self.inline_zome_store_ref.clone(),
+                )
+                .await,
+            ));
+        } else {
+            panic!("Attempted to start conductor which was already started");
+        }
+    }
+
+    /// Check if this conductor is running
+    pub fn is_running(&self) -> bool {
+        self.handle.is_some()
+    }
+
+    /// Get the underlying SweetConductorHandle.
+    #[allow(dead_code)]
+    pub fn sweet_handle(&self) -> SweetConductorHandle {
+        self.handle
+            .as_ref()
+            .map(|h| h.clone_privately())
+            .expect("Tried to use a conductor that is offline")
+    }
+
+    /// Get the ConductorHandle within this Conductor.
+    /// Be careful when using this, because this leaks out handles, which may
+    /// make it harder to shut down the conductor during tests.
+    pub fn raw_handle(&self) -> ConductorHandle {
+        self.handle
+            .as_ref()
+            .map(|h| h.0.clone())
+            .expect("Tried to use a conductor that is offline")
+    }
+
+    /// Let each conductor know about each other's agents so they can do networking.
+    ///
+    /// Returns a boolean indicating whether each space has at least one agent info for each conductor.
+    pub async fn exchange_peer_info(conductors: impl Clone + IntoIterator<Item = &Self>) -> bool {
+        // Combined peer info set across all conductors, separated by DNA hash (space)
+        let mut all = HashMap::<Arc<DnaHash>, HashSet<_>>::new();
+
+        let conductor_count = conductors.clone().into_iter().count();
+
+        // Collect all the agent infos across the spaces on these conductors.
+        for c in conductors.clone().into_iter() {
+            for dna_hash in c.spaces.get_from_spaces(|s| s.dna_hash.clone()) {
+                let agent_infos = c
+                    .holochain_p2p()
+                    .peer_store((*dna_hash).clone())
+                    .await
+                    .unwrap()
+                    .get_all()
+                    .await
+                    .unwrap();
+
+                all.entry(dna_hash).or_default().extend(agent_infos);
+            }
+        }
+
+        // Insert the agent infos into each conductor's peer store
+        for c in conductors.into_iter() {
+            for dna_hash in c.spaces.get_from_spaces(|s| s.dna_hash.clone()) {
+                let inject_agent_infos = all.get(&dna_hash).unwrap().iter().cloned().collect();
+                tracing::info!("Injecting agent infos: {:?}", inject_agent_infos);
+                c.holochain_p2p()
+                    .peer_store((*dna_hash).clone())
+                    .await
+                    .unwrap()
+                    .insert(inject_agent_infos)
+                    .await
+                    .unwrap();
+            }
+        }
+
+        // Check that each space has at least one agent info for each conductor
+        all.iter().all(|(_, v)| v.len() >= conductor_count)
+    }
+
+    /// Wait for at least one gossip round to have completed for the given cell
+    ///
+    /// Note that this is really a crutch. If gossip starts fast enough then this is unnecessary
+    /// but that doesn't necessarily happen. Waiting for gossip to have started before, for example,
+    /// waiting for something else like consistency is useful to ensure that communication has
+    /// actually started.
+    pub async fn require_initial_gossip_activity_for_cell(
+        &self,
+        cell: &SweetCell,
+        min_peers: u32,
+        timeout: Duration,
+    ) -> anyhow::Result<()> {
+        let handle = self.raw_handle();
+
+        let wait_start = Instant::now();
+        loop {
+            let (number_of_peers, completed_rounds) = handle
+                .dump_network_metrics(Kitsune2NetworkMetricsRequest {
+                    dna_hash: Some(cell.cell_id().dna_hash().clone()),
+                    ..Default::default()
+                })
+                .await?
+                .get(cell.cell_id.dna_hash())
+                .map_or((0, 0), |info| {
+                    (
+                        // The number of peers we're holding metadata for
+                        info.gossip_state_summary.peer_meta.len(),
+                        info.gossip_state_summary
+                            .peer_meta
+                            .values()
+                            .map(|meta| meta.completed_rounds.unwrap_or_default())
+                            .sum(),
+                    )
+                });
+
+            if number_of_peers >= min_peers as usize && completed_rounds > 0 {
+                tracing::info!(
+                    "Took {}s for cell {} to complete {} gossip rounds",
+                    wait_start.elapsed().as_secs(),
+                    cell.cell_id(),
+                    completed_rounds
+                );
+                return Ok(());
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+            if wait_start.elapsed() > timeout {
+                anyhow::bail!(
+                    "Timed out waiting for gossip to start for cell {}",
+                    cell.cell_id()
+                );
+            }
+        }
+    }
+
+    /// Instantiate a source chain object for the given agent and DNA hash.
+    pub async fn get_agent_source_chain(
+        &self,
+        agent_key: &AgentPubKey,
+        dna_hash: &DnaHash,
+    ) -> SourceChain {
+        SourceChain::new(
+            self.get_dht_store(dna_hash).unwrap(),
+            self.keystore().clone(),
+            agent_key.clone(),
+        )
+        .await
+        .unwrap()
+    }
+
+    /// Retries getting a list of peers from the conductor until all the given peers are in the response.
+    ///
+    /// You can optionally filter by `cell_id`. That is used in the `get_agent_infos` call to the conductor, so you
+    /// can see how that works in the conductor docs.
+    ///
+    /// If the max_wait is reached then this function will return a "Timeout" error.
+    pub async fn wait_for_peer_visible<P: IntoIterator<Item = AgentPubKey>>(
+        &self,
+        peers: P,
+        cell_id: Option<CellId>,
+        max_wait: Duration,
+    ) -> ConductorApiResult<()> {
+        let handle = self.raw_handle();
+
+        let peers = peers.into_iter().collect::<HashSet<_>>();
+
+        tokio::time::timeout(max_wait, async move {
+            loop {
+                let infos = handle
+                    .get_agent_infos(
+                        cell_id
+                            .clone()
+                            .map(|cell_id| vec![cell_id.dna_hash().clone()]),
+                    )
+                    .await?
+                    .into_iter()
+                    .map(|p| AgentPubKey::from_k2_agent(&p.agent))
+                    .collect::<HashSet<_>>();
+                if infos.is_superset(&peers) {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+
+            Ok(())
+        })
+        .await
+        .map_err(|_| ConductorApiError::other("Timeout"))?
+    }
+
+    /// Declare full storage arc for all agents of the space and wait until the
+    /// agent infos have been published to the peer store.
+    ///
+    /// # Panics
+    ///
+    /// If peer store cannot be found for DNA hash.
+    /// If publishing to the peer store fails within the timeout of 5 s.
+    pub async fn declare_full_storage_arcs(&self, dna_hash: &DnaHash) {
+        self.holochain_p2p()
+            .test_set_full_arcs(dna_hash.to_k2_space())
+            .await;
+        let local_agents = self
+            .holochain_p2p()
+            .test_kitsune()
+            .space(dna_hash.to_k2_space(), None)
+            .await
+            .unwrap()
+            .local_agent_store()
+            .get_all()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|agent| agent.agent().clone())
+            .collect::<Vec<_>>();
+        let peer_store = self
+            .holochain_p2p()
+            .peer_store(dna_hash.clone())
+            .await
+            .unwrap();
+        retry_until_timeout!(5_000, 500, {
+            if peer_store
+                .get_all()
+                .await
+                .unwrap()
+                .into_iter()
+                // Only check this conductor's local agents for full storage arc.
+                .filter(|agent_info| local_agents.contains(&agent_info.agent))
+                .all(|agent_info| agent_info.storage_arc == DhtArc::FULL)
+            {
+                break;
+            }
+        });
+    }
+
+    /// Getter
+    pub fn rendezvous(&self) -> Option<&DynSweetRendezvous> {
+        self.rendezvous.as_ref()
+    }
+
+    /// Check if all ops in the DHT store have been integrated, i.e. nothing
+    /// remains in validation or integration limbo.
+    pub async fn all_ops_integrated(&self, dna_hash: &DnaHash) -> ConductorApiResult<bool> {
+        let dht_store = self.get_dht_store(dna_hash)?;
+        let (validation_limbo, integration_limbo, _) =
+            dht_store.as_read().limbo_state_counts().await?;
+        Ok(validation_limbo == 0 && integration_limbo == 0)
+    }
+
+    /// Check if all ops of a specific author have been integrated, i.e. none
+    /// of their chain ops remain in limbo in the DHT store.
+    pub async fn all_ops_of_author_integrated(
+        &self,
+        dna_hash: &DnaHash,
+        author: &AgentPubKey,
+    ) -> ConductorApiResult<bool> {
+        let dht_store = self.get_dht_store(dna_hash)?;
+        Ok(dht_store
+            .as_read()
+            .count_pending_ops_for_author(author)
+            .await?
+            == 0)
+    }
+
+    /// Get the hashes of all invalid (rejected) integrated ops from the DHT
+    /// store.
+    pub async fn get_invalid_integrated_ops(
+        &self,
+        dna_hash: &DnaHash,
+    ) -> ConductorApiResult<Vec<holo_hash::DhtOpHash>> {
+        let dht_store = self.get_dht_store(dna_hash)?;
+        Ok(dht_store.as_read().rejected_integrated_op_hashes().await?)
+    }
+
+    /// Manually trigger scheduled fn dispatch
+    pub async fn dispatch_scheduled_fns(&self, now: Timestamp) {
+        self.raw_handle().dispatch_scheduled_fns(now).await;
+    }
+
+    /// Manually start the scheduler
+    pub async fn start_scheduler(
+        &self,
+        interval_period: std::time::Duration,
+    ) -> StateMutationResult<()> {
+        self.raw_handle().start_scheduler(interval_period).await
+    }
+}
+
+/// You do not need to do anything with this type. While it is held it will keep polling a websocket
+/// receiver.
+pub struct WsPollRecv(tokio::task::JoinHandle<()>);
+
+impl Drop for WsPollRecv {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+impl WsPollRecv {
+    /// Create a new [WsPollRecv] that will poll the given [WebsocketReceiver] for messages.
+    /// The type of the messages being received must be specified. For example
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> anyhow::Result<()>
+    /// # {
+    ///
+    /// use holochain::sweettest::{websocket_client_by_port, WsPollRecv};
+    /// use holochain_conductor_api::AdminResponse;
+    ///
+    /// let (tx, rx) = websocket_client_by_port(3000).await?;
+    /// let _rx = WsPollRecv::new::<AdminResponse>(rx);
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn new<D>(mut rx: WebsocketReceiver) -> Self
+    where
+        D: std::fmt::Debug,
+        SerializedBytes: TryInto<D, Error = SerializedBytesError>,
+    {
+        Self(tokio::task::spawn(async move {
+            while rx.recv::<D>().await.is_ok() {}
+        }))
+    }
+}
+
+/// Connect to a websocket server at the given port.
+///
+/// Note that the [WebsocketReceiver] returned by this function will need to be polled. This can be
+/// done with a [WsPollRecv].
+/// If this is an app client, you will need to authenticate the connection before you can send any
+/// other requests.
+pub async fn websocket_client_by_port(
+    port: u16,
+) -> WebsocketResult<(WebsocketSender, WebsocketReceiver)> {
+    connect(
+        Arc::new(WebsocketConfig::CLIENT_DEFAULT),
+        ConnectRequest::new(
+            format!("localhost:{port}")
+                .to_socket_addrs()?
+                .next()
+                .ok_or_else(|| Error::other("Could not resolve localhost"))?,
+        ),
+    )
+    .await
+}
+
+/// Create an authentication token for an app client and authenticate the connection.
+pub async fn authenticate_app_ws_client(
+    app_sender: WebsocketSender,
+    admin_port: u16,
+    installed_app_id: InstalledAppId,
+) {
+    let (admin_tx, admin_rx) = websocket_client_by_port(admin_port).await.unwrap();
+    let _admin_rx = WsPollRecv::new::<AdminResponse>(admin_rx);
+
+    let token_response: AdminResponse = admin_tx
+        .request(AdminRequest::IssueAppAuthenticationToken(
+            installed_app_id.into(),
+        ))
+        .await
+        .unwrap();
+    let token = match token_response {
+        AdminResponse::AppAuthenticationTokenIssued(issued) => issued.token,
+        _ => panic!("unexpected response"),
+    };
+
+    app_sender
+        .authenticate(AppAuthenticationRequest { token })
+        .await
+        .unwrap();
+}
+
+impl Drop for SweetConductor {
+    fn drop(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            tokio::task::spawn(handle.clone().shutdown());
+        }
+    }
+}
+
+impl AsRef<SweetConductorHandle> for SweetConductor {
+    fn as_ref(&self) -> &SweetConductorHandle {
+        self.handle
+            .as_ref()
+            .expect("Tried to use a conductor that is offline")
+    }
+}
+
+impl std::ops::Deref for SweetConductor {
+    type Target = SweetConductorHandle;
+
+    fn deref(&self) -> &Self::Target {
+        self.handle
+            .as_ref()
+            .expect("Tried to use a conductor that is offline")
+    }
+}
+
+impl std::borrow::Borrow<SweetConductorHandle> for SweetConductor {
+    fn borrow(&self) -> &SweetConductorHandle {
+        self.handle
+            .as_ref()
+            .expect("Tried to use a conductor that is offline")
+    }
+}
+
+impl std::fmt::Debug for SweetConductor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SweetConductor")
+            .field("db_dir", &self.db_dir)
+            .field("config", &self.config)
+            .finish()
+    }
+}
+
+#[allow(dead_code)]
+fn covering(rng: &mut StdRng, n: usize, s: usize) -> Vec<HashSet<usize>> {
+    let nodes: Vec<_> = (0..n)
+        .map(|i| {
+            let peers: HashSet<_> = std::iter::repeat_with(|| rng.random_range(0..n))
+                .filter(|j| i != *j)
+                .take(s)
+                .collect();
+            peers
+        })
+        .collect();
+    let mut visited = HashSet::<usize>::new();
+    let mut queue = vec![0];
+    while let Some(next) = queue.pop() {
+        let unvisited: Vec<_> = nodes[next]
+            .iter()
+            .filter(|p| !visited.contains(p))
+            .copied()
+            .collect();
+        queue.extend(unvisited.iter());
+        visited.extend(unvisited.iter());
+        if visited.len() == n {
+            break;
+        }
+    }
+    if visited.len() < n {
+        panic!("Covering could not be created. Try a higher s value.");
+    }
+    nodes
+}

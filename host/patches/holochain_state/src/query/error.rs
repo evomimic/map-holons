@@ -1,0 +1,30 @@
+use crate::scratch::SyncScratchError;
+use holochain_types::prelude::*;
+use thiserror::Error;
+#[derive(Error, Debug)]
+pub enum StateQueryError {
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+    #[error(transparent)]
+    Infallible(#[from] std::convert::Infallible),
+    #[error(transparent)]
+    SerializedBytesError(#[from] holochain_serialized_bytes::SerializedBytesError),
+    #[error(transparent)]
+    DhtOpError(#[from] holochain_types::error::DhtOpError),
+    #[error("Unexpected op {0:?} for query")]
+    UnexpectedOp(ChainOpType),
+    #[error("Unexpected action {0:?} for query")]
+    UnexpectedAction(ActionType),
+    #[error(transparent)]
+    WrongActionError(#[from] holochain_zome_types::prelude::WrongActionError),
+    #[error(transparent)]
+    ActionError(#[from] holochain_zome_types::prelude::ActionError),
+    #[error(transparent)]
+    SyncScratchError(#[from] SyncScratchError),
+    #[error("Input parameters are invalid: {0}")]
+    InvalidInput(String),
+    #[error("{0}")]
+    Other(String),
+}
+
+pub type StateQueryResult<T> = Result<T, StateQueryError>;

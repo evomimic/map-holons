@@ -3,8 +3,8 @@
 use crate::models::dht::{ActionRow, AgentActivityItem, AgentActivityRow, ValidatedActionRow};
 use holo_hash::{ActionHash, AgentPubKey, AnyLinkableHash, EntryHash, HoloHashed};
 use holochain_integrity_types::prelude::{
-    Action, ActionData, ActionHeader, Entry, EntryVisibility, RecordValidity, Signature,
-    SignedHashed,
+    Action, ActionData, ActionHeader, ActionType, Entry, EntryVisibility, RecordValidity,
+    Signature, SignedHashed,
 };
 use holochain_zome_types::prelude::{ChainOpType, SignedActionHashed};
 use sqlx::{Executor, QueryBuilder, Sqlite};
@@ -136,6 +136,52 @@ where
     .bind(i64::from(RecordValidity::Accepted))
     .fetch_all(executor)
     .await?;
+    rows.into_iter().map(row_to_signed_action_hashed).collect()
+}
+
+/// Fetch accepted actions authored by `author`, ordered by `seq` ascending,
+/// restricted in SQL to `action_types` (when given) and to the inclusive
+/// sequence range `seq_range` (when given).
+///
+/// This is the pre-filter behind source-chain queries: a query for a few
+/// action types or a bounded sequence window must not load and deserialize
+/// the whole chain. An empty `action_types` list matches nothing.
+pub(crate) async fn get_actions_by_author_filtered<'e, E>(
+    executor: E,
+    author: &AgentPubKey,
+    action_types: Option<&[ActionType]>,
+    seq_range: Option<(u32, u32)>,
+) -> sqlx::Result<Vec<SignedActionHashed>>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    if action_types.is_some_and(|types| types.is_empty()) {
+        return Ok(Vec::new());
+    }
+    let mut query = QueryBuilder::<Sqlite>::new(
+        "SELECT hash, author, seq, prev_hash, timestamp, action_type,
+                action_data, signature, entry_hash, private_entry, record_validity
+         FROM Action WHERE author = ",
+    );
+    query.push_bind(author.get_raw_36().to_vec());
+    query.push(" AND record_validity = ");
+    query.push_bind(i64::from(RecordValidity::Accepted));
+    if let Some(action_types) = action_types {
+        query.push(" AND action_type IN (");
+        let mut separated = query.separated(", ");
+        for action_type in action_types {
+            separated.push_bind(i64::from(*action_type));
+        }
+        separated.push_unseparated(")");
+    }
+    if let Some((start, end)) = seq_range {
+        query.push(" AND seq >= ");
+        query.push_bind(i64::from(start));
+        query.push(" AND seq <= ");
+        query.push_bind(i64::from(end));
+    }
+    query.push(" ORDER BY seq ASC");
+    let rows: Vec<ActionRow> = query.build_query_as().fetch_all(executor).await?;
     rows.into_iter().map(row_to_signed_action_hashed).collect()
 }
 

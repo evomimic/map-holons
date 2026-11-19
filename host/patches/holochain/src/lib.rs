@@ -1,0 +1,53 @@
+//! All the components you need to build a Holochain Conductor
+
+#![recursion_limit = "256"]
+#![deny(missing_docs)]
+
+#[cfg(doc)]
+pub mod docs;
+
+#[cfg(feature = "hdk")]
+pub use hdk::HDI_VERSION;
+#[cfg(feature = "hdk")]
+pub use hdk::HDK_VERSION;
+
+/// Current Holochain Conductor rust crate version.
+pub const HOLOCHAIN_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub mod conductor;
+pub mod core;
+#[cfg(feature = "test_utils")]
+pub mod fixt;
+
+#[cfg(any(test, feature = "test_utils"))]
+pub mod sweettest;
+#[cfg(any(test, feature = "test_utils"))]
+pub mod test_utils;
+
+// this is here so that wasm ribosome macros can reference it
+pub use holochain_wasmer_host;
+pub use tracing;
+
+// TODO can probably move these to integration test once
+// we work out the test utils stuff
+#[cfg(test)]
+mod local_network_tests;
+
+/// Common imports when using the Holochain crate.
+pub mod prelude {
+    #[cfg(feature = "hdk")]
+    pub use hdk::link::GetLinksInputBuilder;
+    pub use holo_hash;
+    #[cfg(feature = "test_utils")]
+    pub use holochain_types::inline_zome::*;
+    pub use holochain_types::prelude::{fixt, *};
+    #[cfg(feature = "fuzzing")]
+    pub use kitsune_p2p::{NOISE, *};
+}
+
+#[cfg(not(any(
+    feature = "wasmer-sys-cranelift",
+    feature = "wasmer-sys-llvm",
+    feature = "wasmer-wasmi"
+)))]
+compile_error!("At least one of: `wasmer-sys-cranelift`, `wasmer-sys-llvm` or `wasmer-wasmi` features must be enabled.");
