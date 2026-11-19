@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, distinctUntilChanged } from 'rxjs/operators';
@@ -12,6 +12,7 @@ export interface Breadcrumb {
   selector: 'app-toolbar',
   standalone: true,
   imports: [CommonModule, RouterModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './toolbar.component.html',
 })
 export class ToolbarComponent implements OnInit {

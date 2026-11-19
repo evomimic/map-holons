@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { SourceReviewComponent } from './app/components/source-review/source-review.component';
 import type { SourceDiscovery } from './app/services/loader-source';
@@ -15,6 +15,7 @@ import type { ContentSet } from './dahn/deps/map-sdk';
     <p role="status">{{ message() }}</p>
     <div class="frame"><app-source-review [discovery]="discovery()" (submitted)="capture($event)" (cancelled)="message.set('Cancelled; no handoff.')" /></div>
     </main>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`main { max-width: 60rem; margin: auto; padding: 1rem; } nav { display: flex; flex-wrap: wrap; gap: .5rem; }
     button { padding: .5rem; border: 1px solid; } .frame { height: 65dvh; min-height: 16rem; border: 1px solid; }
     h1 { font-size: 1.5rem; }`],

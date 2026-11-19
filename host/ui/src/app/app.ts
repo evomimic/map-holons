@@ -1,6 +1,6 @@
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CanvasHostComponent } from './components/canvas-host/canvas-host.component';
 import { HolonsLoaderHostComponent } from './components/holons-loader-host/holons-loader-host.component';
 import {
@@ -13,6 +13,7 @@ import { updateStartupOverlayPhase } from './startup-overlay';
   selector: 'app-root',
   standalone: true,
   imports: [CanvasHostComponent, HolonsLoaderHostComponent, RouterOutlet],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './app.html',
 })
 export class App implements OnInit {
