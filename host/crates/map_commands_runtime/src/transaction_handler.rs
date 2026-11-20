@@ -96,6 +96,34 @@ pub async fn handle_transaction(
                 }
             }
         }
+        TransactionAction::RememberVisualizerPreference {
+            subject_type,
+            slot,
+            visualizer,
+            usage,
+        } => {
+            let reference = holons_core::dahn::preferences::remember(
+                context,
+                subject_type,
+                slot,
+                visualizer,
+                usage,
+            )?;
+            session.usage_transactions.invalidate_bindings()?;
+            Ok(MapResult::Reference(reference))
+        }
+        TransactionAction::ConvertVisualizerSlotPreference { preference } => {
+            let reference =
+                holons_core::dahn::preferences::convert_slot_preference(context, &preference)?;
+            session.usage_transactions.invalidate_bindings()?;
+            Ok(MapResult::Reference(reference))
+        }
+        TransactionAction::ResolveComposition { request } => {
+            let body = context.resolve_composition(request)?;
+            Ok(MapResult::ResolvedComposition(
+                holons_core::dahn::composition::ResolvedComposition::from_projection(&body)?,
+            ))
+        }
         TransactionAction::LoadTheme { theme } => {
             let body = context.load_theme(&theme)?;
             let started = std::time::Instant::now();

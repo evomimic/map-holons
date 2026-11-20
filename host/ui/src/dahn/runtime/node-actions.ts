@@ -31,15 +31,19 @@ export async function composeNodeActions(transaction: MapTransaction, runtime: M
   if (!standards.length) throw new Error('Node actions contract has no standard actions');
   const descriptors = [...standards, ...await owner.relatedHolons('AdditionalNodeActions')];
   const selectBar = async (slot: HolonReference) => {
-    const selection = await transaction.selectVisualizer({ subject: context.target.reference, owner: { visualizer: owner }, slot,
+    const prepared = runtime.binding(owner, slot.equals(controlsSlot) ? 'visualizerActions' : 'action');
+    const selection = prepared ?? await transaction.selectVisualizer({ subject: context.target.reference, owner: { visualizer: owner }, slot,
       theme: context.theme!.reference, requestedKind: 'actionBar' });
     const Bar = await runtime.realize(selection.selected) as CustomElementConstructor;
     if (typeof Bar !== 'function' || !(Bar.prototype instanceof HTMLElement)) throw new Error('Selected ActionBar is not an HTMLElement constructor');
     const element = document.createElement(defineCustomElementOnce('map-node-actions', Bar)) as ActionBarElement;
-    await runtime.admit(element, slot);
+    if (prepared) await runtime.admitBinding(element, prepared);
+    else await runtime.admit(element, slot);
     const present = element.visualizerOperations?.['PresentActions.VisualizerOperator'];
     if (!present) throw new Error('Selected ActionBar does not fulfill PresentActions');
-    await bindVisualizerInformationControl(element, transaction, context.target.reference, owner, slot, selection.selected);
+    const displayName = runtime.metadata(selection.selected)?.properties['DisplayName'];
+    await bindVisualizerInformationControl(element, transaction, context.target.reference, owner, slot, selection.selected, 'end', undefined,
+      displayName && 'StringValue' in displayName ? displayName.StringValue : undefined);
     await transaction.recordSelectedVisualizerUse(selection.selected, `actions-${crypto.randomUUID()}`);
     return { element, present };
   };

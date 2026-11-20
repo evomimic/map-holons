@@ -35,6 +35,7 @@ fn one(source: &HolonReference, name: &str) -> Result<HolonReference, HolonError
 /// Resolve nearest committed configuration without creating a Usage or recording presentation.
 /// Callers still authorize the selected Visualizer against the actual owner, Slot and Theme.
 pub fn resolve_visualizer_usage(
+    context: &Arc<TransactionContext>,
     visualizer: &HolonReference,
     subject_type: &HolonReference,
     slot: &HolonReference,
@@ -64,11 +65,32 @@ pub fn resolve_visualizer_usage(
         }
     }
     let default_type = current;
-    // Fetch and classify the selected Visualizer's Usages once for the whole lineage.
-    let usages = related(visualizer, "UsedByVisualizerUsage")?
-        .into_iter()
-        .map(|usage| Ok((one(&usage, "ForSubjectType")?, usage)))
-        .collect::<Result<Vec<_>, HolonError>>()?;
+    // Personal access is rooted at the admitted Agent, not the shared Visualizer population.
+    let agent = match context.get_space_holon()? {
+        Some(space) => match crate::agent_spaces::sovereign_agent(&space)? {
+            crate::agent_spaces::SovereignAgent::Agent(agent) => Some(agent),
+            crate::agent_spaces::SovereignAgent::Unclaimed => None,
+            crate::agent_spaces::SovereignAgent::Ambiguous => {
+                return Err(HolonError::InvalidState(
+                    "Ambiguous personal configuration authority".into(),
+                ))
+            }
+        },
+        None => None,
+    };
+    let mut usages = Vec::new();
+    if let Some(agent) = agent {
+        for usage in related(&agent, "HasPersonalVisualizerUsage")? {
+            if one(&usage, "UsageForAgent")? != agent {
+                return Err(HolonError::InvalidState(
+                    "Personal Usage inverse disagrees with its Agent".into(),
+                ));
+            }
+            if one(&usage, "UsesVisualizer")? == *visualizer {
+                usages.push((one(&usage, "ForSubjectType")?, usage));
+            }
+        }
+    }
     for descriptor in &path {
         let matches = usages
             .iter()

@@ -17,7 +17,8 @@ export async function composeNodeTitle(
 ): Promise<HTMLElement> {
   const subject = context.target.reference;
   const theme = context.theme!;
-  const slot = await runtime.slot(owner, 'titleBar');
+  const binding = runtime.binding(owner, 'titleBar');
+  const slot = binding?.slot ?? await runtime.slot(owner, 'titleBar');
   const request = { subject, owner: { visualizer: owner }, slot, theme: theme.reference, requestedKind: 'titleBar' as const };
   const host = document.createElement('div') as unknown as HTMLElement & {
     visualizerOperations: Record<string, (input: unknown) => unknown>;
@@ -32,12 +33,13 @@ export async function composeNodeTitle(
     const implementation = await runtime.realize(visualizer) as CustomElementConstructor;
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) throw new Error('Title Bar is not an HTMLElement constructor');
     const title = document.createElement(defineCustomElementOnce('map-selected-title', implementation)) as TitleElement;
-    title.setContext({ ...context, visualizerUsage: usage, childVisualizers: new Map() });
+    title.setContext({ ...context, visualizerUsage: usage, visualizerConfiguration: binding && visualizer.equals(binding.selected) ? binding.configuration : undefined, childVisualizers: new Map() });
     title.setOwnerInvocation((key, invoker) => {
       if (current !== title || !host.contains(invoker) || !host.isConnected) throw new Error('Retired title invocation');
       return invoke(key, invoker);
     });
-    await runtime.admit(title, slot);
+    if (binding && visualizer.equals(binding.selected)) await runtime.admitBinding(title, binding);
+    else { await runtime.admit(title, slot); await runtime.admitOffered(title, visualizer); }
     if (lastInput) title.visualizerOperations!['ApplyTitlePresentation.VisualizerOperator'](lastInput as never);
     await title.ready;
     title.dispose = () => { revokeVisualizerInformationControls(title); };
@@ -68,7 +70,7 @@ export async function composeNodeTitle(
       } });
   };
   const register = async () => {
-    const name = await selected!.propertyValue('DisplayName');
+    const name = runtime.metadata(selected!)?.properties['DisplayName'] ?? await selected!.propertyValue('DisplayName');
     const value = target(current!, selected!, name && 'StringValue' in name ? name.StringValue : 'Title Bar');
     registerVisualizerInspection(host, () => value);
     registerVisualizerInspection(current!, () => value);
@@ -81,8 +83,8 @@ export async function composeNodeTitle(
   } };
   host.setOwnerInvocation = handler => { invoke = handler; };
   host.dispose = () => { generation++; current?.dispose?.(); invoke = () => { throw new Error('Title occurrence is retired'); }; };
-  selected = (await transaction.selectVisualizer(request)).selected;
-  current = await ready(selected); host.append(current); await register();
+  selected = binding?.selected ?? (await transaction.selectVisualizer(request)).selected;
+  current = await ready(selected, binding?.usage); host.append(current); await register();
   await transaction.recordSelectedVisualizerUse(selected, occurrenceId);
   return host;
 }

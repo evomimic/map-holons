@@ -468,6 +468,14 @@ impl TransactionContext {
         self.get_holon_service().visualizer_artifact_available_internal(self, visualizer)
     }
 
+    /// Resolve owner-directed bindings through the execution-context service.
+    pub fn resolve_composition(
+        self: &Arc<Self>,
+        request: crate::dahn::composition::CompositionRequest,
+    ) -> Result<HolonReference, HolonError> {
+        self.get_holon_service().resolve_composition_internal(self, request)
+    }
+
     /// Resolve Theme presentation data through the execution-context service.
     pub fn load_theme(
         self: &Arc<Self>,

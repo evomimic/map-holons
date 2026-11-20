@@ -731,6 +731,14 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_set(context, set)
     }
 
+    fn resolve_composition_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        request: holons_core::dahn::composition::CompositionRequest,
+    ) -> Result<HolonReference, HolonError> {
+        holons_core::dahn::composition::resolve(context, request)?.into_projection(context)
+    }
+
     fn load_theme_internal(
         &self,
         context: &Arc<TransactionContext>,

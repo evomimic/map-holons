@@ -23,10 +23,50 @@ pub struct PreparedSelectionMetadata {
     compatibility: Vec<CompatibilityMetadata>,
     declarations: Vec<(HolonReference, Vec<HolonReference>)>,
     assessments: Vec<(usize, HolonReference, VisualizerAssessment)>,
+    personal: Option<super::PersonalPreferences>,
+    defaults: Vec<(HolonReference, super::SlotDefaults)>,
     hits: usize,
+    candidate_population_requests: usize,
 }
 
 impl PreparedSelectionMetadata {
+    /// Populations actually observed in this round, including confirmed empty sets.
+    pub(crate) fn observed_populations(
+        &self,
+    ) -> Vec<(HolonReference, String, Vec<HolonReference>)> {
+        let mut observations = self
+            .declarations
+            .iter()
+            .map(|(descriptor, members)| {
+                (descriptor.clone(), "HasApplicableVisualizer".into(), members.clone())
+            })
+            .collect::<Vec<_>>();
+        observations.extend(self.defaults.iter().map(|(slot, defaults)| {
+            (slot.clone(), "HasDefaultDeclaration".into(), defaults.declaration_references())
+        }));
+        if let Some(personal) = &self.personal {
+            if let Some(agent) = &personal.agent {
+                observations.push((
+                    agent.clone(),
+                    "HasPersonalVisualizerPreference".into(),
+                    personal.record_references(),
+                ));
+            }
+        }
+        observations
+    }
+
+    pub(crate) fn note_candidate_population_request(&mut self) {
+        self.candidate_population_requests += 1;
+    }
+
+    pub(crate) fn population_requests(&self) -> (usize, usize) {
+        (
+            usize::from(self.personal.as_ref().is_some_and(|p| p.agent.is_some())),
+            self.candidate_population_requests,
+        )
+    }
+
     /// Shared facts or assessments consumed without repeating their backend reads.
     pub fn hits(&self) -> usize {
         self.hits
@@ -64,6 +104,31 @@ impl PreparedSelectionMetadata {
         Ok((facts, Some(index)))
     }
 
+    pub(crate) fn personal(
+        &mut self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<super::PersonalPreferences, HolonError> {
+        if let Some(personal) = &self.personal {
+            return Ok(personal.clone());
+        }
+        let personal = super::PersonalPreferences::for_context(context)?;
+        self.personal = Some(personal.clone());
+        Ok(personal)
+    }
+
+    pub(crate) fn defaults(
+        &mut self,
+        slot: &HolonReference,
+    ) -> Result<super::SlotDefaults, HolonError> {
+        if let Some((_, defaults)) = self.defaults.iter().find(|(owner, _)| owner == slot) {
+            self.hits += 1;
+            return Ok(defaults.clone());
+        }
+        let defaults = super::SlotDefaults::load(slot)?;
+        self.defaults.push((slot.clone(), defaults.clone()));
+        Ok(defaults)
+    }
+
     pub(crate) fn declarations(
         &mut self,
         descriptor: &HolonReference,
@@ -97,16 +162,7 @@ impl PreparedSelectionMetadata {
                 .find(|(scope, visualizer, _)| *scope == compatibility && visualizer == candidate)
             {
                 self.hits += 1;
-                // Local artifact availability may change independently of semantic metadata.
-                return Ok(
-                    if *assessment == VisualizerAssessment::Viable
-                        && !context.visualizer_artifact_available(candidate)?
-                    {
-                        VisualizerAssessment::ImplementationUnavailable
-                    } else {
-                        *assessment
-                    },
-                );
+                return Ok(*assessment);
             }
         }
         let assessment = assess(context, facts, candidate)?;

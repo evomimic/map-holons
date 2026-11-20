@@ -1,5 +1,5 @@
 import { extractString } from '../deps/map-sdk';
-import type { HolonReference } from '../deps';
+import type { CompositionBinding, CompositionMetadata, ResolvedComposition, HolonReference } from '../deps';
 import type {
   MaterializedVisualizerCache,
   MaterializedVisualizerModule,
@@ -19,15 +19,43 @@ export type VisualizerModuleImporter = (
  * code; this runtime does not maintain a second implementation registry.
  */
 export class MaterializedVisualizerRuntime {
-  private readonly importedModules = new Map<string, Promise<VisualizerModuleExports>>();
+  private readonly importedModules: Map<string, Promise<VisualizerModuleExports>>;
 
   constructor(
     private readonly cache: MaterializedVisualizerCache,
     private readonly importModule: VisualizerModuleImporter = importEsModule,
-  ) {}
+    importedModules?: Map<string, Promise<VisualizerModuleExports>>,
+  ) { this.importedModules = importedModules ?? new Map(); }
+
+  private composition?: ResolvedComposition;
+  forComposition(composition: ResolvedComposition): MaterializedVisualizerRuntime {
+    const runtime = new MaterializedVisualizerRuntime(this.cache, this.importModule, this.importedModules);
+    runtime.composition = composition;
+    for (const metadata of composition.metadata) this.cache.seedIdentity(metadata.reference, metadata.identity);
+    return runtime;
+  }
+  metadata(reference: HolonReference): CompositionMetadata | undefined {
+    return this.composition?.metadata.find(m => m.reference.equals(reference));
+  }
+  binding(owner: HolonReference, role: string, subject?: HolonReference): CompositionBinding | undefined {
+    const matches = this.composition?.bindings.filter(b => b.owner.equals(owner) && b.role === role && (!subject || b.subject.equals(subject))) ?? [];
+    if (matches.length > 1) throw new Error(`Composition role ${role} requires an actual subject binding`);
+    return matches[0];
+  }
+  admitBinding(element: HTMLElement, binding: CompositionBinding): void {
+    const operations = (element as HTMLElement & { visualizerOperations?: Record<string, unknown> }).visualizerOperations;
+    for (const key of new Set([...binding.requiredOperators, ...binding.offeredOperators])) {
+      if (typeof operations?.[key] !== 'function') throw new Error(`Missing Visualizer Operator binding: ${key}`);
+    }
+  }
 
   /** Resolve a semantic role from the selected Visualizer's TDL type definition. */
   async slot(parent: HolonReference, role: string): Promise<HolonReference> {
+    const prepared = this.composition?.bindings.filter(b => b.owner.equals(parent) && b.role === role) ?? [];
+    if (prepared.length) {
+      if (prepared.some(b => !b.slot.equals(prepared[0].slot))) throw new Error(`Duplicate composition role ${role}`);
+      return prepared[0].slot;
+    }
     const descriptors = await parent.relatedHolons('DescribedBy');
     if (descriptors.length !== 1) throw new Error('Expected one Visualizer type');
     let descriptor: HolonReference | undefined = [...descriptors][0];

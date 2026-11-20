@@ -1,3 +1,4 @@
+import { resolvedCollectionComposition, resolvedValueComposition } from '../../../test-fixtures/resolved-composition';
 import { applyNodePresentation } from '../../../../conductora/visualizer-src/node-presentation.js';
 import { withSelectedTitle } from '../../../test-fixtures/selected-title';
 import { semanticWork } from './semantic-work';
@@ -24,18 +25,18 @@ function collection(count: number) {
   const members = Array.from({ length: count }, (_, index) => ({ key: async () => `row-${index}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
   return { length: count, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
-const valueContext = { theme: { reference: {} } } as never;
+const valueContext = { theme: { reference: {} } } as any;
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, identity: async () => name, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture(populated = false) {
   const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
   const valueSlot = { key: async () => 'TableCollection.ValueSlot', propertyValue: async () => ({ StringValue: 'value' }) };
   const selectedType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [valueSlot] : [] };
-  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async (name: string) => name === 'DescribedBy' ? [selectedType] : [] };
-  const value = { key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
+  const selected = { versionedKey: async () => 'table', key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async (name: string) => name === 'DescribedBy' ? [selectedType] : [] };
+  const value = { versionedKey: async () => 'scalar', key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
   const slot = { propertyValue: async () => ({ StringValue: 'collection' }) };
   const parentType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [slot] : [] };
-  const parent = { relatedHolons: async (name: string) => name === 'DescribedBy' ? [parentType] : [] };
-  const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })), selectValueVisualizer: vi.fn(async () => ({ selected: value })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => property('Key')) };
+  const parent = { equals(other: unknown) { return this === other; }, relatedHolons: async (name: string) => name === 'DescribedBy' ? [parentType] : [] };
+  const transaction = { resolveRelationshipComposition: vi.fn(async (owner, _subject, _theme, slot) => resolvedCollectionComposition(selected, owner, slot)), getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })), resolvePropertyComposition: vi.fn(async (_property, owner, slot) => resolvedValueComposition(value, owner, slot)), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => property('Key')) };
   const materialize = vi.fn(async (reference: unknown) => ({ source: reference === value ? valueSource : tableSource, format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   const activation = new NodeCollectionActivation(transaction as never, owner as never, parent as never, runtime, populated ? { population: () => ({ state: 'populated', count: 2 }), record: vi.fn(), dispose: vi.fn() } as never : undefined, undefined, valueContext);
@@ -57,14 +58,14 @@ describe('selected collection activation', () => {
     expect(updates[0].state).toBe('checking');
     await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
     expect(f.owner.describedRelatedHolons).toHaveBeenCalledWith('InverseName');
-    expect(f.transaction.selectCollectionVisualizer).toHaveBeenCalledWith(expect.objectContaining({ length: count }), f.parent, f.slot);
+    expect(f.transaction.resolveRelationshipComposition).toHaveBeenCalledWith(f.parent, f.owner, valueContext.theme.reference, f.slot, expect.anything());
     expect(updates.at(-1)?.state).toBe(count ? 'loaded' : 'loaded-empty');
     const element = updates.at(-1)!.content!;
     expect([...element.querySelectorAll('th')].map(cell => cell.querySelector('[data-sort-toggle]')?.textContent ?? cell.textContent)).toEqual(['Key heading', 'Name heading']);
     expect(element.querySelectorAll('tbody tr')).toHaveLength(count);
     if (count) expect(element.textContent).toContain('n/a');
     expect(f.materialize).toHaveBeenCalledTimes(2);
-    expect(f.transaction.selectValueVisualizer).toHaveBeenCalledTimes(2);
+    expect(f.transaction.resolvePropertyComposition).toHaveBeenCalledTimes(2);
   });
 
   it('rereads on return, does nothing on active-tab activation, and keeps occurrences independent', async () => {
@@ -97,7 +98,7 @@ describe('selected collection activation', () => {
   it.each(['membership', 'selection', 'materialization', 'property'])('contains %s failures and retries without false empty success', async stage => {
     const f = fixture();
     if (stage === 'membership') f.owner.describedRelatedHolons.mockRejectedValueOnce(new Error('read failed'));
-    if (stage === 'selection') f.transaction.selectCollectionVisualizer.mockRejectedValueOnce(new Error('slot failed'));
+    if (stage === 'selection') f.transaction.resolveRelationshipComposition.mockRejectedValueOnce(new Error('slot failed'));
     if (stage === 'materialization') f.materialize.mockRejectedValueOnce(new Error('artifact failed'));
     if (stage === 'property') {
       const broken = collection(1);
@@ -122,14 +123,14 @@ describe('selected collection activation', () => {
     await vi.waitFor(() => expect(viewer.querySelector('table')).not.toBeNull());
     const table = viewer.firstElementChild; viewer.scrollTop = 71;
     const allocation = node.getNodeInspectorAllocation();
-    const counts = [f.owner.describedRelatedHolons.mock.calls.length, f.transaction.selectCollectionVisualizer.mock.calls.length, f.materialize.mock.calls.length];
+    const counts = [f.owner.describedRelatedHolons.mock.calls.length, f.transaction.resolveRelationshipComposition.mock.calls.length, f.materialize.mock.calls.length];
     for (let cycle = 0; cycle < 3; cycle++) {
       node.propertiesToggle.click(); expect(node.dataset.inspectorMode).toBe('properties');
       tabControl.click(); expect(node.dataset.inspectorMode).toBe('collection');
       expect(viewer.firstElementChild).toBe(table); expect(viewer.scrollTop).toBe(71);
       expect(node.getNodeInspectorAllocation()).toEqual(allocation);
     }
-    expect([f.owner.describedRelatedHolons.mock.calls.length, f.transaction.selectCollectionVisualizer.mock.calls.length, f.materialize.mock.calls.length]).toEqual(counts);
+    expect([f.owner.describedRelatedHolons.mock.calls.length, f.transaction.resolveRelationshipComposition.mock.calls.length, f.materialize.mock.calls.length]).toEqual(counts);
   });
 
   it('mounts beneath the original Node without replacing Properties and keeps arrays disabled', async () => {
@@ -446,14 +447,15 @@ it('selects in the open presentation context while retaining committed loader me
   f.transaction.selectCollectionVisualizer.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
   const type = {}, parent = { ...f.parent }, slot = f.slot;
   const bind = vi.fn((ref: unknown) => ref === retained.elementType ? type : ref === f.parent ? parent : ref);
-  const presentation = { getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
+  const presentation = { resolveRelationshipComposition: vi.fn(async (owner, _subject, _theme, slot) => resolvedCollectionComposition(f.selected, owner, slot)), getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
     selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: f.selected })),
-    selectValueVisualizer: f.transaction.selectValueVisualizer, getSavedPropertyDescriptorByBaseKey: f.transaction.getSavedPropertyDescriptorByBaseKey };
+    resolvePropertyComposition: f.transaction.resolvePropertyComposition, getSavedPropertyDescriptorByBaseKey: f.transaction.getSavedPropertyDescriptorByBaseKey };
   const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation, valueContext);
   const updates: CollectionUpdate[] = [];
   activation.activate(tab('Sources'), 'collection', (update: CollectionUpdate) => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
-  expect(presentation.selectProjectedCollectionVisualizer).toHaveBeenCalledWith(retained.elementType, parent, slot);
+  expect(presentation.resolveRelationshipComposition).toHaveBeenCalledWith(f.parent, f.owner, valueContext.theme.reference, slot, expect.anything());
+  expect(presentation.selectProjectedCollectionVisualizer).not.toHaveBeenCalled();
   expect(f.transaction.getSavedHolonByBaseKey).not.toHaveBeenCalled();
   expect(f.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();
   const element = updates.at(-1)!.content!; document.body.append(element);

@@ -48,6 +48,10 @@
       "import_directory": "theme"
     },
     {
+      "name": "agent-spaces",
+      "import_directory": "agent-spaces"
+    },
+    {
       "name": "dahn",
       "import_directory": "dahn"
     }
@@ -134,12 +138,16 @@
       "sha256": "4aba924fdcba7a94c14e944a30756d84824828c64df83e9fcf1621c341784c4e"
     },
     {
+      "path": "imports/agent-spaces/schema.json",
+      "sha256": "efcd76d94dfc30f8ec623a777d44f28d8006d8a6186a0c071f4d51a46694ca12"
+    },
+    {
       "path": "imports/dahn/schema.json",
-      "sha256": "eb5e834b3dab3341c66dff1f503ed56613ef8a528d6eff3e5589f61f425b3791"
+      "sha256": "507cbaf9aac8cc8a2e51587ac83a56adcbba5c8f767a8140227374bf0034e123"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
-      "sha256": "06bef9b22bba670c67110f531207b805cfd775de910c45b647e92298c0fc5327"
+      "sha256": "b165a3ecf847820dbd9e1abcb4ccc75c736d2d5702bec7bfa3f1152bcf837cb5"
     }
   ],
   "required_holons": [
@@ -157,6 +165,10 @@
     },
     {
       "key": "(AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(BioSocialAgent.Agent)-[HasInterior]->(HolonSpace.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -560,6 +572,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(HolonSpace.HolonType)-[IsInteriorOf]->(BioSocialAgent.Agent)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(HolonSpace.HolonType)-[OffersTheme]->(Theme.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -581,6 +597,14 @@
     },
     {
       "key": "(HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(CommandType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[CompositionReferencesOf]->(ResolvedComposition.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[CompositionSubjectOf]->(ResolveCompositionRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -920,6 +944,14 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(PresentationActionState.HolonType)-[ActionStateForOperator]->(VisualizerOperator.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1072,7 +1104,15 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(RelationshipType.TypeDescriptor)-[InitialCollectionSourceOf]->(VisualizerSlot.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[SelectedCollectionSourceOf]->(ResolveCompositionRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1088,11 +1128,31 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolvedComposition.Projection)-[CompositionReferences]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1122,6 +1182,10 @@
     {
       "key": "(SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Theme.HolonType)-[CompositionThemeOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType)",
@@ -1192,7 +1256,15 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(TypeDescriptor)-[HasConditionalSlotDefault]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(TypeDescriptor)-[HasSlotPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[HasSubjectVisualizerPreference]->(VisualizerPreference.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1288,6 +1360,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Visualizer.HolonType)-[ChosenByVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1310,6 +1386,10 @@
     {
       "key": "(Visualizer.HolonType)-[OffersOperator]->(VisualizerOperator.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Visualizer.HolonType)-[RecommendedBySlotDefault]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Visualizer.HolonType)-[UsedByVisualizerUsage]->(VisualizerUsage.HolonType)",
@@ -1396,6 +1476,26 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForAgent]->(PersonAgent.BioSocialAgent)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferredVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1408,11 +1508,27 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(VisualizerSlot.HolonType)-[HasDefaultDeclaration]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[HasScopedVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(VisualizerSlot.HolonType)-[HasVisualizerPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[InitialCollectionSource]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[RequestedCompositionSlotOf]->(ResolveCompositionRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1429,6 +1545,18 @@
     },
     {
       "key": "(VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[DefaultForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[DefaultForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[RecommendsVisualizer]->(Visualizer.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1460,6 +1588,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(VisualizerUsage.HolonType)-[PreferredByVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1473,6 +1605,10 @@
     },
     {
       "key": "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[UsageForAgent]->(PersonAgent.BioSocialAgent)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1592,6 +1728,10 @@
       "type": "RelationshipValidationRule.HolonType"
     },
     {
+      "key": "Agent.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "AgreementValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -1656,6 +1796,14 @@
       "type": "MetaCommandType.MetaHolonType"
     },
     {
+      "key": "BioSocialAgent.Agent",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "BooleanPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "BooleanValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -1670,6 +1818,10 @@
     {
       "key": "BytesLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "BytesPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "BytesValidationRule.HolonType",
@@ -1888,16 +2040,52 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "CompositionActivation.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType.Demand",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType.Presentation",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
       "key": "CompositionActivation.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "CompositionKind.PropertyType",
+      "key": "CompositionData.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "CompositionRole.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.AffordedAction",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.OwnerSubject",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.ScalarPropertyLabel",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.ScalarPropertyValue",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.SelectedCollection",
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "CompositionSubject.PropertyType",
@@ -2076,6 +2264,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "DefaultPropertyMapVisualizer.LabelSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizer",
       "type": "DefaultPropertyMapVisualizer.PropertyMapVisualizerType"
     },
@@ -2085,6 +2277,10 @@
     },
     {
       "key": "DefaultPropertyMapVisualizer.PropertySlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "DefaultPropertyMapVisualizer.ValueSlot",
       "type": "VisualizerSlot.HolonType"
     },
     {
@@ -2804,6 +3000,10 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "EnumPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "EnumTokenMembership.ValidationRule",
       "type": "EnumValueValidationRule.HolonType"
     },
@@ -2936,6 +3136,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "FirstName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "FocusRingColor.DesignToken",
       "type": "DesignToken.HolonType"
     },
@@ -3064,6 +3268,10 @@
       "type": "DanceImplementation.HolonType"
     },
     {
+      "key": "GuestResolveComposition.DanceImplementation",
+      "type": "DanceImplementation.HolonType"
+    },
+    {
       "key": "GuestResolveVisualizerUsage.DanceImplementation",
       "type": "DanceImplementation.HolonType"
     },
@@ -3122,6 +3330,22 @@
     {
       "key": "HolonInspector.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "HolonInspectorActionsSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
+      "key": "HolonInspectorControlsSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
+      "key": "HolonInspectorPropertyMapSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
+      "key": "HolonInspectorTitleBarSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
@@ -3224,6 +3448,10 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "IntegerPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "IntegerValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -3302,6 +3530,10 @@
     {
       "key": "KeyUniqueness.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "LastName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "LauncherDismissDuration.DesignToken",
@@ -3468,6 +3700,10 @@
       "type": "VisualizerSlot.HolonType"
     },
     {
+      "key": "LoadHolonsResultTitleBarSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "LoadRequest.Projection",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -3530,6 +3766,10 @@
     {
       "key": "LocalMaterializeVisualizer.DanceImplementation",
       "type": "DanceImplementation.HolonType"
+    },
+    {
+      "key": "MAP Agent Spaces Schema-v0.1.0",
+      "type": "Schema.HolonType"
     },
     {
       "key": "MAP Commands Schema-v0.1.0",
@@ -3614,6 +3854,10 @@
     {
       "key": "MapBytesValueType.BytesValueType",
       "type": "MetaBytesValueType.MetaValueType"
+    },
+    {
+      "key": "MapEnumPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "MapEnumValueType.EnumValueType",
@@ -3770,6 +4014,10 @@
     {
       "key": "MetaVisualizerType.MetaHolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MiddleName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "Minimum.PropertyType",
@@ -3948,6 +4196,14 @@
       "type": "VisualizerImplementation.HolonType"
     },
     {
+      "key": "PersonAgent.BioSocialAgent",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PersonAgentName.FormatRule",
+      "type": "FormatRule.KeyRuleType"
+    },
+    {
       "key": "PreparedSchema.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -4026,6 +4282,10 @@
     {
       "key": "PropertyColumnGap.DesignToken",
       "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertyLabelDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "PropertyMapVisualizer.HolonType",
@@ -4256,6 +4516,18 @@
       "type": "PropertyValidationRule.HolonType"
     },
     {
+      "key": "ResolveComposition.DanceType",
+      "type": "MetaDanceType.MetaHolonType"
+    },
+    {
+      "key": "ResolveCompositionRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ResolveCompositionResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType"
+    },
+    {
       "key": "ResolveVisualizerUsage.DanceType",
       "type": "MetaDanceType.MetaHolonType"
     },
@@ -4266,6 +4538,10 @@
     {
       "key": "ResolveVisualizerUsageResponse.DanceResponseType",
       "type": "MetaDanceResponseType.MetaHolonType"
+    },
+    {
+      "key": "ResolvedComposition.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "ResponseBodyType.HolonType",
@@ -4450,6 +4726,10 @@
     {
       "key": "StringLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "StringPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "StringValidationRule.HolonType",
@@ -4816,6 +5096,54 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "VisualizerKind.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Action",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.ActionBar",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Canvas",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Collection",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Node",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.PropertyMap",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.RootedNavigation",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Structure",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.TitleBar",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Value",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "VisualizerModuleFormat.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -4824,7 +5152,15 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "VisualizerPreference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "VisualizerSlot.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "VisualizerSlotDefault.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {

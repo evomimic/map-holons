@@ -193,6 +193,7 @@ export interface VisualizerContext {
   discoveryExplorer?: { readonly evidence: DiscoveryPresentation; readonly state: DiscoveryExplorerState };
   /** Configuration anchor retained by this realization's occurrence owner. */
   visualizerUsage?: HolonReference;
+  visualizerConfiguration?: Readonly<Record<string, import('../deps').BaseValue>>;
   /** A retained realization is disposed by its owner after publication, not DOM movement. */
   retainRealizationOnDisconnect?: boolean;
   target: DahnTarget;
@@ -214,6 +215,8 @@ export interface VisualizerContext {
    * semantic implementation identifiers.
    */
   childVisualizers?: ReadonlyMap<string, HTMLElement>;
+  /** Direct, already-selected label/value children; PropertyMap owns their layout. */
+  propertyChildren?: readonly { propertyName: string; label: HTMLElement; value: HTMLElement }[];
   /**
    * Collection data already projected into renderer-owned table values.
    *

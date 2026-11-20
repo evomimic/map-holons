@@ -37,3 +37,14 @@ describe('descriptor-driven Node classification', () => {
     await expect(classifyNodeAffordances(view as unknown as HolonViewAccess)).rejects.toThrow('Invalid cardinality');
   });
 });
+
+it('uses the guest-prepared property vocabulary without querying each descriptor again', async () => {
+  const view = fixture();
+  const property = { isArray: vi.fn(() => { throw Error('duplicate descriptor read'); }) };
+  const prepared = [{ subject: {} as never, property: property as never, name: 'Name', label: 'Name', isArray: false },
+    { subject: {} as never, property: property as never, name: 'Tags', label: 'Tags', isArray: true }];
+  const result = await classifyNodeAffordances(view as unknown as HolonViewAccess, prepared);
+  expect(view.availableProperties).not.toHaveBeenCalled(); expect(property.isArray).not.toHaveBeenCalled();
+  expect(result.scalarProperties).toHaveLength(1); expect(result.collections[0]).toMatchObject({ kind: 'property', label: 'Tags' });
+  expect(view.propertyValue).not.toHaveBeenCalled(); expect(view.expandRelationship).not.toHaveBeenCalled();
+});

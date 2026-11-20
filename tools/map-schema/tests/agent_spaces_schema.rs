@@ -101,10 +101,20 @@ fn configured_agent_schema_is_bundled_and_precedes_its_consumers() -> Result<()>
     let resources = repository.join("host/conductora/resources");
     let config: Value = serde_json::from_slice(&fs::read(resources.join("space-imports.json"))?)?;
     let imports = config["imports"].as_array().unwrap();
-    assert_eq!(imports[0], "schema-packages/agent-spaces/imports/schema.json");
+    let manifest: Value = serde_json::from_slice(&fs::read(
+        repository.join("schema-src/core-schema-bootstrap-manifest.json"),
+    )?)?;
+    let packages = manifest["packages"].as_array().unwrap();
+    let agent = packages.iter().position(|p| p["name"] == "agent-spaces").unwrap();
+    let dahn = packages.iter().position(|p| p["name"] == "dahn").unwrap();
+    assert!(agent < dahn);
+    assert!(!imports.iter().any(|p| p == "schema-packages/agent-spaces/imports/schema.json"));
     for import in imports {
         assert!(resources.join(import.as_str().unwrap()).is_file());
     }
-    assert_eq!(GENERATED, fs::read_to_string(resources.join(imports[0].as_str().unwrap()))?);
+    assert_eq!(
+        GENERATED,
+        fs::read_to_string(resources.join("schema-packages/agent-spaces/imports/schema.json"))?
+    );
     Ok(())
 }

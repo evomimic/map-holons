@@ -1,0 +1,513 @@
+meta {
+  export_mode: "test-fixture"
+}
+schema VisualizerPreferenceTestSchema {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP DAHN Schema-v0.1.0"
+  header {
+    description: "Test-only declared Date preferences across compatible compositions."
+  }
+}
+
+value PreferenceTestDate.StringValueType {
+  type MetaStringValueType.MetaValueType
+  extends MapStringValueType.StringValueType
+  header {
+    description: "Test-only PreferenceTestDate for semantic composition preferences."
+    display_name: "PreferenceTestDate"
+    display_plural: "PreferenceTestDate items"
+    plural: "PreferenceTestDateItems"
+  }
+}
+
+property PreferenceTestDate.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only PreferenceTestDateProperty for semantic composition preferences."
+    display_name: "PreferenceTestDateProperty"
+    display_plural: "PreferenceTestDateProperty items"
+    plural: "PreferenceTestDatePropertyItems"
+  }
+}
+
+holon PreferenceTestRecord.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  instance_keyrule NoneRule.KeyRuleType
+  header {
+    description: "Test-only PreferenceTestRecord for semantic composition preferences."
+    display_name: "PreferenceTestRecord"
+    display_plural: "PreferenceTestRecord items"
+    plural: "PreferenceTestRecordItems"
+  }
+  relationships {
+    InstanceProperties -> [
+      PreferenceTestDate.PropertyType,
+      PreferenceTestDate2.PropertyType,
+      PreferenceTestDate3.PropertyType,
+      PreferenceTestDate4.PropertyType,
+      PreferenceTestDate5.PropertyType,
+      PreferenceTestDate6.PropertyType,
+      PreferenceTestDate7.PropertyType,
+      PreferenceTestDate8.PropertyType,
+      PreferenceTestDate9.PropertyType,
+      PreferenceTestDate10.PropertyType,
+      PreferenceTestDate11.PropertyType,
+      PreferenceTestDate12.PropertyType,
+      PreferenceTestDate13.PropertyType,
+      PreferenceTestDate14.PropertyType,
+      PreferenceTestDate15.PropertyType,
+      PreferenceTestDate16.PropertyType,
+      PreferenceTestDate17.PropertyType,
+      PreferenceTestDate18.PropertyType
+    ]
+  }
+}
+
+holon PreferenceTestA.PropertyMapVisualizerType {
+  type MetaVisualizerType.MetaHolonType
+  extends PropertyMapVisualizer.HolonType
+  header {
+    description: "Test-only PreferenceTestA for semantic composition preferences."
+    display_name: "PreferenceTestA"
+    display_plural: "PreferenceTestA items"
+    plural: "PreferenceTestAItems"
+  }
+  relationships {
+    HasSlot -> PreferenceTestA.Slot
+  }
+}
+
+instance PreferenceTestA.PropertyMapVisualizer {
+  type PreferenceTestA.PropertyMapVisualizerType
+  DisplayName "PreferenceTestA"
+  relationships {
+    ApplicableToType -> PreferenceTestRecord.HolonType
+    ImplementedBy -> DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation
+  }
+}
+
+instance PreferenceTestA.Slot {
+  type VisualizerSlot.HolonType
+  CompositionRole "value"
+  CompositionSubject ScalarPropertyValue
+  VisualizerKind Value
+  CompositionActivation Presentation
+  relationships {
+    AcceptsVisualizerType -> ValueVisualizer.HolonType
+  }
+}
+
+holon PreferenceTestB.PropertyMapVisualizerType {
+  type MetaVisualizerType.MetaHolonType
+  extends PropertyMapVisualizer.HolonType
+  header {
+    description: "Test-only PreferenceTestB for semantic composition preferences."
+    display_name: "PreferenceTestB"
+    display_plural: "PreferenceTestB items"
+    plural: "PreferenceTestBItems"
+  }
+  relationships {
+    HasSlot -> PreferenceTestB.Slot
+  }
+}
+
+instance PreferenceTestB.PropertyMapVisualizer {
+  type PreferenceTestB.PropertyMapVisualizerType
+  DisplayName "PreferenceTestB"
+  relationships {
+    ApplicableToType -> PreferenceTestRecord.HolonType
+    ImplementedBy -> DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation
+  }
+}
+
+instance PreferenceTestB.Slot {
+  type VisualizerSlot.HolonType
+  CompositionRole "value"
+  CompositionSubject ScalarPropertyValue
+  VisualizerKind Value
+  CompositionActivation Presentation
+  relationships {
+    AcceptsVisualizerType -> ValueVisualizer.HolonType
+  }
+}
+
+holon PreferenceTestRange.PropertyMapVisualizerType {
+  type MetaVisualizerType.MetaHolonType
+  extends PropertyMapVisualizer.HolonType
+  header {
+    description: "Test-only PreferenceTestRange for semantic composition preferences."
+    display_name: "PreferenceTestRange"
+    display_plural: "PreferenceTestRange items"
+    plural: "PreferenceTestRangeItems"
+  }
+  relationships {
+    HasSlot -> PreferenceTestRange.Slot
+  }
+}
+
+instance PreferenceTestRange.PropertyMapVisualizer {
+  type PreferenceTestRange.PropertyMapVisualizerType
+  DisplayName "PreferenceTestRange"
+  relationships {
+    ApplicableToType -> PreferenceTestRecord.HolonType
+    ImplementedBy -> DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation
+  }
+}
+
+instance PreferenceTestRange.Slot {
+  type VisualizerSlot.HolonType
+  CompositionRole "value"
+  CompositionSubject ScalarPropertyValue
+  VisualizerKind Value
+  CompositionActivation Presentation
+  relationships {
+    AcceptsVisualizerType -> PreferenceTestRangeVisualizer.HolonType
+  }
+}
+
+holon PreferenceTestRangeVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends ValueVisualizer.HolonType
+  header {
+    description: "Test-only narrower presentation family for an incompatible date-range contract."
+    display_name: "Range Value Visualizer"
+    display_plural: "Range Value Visualizers"
+    plural: "RangeValueVisualizers"
+  }
+}
+
+instance PreferenceTestPreferred.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  DisplayName "PreferenceTestPreferred"
+  relationships {
+    ApplicableToType -> PreferenceTestDate.StringValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance PreferenceTestOverride.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  DisplayName "PreferenceTestOverride"
+  relationships {
+    ApplicableToType -> PreferenceTestDate.StringValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance PreferenceTestRange.ValueVisualizer {
+  type PreferenceTestRangeVisualizer.HolonType
+  DisplayName "PreferenceTestRange"
+  relationships {
+    ApplicableToType -> MapStringValueType.StringValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance PreferenceTestA.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> PreferenceTestA.Slot
+    DefaultForSubjectType -> PreferenceTestDate.StringValueType
+    RecommendsVisualizer -> PreferenceTestOverride.ValueVisualizer
+  }
+}
+
+instance PreferenceTestB.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> PreferenceTestB.Slot
+    DefaultForSubjectType -> PreferenceTestDate.StringValueType
+    RecommendsVisualizer -> PreferenceTestOverride.ValueVisualizer
+  }
+}
+
+instance PreferenceTestRange.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> PreferenceTestRange.Slot
+    RecommendsVisualizer -> PreferenceTestRange.ValueVisualizer
+  }
+}
+
+property PreferenceTestDateFormat.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  DefaultValue "iso"
+  header {
+    description: "Test-only personal configuration setting."
+    display_name: "Date format"
+    display_plural: "Date formats"
+    plural: "DateFormats"
+  }
+}
+holon PreferenceTestUsage.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends VisualizerUsage.HolonType
+  header {
+    description: "Test-only configured Date usage."
+    display_name: "Configured Date usage"
+    display_plural: "Configured Date usages"
+    plural: "ConfiguredDateUsages"
+  }
+  relationships {
+    InstanceProperties -> PreferenceTestDateFormat.PropertyType
+  }
+}
+
+property PreferenceTestDate2.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 2 for shared selection evidence."
+    display_name: "Date 2"
+    display_plural: "Dates 2"
+    plural: "Dates2"
+  }
+}
+
+property PreferenceTestDate3.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 3 for shared selection evidence."
+    display_name: "Date 3"
+    display_plural: "Dates 3"
+    plural: "Dates3"
+  }
+}
+
+property PreferenceTestDate4.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 4 for shared selection evidence."
+    display_name: "Date 4"
+    display_plural: "Dates 4"
+    plural: "Dates4"
+  }
+}
+
+property PreferenceTestDate5.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 5 for shared selection evidence."
+    display_name: "Date 5"
+    display_plural: "Dates 5"
+    plural: "Dates5"
+  }
+}
+
+property PreferenceTestDate6.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 6 for shared selection evidence."
+    display_name: "Date 6"
+    display_plural: "Dates 6"
+    plural: "Dates6"
+  }
+}
+
+property PreferenceTestDate7.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 7 for shared selection evidence."
+    display_name: "Date 7"
+    display_plural: "Dates 7"
+    plural: "Dates7"
+  }
+}
+
+property PreferenceTestDate8.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 8 for shared selection evidence."
+    display_name: "Date 8"
+    display_plural: "Dates 8"
+    plural: "Dates8"
+  }
+}
+
+property PreferenceTestDate9.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 9 for shared selection evidence."
+    display_name: "Date 9"
+    display_plural: "Dates 9"
+    plural: "Dates9"
+  }
+}
+
+property PreferenceTestDate10.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 10 for shared selection evidence."
+    display_name: "Date 10"
+    display_plural: "Dates 10"
+    plural: "Dates10"
+  }
+}
+
+property PreferenceTestDate11.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 11 for shared selection evidence."
+    display_name: "Date 11"
+    display_plural: "Dates 11"
+    plural: "Dates11"
+  }
+}
+
+property PreferenceTestDate12.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 12 for shared selection evidence."
+    display_name: "Date 12"
+    display_plural: "Dates 12"
+    plural: "Dates12"
+  }
+}
+
+property PreferenceTestDate13.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 13 for shared selection evidence."
+    display_name: "Date 13"
+    display_plural: "Dates 13"
+    plural: "Dates13"
+  }
+}
+
+property PreferenceTestDate14.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 14 for shared selection evidence."
+    display_name: "Date 14"
+    display_plural: "Dates 14"
+    plural: "Dates14"
+  }
+}
+
+property PreferenceTestDate15.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 15 for shared selection evidence."
+    display_name: "Date 15"
+    display_plural: "Dates 15"
+    plural: "Dates15"
+  }
+}
+
+property PreferenceTestDate16.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 16 for shared selection evidence."
+    display_name: "Date 16"
+    display_plural: "Dates 16"
+    plural: "Dates16"
+  }
+}
+
+property PreferenceTestDate17.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 17 for shared selection evidence."
+    display_name: "Date 17"
+    display_plural: "Dates 17"
+    plural: "Dates17"
+  }
+}
+
+property PreferenceTestDate18.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PreferenceTestDate.StringValueType
+  header {
+    description: "Test-only Date field 18 for shared selection evidence."
+    display_name: "Date 18"
+    display_plural: "Dates 18"
+    plural: "Dates18"
+  }
+}
+
+instance PreferenceTestAGeneral.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> PreferenceTestA.Slot
+    RecommendsVisualizer -> StringValue.ValueVisualizer
+  }
+}
+
+instance PreferenceTestBGeneral.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> PreferenceTestB.Slot
+    RecommendsVisualizer -> StringValue.ValueVisualizer
+  }
+}
+
+holon PreferenceTestInitialInspector.NodeVisualizerType {
+  type MetaVisualizerType.MetaHolonType
+  extends HolonInspector.NodeVisualizerType
+  header {
+    description: "Test-only inspector declaring one initial collection source."
+    display_name: "Initial collection inspector"
+    display_plural: "Initial collection inspectors"
+    plural: "InitialCollectionInspectors"
+  }
+  relationships {
+    HasSlot -> PreferenceTestInitialInspector.CollectionSlot
+  }
+}
+instance PreferenceTestInitialInspector.NodeVisualizer {
+  type PreferenceTestInitialInspector.NodeVisualizerType
+  DisplayName "Initial collection inspector"
+  relationships {
+    ApplicableToType -> HolonType.TypeDescriptor
+    ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
+  }
+}
+instance PreferenceTestInitialInspector.CollectionSlot {
+  type VisualizerSlot.HolonType
+  CompositionRole "collection"
+  CompositionSubject SelectedCollection
+  VisualizerKind Collection
+  CompositionActivation Presentation
+  relationships {
+    AcceptsVisualizerType -> CollectionVisualizer.HolonType
+    InitialCollectionSource -> (HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor)
+  }
+}

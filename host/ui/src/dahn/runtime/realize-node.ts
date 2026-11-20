@@ -63,124 +63,57 @@ export async function realizeNode(
   const usageSelections: HolonReference[] = [];
   let collectionActivation: NodeCollectionActivation | undefined;
   try {
+    onStage?.('resolve owner composition');
+    const composition = await transaction.resolveComposition(selectedVisualizer, subject, theme.reference);
+    materialized = materialized.forComposition(composition);
     onStage?.('classify node affordances');
-    const affordances = await classifyNodeAffordances(view);
+    const affordances = await classifyNodeAffordances(view, composition.subjectProperties.filter(p => p.subject.equals(subject)));
     const propertiesElement = await renderVisualizerRegion('Properties', async () => {
       onStage?.('select and materialize Properties');
-      const propertiesSlot = await materialized.slot(selectedVisualizer, 'propertyMap');
-      const propertiesSelection = await transaction.selectVisualizer({
-        subject,
-        requestedKind: 'propertyMap',
-        slot: propertiesSlot,
-        owner: { visualizer: selectedVisualizer }, theme: theme.reference,
-      });
-      const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
-      if (
-        typeof propertiesImplementation !== 'function' ||
-        !(propertiesImplementation.prototype instanceof HTMLElement)
-      ) {
-        throw new Error('Selected Properties implementation does not export an HTMLElement constructor.');
+      const propertiesBinding = composition.bindings.find(b => b.parent === null && b.role === 'propertyMap');
+      if (!propertiesBinding) throw new Error('Node composition has no presented PropertyMap binding');
+      const propertiesSlot = propertiesBinding.slot;
+      const propertiesSelection = propertiesBinding;
+      const propertiesIndex = composition.bindings.indexOf(propertiesBinding);
+      const propertiesImplementation = await materialized.realize(propertiesBinding.selected);
+      if (typeof propertiesImplementation !== 'function' || !(propertiesImplementation.prototype instanceof HTMLElement)) {
+        throw new Error('Selected PropertyMap does not export an HTMLElement constructor');
       }
-      const propertiesTag = defineCustomElementOnce(
-        'map-properties-visualizer',
-        propertiesImplementation as CustomElementConstructor,
-      );
-      onStage?.('discover and render property fields');
-      const propertyVisualizers = new Map<string, HTMLElement>();
-      for (const propertyDescriptor of affordances.scalarProperties) {
-        let propertyName = 'Property ' + (propertyVisualizers.size + 1);
-        const propertyRegion = await renderVisualizerRegion('Property', async () => {
-          onStage?.('property: resolve name');
-          propertyName = await propertyDescriptor.propertyName();
-          return renderVisualizerRegion(propertyName, async () => {
-            // Resolve this property through the selected descriptor and value contracts.
-            onStage?.(`property ${propertyName}: select Property`);
-            const propertySlot = await materialized.slot(propertiesSelection.selected, 'property');
-            const propertySelection = await transaction.selectPropertyVisualizer(
-              propertyDescriptor,
-              propertiesSelection.selected,
-              propertySlot,
-              theme.reference,
-            );
-            onStage?.(`property ${propertyName}: materialize Property`);
-            const propertyImplementation = await materialized.realize(propertySelection.selected);
-            if (
-              typeof propertyImplementation !== 'function' ||
-              !(propertyImplementation.prototype instanceof HTMLElement)
-            ) {
-              throw new Error('Selected Property implementation does not export an HTMLElement constructor.');
-            }
-            const propertyTag = defineCustomElementOnce(
-              'map-property-visualizer',
-              propertyImplementation as CustomElementConstructor,
-            );
-            onStage?.(`property ${propertyName}: read value`);
-            const value = await subject.propertyValue(propertyName);
-            const valueElement = await renderVisualizerRegion(propertyName, async () => {
-              onStage?.(`property ${propertyName}: select Value`);
-              const valueSlot = await materialized.slot(propertySelection.selected, 'value');
-              const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected, valueSlot, theme.reference);
-              onStage?.(`property ${propertyName}: materialize Value`);
-              const valueImplementation = await materialized.realize(valueSelection.selected);
-              if (typeof valueImplementation !== 'function' || !(valueImplementation.prototype instanceof HTMLElement)) {
-                throw new Error('Selected Value implementation does not export an HTMLElement constructor.');
-              }
-              const valueTag = defineCustomElementOnce(
-                'map-scalar-value-visualizer',
-                valueImplementation as CustomElementConstructor,
-              );
-
-              onStage?.(`property ${propertyName}: construct elements`);
-              const renderedValue = document.createElement(valueTag) as HTMLElement & {
-                setContext(context: VisualizerContext): void;
-              };
-              renderedValue.setContext({
-                title: propertyName,
-                target: { reference: subject },
-                holon: new DahnHolonView(subject),
-                actions: [],
-                theme,
-                canvas,
-                propertyPresentation: { propertyName, value },
-              });
-
-              await bindVisualizerInformationControl(renderedValue, transaction, subject, propertySelection.selected, valueSlot, valueSelection.selected, 'start');
-              usageSelections.push(valueSelection.selected);
-              return renderedValue;
-            });
-            const propertyElement = document.createElement(propertyTag) as HTMLElement & {
-              setContext(context: VisualizerContext): void;
-            };
-            propertyElement.setContext({
-              title: propertyName,
-              target: { reference: subject },
-              holon: new DahnHolonView(subject),
-              actions: [],
-              theme,
-              canvas,
-              propertyPresentation: { propertyName, value },
-              childVisualizers: new Map([['value', valueElement]]),
-            });
-            await bindVisualizerInformationControl(propertyElement, transaction, subject, propertiesSelection.selected, propertySlot, propertySelection.selected, 'start');
-            usageSelections.push(propertySelection.selected);
-            return propertyElement;
-          });
-        });
-        propertyVisualizers.set(propertyName, propertyRegion);
+      const propertiesTag = defineCustomElementOnce('map-properties-visualizer', propertiesImplementation as CustomElementConstructor);
+      const propertyChildren = new Map<string, { propertyName: string; label?: HTMLElement; value?: HTMLElement }>();
+      for (const binding of composition.bindings.filter(b => b.parent === propertiesIndex)) {
+        if (!binding.propertyName || !['ScalarPropertyLabel','ScalarPropertyValue'].includes(binding.subjectBinding)) {
+          throw new Error('PropertyMap child requires a scalar property binding');
+        }
+        const propertyName = binding.propertyName;
+        const row = propertyChildren.get(propertyName) ?? { propertyName };
+        const isLabel = binding.subjectBinding === 'ScalarPropertyLabel';
+        if (isLabel ? row.label : row.value) throw new Error(`Duplicate property presentation for ${propertyName}`);
+        onStage?.(`property ${propertyName}: materialize ${isLabel ? 'label' : 'value'}`);
+        const Child = await materialized.realize(binding.selected);
+        if (typeof Child !== 'function' || !(Child.prototype instanceof HTMLElement)) throw new Error('Value Visualizer is not an HTMLElement constructor');
+        const element = document.createElement(defineCustomElementOnce('map-scalar-value-visualizer', Child as CustomElementConstructor)) as HTMLElement & { setContext(context: VisualizerContext): void };
+        const value = isLabel ? { StringValue: binding.label ?? propertyName } : await subject.propertyValue(propertyName);
+        element.setContext({ title: binding.label ?? propertyName, target: { reference: subject }, holon: view, actions: [], theme, canvas,
+          visualizerUsage: binding.usage, visualizerConfiguration: binding.configuration, propertyPresentation: { propertyName, value } });
+        await materialized.admitBinding(element, binding);
+        const display = materialized.metadata(binding.selected)?.properties['DisplayName'];
+        await bindVisualizerInformationControl(element, transaction, subject, binding.owner, binding.slot, binding.selected, isLabel ? 'start' : 'end', undefined,
+          display && 'StringValue' in display ? display.StringValue : undefined);
+        if (isLabel) row.label = element; else row.value = element;
+        propertyChildren.set(propertyName, row);
       }
-      const propertiesElement = document.createElement(propertiesTag) as HTMLElement & {
-        setContext(context: VisualizerContext): void;
-      };
-      propertiesElement.setContext({
-        title: 'Properties',
-        target: { reference: subject },
-        holon: new DahnHolonView(subject),
-        actions: [],
-        theme,
-        canvas,
-        childVisualizers: propertyVisualizers,
-      });
-      await bindVisualizerInformationControl(propertiesElement, transaction, subject, selectedVisualizer, propertiesSlot, propertiesSelection.selected);
+      const propertiesElement = document.createElement(propertiesTag) as HTMLElement & { setContext(context: VisualizerContext): void };
+      propertiesElement.setContext({ title: 'Properties', target: { reference: subject }, holon: view, actions: [], theme, canvas,
+        visualizerUsage: propertiesBinding.usage, visualizerConfiguration: propertiesBinding.configuration,
+        propertyChildren: [...propertyChildren.values()].map(row => {
+          if (!row.label || !row.value) throw new Error(`Incomplete label/value composition for ${row.propertyName}`);
+          return { propertyName: row.propertyName, label: row.label, value: row.value };
+        }) });
+      await materialized.admitBinding(propertiesElement, propertiesBinding);
+      const displayName = materialized.metadata(propertiesSelection.selected)?.properties['DisplayName'];
+      await bindVisualizerInformationControl(propertiesElement, transaction, subject, selectedVisualizer, propertiesSlot, propertiesSelection.selected, 'end', undefined,
+        displayName && 'StringValue' in displayName ? displayName.StringValue : undefined);
       usageSelections.push(propertiesSelection.selected);
       return propertiesElement;
     });

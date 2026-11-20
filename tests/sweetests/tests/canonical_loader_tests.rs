@@ -1,5 +1,6 @@
 //! Canonical loading crosses the real host/guest boundary through the ordinary command runtime.
 use core_types::{ContentSet, FileData};
+use holons_core::agent_spaces::{stage_personal_agent, PersonalName};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceInvocation;
 use holons_core::{HolonCollectionApi, HolonReference, ReadableHolon, WritableHolon};
@@ -134,6 +135,21 @@ async fn load_navigator_package(runtime: &Runtime) -> Arc<TransactionContext> {
 async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let (runtime, initial_tx, control) =
         init_probe_test_runtime(&mut DancesTestCase::default()).await;
+    // Personal configuration requires an established principal, independently of caller edits.
+    let constitution = new_context(&runtime).await;
+    let person = stage_personal_agent(
+        &constitution,
+        PersonalName { last_name: "Canonical tester".into(), first_name: None, middle_name: None },
+    )
+    .unwrap();
+    let MapResult::Reference(committed) =
+        command(&runtime, &constitution, TransactionAction::Commit).await.unwrap()
+    else {
+        panic!("constitution Commit result")
+    };
+    assert_eq!(string(&committed, "CommitRequestStatus"), "Complete");
+    let person_id = person.holon_id().unwrap();
+    runtime.session().archive_transaction(&constitution.tx_id()).unwrap();
     let unrelated = runtime.session().get_transaction(&initial_tx).unwrap();
     let source = unrelated.mutation().new_holon(Some("unrelated-edit".into())).unwrap();
     let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
@@ -478,6 +494,10 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         .unwrap() else {
             panic!("saved Usage")
         };
+        let owners = persisted.usage.related_holons("UsageForAgent").unwrap();
+        let owners = owners.read().unwrap().get_members().clone();
+        assert_eq!(owners.len(), 1);
+        assert_eq!(owners[0].holon_id().unwrap(), person_id);
         let slot = saved(slot);
         let selected_usages = slot
             .related_holons_with_hint(
@@ -488,7 +508,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         assert!(selected_usages.read().unwrap().get_members().contains(&persisted.usage));
         let preferences = slot
             .related_holons_with_hint(
-                "HasVisualizerPreference",
+                "HasScopedVisualizerPreference",
                 holons_core::RelationshipReadHint::RequireFresh,
             )
             .unwrap();

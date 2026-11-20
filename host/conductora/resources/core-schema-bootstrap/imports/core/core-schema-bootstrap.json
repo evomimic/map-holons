@@ -21,6 +21,9 @@
           "name": "AvailableSchemas",
           "target": [
             {
+              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+            },
+            {
               "$ref": "MAP Commands Schema-v0.1.0"
             },
             {

@@ -1,3 +1,4 @@
+import { resolvedCollectionComposition, resolvedValueComposition } from '../../../test-fixtures/resolved-composition';
 import { presentationAssignment } from '../../../test-fixtures/node-presentation';
 import { destinationPaint } from './destination-paint';
 import { selectedVisualizerInspection, withVisualizerComposition } from './visualizer-information-control';
@@ -24,7 +25,7 @@ const artifacts = Object.fromEntries(await Promise.all(
 const titleActions = new Map([['Explore', 'ExploreOccurrence'], ['Close', 'CloseOccurrence'], ['ExpandRestore', 'ExpandRestoreOccurrence'], ['Inspect', 'InspectOccurrence']]);
 const slotRoles: Record<string, string> = { 'HolonInspector.VisualizerControlsSlot': 'visualizerActions', 'HolonInspector.TitleBarSlot': 'titleBar', 'HolonInspector.PropertyMapSlot': 'propertyMap', 'HolonInspector.ActionsSlot': 'action', 'HolonInspector.CollectionsSlot': 'collection', 'DefaultPropertyMapVisualizer.PropertySlot': 'property', 'GenericProperty.ValueSlot': 'value', 'PathInspector.RootNodeSlot': 'node', 'TableCollection.ValueSlot': 'value' };
 const referenceCollection = (members: any[]) => Object.assign(members, { members });
-const selected = (key: string) => ({ equals: (other: any) => other.identity === key, identity: key, propertyValue: async (name: string) => ({ StringValue: name === 'CompositionRole' ? slotRoles[key] ?? key : key }), key: async () => key, relatedHolons: async (relation: string) => {
+const selected = (key: string) => ({ equals: (other: any) => other.identity === key, identity: key, propertyValue: async (name: string) => ({ StringValue: name === 'CompositionRole' ? slotRoles[key] ?? key : key }), versionedKey: async () => key, key: async () => key, relatedHolons: async (relation: string) => {
   if (relation === 'DescribedBy') return referenceCollection([selected(`${key}-type`)]);
   if (relation === 'HasSlot') return referenceCollection( ['HolonInspector.VisualizerControlsSlot', 'HolonInspector.TitleBarSlot', 'HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'HolonInspector.CollectionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot', 'TableCollection.ValueSlot'].filter(slot => slot !== (key.startsWith('table-collection') ? 'GenericProperty.ValueSlot' : 'TableCollection.ValueSlot')).map(selected));
   if (relation === 'UsesNodeActionsContract') return [selected('NodeActions.Contract')];
@@ -73,6 +74,21 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     ref.relatedHolons.mockImplementation(async name => collection([name === 'First' ? a : name === 'Second' ? b : rootSubject]));
   }
   const selectVisualizer = vi.fn(selectFixture);
+  const resolveComposition = vi.fn(async (owner: HolonReference, subject: HolonReference, theme: HolonReference) => {
+    const create = (role: string, selectedVisualizer: HolonReference, parent: number | null = null, subjectBinding = 'OwnerSubject') => ({
+      parent, owner: parent === null ? owner : visualizers.propertyMap,
+      slot: selected(`resolved-${role}-slot`), subject, subjectDescriptor: selected('fixture-type'),
+      subjectBinding, role, propertyName: parent === null ? undefined : 'Name', label: 'Name',
+      selected: selectedVisualizer, implementation: selected('fixture-implementation'), usage: undefined,
+      reason: 'PrescribedDefault', configuration: {}, requiredOperators: [], offeredOperators: [],
+    });
+    const bindings = [create('propertyMap', visualizers.propertyMap), create('label', visualizers.value, 0, 'ScalarPropertyLabel'),
+      create('value', visualizers.value, 0, 'ScalarPropertyValue'), create('titleBar', visualizers.titleBar),
+      create('action', visualizers.actionBar), create('visualizerActions', visualizers.actionBar)];
+    const refs = [...new Set(bindings.flatMap(b => [b.owner,b.slot,b.selected]))];
+    const metadata = await Promise.all(refs.map(async reference => ({ reference, identity: await reference.versionedKey(), key: await reference.key(), versionedKey: await reference.versionedKey(), properties: { DisplayName: { StringValue: await reference.key() } } })));
+    return { bindings, metadata, subjectProperties: [{ subject, property, name: 'Name', label: 'Name', isArray: false }] };
+  });
   const transaction = {
     chooseVisualizer: vi.fn(async (_request, candidate) => ({ selected: candidate })),
     discoverVisualizers: vi.fn(async () => ({ candidates: [], currentSelection: null, ancestry: [] })),
@@ -80,9 +96,10 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     recordVisualizerUse: vi.fn(async () => {}),
     withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
     recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
-    selectVisualizer,
+    selectVisualizer, resolveComposition,
     selectPropertyVisualizer: vi.fn(async () => ({ selected: visualizers.property })),
-    selectValueVisualizer: vi.fn(async () => ({ selected: visualizers.value })),
+    resolvePropertyComposition: vi.fn(async (_property, owner, slot) => resolvedValueComposition(visualizers.value, owner, slot)),
+    resolveRelationshipComposition: vi.fn(async (owner, _subject, _theme, slot) => resolvedCollectionComposition(visualizers.collection, owner, slot)),
     selectCollectionVisualizer: vi.fn(async () => ({ selected: visualizers.collection })),
     getSavedHolonByBaseKey: vi.fn(async () => ({})),
     getSavedPropertyDescriptorByBaseKey: vi.fn(async () => ({ ...property, propertyName: async () => 'Key', displayName: async () => 'Key' })),
@@ -176,7 +193,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(child.provenance).toMatchObject({ kind: 'collection-member', parentOccurrenceId: f.path()[0].id, affordance: { label: 'Members' } });
     expect(child.provenance!.collectionOccurrenceId).not.toBe(child.id);
     expect(child.element.textContent).toContain('Example: A');
-    expect(child.element.querySelector('[data-dahn-scalar-value]')?.firstChild?.textContent).toBe('A');
+    expect(child.element.querySelectorAll('[data-dahn-scalar-value]')[1]?.firstChild?.textContent).toBe('A');
     expect(f.root.element.querySelector('table')).toBe(table);
     expect(rows[0].getAttribute('aria-selected')).toBe('true');
     expect(f.root.element.querySelector('[aria-selected=true][role=tab]')?.textContent).toBe('Members (3)');
@@ -352,7 +369,7 @@ describe('vertical traversal through selected artifacts', () => {
     const previous = f.path()[1];
     if (stage === 'selection') f.selectVisualizer.mockRejectedValueOnce(new Error('selection failed'));
     if (stage === 'materialization') vi.spyOn(f.runtime, 'realize').mockRejectedValueOnce(new Error('artifact failed'));
-    if (stage === 'descriptor') vi.spyOn(f.b, 'availableProperties').mockRejectedValueOnce(new Error('descriptor failed'));
+    if (stage === 'descriptor') vi.mocked(f.transaction.resolveComposition).mockRejectedValueOnce(new Error('descriptor failed'));
     activate(rows[1]);
     await vi.waitFor(() => expect(f.destination()?.retry).toBeDefined());
     expect(f.path()[1].element).toBe(previous.element); expect(previous.element.isConnected).toBe(true);
@@ -1329,14 +1346,14 @@ it('binds information to distinct occurrences of the same subject and their sele
 });
 
 
-it('provides independently bound information controls for composed Properties, Property, Value and Actions slots', async () => {
+it('provides independently bound information controls for composed Properties, Label, Value and Actions slots', async () => {
   const f = await fixture();
   const targets: VisualizerInspectionTarget[] = [];
   f.element.addEventListener('dahn-visualizer-information', event => targets.push((event as CustomEvent).detail));
   const controls = [...f.root.element.querySelectorAll<HTMLButtonElement>('[data-visualizer-information-control] > button')].filter(button => button.parentElement!.style.display !== 'none');
   expect(controls).toHaveLength(5);
   for (const button of controls) button.click();
-  expect(new Set(targets.map(target => target.selectedVisualizer))).toEqual(new Set([visualizers.propertyMap, visualizers.property, visualizers.value, visualizers.actionBar]));
+  expect(new Set(targets.map(target => target.selectedVisualizer))).toEqual(new Set([visualizers.propertyMap, visualizers.value, visualizers.actionBar]));
   expect(targets.every(target => target.subject === f.rootSubject && target.isLive())).toBe(true);
   f.navigation.dispose();
   expect(targets.every(target => !target.isLive())).toBe(true);
@@ -1351,7 +1368,8 @@ it('uses the active semantic Theme after an explicit Theme change', async () => 
   activate(rows[0]);
   await vi.waitFor(() => expect(f.path()).toHaveLength(2));
   expect(nodeSelections(f)[0][0].theme).toBe(next);
-  expect(vi.mocked(f.transaction.selectPropertyVisualizer).mock.calls.at(-1)?.[3]).toBe(next);
+  expect(vi.mocked(f.transaction.resolveComposition).mock.calls.at(-1)?.[2]).toBe(next);
+  expect(f.transaction.selectPropertyVisualizer).not.toHaveBeenCalled();
 });
 
 
@@ -1544,7 +1562,7 @@ it('materializes a real alternative with a different expanded layout and indepen
   (alternate.element as VisualizerElement).applyNodePresentation(presentationAssignment({ width: 800, height: 700, vertical: 'full-height', horizontal: 'full-width' }));
   expect((alternate.element as any).singleValueRail.style.gridRow).toBe('2 / 4');
   expect((alternate.element as any).propertyViewer.style.gridRow).toBe('3');
-  expect(f.transaction.selectVisualizer).toHaveBeenCalledWith(expect.objectContaining({ owner: { visualizer: expect.any(Object) }, slot: expect.objectContaining({ key: expect.any(Function) }) }));
+  expect(f.transaction.resolveComposition).toHaveBeenCalledWith(expect.objectContaining({ identity: 'alternative-node' }), f.rootSubject, f.theme.reference);
   expect(await (await f.runtime.slot(selected('alternative-node'), 'collection')).key()).toBe('HolonInspector.CollectionsSlot');
   alternate.dispose?.(); f.navigation.dispose();
 });

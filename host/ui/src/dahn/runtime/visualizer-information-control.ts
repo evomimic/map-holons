@@ -58,8 +58,9 @@ export async function bindVisualizerInformationControl(
   owner: HolonReference, slot: HolonReference, selectedVisualizer: HolonReference,
   placement: 'start' | 'end' = 'end',
   regionLabel?: string,
+  suppliedDisplayName?: string,
 ): Promise<void> {
-  const value = await selectedVisualizer.propertyValue('DisplayName');
+  const value = suppliedDisplayName === undefined ? await selectedVisualizer.propertyValue('DisplayName') : { StringValue: suppliedDisplayName };
   const displayName = value && 'StringValue' in value ? value.StringValue
     : await selectedVisualizer.key() ?? await selectedVisualizer.versionedKey();
   const container = document.createElement('span');

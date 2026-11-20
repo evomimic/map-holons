@@ -247,13 +247,6 @@ export class SpaceNavigatorExperience {
       const tag = defineCustomElementOnce('map-rooted-navigation-visualizer', implementation as CustomElementConstructor);
       const nodeSlot = await materialized.slot(selectedPath, 'node');
       if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' })).selected;
-      if (initial) {
-        await transaction.prepareVisualizerUsage({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' }, selectedNode);
-        const roots = await dancer.relatedHolons('HasExperienceVisualizerSlot');
-        for (const slot of roots) if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') {
-          await transaction.prepareVisualizerUsage({ subject: anchor, slot, owner: { dancer }, theme: theme.reference, requestedKind: 'rootedNavigation' }, selectedPath);
-        }
-      }
       signal.throwIfAborted();
       const actionInteractions: ActionInteractions | undefined = this.binding.actionInteractions && {
         openLoadHolons: binding => this.binding.actionInteractions!.openLoadHolons({

@@ -101,7 +101,7 @@ it.each(['holon-inspector', 'load-holons-inspector'])('%s expands Properties loc
   expandProperties.click();
   expect(node.dataset.paneAttention).toBe('properties'); expect(node.dataset.inspectorMode).toBe('properties');
   expect(node.getNodeInspectorAllocation()).toEqual(grant);
-  expect(node.body.style.gridTemplateColumns).toBe('minmax(0px, 1fr)'); expect(node.actionsVisualizer.hidden).toBe(true);
+  expect(node.body.style.gridTemplateColumns.replace('0px', '0')).toBe('minmax(0, 1fr)'); expect(node.actionsVisualizer.hidden).toBe(true);
   expect(expandProperties.getAttribute('aria-label')).toBe('Restore Properties pane');
   expandProperties.click(); expect(node.dataset.paneAttention).toBe(''); expect(node.actionsVisualizer.hidden).toBe(false);
   node.setNodeOwnedCollection(collection);

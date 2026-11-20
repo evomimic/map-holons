@@ -211,6 +211,12 @@ mod tests {
         let manager = holons_client::init_client_runtime(Some(initiator));
         let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
         let resource_root = resources.parent().unwrap();
+        assert!(
+            inspect_target(&runtime).await.is_err(),
+            "no Space has been provisioned or adopted"
+        );
+        assert_eq!(loads.load(Ordering::SeqCst), 0);
+        assert_eq!(discoveries.load(Ordering::SeqCst), 0);
         assert_eq!(
             prepare_core_schema(&runtime, resource_root, None).await.unwrap(),
             CoreSchemaStartup::Provisioned
@@ -227,14 +233,17 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(inspect_target(&runtime).await.is_err());
+        // Agent Spaces is part of bootstrap; observing the unclaimed Space
+        // does not depend on importing the application definitions.
+        let before_imports = inspect_target(&runtime).await.unwrap();
+        assert_eq!(before_imports.sovereignty, SovereigntyObservation::NoAssociationObserved);
         assert_eq!(loads.load(Ordering::SeqCst), 1);
         prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::Provisioned, None)
             .await
             .unwrap();
-        assert_eq!(loads.load(Ordering::SeqCst), 3);
+        assert_eq!(loads.load(Ordering::SeqCst), 2, "bootstrap plus Space Navigator import");
         let target = inspect_target(&runtime).await.unwrap();
-        assert_eq!(target.sovereignty, SovereigntyObservation::NoAssociationObserved);
+        assert_eq!(target, before_imports, "application imports preserve Space and sovereignty");
         let id = target.space;
         assert!(
             map_commands_runtime::application_launch::select_application_launch(

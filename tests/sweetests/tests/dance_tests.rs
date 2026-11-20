@@ -280,3 +280,15 @@ async fn commit_enum_evolution_fixture_acceptance() {
     })
     .await;
 }
+
+/// Focused composition verification uses a disposable store and the ordinary client ingress.
+#[tokio::test(flavor = "multi_thread")]
+async fn owner_directed_composition_acceptance() {
+    let mut case = holons_test::DancesTestCase::default();
+    let (runtime, _, backend) = holons_test::init_commit_performance_runtime(&mut case).await;
+    runtime_checks::owner_directed_composition::owner_directed_bindings_and_personal_preference_roundtrip(&runtime).await;
+    runtime_checks::owner_directed_composition::measure_owner_composition_boundary(
+        &runtime, backend,
+    )
+    .await;
+}

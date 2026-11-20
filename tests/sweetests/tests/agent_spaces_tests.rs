@@ -94,10 +94,10 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     let space_key = space.key().unwrap().unwrap();
     let space_type = members(&space, "DescribedBy");
     let core_id = saved(&context, "MAP Core Schema-v0.0.7").holon_id().unwrap();
-    assert!(context.lookup().get_saved_holon_by_key(&SCHEMA.into()).is_err());
-
-    let response = load(&runtime, &context).await;
-    status(&response, "LoadCommitStatus", "Complete");
+    // DAHN depends on PersonAgent, so bootstrap already supplies Agent Spaces.
+    // Reopening must retain those definitions without another create import.
+    let schema_id = saved(&context, SCHEMA).holon_id().unwrap();
+    let person_type_id = saved(&context, PERSON_TYPE).holon_id().unwrap();
     runtime.session().archive_transaction(&initial).unwrap();
 
     // A fresh host proxy against the same conductor adopts committed identity/content
@@ -113,6 +113,8 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     reopened.set_space_holon_id(discovered.holon_id().unwrap()).unwrap();
     assert_eq!(saved(&reopened, "MAP Core Schema-v0.0.7").holon_id().unwrap(), core_id);
     assert_eq!(saved(&reopened, SCHEMA).key().unwrap().unwrap().0, SCHEMA);
+    assert_eq!(saved(&reopened, SCHEMA).holon_id().unwrap(), schema_id);
+    assert_eq!(saved(&reopened, PERSON_TYPE).holon_id().unwrap(), person_type_id);
     assert!(!reopened.is_bootstrap_provisioning());
 
     let context = transaction(&runtime).await;
@@ -137,8 +139,8 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
             saved(&context, "MiddleName.PropertyType")
         ]
     );
-    let schema_id = saved(&context, SCHEMA).holon_id().unwrap();
-    let person_type_id = person_type.holon_id().unwrap();
+    assert_eq!(saved(&context, SCHEMA).holon_id().unwrap(), schema_id);
+    assert_eq!(person_type.holon_id().unwrap(), person_type_id);
     runtime.session().archive_transaction(&context.tx_id()).unwrap();
 
     let context = transaction(&runtime).await;

@@ -193,13 +193,18 @@ pub enum CorePropertyTypeName {
 }
 
 /// Canonical DAHN property type names.
-#[derive(Debug, Clone, VariantNames)]
+#[derive(Debug, Clone, Copy, VariantNames)]
 pub enum DahnPropertyTypeName {
+    CompositionData,
     VisualizerArtifactDigest,
     VisualizerArtifactHandle,
     VisualizerImplementationKey,
     VisualizerImplementationRuntime,
     VisualizerModuleFormat,
+    CompositionActivation,
+    CompositionSubject,
+    CompositionRole,
+    VisualizerKind,
 }
 
 /// Canonical Dancer property type names.

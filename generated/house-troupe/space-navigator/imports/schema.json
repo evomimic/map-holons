@@ -269,10 +269,10 @@
       "key": "TableCollection.ValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "value",
+        "CompositionActivation": "Demand",
         "CompositionRole": "value",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Value",
         "VisualizerSlotDescription": "Present the values of one property across all items in this column, using the same presentation for every row."
       },
       "relationships": [
@@ -456,10 +456,10 @@
       "key": "VisualizerInspector.DiscoveryExplorerSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "structure",
+        "CompositionActivation": "Demand",
         "CompositionRole": "discovery",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Structure",
         "VisualizerSlotDescription": "Explain the authoritative chain that identified the current Visualizer and its alternatives."
       },
       "relationships": [

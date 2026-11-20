@@ -1,0 +1,1466 @@
+{
+  "meta": {
+    "export_mode": "test-fixture"
+  },
+  "holons": [
+    {
+      "key": "VisualizerPreferenceTestSchema",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "VisualizerPreferenceTestSchema",
+        "Description": "Test-only declared Date preferences across compatible compositions."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate.StringValueType",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "PreferenceTestDate",
+        "TypeNamePlural": "PreferenceTestDateItems",
+        "DisplayName": "PreferenceTestDate",
+        "DisplayNamePlural": "PreferenceTestDate items",
+        "Description": "Test-only PreferenceTestDate for semantic composition preferences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate",
+        "TypeNamePlural": "PreferenceTestDatePropertyItems",
+        "DisplayName": "PreferenceTestDateProperty",
+        "DisplayNamePlural": "PreferenceTestDateProperty items",
+        "Description": "Test-only PreferenceTestDateProperty for semantic composition preferences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRecord.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestRecord",
+        "TypeNamePlural": "PreferenceTestRecordItems",
+        "DisplayName": "PreferenceTestRecord",
+        "DisplayNamePlural": "PreferenceTestRecord items",
+        "Description": "Test-only PreferenceTestRecord for semantic composition preferences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "NoneRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate2.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate3.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate4.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate5.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate6.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate7.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate8.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate9.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate10.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate11.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate12.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate13.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate14.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate15.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate16.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate17.PropertyType"
+            },
+            {
+              "$ref": "PreferenceTestDate18.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestA.PropertyMapVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PreferenceTestA",
+        "TypeNamePlural": "PreferenceTestAItems",
+        "DisplayName": "PreferenceTestA",
+        "DisplayNamePlural": "PreferenceTestA items",
+        "Description": "Test-only PreferenceTestA for semantic composition preferences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyMapVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestA.Slot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestA.PropertyMapVisualizer",
+      "type": "PreferenceTestA.PropertyMapVisualizerType",
+      "properties": {
+        "DisplayName": "PreferenceTestA"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "PreferenceTestRecord.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestA.Slot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "CompositionActivation": "Presentation",
+        "CompositionRole": "value",
+        "CompositionSubject": "ScalarPropertyValue",
+        "VisualizerKind": "Value"
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestB.PropertyMapVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PreferenceTestB",
+        "TypeNamePlural": "PreferenceTestBItems",
+        "DisplayName": "PreferenceTestB",
+        "DisplayNamePlural": "PreferenceTestB items",
+        "Description": "Test-only PreferenceTestB for semantic composition preferences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyMapVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestB.Slot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestB.PropertyMapVisualizer",
+      "type": "PreferenceTestB.PropertyMapVisualizerType",
+      "properties": {
+        "DisplayName": "PreferenceTestB"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "PreferenceTestRecord.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestB.Slot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "CompositionActivation": "Presentation",
+        "CompositionRole": "value",
+        "CompositionSubject": "ScalarPropertyValue",
+        "VisualizerKind": "Value"
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRange.PropertyMapVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PreferenceTestRange",
+        "TypeNamePlural": "PreferenceTestRangeItems",
+        "DisplayName": "PreferenceTestRange",
+        "DisplayNamePlural": "PreferenceTestRange items",
+        "Description": "Test-only PreferenceTestRange for semantic composition preferences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyMapVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestRange.Slot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRange.PropertyMapVisualizer",
+      "type": "PreferenceTestRange.PropertyMapVisualizerType",
+      "properties": {
+        "DisplayName": "PreferenceTestRange"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "PreferenceTestRecord.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRange.Slot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "CompositionActivation": "Presentation",
+        "CompositionRole": "value",
+        "CompositionSubject": "ScalarPropertyValue",
+        "VisualizerKind": "Value"
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "PreferenceTestRangeVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRangeVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PreferenceTestRangeVisualizer",
+        "TypeNamePlural": "RangeValueVisualizers",
+        "DisplayName": "Range Value Visualizer",
+        "DisplayNamePlural": "Range Value Visualizers",
+        "Description": "Test-only narrower presentation family for an incompatible date-range contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestPreferred.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {
+        "DisplayName": "PreferenceTestPreferred"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestOverride.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {
+        "DisplayName": "PreferenceTestOverride"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRange.ValueVisualizer",
+      "type": "PreferenceTestRangeVisualizer.HolonType",
+      "properties": {
+        "DisplayName": "PreferenceTestRange"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestA.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestA.Slot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "PreferenceTestOverride.ValueVisualizer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestB.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestB.Slot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "PreferenceTestOverride.ValueVisualizer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestRange.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestRange.Slot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "PreferenceTestRange.ValueVisualizer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDateFormat.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDateFormat",
+        "TypeNamePlural": "DateFormats",
+        "DisplayName": "Date format",
+        "DisplayNamePlural": "Date formats",
+        "Description": "Test-only personal configuration setting.",
+        "IsValueRequired": true,
+        "DefaultValue": "iso"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestUsage.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestUsage",
+        "TypeNamePlural": "ConfiguredDateUsages",
+        "DisplayName": "Configured Date usage",
+        "DisplayNamePlural": "Configured Date usages",
+        "Description": "Test-only configured Date usage."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "PreferenceTestDateFormat.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate2.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate2",
+        "TypeNamePlural": "Dates2",
+        "DisplayName": "Date 2",
+        "DisplayNamePlural": "Dates 2",
+        "Description": "Test-only Date field 2 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate3.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate3",
+        "TypeNamePlural": "Dates3",
+        "DisplayName": "Date 3",
+        "DisplayNamePlural": "Dates 3",
+        "Description": "Test-only Date field 3 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate4.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate4",
+        "TypeNamePlural": "Dates4",
+        "DisplayName": "Date 4",
+        "DisplayNamePlural": "Dates 4",
+        "Description": "Test-only Date field 4 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate5.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate5",
+        "TypeNamePlural": "Dates5",
+        "DisplayName": "Date 5",
+        "DisplayNamePlural": "Dates 5",
+        "Description": "Test-only Date field 5 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate6.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate6",
+        "TypeNamePlural": "Dates6",
+        "DisplayName": "Date 6",
+        "DisplayNamePlural": "Dates 6",
+        "Description": "Test-only Date field 6 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate7.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate7",
+        "TypeNamePlural": "Dates7",
+        "DisplayName": "Date 7",
+        "DisplayNamePlural": "Dates 7",
+        "Description": "Test-only Date field 7 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate8.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate8",
+        "TypeNamePlural": "Dates8",
+        "DisplayName": "Date 8",
+        "DisplayNamePlural": "Dates 8",
+        "Description": "Test-only Date field 8 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate9.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate9",
+        "TypeNamePlural": "Dates9",
+        "DisplayName": "Date 9",
+        "DisplayNamePlural": "Dates 9",
+        "Description": "Test-only Date field 9 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate10.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate10",
+        "TypeNamePlural": "Dates10",
+        "DisplayName": "Date 10",
+        "DisplayNamePlural": "Dates 10",
+        "Description": "Test-only Date field 10 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate11.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate11",
+        "TypeNamePlural": "Dates11",
+        "DisplayName": "Date 11",
+        "DisplayNamePlural": "Dates 11",
+        "Description": "Test-only Date field 11 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate12.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate12",
+        "TypeNamePlural": "Dates12",
+        "DisplayName": "Date 12",
+        "DisplayNamePlural": "Dates 12",
+        "Description": "Test-only Date field 12 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate13.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate13",
+        "TypeNamePlural": "Dates13",
+        "DisplayName": "Date 13",
+        "DisplayNamePlural": "Dates 13",
+        "Description": "Test-only Date field 13 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate14.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate14",
+        "TypeNamePlural": "Dates14",
+        "DisplayName": "Date 14",
+        "DisplayNamePlural": "Dates 14",
+        "Description": "Test-only Date field 14 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate15.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate15",
+        "TypeNamePlural": "Dates15",
+        "DisplayName": "Date 15",
+        "DisplayNamePlural": "Dates 15",
+        "Description": "Test-only Date field 15 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate16.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate16",
+        "TypeNamePlural": "Dates16",
+        "DisplayName": "Date 16",
+        "DisplayNamePlural": "Dates 16",
+        "Description": "Test-only Date field 16 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate17.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate17",
+        "TypeNamePlural": "Dates17",
+        "DisplayName": "Date 17",
+        "DisplayNamePlural": "Dates 17",
+        "Description": "Test-only Date field 17 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestDate18.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PreferenceTestDate18",
+        "TypeNamePlural": "Dates18",
+        "DisplayName": "Date 18",
+        "DisplayNamePlural": "Dates 18",
+        "Description": "Test-only Date field 18 for shared selection evidence."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PreferenceTestDate.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestAGeneral.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestA.Slot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "StringValue.ValueVisualizer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestBGeneral.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestB.Slot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "StringValue.ValueVisualizer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestInitialInspector.NodeVisualizerType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PreferenceTestInitialInspector",
+        "TypeNamePlural": "InitialCollectionInspectors",
+        "DisplayName": "Initial collection inspector",
+        "DisplayNamePlural": "Initial collection inspectors",
+        "Description": "Test-only inspector declaring one initial collection source."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonInspector.NodeVisualizerType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "VisualizerPreferenceTestSchema"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "PreferenceTestInitialInspector.CollectionSlot"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestInitialInspector.NodeVisualizer",
+      "type": "PreferenceTestInitialInspector.NodeVisualizerType",
+      "properties": {
+        "DisplayName": "Initial collection inspector"
+      },
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "HolonInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PreferenceTestInitialInspector.CollectionSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "CompositionActivation": "Presentation",
+        "CompositionRole": "collection",
+        "CompositionSubject": "SelectedCollection",
+        "VisualizerKind": "Collection"
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "InitialCollectionSource",
+          "target": [
+            {
+              "$ref": "(HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

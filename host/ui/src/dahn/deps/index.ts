@@ -1,4 +1,5 @@
 export type {
+  CompositionBinding, CompositionMetadata, ResolvedComposition,
   VisualizerDiscovery,
   VisualizerSelectionRequest,
   VisualizerUsageSelection,

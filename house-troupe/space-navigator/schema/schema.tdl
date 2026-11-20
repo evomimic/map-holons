@@ -97,9 +97,9 @@ instance TableCollectionVisualizer.CollectionVisualizer {
 instance TableCollection.ValueSlot {
   type VisualizerSlot.HolonType
   CompositionRole "value"
-  CompositionSubject "subject"
-  CompositionKind "value"
-  CompositionActivation "demand"
+  CompositionSubject OwnerSubject
+  VisualizerKind Value
+  CompositionActivation Demand
   VisualizerSlotDescription "Present the values of one property across all items in this column, using the same presentation for every row."
   relationships {
     AcceptsVisualizerType -> ValueVisualizer.HolonType
@@ -190,9 +190,9 @@ holon DiscoveryExplorerVisualizer.HolonType {
 instance VisualizerInspector.DiscoveryExplorerSlot {
   type VisualizerSlot.HolonType
   CompositionRole "discovery"
-  CompositionSubject "subject"
-  CompositionKind "structure"
-  CompositionActivation "demand"
+  CompositionSubject OwnerSubject
+  VisualizerKind Structure
+  CompositionActivation Demand
   VisualizerSlotDescription "Explain the authoritative chain that identified the current Visualizer and its alternatives."
   relationships {
     AcceptsVisualizerType -> DiscoveryExplorerVisualizer.HolonType
