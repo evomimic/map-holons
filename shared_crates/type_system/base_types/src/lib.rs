@@ -19,5 +19,6 @@ pub mod positional_string_template;
 
 pub use base_value_types::*;
 pub use positional_string_template::{
-    PositionalStringTemplate, TemplateSyntaxError, TemplateSyntaxErrorReason,
+    PositionalStringTemplate, TemplateConfigurationDefect, TemplateInput, TemplateRenderError,
+    TemplateSyntaxError, TemplateSyntaxErrorReason,
 };

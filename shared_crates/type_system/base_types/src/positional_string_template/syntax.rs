@@ -11,7 +11,6 @@ use TemplateSyntaxErrorReason::*;
 #[derive(Debug)]
 pub struct PositionalStringTemplate {
     source: String,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Retained for rendering"))]
     pub(super) pieces: Vec<TemplatePiece>,
 }
 
@@ -219,5 +218,5 @@ fn push_literal(pieces: &mut Vec<TemplatePiece>, literal: &mut String) {
 }
 
 fn syntax_error(reason: TemplateSyntaxErrorReason, span: Range<usize>) -> TemplateSyntaxError {
-    TemplateSyntaxError { span: (span.start, span.end), reason }
+    TemplateSyntaxError { span, reason }
 }
