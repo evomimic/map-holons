@@ -28,8 +28,13 @@ pub enum ConstraintParameters {
     BytesLength(MeasureBounds),
     NumericRange(IntegerInterval),
     ItemCount(MeasureBounds),
-    Cardinality { minimum: u64, maximum: Option<u64> },
+    Cardinality {
+        minimum: u64,
+        maximum: Option<u64>,
+    },
     UniqueItems,
+    /// The syntax constraint has no authored parameters.
+    PositionalStringTemplateSyntax,
 }
 
 /// Owned parameters for the supported scalar families only.
@@ -38,6 +43,8 @@ pub enum ScalarConstraintParameters {
     StringLength(MeasureBounds),
     BytesLength(MeasureBounds),
     NumericRange(IntegerInterval),
+    /// Evaluates template syntax with no authored parameters.
+    PositionalStringTemplateSyntax,
 }
 
 impl ConstraintParameters {
@@ -47,6 +54,9 @@ impl ConstraintParameters {
             Self::StringLength(bounds) => Some(ScalarConstraintParameters::StringLength(*bounds)),
             Self::BytesLength(bounds) => Some(ScalarConstraintParameters::BytesLength(*bounds)),
             Self::NumericRange(bounds) => Some(ScalarConstraintParameters::NumericRange(*bounds)),
+            Self::PositionalStringTemplateSyntax => {
+                Some(ScalarConstraintParameters::PositionalStringTemplateSyntax)
+            }
             Self::ItemCount(_) | Self::Cardinality { .. } | Self::UniqueItems => None,
         }
     }
@@ -59,6 +69,9 @@ impl ScalarConstraintParameters {
             Self::StringLength(_) => ScalarConstraintFamily::StringLength,
             Self::BytesLength(_) => ScalarConstraintFamily::BytesLength,
             Self::NumericRange(_) => ScalarConstraintFamily::NumericRange,
+            Self::PositionalStringTemplateSyntax => {
+                ScalarConstraintFamily::PositionalStringTemplateSyntax
+            }
         }
     }
 }

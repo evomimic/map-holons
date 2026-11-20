@@ -3606,6 +3606,51 @@ fn scalar_constraints_are_mandatory_with_or_without_property_binding() -> Result
 }
 
 #[test]
+fn template_syntax_constraint_rejects_malformed_values_and_accepts_corrected_retry(
+) -> Result<(), HolonError> {
+    use super::support::bounded_constraint;
+
+    let mut fixture = readiness_fixture()?;
+    let value_type = "StringValueType.ValueType";
+    let constraint_type = "PositionalStringTemplateSyntaxConstraint.ConstraintType";
+    let constraint = "ValidSyntax.PositionalStringTemplateSyntaxConstraint";
+    bounded_constraint(&mut fixture, constraint, constraint_type, value_type, None, None)?;
+
+    let mut subject = fixture.staged_subject("template-subject")?;
+    subject.remove_property_value("Key")?.with_property_value("Title", "{0}[.{1}")?;
+    let assessment = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert_eq!(assessment.observations.evaluated_value_constraint_count, 1);
+    assert_eq!(assessment.report.violation_count(), 1, "{:?}", assessment.report);
+    let finding = &assessment.report.violations[0];
+    assert_eq!(
+        finding.kind,
+        CommitValidationViolationKind::ConstraintViolation {
+            code: "PositionalStringTemplateSyntaxInvalid".into(),
+            constraint_identity: fixture.nodes[constraint].reference_id_string(),
+            constraint_type_identity: fixture.nodes[constraint_type].reference_id_string(),
+        }
+    );
+    assert_eq!(finding.descriptor_identity, Some(fixture.nodes[value_type].reference_id_string()));
+    assert_eq!(
+        finding.rule_key.as_deref(),
+        Some(CoreValidationRuleName::PropertyValueConformance.as_str())
+    );
+    assert_eq!(
+        finding.subject,
+        ValidationSubjectPath::Value {
+            holon_identity: subject.full_reference_id_string(),
+            property: "Title".into(),
+        }
+    );
+
+    subject.with_property_value("Title", "{0}")?;
+    let assessment = assess_commit_candidates(&fixture.context, &[subject])?;
+    assert!(assessment.report.is_accepted(), "{:?}", assessment.report);
+    assert_eq!(assessment.observations.evaluated_value_constraint_count, 1);
+    Ok(())
+}
+
+#[test]
 fn inherited_and_local_constraints_preserve_each_property_and_contribution(
 ) -> Result<(), HolonError> {
     use super::support::bounded_constraint;

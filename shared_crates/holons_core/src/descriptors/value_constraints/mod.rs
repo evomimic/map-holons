@@ -10,8 +10,9 @@ pub use configuration::{
     parse_constraint_configuration, ConfigurationDiagnosis, ConstraintConfiguration,
 };
 pub use evaluators::{
-    ConstraintEvaluationOutcome, ConstraintMeasure, ConstraintViolationDetail,
-    BYTES_LENGTH_OUT_OF_RANGE, NUMERIC_VALUE_OUT_OF_RANGE, STRING_LENGTH_OUT_OF_RANGE,
+    ConstraintBounds, ConstraintEvaluationOutcome, ConstraintMeasure, ConstraintViolationDetail,
+    ConstraintViolationEvidence, BYTES_LENGTH_OUT_OF_RANGE, NUMERIC_VALUE_OUT_OF_RANGE,
+    POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID, STRING_LENGTH_OUT_OF_RANGE,
 };
 pub use interpretation::{
     classify_constraint_type, interpret_constraint, ClassifiedConstraintType,

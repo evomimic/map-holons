@@ -10,6 +10,8 @@ pub enum ConstraintFamily {
     ItemCount,
     Cardinality,
     UniqueItems,
+    /// Presence-only validation of positional string template source.
+    PositionalStringTemplateSyntax,
 }
 
 impl ConstraintFamily {
@@ -22,6 +24,10 @@ impl ConstraintFamily {
             (CoreDefinitionRole::ItemCountConstraint, Self::ItemCount),
             (CoreDefinitionRole::CardinalityConstraint, Self::Cardinality),
             (CoreDefinitionRole::UniqueItemsConstraint, Self::UniqueItems),
+            (
+                CoreDefinitionRole::PositionalStringTemplateSyntaxConstraint,
+                Self::PositionalStringTemplateSyntax,
+            ),
         ]
         .into_iter()
         .find_map(|(role, family)| lineage.contains_role(role).then_some(family))
@@ -35,13 +41,17 @@ pub enum ScalarConstraintFamily {
     StringLength,
     BytesLength,
     NumericRange,
+    /// Syntax validation for a stored String.
+    PositionalStringTemplateSyntax,
 }
 
 impl ScalarConstraintFamily {
     /// Native representation consumed by this scalar family.
     pub fn expected_kind(self) -> base_types::BaseValueKind {
         match self {
-            Self::StringLength => base_types::BaseValueKind::String,
+            Self::StringLength | Self::PositionalStringTemplateSyntax => {
+                base_types::BaseValueKind::String
+            }
             Self::BytesLength => base_types::BaseValueKind::Bytes,
             Self::NumericRange => base_types::BaseValueKind::Integer,
         }
@@ -58,6 +68,9 @@ impl ScalarConstraintFamily {
             }
             key if key == CoreDefinitionRole::NumericRangeConstraint.key() => {
                 Some(Self::NumericRange)
+            }
+            key if key == CoreDefinitionRole::PositionalStringTemplateSyntaxConstraint.key() => {
+                Some(Self::PositionalStringTemplateSyntax)
             }
             _ => None,
         }

@@ -193,33 +193,38 @@ fn cardinality_requires_nonnegative_minimum_and_has_no_flags() {
 }
 
 #[test]
-fn unique_items_is_presence_only_regardless_of_native_kind() {
-    assert_eq!(
-        parse_constraint_configuration(
-            ConstraintFamily::UniqueItems,
-            &ConstraintConfiguration::default()
-        )
-        .unwrap(),
-        ConstraintParameters::UniqueItems
-    );
-    let errors = parse_constraint_configuration(
-        ConstraintFamily::UniqueItems,
-        &ConstraintConfiguration {
-            minimum: Some(integer(-1)),
-            maximum: Some(boolean(false)),
-            minimum_is_inclusive: Some(integer(1)),
-            maximum_is_inclusive: Some(boolean(false)),
-        },
-    )
-    .unwrap_err();
-    assert_eq!(errors.len(), 4);
-    for (error, name) in
-        errors.iter().zip(["Minimum", "Maximum", "MinimumIsInclusive", "MaximumIsInclusive"])
-    {
+fn presence_only_families_reject_all_authored_bounds_and_flags() {
+    for (family, family_name, parameters) in [
+        (ConstraintFamily::UniqueItems, "UniqueItemsConstraint", ConstraintParameters::UniqueItems),
+        (
+            ConstraintFamily::PositionalStringTemplateSyntax,
+            "PositionalStringTemplateSyntaxConstraint",
+            ConstraintParameters::PositionalStringTemplateSyntax,
+        ),
+    ] {
         assert_eq!(
-            error.message,
-            format!("UniqueItemsConstraint is presence-only and has no {name} parameter.")
+            parse_constraint_configuration(family, &ConstraintConfiguration::default()).unwrap(),
+            parameters
         );
+        let errors = parse_constraint_configuration(
+            family,
+            &ConstraintConfiguration {
+                minimum: Some(integer(-1)),
+                maximum: Some(boolean(false)),
+                minimum_is_inclusive: Some(integer(1)),
+                maximum_is_inclusive: Some(boolean(false)),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(errors.len(), 4);
+        for (error, name) in
+            errors.iter().zip(["Minimum", "Maximum", "MinimumIsInclusive", "MaximumIsInclusive"])
+        {
+            assert_eq!(
+                error.message,
+                format!("{family_name} is presence-only and has no {name} parameter.")
+            );
+        }
     }
 }
 
@@ -229,6 +234,10 @@ fn executable_support_requires_exact_scalar_type_keys() {
         (Role::StringLengthConstraint, ScalarConstraintFamily::StringLength),
         (Role::BytesLengthConstraint, ScalarConstraintFamily::BytesLength),
         (Role::NumericRangeConstraint, ScalarConstraintFamily::NumericRange),
+        (
+            Role::PositionalStringTemplateSyntaxConstraint,
+            ScalarConstraintFamily::PositionalStringTemplateSyntax,
+        ),
     ] {
         assert_eq!(ScalarConstraintFamily::for_concrete_type(role.key()), Some(family));
     }
@@ -241,4 +250,13 @@ fn executable_support_requires_exact_scalar_type_keys() {
     ] {
         assert_eq!(ScalarConstraintFamily::for_concrete_type(key), None);
     }
+}
+
+#[test]
+fn template_syntax_support_consumes_strings_only() {
+    let family = ScalarConstraintFamily::for_concrete_type(
+        "PositionalStringTemplateSyntaxConstraint.ConstraintType",
+    );
+    assert_eq!(family, Some(ScalarConstraintFamily::PositionalStringTemplateSyntax));
+    assert_eq!(family.unwrap().expected_kind(), base_types::BaseValueKind::String);
 }
