@@ -934,7 +934,7 @@
         "TypeNamePlural": "TemplateStrings",
         "DisplayName": "template_string",
         "DisplayNamePlural": "template_strings",
-        "Description": "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings.",
+        "Description": "A template for ordered inputs. It uses {n} for required substitutions, [n] for optional substitutions and [.{n}] as an example of an optional segment. A segment is emitted only when all inputs it references are present. See the Positional String Template Specification.",
         "IsValueRequired": true
       },
       "relationships": [
@@ -958,7 +958,7 @@
           "name": "ValueType",
           "target": [
             {
-              "$ref": "MapStringValueType.StringValueType"
+              "$ref": "PositionalStringTemplateValueType.MapStringValueType"
             }
           ]
         }

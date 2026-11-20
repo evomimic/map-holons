@@ -30,6 +30,26 @@ value MapStringValueType.StringValueType {
   }
 }
 
+instance ValidSyntax.PositionalStringTemplateSyntaxConstraint {
+  type PositionalStringTemplateSyntaxConstraint.ConstraintType
+  rule_of "MAP Core Schema-v0.0.7"
+  ConstraintName "ValidSyntax"
+}
+
+value PositionalStringTemplateValueType.MapStringValueType {
+  type MetaStringValueType.MetaValueType
+  extends MapStringValueType.StringValueType
+  relationships {
+    Constraints -> ValidSyntax.PositionalStringTemplateSyntaxConstraint
+  }
+  header {
+    description: "String value type for source that follows the positional string template grammar."
+    display_name: "Positional String Template Value Type"
+    display_plural: "Positional String Template Value Types"
+    plural: "PositionalStringTemplateValueTypes"
+  }
+}
+
 value MapIntegerValueType.IntegerValueType {
   type MetaIntegerValueType.MetaValueType
   extends IntegerValueType.ValueType

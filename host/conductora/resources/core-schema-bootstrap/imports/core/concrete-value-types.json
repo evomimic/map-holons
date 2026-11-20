@@ -86,6 +86,76 @@
       ]
     },
     {
+      "key": "ValidSyntax.PositionalStringTemplateSyntaxConstraint",
+      "type": "PositionalStringTemplateSyntaxConstraint.ConstraintType",
+      "properties": {
+        "ConstraintName": "ValidSyntax"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PositionalStringTemplateValueType.MapStringValueType",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "PositionalStringTemplateValueType",
+        "TypeNamePlural": "PositionalStringTemplateValueTypes",
+        "DisplayName": "Positional String Template Value Type",
+        "DisplayNamePlural": "Positional String Template Value Types",
+        "Description": "String value type for source that follows the positional string template grammar."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ValidSyntax.PositionalStringTemplateSyntaxConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "MapIntegerValueType.IntegerValueType",
       "type": "MetaIntegerValueType.MetaValueType",
       "properties": {

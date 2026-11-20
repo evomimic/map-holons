@@ -1202,6 +1202,44 @@ mod tests {
     }
 
     #[test]
+    fn tdl_json_roundtrip_preserves_template_source_escapes() -> Result<()> {
+        use crate::tdl_compiler::compile_input_string;
+
+        let source = r#"
+schema "MAP Core Schema-v0.0.7" {
+}
+
+instance EscapedTemplate.FormatRule {
+  type FormatRule.KeyRuleType
+  rule_of "MAP Core Schema-v0.0.7"
+  TypeName "EscapedTemplate"
+  TemplateString "{{ }} \\[ \\] \\\\ \\$0 {0}"
+  relationships {
+    TemplateParameters -> HolonSpaceName.PropertyType
+  }
+}
+"#;
+        let compiled = compile_input_string(source, "template.tdl")?;
+        let decompiled = decompile_input_string(&compiled, "template.json")?;
+        let recompiled = compile_input_string(&decompiled, "template.tdl")?;
+
+        for json in [&compiled, &recompiled] {
+            let document: Value = serde_json::from_str(json)?;
+            let template = document["holons"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|holon| holon["key"] == "EscapedTemplate.FormatRule")
+                .unwrap();
+            assert_eq!(
+                template["properties"]["TemplateString"].as_str(),
+                Some(r"{{ }} \[ \] \\ \$0 {0}")
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
     fn decompiler_preserves_normalized_relationship_pair_facts() -> Result<()> {
         let out_dir = temp_out_dir();
         decompile_inputs(&[generated_fixture_dir()], &out_dir)?;
