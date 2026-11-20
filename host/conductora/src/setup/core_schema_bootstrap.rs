@@ -213,12 +213,18 @@ pub(crate) async fn prepare_core_schema(
         let compatibility_started = Instant::now();
         let verify_tx = runtime.session().begin_transaction().await?;
         let verify_context = runtime.session().get_transaction(&verify_tx)?;
-        let verified =
-            verify_context.lookup().get_saved_holon_by_key(&manifest.core_schema_key.into());
+        let verified = verify_context
+            .lookup()
+            .get_saved_holon_by_key(&manifest.core_schema_key.clone().into());
         let archived = runtime.session().archive_transaction(&verify_tx);
-        verified.map_err(|error| anyhow::anyhow!(
-            "Existing local Space lacks the supported Core Schema; Open cannot reprovision or upgrade it: {error}"
-        ))?;
+        verified.map_err(|error| match error {
+            HolonError::HolonNotFound(_) => anyhow::Error::new(
+                tauri_plugin_holochain::HolochainRuntimeError::IncompatibleEnvironment(format!(
+                    "Existing local Space lacks the supported CoreSchema key {}; Open cannot reprovision or upgrade it: {error}", manifest.core_schema_key
+                ))
+            ),
+            other => anyhow::Error::new(other).context("Reading the retained CoreSchema key"),
+        })?;
         archived?;
         tracing::info!(
             "[OPEN] Supported CoreSchema identity lookup: {}ms",

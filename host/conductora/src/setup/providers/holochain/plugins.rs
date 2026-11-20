@@ -63,21 +63,27 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
 }
 
 pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error> {
+    let path = holochain_base_dir(hc_cfg)?;
+    // Every ordinary launch retains its store. Explicit cache-reset mode below
+    // remains separate; Tauri development itself must not imply disposable data.
+    Ok(if cfg!(feature = "local-constitution") {
+        crate::config::environment::selected_root(&path)?
+    } else if crate::env::development_enabled() {
+        path.join("development")
+    } else {
+        path
+    })
+}
+
+/// Common parent for independently retained local environments.
+pub fn holochain_base_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error> {
     let app_name: &'static str = Box::leak(hc_cfg.app_id.clone().into_boxed_str());
     let path = app_dirs2::app_root(
         app_dirs2::AppDataType::UserData,
         &app_dirs2::AppInfo { name: app_name, author: env!("CARGO_PKG_AUTHORS") },
     )?
     .join("holochain");
-    // Every ordinary launch retains its store. Explicit cache-reset mode below
-    // remains separate; Tauri development itself must not imply disposable data.
-    Ok(if cfg!(feature = "local-constitution") {
-        path.join("local-constitution")
-    } else if crate::env::development_enabled() {
-        path.join("development")
-    } else {
-        path
-    })
+    Ok(path)
 }
 
 // Generate a deterministic dev conductor directory path based on provider name, app id, and network seed.

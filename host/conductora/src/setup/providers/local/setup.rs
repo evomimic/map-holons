@@ -88,7 +88,17 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
             .path()
             .app_data_dir()
             .map_err(|e| anyhow::anyhow!("Failed to resolve app data dir: {}", e))?;
-        app_data_dir.join("storage").join(name)
+        if cfg!(feature = "local-constitution") && !crate::env::development_enabled() {
+            let base = crate::config::environment::packaged_base()?;
+            let selected = crate::config::environment::selected_root(&base)?;
+            if selected == base.join("local-constitution") {
+                app_data_dir.join("storage").join(name)
+            } else {
+                selected.join("storage").join(name)
+            }
+        } else {
+            app_data_dir.join("storage").join(name)
+        }
     };
     let db_path = snapshot_dir.join("snapshots.db");
     tracing::info!("[SNAPSHOT] Creating snapshot store at: {:?}", db_path);

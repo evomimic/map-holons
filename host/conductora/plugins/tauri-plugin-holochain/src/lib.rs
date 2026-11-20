@@ -25,6 +25,7 @@ mod http_server;
 
 pub use error::{Error, Result};
 use hc_live_file::*;
+pub use holochain_runtime::Error as HolochainRuntimeError;
 pub use holochain_runtime::*;
 
 const ZOME_CALL_SIGNER_INITIALIZATION_SCRIPT: &'static str = include_str!("../zome-call-signer.js");

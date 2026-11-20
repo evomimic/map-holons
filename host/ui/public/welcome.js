@@ -1,5 +1,7 @@
 'use strict';
 const status = document.getElementById('status');
+const newEnvironmentButton = document.getElementById('new-environment');
+let creatingEnvironment = false;
 const button = document.getElementById('constitute');
 const heading = document.querySelector('h1');
 const names = document.getElementById('personal-name');
@@ -61,6 +63,8 @@ function stopActivity() {
 // Only the approved packaged page runs here. All text is rendered as text,
 // and the backend never supplies credentials, target IDs or an execution permit.
 function render(result) {
+  newEnvironmentButton.hidden = result.new_environment_available !== true;
+  newEnvironmentButton.disabled = creatingEnvironment;
   if (['initializing', 'provisioning', 'checking-space'].includes(result.phase)) {
     showActivity(stageLabels[result.stage] || (result.phase === 'provisioning' ? 'Preparing your space' : 'Checking your space'));
   } else if (constitutionCommitted && result.phase === 'foundation-present') {
@@ -73,14 +77,15 @@ function render(result) {
   button.disabled = !available || submitting;
   names.hidden = !available;
   names.disabled = !available || submitting;
-  button.hidden = result.phase === 'association-present';
-  heading.textContent = button.hidden ? 'Welcome back to MAP' : 'Welcome to MAP';
-  introduction.textContent = button.hidden
+  const associated = result.phase === 'association-present';
+  button.hidden = associated || result.new_environment_available === true;
+  heading.textContent = associated ? 'Welcome back to MAP' : 'Welcome to MAP';
+  introduction.textContent = associated
     ? 'This installation has a recorded sovereign association.'
     : 'Your personal space is yours to constitute.';
   status.textContent = constitutionCommitted && result.phase === 'foundation-present'
     ? 'Your personal space was saved. MAP is confirming its recorded association.'
-    : result.message;
+    : result.incompatibility ? `This environment is incompatible: ${result.incompatibility}. You can create a separate environment. Your existing environment will be preserved.` : result.message;
 }
 async function refresh() {
   try {
@@ -119,6 +124,19 @@ async function openNavigator() {
     navigatorButton.disabled = false;
   }
 }
+newEnvironmentButton.addEventListener('click', async () => {
+  if (creatingEnvironment || newEnvironmentButton.hidden) return;
+  creatingEnvironment = true;
+  newEnvironmentButton.disabled = true;
+  status.textContent = 'Selecting a new environment and restarting MAP…';
+  try {
+    await window.__TAURI__.core.invoke('create_new_environment');
+  } catch (error) {
+    status.textContent = typeof error === 'string' ? error : 'MAP could not select a new environment. Existing data has been retained.';
+    creatingEnvironment = false;
+    newEnvironmentButton.disabled = false;
+  }
+});
 navigatorButton.addEventListener('click', () => { void openNavigator(); });
 button.addEventListener('click', async () => {
   if (!available || submitting || !lastName.reportValidity()) return;

@@ -17,6 +17,33 @@ afterEach(() => {
 });
 
 describe('packaged Welcome', () => {
+  it('explains incompatibility and creates a separate environment only after an explicit click', async () => {
+    let complete!: () => void;
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'blocked', stage: 'failed', constitution_available: false,
+      new_environment_available: true, incompatibility: 'Persisted DNA differs from packaged DNA', message: 'Blocked.' })
+      .mockImplementationOnce(() => new Promise<void>(resolve => { complete = resolve; }));
+    await start(invoke);
+    const create = document.getElementById('new-environment') as HTMLButtonElement;
+    expect(create.hidden).toBe(false);
+    expect((document.getElementById('constitute') as HTMLButtonElement).hidden).toBe(true);
+    expect(document.getElementById('status')?.textContent).toContain('Persisted DNA differs');
+    expect(document.getElementById('status')?.textContent).toContain('preserved');
+    expect(invoke.mock.calls).toEqual([['welcome_status']]);
+    create.click();
+    create.dispatchEvent(new MouseEvent('click'));
+    expect(create.disabled).toBe(true);
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['create_new_environment']]);
+    complete();
+  });
+
+  it('does not offer a new environment for an ordinary startup failure', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'blocked', stage: 'failed', message: 'Storage could not open.' });
+    await start(invoke);
+    expect((document.getElementById('new-environment') as HTMLButtonElement).hidden).toBe(true);
+    document.getElementById('new-environment')?.dispatchEvent(new MouseEvent('click'));
+    expect(invoke.mock.calls).toEqual([['welcome_status']]);
+  });
+
   it('automatically hands the existing acquired installation to Navigator once', async () => {
     const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
       .mockResolvedValueOnce(undefined);

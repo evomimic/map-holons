@@ -73,6 +73,8 @@ pub struct WelcomeStatus {
     pub navigator_available: bool,
     pub message: &'static str,
     pub(crate) blockers: Vec<AdmissionBlocker>,
+    pub incompatibility: Option<String>,
+    pub new_environment_available: bool,
 }
 
 fn status_for(
@@ -116,6 +118,8 @@ fn status_for(
         navigator_available: false,
         message,
         blockers,
+        incompatibility: None,
+        new_environment_available: false,
     }
 }
 
@@ -163,6 +167,18 @@ pub async fn welcome_status(
     }
     let mut status = status_for(phase, lifecycle.observation()?);
     apply_local_workflow(&mut status, constitution.available());
+    if phase == ApplicationSessionPhase::Failed {
+        status.incompatibility = window
+            .app_handle()
+            .state::<crate::config::environment::EnvironmentMismatch>()
+            .0
+            .read()
+            .map_err(|e| e.to_string())?
+            .clone();
+        status.new_environment_available =
+            cfg!(all(feature = "local-constitution", debug_assertions))
+                && status.incompatibility.is_some();
+    }
     Ok(status)
 }
 
@@ -425,4 +441,30 @@ mod tests {
             assert!(!approved_page("welcome", &tauri::Url::parse(url).unwrap()), "{url}");
         }
     }
+}
+
+/// Only an explicitly initiated packaged Welcome request may select a fresh environment.
+#[tauri::command]
+pub fn create_new_environment(window: WebviewWindow) -> Result<(), String> {
+    admit(&window)?;
+    if !cfg!(all(feature = "local-constitution", debug_assertions)) {
+        return Err("New local environments are unavailable in this build".into());
+    }
+    let handle = window.app_handle();
+    if handle.state::<ApplicationSessionState>().snapshot()?.phase
+        != ApplicationSessionPhase::Failed
+    {
+        return Err("New environment selection requires a failed compatibility check".into());
+    }
+    let state = handle.state::<crate::config::environment::EnvironmentMismatch>();
+    let mut mismatch = state.0.write().map_err(|e| e.to_string())?;
+    if mismatch.is_none() {
+        return Err("No environment incompatibility was recorded".into());
+    }
+    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
+    crate::config::environment::create_environment(&base).map_err(|e| e.to_string())?;
+    *mismatch = None;
+    drop(mismatch);
+    handle.request_restart();
+    Ok(())
 }

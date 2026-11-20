@@ -44,18 +44,30 @@ npm ci
 **Run all the other instructions in this README from inside this nix shell, otherwise they won't work**.
 
 `npm run deps:check` verifies that installed packages still match the root workspace manifests and lockfile. It runs
-automatically before `npm start`. `npm start` (and the `start:*` variants) also refuses to run outside `nix develop`;
+automatically before `npm start`. Script-only and descriptive manifest edits do not require reinstalling dependencies. `npm start` (and the `start:*` variants) also refuses to run outside `nix develop`;
 set `MAP_SKIP_NIX_CHECK=1` to bypass that check if the toolchain is provided another way. If `deps:check` reports stale or missing dependencies, run `npm ci` from the repository root.
 Use `npm install` only when intentionally changing npm dependencies and updating `package-lock.json`.
 
-## Running 2 agents
+## Starting MAP
 
-```bash
-npm start
-```
+Run `npm start` from the repository root. It builds the hApp and packaged debug
+Conductora application, then launches packaged Welcome with the real persistent
+conductor. This packaged engineering profile currently supports macOS on Apple
+Silicon. A compatible existing PersonAgent and Space reopen into Space Navigator
+without repeating bootstrap or constitution. A fresh environment loads its foundation
+and uses Welcome to capture the person's name and constitute their personal space.
 
-This will create a network of 2 nodes connected to each other and their respective UIs.
-It will also bring up the Holochain Playground for advanced introspection of the conductors.
+Integrity/DNA and coordinator compatibility are checked against the packaged hApp.
+CoreSchema compatibility uses the existing schema-key check only. It does not compare
+schema contents or perform migration. When incompatible, Welcome explains the mismatch
+and offers **Create a new environment (keep existing)**. This explicit action selects
+a separate keystore, conductor and recovery store and restarts MAP. The previous
+environment is retained; its identities and content are not copied into the new one.
+Ordinary startup errors do not offer environment replacement.
+
+`npm run start:info` and `npm run start:debug` use the same packaged lifecycle with
+more logging. `npm run start:host` launches the last built package without rebuilding.
+`npm run start:loader` remains an explicit development UI entrypoint.
 
 ## Running the backend tests
 

@@ -89,6 +89,7 @@ impl AppBuilder {
             //.manage::<runtime::HolochainReceptorState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .manage(CoreSchemaBootstrapGate::new())
+            .manage(crate::config::environment::EnvironmentMismatch::default())
             .manage(crate::welcome_lifecycle::WelcomeLifecycle::default())
             .manage(map_commands_runtime::personal_constitution::PersonalConstitution::default())
             .manage(ApplicationSessionState::new(application_experience))
@@ -108,6 +109,7 @@ impl AppBuilder {
         } else {
             base.invoke_handler(tauri::generate_handler![
                 crate::trusted_welcome::welcome_status,
+                crate::trusted_welcome::create_new_environment,
                 crate::trusted_welcome::constitute_personal_space,
                 crate::packaged_navigator::open_space_navigator,
                 application_session,
@@ -222,6 +224,16 @@ impl AppBuilder {
                 .await;
 
                 if let Err(e) = startup_result {
+                    if let Some(mismatch) = e.chain().find_map(|cause| {
+                        match cause.downcast_ref::<tauri_plugin_holochain::HolochainRuntimeError>() {
+                            Some(tauri_plugin_holochain::HolochainRuntimeError::IncompatibleEnvironment(message)) => Some(message.clone()),
+                            _ => None,
+                        }
+                    }) {
+                        if let Ok(mut state) = handle.state::<crate::config::environment::EnvironmentMismatch>().0.write() {
+                            *state = Some(mismatch);
+                        }
+                    }
                     if let Some(application_session) = handle.try_state::<ApplicationSessionState>()
                     {
                         if let Err(session_error) = application_session.mark_failed(e.to_string()) {
