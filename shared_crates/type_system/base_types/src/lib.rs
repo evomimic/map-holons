@@ -15,5 +15,9 @@
 //! and are designed for serialization, hashing, and consistent formatting.
 
 pub mod base_value_types;
+pub mod positional_string_template;
 
 pub use base_value_types::*;
+pub use positional_string_template::{
+    PositionalStringTemplate, TemplateSyntaxError, TemplateSyntaxErrorReason,
+};
