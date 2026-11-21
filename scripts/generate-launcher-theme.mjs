@@ -5,7 +5,7 @@ const root = new URL('../', import.meta.url);
 async function holons(path) {
   return JSON.parse(await readFile(new URL(path, root), 'utf8')).holons;
 }
-const themes = await holons('generated/json-imports/theme/deep-ocean.json');
+const themes = await holons('generated/json-imports/theme/forest-sanctuary.json');
 const tokens = await holons('generated/json-imports/design-tokens/schema.json');
 const byKey = new Map([...themes, ...tokens].map(holon => [holon.key, holon]));
 function related(holon, name) {
@@ -19,7 +19,7 @@ function related(holon, name) {
 }
 // Static presentation for the launcher before persisted runtime handles exist.
 // Canvas still projects its selected, persisted Theme through the Reference Layer.
-const theme = byKey.get('Demo1.DeepOceanTheme');
+const theme = byKey.get('Demo1.ForestSanctuaryTheme');
 if (!theme) throw new Error('Missing bootstrap theme');
 const values = related(theme, 'HasThemeTokenAssignment').map(assignment => {
   const targets = related(assignment, 'ForDesignToken');
@@ -32,4 +32,4 @@ const values = related(theme, 'HasThemeTokenAssignment').map(assignment => {
   return `  --dahn-${name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}: ${value};`;
 }).sort();
 await writeFile(fileURLToPath(new URL('host/ui/src/launcher-theme.generated.css', root)),
-  '/* Generated from Demo1.DeepOceanTheme. Run npm run map-schema:bootstrap-bundle. */\n:root {\n' + values.join('\n') + '\n}\n');
+  `/* Generated from ${theme.key}. Run npm run map-schema:bootstrap-bundle. */\n:root {\n` + values.join('\n') + '\n}\n');

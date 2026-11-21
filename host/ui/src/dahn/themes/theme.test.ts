@@ -149,7 +149,7 @@ describe('Theme', () => {
 
 
 describe('bundled theme coverage', () => {
-  it('projects all authored themes with separate heading fonts and keeps launcher CSS identical to the bootstrap theme', async () => {
+  it('projects all authored themes with separate heading fonts and uses Forest Sanctuary for launcher CSS', async () => {
     const read = async (path: string) => JSON.parse(await readFile(resolve(process.cwd(), '..', path), 'utf8'));
     const files = await Promise.all([
       read('generated/json-imports/design-tokens/schema.json'),
@@ -185,7 +185,8 @@ describe('bundled theme coverage', () => {
     expect(sanctuary.cssCustomProperties['--dahn-canvas-font-family']).toContain('sans-serif');
     const css = await readFile(resolve(process.cwd(), 'ui/src/launcher-theme.generated.css'), 'utf8');
     const declarations = Object.fromEntries([...css.matchAll(/(--dahn-[a-z-]+): ([^;]+);/g)].map(match => [match[1], match[2]]));
-    expect(declarations).toEqual(bootstrap.cssCustomProperties);
+    expect(css).toContain('Generated from Demo1.ForestSanctuaryTheme.');
+    expect(declarations).toEqual(sanctuary.cssCustomProperties);
     for (const theme of [bootstrap, alternate, parchment, sanctuary]) {
       expect(Object.keys(theme.cssCustomProperties).sort()).toEqual(Object.keys(bootstrap.cssCustomProperties).sort());
       expect(theme.cssCustomProperties['--dahn-properties-disclosure-focus-color']).toMatch(/^#/);
