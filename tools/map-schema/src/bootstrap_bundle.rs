@@ -336,6 +336,7 @@ mod tests {
                 "design-tokens",
                 "meta-design-system",
                 "theme",
+                "agent-spaces",
                 "dahn",
             ]
         );
@@ -355,7 +356,7 @@ mod tests {
         fs::create_dir_all(&core_imports)?;
         fs::write(
             core_imports.join("root.json"),
-            r#"{"holons":[{"key":"MAP Core Schema-v0.0.7","type":"Schema.HolonType"},{"key":"MAP Core Schema-v0.0.7","type":"Schema.HolonType"},{"key":"Example.HolonType","type":"MetaHolonType.MetaTypeDescriptor"}]}"#,
+            r#"{"holons":[{"key":"MAP Core Schema-v0.0.10","type":"Schema.HolonType"},{"key":"MAP Core Schema-v0.0.10","type":"Schema.HolonType"},{"key":"Example.HolonType","type":"MetaHolonType.MetaTypeDescriptor"}]}"#,
         )?;
         fs::write(
             core_imports.join(CORE_SCHEMA_BOOTSTRAP_FILE),
@@ -373,7 +374,7 @@ mod tests {
         )?;
         fs::write(
             &source_manifest,
-            r#"{"release_identity":"MAP Core Schema-v0.0.7","core_schema_key":"MAP Core Schema-v0.0.7","core_schema_space_key":"MAP.CoreSchemaSpace","packages":[{"name":"core","import_directory":"core"},{"name":"extension","import_directory":"extension"}]}"#,
+            r#"{"release_identity":"MAP Core Schema-v0.0.10","core_schema_key":"MAP Core Schema-v0.0.10","core_schema_space_key":"MAP.CoreSchemaSpace","packages":[{"name":"core","import_directory":"core"},{"name":"extension","import_directory":"extension"}]}"#,
         )?;
 
         generate_core_schema_bootstrap_bundle(&imports, &source_manifest, &output)?;
@@ -400,7 +401,7 @@ mod tests {
         assert_eq!(
             availability["target"],
             json!([
-                { "$ref": "Extension Schema" }, { "$ref": "MAP Core Schema-v0.0.7" }
+                { "$ref": "Extension Schema" }, { "$ref": "MAP Core Schema-v0.0.10" }
             ])
         );
         // Availability belongs to the bootstrap projection, not canonical TDL imports.

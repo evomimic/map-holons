@@ -1,6 +1,6 @@
 {
-  "release_identity": "MAP Core Schema-v0.0.7",
-  "core_schema_key": "MAP Core Schema-v0.0.7",
+  "release_identity": "MAP Core Schema-v0.0.10",
+  "core_schema_key": "MAP Core Schema-v0.0.10",
   "core_schema_space_key": "MAP.CoreSchemaSpace",
   "packages": [
     {
@@ -59,95 +59,107 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "30ee634091409287e93d42cd7b4ed32905179a4cf384733aa258d2a9aee6cf5a"
+      "sha256": "28ce5f01ceb6b18101b221514f048f48d960fee8a812906c1da05b4fde4051d7"
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "5dddfedcc9b82c7fe2def38ee4adbfa4d208925f60011172f8f8ca91ea3566d2"
+      "sha256": "82f85815ad3e870264a17980424de447f6f0d388ccd4164c609421a2795edccb"
     },
     {
       "path": "imports/core/keyrules.json",
-      "sha256": "679bd2004c24461d45e2fb341f809281feee0261a51ec4dd63b17090174c7046"
+      "sha256": "3c1b45323073d4ef79b7a7ac5094058d19af80546914e010307eb6f7f0d2c853"
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "b99f2c13d45493a15a87b3309434a2a45e5f7a91b4d3601ce23cc7be8d7aa1d0"
+      "sha256": "83595496dc0ef6c4f749ffbc1d646116d1eaea3561b5c76ba3fb1c032928d28c"
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "0671cbd13cfb1e46f2f8562e101e641bfa1cb3e0c7f242f77f7edb48e2065b84"
+      "sha256": "379c9f8b78d9ce9ed17f73689d1ad8bd218784bc452e703b43e5993d6a82b673"
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "18c5e53c30a9aa02e8316df1adcbd36defd96f3fe5475f7d143eeaf9f0af2520"
+      "sha256": "d6f130ab1b7c3a734b9180d37ba7772fb52295ffe08ba6e1d41048e5a72cae6d"
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "6b1ebb1f4dac57e8b3534c0cd01e4cc898e30ca05a1c3603b468a2df1e050a09"
+      "sha256": "b491118b256c01a07bbbf4656255ce407edf69f8e361dffc256ab2bf1210368c"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "afcb88510eab8bcff17b1fe8dd3319fad942341f7972856102c6faa0473bd1ff"
+      "sha256": "52c8c86ef8171db9da1c7147a3e01a2b30cb52c9eb53a53e2dba24121f57615f"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "91a17f65e6fae82e21bb71c299580c0d3ffa8735aa20c28b30920b4de3125c76"
+      "sha256": "dc18aef9438f79948ad003bfe34fa47f102d4f93faf7b4daad7d1b0e89f7734a"
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "fb83ca55be285a3604d5b74bae7b7ac30a2d10e55a824de74b587060777de969"
+      "sha256": "108bb810d1c0e26deff6bd0f7f3149d5dcd1e81b7eee33d41e1a4589660a2b0b"
     },
     {
       "path": "imports/validation/schema.json",
-      "sha256": "0d2e69225060e45eabda7c84ef67bc8110e234bb68598c2051faff031fdc1c56"
+      "sha256": "c1864368aa425b315ad4220081401e03ef012bb42570694c976a4259b167c16a"
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "94f3d1cf33041fd69d83059018eb23ab4aece104e523bdee316f6df8fa95e80a"
+      "sha256": "9bf05022671cf17a04e6e46326a41be334cdd7f4bbd060c4543ac21d892c4954"
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "6927ad47307bb083c4fdf2b2c3f5310bfa26cc7ed8d5311a0ef5f9ec1b8043a1"
+      "sha256": "cb18eda115d1525eacdf02c0250bff748aaba9bdd8af6741447f9214dfed33e2"
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "833f379bd34de02e3295d6459795ca8df1e3acf3fca5097a98682271424e3406"
+      "sha256": "5a256fe69f2dcb47ffb3f041a536535d0482544a895255a891e320852fc80cbc"
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "321c351dba17a5c0f6cc85585e8dbfb66599413e95e2bc232e01cb405db8642a"
+      "sha256": "6894bbd861c0dd6c7421e656938c212e1178294f8d6a5195d9d29a09c84f49a9"
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "8bc7cb8eb296eb0e726ff96e34b7ad7d18a8277b4f1848c5736f4ae17a329e40"
+      "sha256": "be06165cc03468abfed24b5c7226d641059992456c23027f4776ed1bc23322c5"
     },
     {
       "path": "imports/query-dance/schema.json",
-      "sha256": "e5eade3f0b9f66381d0f42453f18a407403bf5de4878af7be6547f5d7d54a659"
+      "sha256": "25705aad85043efd5141deadb65eb1d288cc8ed1c1869b7d1ee478cdaae84d72"
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "d5c632ed9afc580c77e5ca34020937945a996eca0028fbf959cfab04a01c3aad"
+      "sha256": "43c7ceef82e4939a449e4a39988e4966c1148ba722cb81bb3bace2cd4cddb6ca"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "3a6a4a27dcefd21db4b3974e30fba82820916ae23161c5506bc31fe72a6289cc"
+      "sha256": "1e585e8d2b52c1829ba07f82b15ff48f0fea7b8a51c25cfcb902fe8de150cf09"
+    },
+    {
+      "path": "imports/theme/deep-ocean.json",
+      "sha256": "c9ed9566ea5f9422ea83e0de4bae1155c94e035068cc0326ed763c8ac75902e5"
+    },
+    {
+      "path": "imports/theme/forest-sanctuary.json",
+      "sha256": "a07b0850f3887f1071f6c3fdc61c0e27f7b7172b3f06ad5ac03b5d90876fd941"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "4aba924fdcba7a94c14e944a30756d84824828c64df83e9fcf1621c341784c4e"
+      "sha256": "0058f961fb5c12794e3ec3f0af41cb8487ff6438d9dac21e73c69adc47be2648"
+    },
+    {
+      "path": "imports/theme/warm-parchment.json",
+      "sha256": "e853393669ed6244357a10970bbfef4047d67a39fe24dc694deabbc994b3a8b9"
     },
     {
       "path": "imports/agent-spaces/schema.json",
-      "sha256": "efcd76d94dfc30f8ec623a777d44f28d8006d8a6186a0c071f4d51a46694ca12"
+      "sha256": "262758257fc1b7295620fe1281a8e6ff68bea4e1c7cf726123eb07b90f69e0f2"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "507cbaf9aac8cc8a2e51587ac83a56adcbba5c8f767a8140227374bf0034e123"
+      "sha256": "3df88567be67f9511fb55629688f2eae67e9f5ea25946a979f5ea4c6d7f218bd"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
-      "sha256": "b165a3ecf847820dbd9e1abcb4ccc75c736d2d5702bec7bfa3f1152bcf837cb5"
+      "sha256": "9e84e168360c45b11128c93327cf4b016ffb559a7003637573cef944198936ef"
     }
   ],
   "required_holons": [
@@ -1860,6 +1872,10 @@
       "type": "DesignToken.HolonType"
     },
     {
+      "key": "CanvasHeadingFontFamily.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "CanvasHeadingFontWeight.DesignToken",
       "type": "DesignToken.HolonType"
     },
@@ -2400,6 +2416,10 @@
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
+      "key": "Demo1.DeepOceanThemeCanvasHeadingFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "Demo1.DeepOceanThemeCanvasHeadingFontWeight",
       "type": "ThemeTokenAssignment.HolonType"
     },
@@ -2584,6 +2604,266 @@
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
+      "key": "Demo1.ForestSanctuaryTheme",
+      "type": "Theme.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.CollectionNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.RelationshipNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.ViewControlSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.ViewControlTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasHeadingFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasLineHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeControlGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeFocusRingColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeFocusRingWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeMutedTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeNodeHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePanelCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePanelSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableHeaderFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "Demo1.MetaDesignSystem",
       "type": "MetaDesignSystem.HolonType"
     },
@@ -2657,6 +2937,10 @@
     },
     {
       "key": "Demo1.WarmParchmentThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasHeadingFontFamily",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -3768,55 +4052,55 @@
       "type": "DanceImplementation.HolonType"
     },
     {
-      "key": "MAP Agent Spaces Schema-v0.1.0",
+      "key": "MAP Agent Spaces Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Commands Schema-v0.1.0",
+      "key": "MAP Commands Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Core Schema-v0.0.7",
+      "key": "MAP Core Schema-v0.0.10",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP DAHN Schema-v0.1.0",
+      "key": "MAP DAHN Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Dance Schema-v0.1.0",
+      "key": "MAP Dance Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Dancer Schema-v0.1.0",
+      "key": "MAP Dancer Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Descriptor Runtime Schema-v0.1.0",
+      "key": "MAP Descriptor Runtime Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Design Tokens Schema-v0.1.0",
+      "key": "MAP Design Tokens Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Meta Design System Schema-v0.1.0",
+      "key": "MAP Meta Design System Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Query Dance Adapter Schema-v0.1.0",
+      "key": "MAP Query Dance Adapter Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Query Schema-v0.0.2",
+      "key": "MAP Query Schema-v0.0.5",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Theme Schema-v0.1.0",
+      "key": "MAP Theme Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Validation Schema-v0.1.0",
+      "key": "MAP Validation Schema-v0.1.3",
       "type": "Schema.HolonType"
     },
     {

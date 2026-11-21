@@ -6,7 +6,7 @@ meta {
   load_with: ["root.json","concrete-value-types.json","abstract-value-types.json","property-types.json","relationship-types.json"]
 }
 
-schema "MAP Core Schema-v0.0.7" {
+schema "MAP Core Schema-v0.0.10" {
 }
 
 enum ValidationLevel.MapEnumValueType {
@@ -397,7 +397,7 @@ instance AtMostOneDirectParent.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-002"
   ValidationRuleDescription "A holon has at most one direct Extends parent."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance AbstractPropertyParent.ValidationRule {
@@ -406,7 +406,7 @@ instance AbstractPropertyParent.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-006"
   ValidationRuleDescription "Only abstract property descriptors may be extended; concrete property definitions are leaves."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance AcyclicExtendsLineage.ValidationRule {
@@ -415,7 +415,7 @@ instance AcyclicExtendsLineage.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-003"
   ValidationRuleDescription "A descriptor Extends lineage must be acyclic."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule {
@@ -424,7 +424,7 @@ instance ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-004"
   ValidationRuleDescription "A parented descriptor lineage must terminate at TypeDescriptor."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance UniqueTypeDescriptorRoot.ValidationRule {
@@ -433,7 +433,7 @@ instance UniqueTypeDescriptorRoot.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-005"
   ValidationRuleDescription "TypeDescriptor is the unique root of the descriptor hierarchy."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance SchemaDependenciesAcyclic.ValidationRule {
@@ -442,7 +442,7 @@ instance SchemaDependenciesAcyclic.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-SCHEMA-001"
   ValidationRuleDescription "Versioned schema dependency relationships must be acyclic."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance CrossSchemaDependenciesDeclared.ValidationRule {
@@ -451,7 +451,7 @@ instance CrossSchemaDependenciesDeclared.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-SCHEMA-002"
   ValidationRuleDescription "Every cross-schema reference must have a direct schema dependency declaration."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance LocalInstanceKindAnchorDesignation.ValidationRule {
@@ -460,7 +460,7 @@ instance LocalInstanceKindAnchorDesignation.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-001"
   ValidationRuleDescription "Instance TypeKind anchor designation is local and singular."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance InstanceKindAnchorsAreAbstract.ValidationRule {
@@ -469,7 +469,7 @@ instance InstanceKindAnchorsAreAbstract.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-002"
   ValidationRuleDescription "Every Instance TypeKind anchor must be abstract."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance TypeDescriptorRootKindException.ValidationRule {
@@ -478,7 +478,7 @@ instance TypeDescriptorRootKindException.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-003"
   ValidationRuleDescription "TypeDescriptor is the only descriptor root that lacks an Instance TypeKind anchor."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance DescribingCategoryCompatibility.ValidationRule {
@@ -487,7 +487,7 @@ instance DescribingCategoryCompatibility.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-004"
   ValidationRuleDescription "Every describing type must belong to the required describing category."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance DescriptorMetaTypeCorrespondence.ValidationRule {
@@ -496,7 +496,7 @@ instance DescriptorMetaTypeCorrespondence.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-005"
   ValidationRuleDescription "Descriptor holons, and only descriptor holons, must use meta-type describers."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance NoInheritedMemberRedeclaration.ValidationRule {
@@ -505,7 +505,7 @@ instance NoInheritedMemberRedeclaration.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-001"
   ValidationRuleDescription "A descriptor must not redundantly redeclare an inherited member."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance UniqueSemanticMemberNames.ValidationRule {
@@ -514,7 +514,7 @@ instance UniqueSemanticMemberNames.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-002"
   ValidationRuleDescription "Effective semantic member names must be unique within each namespace."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance WellFormedEffectiveMemberDefinitions.ValidationRule {
@@ -523,7 +523,7 @@ instance WellFormedEffectiveMemberDefinitions.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-003"
   ValidationRuleDescription "Every effective member definition must be well formed."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance ContractMemberKindCompatibility.ValidationRule {
@@ -532,7 +532,7 @@ instance ContractMemberKindCompatibility.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-004"
   ValidationRuleDescription "Every effective contract member must have the required instance kind."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance InheritedValueConstraintNonRelaxation.ValidationRule {
@@ -541,7 +541,7 @@ instance InheritedValueConstraintNonRelaxation.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONSTRAINT-001"
   ValidationRuleDescription "A descriptor subtype must retain every applicable inherited constraint in its combined effective constraint set; local constraints may add further obligations."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance DefaultsRequireRequiredProperties.ValidationRule {
@@ -550,7 +550,7 @@ instance DefaultsRequireRequiredProperties.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-001"
   ValidationRuleDescription "Only required properties may declare defaults."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance DefaultValueConformance.ValidationRule {
@@ -559,7 +559,7 @@ instance DefaultValueConformance.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-002"
   ValidationRuleDescription "Every declared default value must conform to its effective value definition."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance InverseEndpointCorrespondence.ValidationRule {
@@ -568,7 +568,7 @@ instance InverseEndpointCorrespondence.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-REL-002"
   ValidationRuleDescription "Inverse relationship endpoints must correspond to declared relationship endpoints."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance DirectionalDeletionDeclarations.ValidationRule {
@@ -577,7 +577,7 @@ instance DirectionalDeletionDeclarations.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-REL-003"
   ValidationRuleDescription "Both relationship directions must declare valid deletion semantics."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance EffectiveKeyRuleSelection.ValidationRule {
@@ -586,7 +586,7 @@ instance EffectiveKeyRuleSelection.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-001"
   ValidationRuleDescription "Every holon type must resolve exactly one effective instance key rule."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance KeyRuleTargetCompatibility.ValidationRule {
@@ -595,7 +595,7 @@ instance KeyRuleTargetCompatibility.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-002"
   ValidationRuleDescription "The selected key rule target must be compatible with and executable for the descriptor."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance ExplicitKeylessBaseline.ValidationRule {
@@ -604,7 +604,7 @@ instance ExplicitKeylessBaseline.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-003"
   ValidationRuleDescription "The keyless root must be explicit and key-rule inheritance must use Override semantics."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance EnumMemberNamesUnique.ValidationRule {
@@ -613,7 +613,7 @@ instance EnumMemberNamesUnique.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-001"
   ValidationRuleDescription "Every Variants target of an enum definition must be a concrete variant descriptor, and concrete members must have unique names within the enum definition."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance AbstractMemberMinimumEnforcement.ValidationRule {
@@ -622,7 +622,7 @@ instance AbstractMemberMinimumEnforcement.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONFORM-002"
   ValidationRuleDescription "Minimum enforcement for abstract descriptors is member-specific."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance UniquePropertyMemberBinding.ValidationRule {
@@ -631,7 +631,7 @@ instance UniquePropertyMemberBinding.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-BIND-001"
   ValidationRuleDescription "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance RelationshipOccurrenceGrouping.ValidationRule {
@@ -640,7 +640,7 @@ instance RelationshipOccurrenceGrouping.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-001"
   ValidationRuleDescription "Relationship occurrences must be grouped by resolved relationship descriptor identity."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance AdditionalRelationshipPolicy.ValidationRule {
@@ -649,7 +649,7 @@ instance AdditionalRelationshipPolicy.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-004"
   ValidationRuleDescription "Every unbound relationship must be permitted by the effective additional-relationship policy."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance ExplicitKeylessness.ValidationRule {
@@ -658,7 +658,7 @@ instance ExplicitKeylessness.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-004"
   ValidationRuleDescription "A keyless holon must carry no semantic key."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance KeyPresenceAndValue.ValidationRule {
@@ -667,7 +667,7 @@ instance KeyPresenceAndValue.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-005"
   ValidationRuleDescription "A keyed new holon must carry exactly the computed semantic key."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance ConcreteDescribingType.ValidationRule {
@@ -676,7 +676,7 @@ instance ConcreteDescribingType.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONFORM-001"
   ValidationRuleDescription "A runtime holon must be described by a concrete descriptor that can describe instances."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance KeyUniqueness.ValidationRule {
@@ -685,7 +685,7 @@ instance KeyUniqueness.ValidationRule {
   DeterminismClass Contextual
   SemanticAuthority "DS-KEY-006"
   ValidationRuleDescription "Within the local HolonSpace, each complete effective key remains associated with at most one lineage, including historical committed keys. Creates and new versions are checked against saved associations and live Commit candidates. Same-lineage versions and siblings may share a key; abandoned candidates and uncommitted intermediate keys reserve nothing. Publishing a successor does not release, reassign, or permit reuse of an earlier key. Keyless, no-op, and graph-only subjects make no new key claim. This check uses locally visible evidence without selecting heads or providing global uniqueness coordination."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance NoUndescribedProperties.ValidationRule {
@@ -694,7 +694,7 @@ instance NoUndescribedProperties.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-003"
   ValidationRuleDescription "An unbound instance property is invalid; a populated property must be declared by the effective property contract."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance RequiredPropertyPresence.ValidationRule {
@@ -703,7 +703,7 @@ instance RequiredPropertyPresence.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-001"
   ValidationRuleDescription "A property declared required by the effective descriptor contract must be present."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance PropertyValueConformance.ValidationRule {
@@ -712,7 +712,7 @@ instance PropertyValueConformance.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-002"
   ValidationRuleDescription "A populated property value must conform to its selected ValueType descriptor. Representation and configured-constraint findings are reported by the value-kind rules and the constraint traversal; this rule adds none of its own."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance BaseValueKindMatchesString.ValidationRule {
@@ -721,7 +721,7 @@ instance BaseValueKindMatchesString.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by a StringValueType descriptor must use the string BaseValue representation."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance BaseValueKindMatchesInteger.ValidationRule {
@@ -730,7 +730,7 @@ instance BaseValueKindMatchesInteger.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by an IntegerValueType descriptor must use the integer BaseValue representation."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance BaseValueKindMatchesBoolean.ValidationRule {
@@ -739,7 +739,7 @@ instance BaseValueKindMatchesBoolean.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by a BooleanValueType descriptor must use the boolean BaseValue representation."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance BaseValueKindMatchesEnum.ValidationRule {
@@ -748,7 +748,7 @@ instance BaseValueKindMatchesEnum.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by an EnumValueType descriptor must use the enum BaseValue representation."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance EnumTokenMembership.ValidationRule {
@@ -757,7 +757,7 @@ instance EnumTokenMembership.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-002"
   ValidationRuleDescription "An enum value token must match one of the effective enum variants admitted by the EnumValueType descriptor."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance EnumTokenNonRetroactivity.ValidationRule {
@@ -766,7 +766,7 @@ instance EnumTokenNonRetroactivity.ValidationRule {
   DeterminismClass Contextual
   SemanticAuthority "DS-ENUM-003"
   ValidationRuleDescription "Enum token changes must never rewrite or alias persisted enum values."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance BaseValueKindMatchesBytes.ValidationRule {
@@ -775,7 +775,7 @@ instance BaseValueKindMatchesBytes.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by a BytesValueType descriptor must use the bytes BaseValue representation."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance RelationshipOccurrenceBinding.ValidationRule {
@@ -784,7 +784,7 @@ instance RelationshipOccurrenceBinding.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-BIND-002"
   ValidationRuleDescription "A populated relationship name must bind uniquely to a relationship descriptor admitted by the effective contract."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance RelationshipEndpointCompatibility.ValidationRule {
@@ -793,7 +793,7 @@ instance RelationshipEndpointCompatibility.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-002"
   ValidationRuleDescription "A relationship occurrence endpoint must be compatible with the effective source and target descriptors."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance RelationshipCollectionPolicy.ValidationRule {
@@ -802,7 +802,7 @@ instance RelationshipCollectionPolicy.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-003"
   ValidationRuleDescription "A relationship occurrence collection must honor ordering and duplicate policies declared by the relationship descriptor."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }
 
 instance RelationshipDescriptorPairing.ValidationRule {
@@ -811,5 +811,5 @@ instance RelationshipDescriptorPairing.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "DS-REL-001"
   ValidationRuleDescription "Declared and inverse relationship descriptor pairing must be bijective."
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
 }

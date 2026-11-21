@@ -15,10 +15,10 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.10"
             },
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.3"
             }
           ]
         }

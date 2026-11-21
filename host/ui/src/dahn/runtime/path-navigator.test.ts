@@ -59,7 +59,7 @@ function subject(name: string) {
   };
 }
 function collection(members: ReturnType<typeof subject>[]) {
-  return { length: members.length, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  return { length: members.length, elementType: {}, propertyDescriptors: async () => [property], [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 function deferred<T>() {
   let resolve!: (value: T) => void;

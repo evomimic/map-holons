@@ -149,12 +149,15 @@ describe('Theme', () => {
 
 
 describe('bundled theme coverage', () => {
-  it('projects both authored themes and keeps launcher CSS identical to the bootstrap theme', async () => {
+  it('projects all authored themes with separate heading fonts and keeps launcher CSS identical to the bootstrap theme', async () => {
     const read = async (path: string) => JSON.parse(await readFile(resolve(process.cwd(), '..', path), 'utf8'));
     const files = await Promise.all([
       read('generated/json-imports/design-tokens/schema.json'),
       read('generated/json-imports/meta-design-system/schema.json'),
       read('generated/json-imports/theme/schema.json'),
+      read('generated/json-imports/theme/deep-ocean.json'),
+      read('generated/json-imports/theme/warm-parchment.json'),
+      read('generated/json-imports/theme/forest-sanctuary.json'),
       read('generated/visualizer-commons/default-presentation/imports/schema.json'),
     ]);
     const holons = new Map(files.flatMap(file => file.holons).map(holon => [holon.key, holon]));
@@ -173,14 +176,18 @@ describe('bundled theme coverage', () => {
     };
     const bootstrap = await new Theme(reference(fixture('Demo1.DeepOceanTheme'))).toCssCustomProperties();
     const projection = performance.getEntriesByName('map.theme.css', 'measure').at(-1)! as PerformanceMeasure;
-    expect(projection.detail.bindings).toBe(63);
-    console.info('[LoadTheme CSS evidence]', JSON.stringify({ bindings: 63, localCssMs: projection.duration }));
+    expect(projection.detail.bindings).toBe(64);
+    console.info('[LoadTheme CSS evidence]', JSON.stringify({ bindings: 64, localCssMs: projection.duration }));
     const alternate = await new Theme(reference(fixture('DAHN.DefaultTheme'))).toCssCustomProperties();
-    expect(Object.keys(alternate.cssCustomProperties).sort()).toEqual(Object.keys(bootstrap.cssCustomProperties).sort());
+    const parchment = await new Theme(reference(fixture('Demo1.WarmParchmentTheme'))).toCssCustomProperties();
+    const sanctuary = await new Theme(reference(fixture('Demo1.ForestSanctuaryTheme'))).toCssCustomProperties();
+    expect(sanctuary.cssCustomProperties['--dahn-canvas-heading-font-family']).toBe("Georgia, 'Times New Roman', serif");
+    expect(sanctuary.cssCustomProperties['--dahn-canvas-font-family']).toContain('sans-serif');
     const css = await readFile(resolve(process.cwd(), 'ui/src/launcher-theme.generated.css'), 'utf8');
     const declarations = Object.fromEntries([...css.matchAll(/(--dahn-[a-z-]+): ([^;]+);/g)].map(match => [match[1], match[2]]));
     expect(declarations).toEqual(bootstrap.cssCustomProperties);
-    for (const theme of [bootstrap, alternate]) {
+    for (const theme of [bootstrap, alternate, parchment, sanctuary]) {
+      expect(Object.keys(theme.cssCustomProperties).sort()).toEqual(Object.keys(bootstrap.cssCustomProperties).sort());
       expect(theme.cssCustomProperties['--dahn-properties-disclosure-focus-color']).toMatch(/^#/);
       expect(theme.cssCustomProperties['--dahn-slot-border-style']).toBe('solid');
       expect(theme.cssCustomProperties['--dahn-slot-border-width']).not.toBe('0');

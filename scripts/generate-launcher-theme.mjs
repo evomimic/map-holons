@@ -5,7 +5,7 @@ const root = new URL('../', import.meta.url);
 async function holons(path) {
   return JSON.parse(await readFile(new URL(path, root), 'utf8')).holons;
 }
-const themes = await holons('generated/json-imports/theme/schema.json');
+const themes = await holons('generated/json-imports/theme/deep-ocean.json');
 const tokens = await holons('generated/json-imports/design-tokens/schema.json');
 const byKey = new Map([...themes, ...tokens].map(holon => [holon.key, holon]));
 function related(holon, name) {

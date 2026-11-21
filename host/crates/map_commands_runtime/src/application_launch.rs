@@ -3,7 +3,7 @@ use crate::Runtime;
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::{
-    agent_spaces::{sovereign_agent, SovereignAgent},
+    agent_spaces::{current_personal_space, sovereign_agent, SovereignAgent},
     HolonReference, ReadableHolon,
 };
 
@@ -43,9 +43,7 @@ pub async fn select_application_launch(
     let tx = runtime.session().begin_transaction().await?;
     let selected = (|| {
         let context = runtime.session().get_transaction(&tx)?;
-        let space = context.get_space_holon()?.ok_or_else(|| {
-            HolonError::InvalidState("Application launch requires the adopted Space".into())
-        })?;
+        let space = current_personal_space(&context)?;
         let person = match requirement {
             LaunchRequirement::ProvisionedSpace => None,
             LaunchRequirement::AcquiredSpace => match sovereign_agent(&space)? {

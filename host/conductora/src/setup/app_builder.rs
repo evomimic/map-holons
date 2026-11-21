@@ -110,6 +110,9 @@ impl AppBuilder {
             base.invoke_handler(tauri::generate_handler![
                 crate::trusted_welcome::welcome_status,
                 crate::trusted_welcome::create_new_environment,
+                crate::trusted_welcome::saved_environments,
+                crate::trusted_welcome::activate_saved_environment,
+                crate::trusted_welcome::trash_saved_environment,
                 crate::trusted_welcome::constitute_personal_space,
                 crate::packaged_navigator::open_space_navigator,
                 application_session,

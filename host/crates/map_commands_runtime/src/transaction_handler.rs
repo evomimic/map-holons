@@ -22,7 +22,17 @@ pub async fn handle_transaction(
             let expected = context
                 .get_space_holon()?
                 .ok_or_else(|| HolonError::InvalidState("No persisted HolonSpace".into()))?;
-            if space.holon_id()? != expected.holon_id()? {
+            let root = holons_core::SmartReference::new_from_id(
+                context.space_read_handle(),
+                space.holon_id()?,
+            )
+            .lineage_root_id()?;
+            let expected_root = holons_core::SmartReference::new_from_id(
+                context.space_read_handle(),
+                expected.holon_id()?,
+            )
+            .lineage_root_id()?;
+            if root != expected_root {
                 return Err(HolonError::InvalidParameter(
                     "Captured HolonSpace does not match the loader transaction".into(),
                 ));

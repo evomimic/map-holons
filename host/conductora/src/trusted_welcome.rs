@@ -75,6 +75,7 @@ pub struct WelcomeStatus {
     pub(crate) blockers: Vec<AdmissionBlocker>,
     pub incompatibility: Option<String>,
     pub new_environment_available: bool,
+    pub environment_management_available: bool,
 }
 
 fn status_for(
@@ -120,6 +121,7 @@ fn status_for(
         blockers,
         incompatibility: None,
         new_environment_available: false,
+        environment_management_available: false,
     }
 }
 
@@ -140,12 +142,25 @@ fn apply_local_workflow(status: &mut WelcomeStatus, available: bool) {
         status.blockers = vec![AdmissionBlocker::ConstitutionTransactionPending];
     } else if status.phase == WelcomePhase::FoundationPresent {
         status.constitution_available = true;
-        status.message = "Your space is ready. Enter your name to create your personal space.";
+        status.message = "Your space is ready. Enter your name to begin personalizing your space.";
         status.blockers.clear();
     } else if status.phase == WelcomePhase::AssociationPresent {
         status.navigator_available = true;
-        status.message = "Your existing personal space is open. MAP has retained your Agent and Space without repeating constitution.";
+        status.message =
+            "Your Space is ready. Launch Space Navigator, or reset and restart with a fresh Space.";
     }
+}
+
+/// A fresh environment is an explicit Welcome choice; retained data is never replaced.
+fn apply_environment_options(status: &mut WelcomeStatus, incompatibility: Option<String>) {
+    status.environment_management_available =
+        cfg!(all(feature = "local-constitution", debug_assertions)) && !tauri::is_dev();
+    if status.stage == ApplicationSessionPhase::Failed {
+        status.incompatibility = incompatibility;
+    }
+    status.new_environment_available = cfg!(all(feature = "local-constitution", debug_assertions))
+        && !tauri::is_dev()
+        && (status.navigator_available || status.incompatibility.is_some());
 }
 
 #[tauri::command]
@@ -167,18 +182,14 @@ pub async fn welcome_status(
     }
     let mut status = status_for(phase, lifecycle.observation()?);
     apply_local_workflow(&mut status, constitution.available());
-    if phase == ApplicationSessionPhase::Failed {
-        status.incompatibility = window
-            .app_handle()
-            .state::<crate::config::environment::EnvironmentMismatch>()
-            .0
-            .read()
-            .map_err(|e| e.to_string())?
-            .clone();
-        status.new_environment_available =
-            cfg!(all(feature = "local-constitution", debug_assertions))
-                && status.incompatibility.is_some();
-    }
+    let incompatibility = window
+        .app_handle()
+        .state::<crate::config::environment::EnvironmentMismatch>()
+        .0
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone();
+    apply_environment_options(&mut status, incompatibility);
     Ok(status)
 }
 
@@ -275,7 +286,8 @@ pub async fn constitute_personal_space(
 pub fn create_window(handle: &tauri::AppHandle) -> anyhow::Result<()> {
     WebviewWindowBuilder::new(handle, WINDOW_LABEL, WebviewUrl::App(PAGE.into()))
         .title("Welcome to MAP")
-        .inner_size(720.0, 760.0)
+        .inner_size(1060.0, 820.0)
+        .min_inner_size(640.0, 700.0)
         .on_navigation(|url| approved_page(WINDOW_LABEL, url))
         .build()?;
     Ok(())
@@ -340,6 +352,10 @@ mod tests {
             capability["permissions"],
             serde_json::json!([
                 "allow-welcome-status",
+                "allow-create-new-environment",
+                "allow-saved-environments",
+                "allow-activate-saved-environment",
+                "allow-trash-saved-environment",
                 "allow-constitute-personal-space",
                 "allow-open-space-navigator"
             ])
@@ -426,6 +442,41 @@ mod tests {
     }
 
     #[test]
+    fn environment_restart_requires_ready_association_or_recorded_incompatibility() {
+        use core_types::{HolonId, LocalId};
+        let enabled =
+            cfg!(all(feature = "local-constitution", debug_assertions)) && !tauri::is_dev();
+        for (sovereignty, available, expected) in [
+            (SovereigntyObservation::AssociationPresent, true, enabled),
+            (SovereigntyObservation::AssociationPresent, false, false),
+            (SovereigntyObservation::NoAssociationObserved, true, false),
+            (SovereigntyObservation::Ambiguous, true, false),
+        ] {
+            let mut status = status_for(
+                ApplicationSessionPhase::ActivatingBasePackages,
+                Some(Ok(ConstitutionTarget {
+                    space: HolonId::Local(LocalId(vec![9; 39])),
+                    sovereignty,
+                })),
+            );
+            apply_local_workflow(&mut status, available);
+            apply_environment_options(&mut status, None);
+            assert_eq!(status.new_environment_available, expected);
+        }
+        for incompatibility in [None, Some("Packaged DNA changed".into())] {
+            let expected = enabled && incompatibility.is_some();
+            let mut status = status_for(ApplicationSessionPhase::Failed, None);
+            apply_local_workflow(&mut status, true);
+            apply_environment_options(&mut status, incompatibility);
+            assert_eq!(status.new_environment_available, expected);
+        }
+        let mut starting = status_for(ApplicationSessionPhase::InitializingHost, None);
+        apply_local_workflow(&mut starting, true);
+        apply_environment_options(&mut starting, Some("stale incompatibility".into()));
+        assert!(!starting.new_environment_available);
+    }
+
+    #[test]
     fn only_exact_packaged_welcome_page_is_admitted() {
         let trusted = tauri::Url::parse("tauri://localhost/welcome.html").unwrap();
         assert!(approved_page("welcome", &trusted));
@@ -451,20 +502,106 @@ pub fn create_new_environment(window: WebviewWindow) -> Result<(), String> {
         return Err("New local environments are unavailable in this build".into());
     }
     let handle = window.app_handle();
-    if handle.state::<ApplicationSessionState>().snapshot()?.phase
-        != ApplicationSessionPhase::Failed
-    {
-        return Err("New environment selection requires a failed compatibility check".into());
+    let launch = handle.state::<crate::packaged_navigator::NavigatorLaunchLock>();
+    let _guard = launch.try_acquire()?;
+    if handle.get_webview_window("navigator").is_some() {
+        return Err("Return to Welcome before resetting your Space".into());
     }
+    let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
+    let observation = handle.state::<WelcomeLifecycle>().observation()?;
+    let mut status = status_for(phase, observation);
+    apply_local_workflow(
+        &mut status,
+        handle
+            .state::<map_commands_runtime::personal_constitution::PersonalConstitution>()
+            .available(),
+    );
     let state = handle.state::<crate::config::environment::EnvironmentMismatch>();
     let mut mismatch = state.0.write().map_err(|e| e.to_string())?;
-    if mismatch.is_none() {
-        return Err("No environment incompatibility was recorded".into());
+    apply_environment_options(&mut status, mismatch.clone());
+    if !status.new_environment_available {
+        return Err(
+            "Restart requires a ready personal Space or a recorded environment incompatibility"
+                .into(),
+        );
     }
     let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
     crate::config::environment::create_environment(&base).map_err(|e| e.to_string())?;
     *mismatch = None;
     drop(mismatch);
+    launch.mark_restarting();
     handle.request_restart();
     Ok(())
+}
+
+fn admit_environment_management(window: &WebviewWindow) -> Result<(), String> {
+    admit(window)?;
+    if !cfg!(all(feature = "local-constitution", debug_assertions)) || tauri::is_dev() {
+        return Err("Saved environments are unavailable in this build".into());
+    }
+    if window.app_handle().get_webview_window("navigator").is_some() {
+        return Err("Return to Welcome before managing environments".into());
+    }
+    Ok(())
+}
+
+fn require_environment_change_ready(handle: &AppHandle) -> Result<(), String> {
+    let constitution =
+        handle.state::<map_commands_runtime::personal_constitution::PersonalConstitution>();
+    if !constitution.available() {
+        return Err("Personal setup work must finish before changing environments".into());
+    }
+    let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
+    let mut status = status_for(phase, handle.state::<WelcomeLifecycle>().observation()?);
+    apply_local_workflow(&mut status, true);
+    if !status.constitution_available
+        && !status.navigator_available
+        && phase != ApplicationSessionPhase::Failed
+    {
+        return Err("Wait for MAP to finish opening before changing environments".into());
+    }
+    Ok(())
+}
+
+/// Inventory is presentation-only; an inactive store is never opened to inspect its data.
+#[tauri::command]
+pub async fn saved_environments(
+    window: WebviewWindow,
+) -> Result<Vec<crate::config::environment::SavedEnvironment>, String> {
+    admit_environment_management(&window)?;
+    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || crate::config::environment::list_environments(&base))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
+/// User-selected reactivation always restarts through the ordinary compatibility checks.
+#[tauri::command]
+pub fn activate_saved_environment(window: WebviewWindow, id: String) -> Result<(), String> {
+    admit_environment_management(&window)?;
+    let handle = window.app_handle();
+    let transition = handle.state::<crate::packaged_navigator::NavigatorLaunchLock>();
+    let _guard = transition.try_acquire()?;
+    require_environment_change_ready(handle)?;
+    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
+    crate::config::environment::activate_environment(&base, &id).map_err(|e| e.to_string())?;
+    transition.mark_restarting();
+    handle.request_restart();
+    Ok(())
+}
+
+/// Cleanup is limited to an inactive, native-resolved environment and uses system Trash.
+#[tauri::command]
+pub async fn trash_saved_environment(window: WebviewWindow, id: String) -> Result<(), String> {
+    admit_environment_management(&window)?;
+    let handle = window.app_handle();
+    let transition = handle.state::<crate::packaged_navigator::NavigatorLaunchLock>();
+    let _guard = transition.try_acquire()?;
+    require_environment_change_ready(handle)?;
+    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || crate::config::environment::trash_environment(&base, &id))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }

@@ -79,6 +79,27 @@ fn handle_read(
                 element_type,
             }))
         }
+        ReadableHolonAction::GetCollectionElementProperties => {
+            use holons_core::descriptors::{
+                ComputedEffectiveSchema, DerivedDescriptor, EffectiveHolonDescriptor,
+            };
+            let prepared = DerivedDescriptor::acquire(target.clone())?;
+            let schema = ComputedEffectiveSchema::from_derived(&prepared)?;
+            let members = if schema.defines_holon_instances()? {
+                EffectiveHolonDescriptor::acquire(target)?
+                    .instance_properties()?
+                    .into_iter()
+                    .map(|property| property.holon().clone())
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            Ok(MapResult::Collection(HolonCollection::from_parts(
+                CollectionState::Fetched,
+                members,
+                BTreeMap::new(),
+            )))
+        }
         ReadableHolonAction::GetInstanceProperties => {
             let members =
                 holons_core::descriptors::EffectiveHolonDescriptor::from_prepared_holon(target)?

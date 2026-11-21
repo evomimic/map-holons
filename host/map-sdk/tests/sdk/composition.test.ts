@@ -1,3 +1,4 @@
+import { DescribedHolonCollection } from '../../src/sdk/collection';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createHolonReference } from '../../src/sdk/references';
 import { createPropertyDescriptorHandle, createRelationshipDescriptorHandle } from '../../src/sdk/descriptors';
@@ -31,4 +32,13 @@ it('consumes consolidated child metadata and optional configuration through one 
   await tx.resolveRelationshipComposition(bound(1), bound(3), bound(10), bound(2), createRelationshipDescriptorHandle(bound(4)));
   expect(invoke).toHaveBeenCalledOnce();
   expect(invoke.mock.calls[0][1].request.command.Transaction.action.ResolveComposition).toEqual({ owner: ref(1), subject: ref(3), theme: ref(10), demand_slot: ref(2), collection_source: ref(4) });
+});
+
+it('reads collection columns without requesting a HolonType schema for a descriptor-family anchor', async () => {
+  invoke.mockImplementation(async (_name, { request }) => ({ request_id: request.request_id,
+    result: { Ok: { Collection: { state: 'Fetched', members: [], keyed_index: {} } } } }));
+  const collection = new DescribedHolonCollection(41, { element_type: ref(3), members: { state: 'Fetched', members: [ref(4)], keyed_index: {} } });
+  expect(await collection.propertyDescriptors()).toEqual([]);
+  expect(invoke).toHaveBeenCalledOnce();
+  expect(invoke.mock.calls[0][1].request.command.Holon).toMatchObject({ target: ref(3), action: { Read: 'GetCollectionElementProperties' } });
 });

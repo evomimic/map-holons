@@ -20,10 +20,10 @@
   },
   "holons": [
     {
-      "key": "MAP Validation Schema-v0.1.0",
+      "key": "MAP Validation Schema-v0.1.3",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Validation Schema-v0.1.0",
+        "SchemaName": "MAP Validation Schema-v0.1.3",
         "Description": "One-way Core-dependent extension for validation implementations, results, Validate, and non-Commit rule families."
       },
       "relationships": [
@@ -31,7 +31,7 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.10"
             }
           ]
         },
@@ -69,7 +69,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -107,7 +107,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -145,7 +145,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -184,7 +184,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -223,7 +223,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -293,7 +293,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -354,7 +354,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -391,7 +391,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },
@@ -428,7 +428,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Validation Schema-v0.1.3"
             }
           ]
         },

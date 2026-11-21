@@ -5,7 +5,7 @@ meta {
   source_files: ["map-core-schema-abstract-value-types.csv"]
   load_with: ["value-constraint-types.json","operator-types.json","root.json","keyrules.json","relationship-types.json"]
 }
-schema "MAP Core Schema-v0.0.7" {
+schema "MAP Core Schema-v0.0.10" {
 }
 
 holon MetaValueType.MetaTypeDescriptor {

@@ -27,8 +27,8 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     let document: Value = serde_json::from_str(&compile_input_string(SOURCE, "schema.tdl")?)?;
     assert_eq!(document, serde_json::from_str::<Value>(GENERATED)?);
     assert_eq!(
-        targets(holon(&document, "MAP Agent Spaces Schema-v0.1.0"), "DependsOn"),
-        ["MAP Core Schema-v0.0.7"]
+        targets(holon(&document, "MAP Agent Spaces Schema-v0.1.3"), "DependsOn"),
+        ["MAP Core Schema-v0.0.10"]
     );
     for (key, parent, abstract_type) in [
         ("Agent.HolonType", "HolonType.TypeDescriptor", true),
@@ -52,14 +52,14 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     }
     let person = holon(&document, "PersonAgent.BioSocialAgent");
     assert_eq!(targets(person, "InstanceProperties").len(), 3);
-    assert_eq!(targets(person, "InstanceKeyRule"), ["NoneRule.KeyRuleType"]);
+    assert_eq!(targets(person, "InstanceKeyRule"), ["PersonAgentName.FormatRule"]);
     let rule = holon(&document, "PersonAgentName.FormatRule");
     assert_eq!(rule["properties"]["TemplateString"], "{0}.[1].[2]");
     assert_eq!(
         targets(rule, "TemplateParameters"),
         ["LastName.PropertyType", "FirstName.PropertyType", "MiddleName.PropertyType"]
     );
-    assert_eq!(targets(rule, "RuleOf"), ["MAP Agent Spaces Schema-v0.1.0"]);
+    assert_eq!(targets(rule, "RuleOf"), ["MAP Agent Spaces Schema-v0.1.3"]);
     Ok(())
 }
 

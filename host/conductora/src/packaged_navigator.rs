@@ -13,7 +13,26 @@ use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 const WINDOW: &str = "navigator";
 #[derive(Default)]
-pub struct NavigatorLaunchLock(tokio::sync::Mutex<()>);
+pub struct NavigatorLaunchLock {
+    lock: tokio::sync::Mutex<()>,
+    restarting: std::sync::atomic::AtomicBool,
+}
+
+impl NavigatorLaunchLock {
+    pub(crate) fn try_acquire(&self) -> Result<tokio::sync::MutexGuard<'_, ()>, String> {
+        use std::sync::atomic::Ordering;
+        let guard =
+            self.lock.try_lock().map_err(|_| "A launch or restart is already in progress")?;
+        if self.restarting.load(Ordering::SeqCst) {
+            return Err("MAP is restarting; environment changes are unavailable".into());
+        }
+        Ok(guard)
+    }
+
+    pub(crate) fn mark_restarting(&self) {
+        self.restarting.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+}
 
 fn approved_page(label: &str, url: &tauri::Url) -> bool {
     label == WINDOW
@@ -55,7 +74,7 @@ pub async fn open_space_navigator(window: WebviewWindow) -> Result<(), String> {
     }
     let handle = window.app_handle();
     let launch = handle.state::<NavigatorLaunchLock>();
-    let _guard = launch.0.try_lock().map_err(|_| "Navigator is already opening")?;
+    let _guard = launch.try_acquire()?;
     if !handle.state::<PersonalConstitution>().available() {
         return Err("Constitution work is pending; retain it for remediation".into());
     }
@@ -100,6 +119,17 @@ pub async fn open_space_navigator(window: WebviewWindow) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn launch_and_restart_cannot_overlap() {
+        let lock = NavigatorLaunchLock::default();
+        let launch = lock.try_acquire().unwrap();
+        assert!(lock.try_acquire().is_err());
+        drop(launch);
+        assert!(lock.try_acquire().is_ok());
+        lock.mark_restarting();
+        assert!(lock.try_acquire().is_err());
+    }
+
     #[test]
     fn navigator_permissions_exclude_constitution_and_conductor_access() {
         let capability: serde_json::Value =

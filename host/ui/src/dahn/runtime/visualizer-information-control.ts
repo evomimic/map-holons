@@ -95,7 +95,8 @@ export async function bindVisualizerInformationControl(
     element.dispatchEvent(new CustomEvent<VisualizerInspectionTarget>(VISUALIZER_INFORMATION_EVENT, { bubbles: true, composed: true, detail: withVisualizerComposition(target()) }));
   });
   container.append(button, tooltip);
-  element.style.position = 'relative';
+  const position = getComputedStyle(element).position;
+  if (!position || position === 'static') element.style.position = 'relative';
   if (placement === 'start') element.style.paddingInlineStart = '24px';
   else element.style.paddingInlineEnd = '24px';
   element.append(container);

@@ -175,7 +175,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const members = new Map();
         const columns = [];
         const properties = new Map();
-        for (const property of await (await collection.elementType.effectiveDescriptor()).instanceProperties()) {
+        for (const property of await collection.propertyDescriptors()) {
             if (await property.isArray()) continue;
             const id = await property.propertyName();
             properties.set(id, property);
@@ -351,7 +351,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             header.style.whiteSpace = 'nowrap';
             header.style.maxWidth = '32rem';
             Object.assign(header.style, { position: 'sticky', top: '0', zIndex: '2' });
-            if (column.id === 'Key') Object.assign(header.style, { left: '0', zIndex: '3' });
+            if (column.id === presentation.columns[0]?.id) Object.assign(header.style, { left: '0', zIndex: '3' });
             headerRow.append(header);
         }
         const head = document.createElement('thead');
@@ -403,7 +403,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 cell.style.borderRight = cell.style.borderBottom;
                 cell.style.padding = 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)';
                 Object.assign(cell.style, { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '32rem' });
-                if (column.id === 'Key') Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
+                if (column.id === presentation.columns[0]?.id) Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
                 row.append(cell);
             }
             this.rowElements.set(rowId, row);

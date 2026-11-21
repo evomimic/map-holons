@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-saved-environments"
+description = "Enables the saved_environments command without any pre-configured scope."
+commands.allow = ["saved_environments"]
+
+[[permission]]
+identifier = "deny-saved-environments"
+description = "Denies the saved_environments command without any pre-configured scope."
+commands.deny = ["saved_environments"]

@@ -124,6 +124,30 @@ export function applyPaneControls(parts, layout, relayout) {
     Object.assign(collectionReturn.style, { minHeight: `${size}px`, marginRight: '0px' });
     collectionReturn.inert = false;
   }
+  // Enlarging a collection requests the containing occurrence's existing attention
+  // grant. The collection stays mounted and never owns ancestor geometry.
+  let expand = root.collectionExpandControl;
+  if (!expand) {
+    expand = root.collectionExpandControl = document.createElement('button');
+    expand.type = 'button'; expand.dataset.collectionExpand = 'true';
+    root.inspectionHeading.append(expand);
+  }
+  const maximized = !!parts.collectionMaximized;
+  const expandLabel = maximized ? 'Restore collection size' : 'Expand collection to full size';
+  expand.title = expandLabel; expand.setAttribute('aria-label', expandLabel);
+  expand.setAttribute('aria-pressed', String(maximized));
+  expand.replaceChildren(actionIcon('ExpandRestoreOccurrence.VisualizerOperator', maximized));
+  expand.style.cssText = `display:flex;align-items:center;justify-content:center;flex:0 0 ${size}px;width:${size}px;height:${size}px;box-sizing:border-box;padding:4px;border:0;background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;`;
+  expand.hidden = layout.mode !== 'collection'; expand.inert = expand.hidden;
+  if (expand.hidden) expand.style.display = 'none';
+  expand.disabled = !parts.collectionAttentionAvailable;
+  expand.onclick = () => {
+    if (expand.hidden || expand.disabled) return;
+    const outcome = parts.requestCollectionAttention(maximized ? 'restore' : 'maximize');
+    relayout();
+    if (outcome?.reason) expand.title = outcome.reason;
+    expand.focus({ preventScroll: true });
+  };
 }
 
 /** Stable group identity, distinct from the narrower Properties pane heading. */
@@ -136,6 +160,6 @@ export function createInspectionGroupHeader(root, returnToInspection) {
   button.addEventListener('click', () => { returnToInspection(); root.propertiesHeading?.focus({ preventScroll: true }); });
   const label = root.inspectionLabel = document.createElement('span');
   label.textContent = 'Properties, Actions & Relationships';
-  label.style.cssText = 'min-width:0;padding:0 .75rem;font-size:1em;font-weight:600;color:var(--dahn-canvas-text-color);';
+  label.style.cssText = 'font-family:var(--dahn-canvas-heading-font-family);min-width:0;padding:0 .75rem;font-size:1em;font-weight:600;color:var(--dahn-canvas-text-color);';
   header.append(label, button); return header;
 }

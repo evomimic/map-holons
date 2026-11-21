@@ -167,7 +167,10 @@ mod tests {
     /// Real persistent conductor and packaged hApp; no test keystore, probes or external ingress.
     /// This is a mechanism test, not a packaged WebView/security-assurance test.
     #[tokio::test(flavor = "multi_thread")]
-    async fn native_only_keyless_personal_constitution_preserves_space() {
+    async fn native_only_personal_constitution_names_space_and_preserves_lineage() {
+        let started = std::time::Instant::now();
+        let checkpoint =
+            |phase: &str| eprintln!("[personal-space test] {phase}: {:?}", started.elapsed());
         let root = std::env::temp_dir().join(format!(
             "map-native-boundary-{}-{}",
             std::process::id(),
@@ -201,6 +204,7 @@ mod tests {
         assert!(conductor.app_websocket("map_holons".into(), AllowedOrigins::Any).await.is_err());
         assert!(HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.is_err());
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
+        checkpoint("conductor ready");
         let author =
             conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key.clone();
         let initiator = Arc::new(TrustChannel::new(Arc::new(CountingTransport {
@@ -223,6 +227,7 @@ mod tests {
         );
         assert_eq!(loads.load(Ordering::SeqCst), 1);
         assert_eq!(discoveries.load(Ordering::SeqCst), 1);
+        checkpoint("foundation provisioned");
         // Open does not inspect or replay import files. A missing dependency is
         // resolved by its consumer, not by revalidating the saved foundation.
         prepare_space_imports(
@@ -290,10 +295,12 @@ mod tests {
         let outcome = outcome.unwrap();
         assert!(competing.is_err(), "a concurrent Welcome request must not stage another Agent");
         assert_eq!(outcome, ConstitutionOutcome::Complete);
+        checkpoint("personal identities committed");
         // This runtime observed an empty inverse before Commit. Welcome must
         // now observe saved membership instead of reusing that cached absence.
         let after_creation = inspect_target(&runtime).await.unwrap();
-        assert_eq!(after_creation.space, id);
+        let personal_space_id = after_creation.space.clone();
+        assert_ne!(personal_space_id, id);
         assert_eq!(
             discoveries.load(Ordering::SeqCst),
             1,
@@ -302,8 +309,54 @@ mod tests {
         assert_eq!(after_creation.sovereignty, SovereigntyObservation::AssociationPresent);
         let verify_tx = runtime.session().begin_transaction().await.unwrap();
         let verify_context = runtime.session().get_transaction(&verify_tx).unwrap();
-        let space = verify_context.discover_local_holon_space().unwrap().unwrap();
-        assert_eq!(space.holon_id().unwrap(), id);
+        let designated_space = verify_context.discover_local_holon_space().unwrap().unwrap();
+        assert_eq!(designated_space.holon_id().unwrap(), id);
+        let space = holons_core::agent_spaces::current_personal_space(&verify_context).unwrap();
+        assert_eq!(space.holon_id().unwrap(), personal_space_id);
+        let owns = space
+            .related_holons_with_hint(
+                CoreRelationshipTypeName::Owns,
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        assert!(
+            owns.read()
+                .unwrap()
+                .get_members()
+                .iter()
+                .any(|member| member.holon_id().unwrap() == descriptor_id),
+            "the personal Space must retain access to its foundation contents"
+        );
+        assert_eq!(space.key().unwrap(), Some("Alex Example's Personal Space".into()));
+        for (relationship, expected) in [("AffordsDancer", 1), ("OffersTheme", 3)] {
+            assert_eq!(
+                space
+                    .related_holons_with_hint(
+                        relationship,
+                        holons_core::RelationshipReadHint::RequireFresh
+                    )
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .len(),
+                expected
+            );
+        }
+        for property in [
+            type_names::CorePropertyTypeName::HolonSpaceName,
+            type_names::CorePropertyTypeName::DisplayName,
+        ] {
+            assert_eq!(
+                space.property_value(property).unwrap(),
+                Some("Alex Example's Personal Space".to_base_value())
+            );
+        }
+        let current = holons_core::SmartReference::new_from_id(
+            verify_context.space_read_handle(),
+            personal_space_id.clone(),
+        );
+        assert_eq!(current.lineage_root_id().unwrap(), id);
         let owners = space
             .related_holons_with_hint(
                 AgentSpaceRelationshipTypeName::IsInteriorOf,
@@ -316,7 +369,17 @@ mod tests {
             owners.get_members()[0].clone()
         };
         let created_id = person.holon_id().unwrap();
-        assert_eq!(person.key().unwrap(), None);
+        assert_eq!(
+            holons_core::dahn::PersonalPreferences::for_context(&verify_context)
+                .unwrap()
+                .agent
+                .unwrap()
+                .holon_id()
+                .unwrap(),
+            created_id,
+            "personal configuration authority follows the named Space version"
+        );
+        assert_eq!(person.key().unwrap(), Some("Example.Alex".into()));
         assert_eq!(
             person.property_value(AgentSpacePropertyTypeName::LastName).unwrap(),
             Some("Example".to_base_value())
@@ -333,10 +396,18 @@ mod tests {
             type_names::ToRelationshipName::to_relationship_name(CoreRelationshipTypeName::OwnedBy),
         ] {
             let related = person
-                .related_holons_with_hint(name, holons_core::RelationshipReadHint::RequireFresh)
+                .related_holons_with_hint(&name, holons_core::RelationshipReadHint::RequireFresh)
                 .unwrap();
             assert_eq!(related.read().unwrap().get_members().len(), 1);
-            assert_eq!(related.read().unwrap().get_members()[0].holon_id().unwrap(), id);
+            let expected = if name
+                == type_names::ToRelationshipName::to_relationship_name(
+                    AgentSpaceRelationshipTypeName::HasInterior,
+                ) {
+                &personal_space_id
+            } else {
+                &id
+            };
+            assert_eq!(&related.read().unwrap().get_members()[0].holon_id().unwrap(), expected);
         }
         assert_eq!(person.holon_descriptor().unwrap().holon().holon_id().unwrap(), descriptor_id);
         runtime.session().archive_transaction(&verify_tx).unwrap();
@@ -347,9 +418,10 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(launch.space, id);
+        assert_eq!(launch.space, personal_space_id);
         assert_eq!(launch.agent, Some(created_id.clone()));
         assert!(launch.home.is_some());
+        checkpoint("named Space and Navigator verified");
         assert_eq!(loads.load(Ordering::SeqCst), baseline, "Navigator launch does not import");
         assert_eq!(discoveries.load(Ordering::SeqCst), 1, "Navigator reuses adopted Space");
 
@@ -410,16 +482,35 @@ mod tests {
             .await
             .unwrap();
         let reopened = inspect_target(&runtime).await.unwrap();
-        assert_eq!(reopened.space, id);
+        assert_eq!(reopened.space, personal_space_id);
         assert_eq!(
             discoveries.load(Ordering::SeqCst),
             2,
             "one guest discovery per cold host runtime"
         );
         assert_eq!(reopened.sovereignty, SovereigntyObservation::AssociationPresent);
+        checkpoint("first cold restart verified");
         assert!(!crate::welcome_lifecycle::blockers(&reopened).is_empty());
         let tx = runtime.session().begin_transaction().await.unwrap();
         let context = runtime.session().get_transaction(&tx).unwrap();
+        let reopened_space = holons_core::agent_spaces::current_personal_space(&context).unwrap();
+        assert_eq!(reopened_space.key().unwrap(), Some("Alex Example's Personal Space".into()));
+        let reopened_owns = reopened_space
+            .related_holons_with_hint(
+                CoreRelationshipTypeName::Owns,
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        assert!(reopened_owns
+            .read()
+            .unwrap()
+            .get_members()
+            .iter()
+            .any(|member| member.holon_id().unwrap() == descriptor_id));
+        assert_eq!(
+            context.lookup().get_saved_holon_by_key(&"Example.Alex".into()).unwrap().holon_id(),
+            created_id
+        );
         assert_eq!(
             context
                 .lookup()
@@ -446,7 +537,7 @@ mod tests {
         std::fs::write(destination.join("manifest.json"), serde_json::to_vec(&manifest).unwrap())
             .unwrap();
         assert!(prepare_core_schema(&runtime, &incompatible, None).await.is_err());
-        assert_eq!(inspect_target(&runtime).await.unwrap().space, id);
+        assert_eq!(inspect_target(&runtime).await.unwrap().space, personal_space_id);
         assert_eq!(
             loads.load(Ordering::SeqCst),
             baseline,
@@ -487,9 +578,10 @@ mod tests {
             author
         );
         let observed = inspect_target(&reopened_runtime).await.unwrap();
-        assert_eq!(observed.space, id);
+        assert_eq!(observed.space, personal_space_id);
         assert_eq!(discoveries.load(Ordering::SeqCst), 3, "warm status adds no guest discovery");
         assert_eq!(observed.sovereignty, SovereigntyObservation::AssociationPresent);
+        checkpoint("second cold restart verified");
         // A new backend admission object after restart must also refuse constitution.
         assert!(PersonalConstitution::default()
             .submit(
@@ -500,8 +592,10 @@ mod tests {
             .is_err());
         let tx = reopened_runtime.session().begin_transaction().await.unwrap();
         let context = reopened_runtime.session().get_transaction(&tx).unwrap();
-        let retained_space = context.discover_local_holon_space().unwrap().unwrap();
-        assert_eq!(retained_space.holon_id().unwrap(), id);
+        let retained_designation = context.discover_local_holon_space().unwrap().unwrap();
+        assert_eq!(retained_designation.holon_id().unwrap(), id);
+        let retained_space = holons_core::agent_spaces::current_personal_space(&context).unwrap();
+        assert_eq!(retained_space.holon_id().unwrap(), personal_space_id);
         let association = retained_space
             .related_holons_with_hint(
                 AgentSpaceRelationshipTypeName::IsInteriorOf,
@@ -510,7 +604,7 @@ mod tests {
             .unwrap();
         let retained_person = association.read().unwrap().get_members()[0].clone();
         assert_eq!(retained_person.holon_id().unwrap(), created_id);
-        assert_eq!(retained_person.key().unwrap(), None);
+        assert_eq!(retained_person.key().unwrap(), Some("Example.Alex".into()));
         assert_eq!(
             retained_person.property_value(AgentSpacePropertyTypeName::LastName).unwrap(),
             Some("Example".to_base_value())

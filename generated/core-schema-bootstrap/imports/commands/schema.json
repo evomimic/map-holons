@@ -13,10 +13,10 @@
   },
   "holons": [
     {
-      "key": "MAP Commands Schema-v0.1.0",
+      "key": "MAP Commands Schema-v0.1.3",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Commands Schema-v0.1.0",
+        "SchemaName": "MAP Commands Schema-v0.1.3",
         "Description": "Schema defining MAP command types and their payload and affordance contracts."
       },
       "relationships": [
@@ -24,10 +24,10 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.10"
             },
             {
-              "$ref": "MAP Dance Schema-v0.1.0"
+              "$ref": "MAP Dance Schema-v0.1.3"
             }
           ]
         },
@@ -64,7 +64,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -114,7 +114,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -151,7 +151,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -196,7 +196,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -241,7 +241,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -286,7 +286,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -331,7 +331,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -376,7 +376,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -421,7 +421,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -466,7 +466,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -511,7 +511,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -556,7 +556,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -601,7 +601,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -646,7 +646,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -691,7 +691,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -736,7 +736,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -781,7 +781,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -826,7 +826,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -871,7 +871,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -916,7 +916,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -961,7 +961,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1006,7 +1006,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1051,7 +1051,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1104,7 +1104,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1149,7 +1149,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1194,7 +1194,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1239,7 +1239,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1284,7 +1284,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1329,7 +1329,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1374,7 +1374,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1419,7 +1419,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1464,7 +1464,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1509,7 +1509,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1554,7 +1554,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1599,7 +1599,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1644,7 +1644,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1689,7 +1689,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1734,7 +1734,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1781,7 +1781,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1851,7 +1851,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1914,7 +1914,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },
@@ -1984,7 +1984,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.3"
             }
           ]
         },

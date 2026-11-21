@@ -8,11 +8,12 @@
   --dahn-action-text-color: #e6faf6;
   --dahn-canvas-content-min-height: 12rem;
   --dahn-canvas-font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --dahn-canvas-font-size: 0.9375rem;
+  --dahn-canvas-font-size: 0.8125rem;
   --dahn-canvas-font-weight: 400;
   --dahn-canvas-gap: 1rem;
+  --dahn-canvas-heading-font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --dahn-canvas-heading-font-weight: 600;
-  --dahn-canvas-line-height: 1.5rem;
+  --dahn-canvas-line-height: 1.375rem;
   --dahn-canvas-padding: 1.5rem;
   --dahn-canvas-surface-background: #0c1724;
   --dahn-canvas-text-color: #e6edf5;

@@ -67,7 +67,9 @@ pub fn resolve_visualizer_usage(
     let default_type = current;
     // Personal access is rooted at the admitted Agent, not the shared Visualizer population.
     let agent = match context.get_space_holon()? {
-        Some(space) => match crate::agent_spaces::sovereign_agent(&space)? {
+        Some(_) => match crate::agent_spaces::sovereign_agent(
+            &crate::agent_spaces::current_personal_space(context)?,
+        )? {
             crate::agent_spaces::SovereignAgent::Agent(agent) => Some(agent),
             crate::agent_spaces::SovereignAgent::Unclaimed => None,
             crate::agent_spaces::SovereignAgent::Ambiguous => {

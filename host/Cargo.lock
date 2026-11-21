@@ -24,6 +24,7 @@ dependencies = [
  "map_commands_contract",
  "map_commands_runtime",
  "map_commands_wire",
+ "objc2-foundation",
  "rfd",
  "serde",
  "serde_json",

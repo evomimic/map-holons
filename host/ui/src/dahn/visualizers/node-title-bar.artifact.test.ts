@@ -142,3 +142,36 @@ it.each(['holon-inspector', 'load-holons-inspector'])('%s separates stable Inspe
   expect(node.propertiesHeading.hidden).toBe(false);
   expect(node.propertiesToggle.getAttribute('aria-label')).toBe('Properties, Actions & Relationships');
 });
+
+
+it.each(['holon-inspector', 'load-holons-inspector'])('%s enlarges and restores a collection through its occurrence owner without replacing the collection', async name => {
+  const source = await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8');
+  const Node = (await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)).default;
+  const node: any = document.createElement(defineCustomElementOnce('fixture-collection-attention', Node));
+  const collection = document.createElement('section');
+  const input = document.createElement('input'); input.value = 'retained collection state'; collection.append(input);
+  node.setContext(selectedTitleContext({ title: 'Example', childVisualizers: new Map([['collections', collection]]) }));
+  document.body.append(node);
+  applyNodePresentation(node, { width: 800, height: 640, presentation: 'inspect' });
+  node.setNodeOwnedCollection(collection);
+  const attention = vi.fn(operation => {
+    node.setOccurrenceAttentionState(operation === 'maximize');
+    applyNodePresentation(node, { width: operation === 'maximize' ? 1200 : 800, height: operation === 'maximize' ? 900 : 640, presentation: 'inspect' });
+    return { status: 'applied' };
+  });
+  node.setOccurrenceAttentionHandler(attention);
+  node.setNodeInspectorAllocation(node.getNodeInspectorAllocation());
+  const expand = node.querySelector('[data-collection-expand]');
+  expect(expand).not.toBeNull();
+  expect(expand.hidden).toBe(false);
+  expand.click();
+  expect(attention).toHaveBeenLastCalledWith('maximize');
+  expect(node.dataset.inspectorMode).toBe('collection');
+  expect(expand.getAttribute('aria-label')).toBe('Restore collection size');
+  expect(node.contains(collection)).toBe(true);
+  expand.click();
+  expect(attention).toHaveBeenLastCalledWith('restore');
+  expect(node.dataset.inspectorMode).toBe('collection');
+  expect(input.value).toBe('retained collection state');
+  expect(node.getNodeInspectorAllocation()).toEqual({ width: 800, height: 640 });
+});

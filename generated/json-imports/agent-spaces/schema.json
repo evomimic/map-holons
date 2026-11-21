@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP Agent Spaces Schema-v0.1.0",
+      "key": "MAP Agent Spaces Schema-v0.1.3",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Agent Spaces Schema-v0.1.0",
+        "SchemaName": "MAP Agent Spaces Schema-v0.1.3",
         "Description": "Minimal Agent ontology and the sovereign interior association. AgentSpace, I-Space and We-Space are roles of an existing HolonSpace, not additional types."
       },
       "relationships": [
@@ -12,7 +12,7 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.10"
             }
           ]
         }
@@ -42,7 +42,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         }
@@ -72,7 +72,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -109,7 +109,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -117,7 +117,7 @@
           "name": "InstanceKeyRule",
           "target": [
             {
-              "$ref": "NoneRule.KeyRuleType"
+              "$ref": "PersonAgentName.FormatRule"
             }
           ]
         },
@@ -161,7 +161,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -199,7 +199,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -237,7 +237,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -263,7 +263,7 @@
           "name": "RuleOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -311,7 +311,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },
@@ -378,7 +378,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Agent Spaces Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.3"
             }
           ]
         },

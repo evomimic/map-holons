@@ -58,6 +58,9 @@ tokio = { version = "1.5", features = ["rt", "rt-multi-thread"] }
 [dev-dependencies] # for unit tests
 type_names = { workspace = true }
 base_types = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSFileManager", "NSURL", "NSError", "NSString"] }
 #tauri = { version = "2", features = ["test"] } #"devtools"
 #tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 

@@ -619,7 +619,7 @@ async fn value_and_property_wrappers_reuse_guest_derived_products(runtime: Runti
         graph_context.mutation().stage_new_version_from_id(updated.holon_id().unwrap()).unwrap();
     let available_schema: HolonReference = graph_context
         .lookup()
-        .get_saved_holon_by_key(&MapString("MAP Core Schema-v0.0.7".into()))
+        .get_saved_holon_by_key(&MapString("MAP Core Schema-v0.0.10".into()))
         .unwrap()
         .into();
     graph_update.add_related_holons("AvailableSchemas", vec![available_schema]).unwrap();

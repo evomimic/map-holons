@@ -44,36 +44,79 @@ describe('packaged Welcome', () => {
     expect(invoke.mock.calls).toEqual([['welcome_status']]);
   });
 
-  it('automatically hands the existing acquired installation to Navigator once', async () => {
-    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
-      .mockResolvedValueOnce(undefined);
+  it('waits for an explicit choice before launching the existing Space', async () => {
+    let finish!: () => void;
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true,
+      new_environment_available: true, constitution_available: false, message: 'Choose how to continue.' })
+      .mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
     await start(invoke);
-    await vi.waitFor(() => expect(invoke.mock.calls).toEqual([['welcome_status'], ['open_space_navigator']]));
-    document.getElementById('constitute')?.dispatchEvent(new MouseEvent('click'));
-    expect(invoke).toHaveBeenCalledTimes(2);
-    expect(document.getElementById('activity-stage')?.textContent).toBe('Opening Space Navigator');
+    const launch = document.getElementById('open-navigator') as HTMLButtonElement;
+    const reset = document.getElementById('new-environment') as HTMLButtonElement;
+    expect(launch.hidden).toBe(false);
+    expect(launch.textContent).toBe('Launch Space Navigator');
+    expect(reset.hidden).toBe(false);
+    expect(reset.textContent).toBe('Reset and restart my Space');
+    expect(document.getElementById('reset-description')?.textContent).toContain('kept');
+    expect(invoke.mock.calls).toEqual([['welcome_status']]);
+    launch.click();
+    launch.dispatchEvent(new MouseEvent('click'));
+    reset.dispatchEvent(new MouseEvent('click'));
+    expect(launch.disabled).toBe(true);
+    expect(reset.disabled).toBe(true);
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['open_space_navigator']]);
+    finish();
   });
 
   it('retries a failed handoff without repeating constitution', async () => {
-    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true,
+      new_environment_available: true, constitution_available: false, message: 'Open.' })
       .mockRejectedValueOnce('Navigator selection failed.').mockResolvedValueOnce(undefined);
     await start(invoke);
     const retry = document.getElementById('open-navigator') as HTMLButtonElement;
-    await vi.waitFor(() => expect(retry.hidden).toBe(false));
-    expect(document.getElementById('status')?.textContent).toBe('Navigator selection failed.');
+    retry.click();
+    await vi.waitFor(() => expect(document.getElementById('status')?.textContent).toBe('Navigator selection failed.'));
+    expect(retry.hidden).toBe(false);
+    expect(retry.disabled).toBe(false);
+    expect((document.getElementById('new-environment') as HTMLButtonElement).disabled).toBe(false);
     retry.click();
     await vi.waitFor(() => expect(invoke.mock.calls).toEqual([['welcome_status'], ['open_space_navigator'], ['open_space_navigator']]));
     expect((document.getElementById('constitute') as HTMLButtonElement).hidden).toBe(true);
   });
 
-  it('hands off after Complete and fresh saved association confirmation', async () => {
+  it('resets and restarts a ready Space only on request and restores both choices on failure', async () => {
+    let reject!: (error: string) => void;
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'association-present', navigator_available: true,
+      new_environment_available: true, constitution_available: false, message: 'Open.' })
+      .mockImplementationOnce(() => new Promise<void>((_, fail) => { reject = fail; }));
+    await start(invoke);
+    const reset = document.getElementById('new-environment') as HTMLButtonElement;
+    const launch = document.getElementById('open-navigator') as HTMLButtonElement;
+    reset.click();
+    reset.dispatchEvent(new MouseEvent('click'));
+    launch.dispatchEvent(new MouseEvent('click'));
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['create_new_environment']]);
+    expect(reset.disabled).toBe(true);
+    expect(launch.disabled).toBe(true);
+    expect(document.getElementById('activity-stage')?.textContent).toContain('Restarting');
+    reject('Restart could not be requested.');
+    await vi.waitFor(() => expect(document.getElementById('status')?.textContent).toBe('Restart could not be requested.'));
+    expect(reset.disabled).toBe(false);
+    expect(launch.disabled).toBe(false);
+    expect((document.getElementById('activity') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('waits for a launch choice after Complete and fresh saved association confirmation', async () => {
     const invoke = vi.fn().mockResolvedValueOnce({ phase: 'foundation-present', constitution_available: true, message: 'Ready.' })
       .mockResolvedValueOnce('complete')
-      .mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false, message: 'Open.' })
+      .mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, new_environment_available: true,
+        constitution_available: false, message: 'Open.' })
       .mockResolvedValueOnce(undefined);
     await start(invoke);
     (document.getElementById('last-name') as HTMLInputElement).value='Example';
     document.getElementById('constitute')?.click();
+    await vi.waitFor(() => expect((document.getElementById('open-navigator') as HTMLButtonElement).hidden).toBe(false));
+    expect(invoke.mock.calls.map(call => call[0])).toEqual(['welcome_status', 'constitute_personal_space', 'welcome_status']);
+    document.getElementById('open-navigator')?.click();
     await vi.waitFor(() => expect(invoke.mock.calls.map(call => call[0])).toEqual(['welcome_status', 'constitute_personal_space', 'welcome_status', 'open_space_navigator']));
   });
 
@@ -114,7 +157,7 @@ describe('packaged Welcome', () => {
     await start(invoke);
     (document.getElementById('last-name') as HTMLInputElement).value = 'Example';
     (document.getElementById('constitute') as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(document.querySelector('h1')?.textContent).toBe('Welcome back to MAP'));
+    await vi.waitFor(() => expect(document.querySelector('h1')?.textContent).toBe('Your Space is ready'));
     expect((document.getElementById('constitute') as HTMLButtonElement).hidden).toBe(true);
     expect(invoke.mock.calls.map(call => call[0])).toEqual(['welcome_status', 'constitute_personal_space', 'welcome_status']);
     // A freshly loaded page on the next launch only reads status.
@@ -139,7 +182,7 @@ describe('packaged Welcome', () => {
     button.dispatchEvent(new MouseEvent('click'));
     expect(invoke.mock.calls.filter(call => call[0] === 'constitute_personal_space')).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1000);
-    expect(document.querySelector('h1')?.textContent).toBe('Welcome back to MAP');
+    expect(document.querySelector('h1')?.textContent).toBe('Your Space is ready');
     expect(button.hidden).toBe(true);
   });
 
@@ -219,5 +262,53 @@ describe('packaged Welcome', () => {
     await start(vi.fn().mockResolvedValue({ phase: 'blocked', constitution_available: false, message: '<img src=x onerror=alert(1)>' }));
     expect(document.getElementById('status')?.querySelector('img')).toBeNull();
     expect(document.getElementById('status')?.textContent).toBe('<img src=x onerror=alert(1)>');
+  });
+});
+
+
+describe('saved environment management', () => {
+  const ready = { phase: 'association-present', navigator_available: true, new_environment_available: true,
+    constitution_available: false, environment_management_available: true, message: 'Choose how to continue.' };
+  const active = { id: 'environment-current', active: true, created_seconds: 1795210000, size_bytes: 2048 };
+  const old = { id: 'local-constitution', active: false, created_seconds: 1795200000, size_bytes: 4096 };
+  async function open(invoke: ReturnType<typeof vi.fn>) {
+    await start(invoke);
+    const panel = document.getElementById('saved-environments') as HTMLDetailsElement;
+    expect(panel.hidden).toBe(false);
+    panel.open = true; panel.dispatchEvent(new Event('toggle'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.saved-environment')).toHaveLength(2));
+  }
+  it('inventories environments without switching and protects the active entry', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce(ready).mockResolvedValueOnce([active, old]);
+    await open(invoke);
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['saved_environments']]);
+    const current = document.querySelector('[data-environment-id="environment-current"]')!;
+    expect(current.textContent).toContain('Active');
+    expect(current.textContent).toContain('2 KB');
+    expect(current.querySelector('button')).toBeNull();
+    expect(document.getElementById('environment-list')?.textContent).toContain('Original environment');
+  });
+  it('reactivates only on request, sends only the environment ID and suppresses overlapping actions', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce(ready).mockResolvedValueOnce([active, old]).mockResolvedValueOnce(undefined);
+    await open(invoke);
+    const activate = [...document.querySelectorAll<HTMLButtonElement>('#environment-list button')].find(b => b.textContent === 'Reactivate and restart')!;
+    activate.click(); activate.dispatchEvent(new MouseEvent('click'));
+    document.getElementById('open-navigator')?.dispatchEvent(new MouseEvent('click'));
+    await Promise.resolve();
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['saved_environments'], ['activate_saved_environment', { id: old.id }]]);
+    expect((document.getElementById('open-navigator') as HTMLButtonElement).disabled).toBe(true);
+  });
+  it('confirms recoverable cleanup and refreshes the list without touching the active environment', async () => {
+    const invoke = vi.fn().mockResolvedValueOnce(ready).mockResolvedValueOnce([active, old])
+      .mockResolvedValueOnce(undefined).mockResolvedValueOnce([active]);
+    await open(invoke);
+    const trash = [...document.querySelectorAll<HTMLButtonElement>('#environment-list button')].find(b => b.textContent === 'Move to Trash')!;
+    trash.click();
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('.environment-confirmation')?.textContent).toContain('recovered');
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('#environment-list button')].find(b => b.textContent === 'Confirm move to Trash')!;
+    confirm.click(); confirm.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.saved-environment')).toHaveLength(1));
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['saved_environments'], ['trash_saved_environment', { id: old.id }], ['saved_environments']]);
   });
 });

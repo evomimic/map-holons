@@ -4,8 +4,8 @@ meta {
   load_with: ["../core/root.json","../core/concrete-value-types.json","../core/abstract-value-types.json","../core/property-types.json","../core/relationship-types.json","../core/operator-types.json"]
 }
 
-schema "MAP Query Schema-v0.0.2" {
-  depends_on "MAP Core Schema-v0.0.7"
+schema "MAP Query Schema-v0.0.5" {
+  depends_on "MAP Core Schema-v0.0.10"
   header {
     description: "Descriptor definitions for reusable MAP queries and their direct runtime execution state. Dance-mediated invocation is owned by the separate Query Dance Adapter Schema."
   }
@@ -1383,7 +1383,7 @@ enum QueryNullPlacement.MapEnumValueType {
 
 instance OneToFive.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
-  rule_of "MAP Query Schema-v0.0.2"
+  rule_of "MAP Query Schema-v0.0.5"
   ConstraintName "OneToFive"
   cardinality 1..5
 }

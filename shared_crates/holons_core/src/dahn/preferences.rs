@@ -38,9 +38,10 @@ pub struct PersonalChoice {
 impl PersonalPreferences {
     /// Resolve authority from the adopted Space, never from a request-supplied Agent ID.
     pub fn for_context(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        let space = context.get_space_holon()?.ok_or_else(|| {
+        context.get_space_holon()?.ok_or_else(|| {
             HolonError::InvalidState("Personal preference resolution requires an adopted Space; missing authority is not an absent preference".into())
         })?;
+        let space = crate::agent_spaces::current_personal_space(context)?;
         match sovereign_agent(&space)? {
             SovereignAgent::Unclaimed => Ok(Self::default()),
             SovereignAgent::Ambiguous => {

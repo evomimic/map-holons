@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP Design Tokens Schema-v0.1.0",
+      "key": "MAP Design Tokens Schema-v0.1.3",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Design Tokens Schema-v0.1.0",
+        "SchemaName": "MAP Design Tokens Schema-v0.1.3",
         "Description": "MAP vocabulary for named semantic DesignTokens and their DTCG-aligned DesignTokenTypes. It intentionally defines neither Meta Design Systems, Themes, aliases, groups, primitive/reference-token layers, nor DTCG serialization."
       },
       "relationships": [
@@ -12,7 +12,7 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.10"
             }
           ]
         }
@@ -257,7 +257,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         },
@@ -306,7 +306,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -335,7 +335,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -364,7 +364,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -393,7 +393,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -422,7 +422,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -451,7 +451,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -481,7 +481,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         },
@@ -520,7 +520,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         },
@@ -582,7 +582,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         },
@@ -618,6 +618,24 @@
       "properties": {
         "DesignTokenDescription": "Default typeface family for text within a canvas.",
         "DesignTokenName": "CanvasFontFamily"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontFamily.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasHeadingFontFamily.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenDescription": "Typeface family for canvas titles and section headings, independent of body text.",
+        "DesignTokenName": "CanvasHeadingFontFamily"
       },
       "relationships": [
         {
@@ -1031,7 +1049,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         }
@@ -1475,7 +1493,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.3"
             }
           ]
         },

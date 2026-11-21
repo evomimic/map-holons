@@ -182,6 +182,18 @@ impl GuestHolonService {
         Ok((key, reference))
     }
 
+    /// Ownership and its keyed discovery index belong to the Space lineage.
+    /// Browsing a Space successor reads the actual persisted root bucket.
+    fn ownership_source(
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+    ) -> Result<LocalId, HolonError> {
+        Self::ensure_id_is_local(source)?;
+        let root = SmartReference::new_from_id(context.space_read_handle(), source.clone())
+            .lineage_root_id()?;
+        Self::ensure_id_is_local(&root)
+    }
+
     fn get_lineage_roots_by_key(
         &self,
         context: &Arc<TransactionContext>,
@@ -195,7 +207,7 @@ impl GuestHolonService {
                 "saved-holon lookup requires a persisted HolonSpace".into(),
             ));
         };
-        let space_id = space.holon_id()?.local_id().clone();
+        let space_id = Self::ownership_source(context, &space.holon_id()?)?;
         let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
         let canonical_key = CanonicalKey::new(key.0.clone())?;
         let links = expand_from_source_by_key(&space_id, &owns, KeyMatch::Exact(canonical_key))?;
@@ -368,6 +380,15 @@ fn smartlink_reference_properties(
     (key, smart_property_values)
 }
 
+/// Additional keyed Owns links are discovery metadata, not duplicate logical members.
+fn is_membership_link(link: &SmartLink) -> bool {
+    link.relationship_name != CoreRelationshipTypeName::Owns.as_relationship_name()
+        || link.occurrence_id
+            != Some(commit_functions::owns_key_index_occurrence_id(&MapString(
+                link.canonical_key.as_str().to_owned(),
+            )))
+}
+
 impl HolonServiceApi for GuestHolonService {
     fn construct_derived_descriptor_internal(
         &self,
@@ -502,9 +523,15 @@ impl HolonServiceApi for GuestHolonService {
         let mut reference_map: HashMap<RelationshipName, Vec<(Option<MapString>, HolonReference)>> =
             HashMap::new();
 
-        let smartlinks = expand_all_from_source(source_id.local_id())?;
+        let mut smartlinks = expand_all_from_source(source_id.local_id())?;
+        let root = Self::ownership_source(context, source_id)?;
+        if &root != source_id.local_id() {
+            let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
+            smartlinks.retain(|link| link.relationship_name != owns);
+            smartlinks.extend(expand_from_source(&root, &owns)?);
+        }
 
-        for smartlink in smartlinks {
+        for smartlink in smartlinks.into_iter().filter(is_membership_link) {
             let (canonical_key, reference) = self.reference_from_smartlink(context, &smartlink)?;
 
             // The following:
@@ -573,14 +600,19 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<HolonCollection, HolonError> {
         let _read_cost =
             crate::read_cost::Scope::enter(crate::read_cost::Component::MembershipService);
-        let local_id = Self::ensure_id_is_local(source_id)?;
+        let local_id =
+            if relationship_name == &CoreRelationshipTypeName::Owns.as_relationship_name() {
+                Self::ownership_source(context, source_id)?
+            } else {
+                Self::ensure_id_is_local(source_id)?
+            };
 
         let mut collection = HolonCollection::new_existing();
 
         // fetch the smartlinks for this relationship (if any)
         let smartlinks = expand_from_source(&local_id, relationship_name)?;
 
-        for smartlink in smartlinks {
+        for smartlink in smartlinks.into_iter().filter(is_membership_link) {
             let (canonical_key, holon_reference) =
                 self.reference_from_smartlink(context, &smartlink)?;
             collection.add_reference_with_key(canonical_key.as_ref(), &holon_reference)?;
@@ -597,13 +629,24 @@ impl HolonServiceApi for GuestHolonService {
         let _read_cost =
             crate::read_cost::Scope::enter(crate::read_cost::Component::MembershipService);
         let local = Self::ensure_id_is_local(source)?;
-        let buckets = crate::persistence_layer::smartlink::expand_relationship_set(&local, names)?;
+        let mut buckets =
+            crate::persistence_layer::smartlink::expand_relationship_set(&local, names)?;
+        if names.iter().any(|name| name == &CoreRelationshipTypeName::Owns.as_relationship_name()) {
+            let root = Self::ownership_source(context, source)?;
+            if root != local {
+                for (name, bucket) in names.iter().zip(&mut buckets) {
+                    if name == &CoreRelationshipTypeName::Owns.as_relationship_name() {
+                        *bucket = expand_from_source(&root, name)?;
+                    }
+                }
+            }
+        }
         names
             .iter()
             .zip(buckets)
             .map(|(name, links)| {
                 let mut collection = HolonCollection::new_existing();
-                for link in links {
+                for link in links.into_iter().filter(is_membership_link) {
                     let (key, reference) = self.reference_from_smartlink(context, &link)?;
                     collection.add_reference_with_key(key.as_ref(), &reference)?;
                 }
@@ -620,7 +663,7 @@ impl HolonServiceApi for GuestHolonService {
         let space = context.get_space_holon()?.ok_or_else(|| {
             HolonError::InvalidState("whole-space lookup requires a persisted HolonSpace".into())
         })?;
-        let space_id = space.holon_id()?.local_id().clone();
+        let space_id = Self::ownership_source(context, &space.holon_id()?)?;
         let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
         let mut lineage_roots = HashSet::new();
         for link in expand_from_source(&space_id, &owns)? {
@@ -894,6 +937,18 @@ mod tests {
             relationship_property_values: PropertyMap::new(),
             target_property_values,
         }
+    }
+
+    #[test]
+    fn owns_key_aliases_remain_discovery_metadata_without_duplicating_membership() {
+        let mut link = smartlink("renamed", PropertyMap::new());
+        link.relationship_name = CoreRelationshipTypeName::Owns.as_relationship_name();
+        assert!(is_membership_link(&link));
+        link.occurrence_id =
+            Some(commit_functions::owns_key_index_occurrence_id(&"renamed".into()));
+        assert!(!is_membership_link(&link));
+        link.relationship_name = RelationshipName(MapString("Related".into()));
+        assert!(is_membership_link(&link));
     }
 
     #[test]

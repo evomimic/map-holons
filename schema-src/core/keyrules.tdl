@@ -5,7 +5,7 @@ meta {
   source_files: ["map-core-schema-keyrules-schema.csv"]
   load_with: ["root.json","property-types.json","relationship-types.json"]
 }
-schema "MAP Core Schema-v0.0.7" {
+schema "MAP Core Schema-v0.0.10" {
   header {
     description: "Groups all type descriptors related to holon key derivation strategies in MAP."
   }
@@ -45,7 +45,7 @@ holon FormatRule.KeyRuleType {
 
 instance HolonSpaceNameRule.FormatRule {
   type FormatRule.KeyRuleType
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.10"
   TypeName "HolonSpaceNameRule"
   TemplateString "$0"
   relationships {
