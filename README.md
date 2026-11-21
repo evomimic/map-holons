@@ -77,6 +77,12 @@ name. Setup creates a new version of the existing Space in the same transaction 
 PersonAgent creation. Ownership belongs to the Space lineage, so its foundation
 and other contents remain available through later Space versions.
 
+Packaged MAP defers automatic local-gateway discovery and port mapping. Ordinary
+startup retains peer/relay networking but does not opt into UPnP, PCP or NAT-PMP
+probes. A native networked experience must explicitly opt in through
+`irohTransport.enablePortMapping`. The macOS executable/display identity is MAP;
+a local-network permission request includes a MAP-specific purpose description.
+
 Integrity/DNA and coordinator compatibility are checked against the packaged hApp.
 CoreSchema compatibility uses the existing schema-key check only. It does not compare
 schema contents or perform migration. When incompatible, Welcome explains the mismatch

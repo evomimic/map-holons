@@ -4,7 +4,7 @@ meta {
 }
 
 schema BookAuthorInverseSchema {
-  depends_on "MAP Core Schema-v0.0.10"
+  depends_on "MAP Core Schema-v0.0.11"
   header {
     description: "Minimal test schema with an inverse relationship and extending the core schema."
   }

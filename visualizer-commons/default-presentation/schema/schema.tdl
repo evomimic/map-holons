@@ -1,7 +1,7 @@
-schema "MAP Default Presentation Commons-v0.1.3" {
-  depends_on "MAP Design Tokens Schema-v0.1.3"
-  depends_on "MAP Meta Design System Schema-v0.1.3"
-  depends_on "MAP Theme Schema-v0.1.3"
+schema "MAP Default Presentation Commons-v0.1.4" {
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
+  depends_on "MAP Theme Schema-v0.1.4"
   header {
     description: "A locally bundled Visualizer Commons contribution. It supplies an MDS contract and one compatible Theme without binding either to a Dancer or application."
   }

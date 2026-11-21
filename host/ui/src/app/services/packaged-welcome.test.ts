@@ -33,6 +33,8 @@ describe('packaged Welcome', () => {
     expect(usualWay.querySelector('input, button')).toBeNull();
     expect(document.getElementById('preparation-progress')?.hasAttribute('aria-valuenow')).toBe(false);
     await vi.advanceTimersByTimeAsync(5000);
+    expect(document.body.dataset.view).toBe('invitation');
+    await vi.advanceTimersByTimeAsync(10000);
     expect(document.body.dataset.view).toBe('privacy');
     expect(usualWay.hidden).toBe(true);
     invoke.mockResolvedValue({ ...preparing, phase: 'checking-space', stage: 'verifying-space-definitions' });
@@ -46,6 +48,20 @@ describe('packaged Welcome', () => {
     expect(document.getElementById('constitute')?.textContent).toContain('Make this space mine');
     expect((document.getElementById('open-navigator') as HTMLButtonElement).hidden).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives the comparison time to be read even when setup reaches finalization quickly', async () => {
+    vi.useFakeTimers();
+    const invoke = vi.fn().mockResolvedValue({ phase: 'provisioning', stage: 'loading-core-schema', preparing_new_space: true });
+    await start(invoke);
+    invoke.mockResolvedValue({ phase: 'checking-space', stage: 'verifying-space-definitions', preparing_new_space: true });
+    await vi.advanceTimersByTimeAsync(14000);
+    expect(document.body.dataset.view).toBe('invitation');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.body.dataset.view).toBe('finalizing');
+    invoke.mockResolvedValue({ phase: 'foundation-present', constitution_available: true });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.body.dataset.view).toBe('naming');
   });
 
   it('keeps a returning user in discovery until the existing Space is verified', async () => {
@@ -301,6 +317,10 @@ describe('packaged Welcome', () => {
     const invoke = vi.fn().mockResolvedValue({ phase: 'provisioning', stage: 'loading-core-schema', constitution_available: false, message: 'Preparing your space.' });
     await start(invoke);
     const activity = document.getElementById('activity') as HTMLDivElement;
+    const details = document.getElementById('startup-details') as HTMLDetailsElement;
+    const elapsed = document.getElementById('activity-elapsed')!;
+    expect(details.open).toBe(false);
+    expect(elapsed.closest('details, [hidden]')).toBeNull();
     expect(activity.hidden).toBe(false);
     expect(document.getElementById('activity-stage')?.textContent).toBe('Loading the foundation');
     await vi.advanceTimersByTimeAsync(3000);

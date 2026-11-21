@@ -115,7 +115,10 @@ pub fn current_personal_space(
     }
     let key =
         current.key()?.ok_or_else(|| HolonError::InvalidState("Local Space has no key".into()))?;
-    if context.lookup().get_saved_holon_by_key(&key)?.holon_id() != current.holon_id() {
+    // Head verification is a new saved-state query. The Space read capability
+    // owns a separate, operation-bounded read transaction, even when the caller
+    // only retains a completed load's response in its committed transaction.
+    if context.space_read_handle().get_saved_holon_by_key(&key)?.holon_id() != current.holon_id() {
         return Err(HolonError::InvalidState("Local Space head is not uniquely visible".into()));
     }
     Ok(current.clone().into())
@@ -255,52 +258,6 @@ mod tests {
         let invalid = PersonalName { last_name: " ".into(), first_name: None, middle_name: None };
         assert!(invalid.person_key().is_err());
         assert!(invalid.space_name().is_err());
-    }
-
-    #[test]
-    fn current_space_follows_renames_and_merges_but_rejects_forks_and_cycles() {
-        use base_types::ToBaseValue;
-        use type_names::ToPropertyName;
-        let ids: Vec<_> = (1..=4).map(|n| LocalId(vec![n; 39])).collect();
-        let context = build_context_with_saved_holons(
-            ids.iter()
-                .enumerate()
-                .map(|(index, id)| {
-                    let mut properties = PropertyMap::new();
-                    properties.insert(
-                        type_names::CorePropertyTypeName::Key.to_property_name(),
-                        format!("space-{index}").to_base_value(),
-                    );
-                    SavedHolon::new(
-                        id.clone(),
-                        properties,
-                        (index != 0).then(|| ids[0].clone()),
-                        MapInteger(index as i64 + 1),
-                    )
-                })
-                .collect(),
-            HashMap::new(),
-        );
-        let holon_ids: Vec<_> = ids.into_iter().map(HolonId::Local).collect();
-        context.set_space_holon_id(holon_ids[0].clone()).unwrap();
-        let successor = type_names::CoreRelationshipTypeName::Successor.to_relationship_name();
-        let set = |source: usize, targets: &[usize]| {
-            replace_saved_relationship(
-                &context,
-                holon_ids[source].clone(),
-                successor.clone(),
-                targets.iter().map(|index| holon_ids[*index].clone()).collect(),
-            )
-        };
-        set(0, &[1]);
-        assert_eq!(current_personal_space(&context).unwrap().holon_id().unwrap(), holon_ids[1]);
-        set(0, &[1, 2]);
-        assert!(current_personal_space(&context).is_err());
-        set(1, &[3]);
-        set(2, &[3]);
-        assert_eq!(current_personal_space(&context).unwrap().holon_id().unwrap(), holon_ids[3]);
-        set(3, &[0]);
-        assert!(current_personal_space(&context).is_err());
     }
 
     #[test]

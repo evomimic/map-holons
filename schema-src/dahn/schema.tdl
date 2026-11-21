@@ -1,10 +1,10 @@
-schema "MAP DAHN Schema-v0.1.3" {
-  depends_on "MAP Core Schema-v0.0.10"
-  depends_on "MAP Agent Spaces Schema-v0.1.3"
-  depends_on "MAP Dance Schema-v0.1.3"
-  depends_on "MAP Design Tokens Schema-v0.1.3"
-  depends_on "MAP Meta Design System Schema-v0.1.3"
-  depends_on "MAP Theme Schema-v0.1.3"
+schema "MAP DAHN Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Agent Spaces Schema-v0.1.4"
+  depends_on "MAP Dance Schema-v0.1.4"
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
+  depends_on "MAP Theme Schema-v0.1.4"
   header {
     description: "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Required/offered local Visualizer Operators govern composition compatibility. Visualizer Commons stewardship and dynamic acquisition remain deferred."
   }

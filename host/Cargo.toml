@@ -62,8 +62,9 @@ welcome = { path = "crates/welcome" }
 [profile.dev]
 opt-level = "z"
 
-# Native-only Holochain backports; see patches/README.md.
+# Native-only dependency patches; see patches/README.md.
 [patch.crates-io]
+kitsune2_transport_iroh = { path = "patches/kitsune2_transport_iroh" }
 holochain = { path = "patches/holochain" }
 holochain_state = { path = "patches/holochain_state" }
 holochain_data = { path = "patches/holochain_data" }

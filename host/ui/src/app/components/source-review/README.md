@@ -5,6 +5,12 @@ http://localhost:4201/. The preview supplies retained sample content for valid,
 mixed-validity, read-failure, and long-list cases. Submit captures the selected
 content without preparing, loading, or committing holons.
 
+The web build and development servers generate a standalone import validator
+from the packaged `bootstrap-import.schema.json`. Validation runs without runtime
+code generation under packaged CSP. From the repository root, run
+`node scripts/build-import-validator.mjs --check` to check the generated validator
+or omit `--check` to regenerate it after an import-schema change.
+
 The reusable component accepts a `SourceDiscovery` input and emits `submitted`
 with a frozen `ContentSet`, or `cancelled`. The enclosing interaction supplies
 new source batches and owns the transaction/execution work. Production action

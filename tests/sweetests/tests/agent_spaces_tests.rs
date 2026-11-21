@@ -6,7 +6,7 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use map_commands_runtime::{ExecutionPolicy, Runtime};
 use std::sync::Arc;
 
-const SCHEMA: &str = "MAP Agent Spaces Schema-v0.1.3";
+const SCHEMA: &str = "MAP Agent Spaces Schema-v0.1.4";
 const PERSON_TYPE: &str = "PersonAgent.BioSocialAgent";
 
 async fn transaction(runtime: &Runtime) -> Arc<TransactionContext> {
@@ -93,7 +93,7 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     let space_id = space.holon_id().unwrap();
     let space_key = space.key().unwrap().unwrap();
     let space_type = members(&space, "DescribedBy");
-    let core_id = saved(&context, "MAP Core Schema-v0.0.10").holon_id().unwrap();
+    let core_id = saved(&context, "MAP Core Schema-v0.0.11").holon_id().unwrap();
     // DAHN depends on PersonAgent, so bootstrap already supplies Agent Spaces.
     // Reopening must retain those definitions without another create import.
     let schema_id = saved(&context, SCHEMA).holon_id().unwrap();
@@ -111,7 +111,7 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     let discovered = reopened.discover_local_holon_space().unwrap().unwrap();
     assert_eq!(discovered.holon_id().unwrap(), space_id);
     reopened.set_space_holon_id(discovered.holon_id().unwrap()).unwrap();
-    assert_eq!(saved(&reopened, "MAP Core Schema-v0.0.10").holon_id().unwrap(), core_id);
+    assert_eq!(saved(&reopened, "MAP Core Schema-v0.0.11").holon_id().unwrap(), core_id);
     assert_eq!(saved(&reopened, SCHEMA).key().unwrap().unwrap().0, SCHEMA);
     assert_eq!(saved(&reopened, SCHEMA).holon_id().unwrap(), schema_id);
     assert_eq!(saved(&reopened, PERSON_TYPE).holon_id().unwrap(), person_type_id);
@@ -122,7 +122,7 @@ async fn agent_schema_preserves_space_and_name_versions_and_rejects_reimport() {
     assert_eq!(space.holon_id().unwrap(), space_id);
     assert_eq!(space.key().unwrap(), Some(space_key.clone()));
     assert_eq!(members(&space, "DescribedBy"), space_type);
-    assert_eq!(saved(&context, "MAP Core Schema-v0.0.10").holon_id().unwrap(), core_id);
+    assert_eq!(saved(&context, "MAP Core Schema-v0.0.11").holon_id().unwrap(), core_id);
     assert!(members(&space, "IsInteriorOf").is_empty(), "import does not acquire the space");
 
     let person_type = saved(&context, PERSON_TYPE);

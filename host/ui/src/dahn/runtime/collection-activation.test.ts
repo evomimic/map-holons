@@ -441,15 +441,19 @@ it('selects in the open presentation context while retaining committed loader me
   f.transaction.getSavedHolonByBaseKey.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
   f.transaction.selectCollectionVisualizer.mockRejectedValue(new Error('TransactionAlreadyCommitted'));
   const type = {}, parent = { ...f.parent }, slot = f.slot;
+  const witness = { withDescriptor: vi.fn() };
+  f.owner.relatedHolons.mockImplementation(async (...args: unknown[]) => args[0] === 'DescribedBy' ? [type] as never : collection(2));
   const bind = vi.fn((ref: unknown) => ref === retained.elementType ? type : ref === f.parent ? parent : ref);
   const presentation = { resolveRelationshipComposition: vi.fn(async (owner, _subject, _theme, slot) => resolvedCollectionComposition(f.selected, owner, slot)), getSavedHolonByBaseKey: vi.fn(async () => slot), bindSavedReference: bind,
     selectProjectedCollectionVisualizer: vi.fn(async () => ({ selected: f.selected })),
+    newHolon: vi.fn(async () => witness),
     resolvePropertyComposition: f.transaction.resolvePropertyComposition, getSavedPropertyDescriptorByBaseKey: f.transaction.getSavedPropertyDescriptorByBaseKey };
   const activation = new (NodeCollectionActivation as any)(f.transaction, f.owner, f.parent, f.runtime, undefined, presentation, valueContext);
   const updates: CollectionUpdate[] = [];
   activation.activate(tab('Sources'), 'collection', (update: CollectionUpdate) => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
-  expect(presentation.resolveRelationshipComposition).toHaveBeenCalledWith(f.parent, f.owner, valueContext.theme.reference, slot, expect.anything());
+  expect(presentation.resolveRelationshipComposition).toHaveBeenCalledWith(f.parent, witness, valueContext.theme.reference, slot, expect.anything());
+  expect(witness.withDescriptor).toHaveBeenCalledWith(type);
   expect(presentation.selectProjectedCollectionVisualizer).not.toHaveBeenCalled();
   expect(f.transaction.getSavedHolonByBaseKey).not.toHaveBeenCalled();
   expect(f.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();

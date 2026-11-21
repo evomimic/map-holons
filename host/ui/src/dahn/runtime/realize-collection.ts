@@ -1,6 +1,7 @@
 import { bindVisualizerInformationControl } from './visualizer-information-control';
 import type { DescribedHolonCollection, HolonReference, MapTransaction, PropertyDescriptorHandle, RelationshipDescriptorHandle, CompositionBinding } from '../deps';
 import type { TablePresentation } from '../contracts/table-presentation';
+import { prepareCompositionSubject } from './composition-subject';
 import type { CollectionInteractionElement, VisualizerContext } from '../contracts/visualizers';
 import { configureColumnValueVisualizers } from './column-value-visualizers';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
@@ -34,8 +35,9 @@ export async function realizeCollection(
   let prepared: CompositionBinding | undefined;
   if (demand) {
     if (!context?.theme) throw new Error('Collection demand requires the active semantic Theme.');
+    const subject = await prepareCompositionSubject(transaction, presentation, demand.subject);
     const composition = await presentation.resolveRelationshipComposition(
-      parent, demand.subject, context.theme.reference, slot, demand.source);
+      parent, subject, context.theme.reference, slot, demand.source);
     const roots = composition.bindings.filter(binding => binding.parent === null);
     if (roots.length !== 1 || roots[0].subjectBinding !== 'SelectedCollection') {
       throw new Error('Collection demand must resolve exactly one collection binding.');

@@ -1,4 +1,5 @@
 import { composeNodeTitle } from './title-composition';
+import { prepareCompositionSubject } from './composition-subject';
 import { bindVisualizerInformationControl } from './visualizer-information-control';
 import { ActionActivation, type ActionInteractions } from './action-activation';
 import { composeNodeActions } from './node-actions';
@@ -64,10 +65,12 @@ export async function realizeNode(
   let collectionActivation: NodeCollectionActivation | undefined;
   try {
     onStage?.('resolve owner composition');
-    const composition = await transaction.resolveComposition(selectedVisualizer, subject, theme.reference);
+    const compositionSubject = await prepareCompositionSubject(transaction, presentationTransaction, subject);
+    const composition = await presentationTransaction.resolveComposition(
+      selectedVisualizer, compositionSubject, theme.reference);
     materialized = materialized.forComposition(composition);
     onStage?.('classify node affordances');
-    const affordances = await classifyNodeAffordances(view, composition.subjectProperties.filter(p => p.subject.equals(subject)));
+    const affordances = await classifyNodeAffordances(view, composition.subjectProperties.filter(p => p.subject.equals(compositionSubject)));
     const propertiesElement = await renderVisualizerRegion('Properties', async () => {
       onStage?.('select and materialize Properties');
       const propertiesBinding = composition.bindings.find(b => b.parent === null && b.role === 'propertyMap');

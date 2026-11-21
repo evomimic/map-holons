@@ -5,7 +5,7 @@ meta {
   source_files: ["map-core-schema-root.csv"]
   load_with: ["property-types.json","relationship-types.json","keyrules.json"]
 }
-schema "MAP Core Schema-v0.0.10" {
+schema "MAP Core Schema-v0.0.11" {
   header {
     description: "Schema containing the root descriptor types, meta-types, and foundational holon types for the MAP type system."
   }
@@ -476,28 +476,28 @@ holon CardinalityConstraint.ConstraintType {
 
 instance ZeroOrMore.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
-  rule_of "MAP Core Schema-v0.0.10"
+  rule_of "MAP Core Schema-v0.0.11"
   ConstraintName "ZeroOrMore"
   cardinality 0..*
 }
 
 instance ExactlyOne.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
-  rule_of "MAP Core Schema-v0.0.10"
+  rule_of "MAP Core Schema-v0.0.11"
   ConstraintName "ExactlyOne"
   cardinality 1..1
 }
 
 instance ZeroOrOne.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
-  rule_of "MAP Core Schema-v0.0.10"
+  rule_of "MAP Core Schema-v0.0.11"
   ConstraintName "ZeroOrOne"
   cardinality 0..1
 }
 
 instance OneOrMore.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
-  rule_of "MAP Core Schema-v0.0.10"
+  rule_of "MAP Core Schema-v0.0.11"
   ConstraintName "OneOrMore"
   cardinality 1..*
 }

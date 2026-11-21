@@ -206,6 +206,18 @@ try {
   }
   for (const scale of [1, 1.25, 2]) {
     await page.evaluate(scale => window.allocationFixture.mountTableScroll(scale), scale);
+    const disclosure = await page.getByRole('button', { name: 'More columns', exact: true }).evaluate(button => {
+      const header = button.closest('thead').getBoundingClientRect();
+      const element = document.querySelector('[data-table-collection=viewport]');
+      const viewport = element.getBoundingClientRect();
+      const scale = viewport.width / element.offsetWidth;
+      const control = button.getBoundingClientRect();
+      return { top: control.top - header.top, right: viewport.left + (element.clientLeft + element.clientWidth) * scale - control.right, width: control.width };
+    });
+    if (scale === 1 && process.env.MAP_TABLE_HEADER_SCREENSHOT) await page.screenshot({ path: process.env.MAP_TABLE_HEADER_SCREENSHOT });
+    if (disclosure.top < -1 || disclosure.top > 12 * scale || disclosure.right < 0 || disclosure.right > 12 * scale || disclosure.width < 40 * scale) {
+      throw new Error(`Table header disclosure @${scale}: ${JSON.stringify(disclosure)}`);
+    }
     await page.getByRole('button', { name: 'More columns', exact: true }).click();
     await page.evaluate(() => {
       const viewport = document.querySelector('[data-table-collection=viewport]');

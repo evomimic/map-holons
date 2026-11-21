@@ -457,6 +457,161 @@ mod tests {
             .await
             .is_err());
         assert_eq!(loads.load(Ordering::SeqCst), baseline);
+        // Match the reviewed-file SDK path: prepare, then invoke on the named
+        // saved Space rather than the infrastructure's adopted root version.
+        let load_tx = runtime.session().begin_transaction().await.unwrap();
+        let load_context = runtime.session().get_transaction(&load_tx).unwrap();
+        let named_space = holons_core::agent_spaces::current_personal_space(&load_context).unwrap();
+        use holons_core::WritableHolon;
+        use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+        use map_commands_runtime::ExecutionPolicy;
+        let prepared = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: load_context.clone(),
+                    action: TransactionAction::PrepareHolons {
+                        content_set: core_types::ContentSet {
+                            files_to_load: vec![core_types::FileData {
+                                filename: "book-person-inverse.json".into(),
+                                raw_contents: std::fs::read_to_string(resources.join(
+                                    "../../../generated/json-imports/test/book-person-inverse.json",
+                                ))
+                                .unwrap(),
+                            }],
+                        },
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(prepared) = prepared else { panic!("prepared load set") };
+        let descriptor = load_context
+            .lookup()
+            .get_saved_holon_by_key(&"DanceInvocation.HolonType".into())
+            .unwrap();
+        let mut invocation = load_context.mutation().new_holon(None).unwrap();
+        invocation.with_descriptor(descriptor.into()).unwrap();
+        invocation.with_property_value("DanceName", "LoadHolons").unwrap();
+        invocation.add_related_holons("AffordingHolon", vec![named_space]).unwrap();
+        invocation.add_related_holons("Request", vec![prepared]).unwrap();
+        let invocation = holons_core::dances::DanceInvocation::new(invocation.into()).unwrap();
+        let response = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: load_context.clone(),
+                    action: TransactionAction::DanceV2 { invocation },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect("reviewed import must be afforded by the named personal Space");
+        let MapResult::Reference(response) = response else { panic!("load response") };
+        assert_eq!(
+            response.property_value("LoadCommitStatus").unwrap(),
+            Some("Complete".to_base_value())
+        );
+        let inspector_tx = runtime.session().begin_transaction().await.unwrap();
+        let inspector = runtime.session().get_transaction(&inspector_tx).unwrap();
+        let saved = |key: &str| -> holons_core::HolonReference {
+            inspector.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
+        };
+        let selected = holons_core::dahn::select_visualizer(
+            &load_context,
+            holons_core::dahn::contract::VisualizerSelectionRequest {
+                subject: response.clone(),
+                owner: holons_core::dahn::contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+                requested_kind: holons_core::dahn::contract::VisualizerKind::Node,
+            },
+        )
+        .expect("committed response selection must remain available");
+        let blocked_composition = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: load_context.clone(),
+                    action: TransactionAction::ResolveComposition {
+                        request: holons_core::dahn::composition::CompositionRequest {
+                            owner: selected.selected,
+                            subject: response.clone(),
+                            theme: saved("Demo1.DeepOceanTheme"),
+                            demand_slot: None,
+                            collection_source: None,
+                        },
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect_err("a new metadata query must not run in the committed loader");
+        assert!(matches!(blocked_composition, HolonError::TransactionAlreadyCommitted { .. }));
+        let types = response.related_holons("DescribedBy").unwrap();
+        let types = types.read().unwrap().get_members().clone();
+        assert_eq!(types.len(), 1);
+        let mut witness = inspector.mutation().new_holon(None).unwrap();
+        witness.with_descriptor(types[0].clone()).unwrap();
+        let response_schema = response.effective_descriptor().unwrap();
+        response_schema.available_singular_relationships(&response).unwrap();
+        response_schema.available_plural_relationships(&response).unwrap();
+        response_schema.afforded_dances().unwrap();
+        let selected = holons_core::dahn::select_visualizer(
+            &load_context,
+            holons_core::dahn::contract::VisualizerSelectionRequest {
+                subject: response.clone(),
+                owner: holons_core::dahn::contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+                requested_kind: holons_core::dahn::contract::VisualizerKind::Node,
+            },
+        )
+        .unwrap();
+        for _ in 0..2 {
+            let composition = runtime.execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: inspector.clone(),
+                    action: TransactionAction::ResolveComposition {
+                        request: holons_core::dahn::composition::CompositionRequest {
+                            owner: selected.selected.clone(),
+                            subject: witness.clone().into(),
+                            theme: saved("Demo1.DeepOceanTheme"),
+                            demand_slot: None,
+                            collection_source: None,
+                        },
+                    },
+                }), ExecutionPolicy::default(),
+            ).await.expect("initial inspection and retry query metadata through the presentation transaction");
+            let MapResult::ResolvedComposition(composition) = composition else {
+                panic!("resolved composition")
+            };
+            assert!(composition
+                .data
+                .subject_properties
+                .iter()
+                .any(|property| property.name == "LoadCommitStatus"));
+            assert_eq!(
+                response.property_value("LoadCommitStatus").unwrap(),
+                Some("Complete".to_base_value())
+            );
+            assert!(!load_context.is_open());
+        }
+        runtime.session().archive_transaction(&inspector_tx).unwrap();
+        drop(inspector);
+        runtime.session().archive_transaction(&load_tx).unwrap();
+        let loaded_read_tx = runtime.session().begin_transaction().await.unwrap();
+        let loaded_read = runtime.session().get_transaction(&loaded_read_tx).unwrap();
+        loaded_read
+            .lookup()
+            .get_saved_holon_by_key(&"BookAuthorInverseSchema".into())
+            .expect("reviewed import must be visible through a fresh transaction");
+        runtime.session().archive_transaction(&loaded_read_tx).unwrap();
+        drop(loaded_read);
+        checkpoint("reviewed import on named Space verified");
+        drop(load_context);
         drop(runtime);
         drop(manager);
         conductor.shutdown().await.unwrap();

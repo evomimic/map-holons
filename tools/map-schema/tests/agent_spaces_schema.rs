@@ -27,8 +27,8 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     let document: Value = serde_json::from_str(&compile_input_string(SOURCE, "schema.tdl")?)?;
     assert_eq!(document, serde_json::from_str::<Value>(GENERATED)?);
     assert_eq!(
-        targets(holon(&document, "MAP Agent Spaces Schema-v0.1.3"), "DependsOn"),
-        ["MAP Core Schema-v0.0.10"]
+        targets(holon(&document, "MAP Agent Spaces Schema-v0.1.4"), "DependsOn"),
+        ["MAP Core Schema-v0.0.11"]
     );
     for (key, parent, abstract_type) in [
         ("Agent.HolonType", "HolonType.TypeDescriptor", true),
@@ -59,7 +59,7 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
         targets(rule, "TemplateParameters"),
         ["LastName.PropertyType", "FirstName.PropertyType", "MiddleName.PropertyType"]
     );
-    assert_eq!(targets(rule, "RuleOf"), ["MAP Agent Spaces Schema-v0.1.3"]);
+    assert_eq!(targets(rule, "RuleOf"), ["MAP Agent Spaces Schema-v0.1.4"]);
     Ok(())
 }
 

@@ -1,11 +1,11 @@
-schema "MAP Space Navigator Schema-v0.1.3" {
-  depends_on "MAP Core Schema-v0.0.10"
-  depends_on "MAP Dance Schema-v0.1.3"
-  depends_on "MAP Design Tokens Schema-v0.1.3"
-  depends_on "MAP Meta Design System Schema-v0.1.3"
-  depends_on "MAP Theme Schema-v0.1.3"
-  depends_on "MAP DAHN Schema-v0.1.3"
-  depends_on "MAP Dancer Schema-v0.1.3"
+schema "MAP Space Navigator Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Dance Schema-v0.1.4"
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
+  depends_on "MAP Theme Schema-v0.1.4"
+  depends_on "MAP DAHN Schema-v0.1.4"
+  depends_on "MAP Dancer Schema-v0.1.4"
   header {
     description: "House Troupe semantic package for the Space Navigator's statically bundled Visualizer Holons and their locally resolvable implementation identities. These mappings resolve semantic VisualizerImplementation Holons; they do not create TypeScript-only Visualizer identities. The persisted TableCollectionVisualizer key identifies the current table-oriented Collection presentation strategy; shape-based collection applicability is deferred."
   }
@@ -29,8 +29,8 @@ instance SpaceNavigator.Dancer {
     AffordedByHolonSpace -> MAP.CoreSchemaSpace
     HasExperienceVisualizerSlot -> [SpaceNavigator.RootedNavigationSlot, SpaceNavigator.VisualizerInformationSlot]
     Requires -> [
-      "MAP DAHN Schema-v0.1.3",
-      "MAP Space Navigator Schema-v0.1.3"
+      "MAP DAHN Schema-v0.1.4",
+      "MAP Space Navigator Schema-v0.1.4"
     ]
   }
 }
@@ -120,7 +120,7 @@ instance TableCollectionTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.table-collection"
-  VisualizerArtifactDigest "sha256:6993c96f703203d2b14b317e26892b1197c9278934eebbe2f480c97bac18843d"
+  VisualizerArtifactDigest "sha256:a0aeaf1e6dfa29d921174282f399bb0971982e3b73eafcf295eb1f87ab6944df"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

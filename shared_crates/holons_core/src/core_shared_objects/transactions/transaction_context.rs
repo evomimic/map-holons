@@ -1173,6 +1173,71 @@ mod tests {
     }
 
     #[test]
+    fn current_space_follows_renames_and_merges_but_rejects_forks_and_cycles() {
+        use crate::core_shared_objects::holon::SavedHolon;
+        use crate::descriptors::test_support::{
+            build_context_with_saved_holons, replace_saved_relationship,
+        };
+        use crate::{agent_spaces::current_personal_space, ReadableHolon};
+        use base_types::{MapInteger, ToBaseValue};
+        use core_types::{HolonId, PropertyMap};
+        use std::collections::HashMap;
+        use type_names::ToPropertyName;
+        use type_names::ToRelationshipName;
+        let ids: Vec<_> = (1..=4).map(|n| LocalId(vec![n; 39])).collect();
+        let context = build_context_with_saved_holons(
+            ids.iter()
+                .enumerate()
+                .map(|(index, id)| {
+                    let mut properties = PropertyMap::new();
+                    properties.insert(
+                        type_names::CorePropertyTypeName::Key.to_property_name(),
+                        format!("space-{index}").to_base_value(),
+                    );
+                    SavedHolon::new(
+                        id.clone(),
+                        properties,
+                        (index != 0).then(|| ids[0].clone()),
+                        MapInteger(index as i64 + 1),
+                    )
+                })
+                .collect(),
+            HashMap::new(),
+        );
+        let holon_ids: Vec<_> = ids.into_iter().map(HolonId::Local).collect();
+        context.set_space_holon_id(holon_ids[0].clone()).unwrap();
+        let successor = type_names::CoreRelationshipTypeName::Successor.to_relationship_name();
+        let set = |source: usize, targets: &[usize]| {
+            replace_saved_relationship(
+                &context,
+                holon_ids[source].clone(),
+                successor.clone(),
+                targets.iter().map(|index| holon_ids[*index].clone()).collect(),
+            )
+        };
+        set(0, &[1]);
+        assert_eq!(current_personal_space(&context).unwrap().holon_id().unwrap(), holon_ids[1]);
+        set(0, &[1, 2]);
+        assert!(current_personal_space(&context).is_err());
+        set(1, &[3]);
+        set(2, &[3]);
+        assert_eq!(current_personal_space(&context).unwrap().holon_id().unwrap(), holon_ids[3]);
+        set(3, &[0]);
+        assert!(current_personal_space(&context).is_err());
+        set(3, &[]);
+        context.transition_to_committed().unwrap();
+        for _ in 0..2 {
+            assert_eq!(current_personal_space(&context).unwrap().holon_id().unwrap(), holon_ids[3]);
+            crate::dahn::PersonalPreferences::for_context(&context).unwrap();
+        }
+        assert!(!context.is_open());
+        assert!(matches!(
+            context.lookup().get_saved_holon_by_key(&"space-3".into()),
+            Err(HolonError::TransactionAlreadyCommitted { .. })
+        ));
+    }
+
+    #[test]
     fn retained_transient_lookups_are_allowed_after_commit_but_not_disposal() {
         let context = build_context();
         let key = base_types::MapString::from("retained-presentation-configuration");

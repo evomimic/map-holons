@@ -54,17 +54,10 @@ pub fn invoke(
             "ConstructDerivedDescriptor requires Space authority".into(),
         ));
     }
-    let space = context
-        .get_space_holon()?
-        .ok_or_else(|| HolonError::InvalidParameter("Missing HolonSpace".into()))?;
     let affording = bound
         .affording_holon()
         .ok_or_else(|| HolonError::InvalidParameter("Missing affording HolonSpace".into()))?;
-    if affording.holon_id()? != space.holon_id()? {
-        return Err(HolonError::InvalidParameter(
-            "Construction must be afforded by this transaction's HolonSpace".into(),
-        ));
-    }
+    super::space_authority::require_transaction_space(context, affording, "Construction")?;
     let request = bound
         .request()
         .ok_or_else(|| HolonError::InvalidParameter("Missing construction request".into()))?;

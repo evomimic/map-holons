@@ -1,6 +1,6 @@
 {
-  "release_identity": "MAP Core Schema-v0.0.10",
-  "core_schema_key": "MAP Core Schema-v0.0.10",
+  "release_identity": "MAP Core Schema-v0.0.11",
+  "core_schema_key": "MAP Core Schema-v0.0.11",
   "core_schema_space_key": "MAP.CoreSchemaSpace",
   "packages": [
     {
@@ -59,107 +59,107 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "28ce5f01ceb6b18101b221514f048f48d960fee8a812906c1da05b4fde4051d7"
+      "sha256": "ae4698df65b1f80b2bf19a4205d2058893199a45da5198539a41ebacd26310cf"
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "82f85815ad3e870264a17980424de447f6f0d388ccd4164c609421a2795edccb"
+      "sha256": "2437f753c91f1cc5cc3cb00f906b596ece330cff50a1a1e47aae6daa9cc36b29"
     },
     {
       "path": "imports/core/keyrules.json",
-      "sha256": "3c1b45323073d4ef79b7a7ac5094058d19af80546914e010307eb6f7f0d2c853"
+      "sha256": "e51dc14c100d347d56e4b04b2b6c6b47b5e7c48931b9580fef981a5400c83e6e"
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "83595496dc0ef6c4f749ffbc1d646116d1eaea3561b5c76ba3fb1c032928d28c"
+      "sha256": "40bd19967ca926c4b74dedf2fbcbae7a27f1af87a34ced1aade720b46fc75b1e"
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "379c9f8b78d9ce9ed17f73689d1ad8bd218784bc452e703b43e5993d6a82b673"
+      "sha256": "f537578d215b97bfea6d3810dcd42a474a99c9d700ff21b28f9b6517809b0aaa"
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "d6f130ab1b7c3a734b9180d37ba7772fb52295ffe08ba6e1d41048e5a72cae6d"
+      "sha256": "9dc204e9a801c935eb52dbf699a01d92be37218695c1b11cfd010685c95af999"
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "b491118b256c01a07bbbf4656255ce407edf69f8e361dffc256ab2bf1210368c"
+      "sha256": "be6f263d250e12566defc3020ac65ef7c5a8a14f0977ec7cd4617f032c6f52e4"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "52c8c86ef8171db9da1c7147a3e01a2b30cb52c9eb53a53e2dba24121f57615f"
+      "sha256": "ac5523c0335d18c12e7359bb282f0210a9827998bd5a5580909abfd454628149"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "dc18aef9438f79948ad003bfe34fa47f102d4f93faf7b4daad7d1b0e89f7734a"
+      "sha256": "5a159f9139d8bd05a4a6810be8623be55d2b29042a7d9318bd75bda35cf4868a"
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "108bb810d1c0e26deff6bd0f7f3149d5dcd1e81b7eee33d41e1a4589660a2b0b"
+      "sha256": "c9df6eeee086534ea1ebdca879a1719a4461f87f3e8133e7671a0adbba8016da"
     },
     {
       "path": "imports/validation/schema.json",
-      "sha256": "c1864368aa425b315ad4220081401e03ef012bb42570694c976a4259b167c16a"
+      "sha256": "47c0dfc70e8dc244d25d8c21935c20ddb7ed469d0e914241f50ba7a2056e5a7f"
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "9bf05022671cf17a04e6e46326a41be334cdd7f4bbd060c4543ac21d892c4954"
+      "sha256": "de914572b8f1e984717be9b053f12bdb60c1219d0079c6eab0207d9f2a953c69"
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "cb18eda115d1525eacdf02c0250bff748aaba9bdd8af6741447f9214dfed33e2"
+      "sha256": "102eaa6e9475ed32c608da54d2cc2f6e1c3e8571ccabf60c684bcf68286e501c"
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "5a256fe69f2dcb47ffb3f041a536535d0482544a895255a891e320852fc80cbc"
+      "sha256": "e81c73f0ba1f3073a33dda73f35fc5e85b41ff36cd10b10f00c596a6e610154e"
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "6894bbd861c0dd6c7421e656938c212e1178294f8d6a5195d9d29a09c84f49a9"
+      "sha256": "1a664a2e72de9cfab7b063d82a725ccd464110d1fc465bb97de2401c0ecd6edd"
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "be06165cc03468abfed24b5c7226d641059992456c23027f4776ed1bc23322c5"
+      "sha256": "5299780efad6640ff8fb3652c24f74534229a733f2556cc4d04a34cc409e6aa4"
     },
     {
       "path": "imports/query-dance/schema.json",
-      "sha256": "25705aad85043efd5141deadb65eb1d288cc8ed1c1869b7d1ee478cdaae84d72"
+      "sha256": "e7992045764ca4f6cbecedcb61dc954f46233d03585244556bef7ccb444d11b3"
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "43c7ceef82e4939a449e4a39988e4966c1148ba722cb81bb3bace2cd4cddb6ca"
+      "sha256": "6906a5ee90d03c50f3b9370cc79852a4e43128704901038c44f9149c9faf6423"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "1e585e8d2b52c1829ba07f82b15ff48f0fea7b8a51c25cfcb902fe8de150cf09"
+      "sha256": "a5aab4ff64eb07b89590ab281619f29afc501eb96a2ba1ce6c9037c86fc98ec9"
     },
     {
       "path": "imports/theme/deep-ocean.json",
-      "sha256": "c9ed9566ea5f9422ea83e0de4bae1155c94e035068cc0326ed763c8ac75902e5"
+      "sha256": "b8e6ff7f89f3fe2cd983c995c20c5662a7e8cbfff0857f8a5c8d3a01241b631a"
     },
     {
       "path": "imports/theme/forest-sanctuary.json",
-      "sha256": "a07b0850f3887f1071f6c3fdc61c0e27f7b7172b3f06ad5ac03b5d90876fd941"
+      "sha256": "857e82e14f50fe27b14a64d76aba44d3ff36dc15d7af1f6598cb2858003ba8fa"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "0058f961fb5c12794e3ec3f0af41cb8487ff6438d9dac21e73c69adc47be2648"
+      "sha256": "95b891afe4470dd47fd1aab89363b857186cb40fa5e3484265be3c05ca09aa80"
     },
     {
       "path": "imports/theme/warm-parchment.json",
-      "sha256": "e853393669ed6244357a10970bbfef4047d67a39fe24dc694deabbc994b3a8b9"
+      "sha256": "e1c9a59ae3383c2375056d532fa64e5433c2eae7586374d023ae414a79741965"
     },
     {
       "path": "imports/agent-spaces/schema.json",
-      "sha256": "262758257fc1b7295620fe1281a8e6ff68bea4e1c7cf726123eb07b90f69e0f2"
+      "sha256": "f1345d5222bef94260761ba069d05f110331b528da1208a183566a9d37a28d5c"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "3df88567be67f9511fb55629688f2eae67e9f5ea25946a979f5ea4c6d7f218bd"
+      "sha256": "e19978b5b064954eff5ad77f72fd749328a598078eaa39bdcea04de4b323e699"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
-      "sha256": "9e84e168360c45b11128c93327cf4b016ffb559a7003637573cef944198936ef"
+      "sha256": "9d00e269021e1aa091edeb86d35d3406c89f80d1144f7c3bf95bf9b578e815e8"
     }
   ],
   "required_holons": [
@@ -4052,55 +4052,55 @@
       "type": "DanceImplementation.HolonType"
     },
     {
-      "key": "MAP Agent Spaces Schema-v0.1.3",
+      "key": "MAP Agent Spaces Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Commands Schema-v0.1.3",
+      "key": "MAP Commands Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Core Schema-v0.0.10",
+      "key": "MAP Core Schema-v0.0.11",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP DAHN Schema-v0.1.3",
+      "key": "MAP DAHN Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Dance Schema-v0.1.3",
+      "key": "MAP Dance Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Dancer Schema-v0.1.3",
+      "key": "MAP Dancer Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Descriptor Runtime Schema-v0.1.3",
+      "key": "MAP Descriptor Runtime Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Design Tokens Schema-v0.1.3",
+      "key": "MAP Design Tokens Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Meta Design System Schema-v0.1.3",
+      "key": "MAP Meta Design System Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Query Dance Adapter Schema-v0.1.3",
+      "key": "MAP Query Dance Adapter Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Query Schema-v0.0.5",
+      "key": "MAP Query Schema-v0.0.6",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Theme Schema-v0.1.3",
+      "key": "MAP Theme Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Validation Schema-v0.1.3",
+      "key": "MAP Validation Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {

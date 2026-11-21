@@ -28,6 +28,7 @@ try {
   const errors = [];
   async function pageFor(status) {
     const page = await context.newPage();
+    await page.clock.install();
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(({ status, returning }) => {
       window.storyboardFixture = { status, calls: [] };
@@ -49,6 +50,7 @@ try {
     const layout = await page.evaluate(() => {
       const primary = [...document.querySelectorAll('#constitute, #open-navigator')].filter(button => !button.hidden);
       return { overflow: document.documentElement.scrollWidth > innerWidth + 1,
+        timerHidden: document.getElementById('activity-elapsed').getBoundingClientRect().height === 0,
         hiddenActionVisible: ['discovery', 'invitation', 'privacy', 'finalizing', 'problem', 'recovery'].includes(document.body.dataset.view) && primary.length > 0,
         clipped: primary.some(button => button.getBoundingClientRect().bottom > innerHeight),
         measuredProgress: document.getElementById('preparation-progress').hasAttribute('aria-valuenow') };
@@ -60,8 +62,14 @@ try {
   const preparation = await pageFor(preparing);
   await verify(preparation, 'invitation', '02-invitation');
   if (await preparation.locator('#usual-way input, #usual-way button').count()) throw new Error('Comparison illustration has interactive account controls');
+  await preparation.clock.runFor(14000);
+  if (await preparation.evaluate(() => document.body.dataset.view !== 'invitation')) throw new Error('Comparison disappeared before its reading interval');
+  if (await preparation.locator('#startup-details').getAttribute('open') !== null) throw new Error('Setup details unexpectedly expanded');
+  if (!await preparation.locator('#activity-elapsed').isVisible()) throw new Error('Collapsed details hide the timer');
+  await preparation.clock.runFor(1000);
   await verify(preparation, 'privacy', '03-private-space'); await preparation.close();
   const finalizing = await pageFor({ ...preparing, phase: 'checking-space', stage: 'verifying-space-definitions' });
+  await finalizing.clock.runFor(15000);
   await verify(finalizing, 'finalizing', '04-finalizing'); await finalizing.close();
   const personal = await pageFor(naming); await verify(personal, 'naming', '06-naming');
   await personal.locator('#last-name').fill('Storyboard Example'); await personal.locator('#last-name').press('Enter');

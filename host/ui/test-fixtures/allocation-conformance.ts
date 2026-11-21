@@ -290,7 +290,7 @@ export async function mountTableScroll(scale = 1) {
     columns: ['Key', 'Semantic authority', 'Validation rule description', 'Determinism'].map((id, column) => ({ id,
       displayName: id, valueType: 'StringValue', values: Array.from({ length: 80 }, (_, n) => ({ StringValue:
         column === 0 ? `Rule.${String(n).padStart(3, '0')}.ValidationRule` : `${id}: a readable value for validation rule ${n}` })) })) } });
-  for (const header of table.querySelectorAll('th')) {
+  for (const header of table.querySelectorAll('th[data-column-id]')) {
     await bindVisualizerInformationControl(header, transaction, subject, subject, subject, subject, 'end', undefined, 'String Value');
   }
   await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);

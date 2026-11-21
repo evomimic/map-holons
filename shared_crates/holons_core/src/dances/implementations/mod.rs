@@ -10,3 +10,5 @@ pub mod resolve_visualizer_usage;
 pub mod construct_effective_holon_descriptor;
 
 pub mod construct_derived_descriptor;
+
+mod space_authority;

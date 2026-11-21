@@ -688,7 +688,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         // re-bound, this case should be Rejected with the finding attached to the
         // staged descriptor, and the unattached-finding branch below must follow.
         (
-            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.10"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
+            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.11"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
             "Complete",
         ),
         (r#"{"holons":[{"key":"missing-target","type":"DoesNotExist.HolonType"}]}"#, "Skipped"),

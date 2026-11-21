@@ -1,8 +1,8 @@
-schema "MAP Theme Schema-v0.1.3" {
-  depends_on "MAP Core Schema-v0.0.10"
-  depends_on "MAP Dance Schema-v0.1.3"
-  depends_on "MAP Design Tokens Schema-v0.1.3"
-  depends_on "MAP Meta Design System Schema-v0.1.3"
+schema "MAP Theme Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Dance Schema-v0.1.4"
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
   header {
     description: "MAP schema for Themes as complete, typed value assignments for one Meta Design System. Theme availability is independent of Dancer identity."
   }
@@ -59,7 +59,7 @@ holon RelationshipPairRule.KeyRuleType {
 
 instance ThemeTokenAssignmentPairRule.RelationshipPairRule {
   type RelationshipPairRule.KeyRuleType
-  rule_of "MAP Theme Schema-v0.1.3"
+  rule_of "MAP Theme Schema-v0.1.4"
 }
 
 property ThemeName.PropertyType {
@@ -234,7 +234,7 @@ instance ThemeTokenAssignmentPairUniqueness.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "THEME-001"
   ValidationRuleDescription "A Theme may have exactly one ThemeTokenAssignment for each DesignToken."
-  rule_of "MAP Theme Schema-v0.1.3"
+  rule_of "MAP Theme Schema-v0.1.4"
 }
 
 instance ThemeTokenAssignmentDesignTokenType.ValidationRule {
@@ -243,7 +243,7 @@ instance ThemeTokenAssignmentDesignTokenType.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "THEME-002"
   ValidationRuleDescription "A ThemeTokenAssignment PresentationValue must conform to its DesignToken's DesignTokenType."
-  rule_of "MAP Theme Schema-v0.1.3"
+  rule_of "MAP Theme Schema-v0.1.4"
 }
 
 instance ThemeCompleteDesignTokenCoverage.ValidationRule {
@@ -252,7 +252,7 @@ instance ThemeCompleteDesignTokenCoverage.ValidationRule {
   DeterminismClass Deterministic
   SemanticAuthority "THEME-003"
   ValidationRuleDescription "A Theme must assign exactly one value to every DesignToken defined by its ForMetaDesignSystem target."
-  rule_of "MAP Theme Schema-v0.1.3"
+  rule_of "MAP Theme Schema-v0.1.4"
 }
 
 property ThemeDescription.PropertyType {

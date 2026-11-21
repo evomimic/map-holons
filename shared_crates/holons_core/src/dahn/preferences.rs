@@ -57,10 +57,10 @@ impl PersonalPreferences {
         if sources.is_empty() {
             return Ok(result);
         }
-        let canonical: HolonReference = context
-            .lookup()
-            .get_saved_holon_by_key(&DahnHolonTypeName::VisualizerPreference.descriptor_key())?
-            .into();
+        let canonical = super::usage::anchor(
+            context,
+            &DahnHolonTypeName::VisualizerPreference.descriptor_key().0,
+        )?;
         for record in sources {
             let described = record.related_holons(CoreRelationshipTypeName::DescribedBy)?;
             let described = described

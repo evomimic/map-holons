@@ -1,15 +1,15 @@
-schema "MAP Theme Schema-v0.1.3" {
-  depends_on "MAP Core Schema-v0.0.10"
-  depends_on "MAP Dance Schema-v0.1.3"
-  depends_on "MAP Design Tokens Schema-v0.1.3"
-  depends_on "MAP Meta Design System Schema-v0.1.3"
+schema "MAP Theme Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Dance Schema-v0.1.4"
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
   header {
     description: "MAP schema for Themes as complete, typed value assignments for one Meta Design System. Theme availability is independent of Dancer identity."
   }
 }
 
 meta {
-  schema_key: "MAP Theme Schema-v0.1.3"
+  schema_key: "MAP Theme Schema-v0.1.4"
 }
 
 // Theme identity is independent of how the Theme is loaded.

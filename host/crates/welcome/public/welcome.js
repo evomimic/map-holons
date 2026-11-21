@@ -26,6 +26,7 @@ const spaceOptions = document.getElementById('space-options');
 const startupDetails = document.getElementById('startup-details');
 let lastStatus = null;
 let newSpaceStarted = null;
+const invitationReadingTime = 15000;
 let localFailure = false;
 let openingNavigator = false;
 let navigatorAvailable = false;
@@ -92,7 +93,9 @@ function renderStory() {
   else if (result?.phase === 'foundation-present') view = result.constitution_available === true ? 'naming' : 'problem';
   else if (newSpaceStarted !== null) {
     const finishing = ['verifying-core-schema', 'activating-base-packages', 'loading-space-definitions', 'verifying-space-definitions'].includes(result?.stage);
-    view = finishing ? 'finalizing' : Date.now() - newSpaceStarted < 5000 ? 'invitation' : 'privacy';
+    // Background setup continues; fast stage changes must not flash the comparison.
+    // Ready and problem states above take precedence over this reading interval.
+    view = Date.now() - newSpaceStarted < invitationReadingTime ? 'invitation' : finishing ? 'finalizing' : 'privacy';
   }
   const stories = {
     discovery: ['A space\nof your own.', 'Your data. On your devices. Under your control. Always.', 'Looking for your personal space…'],

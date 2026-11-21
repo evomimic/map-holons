@@ -5,12 +5,12 @@ meta {
   source_files: ["map-core-schema-concrete-value-types.csv"]
   load_with: ["abstract-value-types.json","keyrules.json","root.json"]
 }
-schema "MAP Core Schema-v0.0.10" {
+schema "MAP Core Schema-v0.0.11" {
 }
 
 instance Length16k.StringLengthConstraint {
   type StringLengthConstraint.ConstraintType
-  rule_of "MAP Core Schema-v0.0.10"
+  rule_of "MAP Core Schema-v0.0.11"
   ConstraintName "Length16k"
   Maximum 16384
   MaximumIsInclusive true

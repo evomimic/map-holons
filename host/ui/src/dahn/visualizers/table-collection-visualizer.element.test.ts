@@ -144,9 +144,9 @@ it('fits a column prefix, reveals additional columns on request, and pins Key', 
     const element = createTableCollectionVisualizer() as TableCollectionVisualizerElement & { fitColumns(): void };
     element.setContext(context({ kind: 'holon-property-map', displayName: 'People', rowIds: ['a'], columns: ['Key', 'Name', 'Description'].map(id => ({ id, displayName: id, valueType: 'StringValue', values: [{ StringValue: id }] })) }));
     const viewport = element.querySelector<HTMLElement>('[data-table-collection=viewport]')!;
-    Object.defineProperty(viewport, 'clientWidth', { value: 200 });
-    const more = element.querySelector<HTMLButtonElement>('[data-table-collection=more]')!;
-    Object.defineProperty(more, 'offsetWidth', { value: 70 });
+    Object.defineProperty(viewport, 'clientWidth', { value: 250 });
+    const more = (element as unknown as { more: HTMLButtonElement }).more;
+    Object.defineProperty(more.parentElement!, 'offsetWidth', { value: 50 });
     more.getBoundingClientRect = () => ({ width: 35 }) as DOMRect;
     const headers = [...element.querySelectorAll('th')];
     headers.forEach(header => {
@@ -156,6 +156,8 @@ it('fits a column prefix, reveals additional columns on request, and pins Key', 
     document.body.append(element);
     expect(headers.map(header => header.hidden)).toEqual([false, false, true]);
     expect(more.hidden).toBe(false);
+    expect(more.closest('thead')).toBe(element.querySelector('thead'));
+    expect(more.parentElement?.style.right).toBe('0px');
     more.click();
     expect(headers.every(header => !header.hidden)).toBe(true);
     expect(viewport.style.overflowX).toBe('auto');
@@ -338,7 +340,7 @@ it('reports controls, header and five data rows even for a shorter collection', 
   Object.defineProperty(element.sortStatus, 'offsetHeight', { value: 26 });
   Object.defineProperty(element.more, 'offsetHeight', { value: 30 });
   element.more.hidden = false;
-  expect(element.getCollectionViewportHeight(5)).toBe(26 + 30 + 40 + 5 * 36);
+  expect(element.getCollectionViewportHeight(5)).toBe(26 + 40 + 5 * 36);
   element.more.hidden = true;
   expect(element.getCollectionViewportHeight(5)).toBe(26 + 40 + 5 * 36);
 });
