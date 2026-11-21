@@ -263,6 +263,7 @@ pub async fn run(runtime: &Runtime) {
     )
     .await;
     constrained_literal_errors(runtime, &context, &book_descriptor, &books[0], &book_type).await;
+    template_literal_operands(runtime, &context).await;
 }
 
 /// The transport preserves the complete typed constraint error, including inherited provenance.
@@ -315,17 +316,64 @@ async fn constrained_literal_errors(
     // The empty collection must not hide an invalid authored literal at the wire boundary.
     let invocation =
         query_dance_invocation(context, definition, Some((book_type.clone(), vec![])), vec![]);
-    let error = runtime
-        .execute_command(
-            MapCommand::Transaction(TransactionCommand {
-                context: context.clone(),
-                action: TransactionAction::DanceV2 { invocation },
-            }),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .unwrap_err();
+    let error = query_dance_error(runtime, context, invocation).await;
     assert_eq!(error, direct, "QueryDance must preserve every constraint error field");
+}
+
+/// Runs whole-template comparisons and fragment matching against the bootstrapped FormatRule.
+async fn template_literal_operands(runtime: &Runtime, context: &Arc<TransactionContext>) {
+    use holons_core::ValueDescriptor;
+    use CoreOperatorTypeName::{ContainsOperator, EqualsOperator, LessThanOperator};
+
+    let saved = |key: &str| -> HolonReference {
+        context.lookup().get_saved_holon_by_key(&MapString::from(key)).unwrap().into()
+    };
+    let format_type = saved("FormatRule.KeyRuleType");
+    let subject = HolonDescriptor::from_holon(format_type.clone());
+    let rule = saved("HolonSpaceNameRule.FormatRule");
+    let input = || Some((format_type.clone(), vec![rule.clone()]));
+    let template =
+        ValueDescriptor::from_holon(saved("PositionalStringTemplateValueType.MapStringValueType"));
+    let string = ValueDescriptor::from_holon(saved("MapStringValueType.StringValueType"));
+    let filter = |operator, declared: &ValueDescriptor, source: &str| {
+        let operand =
+            authoring::new_literal_operand(context, declared, source.to_base_value()).unwrap();
+        let predicate = authoring::new_comparison_predicate(
+            context,
+            &subject,
+            "TemplateString",
+            operator,
+            vec![operand.into()],
+        )
+        .unwrap();
+        let filter = authoring::new_filter(context, predicate.into()).unwrap();
+        query(context, "TemplateLiteral", filter.into())
+    };
+    for (label, operator, declared, source) in [
+        ("matching template", EqualsOperator, &template, "{0}"),
+        ("matching template fragment", ContainsOperator, &string, "{0"),
+    ] {
+        dance(
+            label,
+            runtime,
+            context,
+            filter(operator, declared, source),
+            input(),
+            vec![],
+            Expected::Members(vec![rule.clone()]),
+        )
+        .await;
+    }
+    for operator in [EqualsOperator, LessThanOperator] {
+        let definition = filter(operator, &template, "$0");
+        let invocation = query_dance_invocation(context, definition, input(), vec![]);
+        let error = query_dance_error(runtime, context, invocation).await;
+        assert!(
+            matches!(&error, HolonError::ValueConstraintViolation { code, .. }
+            if code == "PositionalStringTemplateSyntaxInvalid"),
+            "{error:?}"
+        );
+    }
 }
 
 fn described(
@@ -412,7 +460,17 @@ async fn rejects(
     invocation: DanceInvocation,
     expected: HolonErrorKind,
 ) {
-    let result = runtime
+    let error = query_dance_error(runtime, context, invocation).await;
+    assert_eq!(HolonErrorKind::from(&error), expected, "{label}: {error:?}");
+    tracing::info!(case = label, "query contract passed");
+}
+
+async fn query_dance_error(
+    runtime: &Runtime,
+    context: &Arc<TransactionContext>,
+    invocation: DanceInvocation,
+) -> HolonError {
+    runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
                 context: context.clone(),
@@ -420,8 +478,6 @@ async fn rejects(
             }),
             ExecutionPolicy::default(),
         )
-        .await;
-    let error = result.expect_err(label);
-    assert_eq!(HolonErrorKind::from(&error), expected, "{label}: {error:?}");
-    tracing::info!(case = label, "query contract passed");
+        .await
+        .expect_err("QueryDance should reject the invocation")
 }

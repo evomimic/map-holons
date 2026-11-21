@@ -11,6 +11,7 @@ mod fixture_cases {
 use execution_steps::dance_test_runner::run_dance_test_case;
 use fixture_cases::commit_scalar_constraints_fixture::EXPECTED_SCALAR_VIOLATIONS;
 use holochain::prelude::Signal;
+use holons_core::descriptors::value_constraints::ScalarConstraintFamily;
 use holons_test::harness::helpers::{
     build_core_schema_bootstrap_content_set, init_runtime_with_initiator,
     setup_probe_enabled_conductor,
@@ -96,26 +97,26 @@ async fn scalar_create_rejection_and_clean_bootstrap() {
         );
     }
     assert!(bootstrap["reached_constraints"].as_u64().unwrap() > 0);
+    // The counter shows at least one executable constraint was evaluated during bootstrap.
     assert!(bootstrap["evaluated_constraints"].as_u64().unwrap() > 0);
-    // The selected corpus has only one executable configured scalar constraint.
-    // Thus an actual scalar evaluation above proves that Length16k ran.
     let mut scalar_keys = Vec::new();
     for file in build_core_schema_bootstrap_content_set().unwrap().files_to_load {
         let document: serde_json::Value = serde_json::from_str(&file.raw_contents).unwrap();
         for holon in document["holons"].as_array().unwrap() {
-            if matches!(
-                holon["type"].as_str(),
-                Some(
-                    "StringLengthConstraint.ConstraintType"
-                        | "BytesLengthConstraint.ConstraintType"
-                        | "NumericRangeConstraint.ConstraintType"
-                )
-            ) {
+            if holon["type"].as_str().and_then(ScalarConstraintFamily::for_concrete_type).is_some()
+            {
                 scalar_keys.push(holon["key"].as_str().unwrap().to_owned());
             }
         }
     }
-    assert_eq!(scalar_keys, ["Length16k.StringLengthConstraint"]);
+    scalar_keys.sort();
+    assert_eq!(
+        scalar_keys,
+        [
+            "Length16k.StringLengthConstraint",
+            "ValidSyntax.PositionalStringTemplateSyntaxConstraint"
+        ]
+    );
     // Nonzero accepted-call counts are the positive control for the call-site probes.
     assert!(bootstrap["node_creates"].as_u64().unwrap() > 0);
     assert!(bootstrap["smartlink_creates"].as_u64().unwrap() > 0);

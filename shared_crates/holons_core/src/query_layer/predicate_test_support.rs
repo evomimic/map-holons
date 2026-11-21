@@ -132,6 +132,32 @@ impl PredicateWorld {
         bound
     }
 
+    /// A FormatRule with the template syntax constraint and inherited String affordances.
+    pub(crate) fn format_rule(&self) -> (HolonDescriptor, HolonReference) {
+        let mut template = new_kind_descriptor(
+            &self.context,
+            "PositionalStringTemplateValueType",
+            Some(&self.text),
+            false,
+        )
+        .unwrap();
+        template
+            .add_related_holons(
+                CoreRelationshipTypeName::Constraints,
+                vec![constraint(
+                    &self.context,
+                    "ValidSyntax.PositionalStringTemplateSyntaxConstraint",
+                    "PositionalStringTemplateSyntaxConstraint",
+                    &self.map_string,
+                )],
+            )
+            .unwrap();
+        let template = template.into();
+        let rule =
+            holon_type(&self.context, "FormatRule", None, &[("TemplateString", true, &template)]);
+        (HolonDescriptor::from_holon(rule), template)
+    }
+
     fn build(context: Arc<TransactionContext>, constrain_map_string: bool) -> Self {
         let stage = |holon: TransientReference| -> HolonReference {
             context.mutation().stage_new_holon(holon).unwrap().into()
@@ -530,7 +556,7 @@ fn constraint_type(
     descriptor
 }
 
-/// A well-formed applicable extension constraint, with no executable Core semantics.
+/// A configured constraint with a direct describing type and an applicability target.
 fn constraint(
     context: &Arc<TransactionContext>,
     key: &str,

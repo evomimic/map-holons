@@ -18,6 +18,7 @@ async fn semantic_rejections_author_no_records() {
         commit_default_declaration_fixture::commit_default_declaration_fixture().unwrap(),
         commit_conformance_fixture::commit_conformance_fixture().unwrap(),
         commit_enum_evolution_fixture::commit_enum_evolution_fixture().unwrap(),
+        commit_template_syntax_fixture::commit_template_syntax_fixture().unwrap(),
     ];
     let backend = setup_probe_enabled_conductor().await;
     let initiator = Arc::new(TrustChannel::new(backend.clone()));

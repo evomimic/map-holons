@@ -1742,6 +1742,34 @@ mod tests {
     }
 
     #[test]
+    fn template_literals_follow_the_operators_required_type() {
+        let world = PredicateWorld::with_constrained_map_string(build_context());
+        let (subject, template) = world.format_rule();
+        let check = |operator, declared, source: &str| {
+            validate(&world.compare("TemplateString", operator, declared, text(source)), &subject)
+        };
+        for operator in [&world.equals, &world.less_than] {
+            check(operator, &template, "{0}").unwrap();
+            let error = check(operator, &template, "$0").unwrap_err();
+            assert!(
+                matches!(&error, HolonError::ValueConstraintViolation { code, .. }
+                if code == "PositionalStringTemplateSyntaxInvalid"),
+                "{error:?}"
+            );
+        }
+        let error = check(&world.equals, &world.map_string, "{0}").unwrap_err();
+        assert!(matches!(error, HolonError::IncompatibleLiteralType { .. }), "{error:?}");
+        check(&world.contains, &world.map_string, "{0").unwrap();
+
+        let error = check(&world.equals, &template, &"a".repeat(16_385)).unwrap_err();
+        assert!(
+            matches!(&error, HolonError::ValueConstraintViolation { code, descriptor, .. }
+            if code == "StringLengthOutOfRange" && descriptor == &world.map_string.reference_id_string()),
+            "{error:?}"
+        );
+    }
+
+    #[test]
     fn an_ordered_operator_takes_exactly_one_operand() {
         let world = world();
         for operator in world.ordering_operators() {

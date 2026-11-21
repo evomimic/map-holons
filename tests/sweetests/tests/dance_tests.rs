@@ -42,6 +42,7 @@ use fixture_cases::commit_schema_fixture::*;
 use fixture_cases::commit_sibling_fixture::*;
 use fixture_cases::commit_staged_scalar_fixture::*;
 use fixture_cases::commit_strict_contract_fixture::*;
+use fixture_cases::commit_template_syntax_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
@@ -128,6 +129,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_validation_fixture().unwrap(),
             commit_scalar_constraints_fixture().unwrap(),
             commit_staged_scalar_fixture().unwrap(),
+            commit_template_syntax_fixture().unwrap(),
             attachment_defaults_fixture().unwrap(),
             commit_no_action_fixture().unwrap(),
             commit_mixed_dispositions_fixture().unwrap(),
