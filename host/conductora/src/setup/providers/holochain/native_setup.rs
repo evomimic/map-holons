@@ -271,7 +271,31 @@ mod tests {
             )
             .unwrap()
             .holon_id();
-        runtime.session().archive_transaction(&tx).unwrap();
+        let staged_agent = holons_core::agent_spaces::stage_personal_agent(
+            &context,
+            PersonalName {
+                last_name: "Agent-only fixture".into(),
+                first_name: None,
+                middle_name: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(staged_agent.key().unwrap(), Some("Agent-only fixture".into()));
+        assert_eq!(
+            context.staged_references().unwrap().len(),
+            1,
+            "generic Agent staging must not stage a Space rename"
+        );
+        assert_eq!(
+            context
+                .lookup()
+                .get_saved_holon_by_key(&"MAP.CoreSchemaSpace".into())
+                .unwrap()
+                .holon_id(),
+            id
+        );
+        runtime.session().dispose_transaction(&tx).await.unwrap();
+        checkpoint("generic Agent staging verified");
         drop(context);
         let baseline = loads.load(Ordering::SeqCst);
         // Create in the same runtime that provisioned the foundation, matching Welcome.

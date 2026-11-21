@@ -91,7 +91,7 @@ function render(result) {
   names.hidden = !available;
   names.disabled = !available || submitting;
   const associated = result.phase === 'association-present';
-  button.hidden = associated || result.new_environment_available === true;
+  button.hidden = !available;
   heading.textContent = associated
     ? constitutionCommitted ? 'Your Space is ready' : 'Welcome back to MAP'
     : 'It all starts with an invitation.';

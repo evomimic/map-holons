@@ -50,23 +50,39 @@ pub async fn inspect_target(runtime: &Runtime) -> Result<ConstitutionTarget, Hol
     Ok(target)
 }
 
-/// Stage and Commit once using the existing command lifecycle. The caller retains non-complete work.
+/// Stage the Agent, personal Space name and offerings in one Commit.
+/// The caller retains non-complete work through the existing command lifecycle.
 pub async fn create_personal_agent(
     runtime: &Runtime,
     context: Arc<TransactionContext>,
     names: PersonalName,
 ) -> Result<MapResult, HolonError> {
     let previous_space = current_personal_space(&context)?;
-    let person = stage_personal_agent(&context, names)?;
-    let interiors =
-        person.related_holons(type_names::AgentSpaceRelationshipTypeName::HasInterior)?;
-    let space = interiors
-        .read()
-        .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
-        .get_members()
-        .first()
-        .cloned()
-        .ok_or_else(|| HolonError::InvalidState("Personal setup did not stage its Space".into()))?;
+    let space_name = names.space_name()?;
+    let mut person = stage_personal_agent(&context, names)?;
+    let mut named_space = context.mutation().stage_new_version(SmartReference::new_from_id(
+        context.space_read_handle(),
+        previous_space.holon_id()?,
+    ))?;
+    named_space.with_property_value(type_names::CorePropertyTypeName::Key, space_name.clone())?;
+    named_space.with_property_value(
+        type_names::CorePropertyTypeName::HolonSpaceName,
+        space_name.clone(),
+    )?;
+    named_space.with_property_value(type_names::CorePropertyTypeName::DisplayName, space_name)?;
+    named_space.with_property_value(
+        type_names::CorePropertyTypeName::Description,
+        "Your personal Space, including its MAP foundation.",
+    )?;
+    let space = holons_core::HolonReference::from(named_space);
+    person.remove_related_holons(
+        type_names::AgentSpaceRelationshipTypeName::HasInterior,
+        vec![previous_space.clone()],
+    )?;
+    person.add_related_holons(
+        type_names::AgentSpaceRelationshipTypeName::HasInterior,
+        vec![space.clone()],
+    )?;
     // These are version-bound incoming associations. Author the declared
     // occurrences on their owning resources; Commit materializes each inverse
     // on the named Space version while preserving the previous associations.

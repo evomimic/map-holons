@@ -148,7 +148,8 @@ pub fn sovereign_agent(space: &HolonReference) -> Result<SovereignAgent, HolonEr
     })
 }
 
-/// Stage the named PersonAgent, a named Space version, and their interior association together.
+/// Stage a named PersonAgent and its association with the existing Space.
+/// Space naming is a separate operation owned by the personal setup workflow.
 /// The caller owns authorization, Commit and retention for remediation/resubmission.
 pub fn stage_personal_agent(
     context: &Arc<TransactionContext>,
@@ -170,7 +171,6 @@ pub fn stage_personal_agent(
             .descriptor_key(AgentSpaceHolonTypeName::BioSocialAgent),
     )?;
     let person_key = names.person_key()?;
-    let space_name = names.space_name()?;
     let mut transient = context.mutation().new_holon(Some(person_key))?;
     transient.with_descriptor(descriptor.into())?;
     // This domain producer supports the configured personal-name contract. Reject
@@ -214,25 +214,8 @@ pub fn stage_personal_agent(
     if let Some(value) = names.middle_name {
         transient.with_property_value(AgentSpacePropertyTypeName::MiddleName, value)?;
     }
-    let mut named_space = context.mutation().stage_new_version(SmartReference::new_from_id(
-        context.space_read_handle(),
-        space.holon_id()?,
-    ))?;
-    named_space.with_property_value(type_names::CorePropertyTypeName::Key, space_name.clone())?;
-    named_space.with_property_value(
-        type_names::CorePropertyTypeName::HolonSpaceName,
-        space_name.clone(),
-    )?;
-    named_space.with_property_value(type_names::CorePropertyTypeName::DisplayName, space_name)?;
-    named_space.with_property_value(
-        type_names::CorePropertyTypeName::Description,
-        "Your personal Space, including its MAP foundation.",
-    )?;
     let mut person = context.mutation().stage_new_holon(transient)?;
-    person.add_related_holons(
-        AgentSpaceRelationshipTypeName::HasInterior,
-        vec![named_space.into()],
-    )?;
+    person.add_related_holons(AgentSpaceRelationshipTypeName::HasInterior, vec![space])?;
     Ok(person)
 }
 

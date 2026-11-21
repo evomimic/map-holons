@@ -137,6 +137,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         init_probe_test_runtime(&mut DancesTestCase::default()).await;
     // Personal configuration requires an established principal, independently of caller edits.
     let constitution = new_context(&runtime).await;
+    let existing_space_id = constitution.get_space_holon().unwrap().unwrap().holon_id().unwrap();
     let person = stage_personal_agent(
         &constitution,
         PersonalName { last_name: "Canonical tester".into(), first_name: None, middle_name: None },
@@ -150,6 +151,16 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     assert_eq!(string(&committed, "CommitRequestStatus"), "Complete");
     let person_id = person.holon_id().unwrap();
     runtime.session().archive_transaction(&constitution.tx_id()).unwrap();
+    let verify_space = new_context(&runtime).await;
+    assert_eq!(
+        verify_space
+            .lookup()
+            .get_saved_holon_by_key(&"MAP.CoreSchemaSpace".into())
+            .expect("staging an Agent must preserve the existing Space's key")
+            .holon_id(),
+        existing_space_id,
+    );
+    runtime.session().archive_transaction(&verify_space.tx_id()).unwrap();
     // A declared collection target may classify descriptors rather than describe holon instances.
     let columns = new_context(&runtime).await;
     for key in [

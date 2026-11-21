@@ -84,6 +84,15 @@ async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     runtime_checks::run(&runtime).await;
 }
 
+/// Isolates the shared Agent setup followed by a package referencing the existing Space.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused setup-order regression; covered by runtime_behavior_matrix"]
+async fn personal_agent_setup_preserves_later_dancer_import() {
+    let (runtime, _) = boot_dance_test_suite().await;
+    runtime_checks::owner_directed_composition::establish_personal_test_context(&runtime).await;
+    runtime_checks::space_dancer_import::importing_space_navigator_affords_its_dancer_from_the_local_space(&runtime).await;
+}
+
 /// Focused rerun for the fixture-scoped rejection contract; default coverage is in the matrix.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "focused bounded rejection verification; covered by runtime_behavior_matrix"]

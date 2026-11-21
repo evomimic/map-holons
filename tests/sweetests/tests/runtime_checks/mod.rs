@@ -3,7 +3,7 @@ mod attachment_defaults;
 mod key_uniqueness;
 pub mod owner_directed_composition;
 mod relationship_cache_policy;
-mod space_dancer_import;
+pub(crate) mod space_dancer_import;
 mod visualizer_composition;
 mod visualizer_usage_resolution;
 

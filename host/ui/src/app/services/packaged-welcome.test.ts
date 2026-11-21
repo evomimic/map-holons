@@ -17,6 +17,36 @@ afterEach(() => {
 });
 
 describe('packaged Welcome', () => {
+  it.each([
+    { phase: 'foundation-present', constitution_available: true, visible: true },
+    { phase: 'association-present', constitution_available: false, visible: false },
+    { phase: 'blocked', constitution_available: false, visible: false },
+  ])('waits for verified startup before offering creation: $phase', async ready => {
+    vi.useFakeTimers();
+    let resolveStatus!: (status: object) => void;
+    const invoke = vi.fn()
+      .mockImplementationOnce(() => new Promise(resolve => { resolveStatus = resolve; }))
+      .mockResolvedValueOnce({ phase: 'provisioning', constitution_available: false })
+      .mockResolvedValueOnce({ phase: 'checking-space', constitution_available: true })
+      .mockResolvedValueOnce(ready);
+    await start(invoke);
+    const create = document.getElementById('constitute') as HTMLButtonElement;
+    expect(create.hidden).toBe(true);
+    resolveStatus({ phase: 'initializing', stage: 'initializing-host', constitution_available: false });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(create.hidden).toBe(true);
+    for (let step = 0; step < 2; step++) {
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(create.hidden).toBe(true);
+      expect(create.disabled).toBe(true);
+      expect((document.getElementById('personal-name') as HTMLFieldSetElement).hidden).toBe(true);
+    }
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(create.hidden).toBe(!ready.visible);
+    expect(create.disabled).toBe(!ready.visible);
+    expect(invoke.mock.calls.every(call => call[0] === 'welcome_status')).toBe(true);
+  });
+
   it('explains incompatibility and creates a separate environment only after an explicit click', async () => {
     let complete!: () => void;
     const invoke = vi.fn().mockResolvedValueOnce({ phase: 'blocked', stage: 'failed', constitution_available: false,
