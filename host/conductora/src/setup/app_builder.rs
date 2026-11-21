@@ -90,7 +90,8 @@ impl AppBuilder {
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .manage(CoreSchemaBootstrapGate::new())
             .manage(crate::config::environment::EnvironmentMismatch::default())
-            .manage(crate::welcome_lifecycle::WelcomeLifecycle::default())
+            .manage(welcome::lifecycle::WelcomeLifecycle::default())
+            .manage(super::welcome::host_services())
             .manage(map_commands_runtime::personal_constitution::PersonalConstitution::default())
             .manage(ApplicationSessionState::new(application_experience))
             .manage(crate::packaged_navigator::NavigatorLaunchLock::default());
@@ -108,12 +109,12 @@ impl AppBuilder {
             ])
         } else {
             base.invoke_handler(tauri::generate_handler![
-                crate::trusted_welcome::welcome_status,
-                crate::trusted_welcome::create_new_environment,
-                crate::trusted_welcome::saved_environments,
-                crate::trusted_welcome::activate_saved_environment,
-                crate::trusted_welcome::trash_saved_environment,
-                crate::trusted_welcome::constitute_personal_space,
+                welcome::commands::welcome_status,
+                welcome::commands::create_new_environment,
+                welcome::commands::saved_environments,
+                welcome::commands::activate_saved_environment,
+                welcome::commands::trash_saved_environment,
+                welcome::commands::constitute_personal_space,
                 crate::packaged_navigator::open_space_navigator,
                 application_session,
                 runtime::dispatch_map_command::dispatch_map_command,
@@ -136,7 +137,7 @@ impl AppBuilder {
             let handle = app.handle().clone();
             if !crate::env::development_enabled() {
                 // Welcome appears during provisioning; backend admission remains closed until ready.
-                crate::trusted_welcome::create_window(&handle)?;
+                welcome::commands::create_window(&handle)?;
             }
             let storage_cfg = app.state::<StorageManager>().inner().clone();
             let runtime_selection = app.state::<ProviderRuntimeSelection>().inner().clone();
@@ -206,7 +207,7 @@ impl AppBuilder {
                         .await
                         .context("ensure_configured_space_imports failed")?;
                     if !crate::env::development_enabled() {
-                        crate::trusted_welcome::refresh_lifecycle(&handle).await?;
+                        welcome::commands::refresh_lifecycle(&handle).await?;
                         return Ok::<(), anyhow::Error>(());
                     }
                     let runtime = handle.state::<runtime::RuntimeState>().read()

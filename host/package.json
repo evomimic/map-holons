@@ -19,6 +19,7 @@
     "web:test:dahn": "npm exec --prefix .. vitest -- run --root ui",
     "web:typecheck": "npx tsc -p ./ui/tsconfig.app.json --noEmit",
     "web:build": "cd ui && ng build --base-href ./",
+    "postweb:build": "node crates/welcome/copy-assets.mjs",
     "web:dev": "npm run web:build",
     "web:prod": "npm run web:build -- -c production",
     "tauri": "tauri",

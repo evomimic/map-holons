@@ -57,25 +57,7 @@ impl ApplicationExperience {
     }
 }
 
-/// Observable stage of one window-bound MAP application session.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ApplicationSessionPhase {
-    InitializingHost,
-    ActivatingHolochainApp,
-    OpeningSpace,
-    PreparingCoreSchema,
-    LoadingCoreSchema,
-    VerifyingCoreSchema,
-    ActivatingBasePackages,
-    LoadingSpaceDefinitions,
-    VerifyingSpaceDefinitions,
-    RealizingCanvas,
-    SelectingHomeDancer,
-    RealizingHomeDancer,
-    Ready,
-    Failed,
-}
+pub use map_commands_runtime::application_launch::ApplicationSessionPhase;
 
 /// Runtime-only application context. It is never persisted as a holon and
 /// never retains a transaction.
@@ -84,6 +66,7 @@ struct ApplicationSession {
     experience: ApplicationExperience,
     dev_mode: bool,
     phase: ApplicationSessionPhase,
+    preparing_new_space: bool,
     active_holon_space: Option<HolonReferenceWire>,
     active_agent: Option<HolonReferenceWire>,
     canvas_selection: Option<CanvasLaunchSelection>,
@@ -129,6 +112,7 @@ impl ApplicationSessionState {
                 experience,
                 dev_mode,
                 phase: ApplicationSessionPhase::InitializingHost,
+                preparing_new_space: false,
                 active_holon_space: None,
                 active_agent: None,
                 canvas_selection: None,
@@ -151,7 +135,18 @@ impl ApplicationSessionState {
     }
 
     pub fn mark_loading_core_schema(&self) -> Result<(), String> {
-        self.set_phase(ApplicationSessionPhase::LoadingCoreSchema)
+        let mut session = self.write()?;
+        session.preparing_new_space = true;
+        session.phase = ApplicationSessionPhase::LoadingCoreSchema;
+        Ok(())
+    }
+
+    /// Presentation evidence retained after fresh provisioning advances to later stages.
+    pub(crate) fn preparing_new_space(&self) -> Result<bool, String> {
+        self.session
+            .read()
+            .map(|session| session.preparing_new_space)
+            .map_err(|error| format!("ApplicationSession lock poisoned: {error}"))
     }
 
     pub fn mark_verifying_core_schema(&self) -> Result<(), String> {
@@ -317,6 +312,17 @@ mod tests {
         assert_eq!(snapshot.canvas_selection.unwrap().canvas_key, "MAP.BootstrapCanvas");
         assert_eq!(snapshot.home_dancer_selection, None);
         assert_eq!(snapshot.failure, None);
+    }
+
+    #[test]
+    fn new_space_presentation_requires_provisioning_and_survives_later_stages() {
+        let state = ApplicationSessionState::with_dev_mode(ApplicationExperience::Canvas, false);
+        state.mark_opening_space().unwrap();
+        state.mark_preparing_core_schema().unwrap();
+        assert!(!state.preparing_new_space().unwrap());
+        state.mark_loading_core_schema().unwrap();
+        state.mark_loading_space_definitions().unwrap();
+        assert!(state.preparing_new_space().unwrap());
     }
 
     #[test]

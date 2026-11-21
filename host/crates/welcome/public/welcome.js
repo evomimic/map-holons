@@ -10,12 +10,23 @@ const environmentList = document.getElementById('environment-list');
 const environmentStatus = document.getElementById('environment-status');
 const environmentRefresh = document.getElementById('refresh-environments');
 const button = document.getElementById('constitute');
+const setupForm = document.getElementById('personal-setup');
 const heading = document.querySelector('h1');
 const names = document.getElementById('personal-name');
 const firstName = document.getElementById('first-name');
 const middleName = document.getElementById('middle-name');
 const lastName = document.getElementById('last-name');
 const navigatorButton = document.getElementById('open-navigator');
+const comparison = document.getElementById('usual-way');
+const activityMessage = document.getElementById('activity-message');
+const preparationProgress = document.getElementById('preparation-progress');
+const attention = document.getElementById('attention');
+const recoveryMessage = document.getElementById('recovery-message');
+const spaceOptions = document.getElementById('space-options');
+const startupDetails = document.getElementById('startup-details');
+let lastStatus = null;
+let newSpaceStarted = null;
+let localFailure = false;
 let openingNavigator = false;
 let navigatorAvailable = false;
 let available = false;
@@ -46,6 +57,7 @@ function elapsedSince(start) {
 }
 function updateElapsed() {
   activityElapsed.textContent = `This step: ${elapsedSince(activityStageStarted)} · Total: ${elapsedSince(activityStarted)}`;
+  renderStory();
 }
 function showActivity(label) {
   if (activityTimer === null) {
@@ -66,9 +78,53 @@ function stopActivity() {
   activityTimer = null;
   activity.hidden = true;
 }
+function text(element, value) {
+  if (element.textContent !== value) element.textContent = value;
+}
+// Story screens describe observed lifecycle state. The comparison card is static
+// illustration; it contains no account, credentials, or acceptance controls.
+function renderStory() {
+  const result = lastStatus;
+  let view = 'discovery';
+  if (localFailure || result?.phase === 'blocked') view = result?.incompatibility && !localFailure ? 'recovery' : 'problem';
+  else if (result?.phase === 'association-present') view = constitutionCommitted ? 'ready' : 'returning';
+  else if (constitutionCommitted && result?.phase === 'foundation-present') view = 'confirming';
+  else if (result?.phase === 'foundation-present') view = result.constitution_available === true ? 'naming' : 'problem';
+  else if (newSpaceStarted !== null) {
+    const finishing = ['verifying-core-schema', 'activating-base-packages', 'loading-space-definitions', 'verifying-space-definitions'].includes(result?.stage);
+    view = finishing ? 'finalizing' : Date.now() - newSpaceStarted < 5000 ? 'invitation' : 'privacy';
+  }
+  const stories = {
+    discovery: ['A space\nof your own.', 'Your data. On your devices. Under your control. Always.', 'Looking for your personal space…'],
+    invitation: ['It all starts with\nan invitation.', 'Instead, MAP provisions a private, sovereign space for you…', 'Preparing your space…'],
+    privacy: ['No account in\nsomeone else’s\ncloud.', 'MAP is preparing a private space for you, on your device.', 'Preparing your space…'],
+    finalizing: ['Your data.\nOn your devices.\nUnder your control.\nAlways.', 'Your space is yours to steward.', 'Finalizing your space…'],
+    naming: ['Your space is ready.\nMake yourself at home.', '', ''],
+    confirming: ['Your data.\nOn your devices.\nUnder your control.\nAlways.', 'MAP is confirming your personal space.', 'Confirming your personal space…'],
+    ready: ['You’re on\nthe MAP.', 'Your private space is ready, here on your devices, under your control.', ''],
+    returning: ['Welcome\nback to MAP.', 'Your personal space is here, just as you left it.', ''],
+    recovery: ['Your Space needs\na compatible environment.', 'Your existing Space is preserved.', ''],
+    problem: ['Your space needs\nattention.', 'MAP could not finish verifying or opening your space.', ''],
+  };
+  const [title, copy, progress] = stories[view];
+  document.body.dataset.view = view;
+  text(heading, title);
+  text(introduction, copy);
+  introduction.hidden = !copy;
+  comparison.hidden = view !== 'invitation';
+  preparationProgress.hidden = !['invitation', 'privacy', 'finalizing', 'confirming'].includes(view) && !submitting;
+  text(activityMessage, openingNavigator ? 'Entering your space…' : creatingEnvironment ? 'Preparing a fresh environment…' : submitting ? 'Making this space yours…' : progress);
+  attention.hidden = !['recovery', 'problem'].includes(view);
+  text(recoveryMessage, view === 'recovery'
+    ? 'This version of MAP cannot open this environment. You can create a fresh environment or select another saved environment. Your previous environment and its data are kept.'
+    : 'Your existing data has been retained. Review the setup details below for the next step.');
+}
 // Only the approved packaged page runs here. All text is rendered as text,
 // and the backend never supplies credentials, target IDs or an execution permit.
 function render(result) {
+  lastStatus = result;
+  localFailure = false;
+  if (newSpaceStarted === null && (result.preparing_new_space === true || result.stage === 'loading-core-schema')) newSpaceStarted = Date.now();
   environmentPanel.hidden = result.environment_management_available !== true;
   environmentChangesAvailable = !environmentPanel.hidden && ['foundation-present', 'association-present', 'blocked'].includes(result.phase);
   newEnvironmentButton.hidden = result.new_environment_available !== true;
@@ -76,6 +132,8 @@ function render(result) {
   newEnvironmentButton.textContent = result.navigator_available === true
     ? 'Reset and restart my Space' : 'Create a new environment (keep existing)';
   document.getElementById('reset-description').hidden = newEnvironmentButton.hidden;
+  spaceOptions.hidden = newEnvironmentButton.hidden;
+  if (result.incompatibility) spaceOptions.open = true;
   if (['initializing', 'provisioning', 'checking-space'].includes(result.phase)) {
     showActivity(stageLabels[result.stage] || (result.phase === 'provisioning' ? 'Preparing your space' : 'Checking your space'));
   } else if (constitutionCommitted && result.phase === 'foundation-present') {
@@ -90,17 +148,11 @@ function render(result) {
   button.disabled = !available || submitting;
   names.hidden = !available;
   names.disabled = !available || submitting;
-  const associated = result.phase === 'association-present';
   button.hidden = !available;
-  heading.textContent = associated
-    ? constitutionCommitted ? 'Your Space is ready' : 'Welcome back to MAP'
-    : 'It all starts with an invitation.';
-  introduction.textContent = associated
-    ? constitutionCommitted ? 'Your personal Space is ready. Choose how to continue.' : 'Your personal space is here, just as you left it.'
-    : 'You are invited to put yourself on the MAP, with a sovereign space of your own.';
   status.textContent = constitutionCommitted && result.phase === 'foundation-present'
     ? 'Your personal space was saved. MAP is confirming its recorded association.'
     : result.incompatibility ? `This environment is incompatible: ${result.incompatibility}. You can create a separate environment. Your existing environment will be preserved.` : result.message;
+  renderStory();
   updateEnvironmentControls();
 }
 async function refresh() {
@@ -113,7 +165,12 @@ async function refresh() {
     }
   } catch {
     stopActivity();
+    localFailure = true;
+    startupDetails.open = true;
+    renderStory();
     available = false;
+    names.hidden = true;
+    button.hidden = true;
     names.disabled = true;
     button.disabled = true;
     status.textContent = 'MAP could not verify this Welcome session. Personal setup is unavailable.';
@@ -134,6 +191,7 @@ async function openNavigator() {
     stopActivity();
     status.textContent = typeof error === 'string' ? error : 'MAP could not open Space Navigator. Your personal space is retained.';
     navigatorButton.hidden = false;
+    startupDetails.open = true;
   } finally {
     openingNavigator = false;
     updateEnvironmentControls();
@@ -155,13 +213,15 @@ newEnvironmentButton.addEventListener('click', async () => {
     stopActivity();
     status.textContent = typeof error === 'string' ? error : 'MAP could not select a new environment. Existing data has been retained.';
     creatingEnvironment = false;
+    startupDetails.open = true;
     updateEnvironmentControls();
     newEnvironmentButton.disabled = false;
     navigatorButton.disabled = !navigatorAvailable;
   }
 });
 navigatorButton.addEventListener('click', () => { void openNavigator(); });
-button.addEventListener('click', async () => {
+setupForm.addEventListener('submit', async event => {
+  event.preventDefault();
   if (!available || submitting || environmentBusy || !lastName.reportValidity()) return;
   const input = { lastName: lastName.value };
   if (firstName.value !== '') input.firstName = firstName.value;
@@ -181,6 +241,11 @@ button.addEventListener('click', async () => {
       await refresh();
     } else {
       stopActivity();
+      localFailure = true;
+      renderStory();
+      names.hidden = true;
+      button.hidden = true;
+      startupDetails.open = true;
       available = false;
       status.textContent = outcome === 'rejected'
         ? 'Constitution was rejected. The transaction and findings are retained for correction and resubmission.'
@@ -188,6 +253,11 @@ button.addEventListener('click', async () => {
     }
   } catch (error) {
     stopActivity();
+    localFailure = true;
+    renderStory();
+    names.hidden = true;
+    button.hidden = true;
+    startupDetails.open = true;
     status.textContent = typeof error === 'string'
       ? error
       : 'MAP could not authorize personal space setup.';
@@ -207,7 +277,7 @@ function updateEnvironmentControls() {
   button.disabled = !available || busy;
   names.disabled = !available || busy;
   environmentRefresh.disabled = busy;
-  for (const control of environmentList.querySelectorAll('button')) control.disabled = busy || !environmentChangesAvailable;
+  for (const control of environmentList.querySelectorAll('button')) control.disabled = busy || localFailure || !environmentChangesAvailable;
 }
 function environmentSize(bytes) {
   if (typeof bytes !== 'number') return 'Size unavailable';

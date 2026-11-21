@@ -6,7 +6,7 @@ use map_commands_runtime::personal_constitution::{ConstitutionTarget, Sovereignt
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum AdmissionBlocker {
+pub enum AdmissionBlocker {
     StartupIncomplete,
     LifecycleEvidenceUnavailable,
     AssociationAlreadyEstablished,
@@ -22,7 +22,7 @@ pub(crate) enum AdmissionBlocker {
 /// historical eligibility and complete acquisition enforcement are delivered,
 /// these blockers gate production admission. The explicit local engineering
 /// workflow uses the packaged request boundary without claiming that assurance.
-pub(crate) fn blockers(target: &ConstitutionTarget) -> Vec<AdmissionBlocker> {
+pub fn blockers(target: &ConstitutionTarget) -> Vec<AdmissionBlocker> {
     match target.sovereignty {
         SovereigntyObservation::NoAssociationObserved => vec![
             AdmissionBlocker::EligibilityUnverified,
@@ -40,17 +40,17 @@ pub(crate) fn blockers(target: &ConstitutionTarget) -> Vec<AdmissionBlocker> {
 /// Presentation evidence only; it never grants authority, survives a restart,
 /// or records acquisition completion. Persisted relationships remain authoritative.
 #[derive(Debug, Default)]
-pub(crate) struct WelcomeLifecycle {
+pub struct WelcomeLifecycle {
     observation: RwLock<Option<Result<ConstitutionTarget, ()>>>,
 }
 
 impl WelcomeLifecycle {
-    pub(crate) fn record(&self, observation: Result<ConstitutionTarget, ()>) -> Result<(), String> {
+    pub fn record(&self, observation: Result<ConstitutionTarget, ()>) -> Result<(), String> {
         *self.observation.write().map_err(|e| e.to_string())? = Some(observation);
         Ok(())
     }
 
-    pub(crate) fn observation(&self) -> Result<Option<Result<ConstitutionTarget, ()>>, String> {
+    pub fn observation(&self) -> Result<Option<Result<ConstitutionTarget, ()>>, String> {
         Ok(self.observation.read().map_err(|e| e.to_string())?.clone())
     }
 }

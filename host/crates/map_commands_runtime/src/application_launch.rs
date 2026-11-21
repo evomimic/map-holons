@@ -1,5 +1,27 @@
 //! Existing Canvas/home-Dancer selection over an already initialized runtime.
 use crate::Runtime;
+use serde::Serialize;
+
+/// Observable stage of one window-bound MAP application session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ApplicationSessionPhase {
+    InitializingHost,
+    ActivatingHolochainApp,
+    OpeningSpace,
+    PreparingCoreSchema,
+    LoadingCoreSchema,
+    VerifyingCoreSchema,
+    ActivatingBasePackages,
+    LoadingSpaceDefinitions,
+    VerifyingSpaceDefinitions,
+    RealizingCanvas,
+    SelectingHomeDancer,
+    RealizingHomeDancer,
+    Ready,
+    Failed,
+}
+
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::{

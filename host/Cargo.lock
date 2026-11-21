@@ -24,7 +24,6 @@ dependencies = [
  "map_commands_contract",
  "map_commands_runtime",
  "map_commands_wire",
- "objc2-foundation",
  "rfd",
  "serde",
  "serde_json",
@@ -40,6 +39,7 @@ dependencies = [
  "tracing-subscriber",
  "type_names",
  "url2",
+ "welcome",
 ]
 
 [[package]]
@@ -5661,6 +5661,7 @@ dependencies = [
  "holons_core",
  "holons_loader_client",
  "map_commands_contract",
+ "serde",
  "serde_json",
  "session_receptor",
  "tokio",
@@ -11383,6 +11384,22 @@ dependencies = [
  "thiserror 2.0.21",
  "windows",
  "windows-core",
+]
+
+[[package]]
+name = "welcome"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "core_types",
+ "map_commands_runtime",
+ "objc2-foundation",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tempdir",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -50,16 +50,25 @@ Use `npm install` only when intentionally changing npm dependencies and updating
 
 ## Starting MAP
 
+Welcome's native workflow and packaged page assets live in `host/crates/welcome`.
+Conductora registers its commands and supplies access to the existing runtime,
+startup state and configured storage base through a small native adapter.
+
 Run `npm start` from the repository root. It builds the hApp and packaged debug
 Conductora application, then launches packaged Welcome with the real persistent
 conductor. This packaged engineering profile currently supports macOS on Apple
-Silicon. A compatible existing PersonAgent and Space stop at Welcome, offering
-**Launch Space Navigator** or **Reset and restart my Space**. Reset selects a fresh
+Silicon. Welcome first looks for the person's Space. A compatible existing PersonAgent
+and Space lead to **Welcome back to MAP** and an explicit **Enter my space** action,
+without repeating bootstrap or constitution. A fresh environment shows the invitation,
+privacy and preparation story while its foundation loads. When ready, Welcome captures
+the person's name through **Make this space mine**. Only after setup commits and the
+saved association is verified does **You're on the MAP** offer **Enter my space**.
+Preparation progress is indeterminate; **Setup details** exposes runtime stages and
+elapsed time.
+
+Expand **Space options** for **Reset and restart my Space**. Reset selects a fresh
 environment and restarts MAP while keeping the previous environment and its data;
-it does not copy the previous identity or content. Launch reopens the saved Space
-without repeating bootstrap or constitution. A fresh environment loads its foundation
-and uses Welcome to capture the person's name and constitute their personal space,
-then offers the same launch or reset choice.
+it does not copy the previous identity or content.
 
 Personal setup stores the PersonAgent key in last/first/middle order, separated by
 periods, and names the Space **First Middle Last's Personal Space**, omitting absent

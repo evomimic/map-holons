@@ -514,7 +514,7 @@ mod tests {
         );
         assert_eq!(reopened.sovereignty, SovereigntyObservation::AssociationPresent);
         checkpoint("first cold restart verified");
-        assert!(!crate::welcome_lifecycle::blockers(&reopened).is_empty());
+        assert!(!welcome::lifecycle::blockers(&reopened).is_empty());
         let tx = runtime.session().begin_transaction().await.unwrap();
         let context = runtime.session().get_transaction(&tx).unwrap();
         let reopened_space = holons_core::agent_spaces::current_personal_space(&context).unwrap();

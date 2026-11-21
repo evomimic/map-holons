@@ -1,38 +1,16 @@
 //! Packaged local Navigator window and admission over the existing application runtime.
-use crate::{
-    setup::application_launcher::{
-        prepare_application_launch, ApplicationSessionPhase, ApplicationSessionState,
-    },
-    welcome_lifecycle::WelcomeLifecycle,
+use crate::setup::application_launcher::{
+    prepare_application_launch, ApplicationSessionPhase, ApplicationSessionState,
 };
 use map_commands_runtime::{
     application_launch::LaunchRequirement,
     personal_constitution::{PersonalConstitution, SovereigntyObservation},
 };
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use welcome::lifecycle::WelcomeLifecycle;
 
 const WINDOW: &str = "navigator";
-#[derive(Default)]
-pub struct NavigatorLaunchLock {
-    lock: tokio::sync::Mutex<()>,
-    restarting: std::sync::atomic::AtomicBool,
-}
-
-impl NavigatorLaunchLock {
-    pub(crate) fn try_acquire(&self) -> Result<tokio::sync::MutexGuard<'_, ()>, String> {
-        use std::sync::atomic::Ordering;
-        let guard =
-            self.lock.try_lock().map_err(|_| "A launch or restart is already in progress")?;
-        if self.restarting.load(Ordering::SeqCst) {
-            return Err("MAP is restarting; environment changes are unavailable".into());
-        }
-        Ok(guard)
-    }
-
-    pub(crate) fn mark_restarting(&self) {
-        self.restarting.store(true, std::sync::atomic::Ordering::SeqCst);
-    }
-}
+pub use welcome::transition::NavigatorLaunchLock;
 
 fn approved_page(label: &str, url: &tauri::Url) -> bool {
     label == WINDOW
@@ -68,7 +46,7 @@ pub(crate) fn admit_operational_window(window: &WebviewWindow) -> Result<(), Str
 /// Native handoff only: no caller-supplied Agent/Space IDs, provisioning or constitution.
 #[tauri::command]
 pub async fn open_space_navigator(window: WebviewWindow) -> Result<(), String> {
-    crate::trusted_welcome::admit(&window)?;
+    welcome::commands::admit(&window)?;
     if !cfg!(all(feature = "local-constitution", debug_assertions)) {
         return Err("Packaged Navigator is not enabled in this build".into());
     }
@@ -119,17 +97,6 @@ pub async fn open_space_navigator(window: WebviewWindow) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn launch_and_restart_cannot_overlap() {
-        let lock = NavigatorLaunchLock::default();
-        let launch = lock.try_acquire().unwrap();
-        assert!(lock.try_acquire().is_err());
-        drop(launch);
-        assert!(lock.try_acquire().is_ok());
-        lock.mark_restarting();
-        assert!(lock.try_acquire().is_err());
-    }
-
     #[test]
     fn navigator_permissions_exclude_constitution_and_conductor_access() {
         let capability: serde_json::Value =

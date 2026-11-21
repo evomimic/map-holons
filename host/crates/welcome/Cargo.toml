@@ -1,0 +1,25 @@
+[package]
+name = "welcome"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+map_commands_runtime = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { version = "2", features = [] }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tokio = { version = "1", features = ["rt", "sync"] }
+
+[dev-dependencies]
+tempdir = { workspace = true }
+core_types = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSFileManager", "NSURL", "NSError", "NSString"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+local-constitution = []
+protected-custody = []

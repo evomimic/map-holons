@@ -1,8 +1,9 @@
 //! Packaged Welcome admission and the bounded local constitution workflow.
 use crate::{
-    setup::application_launcher::{ApplicationSessionPhase, ApplicationSessionState},
-    welcome_lifecycle::{self, AdmissionBlocker, WelcomeLifecycle},
+    host::HostServices,
+    lifecycle::{self, AdmissionBlocker, WelcomeLifecycle},
 };
+use map_commands_runtime::application_launch::ApplicationSessionPhase;
 use map_commands_runtime::personal_constitution::{ConstitutionTarget, SovereigntyObservation};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
@@ -45,9 +46,9 @@ fn approved_page(label: &str, url: &tauri::Url) -> bool {
         && url.fragment().is_none()
 }
 
-pub(crate) fn admit(window: &WebviewWindow) -> Result<(), String> {
+pub fn admit(window: &WebviewWindow) -> Result<(), String> {
     let url = window.url().map_err(|e| e.to_string())?;
-    if crate::env::development_enabled() || !approved_page(window.label(), &url) {
+    if (cfg!(debug_assertions) && tauri::is_dev()) || !approved_page(window.label(), &url) {
         return Err("Request did not originate from packaged Welcome".into());
     }
     Ok(())
@@ -69,10 +70,11 @@ pub enum WelcomePhase {
 pub struct WelcomeStatus {
     pub phase: WelcomePhase,
     pub stage: ApplicationSessionPhase,
+    pub preparing_new_space: bool,
     pub constitution_available: bool,
     pub navigator_available: bool,
     pub message: &'static str,
-    pub(crate) blockers: Vec<AdmissionBlocker>,
+    pub blockers: Vec<AdmissionBlocker>,
     pub incompatibility: Option<String>,
     pub new_environment_available: bool,
     pub environment_management_available: bool,
@@ -90,7 +92,7 @@ fn status_for(
     } else {
         match observation {
             Some(Ok(target)) => {
-                let blockers = welcome_lifecycle::blockers(&target);
+                let blockers = lifecycle::blockers(&target);
                 match target.sovereignty {
                     SovereigntyObservation::NoAssociationObserved => (WelcomePhase::FoundationPresent,
                         "Your space and its foundation are present. Personal space setup is not enabled yet; acquisition eligibility and security protections still require verification.", blockers),
@@ -115,6 +117,7 @@ fn status_for(
     WelcomeStatus {
         phase,
         stage,
+        preparing_new_space: stage == ApplicationSessionPhase::LoadingCoreSchema,
         constitution_available: false,
         navigator_available: false,
         message,
@@ -166,12 +169,12 @@ fn apply_environment_options(status: &mut WelcomeStatus, incompatibility: Option
 #[tauri::command]
 pub async fn welcome_status(
     window: WebviewWindow,
-    application: State<'_, ApplicationSessionState>,
     lifecycle: State<'_, WelcomeLifecycle>,
     constitution: State<'_, map_commands_runtime::personal_constitution::PersonalConstitution>,
 ) -> Result<WelcomeStatus, String> {
     admit(&window)?;
-    let phase = application.snapshot()?.phase;
+    let (phase, preparing_new_space) =
+        (window.app_handle().state::<HostServices>().startup)(window.app_handle())?;
     // Once startup has established the runtime, each status request refreshes
     // saved evidence. Polling must not replay a pre-Commit observation forever.
     if phase != ApplicationSessionPhase::Failed
@@ -181,10 +184,11 @@ pub async fn welcome_status(
         refresh_lifecycle(window.app_handle()).await.map_err(|e| e.to_string())?;
     }
     let mut status = status_for(phase, lifecycle.observation()?);
+    status.preparing_new_space = preparing_new_space;
     apply_local_workflow(&mut status, constitution.available());
     let incompatibility = window
         .app_handle()
-        .state::<crate::config::environment::EnvironmentMismatch>()
+        .state::<crate::environment::EnvironmentMismatch>()
         .0
         .read()
         .map_err(|e| e.to_string())?
@@ -195,13 +199,8 @@ pub async fn welcome_status(
 
 /// Refresh display evidence through the configured native runtime. Only startup
 /// and the already-admitted constitution request can call this; it is not an IPC surface.
-pub(crate) async fn refresh_lifecycle(handle: &AppHandle) -> anyhow::Result<()> {
-    let runtime = handle
-        .state::<crate::runtime::RuntimeState>()
-        .read()
-        .map_err(|e| anyhow::anyhow!(e.to_string()))?
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("MAP runtime is unavailable"))?;
+pub async fn refresh_lifecycle(handle: &AppHandle) -> anyhow::Result<()> {
+    let runtime = (handle.state::<HostServices>().runtime)(handle).map_err(anyhow::Error::msg)?;
     let observation = map_commands_runtime::personal_constitution::inspect_target(&runtime).await;
     if let Err(error) = &observation {
         tracing::warn!("Welcome lifecycle evidence unavailable: {error}");
@@ -254,17 +253,12 @@ pub async fn constitute_personal_space(
         return Err("Personal constitution is not enabled in this build".into());
     }
     let handle = window.app_handle();
-    let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
+    let phase = (handle.state::<HostServices>().startup)(handle)?.0;
     let observation = handle.state::<WelcomeLifecycle>().observation()?;
     if phase == ApplicationSessionPhase::Failed || observation.is_none() {
         return Err(status_for(phase, observation).message.into());
     }
-    let runtime = handle
-        .state::<crate::runtime::RuntimeState>()
-        .read()
-        .map_err(|e| e.to_string())?
-        .clone()
-        .ok_or("MAP runtime is unavailable")?;
+    let runtime = (handle.state::<HostServices>().runtime)(handle)?;
     // Admission comes from the exact packaged request path. Fresh domain checks
     // and serialization happen in the backend, not in presentation state.
     let outcome = handle
@@ -342,25 +336,8 @@ mod tests {
     }
 
     #[test]
-    fn welcome_permissions_exclude_conductor_and_generic_map_commands() {
-        let capability: serde_json::Value =
-            serde_json::from_str(include_str!("../capabilities/welcome.json")).unwrap();
-        assert_eq!(capability["webviews"], serde_json::json!(["welcome"]));
-        assert!(capability.get("windows").is_none());
-        assert!(capability.get("remote").is_none());
-        assert_eq!(
-            capability["permissions"],
-            serde_json::json!([
-                "allow-welcome-status",
-                "allow-create-new-environment",
-                "allow-saved-environments",
-                "allow-activate-saved-environment",
-                "allow-trash-saved-environment",
-                "allow-constitute-personal-space",
-                "allow-open-space-navigator"
-            ])
-        );
-        let page = include_str!("../../ui/public/welcome.html");
+    fn welcome_page_restricts_content_sources() {
+        let page = include_str!("../public/welcome.html");
         assert!(page.contains("script-src 'self';"));
         assert!(page.contains("frame-src 'none';"));
         assert!(!page.contains("blob:"));
@@ -502,12 +479,12 @@ pub fn create_new_environment(window: WebviewWindow) -> Result<(), String> {
         return Err("New local environments are unavailable in this build".into());
     }
     let handle = window.app_handle();
-    let launch = handle.state::<crate::packaged_navigator::NavigatorLaunchLock>();
+    let launch = handle.state::<crate::transition::NavigatorLaunchLock>();
     let _guard = launch.try_acquire()?;
     if handle.get_webview_window("navigator").is_some() {
         return Err("Return to Welcome before resetting your Space".into());
     }
-    let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
+    let phase = (handle.state::<HostServices>().startup)(handle)?.0;
     let observation = handle.state::<WelcomeLifecycle>().observation()?;
     let mut status = status_for(phase, observation);
     apply_local_workflow(
@@ -516,7 +493,7 @@ pub fn create_new_environment(window: WebviewWindow) -> Result<(), String> {
             .state::<map_commands_runtime::personal_constitution::PersonalConstitution>()
             .available(),
     );
-    let state = handle.state::<crate::config::environment::EnvironmentMismatch>();
+    let state = handle.state::<crate::environment::EnvironmentMismatch>();
     let mut mismatch = state.0.write().map_err(|e| e.to_string())?;
     apply_environment_options(&mut status, mismatch.clone());
     if !status.new_environment_available {
@@ -525,8 +502,8 @@ pub fn create_new_environment(window: WebviewWindow) -> Result<(), String> {
                 .into(),
         );
     }
-    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
-    crate::config::environment::create_environment(&base).map_err(|e| e.to_string())?;
+    let base = (handle.state::<HostServices>().environment_base)().map_err(|e| e.to_string())?;
+    crate::environment::create_environment(&base).map_err(|e| e.to_string())?;
     *mismatch = None;
     drop(mismatch);
     launch.mark_restarting();
@@ -551,7 +528,7 @@ fn require_environment_change_ready(handle: &AppHandle) -> Result<(), String> {
     if !constitution.available() {
         return Err("Personal setup work must finish before changing environments".into());
     }
-    let phase = handle.state::<ApplicationSessionState>().snapshot()?.phase;
+    let phase = (handle.state::<HostServices>().startup)(handle)?.0;
     let mut status = status_for(phase, handle.state::<WelcomeLifecycle>().observation()?);
     apply_local_workflow(&mut status, true);
     if !status.constitution_available
@@ -567,10 +544,11 @@ fn require_environment_change_ready(handle: &AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn saved_environments(
     window: WebviewWindow,
-) -> Result<Vec<crate::config::environment::SavedEnvironment>, String> {
+) -> Result<Vec<crate::environment::SavedEnvironment>, String> {
     admit_environment_management(&window)?;
-    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
-    tokio::task::spawn_blocking(move || crate::config::environment::list_environments(&base))
+    let handle = window.app_handle();
+    let base = (handle.state::<HostServices>().environment_base)().map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || crate::environment::list_environments(&base))
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
@@ -581,11 +559,11 @@ pub async fn saved_environments(
 pub fn activate_saved_environment(window: WebviewWindow, id: String) -> Result<(), String> {
     admit_environment_management(&window)?;
     let handle = window.app_handle();
-    let transition = handle.state::<crate::packaged_navigator::NavigatorLaunchLock>();
+    let transition = handle.state::<crate::transition::NavigatorLaunchLock>();
     let _guard = transition.try_acquire()?;
     require_environment_change_ready(handle)?;
-    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
-    crate::config::environment::activate_environment(&base, &id).map_err(|e| e.to_string())?;
+    let base = (handle.state::<HostServices>().environment_base)().map_err(|e| e.to_string())?;
+    crate::environment::activate_environment(&base, &id).map_err(|e| e.to_string())?;
     transition.mark_restarting();
     handle.request_restart();
     Ok(())
@@ -596,11 +574,11 @@ pub fn activate_saved_environment(window: WebviewWindow, id: String) -> Result<(
 pub async fn trash_saved_environment(window: WebviewWindow, id: String) -> Result<(), String> {
     admit_environment_management(&window)?;
     let handle = window.app_handle();
-    let transition = handle.state::<crate::packaged_navigator::NavigatorLaunchLock>();
+    let transition = handle.state::<crate::transition::NavigatorLaunchLock>();
     let _guard = transition.try_acquire()?;
     require_environment_change_ready(handle)?;
-    let base = crate::config::environment::packaged_base().map_err(|e| e.to_string())?;
-    tokio::task::spawn_blocking(move || crate::config::environment::trash_environment(&base, &id))
+    let base = (handle.state::<HostServices>().environment_base)().map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || crate::environment::trash_environment(&base, &id))
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())

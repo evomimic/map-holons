@@ -1,5 +1,5 @@
-import html from '../../../public/welcome.html?raw';
-import script from '../../../public/welcome.js?raw';
+import html from '../../../../crates/welcome/public/welcome.html?raw';
+import script from '../../../../crates/welcome/public/welcome.js?raw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 async function start(invoke: ReturnType<typeof vi.fn>) {
@@ -17,6 +17,56 @@ afterEach(() => {
 });
 
 describe('packaged Welcome', () => {
+  it('follows the new-user storyboard while preparation runs, without fabricated percentages', async () => {
+    vi.useFakeTimers();
+    const initial = { phase: 'initializing', stage: 'initializing-host', constitution_available: false };
+    const preparing = { phase: 'provisioning', stage: 'loading-core-schema', preparing_new_space: true, constitution_available: false };
+    const invoke = vi.fn().mockResolvedValue(initial);
+    await start(invoke);
+    expect(document.body.dataset.view).toBe('discovery');
+    expect(document.getElementById('activity-message')?.textContent).toContain('Looking for your personal space');
+    invoke.mockResolvedValue(preparing);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.body.dataset.view).toBe('invitation');
+    const usualWay = document.getElementById('usual-way') as HTMLElement;
+    expect(usualWay.hidden).toBe(false);
+    expect(usualWay.querySelector('input, button')).toBeNull();
+    expect(document.getElementById('preparation-progress')?.hasAttribute('aria-valuenow')).toBe(false);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(document.body.dataset.view).toBe('privacy');
+    expect(usualWay.hidden).toBe(true);
+    invoke.mockResolvedValue({ ...preparing, phase: 'checking-space', stage: 'verifying-space-definitions' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.body.dataset.view).toBe('finalizing');
+    expect(document.getElementById('activity-message')?.textContent).toBe('Finalizing your space…');
+    invoke.mockResolvedValue({ phase: 'foundation-present', preparing_new_space: true, constitution_available: true });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.body.dataset.view).toBe('naming');
+    expect((document.getElementById('personal-name') as HTMLFieldSetElement).hidden).toBe(false);
+    expect(document.getElementById('constitute')?.textContent).toContain('Make this space mine');
+    expect((document.getElementById('open-navigator') as HTMLButtonElement).hidden).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps a returning user in discovery until the existing Space is verified', async () => {
+    vi.useFakeTimers();
+    const invoke = vi.fn().mockResolvedValueOnce({ phase: 'checking-space', stage: 'verifying-space-definitions', preparing_new_space: false })
+      .mockResolvedValueOnce({ phase: 'association-present', navigator_available: true, constitution_available: false });
+    await start(invoke);
+    expect(document.body.dataset.view).toBe('discovery');
+    expect((document.getElementById('usual-way') as HTMLElement).hidden).toBe(true);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.body.dataset.view).toBe('returning');
+    expect(invoke.mock.calls).toEqual([['welcome_status'], ['welcome_status']]);
+  });
+
+  it('shows naming immediately when a fast preparation is already ready', async () => {
+    vi.useFakeTimers();
+    await start(vi.fn().mockResolvedValue({ phase: 'foundation-present', preparing_new_space: true, constitution_available: true }));
+    expect(document.body.dataset.view).toBe('naming');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it.each([
     { phase: 'foundation-present', constitution_available: true, visible: true },
     { phase: 'association-present', constitution_available: false, visible: false },
@@ -83,7 +133,7 @@ describe('packaged Welcome', () => {
     const launch = document.getElementById('open-navigator') as HTMLButtonElement;
     const reset = document.getElementById('new-environment') as HTMLButtonElement;
     expect(launch.hidden).toBe(false);
-    expect(launch.textContent).toBe('Launch Space Navigator');
+    expect(launch.textContent).toContain('Enter my space');
     expect(reset.hidden).toBe(false);
     expect(reset.textContent).toBe('Reset and restart my Space');
     expect(document.getElementById('reset-description')?.textContent).toContain('kept');
@@ -187,7 +237,7 @@ describe('packaged Welcome', () => {
     await start(invoke);
     (document.getElementById('last-name') as HTMLInputElement).value = 'Example';
     (document.getElementById('constitute') as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(document.querySelector('h1')?.textContent).toBe('Your Space is ready'));
+    await vi.waitFor(() => expect(document.querySelector('h1')?.textContent).toBe('You’re on\nthe MAP.'));
     expect((document.getElementById('constitute') as HTMLButtonElement).hidden).toBe(true);
     expect(invoke.mock.calls.map(call => call[0])).toEqual(['welcome_status', 'constitute_personal_space', 'welcome_status']);
     // A freshly loaded page on the next launch only reads status.
@@ -209,10 +259,12 @@ describe('packaged Welcome', () => {
     button.click();
     await vi.advanceTimersByTimeAsync(0);
     expect(button.disabled).toBe(true);
+    expect(document.body.dataset.view).toBe('confirming');
+    expect((document.getElementById('open-navigator') as HTMLButtonElement).hidden).toBe(true);
     button.dispatchEvent(new MouseEvent('click'));
     expect(invoke.mock.calls.filter(call => call[0] === 'constitute_personal_space')).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1000);
-    expect(document.querySelector('h1')?.textContent).toBe('Your Space is ready');
+    expect(document.querySelector('h1')?.textContent).toBe('You’re on\nthe MAP.');
     expect(button.hidden).toBe(true);
   });
 
@@ -282,7 +334,7 @@ describe('packaged Welcome', () => {
     const button = document.getElementById('constitute') as HTMLButtonElement;
     expect(button.hidden).toBe(true);
     expect(button.disabled).toBe(true);
-    expect(document.querySelector('h1')?.textContent).toBe('Welcome back to MAP');
+    expect(document.querySelector('h1')?.textContent).toBe('Welcome\nback to MAP.');
   });
 
   it('fails closed on status failure and renders backend text without executing it', async () => {

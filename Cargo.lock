@@ -4824,6 +4824,7 @@ dependencies = [
  "holons_core",
  "holons_loader_client",
  "map_commands_contract",
+ "serde",
  "serde_json",
  "session_receptor",
  "tokio",
