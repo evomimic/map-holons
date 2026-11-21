@@ -232,6 +232,31 @@ function applyPaneControls(parts, layout, relayout) {
     Object.assign(collectionReturn.style, { minHeight: `${size}px`, marginRight: "0px" });
     collectionReturn.inert = false;
   }
+  let expand = root.collectionExpandControl;
+  if (!expand) {
+    expand = root.collectionExpandControl = document.createElement("button");
+    expand.type = "button";
+    expand.dataset.collectionExpand = "true";
+    root.inspectionHeading.append(expand);
+  }
+  const maximized = !!parts.collectionMaximized;
+  const expandLabel = maximized ? "Restore collection size" : "Expand collection to full size";
+  expand.title = expandLabel;
+  expand.setAttribute("aria-label", expandLabel);
+  expand.setAttribute("aria-pressed", String(maximized));
+  expand.replaceChildren(actionIcon("ExpandRestoreOccurrence.VisualizerOperator", maximized));
+  expand.style.cssText = `display:flex;align-items:center;justify-content:center;flex:0 0 ${size}px;width:${size}px;height:${size}px;box-sizing:border-box;padding:4px;border:0;background:var(--dahn-action-surface-background);color:var(--dahn-action-text-color);cursor:pointer;`;
+  expand.hidden = layout.mode !== "collection";
+  expand.inert = expand.hidden;
+  if (expand.hidden) expand.style.display = "none";
+  expand.disabled = !parts.collectionAttentionAvailable;
+  expand.onclick = () => {
+    if (expand.hidden || expand.disabled) return;
+    const outcome = parts.requestCollectionAttention(maximized ? "restore" : "maximize");
+    relayout();
+    if (outcome?.reason) expand.title = outcome.reason;
+    expand.focus({ preventScroll: true });
+  };
 }
 function createInspectionGroupHeader(root, returnToInspection) {
   const header = root.inspectionHeading = document.createElement("header");
@@ -246,7 +271,7 @@ function createInspectionGroupHeader(root, returnToInspection) {
   });
   const label = root.inspectionLabel = document.createElement("span");
   label.textContent = "Properties, Actions & Relationships";
-  label.style.cssText = "min-width:0;padding:0 .75rem;font-size:1em;font-weight:600;color:var(--dahn-canvas-text-color);";
+  label.style.cssText = "font-family:var(--dahn-canvas-heading-font-family);min-width:0;padding:0 .75rem;font-size:1em;font-weight:600;color:var(--dahn-canvas-text-color);";
   header.append(label, button);
   return header;
 }
@@ -526,7 +551,7 @@ var LoadHolonsInspector = class extends HTMLElement {
     this.propertiesHeading.style.cssText = "min-width:0;min-height:0;align-items:center;";
     const propertiesLabel = document.createElement("span");
     propertiesLabel.textContent = "Properties";
-    propertiesLabel.style.cssText = "flex:1;min-width:0;padding:0 .75rem;font-weight:600;";
+    propertiesLabel.style.cssText = "font-family:var(--dahn-canvas-heading-font-family);flex:1;min-width:0;padding:0 .75rem;font-weight:600;";
     this.propertiesHeading.style.background = "var(--dahn-action-surface-background)";
     this.propertiesHeading.append(propertiesLabel);
     createInspectionGroupHeader(this, () => {
@@ -649,7 +674,16 @@ var LoadHolonsInspector = class extends HTMLElement {
       this.collectionViewer.inert = layout.mode !== "collection";
       this.collectionViewer.style.display = layout.mode === "collection" ? "flex" : "none";
     }
-    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collections, collectionTabs: this.collectionTabBar, collectionReturn: this.collectionsExpand }, layout, () => this.setNodeInspectorAllocation(this.allocation));
+    applyPaneControls({
+      root: this,
+      heading: this.propertiesHeading,
+      collections: this.collections,
+      collectionTabs: this.collectionTabBar,
+      collectionReturn: this.collectionsExpand,
+      collectionAttentionAvailable: !!this.attention,
+      collectionMaximized: this.maximized,
+      requestCollectionAttention: (operation) => this.attention?.(operation)
+    }, layout, () => this.setNodeInspectorAllocation(this.allocation));
     if ([this.properties, this.collections, this.body, this.rail].some((region) => region.inert && region.contains(active))) this.titleControl.focus();
     return { status: "applied" };
   }

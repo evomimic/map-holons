@@ -1,3 +1,4 @@
+import { resolvedValueComposition } from '../../../test-fixtures/resolved-composition';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -24,11 +25,11 @@ function fixture(identityOnly = false) {
   document.body.append(element);
   const key = descriptor('Key'), count = descriptor('Count', 'IntegerValue');
   const members = ['A', 'B'].map((name, index) => ({ key: async () => name, propertyValue: async () => index ? null : { IntegerValue: 3 } }));
-  const collection = { length: 2, elementType: { effectiveDescriptor: async function () { return this; }, instanceProperties: async () => identityOnly ? [] : [key, count] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as unknown as DescribedHolonCollection;
+  const collection = { length: 2, elementType: {}, propertyDescriptors: async () => identityOnly ? [] : [key, count], [Symbol.iterator]: () => members[Symbol.iterator]() } as unknown as DescribedHolonCollection;
   const reference = (name: string) => ({ key: async () => name, propertyValue: async () => ({ StringValue: name }) }) as HolonReference;
   const table = reference('Table'), slot = reference('Table.ValueSlot'), text = reference('Text Value'), integer = reference('Integer Value');
-  const transaction = { selectValueVisualizer: vi.fn(async property => ({ selected: property === count ? integer : text })), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => key) } as unknown as MapTransaction;
-  const materialized = { slot: vi.fn(async () => slot), realize: vi.fn(async selected => selected === integer ? IntegerValue : TextValue) } as unknown as MaterializedVisualizerRuntime;
+  const transaction = { resolvePropertyComposition: vi.fn(async (property, owner, slot) => resolvedValueComposition(property === count ? integer : text, owner, slot)), getSavedPropertyDescriptorByBaseKey: vi.fn(async () => key) } as unknown as MapTransaction;
+  const materialized = { forComposition: vi.fn(function () { return materialized; }), admitBinding: vi.fn(), slot: vi.fn(async () => slot), realize: vi.fn(async selected => selected === integer ? IntegerValue : TextValue) } as unknown as MaterializedVisualizerRuntime;
   configureColumnValueVisualizers(element as CollectionInteractionElement, transaction, collection, table, materialized, () => true, { theme: { reference: table } as never });
   return { element, collection, transaction, materialized, table, slot, text, integer, members, count };
 }
@@ -37,7 +38,7 @@ afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
 
 it('selects once per descriptor column, shares that definition across cells, and exposes heading-only information', async () => {
   const f = fixture(); await f.element.setCollection(f.collection, 'Items');
-  expect(f.transaction.selectValueVisualizer).toHaveBeenCalledTimes(2);
+  expect(f.transaction.resolvePropertyComposition).toHaveBeenCalledTimes(2);
   expect(f.materialized.slot).toHaveBeenCalledTimes(1);
   expect(f.element.querySelectorAll('tbody [data-visualizer-information-control]')).toHaveLength(0);
   expect(f.element.querySelectorAll('thead [data-visualizer-information-control]')).toHaveLength(2);
@@ -55,14 +56,14 @@ it('selects once per descriptor column, shares that definition across cells, and
   expect(targets[0].regionLabel).toBe('Column: Count (all rows)');
   expect(f.element.sort?.columnId).not.toBe('Count'); expect(f.element.selectedRow).toBeUndefined();
   f.element.sortBy('Count', 'descending');
-  expect(targets[0].isLive()).toBe(true); expect(f.transaction.selectValueVisualizer).toHaveBeenCalledTimes(2);
+  expect(targets[0].isLive()).toBe(true); expect(f.transaction.resolvePropertyComposition).toHaveBeenCalledTimes(2);
   f.element.setInspectHolonHandler(null); expect(targets[0].isLive()).toBe(false);
 });
 
 it('selects a synthetic identity column through the canonical property descriptor', async () => {
   const f = fixture(true); await f.element.setCollection(f.collection, 'Types');
   expect(f.transaction.getSavedPropertyDescriptorByBaseKey).toHaveBeenCalledWith('Key.PropertyType');
-  expect(f.transaction.selectValueVisualizer).toHaveBeenCalledTimes(1);
+  expect(f.transaction.resolvePropertyComposition).toHaveBeenCalledTimes(1);
   expect(f.element.querySelector('tbody td').firstElementChild).toBeInstanceOf(TextValue);
 });
 
@@ -72,7 +73,7 @@ it('keeps unbound projections Table-owned and accepts explicit descriptor bindin
     { id: 'count', displayName: 'Count', valueType: 'IntegerValue', values: [{ IntegerValue: 9 }] },
   ] };
   f.element.setProjection(projection);
-  expect(f.transaction.selectValueVisualizer).not.toHaveBeenCalled();
+  expect(f.transaction.resolvePropertyComposition).not.toHaveBeenCalled();
   expect(f.element.querySelector('td').textContent).toBe('9');
   expect(f.element.querySelector('[data-visualizer-information-control]')).toBeNull();
   await f.element.setProjection(projection, new Map([['count', f.count]]));
@@ -82,13 +83,34 @@ it('keeps unbound projections Table-owned and accepts explicit descriptor bindin
 });
 
 it('does not mount a late column selection over a replacement projection', async () => {
-  const f = fixture(); let release!: (selection: { selected: HolonReference }) => void;
-  vi.mocked(f.transaction.selectValueVisualizer).mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+  const f = fixture(); let release!: (selection: ReturnType<typeof resolvedValueComposition>) => void;
+  vi.mocked(f.transaction.resolvePropertyComposition).mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
   const pending = f.element.setCollection(f.collection, 'Old');
   await vi.waitFor(() => expect(release).toBeTypeOf('function'));
   f.element.setProjection({ kind: 'scalar', displayName: 'New', rowIds: [], columns: [{ id: 'new', displayName: 'New', valueType: 'StringValue', values: [] }] });
-  release({ selected: f.text }); await pending;
+  release(resolvedValueComposition(f.text)); await pending;
   expect(f.element.querySelector('table').getAttribute('aria-label')).toBe('New');
   expect(f.element.querySelector('[data-visualizer-information-control]')).toBeNull();
-  expect(f.transaction.selectValueVisualizer).toHaveBeenCalledTimes(1);
+  expect(f.transaction.resolvePropertyComposition).toHaveBeenCalledTimes(1);
+});
+
+it('shares returned personal configuration across cells without preparing another Usage', async () => {
+  const f = fixture();
+  const usage = f.text;
+  const composition = resolvedValueComposition(f.integer, f.table, f.slot);
+  const binding = composition.bindings[0];
+  binding.usage = usage;
+  binding.configuration = { DateFormat: { StringValue: 'long' } };
+  vi.mocked(f.transaction.resolvePropertyComposition).mockResolvedValueOnce(composition);
+  const contexts: unknown[] = [];
+  const original = IntegerValue.prototype.setContext;
+  const spy = vi.spyOn(IntegerValue.prototype, 'setContext').mockImplementation(function (context) {
+    contexts.push(context); original.call(this, context);
+  });
+  await f.element.setCollection(f.collection, 'Items');
+  expect(contexts).toEqual(expect.arrayContaining([
+    expect.objectContaining({ visualizerUsage: usage, visualizerConfiguration: binding.configuration }),
+  ]));
+  expect(f.materialized.admitBinding).toHaveBeenCalled();
+  spy.mockRestore();
 });

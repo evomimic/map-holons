@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP Space Navigator Schema-v0.1.0",
+      "key": "MAP Space Navigator Schema-v0.1.4",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Space Navigator Schema-v0.1.0",
+        "SchemaName": "MAP Space Navigator Schema-v0.1.4",
         "Description": "House Troupe semantic package for the Space Navigator's statically bundled Visualizer Holons and their locally resolvable implementation identities. These mappings resolve semantic VisualizerImplementation Holons; they do not create TypeScript-only Visualizer identities. The persisted TableCollectionVisualizer key identifies the current table-oriented Collection presentation strategy; shape-based collection applicability is deferred."
       },
       "relationships": [
@@ -12,25 +12,25 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.11"
             },
             {
-              "$ref": "MAP Dance Schema-v0.1.0"
+              "$ref": "MAP Dance Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Theme Schema-v0.1.0"
+              "$ref": "MAP Theme Schema-v0.1.4"
             },
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         }
@@ -59,7 +59,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Space Navigator Schema-v0.1.0"
+              "$ref": "MAP Space Navigator Schema-v0.1.4"
             }
           ]
         }
@@ -101,10 +101,10 @@
           "name": "Requires",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Space Navigator Schema-v0.1.0"
+              "$ref": "MAP Space Navigator Schema-v0.1.4"
             }
           ]
         }
@@ -146,6 +146,9 @@
             },
             {
               "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
             },
             {
               "$ref": "CanvasFontSize.DesignToken"
@@ -269,10 +272,10 @@
       "key": "TableCollection.ValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "value",
+        "CompositionActivation": "Demand",
         "CompositionRole": "value",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Value",
         "VisualizerSlotDescription": "Present the values of one property across all items in this column, using the same presentation for every row."
       },
       "relationships": [
@@ -302,7 +305,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:da92e973e2cca1c75a3365172d0d087410eb92ad1fd9ae0bb6041e9365de5744",
+        "VisualizerArtifactDigest": "sha256:a0aeaf1e6dfa29d921174282f399bb0971982e3b73eafcf295eb1f87ab6944df",
         "VisualizerImplementationKey": "dahn.table-collection",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -331,7 +334,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Space Navigator Schema-v0.1.0"
+              "$ref": "MAP Space Navigator Schema-v0.1.4"
             }
           ]
         }
@@ -446,7 +449,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Space Navigator Schema-v0.1.0"
+              "$ref": "MAP Space Navigator Schema-v0.1.4"
             }
           ]
         }
@@ -456,10 +459,10 @@
       "key": "VisualizerInspector.DiscoveryExplorerSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "structure",
+        "CompositionActivation": "Demand",
         "CompositionRole": "discovery",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Structure",
         "VisualizerSlotDescription": "Explain the authoritative chain that identified the current Visualizer and its alternatives."
       },
       "relationships": [
@@ -570,7 +573,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Space Navigator Schema-v0.1.0"
+              "$ref": "MAP Space Navigator Schema-v0.1.4"
             }
           ]
         },
@@ -607,7 +610,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Space Navigator Schema-v0.1.0"
+              "$ref": "MAP Space Navigator Schema-v0.1.4"
             }
           ]
         },

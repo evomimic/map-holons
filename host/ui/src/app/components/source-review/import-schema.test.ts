@@ -16,6 +16,13 @@ describe('import schema snapshot', () => {
     expect(invalid.valid).toBe(false);
     expect(invalid.diagnostics.length).toBeGreaterThan(0);
   });
+  it('validates in a packaged context that prohibits runtime code generation', async () => {
+    respond(readFileSync('ui/public/bootstrap-import.schema.json', 'utf8'));
+    vi.stubGlobal('Function', function () { throw new EvalError('Content Security Policy blocks unsafe-eval'); });
+    const validate = await loadImportValidator();
+    expect((await validate('{"holons":[]}')).valid).toBe(true);
+    expect((await validate('{"wrong":true}')).valid).toBe(false);
+  });
   it.each(['{', '[]', '{"type":"not-a-schema-type"}'])('rejects malformed schema %s', async text => {
     respond(text);
     await expect(loadImportValidator()).rejects.toThrow();
@@ -24,12 +31,11 @@ describe('import schema snapshot', () => {
     respond('', false);
     await expect(loadImportValidator()).rejects.toThrow('503');
   });
-  it('does not reuse a name-only cache across changed schemas', async () => {
-    respond('{"type":"string"}');
+  it('rejects a schema snapshot that differs from the packaged validator', async () => {
+    respond(readFileSync('ui/public/bootstrap-import.schema.json', 'utf8'));
     const first = await loadImportValidator();
     respond('{"type":"number"}');
-    const second = await loadImportValidator();
-    expect((await first('1')).valid).toBe(false);
-    expect((await second('1')).valid).toBe(true);
+    await expect(loadImportValidator()).rejects.toThrow('does not match');
+    expect((await first('{"holons":[]}')).valid).toBe(true);
   });
 });

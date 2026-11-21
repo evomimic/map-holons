@@ -133,6 +133,7 @@ pub enum DahnDanceImplementationName {
     LocalMaterializeVisualizer,
     GuestResolveVisualizerUsage,
     GuestLoadTheme,
+    GuestResolveComposition,
 }
 
 /// Canonical implementation names for generic Dancer lifecycle dances.

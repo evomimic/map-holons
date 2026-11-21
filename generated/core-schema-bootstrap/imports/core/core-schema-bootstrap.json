@@ -21,40 +21,43 @@
           "name": "AvailableSchemas",
           "target": [
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Commands Schema-v0.1.4"
             },
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP Core Schema-v0.0.11"
             },
             {
-              "$ref": "MAP Dance Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dance Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Query Schema-v0.0.2"
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Theme Schema-v0.1.0"
+              "$ref": "MAP Query Schema-v0.0.6"
             },
             {
-              "$ref": "MAP Validation Schema-v0.1.0"
+              "$ref": "MAP Theme Schema-v0.1.4"
+            },
+            {
+              "$ref": "MAP Validation Schema-v0.1.4"
             }
           ]
         }

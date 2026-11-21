@@ -4499,8 +4499,6 @@ dependencies = [
 [[package]]
 name = "kitsune2_transport_iroh"
 version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6f462639b92a749fac35b73345ebe407c60a53f986709abdf3edce29d656f76"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4824,6 +4822,7 @@ dependencies = [
  "holons_core",
  "holons_loader_client",
  "map_commands_contract",
+ "serde",
  "serde_json",
  "session_receptor",
  "tokio",

@@ -839,6 +839,40 @@ impl HolonServiceApi for ClientHolonService {
         ))
     }
 
+    fn resolve_composition_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        request: holons_core::dahn::composition::CompositionRequest,
+    ) -> Result<HolonReference, HolonError> {
+        let invocation =
+            holons_core::dances::implementations::resolve_composition::invocation(context, request)
+                .map_err(|error| {
+                    HolonError::InvalidState(format!(
+                        "Constructing composition invocation: {error}"
+                    ))
+                })?;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })
+                .map_err(|error| {
+                    HolonError::InvalidState(format!("Executing composition invocation: {error}"))
+                })?;
+        if !matches!(response, HolonReference::Transient(_)) {
+            return Err(HolonError::InvalidParameter(
+                "Composition response must be transient".into(),
+            ));
+        }
+        let bodies = response
+            .related_holons(type_names::CoreRelationshipTypeName::ResponseBody)?
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        match bodies.as_slice() {
+            [body] => Ok(body.clone()),
+            _ => Err(HolonError::InvalidParameter("Expected one composition response body".into())),
+        }
+    }
+
     fn load_theme_internal(
         &self,
         context: &Arc<TransactionContext>,

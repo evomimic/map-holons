@@ -42,7 +42,14 @@ export default class PropertyMapVisualizerElement extends HTMLElement {
       display: 'grid', alignContent: 'start', gridAutoRows: 'max-content',
       gap: 'var(--dahn-properties-row-gap)',
     });
-    const children = context.childVisualizers ?? new Map();
+    const direct = context.propertyChildren;
+    const children = direct ? new Map(direct.map(({ propertyName, label, value }) => {
+      const row = document.createElement('div');
+      row.dataset.dahnProperty = 'true';
+      Object.assign(row.style, { display: 'grid', gridTemplateColumns: 'minmax(var(--dahn-property-name-min-width), 1fr) minmax(0, 2fr)', columnGap: 'var(--dahn-property-column-gap)', minWidth: '0' });
+      row.append(label, value);
+      return [propertyName, row];
+    })) : context.childVisualizers ?? new Map();
     this.composition = [...children].map(([label, element]) => ({ label, element }));
     this.rows = [];
     if (children.size === 0) properties.textContent = 'No properties';

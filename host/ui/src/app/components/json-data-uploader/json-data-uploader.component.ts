@@ -103,7 +103,7 @@ export class JsonDataUploader implements OnInit {
       }
       const schema = JSON.parse(schemaContent);
       this.schemaJson.set(JSON.stringify(schema, null, 2));
-      this.schemaValidatorService.compileSchema(this.schemaFilename, schema);
+      this.schemaValidatorService.registerSchema(this.schemaFilename, schema);
 
     } catch (error) {
         console.error("Schema loading error:", error);

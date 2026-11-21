@@ -99,8 +99,8 @@ uuid = { version = "1", features = ["serde"] }
 # -------------------------------------------------------------------
 # `portmapper` is vendored with UPnP / PCP / NAT-PMP disabled by default, so sweettests stop
 # emitting SSDP multicast and gateway NAT-discovery probes. iroh's enabled port mapper
-# creates a default client. Although iroh exposes PortmapperConfig::Disabled, the Kitsune
-# transport does not expose that setting to the conductor, so we patch the client default.
+# creates a default client. Upstream Kitsune does not expose the Iroh setting,
+# so these tests patch the client default as an additional LAN-probe safeguard.
 #
 # Scope: this workspace only. The happ zomes compile to wasm and never pull iroh, so the patch
 # reaches nothing but `tests/sweetests`. Deliberately NOT applied to `host/Cargo.toml` — a
@@ -110,6 +110,7 @@ uuid = { version = "1", features = ["serde"] }
 # See patches/README.md for the full rationale and removal criteria.
 # -------------------------------------------------------------------
 [patch.crates-io]
+kitsune2_transport_iroh = { path = "host/patches/kitsune2_transport_iroh" }
 portmapper = { path = "patches/portmapper" }
 # Native init/source-chain backport shared with the embedded host conductor.
 holochain = { path = "host/patches/holochain" }

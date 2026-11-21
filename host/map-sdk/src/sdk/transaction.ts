@@ -24,6 +24,8 @@ import {
 import {
   createPropertyDescriptorHandle,
   unwrapPropertyDescriptorHandle,
+  unwrapRelationshipDescriptorHandle,
+  type RelationshipDescriptorHandle,
   HolonDescriptorHandle,
   unwrapHolonDescriptorHandle,
   type PropertyDescriptorHandle,
@@ -91,6 +93,7 @@ export interface VisualizerDiscovery {
 /** Rust-selected semantic Visualizer reference for a visualization request. */
 export interface VisualizerSelection {
   selected: HolonReference;
+  usage?: HolonReference;
   requestedKind: VisualizerKind;
   alternativesAvailable: boolean;
 }
@@ -146,6 +149,74 @@ export class MapTransaction {
     }
 
     mapTransactionTxIds.set(this, txId);
+  }
+
+  /** One guest operation expands the selected owner's semantic composition. */
+  async resolveComposition(owner: HolonReference, subject: HolonReference, theme: HolonReference,
+    demandSlot?: HolonReference, collectionSource?: HolonReference): Promise<import('./composition').ResolvedComposition> {
+    const resolved = await internalTransaction.resolveComposition(txIdFor(this), {
+      owner: unwrapHolonReference(owner), subject: unwrapHolonReference(subject), theme: unwrapHolonReference(theme),
+      demand_slot: demandSlot ? unwrapHolonReference(demandSlot) : null,
+      collection_source: collectionSource ? unwrapHolonReference(collectionSource) : null,
+    });
+    const references = resolved.references.map(r => createHolonReference(txIdFor(this), r));
+    const metadata = resolved.data.metadata.map(m => ({
+      reference: references[m.reference], key: m.key, identity: m.identity,
+      versionedKey: m.versioned_key, properties: m.properties,
+    }));
+    return {
+      metadata,
+      theme: references[resolved.data.theme!],
+      populations: resolved.data.populations.map(p => ({
+        source: references[p.source], relationship: p.relationship,
+        members: p.members.map(i => references[i]),
+      })),
+      work: {
+        selections: resolved.data.work.selections,
+        bindingReuses: resolved.data.work.binding_reuses,
+        metadataReuses: resolved.data.work.metadata_reuses,
+        personalPopulationRequests: resolved.data.work.personal_population_requests,
+        candidatePopulationRequests: resolved.data.work.candidate_population_requests,
+      },
+      subjectProperties: resolved.data.subject_properties.map(p => ({
+        subject: references[p.subject], property: createPropertyDescriptorHandle(references[p.descriptor]),
+        name: p.name, label: p.label, isArray: p.is_array,
+      })),
+      bindings: resolved.data.bindings.map(b => ({
+        parent: b.parent, owner: references[b.owner], slot: references[b.slot],
+        subject: references[b.subject], subjectDescriptor: references[b.subject_descriptor],
+        subjectBinding: b.subject_binding, role: b.role,
+        propertyName: b.property_name ?? undefined, label: b.label ?? undefined,
+        selected: references[b.selected], implementation: references[b.implementation],
+        usage: b.usage === null ? undefined : references[b.usage],
+        configuration: b.configuration,
+        governingRecord: b.governing_record === null ? undefined : references[b.governing_record],
+        reason: b.reason, requiredOperators: b.required_operators, offeredOperators: b.offered_operators,
+      })),
+    };
+  }
+
+  /** Resolve one declared Value demand without exposing the descriptor's transport handle. */
+  resolvePropertyComposition(property: PropertyDescriptorHandle, owner: HolonReference,
+    slot: HolonReference, theme: HolonReference): Promise<import('./composition').ResolvedComposition> {
+    return this.resolveComposition(owner, unwrapPropertyDescriptorHandle(property), theme, slot);
+  }
+
+  /** Activate a selected owner's collection Slot for one available relationship source. */
+  resolveRelationshipComposition(owner: HolonReference, subject: HolonReference, theme: HolonReference,
+    slot: HolonReference, source: RelationshipDescriptorHandle): Promise<import('./composition').ResolvedComposition> {
+    return this.resolveComposition(owner, subject, theme, slot, unwrapRelationshipDescriptorHandle(source));
+  }
+
+  /** Stage an explicit choice, independently of configuration. Call ordinary Commit to save it. */
+  async rememberVisualizerPreference(subjectType: HolonReference, visualizer: HolonReference, slot?: HolonReference, usage?: HolonReference): Promise<HolonReference> {
+    const reference = await internalTransaction.rememberVisualizerPreference(txIdFor(this), { subject_type: unwrapHolonReference(subjectType), visualizer: unwrapHolonReference(visualizer), slot: slot ? unwrapHolonReference(slot) : null, usage: usage ? unwrapHolonReference(usage) : null });
+    return createHolonReference(txIdFor(this), reference);
+  }
+
+  /** Explicit bounded conversion; a missing old Slot never gains cross-cutting scope. */
+  async convertVisualizerSlotPreference(preference: HolonReference): Promise<HolonReference> {
+    return createHolonReference(txIdFor(this), await internalTransaction.convertVisualizerSlotPreference(txIdFor(this), unwrapHolonReference(preference)));
   }
 
   /** Whether a handle was bound through this context, without exposing wire identity. */
@@ -574,13 +645,11 @@ export class MapTransaction {
       this.selectionRequestWire(request),
     );
     const selected = createHolonReference(txId, wire.selected);
-    if (wire.usage) {
+    if (wire.usage?.report_session) {
       const usage = { usage: createHolonReference(txId, wire.usage.usage), initialized: wire.usage.initialized, reportSession: wire.usage.report_session };
       this.selectedUsage.set(selected, { request, usage });
-    } else if (this.usageBatchDepth) {
-      throw new Error('Selection did not return the Usage prepared for the active round');
     }
-    return { selected, requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
+    return { selected, usage: wire.usage ? createHolonReference(txId, wire.usage.usage) : undefined, requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
   }
 
   /** Capture startup-selected identities through the same Usage lifecycle as later selections. */

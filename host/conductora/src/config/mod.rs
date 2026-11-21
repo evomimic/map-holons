@@ -1,3 +1,4 @@
+pub mod environment;
 pub mod providers;
 pub mod storage_manager;
 

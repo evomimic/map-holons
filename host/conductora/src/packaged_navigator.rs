@@ -1,19 +1,16 @@
 //! Packaged local Navigator window and admission over the existing application runtime.
-use crate::{
-    setup::application_launcher::{
-        prepare_application_launch, ApplicationSessionPhase, ApplicationSessionState,
-    },
-    welcome_lifecycle::WelcomeLifecycle,
+use crate::setup::application_launcher::{
+    prepare_application_launch, ApplicationSessionPhase, ApplicationSessionState,
 };
 use map_commands_runtime::{
     application_launch::LaunchRequirement,
     personal_constitution::{PersonalConstitution, SovereigntyObservation},
 };
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use welcome::lifecycle::WelcomeLifecycle;
 
 const WINDOW: &str = "navigator";
-#[derive(Default)]
-pub struct NavigatorLaunchLock(tokio::sync::Mutex<()>);
+pub use welcome::transition::NavigatorLaunchLock;
 
 fn approved_page(label: &str, url: &tauri::Url) -> bool {
     label == WINDOW
@@ -49,13 +46,13 @@ pub(crate) fn admit_operational_window(window: &WebviewWindow) -> Result<(), Str
 /// Native handoff only: no caller-supplied Agent/Space IDs, provisioning or constitution.
 #[tauri::command]
 pub async fn open_space_navigator(window: WebviewWindow) -> Result<(), String> {
-    crate::trusted_welcome::admit(&window)?;
+    welcome::commands::admit(&window)?;
     if !cfg!(all(feature = "local-constitution", debug_assertions)) {
         return Err("Packaged Navigator is not enabled in this build".into());
     }
     let handle = window.app_handle();
     let launch = handle.state::<NavigatorLaunchLock>();
-    let _guard = launch.0.try_lock().map_err(|_| "Navigator is already opening")?;
+    let _guard = launch.try_acquire()?;
     if !handle.state::<PersonalConstitution>().available() {
         return Err("Constitution work is pending; retain it for remediation".into());
     }

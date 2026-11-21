@@ -1,7 +1,9 @@
 # Preserve published third-party source bytes and collapse vendor copies in review.
 host/patches/holochain/** linguist-vendored=true -whitespace
 host/patches/holochain_state/** linguist-vendored=true -whitespace
+host/patches/kitsune2_transport_iroh/** linguist-vendored=true -whitespace
 # Context-only blank lines in unified patches intentionally contain a space.
 host/patches/holochain-init-backport.patch -whitespace
+host/patches/kitsune2-port-mapping.patch -whitespace
 # Preserve raw measurement captures for provenance hash verification.
 host/patches/holochain-init-evidence/*.log -whitespace

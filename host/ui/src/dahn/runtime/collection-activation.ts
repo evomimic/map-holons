@@ -215,7 +215,7 @@ export class NodeCollectionActivation implements CollectionActivation {
               this.materialized, current, name => {
                 stage = name;
                 if (name === 'Artifact materialization') profile?.next('collection artifact materialization');
-              }, this.presentation, this.valueContext);
+              }, this.presentation, this.valueContext, { subject: this.owner, source: affordance.relationship.descriptor });
             if (!element) return;
             profile?.next('collection ordering');
             stage = 'Property retrieval / presentation';

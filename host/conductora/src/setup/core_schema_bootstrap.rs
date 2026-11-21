@@ -25,7 +25,7 @@ use base_types::ToBaseValue;
 // directory (including in dev mode under `target/debug/resources`).
 const BUNDLE_DIRECTORY: &str = "resources/core-schema-bootstrap";
 const MANIFEST_FILENAME: &str = "manifest.json";
-const REQUIRED_BOOTSTRAP_PACKAGES: [&str; 12] = [
+const REQUIRED_BOOTSTRAP_PACKAGES: [&str; 13] = [
     "core",
     "validation",
     "dance",
@@ -37,6 +37,7 @@ const REQUIRED_BOOTSTRAP_PACKAGES: [&str; 12] = [
     "design-tokens",
     "meta-design-system",
     "theme",
+    "agent-spaces",
     "dahn",
 ];
 
@@ -212,12 +213,18 @@ pub(crate) async fn prepare_core_schema(
         let compatibility_started = Instant::now();
         let verify_tx = runtime.session().begin_transaction().await?;
         let verify_context = runtime.session().get_transaction(&verify_tx)?;
-        let verified =
-            verify_context.lookup().get_saved_holon_by_key(&manifest.core_schema_key.into());
+        let verified = verify_context
+            .lookup()
+            .get_saved_holon_by_key(&manifest.core_schema_key.clone().into());
         let archived = runtime.session().archive_transaction(&verify_tx);
-        verified.map_err(|error| anyhow::anyhow!(
-            "Existing local Space lacks the supported Core Schema; Open cannot reprovision or upgrade it: {error}"
-        ))?;
+        verified.map_err(|error| match error {
+            HolonError::HolonNotFound(_) => anyhow::Error::new(
+                tauri_plugin_holochain::HolochainRuntimeError::IncompatibleEnvironment(format!(
+                    "Existing local Space lacks the supported CoreSchema key {}; Open cannot reprovision or upgrade it: {error}", manifest.core_schema_key
+                ))
+            ),
+            other => anyhow::Error::new(other).context("Reading the retained CoreSchema key"),
+        })?;
         archived?;
         tracing::info!(
             "[OPEN] Supported CoreSchema identity lookup: {}ms",
@@ -484,7 +491,7 @@ mod tests {
         fs::write(
             directory.join(MANIFEST_FILENAME),
             format!(
-                "{{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{{\"name\":\"core\",\"import_directory\":\"core\"}},{{\"name\":\"validation\",\"import_directory\":\"validation\"}},{{\"name\":\"dance\",\"import_directory\":\"dance\"}},{{\"name\":\"dancer\",\"import_directory\":\"dancer\"}},{{\"name\":\"commands\",\"import_directory\":\"commands\"}},{{\"name\":\"descriptor-runtime\",\"import_directory\":\"descriptor-runtime\"}},{{\"name\":\"query\",\"import_directory\":\"query\"}},{{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"}},{{\"name\":\"design-tokens\",\"import_directory\":\"design-tokens\"}},{{\"name\":\"meta-design-system\",\"import_directory\":\"meta-design-system\"}},{{\"name\":\"theme\",\"import_directory\":\"theme\"}},{{\"name\":\"dahn\",\"import_directory\":\"dahn\"}}],\"imports\":[{{\"path\":\"imports/core.json\",\"sha256\":\"{digest}\"}}]}}"
+                "{{\"release_identity\":\"MAP Core Schema-v0.0.11\",\"core_schema_key\":\"MAP Core Schema-v0.0.11\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{{\"name\":\"core\",\"import_directory\":\"core\"}},{{\"name\":\"validation\",\"import_directory\":\"validation\"}},{{\"name\":\"dance\",\"import_directory\":\"dance\"}},{{\"name\":\"dancer\",\"import_directory\":\"dancer\"}},{{\"name\":\"commands\",\"import_directory\":\"commands\"}},{{\"name\":\"descriptor-runtime\",\"import_directory\":\"descriptor-runtime\"}},{{\"name\":\"query\",\"import_directory\":\"query\"}},{{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"}},{{\"name\":\"design-tokens\",\"import_directory\":\"design-tokens\"}},{{\"name\":\"meta-design-system\",\"import_directory\":\"meta-design-system\"}},{{\"name\":\"theme\",\"import_directory\":\"theme\"}},{{\"name\":\"agent-spaces\",\"import_directory\":\"agent-spaces\"}},{{\"name\":\"dahn\",\"import_directory\":\"dahn\"}}],\"imports\":[{{\"path\":\"imports/core.json\",\"sha256\":\"{digest}\"}}]}}"
             ),
         )?;
 
@@ -504,7 +511,7 @@ mod tests {
         fs::write(imports.join("core.json"), "{\"holons\":[]}")?;
         fs::write(
             directory.join(MANIFEST_FILENAME),
-            "{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{\"name\":\"core\",\"import_directory\":\"core\"},{\"name\":\"validation\",\"import_directory\":\"validation\"},{\"name\":\"dance\",\"import_directory\":\"dance\"},{\"name\":\"dancer\",\"import_directory\":\"dancer\"},{\"name\":\"commands\",\"import_directory\":\"commands\"},{\"name\":\"descriptor-runtime\",\"import_directory\":\"descriptor-runtime\"},{\"name\":\"query\",\"import_directory\":\"query\"},{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"},{\"name\":\"design-tokens\",\"import_directory\":\"design-tokens\"},{\"name\":\"meta-design-system\",\"import_directory\":\"meta-design-system\"},{\"name\":\"theme\",\"import_directory\":\"theme\"},{\"name\":\"dahn\",\"import_directory\":\"dahn\"}],\"imports\":[{\"path\":\"imports/core.json\",\"sha256\":\"invalid\"}]}",
+            "{\"release_identity\":\"MAP Core Schema-v0.0.11\",\"core_schema_key\":\"MAP Core Schema-v0.0.11\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{\"name\":\"core\",\"import_directory\":\"core\"},{\"name\":\"validation\",\"import_directory\":\"validation\"},{\"name\":\"dance\",\"import_directory\":\"dance\"},{\"name\":\"dancer\",\"import_directory\":\"dancer\"},{\"name\":\"commands\",\"import_directory\":\"commands\"},{\"name\":\"descriptor-runtime\",\"import_directory\":\"descriptor-runtime\"},{\"name\":\"query\",\"import_directory\":\"query\"},{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"},{\"name\":\"design-tokens\",\"import_directory\":\"design-tokens\"},{\"name\":\"meta-design-system\",\"import_directory\":\"meta-design-system\"},{\"name\":\"theme\",\"import_directory\":\"theme\"},{\"name\":\"agent-spaces\",\"import_directory\":\"agent-spaces\"},{\"name\":\"dahn\",\"import_directory\":\"dahn\"}],\"imports\":[{\"path\":\"imports/core.json\",\"sha256\":\"invalid\"}]}",
         )?;
 
         let error = bootstrap_content_set_from_directory(&directory).expect_err("digest mismatch");

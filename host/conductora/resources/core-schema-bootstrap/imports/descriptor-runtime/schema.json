@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP Descriptor Runtime Schema-v0.1.0",
+      "key": "MAP Descriptor Runtime Schema-v0.1.4",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Descriptor Runtime Schema-v0.1.0",
+        "SchemaName": "MAP Descriptor Runtime Schema-v0.1.4",
         "Description": "Transient effective schema products, contribution provenance, and their construction Dance."
       },
       "relationships": [
@@ -12,13 +12,13 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.11"
             },
             {
-              "$ref": "MAP Dance Schema-v0.1.0"
+              "$ref": "MAP Dance Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Commands Schema-v0.1.0"
+              "$ref": "MAP Commands Schema-v0.1.4"
             }
           ]
         },
@@ -54,7 +54,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -144,7 +144,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -211,7 +211,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -260,7 +260,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -333,7 +333,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -398,7 +398,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -471,7 +471,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -536,7 +536,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -609,7 +609,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -674,7 +674,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -747,7 +747,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -812,7 +812,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -885,7 +885,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -950,7 +950,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1023,7 +1023,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1088,7 +1088,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1161,7 +1161,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1226,7 +1226,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1299,7 +1299,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1364,7 +1364,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1437,7 +1437,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1502,7 +1502,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1575,7 +1575,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1640,7 +1640,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1713,7 +1713,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1778,7 +1778,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1851,7 +1851,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1916,7 +1916,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -1989,7 +1989,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2049,7 +2049,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2101,7 +2101,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2155,7 +2155,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2245,7 +2245,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2318,7 +2318,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2383,7 +2383,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2456,7 +2456,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2517,7 +2517,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2561,7 +2561,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2620,7 +2620,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2683,7 +2683,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2735,7 +2735,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2814,7 +2814,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2863,7 +2863,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -2935,7 +2935,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3000,7 +3000,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3072,7 +3072,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3137,7 +3137,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3209,7 +3209,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3274,7 +3274,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3346,7 +3346,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3411,7 +3411,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3483,7 +3483,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3543,7 +3543,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3595,7 +3595,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3649,7 +3649,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3739,7 +3739,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3812,7 +3812,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3873,7 +3873,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3918,7 +3918,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },
@@ -3963,7 +3963,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Descriptor Runtime Schema-v0.1.0"
+              "$ref": "MAP Descriptor Runtime Schema-v0.1.4"
             }
           ]
         },

@@ -12,6 +12,9 @@ body {
   font-weight: var(--dahn-canvas-font-weight);
   line-height: var(--dahn-canvas-line-height);
 }
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--dahn-canvas-heading-font-family);
+}
 #loading-overlay {
   position: fixed;
   inset: 0;

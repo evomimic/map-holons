@@ -1111,7 +1111,13 @@ fn resolve_owns_index_space_id(
     staged_references: &[StagedReference],
 ) -> Result<LocalId, HolonError> {
     if let Some(space) = context.get_space_holon()? {
-        return Ok(space.holon_id()?.local_id().clone());
+        return Ok(holons_core::SmartReference::new_from_id(
+            context.space_read_handle(),
+            space.holon_id()?,
+        )
+        .lineage_root_id()?
+        .local_id()
+        .clone());
     }
 
     if context.is_bootstrap_provisioning() {
@@ -1162,7 +1168,7 @@ fn key_index_retry_sources(
 /// successor key needs a second physical SmartLink to the same root, so it uses a stable
 /// occurrence identity derived solely from that canonical key. Storage remains
 /// descriptor-agnostic; this is a coordinator-level indexing decision.
-fn owns_key_index_occurrence_id(key: &MapString) -> OccurrenceId {
+pub(crate) fn owns_key_index_occurrence_id(key: &MapString) -> OccurrenceId {
     let mut hasher = Sha256::new();
     hasher.update(b"map-holons:owns-key-index:v1\0");
     hasher.update(key.0.as_bytes());

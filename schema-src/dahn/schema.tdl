@@ -1,8 +1,10 @@
-schema "MAP DAHN Schema-v0.1.0" {
-  depends_on "MAP Core Schema-v0.0.7"
-  depends_on "MAP Dance Schema-v0.1.0"
-  depends_on "MAP Design Tokens Schema-v0.1.0"
-  depends_on "MAP Meta Design System Schema-v0.1.0"
+schema "MAP DAHN Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Agent Spaces Schema-v0.1.4"
+  depends_on "MAP Dance Schema-v0.1.4"
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
+  depends_on "MAP Theme Schema-v0.1.4"
   header {
     description: "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Required/offered local Visualizer Operators govern composition compatibility. Visualizer Commons stewardship and dynamic acquisition remain deferred."
   }
@@ -77,6 +79,7 @@ holon MetaVisualizerType.MetaHolonType {
     plural: "MetaVisualizerTypes"
   }
   relationships {
+    InstanceProperties -> VisualizerKind.PropertyType
     InstanceRelationships -> (MetaVisualizerType.MetaHolonType)-[HasSlot]->(VisualizerSlot.HolonType)
   }
 }
@@ -123,6 +126,7 @@ holon Canvas.HolonType {
 holon CanvasVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind Canvas
   header {
     description: "Concrete Visualizer Holon Type for visualizers that compose a canvas experience."
     display_name: "Canvas Visualizer"
@@ -153,6 +157,7 @@ instance MAP.BootstrapCanvasVisualizer {
       MutedTextColor.DesignToken,
       CanvasContentMinHeight.DesignToken,
       CanvasFontFamily.DesignToken,
+      CanvasHeadingFontFamily.DesignToken,
       CanvasFontSize.DesignToken,
       CanvasFontWeight.DesignToken,
       CanvasGap.DesignToken,
@@ -188,6 +193,7 @@ instance HolonInspector.NodeVisualizer {
   VisualizerDescription "Uses a titled card with an action bar, name-and-value rows, a side rail for single connections, and tabs for related collections. Sections can be expanded to give them more room."
   relationships {
     ConsumesDesignToken -> [
+      CanvasHeadingFontFamily.DesignToken,
       RelationshipNavigationSurfaceBackground.DesignToken,
       RelationshipNavigationTextColor.DesignToken,
       ActionCornerRadius.DesignToken,
@@ -223,9 +229,9 @@ instance HolonInspector.NodeVisualizer {
 instance HolonInspector.PropertyMapSlot {
   type VisualizerSlot.HolonType
   CompositionRole "propertyMap"
-  CompositionSubject "subject"
-  CompositionKind "propertyMap"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind PropertyMap
+  CompositionActivation Presentation
   VisualizerSlotDescription "Show the details recorded for this item."
   relationships {
     AcceptsVisualizerType -> PropertyMapVisualizer.HolonType
@@ -235,9 +241,9 @@ instance HolonInspector.PropertyMapSlot {
 instance HolonInspector.ActionsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "action"
-  CompositionSubject "subject"
-  CompositionKind "actionBar"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind ActionBar
+  CompositionActivation Presentation
   VisualizerSlotDescription "Show the actions available for this item and provide access to them."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
@@ -248,9 +254,9 @@ instance HolonInspector.ActionsSlot {
 instance HolonInspector.VisualizerControlsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "visualizerActions"
-  CompositionSubject "subject"
-  CompositionKind "actionBar"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind ActionBar
+  CompositionActivation Presentation
   VisualizerSlotDescription "Present the centrally declared Visualizer controls within the title band."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
@@ -262,9 +268,9 @@ instance HolonInspector.VisualizerControlsSlot {
 instance HolonInspector.CollectionsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "collection"
-  CompositionSubject "subject"
-  CompositionKind "collection"
-  CompositionActivation "demand"
+  CompositionSubject SelectedCollection
+  VisualizerKind Collection
+  CompositionActivation Demand
   VisualizerSlotDescription "Present a group of related items so you can examine its members and open an item."
   relationships {
     AcceptsVisualizerType -> CollectionVisualizer.HolonType
@@ -274,9 +280,9 @@ instance HolonInspector.CollectionsSlot {
 instance HolonInspector.SingleValueSlot {
   type VisualizerSlot.HolonType
   CompositionRole "singleValue"
-  CompositionSubject "subject"
-  CompositionKind "node"
-  CompositionActivation "demand"
+  CompositionSubject OwnerSubject
+  VisualizerKind Node
+  CompositionActivation Demand
   VisualizerSlotDescription "Inspect the item reached through a connection that has a single destination."
   relationships {
     AcceptsVisualizerType -> NodeVisualizer.HolonType
@@ -322,7 +328,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:9de27a68c7966a817d354cbaee63deadf0999c273fa4ebc48d857fb92ad3b9ac"
+  VisualizerArtifactDigest "sha256:d0e70a31a5b7f50227f59da0bb9cca7739d862e80329b100f877fb9106173377"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -330,6 +336,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
 holon NodeVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind Node
   header {
     description: "Concrete Visualizer Holon Type for visualizers that represent individual holons."
     display_name: "Node Visualizer"
@@ -341,6 +348,7 @@ holon NodeVisualizer.HolonType {
 holon StructureVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind Structure
   header {
     description: "Concrete Visualizer Holon Type for visualizers that realize a multi-Holon semantic structure organized by a topology."
     display_name: "Structure Visualizer"
@@ -352,6 +360,7 @@ holon StructureVisualizer.HolonType {
 holon RootedNavigationVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends StructureVisualizer.HolonType
+  VisualizerKind RootedNavigation
   header {
     description: "Structure Visualizer subkind for interaction-derived navigation rooted at one Holon."
     display_name: "Rooted Navigation Visualizer"
@@ -392,9 +401,9 @@ instance PathInspector.RootedNavigationVisualizer {
 instance PathInspector.RootNodeSlot {
   type VisualizerSlot.HolonType
   CompositionRole "node"
-  CompositionSubject "subject"
-  CompositionKind "node"
-  CompositionActivation "demand"
+  CompositionSubject OwnerSubject
+  VisualizerKind Node
+  CompositionActivation Demand
   VisualizerSlotDescription "Show an item’s details, provide access to its actions, and let you explore its connections."
   relationships {
     AcceptsVisualizerType -> NodeVisualizer.HolonType
@@ -414,6 +423,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
 holon CollectionVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind Collection
   header {
     description: "Concrete Visualizer Holon Type for visualizers that represent holon collections."
     display_name: "Collection Visualizer"
@@ -425,6 +435,7 @@ holon CollectionVisualizer.HolonType {
 holon PropertyMapVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind PropertyMap
   header {
     description: "Concrete Visualizer Holon Type for visualizers that represent a set of Properties within one presentation strategy."
     display_name: "Property Map Visualizer"
@@ -460,6 +471,8 @@ instance DefaultPropertyMapVisualizer.PropertyMapVisualizer {
       ActionTextColor.DesignToken,
       CanvasTextColor.DesignToken,
       MutedTextColor.DesignToken,
+      PropertyColumnGap.DesignToken,
+      PropertyNameMinWidth.DesignToken,
       PropertiesDisclosureFocusColor.DesignToken,
       PropertiesHeadingFontSize.DesignToken,
       PropertiesHeadingFontWeight.DesignToken,
@@ -477,9 +490,9 @@ instance DefaultPropertyMapVisualizer.PropertyMapVisualizer {
 instance DefaultPropertyMapVisualizer.PropertySlot {
   type VisualizerSlot.HolonType
   CompositionRole "property"
-  CompositionSubject "scalarProperties"
-  CompositionKind "property"
-  CompositionActivation "presentation"
+  CompositionSubject ScalarPropertyValue
+  VisualizerKind Value
+  CompositionActivation Presentation
   VisualizerSlotDescription "Identify one property and present its value."
   relationships {
     AcceptsVisualizerType -> PropertyVisualizer.HolonType
@@ -490,7 +503,7 @@ instance DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.properties"
-  VisualizerArtifactDigest "sha256:2a77eca9141a2066b8f8bd528085b6cef2d30a12348439641c22994d62c0c769"
+  VisualizerArtifactDigest "sha256:af6f63d46ded3dbf5045b14beb89308edbfc2474abb21e0a40e5a97460e0bd28"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -516,9 +529,9 @@ instance GenericProperty.PropertyVisualizer {
 instance GenericProperty.ValueSlot {
   type VisualizerSlot.HolonType
   CompositionRole "value"
-  CompositionSubject "subject"
-  CompositionKind "value"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind Value
+  CompositionActivation Presentation
   VisualizerSlotDescription "Present this property’s value in a form suited to its value type."
   relationships {
     AcceptsVisualizerType -> ValueVisualizer.HolonType
@@ -537,6 +550,7 @@ instance GenericPropertyTypeScript.VisualizerImplementation {
 holon ValueVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind Value
   header {
     description: "Concrete Visualizer Holon Type for visualizers that represent values."
     display_name: "Value Visualizer"
@@ -610,6 +624,7 @@ instance ScalarValueTypeScript.VisualizerImplementation {
 holon ActionBarVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind ActionBar
   header {
     description: "Composes contextual actions into uniformly allocated slots and groups."
     display_name: "Action Bar Visualizer"
@@ -650,9 +665,9 @@ instance LoadHolons.ActionVisualizer {
 instance LoadHolons.DiagnosticsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "diagnostics"
-  CompositionSubject "subject"
-  CompositionKind "collection"
-  CompositionActivation "demand"
+  CompositionSubject SelectedCollection
+  VisualizerKind Collection
+  CompositionActivation Demand
   VisualizerSlotDescription "Present the problems and validation findings from a data load so you can review what needs attention."
   relationships {
     AcceptsVisualizerType -> CollectionVisualizer.HolonType
@@ -662,9 +677,9 @@ instance LoadHolons.DiagnosticsSlot {
 instance LoadHolons.CommittedHolonsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "committed"
-  CompositionSubject "subject"
-  CompositionKind "collection"
-  CompositionActivation "demand"
+  CompositionSubject SelectedCollection
+  VisualizerKind Collection
+  CompositionActivation Demand
   VisualizerSlotDescription "Present the items saved by a data load so you can examine them and open an item."
   relationships {
     AcceptsVisualizerType -> CollectionVisualizer.HolonType
@@ -683,6 +698,7 @@ instance LoadHolonsActionTypeScript.VisualizerImplementation {
 holon ActionVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
+  VisualizerKind Action
   header {
     description: "Concrete Visualizer Holon Type for visualizers that represent actions."
     display_name: "Action Visualizer"
@@ -732,7 +748,8 @@ holon VisualizerSlot.HolonType {
     plural: "VisualizerSlots"
   }
   relationships {
-    InstanceProperties -> [VisualizerSlotDescription.PropertyType, CompositionRole.PropertyType, CompositionSubject.PropertyType, CompositionKind.PropertyType, CompositionActivation.PropertyType]
+    InstanceProperties -> [VisualizerSlotDescription.PropertyType, CompositionRole.PropertyType, CompositionSubject.PropertyType, VisualizerKind.PropertyType, CompositionActivation.PropertyType]
+    InstanceRelationships -> (VisualizerSlot.HolonType)-[InitialCollectionSource]->(RelationshipType.TypeDescriptor)
     InstanceRelationships -> [(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType), (VisualizerSlot.HolonType)-[RequiresOperator]->(VisualizerOperator.HolonType), (VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType)]
   }
 }
@@ -748,6 +765,7 @@ holon VisualizerUsage.HolonType {
   }
   relationships {
     InstanceRelationships -> [
+      (VisualizerUsage.HolonType)-[UsageForAgent]->(PersonAgent.BioSocialAgent),
       (VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType),
       (VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType),
       (VisualizerUsage.HolonType)-[ForSubjectType]->(TypeDescriptor),
@@ -1179,6 +1197,7 @@ instance LoadHolons.NodeVisualizer {
   DisplayName "Load Holons"
   VisualizerDescription "Groups load-result details above tabbed result collections, with a side rail for related items. The title bar supports the same exploration and expansion controls as Holon Inspector."
   relationships {
+    ConsumesDesignToken -> CanvasHeadingFontFamily.DesignToken
     OffersOperator -> [ApplyNodePresentationV2.VisualizerOperator, ExploreOccurrence.VisualizerOperator, CloseOccurrence.VisualizerOperator, ExpandRestoreOccurrence.VisualizerOperator, InspectOccurrence.VisualizerOperator, RestoreNodePresentation.VisualizerOperator]
     ImplementedBy -> LoadHolonsInspectorTypeScript.VisualizerImplementation
   }
@@ -1188,7 +1207,7 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.load-holons-inspector"
-  VisualizerArtifactDigest "sha256:9f1bf7200dac15ea1862bb8bdfdea93d44818ddd6bc15670b39c59a1c3dffae9"
+  VisualizerArtifactDigest "sha256:f3dab58a014a16aa270f101027c49370adb996ddcd9d873a3772148ef00860dc"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -1196,9 +1215,9 @@ instance LoadHolonsInspectorTypeScript.VisualizerImplementation {
 instance LoadHolonsResult.PropertyMapSlot {
   type VisualizerSlot.HolonType
   CompositionRole "propertyMap"
-  CompositionSubject "subject"
-  CompositionKind "propertyMap"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind PropertyMap
+  CompositionActivation Presentation
   VisualizerSlotDescription "Explain the outcome of this data load, including its status and result counts."
   relationships {
     AcceptsVisualizerType -> PropertyMapVisualizer.HolonType
@@ -1208,9 +1227,9 @@ instance LoadHolonsResult.PropertyMapSlot {
 instance LoadHolonsResult.ActionsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "action"
-  CompositionSubject "subject"
-  CompositionKind "actionBar"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind ActionBar
+  CompositionActivation Presentation
   VisualizerSlotDescription "Provide access to the actions available for this load result."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
@@ -1221,9 +1240,9 @@ instance LoadHolonsResult.ActionsSlot {
 instance LoadHolonsResult.VisualizerControlsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "visualizerActions"
-  CompositionSubject "subject"
-  CompositionKind "actionBar"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind ActionBar
+  CompositionActivation Presentation
   VisualizerSlotDescription "Present the centrally declared Visualizer controls within the title band."
   relationships {
     AcceptsVisualizerType -> ActionBarVisualizer.HolonType
@@ -1235,9 +1254,9 @@ instance LoadHolonsResult.VisualizerControlsSlot {
 instance LoadHolonsResult.CollectionsSlot {
   type VisualizerSlot.HolonType
   CompositionRole "collection"
-  CompositionSubject "subject"
-  CompositionKind "collection"
-  CompositionActivation "demand"
+  CompositionSubject SelectedCollection
+  VisualizerKind Collection
+  CompositionActivation Demand
   VisualizerSlotDescription "Present a group of items related to this load result so you can examine them and open an item."
   relationships {
     AcceptsVisualizerType -> CollectionVisualizer.HolonType
@@ -2448,6 +2467,7 @@ holon VisualizerOperator.HolonType {
 }
 
 holon TitleBarVisualizer.HolonType {
+  VisualizerKind TitleBar
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
   header {
@@ -2779,9 +2799,9 @@ instance NodeActions.Contract {
 instance HolonInspector.TitleBarSlot {
   type VisualizerSlot.HolonType
   CompositionRole "titleBar"
-  CompositionSubject "subject"
-  CompositionKind "titleBar"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind TitleBar
+  CompositionActivation Presentation
   VisualizerSlotDescription "Selected TitleBarSlot with independent inspection and bounded presentation."
   relationships {
     AcceptsVisualizerType -> TitleBarVisualizer.HolonType
@@ -2792,9 +2812,9 @@ instance HolonInspector.TitleBarSlot {
 instance LoadHolonsResult.TitleBarSlot {
   type VisualizerSlot.HolonType
   CompositionRole "titleBar"
-  CompositionSubject "subject"
-  CompositionKind "titleBar"
-  CompositionActivation "presentation"
+  CompositionSubject OwnerSubject
+  VisualizerKind TitleBar
+  CompositionActivation Presentation
   VisualizerSlotDescription "Selected TitleBarSlot with independent inspection and bounded presentation."
   relationships {
     AcceptsVisualizerType -> TitleBarVisualizer.HolonType
@@ -2807,6 +2827,7 @@ instance NodeTitleBar.TitleBarVisualizer {
   DisplayName "NodeTitleBar"
   VisualizerDescription "Selected, bounded NodeTitleBar presentation with explicit local Operator bindings."
   relationships {
+    ConsumesDesignToken -> CanvasHeadingFontFamily.DesignToken
     ApplicableToType -> HolonType.TypeDescriptor
     OffersOperator -> ApplyTitlePresentation.VisualizerOperator
     ImplementedBy -> NodeTitleBarTypeScript.VisualizerImplementation
@@ -2861,7 +2882,7 @@ instance NodeTitleBarTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.node-title-bar"
-  VisualizerArtifactDigest "sha256:4620177b4c08a8f02cefa3e3c40e58874f3d64829e9725712bcf0f20ac2db127"
+  VisualizerArtifactDigest "sha256:89c4804d4f3728a7b932ab18d3755b6403f0b0ad3940957e3ca8521e23300026"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -3045,6 +3066,7 @@ instance CompactTitleBar.TitleBarVisualizer {
   DisplayName "Compact Node Title"
   VisualizerDescription "Compact subject identity and bound Restore access; the containing Node owns the sibling ActionBar."
   relationships {
+    ConsumesDesignToken -> CanvasHeadingFontFamily.DesignToken
     ApplicableToType -> HolonLoadResponse.DanceResponseType
     OffersOperator -> ApplyTitlePresentation.VisualizerOperator
     ImplementedBy -> CompactTitleBarTypeScript.VisualizerImplementation
@@ -3055,7 +3077,7 @@ instance CompactTitleBarTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.compact-title-bar"
-  VisualizerArtifactDigest "sha256:df1cc40e33345c759d2b723a27bfaf33dc33cad86b40d3053dc659131d9c693d"
+  VisualizerArtifactDigest "sha256:189c87f1e931de4b0518b8e449a7be476e55f92cd53c51c4378cf9a045193117"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -3375,31 +3397,31 @@ property CompositionRole.PropertyType {
 property CompositionSubject.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
-  value MapStringValueType.StringValueType
+  value CompositionSubject.MapEnumValueType
   header {
-    description: "Subject binding: subject, owner, or scalarProperties."
+    description: "Guest-interpreted semantic subject binding independent of stored values and viewport geometry."
     display_name: "CompositionSubject"
     display_plural: "CompositionSubject values"
     plural: "CompositionSubjectValues"
   }
 }
 
-property CompositionKind.PropertyType {
+property VisualizerKind.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
-  value MapStringValueType.StringValueType
+  value VisualizerKind.MapEnumValueType
   header {
     description: "Visualizer kind required for a demanded composition Slot."
-    display_name: "CompositionKind"
-    display_plural: "CompositionKind values"
-    plural: "CompositionKindValues"
+    display_name: "VisualizerKind"
+    display_plural: "VisualizerKind values"
+    plural: "VisualizerKindValues"
   }
 }
 
 property CompositionActivation.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
-  value MapStringValueType.StringValueType
+  value CompositionActivation.MapEnumValueType
   header {
     description: "Activation policy: presentation for the current presentation; demand for later explicit activation."
     display_name: "CompositionActivation"
@@ -3446,7 +3468,7 @@ holon DefaultPropertyMapVisualizer.PropertyMapVisualizerType {
     plural: "DefaultPropertyMapVisualizerPropertyMapVisualizerTypes"
   }
   relationships {
-    HasSlot -> DefaultPropertyMapVisualizer.PropertySlot
+    HasSlot -> [DefaultPropertyMapVisualizer.LabelSlot, DefaultPropertyMapVisualizer.ValueSlot]
   }
 }
 
@@ -3489,5 +3511,979 @@ holon LoadHolons.NodeVisualizerType {
   }
   relationships {
     HasSlot -> [LoadHolonsResult.TitleBarSlot, LoadHolonsResult.PropertyMapSlot, LoadHolonsResult.ActionsSlot, LoadHolonsResult.VisualizerControlsSlot, LoadHolonsResult.CollectionsSlot]
+  }
+}
+
+holon VisualizerPreference.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  instance_keyrule NoneRule.KeyRuleType
+  header {
+    description: "An accepted personal Visualizer choice with optional Slot scope and optional configuration."
+    display_name: "VisualizerPreference"
+    display_plural: "VisualizerPreferences"
+    plural: "VisualizerPreferences"
+  }
+  relationships {
+    InstanceRelationships -> [(VisualizerPreference.HolonType)-[PreferenceForAgent]->(PersonAgent.BioSocialAgent), (VisualizerPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor), (VisualizerPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType), (VisualizerPreference.HolonType)-[PreferredVisualizer]->(Visualizer.HolonType), (VisualizerPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)]
+  }
+}
+
+holon VisualizerSlotDefault.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  instance_keyrule NoneRule.KeyRuleType
+  header {
+    description: "A Slot steward recommendation, optionally conditioned on a subject descriptor."
+    display_name: "VisualizerSlotDefault"
+    display_plural: "VisualizerSlotDefaults"
+    plural: "VisualizerSlotDefaults"
+  }
+  relationships {
+    InstanceRelationships -> [(VisualizerSlotDefault.HolonType)-[DefaultForSlot]->(VisualizerSlot.HolonType), (VisualizerSlotDefault.HolonType)-[RecommendsVisualizer]->(Visualizer.HolonType), (VisualizerSlotDefault.HolonType)-[DefaultForSubjectType]->(TypeDescriptor)]
+  }
+}
+
+relationship (VisualizerPreference.HolonType)-[PreferenceForAgent]->(PersonAgent.BioSocialAgent) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerPreference.HolonType
+  target PersonAgent.BioSocialAgent
+  TargetBinding Lineage
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasPersonalVisualizerPreference
+  }
+  header {
+    description: "PreferenceForAgent for the DAHN personal/composition contract."
+    display_name: "PreferenceForAgent"
+    display_plural: "PreferenceForAgent Relationships"
+    plural: "PreferenceForAgentRelationships"
+  }
+}
+inverse relationship (PersonAgent.BioSocialAgent)-[HasPersonalVisualizerPreference]->(VisualizerPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source PersonAgent.BioSocialAgent
+  target VisualizerPreference.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of PreferenceForAgent."
+    display_name: "HasPersonalVisualizerPreference"
+    display_plural: "HasPersonalVisualizerPreference Relationships"
+    plural: "HasPersonalVisualizerPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerPreference.HolonType
+  target TypeDescriptor
+  TargetBinding Version
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasSubjectVisualizerPreference
+  }
+  header {
+    description: "PreferenceForSubjectType for the DAHN personal/composition contract."
+    display_name: "PreferenceForSubjectType"
+    display_plural: "PreferenceForSubjectType Relationships"
+    plural: "PreferenceForSubjectTypeRelationships"
+  }
+}
+inverse relationship (TypeDescriptor)-[HasSubjectVisualizerPreference]->(VisualizerPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerPreference.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of PreferenceForSubjectType."
+    display_name: "HasSubjectVisualizerPreference"
+    display_plural: "HasSubjectVisualizerPreference Relationships"
+    plural: "HasSubjectVisualizerPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerPreference.HolonType
+  target VisualizerSlot.HolonType
+  TargetBinding Lineage
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> HasScopedVisualizerPreference
+  }
+  header {
+    description: "PreferenceForSlot for the DAHN personal/composition contract."
+    display_name: "PreferenceForSlot"
+    display_plural: "PreferenceForSlot Relationships"
+    plural: "PreferenceForSlotRelationships"
+  }
+}
+inverse relationship (VisualizerSlot.HolonType)-[HasScopedVisualizerPreference]->(VisualizerPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target VisualizerPreference.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of PreferenceForSlot."
+    display_name: "HasScopedVisualizerPreference"
+    display_plural: "HasScopedVisualizerPreference Relationships"
+    plural: "HasScopedVisualizerPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerPreference.HolonType)-[PreferredVisualizer]->(Visualizer.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerPreference.HolonType
+  target Visualizer.HolonType
+  TargetBinding Version
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> ChosenByVisualizerPreference
+  }
+  header {
+    description: "PreferredVisualizer for the DAHN personal/composition contract."
+    display_name: "PreferredVisualizer"
+    display_plural: "PreferredVisualizer Relationships"
+    plural: "PreferredVisualizerRelationships"
+  }
+}
+inverse relationship (Visualizer.HolonType)-[ChosenByVisualizerPreference]->(VisualizerPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target VisualizerPreference.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of PreferredVisualizer."
+    display_name: "ChosenByVisualizerPreference"
+    display_plural: "ChosenByVisualizerPreference Relationships"
+    plural: "ChosenByVisualizerPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerPreference.HolonType
+  target VisualizerUsage.HolonType
+  TargetBinding Lineage
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> PreferredByVisualizerPreference
+  }
+  header {
+    description: "PreferredUsage for the DAHN personal/composition contract."
+    display_name: "PreferredUsage"
+    display_plural: "PreferredUsage Relationships"
+    plural: "PreferredUsageRelationships"
+  }
+}
+inverse relationship (VisualizerUsage.HolonType)-[PreferredByVisualizerPreference]->(VisualizerPreference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target VisualizerPreference.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of PreferredUsage."
+    display_name: "PreferredByVisualizerPreference"
+    display_plural: "PreferredByVisualizerPreference Relationships"
+    plural: "PreferredByVisualizerPreferenceRelationships"
+  }
+}
+
+relationship (VisualizerSlotDefault.HolonType)-[DefaultForSlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlotDefault.HolonType
+  target VisualizerSlot.HolonType
+  TargetBinding Lineage
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasDefaultDeclaration
+  }
+  header {
+    description: "DefaultForSlot for the DAHN personal/composition contract."
+    display_name: "DefaultForSlot"
+    display_plural: "DefaultForSlot Relationships"
+    plural: "DefaultForSlotRelationships"
+  }
+}
+inverse relationship (VisualizerSlot.HolonType)-[HasDefaultDeclaration]->(VisualizerSlotDefault.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target VisualizerSlotDefault.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of DefaultForSlot."
+    display_name: "HasDefaultDeclaration"
+    display_plural: "HasDefaultDeclaration Relationships"
+    plural: "HasDefaultDeclarationRelationships"
+  }
+}
+
+relationship (VisualizerSlotDefault.HolonType)-[RecommendsVisualizer]->(Visualizer.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlotDefault.HolonType
+  target Visualizer.HolonType
+  TargetBinding Version
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> RecommendedBySlotDefault
+  }
+  header {
+    description: "RecommendsVisualizer for the DAHN personal/composition contract."
+    display_name: "RecommendsVisualizer"
+    display_plural: "RecommendsVisualizer Relationships"
+    plural: "RecommendsVisualizerRelationships"
+  }
+}
+inverse relationship (Visualizer.HolonType)-[RecommendedBySlotDefault]->(VisualizerSlotDefault.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target VisualizerSlotDefault.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of RecommendsVisualizer."
+    display_name: "RecommendedBySlotDefault"
+    display_plural: "RecommendedBySlotDefault Relationships"
+    plural: "RecommendedBySlotDefaultRelationships"
+  }
+}
+
+relationship (VisualizerSlotDefault.HolonType)-[DefaultForSubjectType]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlotDefault.HolonType
+  target TypeDescriptor
+  TargetBinding Version
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> HasConditionalSlotDefault
+  }
+  header {
+    description: "DefaultForSubjectType for the DAHN personal/composition contract."
+    display_name: "DefaultForSubjectType"
+    display_plural: "DefaultForSubjectType Relationships"
+    plural: "DefaultForSubjectTypeRelationships"
+  }
+}
+inverse relationship (TypeDescriptor)-[HasConditionalSlotDefault]->(VisualizerSlotDefault.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target VisualizerSlotDefault.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of DefaultForSubjectType."
+    display_name: "HasConditionalSlotDefault"
+    display_plural: "HasConditionalSlotDefault Relationships"
+    plural: "HasConditionalSlotDefaultRelationships"
+  }
+}
+
+relationship (VisualizerUsage.HolonType)-[UsageForAgent]->(PersonAgent.BioSocialAgent) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerUsage.HolonType
+  target PersonAgent.BioSocialAgent
+  TargetBinding Lineage
+  deletion_semantic Allow
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> HasPersonalVisualizerUsage
+  }
+  header {
+    description: "UsageForAgent for the DAHN personal/composition contract."
+    display_name: "UsageForAgent"
+    display_plural: "UsageForAgent Relationships"
+    plural: "UsageForAgentRelationships"
+  }
+}
+inverse relationship (PersonAgent.BioSocialAgent)-[HasPersonalVisualizerUsage]->(VisualizerUsage.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source PersonAgent.BioSocialAgent
+  target VisualizerUsage.HolonType
+  TargetBinding Lineage
+  deletion_semantic Block
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  header {
+    description: "Derived inverse of UsageForAgent."
+    display_name: "HasPersonalVisualizerUsage"
+    display_plural: "HasPersonalVisualizerUsage Relationships"
+    plural: "HasPersonalVisualizerUsageRelationships"
+  }
+}
+
+enum CompositionActivation.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Bounded CompositionActivation vocabulary interpreted by shared Rust."
+    display_name: "CompositionActivation"
+    display_plural: "CompositionActivation values"
+    plural: "CompositionActivationValues"
+  }
+  variants {
+    variant Presentation {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Presentation semantic composition operation."
+        display_name: "Presentation"
+        display_plural: "Presentation"
+        plural: "Presentation"
+      }
+    }
+    variant Demand {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Demand semantic composition operation."
+        display_name: "Demand"
+        display_plural: "Demand"
+        plural: "Demand"
+      }
+    }
+  }
+}
+
+enum CompositionSubject.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Bounded CompositionSubject vocabulary interpreted by shared Rust."
+    display_name: "CompositionSubject"
+    display_plural: "CompositionSubject values"
+    plural: "CompositionSubjectValues"
+  }
+  variants {
+    variant OwnerSubject {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "OwnerSubject semantic composition operation."
+        display_name: "OwnerSubject"
+        display_plural: "OwnerSubject"
+        plural: "OwnerSubject"
+      }
+    }
+    variant ScalarPropertyLabel {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "ScalarPropertyLabel semantic composition operation."
+        display_name: "ScalarPropertyLabel"
+        display_plural: "ScalarPropertyLabel"
+        plural: "ScalarPropertyLabel"
+      }
+    }
+    variant ScalarPropertyValue {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "ScalarPropertyValue semantic composition operation."
+        display_name: "ScalarPropertyValue"
+        display_plural: "ScalarPropertyValue"
+        plural: "ScalarPropertyValue"
+      }
+    }
+    variant AffordedAction {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "AffordedAction semantic composition operation."
+        display_name: "AffordedAction"
+        display_plural: "AffordedAction"
+        plural: "AffordedAction"
+      }
+    }
+    variant SelectedCollection {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "SelectedCollection semantic composition operation."
+        display_name: "SelectedCollection"
+        display_plural: "SelectedCollection"
+        plural: "SelectedCollection"
+      }
+    }
+  }
+}
+
+enum VisualizerKind.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Bounded VisualizerKind vocabulary interpreted by shared Rust."
+    display_name: "VisualizerKind"
+    display_plural: "VisualizerKind values"
+    plural: "VisualizerKindValues"
+  }
+  variants {
+    variant Canvas {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Canvas semantic composition operation."
+        display_name: "Canvas"
+        display_plural: "Canvas"
+        plural: "Canvas"
+      }
+    }
+    variant TitleBar {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "TitleBar semantic composition operation."
+        display_name: "TitleBar"
+        display_plural: "TitleBar"
+        plural: "TitleBar"
+      }
+    }
+    variant Node {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Node semantic composition operation."
+        display_name: "Node"
+        display_plural: "Node"
+        plural: "Node"
+      }
+    }
+    variant Structure {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Structure semantic composition operation."
+        display_name: "Structure"
+        display_plural: "Structure"
+        plural: "Structure"
+      }
+    }
+    variant RootedNavigation {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "RootedNavigation semantic composition operation."
+        display_name: "RootedNavigation"
+        display_plural: "RootedNavigation"
+        plural: "RootedNavigation"
+      }
+    }
+    variant Collection {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Collection semantic composition operation."
+        display_name: "Collection"
+        display_plural: "Collection"
+        plural: "Collection"
+      }
+    }
+    variant PropertyMap {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "PropertyMap semantic composition operation."
+        display_name: "PropertyMap"
+        display_plural: "PropertyMap"
+        plural: "PropertyMap"
+      }
+    }
+    variant Value {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Value semantic composition operation."
+        display_name: "Value"
+        display_plural: "Value"
+        plural: "Value"
+      }
+    }
+    variant ActionBar {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "ActionBar semantic composition operation."
+        display_name: "ActionBar"
+        display_plural: "ActionBar"
+        plural: "ActionBar"
+      }
+    }
+    variant Action {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Action semantic composition operation."
+        display_name: "Action"
+        display_plural: "Action"
+        plural: "Action"
+      }
+    }
+  }
+}
+
+holon ResolveCompositionRequest.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Transient owner-directed composition contract."
+    display_name: "ResolveCompositionRequest"
+    display_plural: "ResolveCompositionRequest entries"
+    plural: "ResolveCompositionRequestEntries"
+  }
+  relationships {
+    InstanceRelationships -> [(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor), (ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType), (ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType), (ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)]
+  }
+}
+
+holon ResolvedComposition.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Transient owner-directed composition contract."
+    display_name: "ResolvedComposition"
+    display_plural: "ResolvedComposition entries"
+    plural: "ResolvedCompositionEntries"
+  }
+  relationships {
+    InstanceProperties -> [CompositionData.PropertyType]
+    InstanceRelationships -> [(ResolvedComposition.Projection)-[CompositionReferences]->(HolonType.TypeDescriptor)]
+  }
+}
+
+relationship (ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ResolveCompositionRequest.HolonType
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Composition projection or request relationship."
+    display_name: "CompositionSubject"
+    display_plural: "CompositionSubject entries"
+    plural: "CompositionSubjectEntries"
+  }
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> CompositionSubjectOf
+  }
+}
+inverse relationship (HolonType.TypeDescriptor)-[CompositionSubjectOf]->(ResolveCompositionRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target ResolveCompositionRequest.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "CompositionSubjectOf"
+    display_plural: "CompositionSubjectOf entries"
+    plural: "CompositionSubjectOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ResolveCompositionRequest.HolonType
+  target Theme.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Composition projection or request relationship."
+    display_name: "CompositionTheme"
+    display_plural: "CompositionTheme entries"
+    plural: "CompositionThemeEntries"
+  }
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> CompositionThemeOf
+  }
+}
+inverse relationship (Theme.HolonType)-[CompositionThemeOf]->(ResolveCompositionRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Theme.HolonType
+  target ResolveCompositionRequest.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "CompositionThemeOf"
+    display_plural: "CompositionThemeOf entries"
+    plural: "CompositionThemeOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ResolveCompositionRequest.HolonType
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Composition projection or request relationship."
+    display_name: "RequestedCompositionSlot"
+    display_plural: "RequestedCompositionSlot entries"
+    plural: "RequestedCompositionSlotEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> RequestedCompositionSlotOf
+  }
+}
+inverse relationship (VisualizerSlot.HolonType)-[RequestedCompositionSlotOf]->(ResolveCompositionRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target ResolveCompositionRequest.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "RequestedCompositionSlotOf"
+    display_plural: "RequestedCompositionSlotOf entries"
+    plural: "RequestedCompositionSlotOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ResolveCompositionRequest.HolonType
+  target RelationshipType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Composition projection or request relationship."
+    display_name: "SelectedCollectionSource"
+    display_plural: "SelectedCollectionSource entries"
+    plural: "SelectedCollectionSourceEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> SelectedCollectionSourceOf
+  }
+}
+inverse relationship (RelationshipType.TypeDescriptor)-[SelectedCollectionSourceOf]->(ResolveCompositionRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source RelationshipType.TypeDescriptor
+  target ResolveCompositionRequest.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "SelectedCollectionSourceOf"
+    display_plural: "SelectedCollectionSourceOf entries"
+    plural: "SelectedCollectionSourceOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (ResolvedComposition.Projection)-[CompositionReferences]->(HolonType.TypeDescriptor) {
+  IsOrdered true
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ResolvedComposition.Projection
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Composition projection or request relationship."
+    display_name: "CompositionReferences"
+    display_plural: "CompositionReferences entries"
+    plural: "CompositionReferencesEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> CompositionReferencesOf
+  }
+}
+inverse relationship (HolonType.TypeDescriptor)-[CompositionReferencesOf]->(ResolvedComposition.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target ResolvedComposition.Projection
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "CompositionReferencesOf"
+    display_plural: "CompositionReferencesOf entries"
+    plural: "CompositionReferencesOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (VisualizerSlot.HolonType)-[InitialCollectionSource]->(RelationshipType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target RelationshipType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Composition projection or request relationship."
+    display_name: "InitialCollectionSource"
+    display_plural: "InitialCollectionSource entries"
+    plural: "InitialCollectionSourceEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> InitialCollectionSourceOf
+  }
+}
+inverse relationship (RelationshipType.TypeDescriptor)-[InitialCollectionSourceOf]->(VisualizerSlot.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source RelationshipType.TypeDescriptor
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "InitialCollectionSourceOf"
+    display_plural: "InitialCollectionSourceOf entries"
+    plural: "InitialCollectionSourceOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+property CompositionData.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Consolidated scalar metadata and indexes into the separate exact reference table."
+    display_name: "CompositionData"
+    display_plural: "CompositionData entries"
+    plural: "CompositionDataEntries"
+  }
+}
+
+holon ResolveComposition.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+  RequiredExecutionContext SpaceAuthoritative
+  DanceDescription "Resolve the selected owner's requested child bindings from semantic Slot declarations."
+  header {
+    description: "Authoritative owner-directed composition, without subject population reads or executable acquisition."
+    display_name: "ResolveComposition"
+    display_plural: "ResolveComposition entries"
+    plural: "ResolveCompositionEntries"
+  }
+  relationships {
+    DanceAffordedBy -> Visualizer.HolonType
+    RequestType -> ResolveCompositionRequest.HolonType
+    Response -> ResolveCompositionResponse.DanceResponseType
+  }
+}
+instance GuestResolveComposition.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "GuestResolveComposition"
+  relationships {
+    ForDance -> ResolveComposition.DanceType
+  }
+}
+holon ResolveCompositionResponse.DanceResponseType {
+  type MetaDanceResponseType.MetaHolonType
+  extends DanceResponseType.HolonType
+  header {
+    description: "Consolidated child bindings and metadata."
+    display_name: "ResolveCompositionResponse"
+    display_plural: "ResolveCompositionResponse entries"
+    plural: "ResolveCompositionResponseEntries"
+  }
+  relationships {
+    ResponseBody -> ResolvedComposition.Projection
+  }
+}
+
+instance DefaultPropertyMapVisualizer.LabelSlot {
+  type VisualizerSlot.HolonType
+  CompositionRole "label"
+  CompositionSubject ScalarPropertyLabel
+  VisualizerKind Value
+  CompositionActivation Presentation
+  VisualizerSlotDescription "Present each scalar property label directly."
+  relationships {
+    AcceptsVisualizerType -> ValueVisualizer.HolonType
+  }
+}
+
+instance DefaultPropertyMapVisualizer.ValueSlot {
+  type VisualizerSlot.HolonType
+  CompositionRole "value"
+  CompositionSubject ScalarPropertyValue
+  VisualizerKind Value
+  CompositionActivation Presentation
+  VisualizerSlotDescription "Present each scalar property value directly."
+  relationships {
+    AcceptsVisualizerType -> ValueVisualizer.HolonType
+  }
+}
+
+instance HolonInspectorTitleBarSlotDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> HolonInspector.TitleBarSlot
+    RecommendsVisualizer -> NodeTitleBar.TitleBarVisualizer
+  }
+}
+
+instance LoadHolonsResultTitleBarSlotDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> LoadHolonsResult.TitleBarSlot
+    RecommendsVisualizer -> NodeTitleBar.TitleBarVisualizer
+  }
+}
+
+instance PropertyLabelDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.LabelSlot
+    RecommendsVisualizer -> StringValue.ValueVisualizer
+  }
+}
+
+instance StringPropertyValueDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.ValueSlot
+    RecommendsVisualizer -> StringValue.ValueVisualizer
+    DefaultForSubjectType -> StringValueType.ValueType
+  }
+}
+
+instance IntegerPropertyValueDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.ValueSlot
+    RecommendsVisualizer -> IntegerValue.ValueVisualizer
+    DefaultForSubjectType -> IntegerValueType.ValueType
+  }
+}
+
+instance BooleanPropertyValueDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.ValueSlot
+    RecommendsVisualizer -> BooleanValue.ValueVisualizer
+    DefaultForSubjectType -> BooleanValueType.ValueType
+  }
+}
+
+instance BytesPropertyValueDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.ValueSlot
+    RecommendsVisualizer -> BytesValue.ValueVisualizer
+    DefaultForSubjectType -> BytesValueType.ValueType
+  }
+}
+
+instance EnumPropertyValueDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.ValueSlot
+    RecommendsVisualizer -> EnumValue.ValueVisualizer
+    DefaultForSubjectType -> EnumValueType.ValueType
+  }
+}
+
+instance MapEnumPropertyValueDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> DefaultPropertyMapVisualizer.ValueSlot
+    RecommendsVisualizer -> EnumValue.ValueVisualizer
+    DefaultForSubjectType -> MapEnumValueType.EnumValueType
+  }
+}
+
+instance HolonInspectorPropertyMapSlotDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> HolonInspector.PropertyMapSlot
+    RecommendsVisualizer -> DefaultPropertyMapVisualizer.PropertyMapVisualizer
+  }
+}
+
+instance HolonInspectorActionsSlotDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> HolonInspector.ActionsSlot
+    RecommendsVisualizer -> GenericActions.ActionBarVisualizer
+  }
+}
+
+instance HolonInspectorControlsSlotDefault.VisualizerSlotDefault {
+  type VisualizerSlotDefault.HolonType
+  relationships {
+    DefaultForSlot -> HolonInspector.VisualizerControlsSlot
+    RecommendsVisualizer -> GenericActions.ActionBarVisualizer
   }
 }

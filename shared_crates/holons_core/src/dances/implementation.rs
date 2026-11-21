@@ -95,6 +95,13 @@ impl DanceImplementation {
         }
 
         if implementation_name
+            == DahnDanceImplementationName::GuestResolveComposition.as_implementation_name()
+        {
+            return implementations::resolve_composition::invoke(context, bound_invocation)
+                .map(DanceImplementationResult::Body);
+        }
+
+        if implementation_name
             == DahnDanceImplementationName::GuestLoadTheme.as_implementation_name()
         {
             return implementations::load_theme::invoke(context, bound_invocation)

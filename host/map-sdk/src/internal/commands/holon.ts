@@ -444,3 +444,7 @@ export function readEffectiveMember(txId: TxId, target: HolonReferenceWire, coll
 export function readEffectiveDescriptorForType(txId: TxId, target: HolonReferenceWire): Promise<HolonReferenceWire> {
   return runHolonCommand(txId, target, { Read: 'GetEffectiveDescriptorForType' }, expectReference);
 }
+
+export function readCollectionElementProperties(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetCollectionElementProperties' }, expectCollection);
+}

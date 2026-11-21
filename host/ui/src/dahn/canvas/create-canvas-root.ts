@@ -43,7 +43,7 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   const dancerTitle = document.createElement('strong');
   dancerTitle.dataset['dahnDancerTitle'] = 'true';
   dancerTitle.textContent = 'MAP';
-  Object.assign(dancerTitle.style, { fontWeight: 'var(--dahn-canvas-heading-font-weight)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+  Object.assign(dancerTitle.style, { fontFamily: 'var(--dahn-canvas-heading-font-family)', fontWeight: 'var(--dahn-canvas-heading-font-weight)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
   identity.append(mark, dancerTitle);
   chrome.append(identity);
 

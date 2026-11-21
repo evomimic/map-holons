@@ -771,6 +771,12 @@ pub(super) fn materialize_effective_schema(
         }
     }
     checkpoint("navigation", "");
+    // Dependencies may publish into the same registry and prune unadmitted
+    // construction envelopes. Resolve them before allocating this outer result.
+    let prepared = PreparedSchema::compute(computed)?;
+    let (instance_kind, value_kind) =
+        super::value_kind::prepare_kind_products(&computed.target, &computed.lineage)?;
+    checkpoint("prepared_dependencies", "");
     let result_type = resolve_core_descriptor(
         context,
         &CoreHolonTypeName::EffectiveHolonDescriptor
@@ -800,7 +806,6 @@ pub(super) fn materialize_effective_schema(
         checkpoint("product_population", &result_label);
     }
     result.add_related_references(CoreRelationshipTypeName::EffectiveContributions, vec![])?;
-    let prepared = PreparedSchema::compute(computed)?;
     result.with_property_value(
         CorePropertyTypeName::PreparedSchema,
         MapString(
@@ -808,8 +813,6 @@ pub(super) fn materialize_effective_schema(
                 .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
         ),
     )?;
-    let (instance_kind, value_kind) =
-        super::value_kind::prepare_kind_products(&computed.target, &computed.lineage)?;
     result.add_related_references(
         CoreRelationshipTypeName::DerivedLineage,
         computed.lineage.clone(),

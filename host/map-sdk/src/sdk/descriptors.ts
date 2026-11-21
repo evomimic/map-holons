@@ -6,6 +6,7 @@ import { CorePropertyName, CoreRelationshipName } from './core-names';
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
 const holonDescriptorReferences = new WeakMap<HolonDescriptorHandle, HolonReference>();
 const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, HolonReference>();
+const relationshipDescriptorReferences = new WeakMap<RelationshipDescriptorHandle, HolonReference>();
 
 /** Opaque SDK handle for a holon type descriptor. */
 export class HolonDescriptorHandle {
@@ -124,6 +125,7 @@ export class RelationshipDescriptorHandle {
     }
 
     this.#reference = reference;
+    relationshipDescriptorReferences.set(this, reference);
   }
 
   /** Opaque exact descriptor identity for presentation state keys. */
@@ -325,5 +327,12 @@ export function createEffectiveHolonDescriptorHandle(reference: HolonReference):
 export function unwrapEffectiveHolonDescriptorHandle(handle: EffectiveHolonDescriptorHandle): HolonReference {
   const reference = effectiveDescriptorReferences.get(handle);
   if (!reference) throw new TypeError('Invalid EffectiveHolonDescriptorHandle');
+  return reference;
+}
+
+/** Internal transport projection; callers retain the opaque descriptor handle. */
+export function unwrapRelationshipDescriptorHandle(handle: RelationshipDescriptorHandle): HolonReference {
+  const reference = relationshipDescriptorReferences.get(handle);
+  if (!reference) throw new TypeError('RelationshipDescriptorHandle is not bound to a reference');
   return reference;
 }

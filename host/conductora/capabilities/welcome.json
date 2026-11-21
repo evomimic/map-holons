@@ -3,6 +3,10 @@
   "description": "Packaged Welcome status, constitution and acquired-space handoff",
   "permissions": [
     "allow-welcome-status",
+    "allow-create-new-environment",
+    "allow-saved-environments",
+    "allow-activate-saved-environment",
+    "allow-trash-saved-environment",
     "allow-constitute-personal-space",
     "allow-open-space-navigator"
   ],

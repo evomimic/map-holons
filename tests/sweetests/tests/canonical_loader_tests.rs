@@ -1,5 +1,6 @@
 //! Canonical loading crosses the real host/guest boundary through the ordinary command runtime.
 use core_types::{ContentSet, FileData};
+use holons_core::agent_spaces::{stage_personal_agent, PersonalName};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceInvocation;
 use holons_core::{HolonCollectionApi, HolonReference, ReadableHolon, WritableHolon};
@@ -134,6 +135,58 @@ async fn load_navigator_package(runtime: &Runtime) -> Arc<TransactionContext> {
 async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     let (runtime, initial_tx, control) =
         init_probe_test_runtime(&mut DancesTestCase::default()).await;
+    // Personal configuration requires an established principal, independently of caller edits.
+    let constitution = new_context(&runtime).await;
+    let existing_space_id = constitution.get_space_holon().unwrap().unwrap().holon_id().unwrap();
+    let person = stage_personal_agent(
+        &constitution,
+        PersonalName { last_name: "Canonical tester".into(), first_name: None, middle_name: None },
+    )
+    .unwrap();
+    let MapResult::Reference(committed) =
+        command(&runtime, &constitution, TransactionAction::Commit).await.unwrap()
+    else {
+        panic!("constitution Commit result")
+    };
+    assert_eq!(string(&committed, "CommitRequestStatus"), "Complete");
+    let person_id = person.holon_id().unwrap();
+    runtime.session().archive_transaction(&constitution.tx_id()).unwrap();
+    let verify_space = new_context(&runtime).await;
+    assert_eq!(
+        verify_space
+            .lookup()
+            .get_saved_holon_by_key(&"MAP.CoreSchemaSpace".into())
+            .expect("staging an Agent must preserve the existing Space's key")
+            .holon_id(),
+        existing_space_id,
+    );
+    runtime.session().archive_transaction(&verify_space.tx_id()).unwrap();
+    // A declared collection target may classify descriptors rather than describe holon instances.
+    let columns = new_context(&runtime).await;
+    for key in [
+        "PropertyType.TypeDescriptor",
+        "DeclaredRelationshipType.RelationshipType",
+        "RelationshipType.TypeDescriptor",
+        "HolonSpace.HolonType",
+    ] {
+        let target = columns.lookup().get_saved_holon_by_key(&key.into()).unwrap().into();
+        let result = runtime
+            .execute_command(
+                MapCommand::Holon(map_commands_contract::HolonCommand {
+                    context: columns.clone(),
+                    target,
+                    action: map_commands_contract::HolonAction::Read(
+                        map_commands_contract::ReadableHolonAction::GetCollectionElementProperties,
+                    ),
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Collection(properties) = result else { panic!("collection properties") };
+        assert_eq!(properties.get_members().is_empty(), key != "HolonSpace.HolonType");
+    }
+    runtime.session().archive_transaction(&columns.tx_id()).unwrap();
     let unrelated = runtime.session().get_transaction(&initial_tx).unwrap();
     let source = unrelated.mutation().new_holon(Some("unrelated-edit".into())).unwrap();
     let unrelated_staged = unrelated.mutation().stage_new_holon(source).unwrap();
@@ -478,6 +531,10 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         .unwrap() else {
             panic!("saved Usage")
         };
+        let owners = persisted.usage.related_holons("UsageForAgent").unwrap();
+        let owners = owners.read().unwrap().get_members().clone();
+        assert_eq!(owners.len(), 1);
+        assert_eq!(owners[0].holon_id().unwrap(), person_id);
         let slot = saved(slot);
         let selected_usages = slot
             .related_holons_with_hint(
@@ -488,7 +545,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         assert!(selected_usages.read().unwrap().get_members().contains(&persisted.usage));
         let preferences = slot
             .related_holons_with_hint(
-                "HasVisualizerPreference",
+                "HasScopedVisualizerPreference",
                 holons_core::RelationshipReadHint::RequireFresh,
             )
             .unwrap();
@@ -631,7 +688,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         // re-bound, this case should be Rejected with the finding attached to the
         // staged descriptor, and the unattached-finding branch below must follow.
         (
-            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.7"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
+            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.11"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
             "Complete",
         ),
         (r#"{"holons":[{"key":"missing-target","type":"DoesNotExist.HolonType"}]}"#, "Skipped"),

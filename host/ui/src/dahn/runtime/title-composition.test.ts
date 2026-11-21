@@ -21,7 +21,7 @@ async function fixture(subjectActions: ActionNode[] = [], interactions?: ActionI
   const compact = records.get('CompactTitleBar.TitleBarVisualizer');
   const references = new Map<string, any>();
   function ref(key: string): any {
-    if (!references.has(key)) references.set(key, { key: async () => key,
+    if (!references.has(key)) references.set(key, { versionedKey: async () => key, equals: (other: any) => other === ref(key), key: async () => key,
       propertyValue: async (name: string) => ({ StringValue: records.get(key)?.properties?.[name] ?? key }),
       relatedHolons: async (name: string) => name === 'DescribedBy' ? (records.get(key)?.type ? [ref(records.get(key).type)] : []) : (records.get(key)?.relationships?.find((edge: any) => edge.name === name)?.target ?? []).map((target: any) => ref(target.$ref)) });
     return references.get(key);

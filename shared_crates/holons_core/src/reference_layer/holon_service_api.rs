@@ -325,6 +325,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         slot: &HolonReference,
     ) -> Result<crate::dances::VisualizerUsageResolution, HolonError> {
         crate::dances::visualizer_usage_resolution::resolve_visualizer_usage(
+            _context,
             visualizer,
             subject_type,
             slot,
@@ -412,6 +413,15 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &Arc<TransactionContext>,
         load_set: TransientReference,
     ) -> Result<TransientReference, HolonError>;
+
+    /// Resolve requested child bindings at the authoritative Space boundary.
+    fn resolve_composition_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _request: crate::dahn::composition::CompositionRequest,
+    ) -> Result<HolonReference, HolonError> {
+        Err(HolonError::NotImplemented("Space-authoritative composition".into()))
+    }
 
     /// Load a Theme through the Space-authoritative canonical Dance.
     fn load_theme_internal(

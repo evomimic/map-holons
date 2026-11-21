@@ -1017,6 +1017,16 @@ fn infer_schema_name(import: &ImportFile) -> Option<String> {
         .find(|holon| holon.descriptor_type == "Schema.HolonType")
         .and_then(schema_name_from_holon)
         .or_else(|| import.holons.iter().find_map(component_of_schema_name))
+        // Instance-only files have no descriptor ownership edge to recover scope from.
+        // Read their explicit source scope without adding ComponentOf to any instance.
+        .or_else(|| {
+            import
+                .meta
+                .get("schema_key")
+                .and_then(Value::as_str)
+                .filter(|key| !key.trim().is_empty())
+                .map(str::to_owned)
+        })
 }
 
 fn schema_name_from_holon(holon: &HolonRecord) -> Option<String> {
@@ -1143,7 +1153,7 @@ mod tests {
         let tdl = fs::read_to_string(out_dir.join("book-person-inverse.tdl"))?;
 
         assert!(tdl.contains(
-            "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.7\""
+            "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.11\""
         ));
 
         Ok(())
@@ -1219,6 +1229,24 @@ mod tests {
         assert!(relationship_types.contains("SourceType -> \"TypeDescriptor\""));
         assert!(relationship_types.contains("TargetType -> \"Schema.HolonType\""));
 
+        Ok(())
+    }
+
+    #[test]
+    fn instance_only_import_requires_explicit_schema_scope() -> Result<()> {
+        let mut import: ImportFile = serde_json::from_value(serde_json::json!({
+            "holons": [{
+                "key": "Example.Theme",
+                "type": "Theme.HolonType",
+                "relationships": []
+            }]
+        }))?;
+        assert_eq!(infer_schema_name(&import), None);
+        import.meta.insert("schema_key".into(), Value::String(" ".into()));
+        assert_eq!(infer_schema_name(&import), None);
+        import.meta.insert("schema_key".into(), Value::String("Example.Schema".into()));
+        assert_eq!(infer_schema_name(&import).as_deref(), Some("Example.Schema"));
+        assert!(import.holons[0].relationships.is_empty());
         Ok(())
     }
 

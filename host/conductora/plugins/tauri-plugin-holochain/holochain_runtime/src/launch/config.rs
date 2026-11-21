@@ -34,6 +34,18 @@ fn apply_dev_mode_network_overrides(network_config: &mut NetworkConfig) {
     network_config.advanced = None;
 }
 
+/// Leave gateway probes off until a native networking consumer explicitly opts in.
+/// This does not disable the relay or peer transport.
+fn defer_local_network_discovery(network: &mut NetworkConfig) {
+    let advanced = network.advanced.get_or_insert_with(|| serde_json::json!({}));
+    if let Some(advanced) = advanced.as_object_mut() {
+        let transport = advanced.entry("irohTransport").or_insert_with(|| serde_json::json!({}));
+        if let Some(transport) = transport.as_object_mut() {
+            transport.entry("enablePortMapping").or_insert(serde_json::Value::Bool(false));
+        }
+    }
+}
+
 pub fn conductor_config(
     fs: &FileSystem,
     admin_port: u16,
@@ -93,6 +105,7 @@ pub fn conductor_config(
             network_config.advanced = Some(advanced_config);
         }
     }
+    defer_local_network_discovery(&mut network_config);
     config.network = network_config;
 
     let allowed_origins = AllowedOrigins::Any;
@@ -163,5 +176,44 @@ mod tests {
         );
         assert!(!rendered.contains("holochain.org"), "public endpoint survived: {rendered}");
         assert!(!rendered.contains("iroh.link"), "public endpoint survived: {rendered}");
+    }
+    #[test]
+    fn local_startup_defers_gateway_discovery_without_disabling_peer_endpoints() {
+        let mut network = NetworkConfig::default();
+        defer_local_network_discovery(&mut network);
+        assert_eq!(network.advanced.as_ref().unwrap()["irohTransport"]["enablePortMapping"], false);
+        let bootstrap = network.bootstrap_url.clone();
+        let relay = network.relay_url.clone();
+        network.advanced = Some(serde_json::json!({
+            "irohTransport": { "connectTimeoutS": 22, "relayAllowPlainText": false },
+            "coreBootstrap": { "backoffMaxMs": 20000 }
+        }));
+        defer_local_network_discovery(&mut network);
+        assert_eq!(network.bootstrap_url, bootstrap);
+        assert_eq!(network.relay_url, relay);
+        let advanced = network.advanced.unwrap();
+        assert_eq!(advanced["irohTransport"]["enablePortMapping"], false);
+        assert_eq!(advanced["irohTransport"]["connectTimeoutS"], 22);
+        assert_eq!(advanced["irohTransport"]["relayAllowPlainText"], false);
+        assert_eq!(advanced["coreBootstrap"]["backoffMaxMs"], 20000);
+        network.advanced =
+            Some(serde_json::json!({ "irohTransport": { "enablePortMapping": true } }));
+        defer_local_network_discovery(&mut network);
+        assert_eq!(network.advanced.unwrap()["irohTransport"]["enablePortMapping"], true);
+    }
+    #[test]
+    fn deferred_native_setting_reaches_the_kitsune_transport_config() {
+        use kitsune2_api::TransportFactory;
+        use kitsune2_transport_iroh::{IrohTransportFactory, IrohTransportModConfig};
+        let mut config = kitsune2_api::Config::default();
+        IrohTransportFactory.default_config(&mut config).unwrap();
+        let upstream: IrohTransportModConfig = config.get_module_config().unwrap();
+        assert!(upstream.iroh_transport.enable_port_mapping);
+        let mut network = NetworkConfig::default();
+        defer_local_network_discovery(&mut network);
+        config.set_module_config(&network.advanced.unwrap()).unwrap();
+        let effective: IrohTransportModConfig = config.get_module_config().unwrap();
+        assert!(!effective.iroh_transport.enable_port_mapping);
+        IrohTransportFactory.validate_config(&config).unwrap();
     }
 }

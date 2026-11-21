@@ -3,9 +3,9 @@ use crate::{ExecutionPolicy, Runtime};
 use core_types::{HolonError, HolonId};
 pub use holons_core::agent_spaces::PersonalName;
 use holons_core::{
-    agent_spaces::{sovereign_agent, stage_personal_agent, SovereignAgent},
+    agent_spaces::{current_personal_space, sovereign_agent, stage_personal_agent, SovereignAgent},
     core_shared_objects::transactions::TransactionContext,
-    ReadableHolon,
+    ReadableHolon, SmartReference, WritableHolon,
 };
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use std::sync::Arc;
@@ -32,9 +32,7 @@ pub async fn inspect_target(runtime: &Runtime) -> Result<ConstitutionTarget, Hol
     let tx = runtime.session().begin_transaction().await?;
     let observed = (|| {
         let context = runtime.session().get_transaction(&tx)?;
-        let space = context.get_space_holon()?.ok_or_else(|| {
-            HolonError::InvalidState("Startup has not adopted a local HolonSpace".into())
-        })?;
+        let space = current_personal_space(&context)?;
         let space_id = space.holon_id()?;
         let sovereignty = match sovereign_agent(&space)? {
             SovereignAgent::Unclaimed => SovereigntyObservation::NoAssociationObserved,
@@ -52,13 +50,60 @@ pub async fn inspect_target(runtime: &Runtime) -> Result<ConstitutionTarget, Hol
     Ok(target)
 }
 
-/// Stage and Commit once using the existing command lifecycle. The caller retains non-complete work.
+/// Stage the Agent, personal Space name and offerings in one Commit.
+/// The caller retains non-complete work through the existing command lifecycle.
 pub async fn create_personal_agent(
     runtime: &Runtime,
     context: Arc<TransactionContext>,
     names: PersonalName,
 ) -> Result<MapResult, HolonError> {
-    stage_personal_agent(&context, names)?;
+    let previous_space = current_personal_space(&context)?;
+    let space_name = names.space_name()?;
+    let mut person = stage_personal_agent(&context, names)?;
+    let mut named_space = context.mutation().stage_new_version(SmartReference::new_from_id(
+        context.space_read_handle(),
+        previous_space.holon_id()?,
+    ))?;
+    named_space.with_property_value(type_names::CorePropertyTypeName::Key, space_name.clone())?;
+    named_space.with_property_value(
+        type_names::CorePropertyTypeName::HolonSpaceName,
+        space_name.clone(),
+    )?;
+    named_space.with_property_value(type_names::CorePropertyTypeName::DisplayName, space_name)?;
+    named_space.with_property_value(
+        type_names::CorePropertyTypeName::Description,
+        "Your personal Space, including its MAP foundation.",
+    )?;
+    let space = holons_core::HolonReference::from(named_space);
+    person.remove_related_holons(
+        type_names::AgentSpaceRelationshipTypeName::HasInterior,
+        vec![previous_space.clone()],
+    )?;
+    person.add_related_holons(
+        type_names::AgentSpaceRelationshipTypeName::HasInterior,
+        vec![space.clone()],
+    )?;
+    // These are version-bound incoming associations. Author the declared
+    // occurrences on their owning resources; Commit materializes each inverse
+    // on the named Space version while preserving the previous associations.
+    for (inverse, declared) in
+        [("AffordsDancer", "AffordedByHolonSpace"), ("OffersTheme", "OfferedByHolonSpace")]
+    {
+        let resources = previous_space
+            .related_holons_with_hint(inverse, holons_core::RelationshipReadHint::RequireFresh)?;
+        let resources = resources
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+            .get_members()
+            .clone();
+        for resource in resources {
+            let mut staged = context.mutation().stage_new_version(SmartReference::new_from_id(
+                context.space_read_handle(),
+                resource.holon_id()?,
+            ))?;
+            staged.add_related_holons(declared, vec![space.clone()])?;
+        }
+    }
     runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {

@@ -78,6 +78,22 @@ pub enum TransactionActionWire {
     },
 
     SelectVisualizer(VisualizerSelectionRequestWire),
+    RememberVisualizerPreference {
+        subject_type: HolonReferenceWire,
+        slot: Option<HolonReferenceWire>,
+        visualizer: HolonReferenceWire,
+        usage: Option<HolonReferenceWire>,
+    },
+    ConvertVisualizerSlotPreference {
+        preference: HolonReferenceWire,
+    },
+    ResolveComposition {
+        owner: HolonReferenceWire,
+        subject: HolonReferenceWire,
+        theme: HolonReferenceWire,
+        demand_slot: Option<HolonReferenceWire>,
+        collection_source: Option<HolonReferenceWire>,
+    },
     LoadTheme {
         theme: HolonReferenceWire,
     },
@@ -363,6 +379,39 @@ impl TransactionActionWire {
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
             }
+            TransactionActionWire::RememberVisualizerPreference {
+                subject_type,
+                slot,
+                visualizer,
+                usage,
+            } => Ok(TransactionAction::RememberVisualizerPreference {
+                subject_type: subject_type.bind(context)?,
+                slot: slot.map(|v| v.bind(context)).transpose()?,
+                visualizer: visualizer.bind(context)?,
+                usage: usage.map(|v| v.bind(context)).transpose()?,
+            }),
+            TransactionActionWire::ConvertVisualizerSlotPreference { preference } => {
+                Ok(TransactionAction::ConvertVisualizerSlotPreference {
+                    preference: preference.bind(context)?,
+                })
+            }
+            TransactionActionWire::ResolveComposition {
+                owner,
+                subject,
+                theme,
+                demand_slot,
+                collection_source,
+            } => Ok(TransactionAction::ResolveComposition {
+                request: holons_core::dahn::composition::CompositionRequest {
+                    owner: owner.bind(context)?,
+                    subject: subject.bind(context)?,
+                    theme: theme.bind(context)?,
+                    demand_slot: demand_slot.map(|value| value.bind(context)).transpose()?,
+                    collection_source: collection_source
+                        .map(|value| value.bind(context))
+                        .transpose()?,
+                },
+            }),
             TransactionActionWire::LoadTheme { theme } => {
                 Ok(TransactionAction::LoadTheme { theme: theme.bind(context)? })
             }

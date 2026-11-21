@@ -114,6 +114,9 @@ export type TransactionActionWire =
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
+  | { ResolveComposition: { owner: HolonReferenceWire; subject: HolonReferenceWire; theme: HolonReferenceWire; demand_slot: HolonReferenceWire | null; collection_source: HolonReferenceWire | null } }
+  | { RememberVisualizerPreference: { subject_type: HolonReferenceWire; slot: HolonReferenceWire | null; visualizer: HolonReferenceWire; usage: HolonReferenceWire | null } }
+  | { ConvertVisualizerSlotPreference: { preference: HolonReferenceWire } }
   | { LoadTheme: { theme: HolonReferenceWire } }
   | { ProjectVisualizerDiscovery: { snapshot: string } }
   | { ReleaseVisualizerDiscovery: { snapshot: string } }
@@ -182,6 +185,7 @@ export type ReadableHolonActionWire =
   | 'GetHasInstanceKey'
   | 'GetRelationshipIsOrdered'
   | 'GetAvailableDances'
+  | 'GetCollectionElementProperties'
   | 'GetInstanceProperties'
   | 'GetPluralNavigableRelationships'
   | 'GetPropertyValueKind'
@@ -237,6 +241,7 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetHasInstanceKey',
   'GetRelationshipIsOrdered',
   'GetAvailableDances',
+  'GetCollectionElementProperties',
   'GetInstanceProperties',
   'GetPluralNavigableRelationships',
   'GetPropertyValueKind',
@@ -362,6 +367,9 @@ export function isTransactionActionWire(
       isDescribedHolonCollectionWire(value.SelectCollectionVisualizer['collection']) &&
       isHolonReferenceWire(value.SelectCollectionVisualizer['parent_visualizer']) &&
       isHolonReferenceWire(value.SelectCollectionVisualizer['slot'])) ||
+    (hasSingleKey(value, 'ResolveComposition') && referenceFields(value.ResolveComposition, ['owner','subject','theme'], ['demand_slot','collection_source'])) ||
+    (hasSingleKey(value, 'RememberVisualizerPreference') && referenceFields(value.RememberVisualizerPreference, ['subject_type','visualizer'], ['slot','usage'])) ||
+    (hasSingleKey(value, 'ConvertVisualizerSlotPreference') && referenceFields(value.ConvertVisualizerSlotPreference, ['preference'], [])) ||
     (hasSingleKey(value, 'LoadTheme') && isRecord(value.LoadTheme) && isHolonReferenceWire(value.LoadTheme['theme'])) ||
     (hasSingleKey(value, 'SelectVisualizer') && isVisualizerSelectionRequestWire(value.SelectVisualizer)) ||
     (hasSingleKey(value, 'ProjectVisualizerDiscovery') && isRecord(value.ProjectVisualizerDiscovery) && isString(value.ProjectVisualizerDiscovery['snapshot'])) ||
@@ -453,4 +461,8 @@ export function isVisualizerSelectionRequestWire(value: unknown): value is Visua
   return isRecord(owner) && ((hasSingleKey(owner, 'Visualizer') && isHolonReferenceWire(owner.Visualizer)) ||
     (hasSingleKey(owner, 'Dancer') && isHolonReferenceWire(owner.Dancer))) &&
     isVisualizerKindWire(value['requested_kind']);
+}
+
+function referenceFields(value: unknown, required: string[], nullable: string[]): boolean {
+  return isRecord(value) && required.every(k => isHolonReferenceWire(value[k])) && nullable.every(k => value[k] === null || isHolonReferenceWire(value[k]));
 }

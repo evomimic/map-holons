@@ -44,18 +44,68 @@ npm ci
 **Run all the other instructions in this README from inside this nix shell, otherwise they won't work**.
 
 `npm run deps:check` verifies that installed packages still match the root workspace manifests and lockfile. It runs
-automatically before `npm start`. `npm start` (and the `start:*` variants) also refuses to run outside `nix develop`;
+automatically before `npm start`. Script-only and descriptive manifest edits do not require reinstalling dependencies. `npm start` (and the `start:*` variants) also refuses to run outside `nix develop`;
 set `MAP_SKIP_NIX_CHECK=1` to bypass that check if the toolchain is provided another way. If `deps:check` reports stale or missing dependencies, run `npm ci` from the repository root.
 Use `npm install` only when intentionally changing npm dependencies and updating `package-lock.json`.
 
-## Running 2 agents
+## Starting MAP
 
-```bash
-npm start
-```
+Welcome's native workflow and packaged page assets live in `host/crates/welcome`.
+Conductora registers its commands and supplies access to the existing runtime,
+startup state and configured storage base through a small native adapter.
 
-This will create a network of 2 nodes connected to each other and their respective UIs.
-It will also bring up the Holochain Playground for advanced introspection of the conductors.
+Run `npm start` from the repository root. It builds the hApp and packaged debug
+Conductora application, then launches packaged Welcome with the real persistent
+conductor. This packaged engineering profile currently supports macOS on Apple
+Silicon. Welcome first looks for the person's Space. A compatible existing PersonAgent
+and Space lead to **Welcome back to MAP** and an explicit **Enter my space** action,
+without repeating bootstrap or constitution. A fresh environment shows the invitation,
+privacy and preparation story while its foundation loads. When ready, Welcome captures
+the person's name through **Make this space mine**. Only after setup commits and the
+saved association is verified does **You're on the MAP** offer **Enter my space**.
+Preparation progress is indeterminate; **Setup details** exposes runtime stages and
+elapsed time.
+
+Expand **Space options** for **Reset and restart my Space**. Reset selects a fresh
+environment and restarts MAP while keeping the previous environment and its data;
+it does not copy the previous identity or content.
+
+Personal setup stores the PersonAgent key in last/first/middle order, separated by
+periods, and names the Space **First Middle Last's Personal Space**, omitting absent
+optional names. The Space's key, `HolonSpaceName`, and `DisplayName` contain that
+name. Setup creates a new version of the existing Space in the same transaction as
+PersonAgent creation. Ownership belongs to the Space lineage, so its foundation
+and other contents remain available through later Space versions.
+
+Packaged MAP defers automatic local-gateway discovery and port mapping. Ordinary
+startup retains peer/relay networking but does not opt into UPnP, PCP or NAT-PMP
+probes. A native networked experience must explicitly opt in through
+`irohTransport.enablePortMapping`. The macOS executable/display identity is MAP;
+a local-network permission request includes a MAP-specific purpose description.
+
+Integrity/DNA and coordinator compatibility are checked against the packaged hApp.
+CoreSchema compatibility uses the existing schema-key check only. It does not compare
+schema contents or perform migration. When incompatible, Welcome explains the mismatch
+and offers **Create a new environment (keep existing)**. This explicit action selects
+a separate keystore, conductor and recovery store and restarts MAP. The previous
+environment is retained; its identities and content are not copied into the new one.
+Ordinary startup errors do not offer environment replacement.
+
+In packaged Welcome, expand **Saved environments** to review retained environments,
+their creation dates and disk usage. Inactive environments offer **Reactivate and
+restart**, which runs the normal compatibility checks on startup, or **Move to Trash**
+after confirmation. Cleanup uses macOS Trash and never removes the active environment.
+It does not migrate data between environments.
+
+Packaged schema changes must advance the versioned release identity and its exact
+schema dependency references, then regenerate the bootstrap and contribution
+resources. Startup uses that new CoreSchema key to reject retained environments
+from the previous release before Navigator opens. See the authoritative
+[Core Schema release lifecycle](../map-dev-docs/docs/core/core-schema-bootstrap/core-schema-bootstrap-design-spec.md#schema-evolution).
+
+`npm run start:info` and `npm run start:debug` use the same packaged lifecycle with
+more logging. `npm run start:host` launches the last built package without rebuilding.
+`npm run start:loader` remains an explicit development UI entrypoint.
 
 ## Running the backend tests
 

@@ -1,0 +1,1345 @@
+{
+  "meta": {
+    "schema_key": "MAP Theme Schema-v0.1.4"
+  },
+  "holons": [
+    {
+      "key": "MAP Theme Schema-v0.1.4",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Theme Schema-v0.1.4",
+        "Description": "MAP schema for Themes as complete, typed value assignments for one Meta Design System. Theme availability is independent of Dancer identity."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.11"
+            },
+            {
+              "$ref": "MAP Dance Schema-v0.1.4"
+            },
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.4"
+            },
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme",
+      "type": "Theme.HolonType",
+      "properties": {
+        "ThemeDescription": "A demonstration theme for exploring DAHN features. Deep Ocean is calm, orderly, and utilitarian, with limited visual differentiation between kinds of controls. Layered navy surfaces, muted teal actions, seafoam focus accents, softly rounded corners, and system sans-serif typography provide a consistent setting for feature demonstrations rather than an optimized human experience.",
+        "ThemeName": "Demo 1 — Deep Ocean"
+      },
+      "relationships": [
+        {
+          "name": "ForMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "Demo1.MetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "HasThemeTokenAssignment",
+          "target": [
+            {
+              "$ref": "Demo1.DeepOceanTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "Demo1.DeepOceanTheme.CollectionNavigationTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "Demo1.DeepOceanTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "Demo1.DeepOceanTheme.RelationshipNavigationTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "Demo1.DeepOceanTheme.ViewControlSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "Demo1.DeepOceanTheme.ViewControlTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePanelSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePanelCornerRadius"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeMutedTextColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeNodeHeadingFontSize"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeControlGap"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeFocusRingColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeFocusRingWidth"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherTextColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherPadding"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherPhaseGap"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherIndicatorSize"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherIndicatorColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherIndicatorWidth"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherIndicatorDuration"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeLauncherDismissDuration"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeActionSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeActionHoverSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeActionTextColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeActionPaddingBlock"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeActionPaddingInline"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeActionCornerRadius"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasFontFamily"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasHeadingFontFamily"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasFontSize"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasFontWeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasLineHeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasHeadingFontWeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasContentMinHeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertiesDisclosureFocusColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeSlotBorderColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeSlotBorderWidth"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeSlotBorderStyle"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeSlotPadding"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeInspectorRailWidth"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeInspectorContentMinHeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertiesHeadingGap"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertiesRowGap"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertiesHeadingFontSize"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertiesHeadingFontWeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertyColumnGap"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemePropertyNameMinWidth"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableCellBorderStyle"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCollectionHeadingFontSize"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCollectionHeadingFontWeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableHeaderFontWeight"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasGap"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasPadding"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCanvasTextColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCollectionSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCollectionTextColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeCollectionHeaderSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableHeaderSurfaceBackground"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableHeaderTextColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableCellBorderColor"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableCellBorderWidth"
+            },
+            {
+              "$ref": "Demo1.DeepOceanThemeTableCellPadding"
+            }
+          ]
+        },
+        {
+          "name": "OfferedByHolonSpace",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#0c1724"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6edf5"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#152638"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6edf5"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d3449"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d3449"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#31465b"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.75rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasHeadingFontFamily",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.8125rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasLineHeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.375rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "600"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#31465b"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "solid"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "14rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.75rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.9rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "8rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableCellBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "solid"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderStyle.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeadingFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeadingFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeTableHeaderFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "700"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#0c1724"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6edf5"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "2rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherPhaseGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "4rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#7de2cf"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "4px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1s"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorDuration.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5s"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherDismissDuration.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#234757"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#2d5967"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6faf6"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.625rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.875rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#7de2cf"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePanelSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#152638"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemePanelCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.875rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeMutedTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#a5b7c9"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "MutedTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeNodeHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.35rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "NodeHeadingFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeControlGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ControlGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeFocusRingColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#7de2cf"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "FocusRingColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanThemeFocusRingWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "2px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "FocusRingWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#234757"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionNavigationSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.CollectionNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6faf6"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionNavigationTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#234757"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.RelationshipNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6faf6"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "RelationshipNavigationTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.ViewControlSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#234757"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ViewControlSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Demo1.DeepOceanTheme.ViewControlTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e6faf6"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ViewControlTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -36,16 +36,16 @@ async function realize(module) {
   }
   return document.createElement(tag);
 }
-const children = new Map();
+const propertyChildren = [];
 for (const field of evidence.fields) {
   const value = await realize(field.visualizer);
-  value.setContext({ propertyPresentation: { propertyName: field.name, value: field.value } });
-  const property = await realize(field.property);
-  property.setContext({ propertyPresentation: { propertyName: field.name }, childVisualizers: new Map([['value', value]]) });
-  children.set(field.name, property);
+  value.setContext({ visualizerConfiguration: field.configuration, propertyPresentation: { propertyName: field.name, value: field.value } });
+  const label = await realize(field.labelVisualizer);
+  label.setContext({ visualizerConfiguration: field.labelConfiguration, propertyPresentation: { propertyName: field.name, value: { StringValue: field.label } } });
+  propertyChildren.push({ propertyName: field.name, label, value });
 }
 const properties = await realize(evidence.properties);
-properties.setContext({ childVisualizers: children });
+properties.setContext({ propertyChildren, visualizerConfiguration: evidence.propertiesConfiguration });
 const node = await realize(evidence.node);
 node.setContext({ title: 'Book.InverseSchema.Instance', childVisualizers: new Map([['properties', properties]]) });
 const canvasSource = ${JSON.stringify(canvasModule).replaceAll('<', '\\u003c')};
