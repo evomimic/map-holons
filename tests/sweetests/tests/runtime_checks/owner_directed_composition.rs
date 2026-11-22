@@ -81,7 +81,7 @@ pub async fn owner_directed_bindings_and_personal_preference_roundtrip(runtime: 
         .bindings
         .iter()
         .any(|b| b.role == "titleBar" && b.reason == SelectionReason::PrescribedDefault));
-    assert!(!composition.data.reusable_across_rounds);
+    assert!(composition.data.reusable_across_rounds);
     assert_eq!(
         composition.data.work.candidate_population_requests, 0,
         "the shipped Inspector has declared defaults for its presented children"
@@ -194,17 +194,21 @@ async fn date_preferences(runtime: &Runtime) {
         context: &Arc<TransactionContext>,
         record: HolonReference,
         suffix: &str,
+        reconsider: bool,
     ) -> holons_core::dahn::composition::ResolvedComposition {
+        let request = holons_core::dahn::composition::CompositionRequest {
+            owner: saved(context, &format!("PreferenceTest{suffix}.PropertyMapVisualizer")),
+            subject: record,
+            theme: saved(context, "Demo1.DeepOceanTheme"),
+            demand_slot: None,
+            collection_source: None,
+        };
         let command = MapCommand::Transaction(TransactionCommand {
             context: context.clone(),
-            action: TransactionAction::ResolveComposition {
-                request: holons_core::dahn::composition::CompositionRequest {
-                    owner: saved(context, &format!("PreferenceTest{suffix}.PropertyMapVisualizer")),
-                    subject: record,
-                    theme: saved(context, "Demo1.DeepOceanTheme"),
-                    demand_slot: None,
-                    collection_source: None,
-                },
+            action: if reconsider {
+                TransactionAction::ReconsiderComposition { request }
+            } else {
+                TransactionAction::ResolveComposition { request }
             },
         });
         let MapResult::ResolvedComposition(composition) =
@@ -298,9 +302,9 @@ async fn date_preferences(runtime: &Runtime) {
     let record_id = record.holon_id().unwrap();
     let ctx = context(runtime).await;
     let record = HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone());
-    // Confirm no preference first, then ensure the first saved choice invalidates absence.
+    // Establish confirmed absence; saving a preference must not reconsider this scope.
     let initial_started = std::time::Instant::now();
-    let initial = resolve(runtime, &ctx, record.clone(), "A").await;
+    let initial = resolve(runtime, &ctx, record.clone(), "A", false).await;
     let initial_elapsed = initial_started.elapsed();
     assert_eq!(date_binding(&initial).reason, SelectionReason::PrescribedDefault);
     assert_eq!(
@@ -330,6 +334,28 @@ async fn date_preferences(runtime: &Runtime) {
         "initial 18-field composition work: {:?}, elapsed={initial_elapsed:?}",
         initial.data.work
     );
+    // A different occurrence of the same declared type reuses the whole hierarchy.
+    let mut occurrence = ctx.mutation().new_holon(None).unwrap();
+    occurrence.with_descriptor(saved(&ctx, "PreferenceTestRecord.HolonType")).unwrap();
+    let occurrence: HolonReference = occurrence.into();
+    let reused = resolve(runtime, &ctx, occurrence.clone(), "A", false).await;
+    assert_eq!(reused.data.work.selections, 0);
+    assert_eq!(reused.data.work.personal_population_requests, 0);
+    assert!(reused
+        .data
+        .subject_properties
+        .iter()
+        .all(|p| reused.references[p.subject] == occurrence));
+    assert_eq!(date_binding(&reused).configuration, date_binding(&initial).configuration);
+    // Reset retires descriptor handles; recipes reconstruct exact selections in a new transaction.
+    runtime.session().space_manager().reset_session().unwrap();
+    let rebuilt = resolve(runtime, &ctx, record.clone(), "A", false).await;
+    assert_eq!(rebuilt.data.work.selections, 0);
+    assert_eq!(
+        rebuilt.references[date_binding(&rebuilt).selected],
+        initial.references[date_binding(&initial).selected]
+    );
+    assert_eq!(date_binding(&rebuilt).configuration, date_binding(&initial).configuration);
     let preferred = saved(&ctx, "PreferenceTestPreferred.ValueVisualizer");
     holons_core::dahn::preferences::remember(
         &ctx,
@@ -340,6 +366,24 @@ async fn date_preferences(runtime: &Runtime) {
     )
     .unwrap();
     commit(&ctx);
+    let ctx = context(runtime).await;
+    let retained = resolve(
+        runtime,
+        &ctx,
+        HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone()),
+        "A",
+        false,
+    )
+    .await;
+    assert_eq!(date_binding(&retained).reason, SelectionReason::PrescribedDefault);
+    assert_eq!(retained.data.work.selections, 0);
+    assert_eq!(retained.data.work.personal_population_requests, 0);
+    assert_eq!(retained.data.work.candidate_population_requests, 0);
+    assert_eq!(
+        retained.data.populations, initial.data.populations,
+        "absence remains captured evidence"
+    );
+    ctx.dispose().unwrap();
     for suffix in ["A", "B"] {
         let ctx = context(runtime).await;
         let result = resolve(
@@ -347,6 +391,7 @@ async fn date_preferences(runtime: &Runtime) {
             &ctx,
             HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone()),
             suffix,
+            true,
         )
         .await;
         let binding = date_binding(&result);
@@ -398,6 +443,18 @@ async fn date_preferences(runtime: &Runtime) {
     )
     .unwrap();
     commit(&ctx);
+    let ctx = context(runtime).await;
+    let retained = resolve(
+        runtime,
+        &ctx,
+        HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone()),
+        "A",
+        false,
+    )
+    .await;
+    assert!(date_binding(&retained).usage.is_none(), "new Usage does not alter captured settings");
+    assert_eq!(retained.data.work.selections, 0);
+    ctx.dispose().unwrap();
     for suffix in ["A", "B"] {
         let ctx = context(runtime).await;
         let result = resolve(
@@ -405,6 +462,7 @@ async fn date_preferences(runtime: &Runtime) {
             &ctx,
             HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone()),
             suffix,
+            true,
         )
         .await;
         let binding = date_binding(&result);
@@ -432,6 +490,7 @@ async fn date_preferences(runtime: &Runtime) {
             &ctx,
             HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone()),
             suffix,
+            true,
         )
         .await;
         assert_eq!(
@@ -501,6 +560,7 @@ async fn date_preferences(runtime: &Runtime) {
         &ctx,
         HolonReference::smart_from_id(ctx.space_read_handle(), record_id.clone()),
         "B",
+        false,
     )
     .await;
     assert_eq!(
@@ -525,6 +585,7 @@ async fn date_preferences(runtime: &Runtime) {
         &ctx,
         HolonReference::smart_from_id(ctx.space_read_handle(), populated_id),
         "B",
+        false,
     )
     .await;
     let choices = result
@@ -607,14 +668,108 @@ pub async fn measure_owner_composition_boundary(
         let calls = measured.calls.lock().unwrap().clone();
         assert_eq!(
             calls.iter().filter(|(label, _, _)| label == "canonical").count(),
-            1,
+            usize::from(sample == "cold-host"),
             "{calls:?}"
         );
         assert!(!calls.iter().any(|(label, _, _)| label == "commit" || label == "load_holons"));
         assert!(!result.data.metadata.is_empty());
-        assert_eq!(result.data.work.personal_population_requests, 1);
+        assert_eq!(
+            result.data.work.personal_population_requests,
+            usize::from(sample == "cold-host")
+        );
+        if sample == "warm-host" {
+            assert_eq!(result.data.work.selections, 0);
+            assert_eq!(result.data.work.candidate_population_requests, 0);
+            assert!(result.data.work.binding_reuses >= result.data.bindings.len());
+        }
         assert_eq!(context.lookup().staged_count().unwrap(), 0);
         eprintln!("[Composition boundary evidence] sample={sample} elapsed_us={} children={} work={:?} scalar_bytes={} boundary_calls={calls:?}",started.elapsed().as_micros(),result.data.bindings.len(),result.data.work,serde_json::to_vec(&result.data).unwrap().len());
     }
+    context.dispose().unwrap();
+}
+
+/// Publishing a successor cannot change an established answer or a version-bound preference.
+/// Run after the measured workload so added graph versions do not alter the baseline fixture.
+pub async fn retained_visualizer_successor_preserves_established_version(runtime: &Runtime) {
+    use holons_core::core_shared_objects::transactions::TransactionContext;
+    use holons_core::{
+        dahn::composition::{CompositionRequest, ResolvedComposition},
+        WritableHolon,
+    };
+    use std::sync::Arc;
+    async fn open(runtime: &Runtime) -> Arc<TransactionContext> {
+        let id = runtime.session().begin_transaction().await.unwrap();
+        runtime.session().get_transaction(&id).unwrap()
+    }
+    fn saved(context: &Arc<TransactionContext>, key: &str) -> HolonReference {
+        context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
+    }
+    async fn resolve(
+        runtime: &Runtime,
+        context: &Arc<TransactionContext>,
+        suffix: &str,
+        reconsider: bool,
+    ) -> ResolvedComposition {
+        let mut subject = context.mutation().new_holon(None).unwrap();
+        subject.with_descriptor(saved(context, "PreferenceTestRecord.HolonType")).unwrap();
+        let request = CompositionRequest {
+            owner: saved(context, &format!("PreferenceTest{suffix}.PropertyMapVisualizer")),
+            subject: subject.into(),
+            theme: saved(context, "Demo1.DeepOceanTheme"),
+            demand_slot: None,
+            collection_source: None,
+        };
+        let action = if reconsider {
+            TransactionAction::ReconsiderComposition { request }
+        } else {
+            TransactionAction::ResolveComposition { request }
+        };
+        let MapResult::ResolvedComposition(result) = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand { context: context.clone(), action }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap()
+        else {
+            panic!("composition")
+        };
+        result
+    }
+    fn selected(result: &ResolvedComposition) -> HolonReference {
+        let binding = result
+            .data
+            .bindings
+            .iter()
+            .find(|b| b.role == "value" && b.property_name.as_deref() == Some("PreferenceTestDate"))
+            .unwrap();
+        result.references[binding.selected].clone()
+    }
+    let context = open(runtime).await;
+    let before = resolve(runtime, &context, "B", false).await;
+    let established = selected(&before).holon_id().unwrap();
+    let mut successor = context.mutation().stage_new_version_from_id(established.clone()).unwrap();
+    successor.with_property_value("DisplayName", "Explicitly adopted successor").unwrap();
+    let response = context.commit().unwrap();
+    assert_eq!(
+        response.property_value("CommitRequestStatus").unwrap(),
+        Some(base_types::BaseValue::StringValue("Complete".into()))
+    );
+    let successor_id = successor.holon_id().unwrap();
+    assert_ne!(established, successor_id);
+    let context = open(runtime).await;
+    let retained = resolve(runtime, &context, "B", false).await;
+    assert_eq!(selected(&retained).holon_id().unwrap(), established);
+    assert_eq!(retained.data.work.selections, 0);
+    // Reconsideration consults the preference's exact target; it is not implicit
+    // adoption of whatever successor a base-key lookup now returns.
+    let refreshed = resolve(runtime, &context, "B", true).await;
+    assert_eq!(selected(&refreshed).holon_id().unwrap(), established);
+    assert!(refreshed.data.work.selections > 0);
+    assert_eq!(
+        saved(&context, "PreferenceTestPreferred.ValueVisualizer").holon_id().unwrap(),
+        successor_id
+    );
+    assert_eq!(context.lookup().staged_count().unwrap(), 0);
     context.dispose().unwrap();
 }

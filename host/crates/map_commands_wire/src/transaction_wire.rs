@@ -88,6 +88,9 @@ pub enum TransactionActionWire {
         preference: HolonReferenceWire,
     },
     ResolveComposition {
+        /// Explicit agent request; ordinary realization leaves this false.
+        #[serde(default)]
+        reconsider: bool,
         owner: HolonReferenceWire,
         subject: HolonReferenceWire,
         theme: HolonReferenceWire,
@@ -396,13 +399,14 @@ impl TransactionActionWire {
                 })
             }
             TransactionActionWire::ResolveComposition {
+                reconsider,
                 owner,
                 subject,
                 theme,
                 demand_slot,
                 collection_source,
-            } => Ok(TransactionAction::ResolveComposition {
-                request: holons_core::dahn::composition::CompositionRequest {
+            } => {
+                let request = holons_core::dahn::composition::CompositionRequest {
                     owner: owner.bind(context)?,
                     subject: subject.bind(context)?,
                     theme: theme.bind(context)?,
@@ -410,8 +414,13 @@ impl TransactionActionWire {
                     collection_source: collection_source
                         .map(|value| value.bind(context))
                         .transpose()?,
-                },
-            }),
+                };
+                Ok(if reconsider {
+                    TransactionAction::ReconsiderComposition { request }
+                } else {
+                    TransactionAction::ResolveComposition { request }
+                })
+            }
             TransactionActionWire::LoadTheme { theme } => {
                 Ok(TransactionAction::LoadTheme { theme: theme.bind(context)? })
             }

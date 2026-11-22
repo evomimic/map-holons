@@ -30,6 +30,9 @@ pub enum DanceEnvelopeResponse {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceRequestEnvelope {
+    /// Separate evaluation participant, admitted only for canonical composition.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visualizer_evaluations: Option<crate::VisualizerEvaluationsWire>,
     pub request: DanceEnvelopeRequest,
     /// Commit-only registry-owner state. It is never echoed in response pools.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -39,6 +42,8 @@ pub struct DanceRequestEnvelope {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceResponseEnvelope {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visualizer_evaluations: Option<crate::VisualizerEvaluationsWire>,
     /// Optional cache data must never invalidate the authoritative persistence response.
     #[serde(
         default,
@@ -85,6 +90,7 @@ mod tests {
         assert!(matches!(envelope.request, DanceEnvelopeRequest::Invocation { .. }));
         assert_eq!(serde_json::to_value(envelope).unwrap(), wire);
         let failure = DanceResponseEnvelope {
+            visualizer_evaluations: None,
             descriptor_registry: None,
             response: DanceEnvelopeResponse::Reference {
                 result: Err(HolonError::InvalidParameter("invalid affording subject".into())),

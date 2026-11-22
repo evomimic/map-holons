@@ -151,11 +151,15 @@ export class MapTransaction {
     mapTransactionTxIds.set(this, txId);
   }
 
-  /** One guest operation expands the selected owner's semantic composition. */
+  /** Acquire the owner's retained hierarchy, evaluating an uncovered demand in Rust.
+   * Set reconsider only for an explicit agent request; this does not replace mounted views.
+   */
   async resolveComposition(owner: HolonReference, subject: HolonReference, theme: HolonReference,
-    demandSlot?: HolonReference, collectionSource?: HolonReference): Promise<import('./composition').ResolvedComposition> {
+    demandSlot?: HolonReference, collectionSource?: HolonReference,
+    options: { reconsider?: boolean } = {}): Promise<import('./composition').ResolvedComposition> {
     const resolved = await internalTransaction.resolveComposition(txIdFor(this), {
       owner: unwrapHolonReference(owner), subject: unwrapHolonReference(subject), theme: unwrapHolonReference(theme),
+      reconsider: options.reconsider ?? false,
       demand_slot: demandSlot ? unwrapHolonReference(demandSlot) : null,
       collection_source: collectionSource ? unwrapHolonReference(collectionSource) : null,
     });

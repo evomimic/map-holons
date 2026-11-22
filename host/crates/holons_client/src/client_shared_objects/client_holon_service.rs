@@ -844,6 +844,16 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         request: holons_core::dahn::composition::CompositionRequest,
     ) -> Result<HolonReference, HolonError> {
+        // Shared Rust reconstructs the guest-established answer. A covered demand
+        // needs neither another authoritative evaluation nor another guest round trip.
+        if let Some(registry) = context.visualizer_evaluations() {
+            let revision = registry.revision()?;
+            if let Some(result) = registry.acquire(context, &request)? {
+                let projection = result.into_projection(context)?;
+                registry.check_revision(revision)?;
+                return Ok(projection);
+            }
+        }
         let invocation =
             holons_core::dances::implementations::resolve_composition::invocation(context, request)
                 .map_err(|error| {

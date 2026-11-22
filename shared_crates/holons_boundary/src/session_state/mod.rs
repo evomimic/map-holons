@@ -6,3 +6,8 @@ pub use session_state_wire::SessionStateWire;
 
 mod descriptor_registry_wire;
 pub use descriptor_registry_wire::DescriptorRegistryWire;
+
+mod visualizer_evaluations_wire;
+pub use visualizer_evaluations_wire::VisualizerEvaluationsWire;
+
+mod registry_owner;

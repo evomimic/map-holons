@@ -82,6 +82,10 @@ pub enum TransactionAction {
     ConvertVisualizerSlotPreference {
         preference: HolonReference,
     },
+    /// Explicit agent request to evaluate this demand again; mounted state is unchanged.
+    ReconsiderComposition {
+        request: holons_core::dahn::composition::CompositionRequest,
+    },
     ResolveComposition {
         request: holons_core::dahn::composition::CompositionRequest,
     },
@@ -275,7 +279,8 @@ impl TransactionAction {
             }
             // Selection only reads the retained subject and descriptor graph.
             // Materialization still creates invocation holons and requires an open context.
-            TransactionAction::ResolveComposition { .. }
+            TransactionAction::ReconsiderComposition { .. }
+            | TransactionAction::ResolveComposition { .. }
             | TransactionAction::LoadTheme { .. }
             | TransactionAction::ProjectVisualizerDiscovery { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
@@ -354,6 +359,7 @@ impl TransactionAction {
             TransactionAction::ConvertVisualizerSlotPreference { .. } => {
                 "convert_visualizer_slot_preference"
             }
+            TransactionAction::ReconsiderComposition { .. } => "reconsider_composition",
             TransactionAction::ResolveComposition { .. } => "resolve_composition",
             TransactionAction::LoadTheme { .. } => "load_theme",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",

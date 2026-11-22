@@ -109,7 +109,15 @@ impl DanceInitiator for TrustChannel {
             DanceEnvelopeRequest, DanceEnvelopeResponse, DanceRequestEnvelope,
         };
         use holons_core::HolonError;
+        let composition = invocation.dance_name()?.to_string() == "ResolveComposition";
+        let evaluations = if composition { context.visualizer_evaluations() } else { None };
+        // Capture is clock-free and performs no source graph reads inside this async boundary.
+        let carrier = evaluations
+            .as_ref()
+            .map(|r| holons_boundary::VisualizerEvaluationsWire::capture(r))
+            .transpose()?;
         let envelope = DanceRequestEnvelope {
+            visualizer_evaluations: carrier,
             descriptor_registry: None,
             request: DanceEnvelopeRequest::Invocation {
                 invocation: HolonReferenceWire::from(invocation.as_holon_reference()),
@@ -123,7 +131,25 @@ impl DanceInitiator for TrustChannel {
         // Even failed execution can produce evidence needed for diagnosis and review.
         DanceEnvelopeAdapter::hydrate_from_response(context, &state)?;
         match response.response {
-            DanceEnvelopeResponse::Reference { result } => result?.bind(context),
+            DanceEnvelopeResponse::Reference { result } => {
+                let result = result?.bind(context)?;
+                if let Some(registry) = evaluations {
+                    let returned = response
+                        .visualizer_evaluations
+                        .ok_or_else(|| {
+                            HolonError::InvalidParameter(
+                                "Composition response omitted evaluation carrier".into(),
+                            )
+                        })?
+                        .bind(context)?;
+                    registry.adopt(&returned)?;
+                } else if response.visualizer_evaluations.is_some() {
+                    return Err(HolonError::InvalidParameter(
+                        "Unrequested evaluation carrier".into(),
+                    ));
+                }
+                Ok(result)
+            }
             _ => Err(HolonError::InvalidParameter("Expected canonical Dance response".into())),
         }
     }

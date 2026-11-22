@@ -19,6 +19,8 @@ pub struct RuntimeSession {
     descriptor_registry: Arc<
         holons_core::core_shared_objects::descriptor_registry::EffectiveHolonDescriptorRegistry,
     >,
+    visualizer_evaluations:
+        Arc<holons_core::dahn::evaluation_registry::VisualizerEvaluationRegistry>,
     space_manager: Arc<HolonSpaceManager>,
     recovery: Option<Arc<SessionReceptor>>,
     admissions:
@@ -38,7 +40,13 @@ impl RuntimeSession {
             ),
         );
         space_manager.attach_descriptor_registry(&descriptor_registry);
+        let visualizer_evaluations =
+            Arc::new(holons_core::dahn::evaluation_registry::VisualizerEvaluationRegistry::new(
+                &space_manager,
+            ));
+        space_manager.attach_visualizer_evaluations(&visualizer_evaluations);
         Self {
+            visualizer_evaluations,
             descriptor_registry,
             discoveries: Default::default(),
             usage_transactions: Default::default(),
@@ -48,6 +56,13 @@ impl RuntimeSession {
             active_sessions: RwLock::new(HashMap::new()),
             archived_sessions: RwLock::new(HashMap::new()),
         }
+    }
+
+    /// Retained semantic decisions have a different owner from descriptor projections.
+    pub fn visualizer_evaluations(
+        &self,
+    ) -> &Arc<holons_core::dahn::evaluation_registry::VisualizerEvaluationRegistry> {
+        &self.visualizer_evaluations
     }
 
     pub fn descriptor_registry(

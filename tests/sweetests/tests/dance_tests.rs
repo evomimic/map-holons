@@ -300,4 +300,5 @@ async fn owner_directed_composition_acceptance() {
         &runtime, backend,
     )
     .await;
+    runtime_checks::owner_directed_composition::retained_visualizer_successor_preserves_established_version(&runtime).await;
 }

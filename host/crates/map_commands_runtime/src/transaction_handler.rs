@@ -128,7 +128,29 @@ pub async fn handle_transaction(
             session.usage_transactions.invalidate_bindings()?;
             Ok(MapResult::Reference(reference))
         }
+        TransactionAction::ReconsiderComposition { request } => {
+            context
+                .visualizer_evaluations()
+                .ok_or_else(|| {
+                    HolonError::ServiceNotAvailable("Visualizer evaluation registry".into())
+                })?
+                .reconsider(&request)?;
+            let body = context.resolve_composition(request)?;
+            Ok(MapResult::ResolvedComposition(
+                holons_core::dahn::composition::ResolvedComposition::from_projection(&body)?,
+            ))
+        }
         TransactionAction::ResolveComposition { request } => {
+            // A retained Rust result already has the semantic shape Commands projects.
+            // Avoid manufacturing a transient carrier (and reading keys for its index)
+            // solely to decode that carrier back into the same result.
+            if let Some(registry) = context.visualizer_evaluations() {
+                let revision = registry.revision()?;
+                if let Some(result) = registry.acquire(context, &request)? {
+                    registry.check_revision(revision)?;
+                    return Ok(MapResult::ResolvedComposition(result));
+                }
+            }
             let body = context.resolve_composition(request)?;
             Ok(MapResult::ResolvedComposition(
                 holons_core::dahn::composition::ResolvedComposition::from_projection(&body)?,

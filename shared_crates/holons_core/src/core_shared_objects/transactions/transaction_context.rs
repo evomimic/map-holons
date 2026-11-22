@@ -121,6 +121,21 @@ impl TransactionContext {
         self.space_manager.descriptor_registry()
     }
 
+    /// The space-owned Visualizer evaluation participant, separate from descriptor residency.
+    pub fn visualizer_evaluations(
+        &self,
+    ) -> Option<Arc<crate::dahn::evaluation_registry::VisualizerEvaluationRegistry>> {
+        self.space_manager.visualizer_evaluations()
+    }
+
+    /// Installs the request-owned evaluation participant at canonical guest ingress.
+    pub fn attach_visualizer_evaluations(
+        &self,
+        registry: &Arc<crate::dahn::evaluation_registry::VisualizerEvaluationRegistry>,
+    ) {
+        self.space_manager.attach_visualizer_evaluations(registry);
+    }
+
     /// Returns this transaction's identity.
     pub fn tx_id(&self) -> TxId {
         self.tx_id

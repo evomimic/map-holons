@@ -9,7 +9,10 @@
 //!
 //! Resolution returns child bindings, effective configuration, contract and
 //! implementation metadata, and observed populations through a shared reference
-//! table. Compatible selections and metadata are reused within this round only.
+//! table. The separate session evaluation registry retains compatible hierarchies,
+//! exact saved versions, configuration, and observed populations across requests.
+//! Ordinary cache retirement reconstructs those answers; agent reconsideration
+//! explicitly removes the requested scope before another evaluation.
 //! Scalar values, collection members, executable materialization, callable admission,
 //! and mounting remain realization responsibilities. A returned collection binding
 //! identifies its source; it does not mean that the collection has been loaded or
@@ -118,7 +121,7 @@ pub struct CompositionMetadata {
 /// candidates so the result records what governed selection, including confirmed
 /// absence. An empty membership means a successful empty lookup, never a failed
 /// lookup. Exact references retain the observed revisions; this evidence does not
-/// authorize reuse outside the resolution round.
+/// trigger selection when a population later changes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompositionPopulation {
     pub source: usize,
@@ -154,8 +157,8 @@ pub struct CompositionData {
     pub theme: Option<usize>,
     pub work: CompositionWork,
     pub metadata: Vec<CompositionMetadata>,
-    /// Reuse is bounded to this authoritative round. No prior round, including a
-    /// confirmed preference absence, authorizes reuse after a save or context change.
+    /// This hierarchy has a retained exact-version recipe for compatible occurrences.
+    /// Publishing another candidate or preference does not reconsider that recipe.
     pub reusable_across_rounds: bool,
 }
 /// Complete semantic result of resolving an owner's requested child composition.
@@ -455,14 +458,22 @@ impl Resolver<'_> {
 /// Expands selected-owner declarations once. No executable artifacts or subject
 /// values/populations are read merely to choose a renderer.
 ///
-/// Create fresh selection metadata and winner state for this request, resolve its
-/// initial presentation or explicit Slot demand, and collect observed personal,
-/// default, and discovery populations, including confirmed empty sets. The result
-/// carries work counts and shared metadata but does not authorize reuse across rounds.
+/// Acquire an established hierarchy for this owner, subject type, Theme and demand,
+/// or evaluate an uncovered scope and retain its exact-version recipe. Only active
+/// Slots are expanded. Captured populations include confirmed absence; routine
+/// rendering, saved preferences and descriptor resets do not reconsider that answer.
 pub fn resolve(
     context: &Arc<TransactionContext>,
     request: CompositionRequest,
 ) -> Result<ResolvedComposition, HolonError> {
+    let registry = context.visualizer_evaluations();
+    let revision = registry.as_ref().map(|r| r.revision()).transpose()?;
+    if let Some(registry) = &registry {
+        if let Some(result) = registry.acquire(context, &request)? {
+            return Ok(result);
+        }
+    }
+    let retained_request = request.clone();
     let mut resolver = Resolver {
         context,
         theme: request.theme,
@@ -498,6 +509,10 @@ pub fn resolve(
         resolver.result.data.work.personal_population_requests,
         resolver.result.data.work.candidate_population_requests,
     ) = resolver.selection.population_requests();
+    if let Some(registry) = registry {
+        resolver.result.data.reusable_across_rounds =
+            registry.retain(&retained_request, &resolver.result, revision.unwrap())?;
+    }
     Ok(resolver.result)
 }
 /// Read a required string property, rejecting missing values and other value kinds.
@@ -510,7 +525,7 @@ fn text(source: &HolonReference, property: P) -> Result<String, HolonError> {
 /// Decode a Slot's required VisualizerKind enum into a supported selection kind.
 ///
 /// Missing, incorrectly typed, and unrecognized values are declaration errors.
-fn kind(slot: &HolonReference) -> Result<VisualizerKind, HolonError> {
+pub(crate) fn kind(slot: &HolonReference) -> Result<VisualizerKind, HolonError> {
     match slot.property_value(P::VisualizerKind.to_property_name())? {
         Some(BaseValue::EnumValue(value)) => match value.to_string().as_str() {
             "TitleBar" => Ok(VisualizerKind::TitleBar),
@@ -620,7 +635,7 @@ impl ResolvedComposition {
     /// Decode a transient composition projection and validate its internal structure.
     ///
     /// Check reference and metadata indexes, parent ordering, Theme presence, and
-    /// round-bounded reuse before returning the reconstructed result. This validates
+    /// captured metadata before returning the reconstructed result. This validates
     /// the carrier; it does not repeat semantic selection or admit executable code.
     pub fn from_projection(body: &HolonReference) -> Result<Self, HolonError> {
         if !matches!(body, HolonReference::Transient(_)) {
@@ -630,7 +645,16 @@ impl ResolvedComposition {
             .map_err(|e| HolonError::InvalidParameter(e.to_string()))?;
         let references =
             members(body, &R::CompositionReferences.to_relationship_name().to_string())?;
-        let length = references.len();
+        let result = Self { references, data };
+        result.validate()?;
+        Ok(result)
+    }
+
+    /// Validate indexed scalar facts without graph reads or repeating selection.
+    /// Both transported registry recipes and returned composition projections use this contract.
+    pub fn validate(&self) -> Result<(), HolonError> {
+        let data = &self.data;
+        let length = self.references.len();
         let metadata =
             data.metadata.iter().map(|m| m.reference).collect::<std::collections::HashSet<_>>();
         if metadata.len() != data.metadata.len()
@@ -663,11 +687,10 @@ impl ResolvedComposition {
                 .any(|p| p.source >= length || p.members.iter().any(|m| *m >= length))
             || data.theme.is_none_or(|index| index >= length)
             || data.bindings.iter().any(|b| b.governing_record.is_some_and(|i| i >= length))
-            || data.reusable_across_rounds
         {
             return Err(HolonError::InvalidParameter("Malformed composition projection".into()));
         }
-        Ok(Self { references, data })
+        Ok(())
     }
 }
 

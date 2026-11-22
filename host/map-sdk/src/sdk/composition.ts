@@ -30,7 +30,7 @@ export interface CompositionMetadata {
   properties: Readonly<Record<string, BaseValue>>;
 }
 
-/** Request-local evidence; it never authorizes reuse after a semantic change. */
+/** Rust-resolved hierarchy. Established choices persist until agent reconsideration. */
 export interface ResolvedComposition {
   theme: HolonReference;
   /** Only successfully observed populations are included. Empty members confirms absence. */

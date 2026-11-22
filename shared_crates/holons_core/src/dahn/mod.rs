@@ -2,6 +2,7 @@
 mod candidates;
 pub mod composition;
 pub mod contract;
+pub mod evaluation_registry;
 mod operators;
 mod selection_metadata;
 pub mod usage;
