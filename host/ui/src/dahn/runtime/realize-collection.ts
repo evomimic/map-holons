@@ -29,10 +29,11 @@ export async function realizeCollection(
   current: () => boolean, stage: (name: string) => void, presentation: MapTransaction = transaction,
   context?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
   demand?: { subject: HolonReference; source: RelationshipDescriptorHandle },
+  preparedBinding?: CompositionBinding,
 ): Promise<CollectionElement | undefined> {
   stage('Visualizer selection');
   // Selection needs the saved element type, not the loader-bound member handles.
-  let prepared: CompositionBinding | undefined;
+  let prepared = preparedBinding;
   if (demand) {
     if (!context?.theme) throw new Error('Collection demand requires the active semantic Theme.');
     const subject = await prepareCompositionSubject(transaction, presentation, demand.subject);

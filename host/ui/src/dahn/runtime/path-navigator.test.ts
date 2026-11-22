@@ -67,8 +67,13 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-async function fixture(openExploration?: (anchor: HolonReference) => void, inspectVisualizer?: (target: VisualizerInspectionTarget) => void) {
+async function fixture(openExploration?: (anchor: HolonReference) => void, inspectVisualizer?: (target: VisualizerInspectionTarget) => void, initialCollection = false) {
   const rootSubject = subject('root'); const a = subject('A'); const b = subject('B');
+  const nodeVisualizer = initialCollection ? selected('PreferenceTestInitialInspector.NodeVisualizer') : visualizers.node;
+  if (initialCollection) {
+    rootSubject.availableRelationships = async (_effective?: unknown, multiplicity?: string) => multiplicity === 'singular'
+      ? [] : [relationship('Owns'), relationship('Other')];
+  }
   for (const ref of [rootSubject, a, b]) {
     ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
     ref.relatedHolons.mockImplementation(async name => collection([name === 'First' ? a : name === 'Second' ? b : rootSubject]));
@@ -85,7 +90,12 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     const bindings = [create('propertyMap', visualizers.propertyMap), create('label', visualizers.value, 0, 'ScalarPropertyLabel'),
       create('value', visualizers.value, 0, 'ScalarPropertyValue'), create('titleBar', visualizers.titleBar),
       create('action', visualizers.actionBar), create('visualizerActions', visualizers.actionBar)];
-    const refs = [...new Set(bindings.flatMap(b => [b.owner,b.slot,b.selected]))];
+    // Model the guest result for the test-only Inspector declared in visualizer-preferences.tdl.
+    if (initialCollection && owner.equals(nodeVisualizer)) bindings.push({
+      ...create('collection', visualizers.collection, null, 'SelectedCollection'),
+      slot: selected('PreferenceTestInitialInspector.CollectionSlot'), subject: selected('Owns'),
+    });
+    const refs = [...new Set(bindings.flatMap(b => [b.owner,b.slot,b.selected,b.subject]))];
     const metadata = await Promise.all(refs.map(async reference => ({ reference, identity: await reference.versionedKey(), key: await reference.key(), versionedKey: await reference.versionedKey(), properties: { DisplayName: { StringValue: await reference.key() } } })));
     return { bindings, metadata, subjectProperties: [{ subject, property, name: 'Name', label: 'Name', isArray: false }] };
   });
@@ -104,7 +114,7 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     getSavedHolonByBaseKey: vi.fn(async () => ({})),
     getSavedPropertyDescriptorByBaseKey: vi.fn(async () => ({ ...property, propertyName: async () => 'Key', displayName: async () => 'Key' })),
   } as unknown as MapTransaction;
-  const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
+  const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key()) === 'PreferenceTestInitialInspector.NodeVisualizer' ? 'holon-inspector' : (await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   const theme = { reference: selected("Theme") };
   const realize = vi.fn(async (ref: HolonReference, selected: HolonReference, stage?: (stage: string) => void, usage?: HolonReference) => {
@@ -115,9 +125,9 @@ async function fixture(openExploration?: (anchor: HolonReference) => void, inspe
     for (const affordance of element.relationshipControls.keys()) node.relationshipDiscovery?.record(affordance, 1);
     return node;
   });
-  const root = await realize(rootSubject as never, visualizers.node);
+  const root = await realize(rootSubject as never, nodeVisualizer);
   const parent = selected('path-inspector');
-  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), () => theme.reference, realize, openExploration, undefined, inspectVisualizer);
+  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, nodeVisualizer, selected('PathInspector.RootNodeSlot'), () => theme.reference, realize, openExploration, undefined, inspectVisualizer);
   let occurrences: readonly PathOccurrence[] = [];
   let destination: import('../contracts/path-navigation').PathDestination | undefined;
   navigation.subscribe((path, _, pending) => { occurrences = [...path]; destination = pending; });
@@ -143,6 +153,41 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
 });
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
+
+it.each([false, true])('honors the Inspector initial collection contract (initial=%s)', async initial => {
+  const f = await fixture(undefined, undefined, initial);
+  try {
+    const viewer = f.root.element.querySelector<HTMLElement>('[data-holon-inspector-collection-viewer]')!;
+    expect(f.transaction.resolveRelationshipComposition).not.toHaveBeenCalled();
+    expect(f.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();
+    if (!initial) {
+      expect(viewer.hidden).toBe(true);
+      expect(viewer.dataset.collectionState).toBe('unresolved');
+      expect(f.rootSubject.describedRelatedHolons).not.toHaveBeenCalled();
+      expect(f.rootSubject.relatedHolons).not.toHaveBeenCalled();
+      expect(f.materialize).not.toHaveBeenCalledWith(visualizers.collection);
+      return;
+    }
+    expect(viewer.hidden).toBe(false);
+    expect(viewer.dataset.collectionState).toBe('loaded');
+    expect(viewer.querySelectorAll('tbody tr')).toHaveLength(3);
+    expect(viewer.querySelector('table')?.getAttribute('aria-label')).toBe('Owns');
+    expect(f.rootSubject.describedRelatedHolons).toHaveBeenCalledExactlyOnceWith('Owns');
+    expect(f.rootSubject.relatedHolons).not.toHaveBeenCalled();
+    const selectedTab = f.root.element.querySelector('[role=tab][aria-selected=true]')!;
+    expect(selectedTab.textContent).toContain('Owns');
+    const collectionElement = viewer.firstElementChild as HTMLElement;
+    expect(f.root.collectionActivation.sourceAffordance(collectionElement)?.label).toBe('Owns');
+    const snapshot = await f.root.collectionActivation.captureViewState!();
+    expect(snapshot.active).toBe('Owns');
+    (selectedTab as HTMLButtonElement).click();
+    expect(f.rootSubject.describedRelatedHolons).toHaveBeenCalledTimes(1);
+    expect(viewer.firstElementChild).toBe(collectionElement);
+    f.root.collectionActivation.close!(f.root.collectionActivation.sourceAffordance(collectionElement)!);
+    expect(viewer.hidden).toBe(true);
+    expect(f.root.collectionActivation.sourceAffordance(collectionElement)).toBeUndefined();
+  } finally { f.navigation.dispose(); }
+});
 
 describe('vertical traversal through selected artifacts', () => {
   it('compresses whole rows on traversal and restores retained Nodes exclusively from their title bars', async () => {

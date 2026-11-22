@@ -69,12 +69,16 @@ export async function realizeNode(
     const composition = await presentationTransaction.resolveComposition(
       selectedVisualizer, compositionSubject, theme.reference);
     materialized = materialized.forComposition(composition);
+    const rootBinding = (role: string) => {
+      const bindings = composition.bindings.filter(binding => binding.parent === null && binding.owner.equals(selectedVisualizer) && binding.role === role);
+      if (bindings.length > 1) throw new Error(`Duplicate presented Node role ${role}`);
+      return bindings[0];
+    };
     onStage?.('classify node affordances');
     const affordances = await classifyNodeAffordances(view, composition.subjectProperties.filter(p => p.subject.equals(compositionSubject)));
-    const propertiesElement = await renderVisualizerRegion('Properties', async () => {
-      onStage?.('select and materialize Properties');
-      const propertiesBinding = composition.bindings.find(b => b.parent === null && b.role === 'propertyMap');
-      if (!propertiesBinding) throw new Error('Node composition has no presented PropertyMap binding');
+    const propertiesBinding = rootBinding('propertyMap');
+    const propertiesElement = propertiesBinding && await renderVisualizerRegion('Properties', async () => {
+      onStage?.('materialize Properties');
       const propertiesSlot = propertiesBinding.slot;
       const propertiesSelection = propertiesBinding;
       const propertiesIndex = composition.bindings.indexOf(propertiesBinding);
@@ -120,10 +124,10 @@ export async function realizeNode(
       usageSelections.push(propertiesSelection.selected);
       return propertiesElement;
     });
-    onStage?.('select and materialize Actions');
+    onStage?.('materialize Actions');
     const actionsElement = await composeNodeActions(transaction, materialized, selectedVisualizer, {
       target: { reference: subject }, holon: view, actions: affordances.actions, theme, canvas,
-    }, actionActivations, actionInteractions);
+    }, { action: rootBinding('action'), visualizerActions: rootBinding('visualizerActions') }, actionActivations, actionInteractions);
   onStage?.('compose node');
   const element = document.createElement(nodeTag) as HTMLElement & {
     setContext(context: VisualizerContext): void;
@@ -135,9 +139,19 @@ export async function realizeNode(
     ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
   ]);
   collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery, presentationTransaction, { theme, canvas }, affordances.collections);
-  const titleElement = await composeNodeTitle(transaction, materialized, selectedVisualizer, {
+  const initialCollectionBindings = composition.bindings.filter(binding => binding.parent === null && binding.subjectBinding === 'SelectedCollection');
+  if (initialCollectionBindings.length > 1) throw new Error('Node presentation supports one initial collection');
+  const initialCollection = initialCollectionBindings.length
+    ? await collectionActivation.prepareInitial(initialCollectionBindings[0]) : undefined;
+  const titleBinding = rootBinding('titleBar');
+  const titleElement = titleBinding && await composeNodeTitle(transaction, materialized, selectedVisualizer, {
     title: `${typeDisplayName}: ${holonKey}`, holonKey, target: { reference: subject }, holon: view, actions: [], theme, canvas,
-  });
+  }, titleBinding);
+  const childVisualizers = new Map<string, HTMLElement>();
+  if (titleElement) childVisualizers.set('titleBar', titleElement);
+  if (propertiesElement) childVisualizers.set('properties', propertiesElement);
+  if (actionsElement.actions) childVisualizers.set('actions', actionsElement.actions);
+  if (actionsElement.controls) childVisualizers.set('visualizerActions', actionsElement.controls);
   element.setContext({
       collectionActivation,
       visualizerUsage,
@@ -156,15 +170,21 @@ export async function realizeNode(
       theme,
       canvas,
       nodeAffordances: affordances,
-      childVisualizers: new Map([['titleBar', titleElement], ['properties', propertiesElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls]]),
+      childVisualizers,
     });
+    if (initialCollection) {
+      const restore = (element as VisualizerElement).restoreNodeCollectionSelection;
+      if (!restore) throw new Error('Selected Node cannot present its initial collection selection');
+      restore.call(element, initialCollection.affordance);
+    }
     await materialized.admitOffered(element, selectedVisualizer);
     for (const selected of usageSelections) await transaction.recordSelectedVisualizerUse(selected, `component-${crypto.randomUUID()}`);
     const initialized = (element as VisualizerElement).ready;
-    const children = [titleElement, propertiesElement, actionsElement, actionsElement.controls, ...propertiesElement.querySelectorAll('*'), ...actionsElement.querySelectorAll('*'), ...actionsElement.controls.querySelectorAll('*')];
+    const children = [...childVisualizers.values(), ...(initialCollection ? [initialCollection.element] : [])]
+      .flatMap(child => [child, ...child.querySelectorAll('*')]);
     const ready = initialized && Promise.all([initialized, ...children.map(child => (child as VisualizerElement).ready)]).then(() => {});
     const dispose = () => {
-      (titleElement as VisualizerElement).dispose?.();
+      (titleElement as VisualizerElement | undefined)?.dispose?.();
       actionsElement.dispose();
       collectionActivation?.dispose();
       for (const action of actionActivations) void action.dispose().catch(console.error);

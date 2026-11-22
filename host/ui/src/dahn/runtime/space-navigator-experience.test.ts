@@ -1,4 +1,5 @@
 import { selectedTitleContext } from '../../../test-fixtures/selected-title';
+import { resolvedChildBinding, resolvedComposition } from '../../../test-fixtures/resolved-composition';
 import { presentationAssignment } from '../../../test-fixtures/node-presentation';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpaceNavigatorExperience, type SpaceNavigatorBinding } from './space-navigator-experience';
@@ -12,7 +13,7 @@ import { resolve } from 'node:path';
 const mocks = vi.hoisted(() => ({ realizeNode: vi.fn() }));
 vi.mock('./realize-node', () => ({ realizeNode: mocks.realizeNode }));
 vi.mock('./title-composition', () => ({ composeNodeTitle: vi.fn(async () => selectedTitleContext().childVisualizers.get('titleBar')) }));
-vi.mock('./node-actions', () => ({ composeNodeActions: vi.fn(async () => Object.assign(selectedTitleContext().childVisualizers.get('actions'), { controls: selectedTitleContext().childVisualizers.get('visualizerActions'), dispose: vi.fn() })) }));
+vi.mock('./node-actions', () => ({ composeNodeActions: vi.fn(async () => ({ actions: selectedTitleContext().childVisualizers.get('actions'), controls: selectedTitleContext().childVisualizers.get('visualizerActions'), dispose: vi.fn() })) }));
 
 class NavigationElement extends HTMLElement {
   context!: VisualizerContext;
@@ -194,7 +195,7 @@ it('selects the response Node in its loader context and expands saved members wi
     await experience.openInitial();
     mocks.realizeNode.mock.calls[0][7].openLoadHolons({ subject: binding.holonSpace, label: 'Load' });
     const present = openLoadHolons.mock.calls[0][0].presentResult;
-    const response = reference('Response'), member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
+    const response = { ...reference('Response'), relatedHolons: async () => [reference('Response type')] }, member = { ...reference('Saved member'), holonId: vi.fn(async () => ({ Local: [7] })) };
     const loader = { owns: (ref: unknown) => ref === response, committed: true, bindSavedReference: (ref: unknown) => ref, withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
     recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
     prepareVisualizerUsage: async () => ({}),
@@ -204,6 +205,9 @@ it('selects the response Node in its loader context and expands saved members wi
     const review = { bindSavedReference: (ref: unknown) => ref, withVisualizerUsageBatch: async (work: () => Promise<unknown>) => work(),
     recordSelectedVisualizerUse: async () => {}, confirmVisualizerUsagePresentation: () => {},
     prepareVisualizerUsage: async () => ({}),
+    newHolon: vi.fn(async () => ({ withDescriptor: vi.fn(async () => {}) })),
+    resolveComposition: vi.fn(async (owner, subject, theme) => resolvedComposition(theme,
+      ['titleBar', 'action', 'visualizerActions'].map(role => resolvedChildBinding(owner, subject, reference(`${role} slot`), role, reference(`${role} visualizer`))))),
     selectVisualizer: vi.fn(async () => ({ selected: reference('Generic Node') })) };
     const collection = document.createElement('section'), properties = document.createElement('section');
     const affordance = { kind: 'result', label: 'Committed holons', role: 'committed' };

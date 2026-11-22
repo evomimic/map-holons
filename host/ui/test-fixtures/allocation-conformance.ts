@@ -1,4 +1,5 @@
 import TableCollection from '../../conductora/resources/dahn-visualizers/table-collection.js';
+import { resolvedChildBinding, resolvedComposition } from './resolved-composition';
 import { composeNodeActions } from '../src/dahn/runtime/node-actions';
 import { bindVisualizerInformationControl } from '../src/dahn/runtime/visualizer-information-control';
 import { composeNodeTitle } from '../src/dahn/runtime/title-composition';
@@ -64,7 +65,14 @@ export async function mount(kind: string, mode: string, textScale = 1, activeCol
   property.setContext({ title: 'Properties', childVisualizers: propertyChildren });
   await bindVisualizerInformationControl(property, transaction, subject, ref('HolonInspector.NodeVisualizer'), ref('HolonInspector.PropertyMapSlot'), ref('DefaultPropertyMapVisualizer.PropertyMapVisualizer'));
   const subjectActions = [{ id: 'fixture-load', kind: 'action', label: 'Load Holons', dance: ref('LoadHolons.DanceType') }, { id: 'fixture-query', kind: 'action', label: 'Query Dance', dance: ref('Query.DanceType') }];
-  const actions = await composeNodeActions(transaction, runtime, owner, { target: { reference: subject }, actions: subjectActions, theme: { reference: ref('fixture-theme') } } as any);
+  const prefix = kind === 'generic' ? 'HolonInspector' : 'LoadHolonsResult';
+  const titleBinding = resolvedChildBinding(owner, subject, ref(`${prefix}.TitleBarSlot`), 'titleBar', ref(titleChoice));
+  const bindings = {
+    action: resolvedChildBinding(owner, subject, ref(`${prefix}.ActionsSlot`), 'action', ref('GenericActions.ActionBarVisualizer')),
+    visualizerActions: resolvedChildBinding(owner, subject, ref(`${prefix}.VisualizerControlsSlot`), 'visualizerActions', ref('GenericActions.ActionBarVisualizer')),
+  };
+  const prepared = runtime.forComposition(resolvedComposition(ref('fixture-theme'), [titleBinding, ...Object.values(bindings)]));
+  const actions = await composeNodeActions(transaction, prepared, owner, { target: { reference: subject }, actions: subjectActions, theme: { reference: ref('fixture-theme') } } as any, bindings);
   const collection = document.createElement('nav'); collection.setAttribute('aria-label', 'Non-table Collection');
   collection.style.cssText = 'display:flex;flex-direction:column;min-height:0;min-width:0;overflow:auto;flex:1;';
   for (let index = 0; index < 30; index++) {
@@ -73,8 +81,8 @@ export async function mount(kind: string, mode: string, textScale = 1, activeCol
   }
   const context: any = { title: 'Holon: A long readable subject identity', holonKey, target: { reference: subject }, actions: [],
     theme: { reference: ref('fixture-theme') }, canvas: {}, nodeAffordances: { singularRelationships: ['Navigate singular relationship', 'Owned by', 'Described by', 'Version of', 'Source', 'Parent'].map(label => ({ label, relationship: {} })), collections: collectionLabels.map(label => ({ kind: 'relationship', label, relationship: {} })) }, collectionActivation: { activate: (affordance: any, _slot: any, publish: any) => publish({ state: 'resolved', affordance, content: collection }), dispose() {} }, relationshipDiscovery: { population: () => ({ state: 'populated', count: 1 }), subscribe: (listener: () => void) => { listener(); return () => {}; } }, activateRelationship: () => {},
-    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions], ['visualizerActions', actions.controls]]) };
-  const title = await composeNodeTitle(transaction, runtime, owner, context);
+    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions.actions], ['visualizerActions', actions.controls]]) };
+  const title = await composeNodeTitle(transaction, prepared, owner, context, titleBinding);
   context.childVisualizers.set('titleBar', title);
   node.setContext(context);
   node.setOccurrenceRestorationHandler(() => { node.dataset.restored = 'true'; node.dataset.restoreCount = String(Number(node.dataset.restoreCount || 0) + 1); });

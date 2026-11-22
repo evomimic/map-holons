@@ -1,4 +1,23 @@
 //! Owner-directed composition resolved in one authoritative execution round.
+//!
+//! The owner is the selected Visualizer whose effective Slot declarations specify
+//! its child presentation, not the PersonAgent or the owner of the subject data.
+//! This module interprets those declarations in shared Rust: it binds each active
+//! Slot's subject, applies shared selection policy, and recursively interprets the
+//! selected child's own declarations. Initial requests include Presentation Slots;
+//! an explicit Slot request resolves that Slot and its Presentation descendants.
+//!
+//! Resolution returns child bindings, effective configuration, contract and
+//! implementation metadata, and observed populations through a shared reference
+//! table. Compatible selections and metadata are reused within this round only.
+//! Scalar values, collection members, executable materialization, callable admission,
+//! and mounting remain realization responsibilities. A returned collection binding
+//! identifies its source; it does not mean that the collection has been loaded or
+//! displayed. Automatic resolution does not create personal Usages or preferences.
+//!
+//! These are implementation responsibilities under the authoritative DAHN design
+//! specification in `map-dev-docs/docs/core/hx/dahn-design-spec.md`, §14.5.
+
 use super::candidates::{members, one, select_with_reason};
 use super::contract::{VisualizerKind, VisualizerOwner, VisualizerSelectionRequest};
 use super::{
@@ -16,7 +35,13 @@ use type_names::{
     DahnPropertyTypeName as P, DahnRelationshipTypeName as R, ToPropertyName, ToRelationshipName,
 };
 
-/// A request carries identities, never authority or a frontend expansion recipe.
+/// Input for resolving the selected Visualizer's child presentation for a subject.
+///
+/// An absent demand Slot requests the owner's initial Presentation Slots; a supplied
+/// Slot requests that owner's explicit activation. The optional collection source
+/// identifies which relationship collection to present. Theme supplies the shared
+/// compatibility context. These identities do not grant authority or prescribe a
+/// frontend expansion recipe.
 #[derive(Debug, Clone)]
 pub struct CompositionRequest {
     pub owner: HolonReference,
@@ -31,7 +56,14 @@ pub enum SelectionReason {
     PrescribedDefault,
     Discovery,
 }
-/// Indexes refer to the shared exact-reference table, not serialized runtime handles.
+/// One resolved child occurrence that the host can realize in its owner's Slot.
+///
+/// Records the actual subject binding, selected Visualizer and implementation,
+/// effective configuration, participation requirements, and selection reason. The
+/// parent index links this occurrence to the binding whose selected Visualizer owns
+/// it; roots belong to the request's owner. Reference indexes address the enclosing
+/// result's shared exact-reference table rather than serializing runtime handles.
+/// A binding describes a selection, not a loaded or mounted component.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ChildBinding {
     pub parent: Option<usize>,
@@ -52,7 +84,12 @@ pub struct ChildBinding {
     pub required_operators: Vec<String>,
     pub offered_operators: Vec<String>,
 }
-/// Prepared property vocabulary; subject contents remain outside this result.
+/// Property vocabulary prepared for a subject's composition and host presentation.
+///
+/// Associates a property descriptor with its name, display label, and array
+/// classification so label/value expansion and host classification can share those
+/// facts without rediscovering them per occurrence. Stored property values are not
+/// included; realization reads them from the actual subject.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompositionProperty {
     pub subject: usize,
@@ -61,7 +98,12 @@ pub struct CompositionProperty {
     pub label: String,
     pub is_array: bool,
 }
-/// Scalar metadata is shared by identity, including configuration and implementation fields.
+/// Shared identity and scalar properties for a reference used by the composition.
+///
+/// Supplies descriptor, Slot, Visualizer, Usage, or implementation facts needed by
+/// host realization without repeating property reads for every child binding.
+/// Each entry identifies one reference in the result table. It is a property
+/// snapshot, not an executable artifact or the reference's full relationship graph.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompositionMetadata {
     pub reference: usize,
@@ -70,14 +112,24 @@ pub struct CompositionMetadata {
     pub versioned_key: Option<String>,
     pub properties: serde_json::Value,
 }
-/// An observed complete membership set. An empty set is evidence of absence,
-/// never a failed lookup. Exact references retain the observed revisions.
+/// Evidence of a relationship population consulted while resolving this composition.
+///
+/// Captures observed personal preferences, default declarations, or discovery
+/// candidates so the result records what governed selection, including confirmed
+/// absence. An empty membership means a successful empty lookup, never a failed
+/// lookup. Exact references retain the observed revisions; this evidence does not
+/// authorize reuse outside the resolution round.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompositionPopulation {
     pub source: usize,
     pub relationship: String,
     pub members: Vec<usize>,
 }
+/// Diagnostic counts of semantic work performed and reused during one resolution.
+///
+/// Distinguishes selector calls, reused bindings and metadata, and personal or
+/// discovery population requests. These counters describe resolver operations,
+/// not physical database reads, transport crossings, or elapsed time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct CompositionWork {
     pub selections: usize,
@@ -86,6 +138,13 @@ pub struct CompositionWork {
     pub personal_population_requests: usize,
     pub candidate_population_requests: usize,
 }
+/// Serializable composition payload carried alongside a separate reference table.
+///
+/// Groups child bindings, prepared property vocabulary, shared scalar metadata,
+/// observed populations, Theme identity, and work counts for host consumption.
+/// Reference indexes address the enclosing ResolvedComposition's references;
+/// parent indexes address this payload's bindings. The payload represents one
+/// authoritative resolution round rather than persistent personal state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct CompositionData {
     #[serde(default)]
@@ -99,11 +158,24 @@ pub struct CompositionData {
     /// confirmed preference absence, authorizes reuse after a save or context change.
     pub reusable_across_rounds: bool,
 }
+/// Complete semantic result of resolving an owner's requested child composition.
+///
+/// Couples the indexed scalar payload with its bound reference table so Commands
+/// can project the result and the host can realize the selected children. Keeping
+/// references separate allows repeated identities to be shared without embedding
+/// runtime handles in serialized scalar data. Artifact loading, callable admission,
+/// and mounting remain subsequent realization work.
 #[derive(Debug)]
 pub struct ResolvedComposition {
     pub references: Vec<HolonReference>,
     pub data: CompositionData,
 }
+/// Working state for recursively resolving one composition request.
+///
+/// Accumulates the result while sharing selection metadata, prepared property
+/// vocabulary, and winners across compatible child occurrences. Its transaction
+/// and Theme remain fixed for the round. The state is discarded after resolution;
+/// it is not a cache of choices across requests or a store of live occurrence state.
 struct Resolver<'a> {
     context: &'a Arc<TransactionContext>,
     theme: HolonReference,
@@ -120,6 +192,9 @@ struct Resolver<'a> {
     )>,
 }
 impl Resolver<'_> {
+    /// Intern an exact bound reference and return its index in the result table.
+    ///
+    /// This records identity without reading properties or producing scalar metadata.
     fn identity(&mut self, reference: &HolonReference) -> usize {
         if let Some(index) = self.result.references.iter().position(|r| r == reference) {
             return index;
@@ -128,6 +203,10 @@ impl Resolver<'_> {
         self.result.references.push(reference.clone());
         index
     }
+    /// Intern a reference and capture its identity, keys, and property map once.
+    ///
+    /// Repeated consumers share one metadata entry. Read or serialization failures
+    /// propagate rather than producing incomplete metadata.
     fn reference(&mut self, reference: &HolonReference) -> Result<usize, HolonError> {
         let index = self.identity(reference);
         if self.result.data.metadata.iter().any(|m| m.reference == index) {
@@ -147,6 +226,11 @@ impl Resolver<'_> {
         });
         Ok(index)
     }
+    /// Prepare the subject's effective property vocabulary once for this round.
+    ///
+    /// Return descriptors, names, display labels with a property-name fallback, and
+    /// array classification. The result includes arrays so callers can classify
+    /// them, while scalar Slot expansion filters them out. Stored values are not read.
     fn properties(
         &mut self,
         subject: &HolonReference,
@@ -174,6 +258,18 @@ impl Resolver<'_> {
         self.properties.push((subject.clone(), properties.clone()));
         Ok(properties)
     }
+    /// Append bindings for this selected owner's active Slots and their descendants.
+    ///
+    /// With no explicit `demand`, interpret only Presentation Slots; otherwise verify
+    /// ownership and interpret the requested Slot. Bind each declared subject operation
+    /// and reuse selections for the same owner, Slot, and subject descriptor within
+    /// this round's fixed Theme and transaction context. Each selected child then
+    /// contributes its own Presentation Slots, linked by the parent binding index.
+    ///
+    /// A SelectedCollection uses the supplied source or its Slot's initial source,
+    /// validates availability on the bound subject, and selects using a typed witness
+    /// without reading members. Cycles, invalid declarations, and selection failures
+    /// stop expansion; executable loading and presentation occur after resolution.
     fn expand(
         &mut self,
         owner: &HolonReference,
@@ -358,6 +454,11 @@ impl Resolver<'_> {
 }
 /// Expands selected-owner declarations once. No executable artifacts or subject
 /// values/populations are read merely to choose a renderer.
+///
+/// Create fresh selection metadata and winner state for this request, resolve its
+/// initial presentation or explicit Slot demand, and collect observed personal,
+/// default, and discovery populations, including confirmed empty sets. The result
+/// carries work counts and shared metadata but does not authorize reuse across rounds.
 pub fn resolve(
     context: &Arc<TransactionContext>,
     request: CompositionRequest,
@@ -399,12 +500,16 @@ pub fn resolve(
     ) = resolver.selection.population_requests();
     Ok(resolver.result)
 }
+/// Read a required string property, rejecting missing values and other value kinds.
 fn text(source: &HolonReference, property: P) -> Result<String, HolonError> {
     match source.property_value(property.to_property_name())? {
         Some(BaseValue::StringValue(value)) => Ok(value.0),
         _ => Err(HolonError::InvalidParameter(format!("Missing {property:?}"))),
     }
 }
+/// Decode a Slot's required VisualizerKind enum into a supported selection kind.
+///
+/// Missing, incorrectly typed, and unrecognized values are declaration errors.
 fn kind(slot: &HolonReference) -> Result<VisualizerKind, HolonError> {
     match slot.property_value(P::VisualizerKind.to_property_name())? {
         Some(BaseValue::EnumValue(value)) => match value.to_string().as_str() {
@@ -423,6 +528,12 @@ fn kind(slot: &HolonReference) -> Result<VisualizerKind, HolonError> {
         _ => Err(HolonError::InvalidParameter("Missing enum VisualizerKind".into())),
     }
 }
+/// Collect effective configuration from a personal Usage or the default Usage schema.
+///
+/// Without a Usage, resolve its type through the Visualizer's Usage relationship
+/// contract and read declared property defaults without creating a Usage instance.
+/// With a Usage, include its authored or defaulted effective property values.
+/// Properties without either value are omitted; descriptor and lookup failures propagate.
 fn effective_configuration(
     visualizer: &HolonReference,
     usage: Option<&HolonReference>,
@@ -465,6 +576,9 @@ fn effective_configuration(
     }
     Ok(values)
 }
+/// Resolve the keys of Operators in a named relationship for callable admission.
+///
+/// A related Operator without a key is an error, not an omitted requirement.
 fn operator_keys(source: &HolonReference, name: &str) -> Result<Vec<String>, HolonError> {
     members(source, name)?
         .iter()
@@ -477,6 +591,10 @@ fn operator_keys(source: &HolonReference, name: &str) -> Result<Vec<String>, Hol
 }
 impl ResolvedComposition {
     /// Scalar payload and one ordered reference collection preserve boundary semantics.
+    ///
+    /// Package the result as a transient ResolvedComposition projection: serialize
+    /// scalar data into CompositionData and attach bound references separately through
+    /// CompositionReferences. Runtime handles are not serialized into the scalar payload.
     pub fn into_projection(
         self,
         context: &Arc<TransactionContext>,
@@ -499,6 +617,11 @@ impl ResolvedComposition {
         }
         Ok(body)
     }
+    /// Decode a transient composition projection and validate its internal structure.
+    ///
+    /// Check reference and metadata indexes, parent ordering, Theme presence, and
+    /// round-bounded reuse before returning the reconstructed result. This validates
+    /// the carrier; it does not repeat semantic selection or admit executable code.
     pub fn from_projection(body: &HolonReference) -> Result<Self, HolonError> {
         if !matches!(body, HolonReference::Transient(_)) {
             return Err(HolonError::InvalidParameter("Composition body must be transient".into()));
@@ -548,6 +671,7 @@ impl ResolvedComposition {
     }
 }
 
+/// Add the failing resolution phase to an error, presenting it as InvalidState.
 fn phase(phase: &str, error: HolonError) -> HolonError {
     HolonError::InvalidState(format!("{phase}: {error}"))
 }

@@ -1,6 +1,6 @@
 import { semanticWork } from './semantic-work';
 import { reportSuccessfulVisualizerUse } from './successful-visualizer-use';
-import type { HolonReference, MapTransaction } from '../deps';
+import type { CompositionBinding, HolonReference, MapTransaction } from '../deps';
 import type { VisualizerContext, VisualizerElement, VisualizerInspectionTarget } from '../contracts/visualizers';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
@@ -8,17 +8,17 @@ import { bindVisualizerInformationControl, registerVisualizerInspection, revokeV
 
 type TitleElement = VisualizerElement & { setOwnerInvocation(invoke: (key: string, invoker: HTMLElement) => unknown): void };
 
-/** Shared semantic composition for all participating Node titles. The stable slot
- * host survives title replacement; selected occurrences and invokers do not.
+/** Realize a Rust-resolved Node title. The stable Slot host survives explicit
+ * title replacement; initial realization never selects an omitted child.
  */
 export async function composeNodeTitle(
   transaction: MapTransaction, runtime: MaterializedVisualizerRuntime,
-  owner: HolonReference, context: VisualizerContext,
+  owner: HolonReference, context: VisualizerContext, binding: CompositionBinding,
 ): Promise<HTMLElement> {
   const subject = context.target.reference;
   const theme = context.theme!;
-  const binding = runtime.binding(owner, 'titleBar');
-  const slot = binding?.slot ?? await runtime.slot(owner, 'titleBar');
+  if (!binding || !binding.owner.equals(owner) || binding.role !== 'titleBar') throw new Error('Title realization requires its resolved owner binding');
+  const slot = binding.slot;
   const request = { subject, owner: { visualizer: owner }, slot, theme: theme.reference, requestedKind: 'titleBar' as const };
   const host = document.createElement('div') as unknown as HTMLElement & {
     visualizerOperations: Record<string, (input: unknown) => unknown>;
@@ -83,8 +83,8 @@ export async function composeNodeTitle(
   } };
   host.setOwnerInvocation = handler => { invoke = handler; };
   host.dispose = () => { generation++; current?.dispose?.(); invoke = () => { throw new Error('Title occurrence is retired'); }; };
-  selected = binding?.selected ?? (await transaction.selectVisualizer(request)).selected;
-  current = await ready(selected, binding?.usage); host.append(current); await register();
+  selected = binding.selected;
+  current = await ready(selected, binding.usage); host.append(current); await register();
   await transaction.recordSelectedVisualizerUse(selected, occurrenceId);
   return host;
 }
