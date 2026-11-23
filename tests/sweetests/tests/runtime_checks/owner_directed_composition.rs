@@ -772,4 +772,299 @@ pub async fn retained_visualizer_successor_preserves_established_version(runtime
     );
     assert_eq!(context.lookup().staged_count().unwrap(), 0);
     context.dispose().unwrap();
+
+    // Replace saved preferences both within one Visualizer lineage (B) and across
+    // lineages (A). A fresh observer must see the replacement, not an extra target.
+    for suffix in ["B", "A"] {
+        let context = open(runtime).await;
+        let retained_before = resolve(runtime, &context, suffix, false).await;
+        let old_choice = selected(&retained_before).holon_id().unwrap();
+        let slot = saved(&context, &format!("PreferenceTest{suffix}.Slot"));
+        let agent =
+            holons_core::dahn::PersonalPreferences::for_context(&context).unwrap().agent.unwrap();
+        let preference = agent
+            .related_holons("HasPersonalVisualizerPreference")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .iter()
+            .find(|preference| {
+                preference
+                    .related_holons("PreferenceForSlot")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .contains(&slot)
+            })
+            .unwrap()
+            .clone();
+        let preference_id = preference.holon_id().unwrap();
+        let old_target =
+            preference.related_holons("PreferredVisualizer").unwrap().read().unwrap().get_members()
+                [0]
+            .clone();
+        let replacement = holons_core::dahn::preferences::remember(
+            &context,
+            saved(&context, "PreferenceTestDate.StringValueType"),
+            Some(slot),
+            HolonReference::smart_from_id(context.space_read_handle(), successor_id.clone()),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            replacement
+                .related_holons("PreferredVisualizer")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .len(),
+            1,
+            "staging already replaces the target"
+        );
+        let response = context.commit().unwrap();
+        assert_eq!(
+            response.property_value("CommitRequestStatus").unwrap(),
+            Some(base_types::BaseValue::StringValue("Complete".into()))
+        );
+        assert_eq!(
+            replacement.holon_id().unwrap(),
+            preference_id,
+            "non-definitional replacement preserves the source version"
+        );
+        context.dispose().unwrap();
+        runtime.session().space_manager().reset_session().unwrap();
+
+        let context = open(runtime).await;
+        let preference =
+            HolonReference::smart_from_id(context.space_read_handle(), preference_id.clone());
+        let targets = preference
+            .related_holons("PreferredVisualizer")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .clone();
+        assert_eq!(
+            targets.iter().map(|target| target.holon_id().unwrap()).collect::<Vec<_>>(),
+            vec![successor_id.clone()],
+            "persisted preference must contain only the replacement"
+        );
+        let old_target = HolonReference::smart_from_id(
+            context.space_read_handle(),
+            old_target.holon_id().unwrap(),
+        );
+        assert!(
+            !old_target
+                .related_holons("ChosenByVisualizerPreference")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .iter()
+                .any(|member| member.holon_id().unwrap() == preference_id),
+            "the removed target must lose this preference's inverse membership"
+        );
+        let successor =
+            HolonReference::smart_from_id(context.space_read_handle(), successor_id.clone());
+        assert_eq!(
+            successor
+                .related_holons("ChosenByVisualizerPreference")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .iter()
+                .filter(|member| member.holon_id().unwrap() == preference_id)
+                .count(),
+            1
+        );
+        let retained = resolve(runtime, &context, suffix, false).await;
+        assert_eq!(selected(&retained).holon_id().unwrap(), old_choice);
+        assert_eq!(retained.data.work.selections, 0);
+        let adopted = resolve(runtime, &context, suffix, true).await;
+        assert_eq!(selected(&adopted).holon_id().unwrap(), successor_id);
+        assert!(adopted.data.work.selections > 0);
+        context.dispose().unwrap();
+    }
+
+    // Clearing optional Usage is removal-only: there is no remaining member to
+    // drive Pass 2. Keep the cross-cutting preference's exact Visualizer unchanged.
+    let context = open(runtime).await;
+    let agent =
+        holons_core::dahn::PersonalPreferences::for_context(&context).unwrap().agent.unwrap();
+    let preference = agent
+        .related_holons("HasPersonalVisualizerPreference")
+        .unwrap()
+        .read()
+        .unwrap()
+        .get_members()
+        .iter()
+        .find(|preference| {
+            preference
+                .related_holons("PreferenceForSlot")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .is_empty()
+        })
+        .unwrap()
+        .clone();
+    let preference_id = preference.holon_id().unwrap();
+    let visualizer =
+        preference.related_holons("PreferredVisualizer").unwrap().read().unwrap().get_members()[0]
+            .clone();
+    let usage = preference.related_holons("PreferredUsage").unwrap().read().unwrap().get_members()
+        [0]
+    .holon_id()
+    .unwrap();
+    holons_core::dahn::preferences::remember(
+        &context,
+        saved(&context, "PreferenceTestDate.StringValueType"),
+        None,
+        visualizer,
+        None,
+    )
+    .unwrap();
+    let response = context.commit().unwrap();
+    assert_eq!(
+        response.property_value("CommitRequestStatus").unwrap(),
+        Some(base_types::BaseValue::StringValue("Complete".into()))
+    );
+    context.dispose().unwrap();
+    runtime.session().space_manager().reset_session().unwrap();
+    let context = open(runtime).await;
+    let preference =
+        HolonReference::smart_from_id(context.space_read_handle(), preference_id.clone());
+    assert!(
+        preference
+            .related_holons("PreferredUsage")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .is_empty(),
+        "removal-only updates persist an empty collection"
+    );
+    // The Usage remains a saved object; only the preference's membership was removed.
+    let usage = HolonReference::smart_from_id(context.space_read_handle(), usage);
+    assert!(!usage
+        .related_holons("PreferredByVisualizerPreference")
+        .unwrap()
+        .read()
+        .unwrap()
+        .get_members()
+        .iter()
+        .any(|member| member.holon_id().unwrap() == preference_id));
+    assert_eq!(
+        usage.property_value("PreferenceTestDateFormat").unwrap(),
+        Some(base_types::BaseValue::StringValue("long".into()))
+    );
+    holons_core::dahn::PersonalPreferences::for_context(&context).unwrap();
+    context.dispose().unwrap();
+    preference_versions_share_inverse_until_last_removal(runtime, preference_id, successor_id)
+        .await;
+}
+
+/// Different saved source versions can support one lineage-bound inverse. Removing
+/// one forward edge must retain that inverse until its final supporting edge is gone.
+async fn preference_versions_share_inverse_until_last_removal(
+    runtime: &Runtime,
+    preference_id: core_types::HolonId,
+    replacement_id: core_types::HolonId,
+) {
+    use holons_core::WritableHolon;
+    let id = runtime.session().begin_transaction().await.unwrap();
+    let context = runtime.session().get_transaction(&id).unwrap();
+    let root = HolonReference::smart_from_id(context.space_read_handle(), preference_id.clone());
+    let old = root.related_holons("PreferredVisualizer").unwrap().read().unwrap().get_members()[0]
+        .holon_id()
+        .unwrap();
+    let mut successor =
+        context.mutation().stage_new_version_from_id(preference_id.clone()).unwrap();
+    successor.with_property_value("Key", "Preference.RemovalHistory").unwrap();
+    let response = context.commit().unwrap();
+    assert_eq!(
+        response.property_value("CommitRequestStatus").unwrap(),
+        Some(base_types::BaseValue::StringValue("Complete".into()))
+    );
+    let successor_id = successor.holon_id().unwrap();
+    assert_ne!(successor_id, preference_id);
+    context.dispose().unwrap();
+
+    // Update the successor's mutable membership, leaving the root's edge intact.
+    for source in [successor_id.clone(), preference_id.clone()] {
+        runtime.session().space_manager().reset_session().unwrap();
+        let id = runtime.session().begin_transaction().await.unwrap();
+        let context = runtime.session().get_transaction(&id).unwrap();
+        let mut staged = context.mutation().stage_new_version_from_id(source.clone()).unwrap();
+        staged
+            .remove_related_holons(
+                "PreferredVisualizer",
+                vec![HolonReference::smart_from_id(context.space_read_handle(), old.clone())],
+            )
+            .unwrap();
+        staged
+            .add_related_holons(
+                "PreferredVisualizer",
+                vec![HolonReference::smart_from_id(
+                    context.space_read_handle(),
+                    replacement_id.clone(),
+                )],
+            )
+            .unwrap();
+        let response = context.commit().unwrap();
+        assert_eq!(
+            response.property_value("CommitRequestStatus").unwrap(),
+            Some(base_types::BaseValue::StringValue("Complete".into()))
+        );
+        assert_eq!(staged.holon_id().unwrap(), source);
+        context.dispose().unwrap();
+        runtime.session().space_manager().reset_session().unwrap();
+        let id = runtime.session().begin_transaction().await.unwrap();
+        let context = runtime.session().get_transaction(&id).unwrap();
+        for version in [&preference_id, &successor_id] {
+            let reference =
+                HolonReference::smart_from_id(context.space_read_handle(), version.clone());
+            let expected = if version == &preference_id && source == successor_id {
+                &old
+            } else {
+                &replacement_id
+            };
+            assert_eq!(
+                reference
+                    .related_holons("PreferredVisualizer")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .iter()
+                    .map(|member| member.holon_id().unwrap())
+                    .collect::<Vec<_>>(),
+                vec![expected.clone()]
+            );
+        }
+        for target in [&old, &replacement_id] {
+            let target_reference =
+                HolonReference::smart_from_id(context.space_read_handle(), target.clone());
+            let count = target_reference
+                .related_holons("ChosenByVisualizerPreference")
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_members()
+                .iter()
+                .filter(|member| member.holon_id().unwrap() == preference_id)
+                .count();
+            assert_eq!(
+                count,
+                usize::from(target == &replacement_id || source == successor_id),
+                "shared inverse reflects all supporting exact source versions"
+            );
+        }
+        context.dispose().unwrap();
+    }
 }

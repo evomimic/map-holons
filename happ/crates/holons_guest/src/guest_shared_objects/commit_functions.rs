@@ -6,14 +6,18 @@ use std::{
 
 use super::commit_validation_findings::make_finding_holons_best_effort;
 use crate::persistence_layer::{
-    expand_from_source, expand_from_source_by_key, get_holon, persist_holon, put_smartlink_cached,
-    SmartLinkWriteContext,
+    delete_smartlink, expand_from_source, expand_from_source_by_key, get_holon, persist_holon,
+    put_smartlink_cached, SmartLinkWriteContext,
 };
-use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
+use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome, SmartLink};
 
 use holons_core::{
     core_shared_objects::{
-        holon::state::{AccessType, StagedState},
+        holon::{
+            state::{AccessType, StagedState},
+            RelationshipCommitScope,
+        },
+        pending_relationship_deltas::PendingRelationshipTarget,
         transactions::TxId,
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
@@ -217,6 +221,9 @@ struct RelationshipCommitSource {
     source_key: Option<MapString>,
     source_reference: HolonReference,
     schema: std::sync::OnceLock<Result<ComputedEffectiveSchema, HolonError>>,
+    /// Only graph-only updates remove existing memberships. New versions publish
+    /// their final snapshot without modifying the predecessor's relationships.
+    removed_targets: BTreeMap<RelationshipName, Vec<HolonId>>,
 }
 
 /// Saved target anchors established by this invocation's accepted NoAction outcomes.
@@ -262,6 +269,29 @@ impl RelationshipCommitSource {
                 source_key: staged_holon.key(),
                 source_reference: staged_reference.into(),
                 schema: std::sync::OnceLock::new(),
+                removed_targets: if staged_holon.relationship_commit_scope()
+                    == RelationshipCommitScope::TouchedOnly
+                {
+                    staged_holon
+                        .pending_relationship_deltas()
+                        .iter()
+                        .map(|(name, delta)| {
+                            let targets = delta
+                                .removed
+                                .iter()
+                                .filter_map(|target| match target {
+                                    PendingRelationshipTarget::Saved(id) => Some(id.clone()),
+                                    // Hydrated saved memberships carry Saved identities. A target
+                                    // introduced and removed while staged has no old stored link.
+                                    PendingRelationshipTarget::Staged(_) => None,
+                                })
+                                .collect();
+                            (name.clone(), targets)
+                        })
+                        .collect()
+                } else {
+                    BTreeMap::new()
+                },
             }),
             _ => None,
         }
@@ -301,7 +331,9 @@ impl RelationshipCommitSource {
 /// Pass 2 scans the complete Nursery, including already committed sources from an incomplete
 /// prior attempt, even when there are no live validation candidates. It snapshots eligible
 /// relationships under a short-lived source lock, then resolves and writes links after
-/// dropping that lock. Identical SmartLink replay succeeds; conflicting replay remains an
+/// dropping that lock. Graph-only work also applies recorded removals, including emptied
+/// collections; successor snapshots leave predecessor memberships intact. Exact deletion
+/// and identical SmartLink replay are idempotent; conflicting replay remains an
 /// operational failure. Pass 2 records the first error per source and returns `Incomplete`.
 /// Persistence remains non-atomic: successful earlier writes are not rolled back.
 pub fn commit(
@@ -740,10 +772,8 @@ pub fn commit(
         let mut first_error: Option<HolonError> = None;
 
         for (name, holon_collection_rc) in relationship_collections {
-            // Removing the final member leaves an empty staged collection. It
-            // represents no persistence work and must not force descriptor or
-            // inverse resolution (which can otherwise turn a successful
-            // correction into an unrelated Pass-2 failure).
+            // Empty create/version snapshots need no relationship work. Graph-only
+            // removals still need persistence even when the final collection is empty.
             let has_members = {
                 let collection = holon_collection_rc.read().map_err(|e| {
                     HolonError::FailedToAcquireLock(format!(
@@ -753,7 +783,11 @@ pub fn commit(
                 })?;
                 !collection.get_members().is_empty()
             };
-            if !has_members {
+            let has_removals = relationship_source
+                .removed_targets
+                .get(&name)
+                .is_some_and(|targets| !targets.is_empty());
+            if !has_members && !has_removals {
                 continue;
             }
 
@@ -1059,11 +1093,37 @@ fn commit_relationship(
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
 
+    let bindings = relationship_target_bindings(source, &name, performance_metrics)?;
+    let removals = plan_relationship_removals(
+        source,
+        &name,
+        &inverse_name,
+        collection,
+        no_action_targets,
+        bindings,
+        performance_metrics,
+    )?;
+    for link in removals {
+        // Invalidate both commit-local views even on a partially successful deletion
+        // sequence. An Incomplete retry re-expands live links and reuses exact deletes.
+        smartlink_write_context.invalidate(&link.source_id, &link.relationship_name);
+        inverse_dedup_context
+            .members_by_bucket
+            .remove(&(link.source_id.clone(), link.relationship_name.clone()));
+        delete_smartlink(&link.smartlink_id)?;
+        descriptor_effects.record_relationship_write(&link.source_id, &link.relationship_name);
+    }
+
+    if collection.get_members().is_empty() {
+        return Ok(());
+    }
+
     save_smartlinks_for_collection(
         source,
         name.clone(),
         inverse_name,
         collection,
+        bindings,
         no_action_targets,
         smartlink_write_context,
         inverse_dedup_context,
@@ -1305,6 +1365,155 @@ fn profile_descriptor_resolution<T>(
     result
 }
 
+/// Resolves the declared endpoint bindings shared by membership additions and removals.
+fn relationship_target_bindings(
+    source: &RelationshipCommitSource,
+    name: &RelationshipName,
+    performance_metrics: &mut CommitPerformanceMetrics,
+) -> Result<(TargetBinding, TargetBinding), HolonError> {
+    let descriptor_started_at = performance_timestamp_micros();
+    let bindings =
+        profile_descriptor_resolution("TargetBindings", &source.source_reference, name, || {
+            let schema = source
+                .schema
+                .get_or_init(|| {
+                    let descriptor = source.source_reference.holon_descriptor()?;
+                    match holons_core::descriptors::EffectiveHolonDescriptor::find_for_instance(
+                        &source.source_reference,
+                    )? {
+                        Some(prepared) => ComputedEffectiveSchema::from_prepared(&prepared),
+                        None => ComputedEffectiveSchema::resolve(descriptor.holon()),
+                    }
+                })
+                .as_ref()
+                .map_err(Clone::clone)?;
+            let relationship = schema
+                .get_relationship_by_name(name.clone())?
+                .try_into_declared_relationship_descriptor()?;
+            Ok((relationship.target_binding()?, relationship.required_inverse()?.target_binding()?))
+        })?;
+    performance_metrics.relationship_descriptor_resolution_count += 1;
+    record_elapsed_micros(
+        descriptor_started_at,
+        &mut performance_metrics.relationship_descriptor_resolution_micros,
+    );
+    Ok(bindings)
+}
+
+/// Collects the visible version graph without choosing a head. Historical versions
+/// can still justify a shared lineage-bound inverse, even after a successor exists.
+fn relationship_source_versions(root: &LocalId) -> Result<Vec<LocalId>, HolonError> {
+    let mut pending = vec![root.clone()];
+    let mut visited = HashSet::new();
+    let mut versions = Vec::new();
+    while let Some(version) = pending.pop() {
+        if !visited.insert(version.clone()) {
+            continue;
+        }
+        let stored =
+            get_holon(&version)?.ok_or_else(|| HolonError::HolonNotFound(version.to_string()))?;
+        if stored.version_metadata.lineage_root().as_local_id() != root {
+            return Err(HolonError::InvalidState(
+                "Relationship inverse support crosses holon lineages".into(),
+            ));
+        }
+        for link in expand_from_source(
+            &version,
+            &CoreRelationshipTypeName::Successor.as_relationship_name(),
+        )? {
+            let HolonId::Local(successor) = link.target_id else {
+                return Err(HolonError::InvalidHolonReference(
+                    "Successor membership must have a local target".into(),
+                ));
+            };
+            pending.push(successor);
+        }
+        versions.push(version);
+    }
+    Ok(versions)
+}
+
+/// Plans exact physical deletions from graph-only mutation deltas. The final
+/// collection guards conservative/repeated deltas and lineage-equivalent targets.
+/// All endpoints and inverse support are resolved before this collection writes.
+fn plan_relationship_removals(
+    source: &RelationshipCommitSource,
+    name: &RelationshipName,
+    inverse_name: &RelationshipName,
+    collection: &HolonCollection,
+    no_action_targets: &NoActionTargetAnchors,
+    (forward_binding, inverse_binding): (TargetBinding, TargetBinding),
+    performance_metrics: &mut CommitPerformanceMetrics,
+) -> Result<Vec<SmartLink>, HolonError> {
+    let Some(removed) = source.removed_targets.get(name).filter(|targets| !targets.is_empty())
+    else {
+        return Ok(Vec::new());
+    };
+    let mut retained = HashSet::new();
+    for (index, target) in collection.get_members().iter().enumerate() {
+        let id = require_local_target(name, index, no_action_targets.resolve(target)?)?;
+        retained.insert(materialize_target_binding(&id, forward_binding, performance_metrics)?);
+    }
+    let inverse_target =
+        materialize_target_binding(source.source_local_id(), inverse_binding, performance_metrics)?;
+    let source_versions = if inverse_binding == TargetBinding::Lineage {
+        relationship_source_versions(&inverse_target)?
+    } else {
+        Vec::new()
+    };
+    let existing = expand_from_source(source.source_local_id(), name)?;
+    let mut deletions = Vec::new();
+    let mut seen_targets = HashSet::new();
+    for (index, target) in removed.iter().enumerate() {
+        let target = require_local_target(name, index, target.clone())?;
+        let physical_target =
+            materialize_target_binding(&target, forward_binding, performance_metrics)?;
+        if retained.contains(&physical_target) || !seen_targets.insert(physical_target.clone()) {
+            continue;
+        }
+        deletions.extend(
+            existing
+                .iter()
+                .filter(|link| link.target_id == HolonId::Local(physical_target.clone()))
+                .cloned(),
+        );
+
+        // Several source versions may share one inverse target (their lineage).
+        // Removing one version's forward membership must not retract that shared inverse.
+        let mut supported = false;
+        for version in &source_versions {
+            if version != source.source_local_id()
+                && expand_from_source(version, name)?
+                    .iter()
+                    .any(|link| link.target_id == HolonId::Local(physical_target.clone()))
+            {
+                supported = true;
+                break;
+            }
+        }
+        if supported {
+            continue;
+        }
+        // A lineage-bound forward can have been authored against any exact target
+        // version. Inspect that lineage's inverse buckets rather than guessing its head.
+        let inverse_sources = if forward_binding == TargetBinding::Lineage {
+            relationship_source_versions(&physical_target)?
+        } else {
+            vec![target]
+        };
+        for inverse_source in inverse_sources {
+            deletions.extend(
+                expand_from_source(&inverse_source, inverse_name)?
+                    .into_iter()
+                    .filter(|link| link.target_id == HolonId::Local(inverse_target.clone())),
+            );
+        }
+    }
+    let mut seen_links = HashSet::new();
+    deletions.retain(|link| seen_links.insert(link.smartlink_id.clone()));
+    Ok(deletions)
+}
+
 /// Creates local forward and inverse SmartLinks for each member in `collection`.
 ///
 /// Current behavior is fail-fast at the collection level: if any member cannot
@@ -1323,41 +1532,13 @@ fn save_smartlinks_for_collection(
     name: RelationshipName,
     inverse_name: RelationshipName,
     collection: &HolonCollection,
+    (forward_binding, inverse_binding): (TargetBinding, TargetBinding),
     no_action_targets: &NoActionTargetAnchors,
     smartlink_write_context: &mut SmartLinkWriteContext,
     inverse_dedup_context: &mut InverseDedupContext,
     descriptor_effects: &mut DescriptorCommitEffects,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
-    let descriptor_started_at = performance_timestamp_micros();
-    let (forward_binding, inverse_binding) =
-        profile_descriptor_resolution("TargetBindings", &source.source_reference, &name, || {
-            let schema = source
-                .schema
-                .get_or_init(|| {
-                    let descriptor = source.source_reference.holon_descriptor()?;
-                    match holons_core::descriptors::EffectiveHolonDescriptor::find_for_instance(
-                        &source.source_reference,
-                    )? {
-                        Some(prepared) => ComputedEffectiveSchema::from_prepared(&prepared),
-                        None => ComputedEffectiveSchema::resolve(descriptor.holon()),
-                    }
-                })
-                .as_ref()
-                .map_err(Clone::clone)?;
-            let relationship_descriptor = schema
-                .get_relationship_by_name(name.clone())?
-                .try_into_declared_relationship_descriptor()?;
-            Ok((
-                relationship_descriptor.target_binding()?,
-                relationship_descriptor.required_inverse()?.target_binding()?,
-            ))
-        })?;
-    performance_metrics.relationship_descriptor_resolution_count += 1;
-    record_elapsed_micros(
-        descriptor_started_at,
-        &mut performance_metrics.relationship_descriptor_resolution_micros,
-    );
     let source_id = source.source_local_id();
 
     let members = collection.get_members();

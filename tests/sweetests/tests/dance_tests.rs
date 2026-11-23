@@ -146,6 +146,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_version_siblings_fixture().unwrap(),
             commit_no_op_and_graph_only_siblings_fixture().unwrap(),
             commit_disjoint_graph_additions_fixture().unwrap(),
+            commit_relationship_removals_fixture().unwrap(),
             commit_historical_key_uniqueness_fixture().unwrap(),
             commit_identical_graph_additions_fixture().unwrap(),
             commit_graph_overlap_rejection_fixture().unwrap(),
@@ -286,6 +287,17 @@ async fn commit_enum_evolution_fixture_acceptance() {
     run_dance_test_suite(DanceTestSuite {
         name: "commit_enum_evolution_fixture",
         test_cases: vec![commit_enum_evolution_fixture().unwrap()],
+    })
+    .await;
+}
+
+/// Focused rerun of the general removal fixture; normal coverage shares the runtime matrix.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused removal regression; runtime_behavior_matrix covers this fixture"]
+async fn relationship_removals_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "relationship_removals",
+        test_cases: vec![commit_relationship_removals_fixture().unwrap()],
     })
     .await;
 }
