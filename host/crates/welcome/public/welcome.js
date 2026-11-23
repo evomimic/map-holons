@@ -11,13 +11,12 @@ const environmentStatus = document.getElementById('environment-status');
 const environmentRefresh = document.getElementById('refresh-environments');
 const button = document.getElementById('constitute');
 const setupForm = document.getElementById('personal-setup');
-const heading = document.querySelector('h1');
+const heading = document.getElementById('state-heading');
 const names = document.getElementById('personal-name');
 const firstName = document.getElementById('first-name');
 const middleName = document.getElementById('middle-name');
 const lastName = document.getElementById('last-name');
 const navigatorButton = document.getElementById('open-navigator');
-const comparison = document.getElementById('usual-way');
 const activityMessage = document.getElementById('activity-message');
 const preparationProgress = document.getElementById('preparation-progress');
 const attention = document.getElementById('attention');
@@ -25,15 +24,13 @@ const recoveryMessage = document.getElementById('recovery-message');
 const spaceOptions = document.getElementById('space-options');
 const startupDetails = document.getElementById('startup-details');
 let lastStatus = null;
-let newSpaceStarted = null;
-const invitationReadingTime = 15000;
 let localFailure = false;
 let openingNavigator = false;
 let navigatorAvailable = false;
 let available = false;
 let submitting = false;
 let constitutionCommitted = false;
-const introduction = document.getElementById('introduction');
+const introduction = document.getElementById('state-introduction');
 const activity = document.getElementById('activity');
 const activityStage = document.getElementById('activity-stage');
 const activityElapsed = document.getElementById('activity-elapsed');
@@ -58,7 +55,6 @@ function elapsedSince(start) {
 }
 function updateElapsed() {
   activityElapsed.textContent = `This step: ${elapsedSince(activityStageStarted)} · Total: ${elapsedSince(activityStarted)}`;
-  renderStory();
 }
 function showActivity(label) {
   if (activityTimer === null) {
@@ -73,6 +69,7 @@ function showActivity(label) {
   activity.hidden = false;
   activityStage.textContent = label;
   updateElapsed();
+  renderStory();
 }
 function stopActivity() {
   if (activityTimer !== null) window.clearInterval(activityTimer);
@@ -82,8 +79,108 @@ function stopActivity() {
 function text(element, value) {
   if (element.textContent !== value) element.textContent = value;
 }
-// Story screens describe observed lifecycle state. The comparison card is static
-// illustration; it contains no account, credentials, or acceptance controls.
+// Startup may advance the story until the reader takes control; polling never selects a card.
+const storyPages = document.getElementById('story-pages');
+const storyDots = [...document.querySelectorAll('#story-dots button')];
+let selectedStory = 0;
+let storyAutoTimer = null;
+let storyManuallyControlled = false;
+const storyReadingTime = 15000;
+function stopStoryAutoAdvance(manual = false) {
+  if (manual) storyManuallyControlled = true;
+  if (storyAutoTimer !== null) window.clearTimeout(storyAutoTimer);
+  storyAutoTimer = null;
+}
+function updateStoryAutoAdvance() {
+  if (document.getElementById('welcome-story').hidden || storyManuallyControlled || selectedStory === storyDots.length - 1) {
+    stopStoryAutoAdvance();
+    return;
+  }
+  // Lifecycle polling must not restart the reading interval every second.
+  if (storyAutoTimer !== null) return;
+  storyAutoTimer = window.setTimeout(() => {
+    storyAutoTimer = null;
+    if (document.getElementById('welcome-story').hidden || storyManuallyControlled) return;
+    markStory(selectedStory + 1);
+    updateStoryAutoAdvance();
+  }, storyReadingTime);
+}
+function markStory(index) {
+  selectedStory = Math.max(0, Math.min(storyDots.length - 1, index));
+  storyDots.forEach((dot, position) => {
+    if (position === selectedStory) dot.setAttribute('aria-current', 'true');
+    else dot.removeAttribute('aria-current');
+    const page = document.getElementById(dot.getAttribute('aria-controls'));
+    page.hidden = position !== selectedStory;
+    page.inert = position !== selectedStory;
+    page.setAttribute('aria-hidden', String(position !== selectedStory));
+  });
+}
+function selectStory(index) {
+  stopStoryAutoAdvance(true);
+  markStory(index);
+}
+storyDots.forEach((dot, index) => dot.addEventListener('click', () => selectStory(index)));
+const story = document.getElementById('welcome-story');
+for (const event of ['pointerdown', 'focusin', 'wheel']) story.addEventListener(event, () => stopStoryAutoAdvance(true), { passive: true });
+document.getElementById('welcome-story').addEventListener('keydown', event => {
+  let next;
+  if (event.key === 'ArrowLeft') next = selectedStory - 1;
+  else if (event.key === 'ArrowRight') next = selectedStory + 1;
+  else if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = storyDots.length - 1;
+  else return;
+  event.preventDefault();
+  const dotFocused = storyDots.includes(document.activeElement);
+  selectStory(next);
+  if (dotFocused) storyDots[selectedStory].focus();
+});
+// Handle horizontal gestures across the Welcome surface, independent of focus
+// or the current card's height. Leave vertical scrolling and detail panels native.
+let wheelReset = null;
+let wheelDistance = 0;
+let wheelTurned = false;
+let previousWheelDelta = 0;
+document.body.addEventListener('wheel', event => {
+  if (document.getElementById('welcome-story').hidden || event.ctrlKey
+      || event.target.closest?.('input, textarea, select, [contenteditable], details')) return;
+  const delta = event.shiftKey ? event.deltaY || event.deltaX : event.deltaX;
+  if (!delta || (!event.shiftKey && Math.abs(event.deltaX) <= Math.abs(event.deltaY))) return;
+  event.preventDefault();
+  stopStoryAutoAdvance(true);
+  const pixels = delta * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? storyPages.clientWidth || 400 : 1);
+  // A fresh impulse after a small momentum tail starts the next swipe even
+  // when the trackpad has not yet produced a fully idle interval.
+  const freshImpulse = Math.abs(previousWheelDelta) <= 8 && Math.abs(pixels) >= 24;
+  if (wheelTurned && (freshImpulse || Math.sign(pixels) !== Math.sign(wheelDistance))) {
+    wheelTurned = false; wheelDistance = 0;
+  }
+  previousWheelDelta = pixels;
+  window.clearTimeout(wheelReset);
+  wheelReset = window.setTimeout(() => { wheelTurned = false; wheelDistance = 0; previousWheelDelta = 0; }, 220);
+  if (wheelTurned) return;
+  wheelDistance += pixels;
+  if (Math.abs(wheelDistance) < 32) return;
+  selectStory(selectedStory + Math.sign(wheelDistance));
+  wheelTurned = true;
+}, { passive: false });
+let touchStart;
+storyPages.addEventListener('touchstart', event => {
+  stopStoryAutoAdvance(true);
+  touchStart = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : undefined;
+}, { passive: true });
+storyPages.addEventListener('touchend', event => {
+  const end = event.changedTouches[0];
+  if (touchStart && end) {
+    const dx = touchStart.x - end.clientX, dy = touchStart.y - end.clientY;
+    if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) selectStory(selectedStory + Math.sign(dx));
+  }
+  touchStart = undefined;
+}, { passive: true });
+storyPages.addEventListener('touchcancel', () => { touchStart = undefined; }, { passive: true });
+markStory(0);
+
+// Readiness, actions and failures remain independent of the informational carousel.
 function renderStory() {
   const result = lastStatus;
   let view = 'discovery';
@@ -91,32 +188,28 @@ function renderStory() {
   else if (result?.phase === 'association-present') view = constitutionCommitted ? 'ready' : 'returning';
   else if (constitutionCommitted && result?.phase === 'foundation-present') view = 'confirming';
   else if (result?.phase === 'foundation-present') view = result.constitution_available === true ? 'naming' : 'problem';
-  else if (newSpaceStarted !== null) {
-    const finishing = ['verifying-core-schema', 'activating-base-packages', 'loading-space-definitions', 'verifying-space-definitions'].includes(result?.stage);
-    // Background setup continues; fast stage changes must not flash the comparison.
-    // Ready and problem states above take precedence over this reading interval.
-    view = Date.now() - newSpaceStarted < invitationReadingTime ? 'invitation' : finishing ? 'finalizing' : 'privacy';
-  }
-  const stories = {
-    discovery: ['A space\nof your own.', 'Your data. On your devices. Under your control. Always.', 'Looking for your personal space…'],
-    invitation: ['It all starts with\nan invitation.', 'Instead, MAP provisions a private, sovereign space for you…', 'Preparing your space…'],
-    privacy: ['No account in\nsomeone else’s\ncloud.', 'MAP is preparing a private space for you, on your device.', 'Preparing your space…'],
-    finalizing: ['Your data.\nOn your devices.\nUnder your control.\nAlways.', 'Your space is yours to steward.', 'Finalizing your space…'],
-    naming: ['Your space is ready.\nMake yourself at home.', '', ''],
-    confirming: ['Your data.\nOn your devices.\nUnder your control.\nAlways.', 'MAP is confirming your personal space.', 'Confirming your personal space…'],
+  else if (result?.preparing_new_space === true) view = 'preparing';
+  const states = {
+    discovery: ['', '', 'Looking for your personal space…'],
+    preparing: ['', '', 'Preparing your space…'],
+    naming: ['Your space is ready. Make yourself at home.', '', ''],
+    confirming: ['Confirming your personal space.', 'MAP is confirming your personal space.', 'Confirming your personal space…'],
     ready: ['You’re on\nthe MAP.', 'Your private space is ready, here on your devices, under your control.', ''],
     returning: ['Welcome\nback to MAP.', 'Your personal space is here, just as you left it.', ''],
-    recovery: ['Your Space needs\na compatible environment.', 'Your existing Space is preserved.', ''],
-    problem: ['Your space needs\nattention.', 'MAP could not finish verifying or opening your space.', ''],
+    recovery: ['Your Space needs a compatible environment.', 'Your existing Space is preserved.', ''],
+    problem: ['Your space needs attention.', 'MAP could not finish verifying or opening your space.', ''],
   };
-  const [title, copy, progress] = stories[view];
+  const [title, copy, progress] = states[view];
   document.body.dataset.view = view;
+  document.getElementById('discovery-story').hidden = view !== 'discovery';
+  document.getElementById('welcome-story').hidden = view !== 'preparing';
+  updateStoryAutoAdvance();
   text(heading, title);
+  heading.hidden = !title;
   text(introduction, copy);
   introduction.hidden = !copy;
-  comparison.hidden = view !== 'invitation';
-  preparationProgress.hidden = !['invitation', 'privacy', 'finalizing', 'confirming'].includes(view) && !submitting;
-  text(activityMessage, openingNavigator ? 'Entering your space…' : creatingEnvironment ? 'Preparing a fresh environment…' : submitting ? 'Making this space yours…' : progress);
+  preparationProgress.hidden = !['preparing', 'confirming'].includes(view) && !submitting;
+  text(activityMessage, openingNavigator ? 'Entering your space…' : creatingEnvironment ? 'Preparing a fresh environment…' : submitting ? 'Making this space yours…' : activityLabel || progress);
   attention.hidden = !['recovery', 'problem'].includes(view);
   text(recoveryMessage, view === 'recovery'
     ? 'This version of MAP cannot open this environment. You can create a fresh environment or select another saved environment. Your previous environment and its data are kept.'
@@ -127,7 +220,6 @@ function renderStory() {
 function render(result) {
   lastStatus = result;
   localFailure = false;
-  if (newSpaceStarted === null && (result.preparing_new_space === true || result.stage === 'loading-core-schema')) newSpaceStarted = Date.now();
   environmentPanel.hidden = result.environment_management_available !== true;
   environmentChangesAvailable = !environmentPanel.hidden && ['foundation-present', 'association-present', 'blocked'].includes(result.phase);
   newEnvironmentButton.hidden = result.new_environment_available !== true;
@@ -313,12 +405,17 @@ async function loadEnvironments() {
         trash.addEventListener('click', () => {
           if (environmentBusy || !environmentChangesAvailable || card.querySelector('.environment-confirmation')) return;
           const confirm = document.createElement('div'); confirm.className = 'environment-confirmation';
-          const description = document.createElement('p'); description.textContent = `Move ${label} and its identity and Space data to Trash? It can be recovered until Trash is emptied.`;
+          const originalInfo = info.textContent;
+          info.textContent = 'Move to Trash? Recoverable until Trash is emptied.';
+          card.dataset.confirming = 'true';
           const accept = document.createElement('button'); accept.type = 'button'; accept.textContent = 'Confirm move to Trash';
           accept.addEventListener('click', () => { void changeEnvironment('trash_saved_environment', item.id); });
           const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
-          cancel.addEventListener('click', () => { confirm.remove(); trash.focus(); });
-          confirm.append(description, accept, cancel); card.append(confirm); accept.focus();
+          cancel.addEventListener('click', () => {
+            confirm.replaceWith(actions); info.textContent = originalInfo;
+            delete card.dataset.confirming; trash.focus({ preventScroll: true });
+          });
+          confirm.append(accept, cancel); actions.replaceWith(confirm); accept.focus({ preventScroll: true });
         });
         actions.append(activate, trash); card.append(actions);
       }

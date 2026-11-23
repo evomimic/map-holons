@@ -278,12 +278,14 @@ pub async fn constitute_personal_space(
 }
 
 pub fn create_window(handle: &tauri::AppHandle) -> anyhow::Result<()> {
-    WebviewWindowBuilder::new(handle, WINDOW_LABEL, WebviewUrl::App(PAGE.into()))
+    let window = WebviewWindowBuilder::new(handle, WINDOW_LABEL, WebviewUrl::App(PAGE.into()))
         .title("Welcome to MAP")
         .inner_size(1060.0, 820.0)
         .min_inner_size(640.0, 700.0)
+        .visible(false)
         .on_navigation(|url| approved_page(WINDOW_LABEL, url))
         .build()?;
+    crate::window_placement::show_fitted(&window, (640.0, 700.0), None)?;
     Ok(())
 }
 

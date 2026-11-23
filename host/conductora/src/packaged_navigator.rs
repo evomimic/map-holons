@@ -80,13 +80,20 @@ pub async fn open_space_navigator(window: WebviewWindow) -> Result<(), String> {
     )
     .await
     .map_err(|e| e.to_string())?;
-    WebviewWindowBuilder::new(handle, WINDOW, WebviewUrl::App("index.html".into()))
+    let navigator = WebviewWindowBuilder::new(handle, WINDOW, WebviewUrl::App("index.html".into()))
         .title("MAP — Space Navigator")
         .inner_size(1280.0, 1040.0)
         .min_inner_size(900.0, 700.0)
+        .visible(false)
         .on_navigation(|url| approved_page(WINDOW, url))
         .build()
         .map_err(|e| e.to_string())?;
+    welcome::window_placement::show_fitted(
+        &navigator,
+        (900.0, 700.0),
+        window.current_monitor().map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     tracing::info!(
         "[HANDOFF] Opened packaged Navigator using the existing runtime, Agent and Space"
     );
@@ -104,6 +111,7 @@ mod tests {
         assert_eq!(capability["webviews"], serde_json::json!(["navigator"]));
         let permissions = capability["permissions"].as_array().unwrap();
         assert!(permissions.iter().any(|p| p == "allow-dispatch-map-command"));
+        assert!(permissions.iter().any(|p| p == "core:window:allow-set-position"));
         assert!(!permissions.iter().any(|p| p == "allow-constitute-personal-space"
             || p == "allow-map-request"
             || p.as_str().is_some_and(|name| name.starts_with("holochain:"))));

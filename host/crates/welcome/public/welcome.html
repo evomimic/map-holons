@@ -12,17 +12,58 @@
   <div class="welcome-garden" aria-hidden="true"></div>
   <main>
     <p class="eyebrow">Welcome to the MAP</p>
-    <h1>A space of your own.</h1>
-    <div class="story-rule" aria-hidden="true"></div>
-    <section id="usual-way" hidden aria-label="The usual way, shown for comparison">
-      <h2>The usual way</h2>
+    <section id="discovery-story" class="story-page">
+      <h2>A space
+of your own.</h2>
+      <div class="story-rule" aria-hidden="true"></div>
+      <p>Your data. On your devices. Under your control. Always.</p>
+    </section>
+    <section id="welcome-story" hidden aria-label="About MAP" aria-roledescription="carousel">
+      <div id="story-pages" tabindex="0" aria-label="Welcome messages; use left and right arrow keys">
+        <article class="story-page" id="story-own" aria-roledescription="slide" aria-label="1 of 4" data-story="own">
+          <h2>A space
+of your own.</h2>
+          <div class="story-rule" aria-hidden="true"></div>
+          <p>Your data. On your devices. Under your control. Always.</p>
+        </article>
+        <article class="story-page" id="story-invitation" aria-roledescription="slide" aria-label="2 of 4" data-story="invitation">
+          <h2>An invitation.
+Not a sign-up.</h2>
+    <section id="usual-way" aria-label="Other platforms’ sign-up flow — not MAP">
+      <h2>Other platforms’ sign-up flow</h2>
       <div class="comparison-content">
         <svg class="cloud" viewBox="0 0 64 64" aria-hidden="true"><path d="M17 38a13 13 0 0 1 1-26 17 17 0 0 1 32 9 10 10 0 0 1-1 20"/><rect x="16" y="30" width="32" height="23" rx="4"/><path d="M16 41h32M24 36h1m-1 11h1m7-11h8m-8 11h8"/></svg>
-        <ul><li>Create an account</li><li>Give us your email and password</li><li>Accept our terms</li><li>Store YOUR data in OUR cloud</li></ul>
+        <ul><li>Create a provider account</li><li>Share your email and password</li><li>Accept the provider’s terms</li><li>Store your data in their cloud</li></ul>
       </div>
-      <p class="comparison-aside">Wink. Wink.</p>
+      <p class="comparison-aside">Not on MAP.</p>
     </section>
-    <p id="introduction">Your data. On your devices. Under your control. Always.</p>
+          <p>MAP prepares a private, sovereign space for you, on your own device.</p>
+        </article>
+        <article class="story-page" id="story-privacy" aria-roledescription="slide" aria-label="3 of 4" data-story="privacy">
+          <h2>No account in
+someone else’s
+cloud.</h2>
+          <div class="story-rule" aria-hidden="true"></div>
+          <p>A private space for you, on your device.</p>
+        </article>
+        <article class="story-page" id="story-stewardship" aria-roledescription="slide" aria-label="4 of 4" data-story="stewardship">
+          <h2>Your data.
+On your devices.
+Under your control.
+Always.</h2>
+          <div class="story-rule" aria-hidden="true"></div>
+          <p>Your space is yours to steward.</p>
+        </article>
+      </div>
+      <div id="story-dots" role="group" aria-label="Choose a welcome message">
+        <button type="button" aria-label="Message 1 of 4: A space of your own" aria-controls="story-own" aria-current="true"></button>
+        <button type="button" aria-label="Message 2 of 4: An invitation" aria-controls="story-invitation"></button>
+        <button type="button" aria-label="Message 3 of 4: Privacy" aria-controls="story-privacy"></button>
+        <button type="button" aria-label="Message 4 of 4: Stewardship" aria-controls="story-stewardship"></button>
+      </div>
+    </section>
+    <h1 id="state-heading" hidden></h1>
+    <p id="state-introduction" hidden></p>
     <div id="activity" class="activity" hidden>
       <span class="spinner" aria-hidden="true"></span>
       <div class="activity-details">
